@@ -1,0 +1,48 @@
+{
+ "name": "gojs",
+ "latest": "4.0.5",
+ "dist_tags": {
+  "one": "1.8.37",
+  "twozero": "2.0.21",
+  "twoone": "2.1.56",
+  "twotwo": "2.2.23",
+  "twothree": "2.3.19",
+  "threezero": "3.0.28",
+  "latest": "4.0.5"
+ },
+ "latest_published": "2026-10-02T16:20:26.108Z",
+ "modified": "2026-10-02T16:20:26.202Z",
+ "created": "2015-02-27T18:33:13.691Z",
+ "license": "SEE LICENSE IN license.html",
+ "deprecated": null,
+ "unpackedSize": 8221958,
+ "fileCount": 11,
+ "tarball": "https://registry.npmjs.org/gojs/-/gojs-4.0.5.tgz",
+ "dependencies": {},
+ "peerDependencies": {},
+ "repository": "git+https://github.com/NorthwoodsSoftware/GoJS.git",
+ "recent_versions": [
+  [
+   "4.0.1",
+   "2026-06-29T14:08:23.503Z"
+  ],
+  [
+   "4.0.2",
+   "2026-07-14T13:45:12.043Z"
+  ],
+  [
+   "4.0.3",
+   "2026-07-17T19:51:30.572Z"
+  ],
+  [
+   "4.0.4",
+   "2026-09-14T19:02:25.677Z"
+  ],
+  [
+   "4.0.5",
+   "2026-10-02T16:20:26.108Z"
+  ]
+ ],
+ "homepage": "https://gojs.net",
+ "description": "Interactive diagrams, charts, and graphs, such as trees, flowcharts, orgcharts, UML, BPMN, or business diagrams"
+}

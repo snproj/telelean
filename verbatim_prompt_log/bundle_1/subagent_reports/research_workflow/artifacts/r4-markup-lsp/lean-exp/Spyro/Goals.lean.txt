@@ -1,0 +1,20 @@
+import Spyro.Derivations
+
+/-
+@@ telelean v1
+id: spyro-sells-well
+kind: GOAL
+natural_name: "The new Spyro game will sell well"
+premises: new-spyro-pg, lore-matters
+-/
+theorem spyro_sells_well : isPG newSpyro ∧ True := by
+  sorry
+
+/-
+@@ telelean v1
+id: proven-goal
+kind: GOAL
+natural_name: "A goal that is actually already proven"
+premises: cynder-not-good
+-/
+theorem proven_goal : ¬ goodAddition cynder newSpyro := cynder_not_good

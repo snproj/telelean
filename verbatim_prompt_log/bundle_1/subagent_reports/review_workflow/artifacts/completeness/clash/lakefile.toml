@@ -1,0 +1,7 @@
+name = "Model"
+defaultTargets = ["Model"]
+[leanOptions]
+autoImplicit = false
+relaxedAutoImplicit = false
+[[lean_lib]]
+name = "Model"

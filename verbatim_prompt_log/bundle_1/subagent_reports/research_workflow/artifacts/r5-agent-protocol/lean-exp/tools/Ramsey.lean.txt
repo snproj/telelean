@@ -1,0 +1,109 @@
+/-
+telelean certificate-statement generator prototype (Lean 4.35.0).
+
+  lake env lean --run Ramsey.lean <ImportModule> <RootPrefix> [--goal <Decl>] [<Axiom> ...]
+
+Builds the "Ramsey sentence" of a set of model axioms: every non-Prop (vocabulary) axiom
+becomes an existentially quantified variable, every Prop axiom (assumption) becomes a conjunct.
+  * consistency certificate : ∃ vocab, A₁ ∧ … ∧ Aₙ
+  * independence certificate: ∃ vocab, A₁ ∧ … ∧ Aₙ ∧ ¬ G   (with --goal G)
+A proof of the printed statement that uses only propext / Classical.choice / Quot.sound
+(check with the audit or `lake comparator`, permitted_axioms = the standard three) shows,
+relative to Lean's own consistency, that the assumptions are satisfiable (resp. that G does
+NOT follow from them). Without explicit axiom names, all Prop axioms under RootPrefix are used.
+Definitions whose bodies mention abstracted axioms are delta-expanded first.
+-/
+import Lean
+open Lean Meta
+
+def collectModelAxioms (env : Environment) (root : Name) : MetaM (Array Name) := do
+  let mut out := #[]
+  for modName in env.header.moduleNames, modData in env.header.moduleData do
+    unless root.isPrefixOf modName do continue
+    let mut keyed : Array (Nat × Name) := #[]
+    for n in modData.constNames do
+      if let some (.axiomInfo _) := env.find? n then
+        let line := match (← findDeclarationRanges? n) with
+          | some r => r.range.pos.line * 10000 + r.range.pos.column | none => 0
+        keyed := keyed.push (line, n)
+    out := out ++ (keyed.qsort (fun a b => a.1 < b.1)).map (·.2)
+  return out
+
+/-- Does `c` (a definition) transitively mention one of `axs` in its value? -/
+partial def mentionsAxioms (env : Environment) (axs : NameSet) (c : Name)
+    (visited : IO.Ref NameSet) : IO Bool := do
+  if axs.contains c then return true
+  if (← visited.get).contains c then return false
+  visited.modify (·.insert c)
+  match env.find? c with
+  | some (.defnInfo v) =>
+    for d in v.type.getUsedConstants ++ v.value.getUsedConstants do
+      if ← mentionsAxioms env axs d visited then return true
+    return false
+  | _ => return false
+
+def ramsey (root : Name) (goal? : Option Name) (requested : List Name) : MetaM Expr := do
+  let env ← getEnv
+  let all ← collectModelAxioms env root
+  -- vocabulary = non-Prop axioms; assumptions = Prop axioms (all, or the requested ones)
+  let mut vocab := #[]
+  let mut props := #[]
+  for a in all do
+    let some (.axiomInfo v) := env.find? a | continue
+    if ← isProp v.type then
+      if requested.isEmpty || requested.contains a then props := props.push (a, v.type)
+    else vocab := vocab.push (a, v.type)
+  let abstracted : NameSet := vocab.foldl (fun s (a, _) => s.insert a) {}
+  -- defs mentioning abstracted axioms must be unfolded, otherwise they keep the global meaning
+  let visited ← IO.mkRef {}
+  let mut unfoldSet : NameSet := {}
+  for (_, t) in props ++ vocab do
+    for c in t.getUsedConstants do
+      if (env.find? c).any (·.isDefinition) then
+        if ← mentionsAxioms env abstracted c visited then unfoldSet := unfoldSet.insert c
+  let goalType? ← goal?.mapM fun g => do
+    let some ci := env.find? g | throwError "unknown goal {g}"
+    pure ci.type
+  if let some gt := goalType? then
+    for c in gt.getUsedConstants do
+      if (env.find? c).any (·.isDefinition) then
+        if ← mentionsAxioms env abstracted c visited then unfoldSet := unfoldSet.insert c
+  let prep (e : Expr) : MetaM Expr := do
+    if unfoldSet.isEmpty then pure e
+    else deltaExpand e (fun n => unfoldSet.contains n)
+  -- introduce one local per vocabulary axiom, substituting earlier ones
+  let rec go (i : Nat) (fvars : Array Expr) : MetaM Expr := do
+    let subst (e : Expr) : Expr := e.replace fun s => match s with
+      | .const n _ => (vocab.findIdx? (·.1 == n)).bind fun j => fvars[j]?
+      | _ => none
+    if h : i < vocab.size then
+      let (a, t) := vocab[i]
+      let t := subst (← prep t)
+      withLocalDeclD (Name.mkSimple a.getString!) t fun x => do
+        let body ← go (i + 1) (fvars.push x)
+        mkAppM ``Exists #[← mkLambdaFVars #[x] body]
+    else
+      let mut conj := (← props.mapM fun (_, t) => return subst (← prep t)).toList
+      if let some g := goalType? then conj := conj ++ [mkNot (subst (← prep g))]
+      let body := if conj.isEmpty then mkConst ``True else mkAndN conj
+      let leftovers := body.getUsedConstants.filter abstracted.contains
+      unless leftovers.isEmpty do
+        throwError "unsupported: {leftovers} still occur (inductive types over vocabulary?)"
+      return body
+  go 0 #[]
+
+unsafe def main (args : List String) : IO UInt32 := do
+  let imp :: root :: rest := args | do
+    IO.eprintln "usage: Ramsey.lean <ImportModule> <RootPrefix> [--goal <Decl>] [<Axiom> ...]"
+    return 2
+  let (goal?, axs) := match rest with
+    | "--goal" :: g :: more => (some g.toName, more.map String.toName)
+    | more => (none, more.map String.toName)
+  initSearchPath (← findSysroot)
+  let env ← importModules #[{ module := imp.toName }] {} (loadExts := false)
+  let opts : Options := (({} : Options).setBool `pp.fullNames true).setBool `pp.funBinderTypes true
+  let ctx : Core.Context := { fileName := "<ramsey>", fileMap := default, maxHeartbeats := 0, options := opts }
+  let ((stmt : Format), _) ← (MetaM.run' do ppExpr (← ramsey root.toName goal? axs)).toIO ctx { env }
+  let thmName := if goal?.isSome then "telelean_independence" else "telelean_consistency"
+  IO.println s!"import {imp}\n\ntheorem {thmName} :\n    {stmt.pretty 100 4} := by\n  sorry"
+  return 0

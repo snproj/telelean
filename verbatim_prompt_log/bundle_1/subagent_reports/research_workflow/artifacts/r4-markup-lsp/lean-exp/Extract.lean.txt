@@ -1,0 +1,57 @@
+import Lean
+import Spyro
+open Lean Meta
+
+/-- Kind of a constant, as a short string. -/
+def ciKind : ConstantInfo → String
+  | .axiomInfo _ => "axiom" | .defnInfo _ => "def" | .thmInfo _ => "theorem"
+  | .opaqueInfo _ => "opaque" | .quotInfo _ => "quot" | .inductInfo _ => "inductive"
+  | .ctorInfo _ => "ctor" | .recInfo _ => "recursor"
+
+def posJson (p : DeclarationRange) : Json :=
+  -- Lean Position: line is 1-based, column is 0-based in codepoints; charUtf16 is the LSP column.
+  Json.mkObj [("line", p.pos.line), ("col", p.pos.column), ("colUtf16", p.charUtf16),
+              ("endLine", p.endPos.line), ("endCol", p.endPos.column), ("endColUtf16", p.endCharUtf16)]
+
+def extract (root : Name) : MetaM Json := do
+  let env ← getEnv
+  let mut out : Array Json := #[]
+  for (n, ci) in env.constants.toList do
+    let some idx := env.getModuleIdxFor? n | continue
+    let modName := env.header.moduleNames[idx.toNat]!
+    unless modName.getRoot == root do continue
+    -- private decls are mangled as `_private.<Module>.0.<name>`: report the user-facing name
+    let userName := (privateToUserName? n).getD n
+    if userName.isInternalDetail then continue
+    if isAuxRecursor env n || isNoConfusion env n then continue
+    let isPropType ← isProp ci.type          -- the constant is a proof of a proposition
+    let axs ← collectAxioms n
+    let direct := (ci.type.getUsedConstants ++ (ci.value? (allowOpaque := true) |>.map (·.getUsedConstants) |>.getD #[]))
+    let directLocal := direct.filter fun c =>
+      match env.getModuleIdxFor? c with
+      | some i => (env.header.moduleNames[i.toNat]!).getRoot == root
+      | none => false
+    let typeRefs := ci.type.getUsedConstants.filter (directLocal.contains ·)
+    let ranges? ← findDeclarationRanges? n
+    let doc? ← findDocString? env n
+    let tyStr := toString (← ppExpr ci.type)
+    out := out.push <| Json.mkObj [
+      ("name", toString userName), ("private", isPrivateName n), ("module", toString modName),
+      ("file", (modName.components.map toString |> String.intercalate "/") ++ ".lean"), ("leanKind", ciKind ci),
+      ("isProp", isPropType),
+      ("axioms", toJson (axs.map toString)),
+      ("usesSorry", axs.contains ``sorryAx),
+      ("refs", toJson (directLocal.toList.eraseDups.map toString)),
+      ("typeRefs", toJson (typeRefs.toList.eraseDups.map toString)),
+      ("range", match ranges? with | some r => posJson r.range | none => Json.null),
+      ("selectionRange", match ranges? with | some r => posJson r.selectionRange | none => Json.null),
+      ("doc", match doc? with | some d => Json.str d | none => Json.null),
+      ("type", tyStr)]
+  let files := env.header.moduleNames.filter (·.getRoot == root) |>.map fun m =>
+    Json.str ((m.components.map toString |> String.intercalate "/") ++ ".lean")
+  return Json.mkObj [("schema", "telelean.lean-facts/v0"), ("lean_version", Lean.versionString),
+                     ("files", Json.arr files),
+                     ("root", toString root), ("decls", Json.arr out)]
+
+#eval show MetaM Unit from do
+  IO.println (← extract `Spyro).compress

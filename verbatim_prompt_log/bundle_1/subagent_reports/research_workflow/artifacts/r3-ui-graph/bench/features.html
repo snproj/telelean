@@ -1,0 +1,21 @@
+<!doctype html><html><body><script>
+(async () => {
+  const f = {
+    fieldSizing: CSS.supports('field-sizing', 'content'),
+    anchorPositioning: CSS.supports('anchor-name', '--a'),
+    colorMix: CSS.supports('color', 'color-mix(in srgb, red 50%, blue)'),
+    lightDark: CSS.supports('color', 'light-dark(red, blue)'),
+    contentVisibility: CSS.supports('content-visibility', 'auto'),
+    scrollendEvent: 'onscrollend' in window,
+    popover: HTMLElement.prototype.hasOwnProperty('popover'),
+    viewTransitions: 'startViewTransition' in document,
+    customHighlight: typeof CSS.highlights !== 'undefined',
+    scrollTimeline: CSS.supports('animation-timeline', 'scroll()'),
+    containerQueries: CSS.supports('container-type', 'inline-size'),
+    hasSelector: CSS.supports('selector(:has(a))'),
+    svgContextStroke: CSS.supports('fill', 'context-stroke'),
+    resizeObserver: typeof ResizeObserver === 'function',
+  };
+  await fetch('/result', {method: 'POST', body: JSON.stringify({ua: navigator.userAgent, f})});
+})();
+</script></body></html>

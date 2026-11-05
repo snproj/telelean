@@ -1,0 +1,5 @@
+✔ [2/5] Built Model.Spyro.Vocabulary (222ms)
+⚠ [3/5] Built Model.Spyro.Main (278ms)
+warning: Model/Spyro/Main.lean:87:8: declaration uses `sorry`
+✔ [4/5] Built Model (205ms)
+Build completed successfully (5 jobs).

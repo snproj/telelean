@@ -1,0 +1,5 @@
+def s := "/- not a comment"
+def t := 2
+-- line comment with /- inside
+def u := 3
+#print u

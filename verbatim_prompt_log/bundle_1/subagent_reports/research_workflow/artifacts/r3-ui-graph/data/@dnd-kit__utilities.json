@@ -1,0 +1,47 @@
+{
+ "name": "@dnd-kit/utilities",
+ "latest": "3.2.2",
+ "dist_tags": {
+  "latest": "3.2.2",
+  "next": "3.2.2-next-2023106221355"
+ },
+ "latest_published": "2023-11-06T22:20:07.149Z",
+ "modified": "2023-11-06T22:20:07.316Z",
+ "created": "2021-01-02T02:07:01.683Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 88455,
+ "fileCount": 44,
+ "tarball": "https://registry.npmjs.org/@dnd-kit/utilities/-/utilities-3.2.2.tgz",
+ "dependencies": {
+  "tslib": "^2.0.0"
+ },
+ "peerDependencies": {
+  "react": ">=16.8.0"
+ },
+ "repository": "git+https://github.com/clauderic/dnd-kit.git",
+ "recent_versions": [
+  [
+   "3.2.2-next-202310621659",
+   "2023-11-06T21:07:08.937Z"
+  ],
+  [
+   "3.2.2-next-2023106211358",
+   "2023-11-06T21:14:23.958Z"
+  ],
+  [
+   "3.2.2-next-202310621567",
+   "2023-11-06T21:56:39.899Z"
+  ],
+  [
+   "3.2.2-next-2023106221355",
+   "2023-11-06T22:14:14.753Z"
+  ],
+  [
+   "3.2.2",
+   "2023-11-06T22:20:07.149Z"
+  ]
+ ],
+ "homepage": "https://github.com/clauderic/dnd-kit#readme",
+ "description": "Internal utilities to bee shared between `@dnd-kit` packages"
+}

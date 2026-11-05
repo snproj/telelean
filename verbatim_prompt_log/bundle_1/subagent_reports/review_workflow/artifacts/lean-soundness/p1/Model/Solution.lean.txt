@@ -1,0 +1,6 @@
+import Model.Defs
+namespace T
+-- uses only the SELECTED assumptions A2, A3 plus "vocabulary"
+theorem cynder_not_good : ¬ GoodAddition cynder newSpyro :=
+  pg_no_dark _ _ spyro_pg cynderProfile.dark
+end T

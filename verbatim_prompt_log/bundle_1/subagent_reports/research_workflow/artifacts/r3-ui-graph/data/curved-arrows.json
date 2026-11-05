@@ -1,0 +1,34 @@
+{
+ "name": "curved-arrows",
+ "latest": "0.3.0",
+ "dist_tags": {
+  "latest": "0.3.0"
+ },
+ "latest_published": "2024-05-24T11:49:44.188Z",
+ "modified": "2024-05-24T11:49:44.349Z",
+ "created": "2021-12-12T19:59:07.350Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 77615,
+ "fileCount": 18,
+ "tarball": "https://registry.npmjs.org/curved-arrows/-/curved-arrows-0.3.0.tgz",
+ "dependencies": {},
+ "peerDependencies": {},
+ "repository": "git+https://github.com/dragonman225/curved-arrows.git",
+ "recent_versions": [
+  [
+   "0.1.0",
+   "2021-12-12T19:59:07.705Z"
+  ],
+  [
+   "0.2.0",
+   "2024-05-02T08:51:28.381Z"
+  ],
+  [
+   "0.3.0",
+   "2024-05-24T11:49:44.188Z"
+  ]
+ ],
+ "homepage": "https://github.com/dragonman225/curved-arrows",
+ "description": "Draw S-curved arrows between points or shapes"
+}

@@ -1,0 +1,69 @@
+[
+ {
+  "label": "review:completeness",
+  "agentId": "a320c1d4a2fae5f8f",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "ToolSearch",
+   "WebFetch",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "review:lean-soundness",
+  "agentId": "af0784ee0d07b3078",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "review:hci-pragmatics",
+  "agentId": "a2009b066bb395945",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "ToolSearch",
+   "WebFetch",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "review:feasibility",
+  "agentId": "a2d0bfda316fe0ebf",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "review:consistency",
+  "agentId": "a9fadcf9c69188db2",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "review:security-policy",
+  "agentId": "a8385df989a6ec081",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "review:red-team-simplify",
+  "agentId": "a2d3ebb40287c4b21",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "StructuredOutput"
+  ]
+ }
+]

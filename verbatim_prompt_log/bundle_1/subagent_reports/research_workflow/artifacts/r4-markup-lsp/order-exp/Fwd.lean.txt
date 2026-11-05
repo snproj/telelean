@@ -1,0 +1,2 @@
+theorem uses_later : later = 1 := rfl
+def later := 1

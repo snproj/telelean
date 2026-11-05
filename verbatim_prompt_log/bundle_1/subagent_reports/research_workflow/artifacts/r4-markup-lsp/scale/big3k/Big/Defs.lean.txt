@@ -1,0 +1,8000 @@
+/-
+@@ telelean v1
+id: p-0
+kind: DEFINITION
+natural_name: "proposition P0"
+-/
+opaque P0 : Prop
+
+/-
+@@ telelean v1
+id: p-1
+kind: DEFINITION
+natural_name: "proposition P1"
+-/
+opaque P1 : Prop
+
+/-
+@@ telelean v1
+id: p-2
+kind: DEFINITION
+natural_name: "proposition P2"
+-/
+opaque P2 : Prop
+
+/-
+@@ telelean v1
+id: p-3
+kind: DEFINITION
+natural_name: "proposition P3"
+-/
+opaque P3 : Prop
+
+/-
+@@ telelean v1
+id: p-4
+kind: DEFINITION
+natural_name: "proposition P4"
+-/
+opaque P4 : Prop
+
+/-
+@@ telelean v1
+id: p-5
+kind: DEFINITION
+natural_name: "proposition P5"
+-/
+opaque P5 : Prop
+
+/-
+@@ telelean v1
+id: p-6
+kind: DEFINITION
+natural_name: "proposition P6"
+-/
+opaque P6 : Prop
+
+/-
+@@ telelean v1
+id: p-7
+kind: DEFINITION
+natural_name: "proposition P7"
+-/
+opaque P7 : Prop
+
+/-
+@@ telelean v1
+id: p-8
+kind: DEFINITION
+natural_name: "proposition P8"
+-/
+opaque P8 : Prop
+
+/-
+@@ telelean v1
+id: p-9
+kind: DEFINITION
+natural_name: "proposition P9"
+-/
+opaque P9 : Prop
+
+/-
+@@ telelean v1
+id: p-10
+kind: DEFINITION
+natural_name: "proposition P10"
+-/
+opaque P10 : Prop
+
+/-
+@@ telelean v1
+id: p-11
+kind: DEFINITION
+natural_name: "proposition P11"
+-/
+opaque P11 : Prop
+
+/-
+@@ telelean v1
+id: p-12
+kind: DEFINITION
+natural_name: "proposition P12"
+-/
+opaque P12 : Prop
+
+/-
+@@ telelean v1
+id: p-13
+kind: DEFINITION
+natural_name: "proposition P13"
+-/
+opaque P13 : Prop
+
+/-
+@@ telelean v1
+id: p-14
+kind: DEFINITION
+natural_name: "proposition P14"
+-/
+opaque P14 : Prop
+
+/-
+@@ telelean v1
+id: p-15
+kind: DEFINITION
+natural_name: "proposition P15"
+-/
+opaque P15 : Prop
+
+/-
+@@ telelean v1
+id: p-16
+kind: DEFINITION
+natural_name: "proposition P16"
+-/
+opaque P16 : Prop
+
+/-
+@@ telelean v1
+id: p-17
+kind: DEFINITION
+natural_name: "proposition P17"
+-/
+opaque P17 : Prop
+
+/-
+@@ telelean v1
+id: p-18
+kind: DEFINITION
+natural_name: "proposition P18"
+-/
+opaque P18 : Prop
+
+/-
+@@ telelean v1
+id: p-19
+kind: DEFINITION
+natural_name: "proposition P19"
+-/
+opaque P19 : Prop
+
+/-
+@@ telelean v1
+id: p-20
+kind: DEFINITION
+natural_name: "proposition P20"
+-/
+opaque P20 : Prop
+
+/-
+@@ telelean v1
+id: p-21
+kind: DEFINITION
+natural_name: "proposition P21"
+-/
+opaque P21 : Prop
+
+/-
+@@ telelean v1
+id: p-22
+kind: DEFINITION
+natural_name: "proposition P22"
+-/
+opaque P22 : Prop
+
+/-
+@@ telelean v1
+id: p-23
+kind: DEFINITION
+natural_name: "proposition P23"
+-/
+opaque P23 : Prop
+
+/-
+@@ telelean v1
+id: p-24
+kind: DEFINITION
+natural_name: "proposition P24"
+-/
+opaque P24 : Prop
+
+/-
+@@ telelean v1
+id: p-25
+kind: DEFINITION
+natural_name: "proposition P25"
+-/
+opaque P25 : Prop
+
+/-
+@@ telelean v1
+id: p-26
+kind: DEFINITION
+natural_name: "proposition P26"
+-/
+opaque P26 : Prop
+
+/-
+@@ telelean v1
+id: p-27
+kind: DEFINITION
+natural_name: "proposition P27"
+-/
+opaque P27 : Prop
+
+/-
+@@ telelean v1
+id: p-28
+kind: DEFINITION
+natural_name: "proposition P28"
+-/
+opaque P28 : Prop
+
+/-
+@@ telelean v1
+id: p-29
+kind: DEFINITION
+natural_name: "proposition P29"
+-/
+opaque P29 : Prop
+
+/-
+@@ telelean v1
+id: p-30
+kind: DEFINITION
+natural_name: "proposition P30"
+-/
+opaque P30 : Prop
+
+/-
+@@ telelean v1
+id: p-31
+kind: DEFINITION
+natural_name: "proposition P31"
+-/
+opaque P31 : Prop
+
+/-
+@@ telelean v1
+id: p-32
+kind: DEFINITION
+natural_name: "proposition P32"
+-/
+opaque P32 : Prop
+
+/-
+@@ telelean v1
+id: p-33
+kind: DEFINITION
+natural_name: "proposition P33"
+-/
+opaque P33 : Prop
+
+/-
+@@ telelean v1
+id: p-34
+kind: DEFINITION
+natural_name: "proposition P34"
+-/
+opaque P34 : Prop
+
+/-
+@@ telelean v1
+id: p-35
+kind: DEFINITION
+natural_name: "proposition P35"
+-/
+opaque P35 : Prop
+
+/-
+@@ telelean v1
+id: p-36
+kind: DEFINITION
+natural_name: "proposition P36"
+-/
+opaque P36 : Prop
+
+/-
+@@ telelean v1
+id: p-37
+kind: DEFINITION
+natural_name: "proposition P37"
+-/
+opaque P37 : Prop
+
+/-
+@@ telelean v1
+id: p-38
+kind: DEFINITION
+natural_name: "proposition P38"
+-/
+opaque P38 : Prop
+
+/-
+@@ telelean v1
+id: p-39
+kind: DEFINITION
+natural_name: "proposition P39"
+-/
+opaque P39 : Prop
+
+/-
+@@ telelean v1
+id: p-40
+kind: DEFINITION
+natural_name: "proposition P40"
+-/
+opaque P40 : Prop
+
+/-
+@@ telelean v1
+id: p-41
+kind: DEFINITION
+natural_name: "proposition P41"
+-/
+opaque P41 : Prop
+
+/-
+@@ telelean v1
+id: p-42
+kind: DEFINITION
+natural_name: "proposition P42"
+-/
+opaque P42 : Prop
+
+/-
+@@ telelean v1
+id: p-43
+kind: DEFINITION
+natural_name: "proposition P43"
+-/
+opaque P43 : Prop
+
+/-
+@@ telelean v1
+id: p-44
+kind: DEFINITION
+natural_name: "proposition P44"
+-/
+opaque P44 : Prop
+
+/-
+@@ telelean v1
+id: p-45
+kind: DEFINITION
+natural_name: "proposition P45"
+-/
+opaque P45 : Prop
+
+/-
+@@ telelean v1
+id: p-46
+kind: DEFINITION
+natural_name: "proposition P46"
+-/
+opaque P46 : Prop
+
+/-
+@@ telelean v1
+id: p-47
+kind: DEFINITION
+natural_name: "proposition P47"
+-/
+opaque P47 : Prop
+
+/-
+@@ telelean v1
+id: p-48
+kind: DEFINITION
+natural_name: "proposition P48"
+-/
+opaque P48 : Prop
+
+/-
+@@ telelean v1
+id: p-49
+kind: DEFINITION
+natural_name: "proposition P49"
+-/
+opaque P49 : Prop
+
+/-
+@@ telelean v1
+id: p-50
+kind: DEFINITION
+natural_name: "proposition P50"
+-/
+opaque P50 : Prop
+
+/-
+@@ telelean v1
+id: p-51
+kind: DEFINITION
+natural_name: "proposition P51"
+-/
+opaque P51 : Prop
+
+/-
+@@ telelean v1
+id: p-52
+kind: DEFINITION
+natural_name: "proposition P52"
+-/
+opaque P52 : Prop
+
+/-
+@@ telelean v1
+id: p-53
+kind: DEFINITION
+natural_name: "proposition P53"
+-/
+opaque P53 : Prop
+
+/-
+@@ telelean v1
+id: p-54
+kind: DEFINITION
+natural_name: "proposition P54"
+-/
+opaque P54 : Prop
+
+/-
+@@ telelean v1
+id: p-55
+kind: DEFINITION
+natural_name: "proposition P55"
+-/
+opaque P55 : Prop
+
+/-
+@@ telelean v1
+id: p-56
+kind: DEFINITION
+natural_name: "proposition P56"
+-/
+opaque P56 : Prop
+
+/-
+@@ telelean v1
+id: p-57
+kind: DEFINITION
+natural_name: "proposition P57"
+-/
+opaque P57 : Prop
+
+/-
+@@ telelean v1
+id: p-58
+kind: DEFINITION
+natural_name: "proposition P58"
+-/
+opaque P58 : Prop
+
+/-
+@@ telelean v1
+id: p-59
+kind: DEFINITION
+natural_name: "proposition P59"
+-/
+opaque P59 : Prop
+
+/-
+@@ telelean v1
+id: p-60
+kind: DEFINITION
+natural_name: "proposition P60"
+-/
+opaque P60 : Prop
+
+/-
+@@ telelean v1
+id: p-61
+kind: DEFINITION
+natural_name: "proposition P61"
+-/
+opaque P61 : Prop
+
+/-
+@@ telelean v1
+id: p-62
+kind: DEFINITION
+natural_name: "proposition P62"
+-/
+opaque P62 : Prop
+
+/-
+@@ telelean v1
+id: p-63
+kind: DEFINITION
+natural_name: "proposition P63"
+-/
+opaque P63 : Prop
+
+/-
+@@ telelean v1
+id: p-64
+kind: DEFINITION
+natural_name: "proposition P64"
+-/
+opaque P64 : Prop
+
+/-
+@@ telelean v1
+id: p-65
+kind: DEFINITION
+natural_name: "proposition P65"
+-/
+opaque P65 : Prop
+
+/-
+@@ telelean v1
+id: p-66
+kind: DEFINITION
+natural_name: "proposition P66"
+-/
+opaque P66 : Prop
+
+/-
+@@ telelean v1
+id: p-67
+kind: DEFINITION
+natural_name: "proposition P67"
+-/
+opaque P67 : Prop
+
+/-
+@@ telelean v1
+id: p-68
+kind: DEFINITION
+natural_name: "proposition P68"
+-/
+opaque P68 : Prop
+
+/-
+@@ telelean v1
+id: p-69
+kind: DEFINITION
+natural_name: "proposition P69"
+-/
+opaque P69 : Prop
+
+/-
+@@ telelean v1
+id: p-70
+kind: DEFINITION
+natural_name: "proposition P70"
+-/
+opaque P70 : Prop
+
+/-
+@@ telelean v1
+id: p-71
+kind: DEFINITION
+natural_name: "proposition P71"
+-/
+opaque P71 : Prop
+
+/-
+@@ telelean v1
+id: p-72
+kind: DEFINITION
+natural_name: "proposition P72"
+-/
+opaque P72 : Prop
+
+/-
+@@ telelean v1
+id: p-73
+kind: DEFINITION
+natural_name: "proposition P73"
+-/
+opaque P73 : Prop
+
+/-
+@@ telelean v1
+id: p-74
+kind: DEFINITION
+natural_name: "proposition P74"
+-/
+opaque P74 : Prop
+
+/-
+@@ telelean v1
+id: p-75
+kind: DEFINITION
+natural_name: "proposition P75"
+-/
+opaque P75 : Prop
+
+/-
+@@ telelean v1
+id: p-76
+kind: DEFINITION
+natural_name: "proposition P76"
+-/
+opaque P76 : Prop
+
+/-
+@@ telelean v1
+id: p-77
+kind: DEFINITION
+natural_name: "proposition P77"
+-/
+opaque P77 : Prop
+
+/-
+@@ telelean v1
+id: p-78
+kind: DEFINITION
+natural_name: "proposition P78"
+-/
+opaque P78 : Prop
+
+/-
+@@ telelean v1
+id: p-79
+kind: DEFINITION
+natural_name: "proposition P79"
+-/
+opaque P79 : Prop
+
+/-
+@@ telelean v1
+id: p-80
+kind: DEFINITION
+natural_name: "proposition P80"
+-/
+opaque P80 : Prop
+
+/-
+@@ telelean v1
+id: p-81
+kind: DEFINITION
+natural_name: "proposition P81"
+-/
+opaque P81 : Prop
+
+/-
+@@ telelean v1
+id: p-82
+kind: DEFINITION
+natural_name: "proposition P82"
+-/
+opaque P82 : Prop
+
+/-
+@@ telelean v1
+id: p-83
+kind: DEFINITION
+natural_name: "proposition P83"
+-/
+opaque P83 : Prop
+
+/-
+@@ telelean v1
+id: p-84
+kind: DEFINITION
+natural_name: "proposition P84"
+-/
+opaque P84 : Prop
+
+/-
+@@ telelean v1
+id: p-85
+kind: DEFINITION
+natural_name: "proposition P85"
+-/
+opaque P85 : Prop
+
+/-
+@@ telelean v1
+id: p-86
+kind: DEFINITION
+natural_name: "proposition P86"
+-/
+opaque P86 : Prop
+
+/-
+@@ telelean v1
+id: p-87
+kind: DEFINITION
+natural_name: "proposition P87"
+-/
+opaque P87 : Prop
+
+/-
+@@ telelean v1
+id: p-88
+kind: DEFINITION
+natural_name: "proposition P88"
+-/
+opaque P88 : Prop
+
+/-
+@@ telelean v1
+id: p-89
+kind: DEFINITION
+natural_name: "proposition P89"
+-/
+opaque P89 : Prop
+
+/-
+@@ telelean v1
+id: p-90
+kind: DEFINITION
+natural_name: "proposition P90"
+-/
+opaque P90 : Prop
+
+/-
+@@ telelean v1
+id: p-91
+kind: DEFINITION
+natural_name: "proposition P91"
+-/
+opaque P91 : Prop
+
+/-
+@@ telelean v1
+id: p-92
+kind: DEFINITION
+natural_name: "proposition P92"
+-/
+opaque P92 : Prop
+
+/-
+@@ telelean v1
+id: p-93
+kind: DEFINITION
+natural_name: "proposition P93"
+-/
+opaque P93 : Prop
+
+/-
+@@ telelean v1
+id: p-94
+kind: DEFINITION
+natural_name: "proposition P94"
+-/
+opaque P94 : Prop
+
+/-
+@@ telelean v1
+id: p-95
+kind: DEFINITION
+natural_name: "proposition P95"
+-/
+opaque P95 : Prop
+
+/-
+@@ telelean v1
+id: p-96
+kind: DEFINITION
+natural_name: "proposition P96"
+-/
+opaque P96 : Prop
+
+/-
+@@ telelean v1
+id: p-97
+kind: DEFINITION
+natural_name: "proposition P97"
+-/
+opaque P97 : Prop
+
+/-
+@@ telelean v1
+id: p-98
+kind: DEFINITION
+natural_name: "proposition P98"
+-/
+opaque P98 : Prop
+
+/-
+@@ telelean v1
+id: p-99
+kind: DEFINITION
+natural_name: "proposition P99"
+-/
+opaque P99 : Prop
+
+/-
+@@ telelean v1
+id: p-100
+kind: DEFINITION
+natural_name: "proposition P100"
+-/
+opaque P100 : Prop
+
+/-
+@@ telelean v1
+id: p-101
+kind: DEFINITION
+natural_name: "proposition P101"
+-/
+opaque P101 : Prop
+
+/-
+@@ telelean v1
+id: p-102
+kind: DEFINITION
+natural_name: "proposition P102"
+-/
+opaque P102 : Prop
+
+/-
+@@ telelean v1
+id: p-103
+kind: DEFINITION
+natural_name: "proposition P103"
+-/
+opaque P103 : Prop
+
+/-
+@@ telelean v1
+id: p-104
+kind: DEFINITION
+natural_name: "proposition P104"
+-/
+opaque P104 : Prop
+
+/-
+@@ telelean v1
+id: p-105
+kind: DEFINITION
+natural_name: "proposition P105"
+-/
+opaque P105 : Prop
+
+/-
+@@ telelean v1
+id: p-106
+kind: DEFINITION
+natural_name: "proposition P106"
+-/
+opaque P106 : Prop
+
+/-
+@@ telelean v1
+id: p-107
+kind: DEFINITION
+natural_name: "proposition P107"
+-/
+opaque P107 : Prop
+
+/-
+@@ telelean v1
+id: p-108
+kind: DEFINITION
+natural_name: "proposition P108"
+-/
+opaque P108 : Prop
+
+/-
+@@ telelean v1
+id: p-109
+kind: DEFINITION
+natural_name: "proposition P109"
+-/
+opaque P109 : Prop
+
+/-
+@@ telelean v1
+id: p-110
+kind: DEFINITION
+natural_name: "proposition P110"
+-/
+opaque P110 : Prop
+
+/-
+@@ telelean v1
+id: p-111
+kind: DEFINITION
+natural_name: "proposition P111"
+-/
+opaque P111 : Prop
+
+/-
+@@ telelean v1
+id: p-112
+kind: DEFINITION
+natural_name: "proposition P112"
+-/
+opaque P112 : Prop
+
+/-
+@@ telelean v1
+id: p-113
+kind: DEFINITION
+natural_name: "proposition P113"
+-/
+opaque P113 : Prop
+
+/-
+@@ telelean v1
+id: p-114
+kind: DEFINITION
+natural_name: "proposition P114"
+-/
+opaque P114 : Prop
+
+/-
+@@ telelean v1
+id: p-115
+kind: DEFINITION
+natural_name: "proposition P115"
+-/
+opaque P115 : Prop
+
+/-
+@@ telelean v1
+id: p-116
+kind: DEFINITION
+natural_name: "proposition P116"
+-/
+opaque P116 : Prop
+
+/-
+@@ telelean v1
+id: p-117
+kind: DEFINITION
+natural_name: "proposition P117"
+-/
+opaque P117 : Prop
+
+/-
+@@ telelean v1
+id: p-118
+kind: DEFINITION
+natural_name: "proposition P118"
+-/
+opaque P118 : Prop
+
+/-
+@@ telelean v1
+id: p-119
+kind: DEFINITION
+natural_name: "proposition P119"
+-/
+opaque P119 : Prop
+
+/-
+@@ telelean v1
+id: p-120
+kind: DEFINITION
+natural_name: "proposition P120"
+-/
+opaque P120 : Prop
+
+/-
+@@ telelean v1
+id: p-121
+kind: DEFINITION
+natural_name: "proposition P121"
+-/
+opaque P121 : Prop
+
+/-
+@@ telelean v1
+id: p-122
+kind: DEFINITION
+natural_name: "proposition P122"
+-/
+opaque P122 : Prop
+
+/-
+@@ telelean v1
+id: p-123
+kind: DEFINITION
+natural_name: "proposition P123"
+-/
+opaque P123 : Prop
+
+/-
+@@ telelean v1
+id: p-124
+kind: DEFINITION
+natural_name: "proposition P124"
+-/
+opaque P124 : Prop
+
+/-
+@@ telelean v1
+id: p-125
+kind: DEFINITION
+natural_name: "proposition P125"
+-/
+opaque P125 : Prop
+
+/-
+@@ telelean v1
+id: p-126
+kind: DEFINITION
+natural_name: "proposition P126"
+-/
+opaque P126 : Prop
+
+/-
+@@ telelean v1
+id: p-127
+kind: DEFINITION
+natural_name: "proposition P127"
+-/
+opaque P127 : Prop
+
+/-
+@@ telelean v1
+id: p-128
+kind: DEFINITION
+natural_name: "proposition P128"
+-/
+opaque P128 : Prop
+
+/-
+@@ telelean v1
+id: p-129
+kind: DEFINITION
+natural_name: "proposition P129"
+-/
+opaque P129 : Prop
+
+/-
+@@ telelean v1
+id: p-130
+kind: DEFINITION
+natural_name: "proposition P130"
+-/
+opaque P130 : Prop
+
+/-
+@@ telelean v1
+id: p-131
+kind: DEFINITION
+natural_name: "proposition P131"
+-/
+opaque P131 : Prop
+
+/-
+@@ telelean v1
+id: p-132
+kind: DEFINITION
+natural_name: "proposition P132"
+-/
+opaque P132 : Prop
+
+/-
+@@ telelean v1
+id: p-133
+kind: DEFINITION
+natural_name: "proposition P133"
+-/
+opaque P133 : Prop
+
+/-
+@@ telelean v1
+id: p-134
+kind: DEFINITION
+natural_name: "proposition P134"
+-/
+opaque P134 : Prop
+
+/-
+@@ telelean v1
+id: p-135
+kind: DEFINITION
+natural_name: "proposition P135"
+-/
+opaque P135 : Prop
+
+/-
+@@ telelean v1
+id: p-136
+kind: DEFINITION
+natural_name: "proposition P136"
+-/
+opaque P136 : Prop
+
+/-
+@@ telelean v1
+id: p-137
+kind: DEFINITION
+natural_name: "proposition P137"
+-/
+opaque P137 : Prop
+
+/-
+@@ telelean v1
+id: p-138
+kind: DEFINITION
+natural_name: "proposition P138"
+-/
+opaque P138 : Prop
+
+/-
+@@ telelean v1
+id: p-139
+kind: DEFINITION
+natural_name: "proposition P139"
+-/
+opaque P139 : Prop
+
+/-
+@@ telelean v1
+id: p-140
+kind: DEFINITION
+natural_name: "proposition P140"
+-/
+opaque P140 : Prop
+
+/-
+@@ telelean v1
+id: p-141
+kind: DEFINITION
+natural_name: "proposition P141"
+-/
+opaque P141 : Prop
+
+/-
+@@ telelean v1
+id: p-142
+kind: DEFINITION
+natural_name: "proposition P142"
+-/
+opaque P142 : Prop
+
+/-
+@@ telelean v1
+id: p-143
+kind: DEFINITION
+natural_name: "proposition P143"
+-/
+opaque P143 : Prop
+
+/-
+@@ telelean v1
+id: p-144
+kind: DEFINITION
+natural_name: "proposition P144"
+-/
+opaque P144 : Prop
+
+/-
+@@ telelean v1
+id: p-145
+kind: DEFINITION
+natural_name: "proposition P145"
+-/
+opaque P145 : Prop
+
+/-
+@@ telelean v1
+id: p-146
+kind: DEFINITION
+natural_name: "proposition P146"
+-/
+opaque P146 : Prop
+
+/-
+@@ telelean v1
+id: p-147
+kind: DEFINITION
+natural_name: "proposition P147"
+-/
+opaque P147 : Prop
+
+/-
+@@ telelean v1
+id: p-148
+kind: DEFINITION
+natural_name: "proposition P148"
+-/
+opaque P148 : Prop
+
+/-
+@@ telelean v1
+id: p-149
+kind: DEFINITION
+natural_name: "proposition P149"
+-/
+opaque P149 : Prop
+
+/-
+@@ telelean v1
+id: p-150
+kind: DEFINITION
+natural_name: "proposition P150"
+-/
+opaque P150 : Prop
+
+/-
+@@ telelean v1
+id: p-151
+kind: DEFINITION
+natural_name: "proposition P151"
+-/
+opaque P151 : Prop
+
+/-
+@@ telelean v1
+id: p-152
+kind: DEFINITION
+natural_name: "proposition P152"
+-/
+opaque P152 : Prop
+
+/-
+@@ telelean v1
+id: p-153
+kind: DEFINITION
+natural_name: "proposition P153"
+-/
+opaque P153 : Prop
+
+/-
+@@ telelean v1
+id: p-154
+kind: DEFINITION
+natural_name: "proposition P154"
+-/
+opaque P154 : Prop
+
+/-
+@@ telelean v1
+id: p-155
+kind: DEFINITION
+natural_name: "proposition P155"
+-/
+opaque P155 : Prop
+
+/-
+@@ telelean v1
+id: p-156
+kind: DEFINITION
+natural_name: "proposition P156"
+-/
+opaque P156 : Prop
+
+/-
+@@ telelean v1
+id: p-157
+kind: DEFINITION
+natural_name: "proposition P157"
+-/
+opaque P157 : Prop
+
+/-
+@@ telelean v1
+id: p-158
+kind: DEFINITION
+natural_name: "proposition P158"
+-/
+opaque P158 : Prop
+
+/-
+@@ telelean v1
+id: p-159
+kind: DEFINITION
+natural_name: "proposition P159"
+-/
+opaque P159 : Prop
+
+/-
+@@ telelean v1
+id: p-160
+kind: DEFINITION
+natural_name: "proposition P160"
+-/
+opaque P160 : Prop
+
+/-
+@@ telelean v1
+id: p-161
+kind: DEFINITION
+natural_name: "proposition P161"
+-/
+opaque P161 : Prop
+
+/-
+@@ telelean v1
+id: p-162
+kind: DEFINITION
+natural_name: "proposition P162"
+-/
+opaque P162 : Prop
+
+/-
+@@ telelean v1
+id: p-163
+kind: DEFINITION
+natural_name: "proposition P163"
+-/
+opaque P163 : Prop
+
+/-
+@@ telelean v1
+id: p-164
+kind: DEFINITION
+natural_name: "proposition P164"
+-/
+opaque P164 : Prop
+
+/-
+@@ telelean v1
+id: p-165
+kind: DEFINITION
+natural_name: "proposition P165"
+-/
+opaque P165 : Prop
+
+/-
+@@ telelean v1
+id: p-166
+kind: DEFINITION
+natural_name: "proposition P166"
+-/
+opaque P166 : Prop
+
+/-
+@@ telelean v1
+id: p-167
+kind: DEFINITION
+natural_name: "proposition P167"
+-/
+opaque P167 : Prop
+
+/-
+@@ telelean v1
+id: p-168
+kind: DEFINITION
+natural_name: "proposition P168"
+-/
+opaque P168 : Prop
+
+/-
+@@ telelean v1
+id: p-169
+kind: DEFINITION
+natural_name: "proposition P169"
+-/
+opaque P169 : Prop
+
+/-
+@@ telelean v1
+id: p-170
+kind: DEFINITION
+natural_name: "proposition P170"
+-/
+opaque P170 : Prop
+
+/-
+@@ telelean v1
+id: p-171
+kind: DEFINITION
+natural_name: "proposition P171"
+-/
+opaque P171 : Prop
+
+/-
+@@ telelean v1
+id: p-172
+kind: DEFINITION
+natural_name: "proposition P172"
+-/
+opaque P172 : Prop
+
+/-
+@@ telelean v1
+id: p-173
+kind: DEFINITION
+natural_name: "proposition P173"
+-/
+opaque P173 : Prop
+
+/-
+@@ telelean v1
+id: p-174
+kind: DEFINITION
+natural_name: "proposition P174"
+-/
+opaque P174 : Prop
+
+/-
+@@ telelean v1
+id: p-175
+kind: DEFINITION
+natural_name: "proposition P175"
+-/
+opaque P175 : Prop
+
+/-
+@@ telelean v1
+id: p-176
+kind: DEFINITION
+natural_name: "proposition P176"
+-/
+opaque P176 : Prop
+
+/-
+@@ telelean v1
+id: p-177
+kind: DEFINITION
+natural_name: "proposition P177"
+-/
+opaque P177 : Prop
+
+/-
+@@ telelean v1
+id: p-178
+kind: DEFINITION
+natural_name: "proposition P178"
+-/
+opaque P178 : Prop
+
+/-
+@@ telelean v1
+id: p-179
+kind: DEFINITION
+natural_name: "proposition P179"
+-/
+opaque P179 : Prop
+
+/-
+@@ telelean v1
+id: p-180
+kind: DEFINITION
+natural_name: "proposition P180"
+-/
+opaque P180 : Prop
+
+/-
+@@ telelean v1
+id: p-181
+kind: DEFINITION
+natural_name: "proposition P181"
+-/
+opaque P181 : Prop
+
+/-
+@@ telelean v1
+id: p-182
+kind: DEFINITION
+natural_name: "proposition P182"
+-/
+opaque P182 : Prop
+
+/-
+@@ telelean v1
+id: p-183
+kind: DEFINITION
+natural_name: "proposition P183"
+-/
+opaque P183 : Prop
+
+/-
+@@ telelean v1
+id: p-184
+kind: DEFINITION
+natural_name: "proposition P184"
+-/
+opaque P184 : Prop
+
+/-
+@@ telelean v1
+id: p-185
+kind: DEFINITION
+natural_name: "proposition P185"
+-/
+opaque P185 : Prop
+
+/-
+@@ telelean v1
+id: p-186
+kind: DEFINITION
+natural_name: "proposition P186"
+-/
+opaque P186 : Prop
+
+/-
+@@ telelean v1
+id: p-187
+kind: DEFINITION
+natural_name: "proposition P187"
+-/
+opaque P187 : Prop
+
+/-
+@@ telelean v1
+id: p-188
+kind: DEFINITION
+natural_name: "proposition P188"
+-/
+opaque P188 : Prop
+
+/-
+@@ telelean v1
+id: p-189
+kind: DEFINITION
+natural_name: "proposition P189"
+-/
+opaque P189 : Prop
+
+/-
+@@ telelean v1
+id: p-190
+kind: DEFINITION
+natural_name: "proposition P190"
+-/
+opaque P190 : Prop
+
+/-
+@@ telelean v1
+id: p-191
+kind: DEFINITION
+natural_name: "proposition P191"
+-/
+opaque P191 : Prop
+
+/-
+@@ telelean v1
+id: p-192
+kind: DEFINITION
+natural_name: "proposition P192"
+-/
+opaque P192 : Prop
+
+/-
+@@ telelean v1
+id: p-193
+kind: DEFINITION
+natural_name: "proposition P193"
+-/
+opaque P193 : Prop
+
+/-
+@@ telelean v1
+id: p-194
+kind: DEFINITION
+natural_name: "proposition P194"
+-/
+opaque P194 : Prop
+
+/-
+@@ telelean v1
+id: p-195
+kind: DEFINITION
+natural_name: "proposition P195"
+-/
+opaque P195 : Prop
+
+/-
+@@ telelean v1
+id: p-196
+kind: DEFINITION
+natural_name: "proposition P196"
+-/
+opaque P196 : Prop
+
+/-
+@@ telelean v1
+id: p-197
+kind: DEFINITION
+natural_name: "proposition P197"
+-/
+opaque P197 : Prop
+
+/-
+@@ telelean v1
+id: p-198
+kind: DEFINITION
+natural_name: "proposition P198"
+-/
+opaque P198 : Prop
+
+/-
+@@ telelean v1
+id: p-199
+kind: DEFINITION
+natural_name: "proposition P199"
+-/
+opaque P199 : Prop
+
+/-
+@@ telelean v1
+id: q-0
+kind: DEFINITION
+natural_name: "proposition Q0"
+-/
+opaque Q0 : Prop
+
+/-
+@@ telelean v1
+id: q-1
+kind: DEFINITION
+natural_name: "proposition Q1"
+-/
+opaque Q1 : Prop
+
+/-
+@@ telelean v1
+id: q-2
+kind: DEFINITION
+natural_name: "proposition Q2"
+-/
+opaque Q2 : Prop
+
+/-
+@@ telelean v1
+id: q-3
+kind: DEFINITION
+natural_name: "proposition Q3"
+-/
+opaque Q3 : Prop
+
+/-
+@@ telelean v1
+id: q-4
+kind: DEFINITION
+natural_name: "proposition Q4"
+-/
+opaque Q4 : Prop
+
+/-
+@@ telelean v1
+id: q-5
+kind: DEFINITION
+natural_name: "proposition Q5"
+-/
+opaque Q5 : Prop
+
+/-
+@@ telelean v1
+id: q-6
+kind: DEFINITION
+natural_name: "proposition Q6"
+-/
+opaque Q6 : Prop
+
+/-
+@@ telelean v1
+id: q-7
+kind: DEFINITION
+natural_name: "proposition Q7"
+-/
+opaque Q7 : Prop
+
+/-
+@@ telelean v1
+id: q-8
+kind: DEFINITION
+natural_name: "proposition Q8"
+-/
+opaque Q8 : Prop
+
+/-
+@@ telelean v1
+id: q-9
+kind: DEFINITION
+natural_name: "proposition Q9"
+-/
+opaque Q9 : Prop
+
+/-
+@@ telelean v1
+id: q-10
+kind: DEFINITION
+natural_name: "proposition Q10"
+-/
+opaque Q10 : Prop
+
+/-
+@@ telelean v1
+id: q-11
+kind: DEFINITION
+natural_name: "proposition Q11"
+-/
+opaque Q11 : Prop
+
+/-
+@@ telelean v1
+id: q-12
+kind: DEFINITION
+natural_name: "proposition Q12"
+-/
+opaque Q12 : Prop
+
+/-
+@@ telelean v1
+id: q-13
+kind: DEFINITION
+natural_name: "proposition Q13"
+-/
+opaque Q13 : Prop
+
+/-
+@@ telelean v1
+id: q-14
+kind: DEFINITION
+natural_name: "proposition Q14"
+-/
+opaque Q14 : Prop
+
+/-
+@@ telelean v1
+id: q-15
+kind: DEFINITION
+natural_name: "proposition Q15"
+-/
+opaque Q15 : Prop
+
+/-
+@@ telelean v1
+id: q-16
+kind: DEFINITION
+natural_name: "proposition Q16"
+-/
+opaque Q16 : Prop
+
+/-
+@@ telelean v1
+id: q-17
+kind: DEFINITION
+natural_name: "proposition Q17"
+-/
+opaque Q17 : Prop
+
+/-
+@@ telelean v1
+id: q-18
+kind: DEFINITION
+natural_name: "proposition Q18"
+-/
+opaque Q18 : Prop
+
+/-
+@@ telelean v1
+id: q-19
+kind: DEFINITION
+natural_name: "proposition Q19"
+-/
+opaque Q19 : Prop
+
+/-
+@@ telelean v1
+id: q-20
+kind: DEFINITION
+natural_name: "proposition Q20"
+-/
+opaque Q20 : Prop
+
+/-
+@@ telelean v1
+id: q-21
+kind: DEFINITION
+natural_name: "proposition Q21"
+-/
+opaque Q21 : Prop
+
+/-
+@@ telelean v1
+id: q-22
+kind: DEFINITION
+natural_name: "proposition Q22"
+-/
+opaque Q22 : Prop
+
+/-
+@@ telelean v1
+id: q-23
+kind: DEFINITION
+natural_name: "proposition Q23"
+-/
+opaque Q23 : Prop
+
+/-
+@@ telelean v1
+id: q-24
+kind: DEFINITION
+natural_name: "proposition Q24"
+-/
+opaque Q24 : Prop
+
+/-
+@@ telelean v1
+id: q-25
+kind: DEFINITION
+natural_name: "proposition Q25"
+-/
+opaque Q25 : Prop
+
+/-
+@@ telelean v1
+id: q-26
+kind: DEFINITION
+natural_name: "proposition Q26"
+-/
+opaque Q26 : Prop
+
+/-
+@@ telelean v1
+id: q-27
+kind: DEFINITION
+natural_name: "proposition Q27"
+-/
+opaque Q27 : Prop
+
+/-
+@@ telelean v1
+id: q-28
+kind: DEFINITION
+natural_name: "proposition Q28"
+-/
+opaque Q28 : Prop
+
+/-
+@@ telelean v1
+id: q-29
+kind: DEFINITION
+natural_name: "proposition Q29"
+-/
+opaque Q29 : Prop
+
+/-
+@@ telelean v1
+id: q-30
+kind: DEFINITION
+natural_name: "proposition Q30"
+-/
+opaque Q30 : Prop
+
+/-
+@@ telelean v1
+id: q-31
+kind: DEFINITION
+natural_name: "proposition Q31"
+-/
+opaque Q31 : Prop
+
+/-
+@@ telelean v1
+id: q-32
+kind: DEFINITION
+natural_name: "proposition Q32"
+-/
+opaque Q32 : Prop
+
+/-
+@@ telelean v1
+id: q-33
+kind: DEFINITION
+natural_name: "proposition Q33"
+-/
+opaque Q33 : Prop
+
+/-
+@@ telelean v1
+id: q-34
+kind: DEFINITION
+natural_name: "proposition Q34"
+-/
+opaque Q34 : Prop
+
+/-
+@@ telelean v1
+id: q-35
+kind: DEFINITION
+natural_name: "proposition Q35"
+-/
+opaque Q35 : Prop
+
+/-
+@@ telelean v1
+id: q-36
+kind: DEFINITION
+natural_name: "proposition Q36"
+-/
+opaque Q36 : Prop
+
+/-
+@@ telelean v1
+id: q-37
+kind: DEFINITION
+natural_name: "proposition Q37"
+-/
+opaque Q37 : Prop
+
+/-
+@@ telelean v1
+id: q-38
+kind: DEFINITION
+natural_name: "proposition Q38"
+-/
+opaque Q38 : Prop
+
+/-
+@@ telelean v1
+id: q-39
+kind: DEFINITION
+natural_name: "proposition Q39"
+-/
+opaque Q39 : Prop
+
+/-
+@@ telelean v1
+id: q-40
+kind: DEFINITION
+natural_name: "proposition Q40"
+-/
+opaque Q40 : Prop
+
+/-
+@@ telelean v1
+id: q-41
+kind: DEFINITION
+natural_name: "proposition Q41"
+-/
+opaque Q41 : Prop
+
+/-
+@@ telelean v1
+id: q-42
+kind: DEFINITION
+natural_name: "proposition Q42"
+-/
+opaque Q42 : Prop
+
+/-
+@@ telelean v1
+id: q-43
+kind: DEFINITION
+natural_name: "proposition Q43"
+-/
+opaque Q43 : Prop
+
+/-
+@@ telelean v1
+id: q-44
+kind: DEFINITION
+natural_name: "proposition Q44"
+-/
+opaque Q44 : Prop
+
+/-
+@@ telelean v1
+id: q-45
+kind: DEFINITION
+natural_name: "proposition Q45"
+-/
+opaque Q45 : Prop
+
+/-
+@@ telelean v1
+id: q-46
+kind: DEFINITION
+natural_name: "proposition Q46"
+-/
+opaque Q46 : Prop
+
+/-
+@@ telelean v1
+id: q-47
+kind: DEFINITION
+natural_name: "proposition Q47"
+-/
+opaque Q47 : Prop
+
+/-
+@@ telelean v1
+id: q-48
+kind: DEFINITION
+natural_name: "proposition Q48"
+-/
+opaque Q48 : Prop
+
+/-
+@@ telelean v1
+id: q-49
+kind: DEFINITION
+natural_name: "proposition Q49"
+-/
+opaque Q49 : Prop
+
+/-
+@@ telelean v1
+id: q-50
+kind: DEFINITION
+natural_name: "proposition Q50"
+-/
+opaque Q50 : Prop
+
+/-
+@@ telelean v1
+id: q-51
+kind: DEFINITION
+natural_name: "proposition Q51"
+-/
+opaque Q51 : Prop
+
+/-
+@@ telelean v1
+id: q-52
+kind: DEFINITION
+natural_name: "proposition Q52"
+-/
+opaque Q52 : Prop
+
+/-
+@@ telelean v1
+id: q-53
+kind: DEFINITION
+natural_name: "proposition Q53"
+-/
+opaque Q53 : Prop
+
+/-
+@@ telelean v1
+id: q-54
+kind: DEFINITION
+natural_name: "proposition Q54"
+-/
+opaque Q54 : Prop
+
+/-
+@@ telelean v1
+id: q-55
+kind: DEFINITION
+natural_name: "proposition Q55"
+-/
+opaque Q55 : Prop
+
+/-
+@@ telelean v1
+id: q-56
+kind: DEFINITION
+natural_name: "proposition Q56"
+-/
+opaque Q56 : Prop
+
+/-
+@@ telelean v1
+id: q-57
+kind: DEFINITION
+natural_name: "proposition Q57"
+-/
+opaque Q57 : Prop
+
+/-
+@@ telelean v1
+id: q-58
+kind: DEFINITION
+natural_name: "proposition Q58"
+-/
+opaque Q58 : Prop
+
+/-
+@@ telelean v1
+id: q-59
+kind: DEFINITION
+natural_name: "proposition Q59"
+-/
+opaque Q59 : Prop
+
+/-
+@@ telelean v1
+id: q-60
+kind: DEFINITION
+natural_name: "proposition Q60"
+-/
+opaque Q60 : Prop
+
+/-
+@@ telelean v1
+id: q-61
+kind: DEFINITION
+natural_name: "proposition Q61"
+-/
+opaque Q61 : Prop
+
+/-
+@@ telelean v1
+id: q-62
+kind: DEFINITION
+natural_name: "proposition Q62"
+-/
+opaque Q62 : Prop
+
+/-
+@@ telelean v1
+id: q-63
+kind: DEFINITION
+natural_name: "proposition Q63"
+-/
+opaque Q63 : Prop
+
+/-
+@@ telelean v1
+id: q-64
+kind: DEFINITION
+natural_name: "proposition Q64"
+-/
+opaque Q64 : Prop
+
+/-
+@@ telelean v1
+id: q-65
+kind: DEFINITION
+natural_name: "proposition Q65"
+-/
+opaque Q65 : Prop
+
+/-
+@@ telelean v1
+id: q-66
+kind: DEFINITION
+natural_name: "proposition Q66"
+-/
+opaque Q66 : Prop
+
+/-
+@@ telelean v1
+id: q-67
+kind: DEFINITION
+natural_name: "proposition Q67"
+-/
+opaque Q67 : Prop
+
+/-
+@@ telelean v1
+id: q-68
+kind: DEFINITION
+natural_name: "proposition Q68"
+-/
+opaque Q68 : Prop
+
+/-
+@@ telelean v1
+id: q-69
+kind: DEFINITION
+natural_name: "proposition Q69"
+-/
+opaque Q69 : Prop
+
+/-
+@@ telelean v1
+id: q-70
+kind: DEFINITION
+natural_name: "proposition Q70"
+-/
+opaque Q70 : Prop
+
+/-
+@@ telelean v1
+id: q-71
+kind: DEFINITION
+natural_name: "proposition Q71"
+-/
+opaque Q71 : Prop
+
+/-
+@@ telelean v1
+id: q-72
+kind: DEFINITION
+natural_name: "proposition Q72"
+-/
+opaque Q72 : Prop
+
+/-
+@@ telelean v1
+id: q-73
+kind: DEFINITION
+natural_name: "proposition Q73"
+-/
+opaque Q73 : Prop
+
+/-
+@@ telelean v1
+id: q-74
+kind: DEFINITION
+natural_name: "proposition Q74"
+-/
+opaque Q74 : Prop
+
+/-
+@@ telelean v1
+id: q-75
+kind: DEFINITION
+natural_name: "proposition Q75"
+-/
+opaque Q75 : Prop
+
+/-
+@@ telelean v1
+id: q-76
+kind: DEFINITION
+natural_name: "proposition Q76"
+-/
+opaque Q76 : Prop
+
+/-
+@@ telelean v1
+id: q-77
+kind: DEFINITION
+natural_name: "proposition Q77"
+-/
+opaque Q77 : Prop
+
+/-
+@@ telelean v1
+id: q-78
+kind: DEFINITION
+natural_name: "proposition Q78"
+-/
+opaque Q78 : Prop
+
+/-
+@@ telelean v1
+id: q-79
+kind: DEFINITION
+natural_name: "proposition Q79"
+-/
+opaque Q79 : Prop
+
+/-
+@@ telelean v1
+id: q-80
+kind: DEFINITION
+natural_name: "proposition Q80"
+-/
+opaque Q80 : Prop
+
+/-
+@@ telelean v1
+id: q-81
+kind: DEFINITION
+natural_name: "proposition Q81"
+-/
+opaque Q81 : Prop
+
+/-
+@@ telelean v1
+id: q-82
+kind: DEFINITION
+natural_name: "proposition Q82"
+-/
+opaque Q82 : Prop
+
+/-
+@@ telelean v1
+id: q-83
+kind: DEFINITION
+natural_name: "proposition Q83"
+-/
+opaque Q83 : Prop
+
+/-
+@@ telelean v1
+id: q-84
+kind: DEFINITION
+natural_name: "proposition Q84"
+-/
+opaque Q84 : Prop
+
+/-
+@@ telelean v1
+id: q-85
+kind: DEFINITION
+natural_name: "proposition Q85"
+-/
+opaque Q85 : Prop
+
+/-
+@@ telelean v1
+id: q-86
+kind: DEFINITION
+natural_name: "proposition Q86"
+-/
+opaque Q86 : Prop
+
+/-
+@@ telelean v1
+id: q-87
+kind: DEFINITION
+natural_name: "proposition Q87"
+-/
+opaque Q87 : Prop
+
+/-
+@@ telelean v1
+id: q-88
+kind: DEFINITION
+natural_name: "proposition Q88"
+-/
+opaque Q88 : Prop
+
+/-
+@@ telelean v1
+id: q-89
+kind: DEFINITION
+natural_name: "proposition Q89"
+-/
+opaque Q89 : Prop
+
+/-
+@@ telelean v1
+id: q-90
+kind: DEFINITION
+natural_name: "proposition Q90"
+-/
+opaque Q90 : Prop
+
+/-
+@@ telelean v1
+id: q-91
+kind: DEFINITION
+natural_name: "proposition Q91"
+-/
+opaque Q91 : Prop
+
+/-
+@@ telelean v1
+id: q-92
+kind: DEFINITION
+natural_name: "proposition Q92"
+-/
+opaque Q92 : Prop
+
+/-
+@@ telelean v1
+id: q-93
+kind: DEFINITION
+natural_name: "proposition Q93"
+-/
+opaque Q93 : Prop
+
+/-
+@@ telelean v1
+id: q-94
+kind: DEFINITION
+natural_name: "proposition Q94"
+-/
+opaque Q94 : Prop
+
+/-
+@@ telelean v1
+id: q-95
+kind: DEFINITION
+natural_name: "proposition Q95"
+-/
+opaque Q95 : Prop
+
+/-
+@@ telelean v1
+id: q-96
+kind: DEFINITION
+natural_name: "proposition Q96"
+-/
+opaque Q96 : Prop
+
+/-
+@@ telelean v1
+id: q-97
+kind: DEFINITION
+natural_name: "proposition Q97"
+-/
+opaque Q97 : Prop
+
+/-
+@@ telelean v1
+id: q-98
+kind: DEFINITION
+natural_name: "proposition Q98"
+-/
+opaque Q98 : Prop
+
+/-
+@@ telelean v1
+id: q-99
+kind: DEFINITION
+natural_name: "proposition Q99"
+-/
+opaque Q99 : Prop
+
+/-
+@@ telelean v1
+id: q-100
+kind: DEFINITION
+natural_name: "proposition Q100"
+-/
+opaque Q100 : Prop
+
+/-
+@@ telelean v1
+id: q-101
+kind: DEFINITION
+natural_name: "proposition Q101"
+-/
+opaque Q101 : Prop
+
+/-
+@@ telelean v1
+id: q-102
+kind: DEFINITION
+natural_name: "proposition Q102"
+-/
+opaque Q102 : Prop
+
+/-
+@@ telelean v1
+id: q-103
+kind: DEFINITION
+natural_name: "proposition Q103"
+-/
+opaque Q103 : Prop
+
+/-
+@@ telelean v1
+id: q-104
+kind: DEFINITION
+natural_name: "proposition Q104"
+-/
+opaque Q104 : Prop
+
+/-
+@@ telelean v1
+id: q-105
+kind: DEFINITION
+natural_name: "proposition Q105"
+-/
+opaque Q105 : Prop
+
+/-
+@@ telelean v1
+id: q-106
+kind: DEFINITION
+natural_name: "proposition Q106"
+-/
+opaque Q106 : Prop
+
+/-
+@@ telelean v1
+id: q-107
+kind: DEFINITION
+natural_name: "proposition Q107"
+-/
+opaque Q107 : Prop
+
+/-
+@@ telelean v1
+id: q-108
+kind: DEFINITION
+natural_name: "proposition Q108"
+-/
+opaque Q108 : Prop
+
+/-
+@@ telelean v1
+id: q-109
+kind: DEFINITION
+natural_name: "proposition Q109"
+-/
+opaque Q109 : Prop
+
+/-
+@@ telelean v1
+id: q-110
+kind: DEFINITION
+natural_name: "proposition Q110"
+-/
+opaque Q110 : Prop
+
+/-
+@@ telelean v1
+id: q-111
+kind: DEFINITION
+natural_name: "proposition Q111"
+-/
+opaque Q111 : Prop
+
+/-
+@@ telelean v1
+id: q-112
+kind: DEFINITION
+natural_name: "proposition Q112"
+-/
+opaque Q112 : Prop
+
+/-
+@@ telelean v1
+id: q-113
+kind: DEFINITION
+natural_name: "proposition Q113"
+-/
+opaque Q113 : Prop
+
+/-
+@@ telelean v1
+id: q-114
+kind: DEFINITION
+natural_name: "proposition Q114"
+-/
+opaque Q114 : Prop
+
+/-
+@@ telelean v1
+id: q-115
+kind: DEFINITION
+natural_name: "proposition Q115"
+-/
+opaque Q115 : Prop
+
+/-
+@@ telelean v1
+id: q-116
+kind: DEFINITION
+natural_name: "proposition Q116"
+-/
+opaque Q116 : Prop
+
+/-
+@@ telelean v1
+id: q-117
+kind: DEFINITION
+natural_name: "proposition Q117"
+-/
+opaque Q117 : Prop
+
+/-
+@@ telelean v1
+id: q-118
+kind: DEFINITION
+natural_name: "proposition Q118"
+-/
+opaque Q118 : Prop
+
+/-
+@@ telelean v1
+id: q-119
+kind: DEFINITION
+natural_name: "proposition Q119"
+-/
+opaque Q119 : Prop
+
+/-
+@@ telelean v1
+id: q-120
+kind: DEFINITION
+natural_name: "proposition Q120"
+-/
+opaque Q120 : Prop
+
+/-
+@@ telelean v1
+id: q-121
+kind: DEFINITION
+natural_name: "proposition Q121"
+-/
+opaque Q121 : Prop
+
+/-
+@@ telelean v1
+id: q-122
+kind: DEFINITION
+natural_name: "proposition Q122"
+-/
+opaque Q122 : Prop
+
+/-
+@@ telelean v1
+id: q-123
+kind: DEFINITION
+natural_name: "proposition Q123"
+-/
+opaque Q123 : Prop
+
+/-
+@@ telelean v1
+id: q-124
+kind: DEFINITION
+natural_name: "proposition Q124"
+-/
+opaque Q124 : Prop
+
+/-
+@@ telelean v1
+id: q-125
+kind: DEFINITION
+natural_name: "proposition Q125"
+-/
+opaque Q125 : Prop
+
+/-
+@@ telelean v1
+id: q-126
+kind: DEFINITION
+natural_name: "proposition Q126"
+-/
+opaque Q126 : Prop
+
+/-
+@@ telelean v1
+id: q-127
+kind: DEFINITION
+natural_name: "proposition Q127"
+-/
+opaque Q127 : Prop
+
+/-
+@@ telelean v1
+id: q-128
+kind: DEFINITION
+natural_name: "proposition Q128"
+-/
+opaque Q128 : Prop
+
+/-
+@@ telelean v1
+id: q-129
+kind: DEFINITION
+natural_name: "proposition Q129"
+-/
+opaque Q129 : Prop
+
+/-
+@@ telelean v1
+id: q-130
+kind: DEFINITION
+natural_name: "proposition Q130"
+-/
+opaque Q130 : Prop
+
+/-
+@@ telelean v1
+id: q-131
+kind: DEFINITION
+natural_name: "proposition Q131"
+-/
+opaque Q131 : Prop
+
+/-
+@@ telelean v1
+id: q-132
+kind: DEFINITION
+natural_name: "proposition Q132"
+-/
+opaque Q132 : Prop
+
+/-
+@@ telelean v1
+id: q-133
+kind: DEFINITION
+natural_name: "proposition Q133"
+-/
+opaque Q133 : Prop
+
+/-
+@@ telelean v1
+id: q-134
+kind: DEFINITION
+natural_name: "proposition Q134"
+-/
+opaque Q134 : Prop
+
+/-
+@@ telelean v1
+id: q-135
+kind: DEFINITION
+natural_name: "proposition Q135"
+-/
+opaque Q135 : Prop
+
+/-
+@@ telelean v1
+id: q-136
+kind: DEFINITION
+natural_name: "proposition Q136"
+-/
+opaque Q136 : Prop
+
+/-
+@@ telelean v1
+id: q-137
+kind: DEFINITION
+natural_name: "proposition Q137"
+-/
+opaque Q137 : Prop
+
+/-
+@@ telelean v1
+id: q-138
+kind: DEFINITION
+natural_name: "proposition Q138"
+-/
+opaque Q138 : Prop
+
+/-
+@@ telelean v1
+id: q-139
+kind: DEFINITION
+natural_name: "proposition Q139"
+-/
+opaque Q139 : Prop
+
+/-
+@@ telelean v1
+id: q-140
+kind: DEFINITION
+natural_name: "proposition Q140"
+-/
+opaque Q140 : Prop
+
+/-
+@@ telelean v1
+id: q-141
+kind: DEFINITION
+natural_name: "proposition Q141"
+-/
+opaque Q141 : Prop
+
+/-
+@@ telelean v1
+id: q-142
+kind: DEFINITION
+natural_name: "proposition Q142"
+-/
+opaque Q142 : Prop
+
+/-
+@@ telelean v1
+id: q-143
+kind: DEFINITION
+natural_name: "proposition Q143"
+-/
+opaque Q143 : Prop
+
+/-
+@@ telelean v1
+id: q-144
+kind: DEFINITION
+natural_name: "proposition Q144"
+-/
+opaque Q144 : Prop
+
+/-
+@@ telelean v1
+id: q-145
+kind: DEFINITION
+natural_name: "proposition Q145"
+-/
+opaque Q145 : Prop
+
+/-
+@@ telelean v1
+id: q-146
+kind: DEFINITION
+natural_name: "proposition Q146"
+-/
+opaque Q146 : Prop
+
+/-
+@@ telelean v1
+id: q-147
+kind: DEFINITION
+natural_name: "proposition Q147"
+-/
+opaque Q147 : Prop
+
+/-
+@@ telelean v1
+id: q-148
+kind: DEFINITION
+natural_name: "proposition Q148"
+-/
+opaque Q148 : Prop
+
+/-
+@@ telelean v1
+id: q-149
+kind: DEFINITION
+natural_name: "proposition Q149"
+-/
+opaque Q149 : Prop
+
+/-
+@@ telelean v1
+id: q-150
+kind: DEFINITION
+natural_name: "proposition Q150"
+-/
+opaque Q150 : Prop
+
+/-
+@@ telelean v1
+id: q-151
+kind: DEFINITION
+natural_name: "proposition Q151"
+-/
+opaque Q151 : Prop
+
+/-
+@@ telelean v1
+id: q-152
+kind: DEFINITION
+natural_name: "proposition Q152"
+-/
+opaque Q152 : Prop
+
+/-
+@@ telelean v1
+id: q-153
+kind: DEFINITION
+natural_name: "proposition Q153"
+-/
+opaque Q153 : Prop
+
+/-
+@@ telelean v1
+id: q-154
+kind: DEFINITION
+natural_name: "proposition Q154"
+-/
+opaque Q154 : Prop
+
+/-
+@@ telelean v1
+id: q-155
+kind: DEFINITION
+natural_name: "proposition Q155"
+-/
+opaque Q155 : Prop
+
+/-
+@@ telelean v1
+id: q-156
+kind: DEFINITION
+natural_name: "proposition Q156"
+-/
+opaque Q156 : Prop
+
+/-
+@@ telelean v1
+id: q-157
+kind: DEFINITION
+natural_name: "proposition Q157"
+-/
+opaque Q157 : Prop
+
+/-
+@@ telelean v1
+id: q-158
+kind: DEFINITION
+natural_name: "proposition Q158"
+-/
+opaque Q158 : Prop
+
+/-
+@@ telelean v1
+id: q-159
+kind: DEFINITION
+natural_name: "proposition Q159"
+-/
+opaque Q159 : Prop
+
+/-
+@@ telelean v1
+id: q-160
+kind: DEFINITION
+natural_name: "proposition Q160"
+-/
+opaque Q160 : Prop
+
+/-
+@@ telelean v1
+id: q-161
+kind: DEFINITION
+natural_name: "proposition Q161"
+-/
+opaque Q161 : Prop
+
+/-
+@@ telelean v1
+id: q-162
+kind: DEFINITION
+natural_name: "proposition Q162"
+-/
+opaque Q162 : Prop
+
+/-
+@@ telelean v1
+id: q-163
+kind: DEFINITION
+natural_name: "proposition Q163"
+-/
+opaque Q163 : Prop
+
+/-
+@@ telelean v1
+id: q-164
+kind: DEFINITION
+natural_name: "proposition Q164"
+-/
+opaque Q164 : Prop
+
+/-
+@@ telelean v1
+id: q-165
+kind: DEFINITION
+natural_name: "proposition Q165"
+-/
+opaque Q165 : Prop
+
+/-
+@@ telelean v1
+id: q-166
+kind: DEFINITION
+natural_name: "proposition Q166"
+-/
+opaque Q166 : Prop
+
+/-
+@@ telelean v1
+id: q-167
+kind: DEFINITION
+natural_name: "proposition Q167"
+-/
+opaque Q167 : Prop
+
+/-
+@@ telelean v1
+id: q-168
+kind: DEFINITION
+natural_name: "proposition Q168"
+-/
+opaque Q168 : Prop
+
+/-
+@@ telelean v1
+id: q-169
+kind: DEFINITION
+natural_name: "proposition Q169"
+-/
+opaque Q169 : Prop
+
+/-
+@@ telelean v1
+id: q-170
+kind: DEFINITION
+natural_name: "proposition Q170"
+-/
+opaque Q170 : Prop
+
+/-
+@@ telelean v1
+id: q-171
+kind: DEFINITION
+natural_name: "proposition Q171"
+-/
+opaque Q171 : Prop
+
+/-
+@@ telelean v1
+id: q-172
+kind: DEFINITION
+natural_name: "proposition Q172"
+-/
+opaque Q172 : Prop
+
+/-
+@@ telelean v1
+id: q-173
+kind: DEFINITION
+natural_name: "proposition Q173"
+-/
+opaque Q173 : Prop
+
+/-
+@@ telelean v1
+id: q-174
+kind: DEFINITION
+natural_name: "proposition Q174"
+-/
+opaque Q174 : Prop
+
+/-
+@@ telelean v1
+id: q-175
+kind: DEFINITION
+natural_name: "proposition Q175"
+-/
+opaque Q175 : Prop
+
+/-
+@@ telelean v1
+id: q-176
+kind: DEFINITION
+natural_name: "proposition Q176"
+-/
+opaque Q176 : Prop
+
+/-
+@@ telelean v1
+id: q-177
+kind: DEFINITION
+natural_name: "proposition Q177"
+-/
+opaque Q177 : Prop
+
+/-
+@@ telelean v1
+id: q-178
+kind: DEFINITION
+natural_name: "proposition Q178"
+-/
+opaque Q178 : Prop
+
+/-
+@@ telelean v1
+id: q-179
+kind: DEFINITION
+natural_name: "proposition Q179"
+-/
+opaque Q179 : Prop
+
+/-
+@@ telelean v1
+id: q-180
+kind: DEFINITION
+natural_name: "proposition Q180"
+-/
+opaque Q180 : Prop
+
+/-
+@@ telelean v1
+id: q-181
+kind: DEFINITION
+natural_name: "proposition Q181"
+-/
+opaque Q181 : Prop
+
+/-
+@@ telelean v1
+id: q-182
+kind: DEFINITION
+natural_name: "proposition Q182"
+-/
+opaque Q182 : Prop
+
+/-
+@@ telelean v1
+id: q-183
+kind: DEFINITION
+natural_name: "proposition Q183"
+-/
+opaque Q183 : Prop
+
+/-
+@@ telelean v1
+id: q-184
+kind: DEFINITION
+natural_name: "proposition Q184"
+-/
+opaque Q184 : Prop
+
+/-
+@@ telelean v1
+id: q-185
+kind: DEFINITION
+natural_name: "proposition Q185"
+-/
+opaque Q185 : Prop
+
+/-
+@@ telelean v1
+id: q-186
+kind: DEFINITION
+natural_name: "proposition Q186"
+-/
+opaque Q186 : Prop
+
+/-
+@@ telelean v1
+id: q-187
+kind: DEFINITION
+natural_name: "proposition Q187"
+-/
+opaque Q187 : Prop
+
+/-
+@@ telelean v1
+id: q-188
+kind: DEFINITION
+natural_name: "proposition Q188"
+-/
+opaque Q188 : Prop
+
+/-
+@@ telelean v1
+id: q-189
+kind: DEFINITION
+natural_name: "proposition Q189"
+-/
+opaque Q189 : Prop
+
+/-
+@@ telelean v1
+id: q-190
+kind: DEFINITION
+natural_name: "proposition Q190"
+-/
+opaque Q190 : Prop
+
+/-
+@@ telelean v1
+id: q-191
+kind: DEFINITION
+natural_name: "proposition Q191"
+-/
+opaque Q191 : Prop
+
+/-
+@@ telelean v1
+id: q-192
+kind: DEFINITION
+natural_name: "proposition Q192"
+-/
+opaque Q192 : Prop
+
+/-
+@@ telelean v1
+id: q-193
+kind: DEFINITION
+natural_name: "proposition Q193"
+-/
+opaque Q193 : Prop
+
+/-
+@@ telelean v1
+id: q-194
+kind: DEFINITION
+natural_name: "proposition Q194"
+-/
+opaque Q194 : Prop
+
+/-
+@@ telelean v1
+id: q-195
+kind: DEFINITION
+natural_name: "proposition Q195"
+-/
+opaque Q195 : Prop
+
+/-
+@@ telelean v1
+id: q-196
+kind: DEFINITION
+natural_name: "proposition Q196"
+-/
+opaque Q196 : Prop
+
+/-
+@@ telelean v1
+id: q-197
+kind: DEFINITION
+natural_name: "proposition Q197"
+-/
+opaque Q197 : Prop
+
+/-
+@@ telelean v1
+id: q-198
+kind: DEFINITION
+natural_name: "proposition Q198"
+-/
+opaque Q198 : Prop
+
+/-
+@@ telelean v1
+id: q-199
+kind: DEFINITION
+natural_name: "proposition Q199"
+-/
+opaque Q199 : Prop
+
+/-
+@@ telelean v1
+id: q-200
+kind: DEFINITION
+natural_name: "proposition Q200"
+-/
+opaque Q200 : Prop
+
+/-
+@@ telelean v1
+id: q-201
+kind: DEFINITION
+natural_name: "proposition Q201"
+-/
+opaque Q201 : Prop
+
+/-
+@@ telelean v1
+id: q-202
+kind: DEFINITION
+natural_name: "proposition Q202"
+-/
+opaque Q202 : Prop
+
+/-
+@@ telelean v1
+id: q-203
+kind: DEFINITION
+natural_name: "proposition Q203"
+-/
+opaque Q203 : Prop
+
+/-
+@@ telelean v1
+id: q-204
+kind: DEFINITION
+natural_name: "proposition Q204"
+-/
+opaque Q204 : Prop
+
+/-
+@@ telelean v1
+id: q-205
+kind: DEFINITION
+natural_name: "proposition Q205"
+-/
+opaque Q205 : Prop
+
+/-
+@@ telelean v1
+id: q-206
+kind: DEFINITION
+natural_name: "proposition Q206"
+-/
+opaque Q206 : Prop
+
+/-
+@@ telelean v1
+id: q-207
+kind: DEFINITION
+natural_name: "proposition Q207"
+-/
+opaque Q207 : Prop
+
+/-
+@@ telelean v1
+id: q-208
+kind: DEFINITION
+natural_name: "proposition Q208"
+-/
+opaque Q208 : Prop
+
+/-
+@@ telelean v1
+id: q-209
+kind: DEFINITION
+natural_name: "proposition Q209"
+-/
+opaque Q209 : Prop
+
+/-
+@@ telelean v1
+id: q-210
+kind: DEFINITION
+natural_name: "proposition Q210"
+-/
+opaque Q210 : Prop
+
+/-
+@@ telelean v1
+id: q-211
+kind: DEFINITION
+natural_name: "proposition Q211"
+-/
+opaque Q211 : Prop
+
+/-
+@@ telelean v1
+id: q-212
+kind: DEFINITION
+natural_name: "proposition Q212"
+-/
+opaque Q212 : Prop
+
+/-
+@@ telelean v1
+id: q-213
+kind: DEFINITION
+natural_name: "proposition Q213"
+-/
+opaque Q213 : Prop
+
+/-
+@@ telelean v1
+id: q-214
+kind: DEFINITION
+natural_name: "proposition Q214"
+-/
+opaque Q214 : Prop
+
+/-
+@@ telelean v1
+id: q-215
+kind: DEFINITION
+natural_name: "proposition Q215"
+-/
+opaque Q215 : Prop
+
+/-
+@@ telelean v1
+id: q-216
+kind: DEFINITION
+natural_name: "proposition Q216"
+-/
+opaque Q216 : Prop
+
+/-
+@@ telelean v1
+id: q-217
+kind: DEFINITION
+natural_name: "proposition Q217"
+-/
+opaque Q217 : Prop
+
+/-
+@@ telelean v1
+id: q-218
+kind: DEFINITION
+natural_name: "proposition Q218"
+-/
+opaque Q218 : Prop
+
+/-
+@@ telelean v1
+id: q-219
+kind: DEFINITION
+natural_name: "proposition Q219"
+-/
+opaque Q219 : Prop
+
+/-
+@@ telelean v1
+id: q-220
+kind: DEFINITION
+natural_name: "proposition Q220"
+-/
+opaque Q220 : Prop
+
+/-
+@@ telelean v1
+id: q-221
+kind: DEFINITION
+natural_name: "proposition Q221"
+-/
+opaque Q221 : Prop
+
+/-
+@@ telelean v1
+id: q-222
+kind: DEFINITION
+natural_name: "proposition Q222"
+-/
+opaque Q222 : Prop
+
+/-
+@@ telelean v1
+id: q-223
+kind: DEFINITION
+natural_name: "proposition Q223"
+-/
+opaque Q223 : Prop
+
+/-
+@@ telelean v1
+id: q-224
+kind: DEFINITION
+natural_name: "proposition Q224"
+-/
+opaque Q224 : Prop
+
+/-
+@@ telelean v1
+id: q-225
+kind: DEFINITION
+natural_name: "proposition Q225"
+-/
+opaque Q225 : Prop
+
+/-
+@@ telelean v1
+id: q-226
+kind: DEFINITION
+natural_name: "proposition Q226"
+-/
+opaque Q226 : Prop
+
+/-
+@@ telelean v1
+id: q-227
+kind: DEFINITION
+natural_name: "proposition Q227"
+-/
+opaque Q227 : Prop
+
+/-
+@@ telelean v1
+id: q-228
+kind: DEFINITION
+natural_name: "proposition Q228"
+-/
+opaque Q228 : Prop
+
+/-
+@@ telelean v1
+id: q-229
+kind: DEFINITION
+natural_name: "proposition Q229"
+-/
+opaque Q229 : Prop
+
+/-
+@@ telelean v1
+id: q-230
+kind: DEFINITION
+natural_name: "proposition Q230"
+-/
+opaque Q230 : Prop
+
+/-
+@@ telelean v1
+id: q-231
+kind: DEFINITION
+natural_name: "proposition Q231"
+-/
+opaque Q231 : Prop
+
+/-
+@@ telelean v1
+id: q-232
+kind: DEFINITION
+natural_name: "proposition Q232"
+-/
+opaque Q232 : Prop
+
+/-
+@@ telelean v1
+id: q-233
+kind: DEFINITION
+natural_name: "proposition Q233"
+-/
+opaque Q233 : Prop
+
+/-
+@@ telelean v1
+id: q-234
+kind: DEFINITION
+natural_name: "proposition Q234"
+-/
+opaque Q234 : Prop
+
+/-
+@@ telelean v1
+id: q-235
+kind: DEFINITION
+natural_name: "proposition Q235"
+-/
+opaque Q235 : Prop
+
+/-
+@@ telelean v1
+id: q-236
+kind: DEFINITION
+natural_name: "proposition Q236"
+-/
+opaque Q236 : Prop
+
+/-
+@@ telelean v1
+id: q-237
+kind: DEFINITION
+natural_name: "proposition Q237"
+-/
+opaque Q237 : Prop
+
+/-
+@@ telelean v1
+id: q-238
+kind: DEFINITION
+natural_name: "proposition Q238"
+-/
+opaque Q238 : Prop
+
+/-
+@@ telelean v1
+id: q-239
+kind: DEFINITION
+natural_name: "proposition Q239"
+-/
+opaque Q239 : Prop
+
+/-
+@@ telelean v1
+id: q-240
+kind: DEFINITION
+natural_name: "proposition Q240"
+-/
+opaque Q240 : Prop
+
+/-
+@@ telelean v1
+id: q-241
+kind: DEFINITION
+natural_name: "proposition Q241"
+-/
+opaque Q241 : Prop
+
+/-
+@@ telelean v1
+id: q-242
+kind: DEFINITION
+natural_name: "proposition Q242"
+-/
+opaque Q242 : Prop
+
+/-
+@@ telelean v1
+id: q-243
+kind: DEFINITION
+natural_name: "proposition Q243"
+-/
+opaque Q243 : Prop
+
+/-
+@@ telelean v1
+id: q-244
+kind: DEFINITION
+natural_name: "proposition Q244"
+-/
+opaque Q244 : Prop
+
+/-
+@@ telelean v1
+id: q-245
+kind: DEFINITION
+natural_name: "proposition Q245"
+-/
+opaque Q245 : Prop
+
+/-
+@@ telelean v1
+id: q-246
+kind: DEFINITION
+natural_name: "proposition Q246"
+-/
+opaque Q246 : Prop
+
+/-
+@@ telelean v1
+id: q-247
+kind: DEFINITION
+natural_name: "proposition Q247"
+-/
+opaque Q247 : Prop
+
+/-
+@@ telelean v1
+id: q-248
+kind: DEFINITION
+natural_name: "proposition Q248"
+-/
+opaque Q248 : Prop
+
+/-
+@@ telelean v1
+id: q-249
+kind: DEFINITION
+natural_name: "proposition Q249"
+-/
+opaque Q249 : Prop
+
+/-
+@@ telelean v1
+id: q-250
+kind: DEFINITION
+natural_name: "proposition Q250"
+-/
+opaque Q250 : Prop
+
+/-
+@@ telelean v1
+id: q-251
+kind: DEFINITION
+natural_name: "proposition Q251"
+-/
+opaque Q251 : Prop
+
+/-
+@@ telelean v1
+id: q-252
+kind: DEFINITION
+natural_name: "proposition Q252"
+-/
+opaque Q252 : Prop
+
+/-
+@@ telelean v1
+id: q-253
+kind: DEFINITION
+natural_name: "proposition Q253"
+-/
+opaque Q253 : Prop
+
+/-
+@@ telelean v1
+id: q-254
+kind: DEFINITION
+natural_name: "proposition Q254"
+-/
+opaque Q254 : Prop
+
+/-
+@@ telelean v1
+id: q-255
+kind: DEFINITION
+natural_name: "proposition Q255"
+-/
+opaque Q255 : Prop
+
+/-
+@@ telelean v1
+id: q-256
+kind: DEFINITION
+natural_name: "proposition Q256"
+-/
+opaque Q256 : Prop
+
+/-
+@@ telelean v1
+id: q-257
+kind: DEFINITION
+natural_name: "proposition Q257"
+-/
+opaque Q257 : Prop
+
+/-
+@@ telelean v1
+id: q-258
+kind: DEFINITION
+natural_name: "proposition Q258"
+-/
+opaque Q258 : Prop
+
+/-
+@@ telelean v1
+id: q-259
+kind: DEFINITION
+natural_name: "proposition Q259"
+-/
+opaque Q259 : Prop
+
+/-
+@@ telelean v1
+id: q-260
+kind: DEFINITION
+natural_name: "proposition Q260"
+-/
+opaque Q260 : Prop
+
+/-
+@@ telelean v1
+id: q-261
+kind: DEFINITION
+natural_name: "proposition Q261"
+-/
+opaque Q261 : Prop
+
+/-
+@@ telelean v1
+id: q-262
+kind: DEFINITION
+natural_name: "proposition Q262"
+-/
+opaque Q262 : Prop
+
+/-
+@@ telelean v1
+id: q-263
+kind: DEFINITION
+natural_name: "proposition Q263"
+-/
+opaque Q263 : Prop
+
+/-
+@@ telelean v1
+id: q-264
+kind: DEFINITION
+natural_name: "proposition Q264"
+-/
+opaque Q264 : Prop
+
+/-
+@@ telelean v1
+id: q-265
+kind: DEFINITION
+natural_name: "proposition Q265"
+-/
+opaque Q265 : Prop
+
+/-
+@@ telelean v1
+id: q-266
+kind: DEFINITION
+natural_name: "proposition Q266"
+-/
+opaque Q266 : Prop
+
+/-
+@@ telelean v1
+id: q-267
+kind: DEFINITION
+natural_name: "proposition Q267"
+-/
+opaque Q267 : Prop
+
+/-
+@@ telelean v1
+id: q-268
+kind: DEFINITION
+natural_name: "proposition Q268"
+-/
+opaque Q268 : Prop
+
+/-
+@@ telelean v1
+id: q-269
+kind: DEFINITION
+natural_name: "proposition Q269"
+-/
+opaque Q269 : Prop
+
+/-
+@@ telelean v1
+id: q-270
+kind: DEFINITION
+natural_name: "proposition Q270"
+-/
+opaque Q270 : Prop
+
+/-
+@@ telelean v1
+id: q-271
+kind: DEFINITION
+natural_name: "proposition Q271"
+-/
+opaque Q271 : Prop
+
+/-
+@@ telelean v1
+id: q-272
+kind: DEFINITION
+natural_name: "proposition Q272"
+-/
+opaque Q272 : Prop
+
+/-
+@@ telelean v1
+id: q-273
+kind: DEFINITION
+natural_name: "proposition Q273"
+-/
+opaque Q273 : Prop
+
+/-
+@@ telelean v1
+id: q-274
+kind: DEFINITION
+natural_name: "proposition Q274"
+-/
+opaque Q274 : Prop
+
+/-
+@@ telelean v1
+id: q-275
+kind: DEFINITION
+natural_name: "proposition Q275"
+-/
+opaque Q275 : Prop
+
+/-
+@@ telelean v1
+id: q-276
+kind: DEFINITION
+natural_name: "proposition Q276"
+-/
+opaque Q276 : Prop
+
+/-
+@@ telelean v1
+id: q-277
+kind: DEFINITION
+natural_name: "proposition Q277"
+-/
+opaque Q277 : Prop
+
+/-
+@@ telelean v1
+id: q-278
+kind: DEFINITION
+natural_name: "proposition Q278"
+-/
+opaque Q278 : Prop
+
+/-
+@@ telelean v1
+id: q-279
+kind: DEFINITION
+natural_name: "proposition Q279"
+-/
+opaque Q279 : Prop
+
+/-
+@@ telelean v1
+id: q-280
+kind: DEFINITION
+natural_name: "proposition Q280"
+-/
+opaque Q280 : Prop
+
+/-
+@@ telelean v1
+id: q-281
+kind: DEFINITION
+natural_name: "proposition Q281"
+-/
+opaque Q281 : Prop
+
+/-
+@@ telelean v1
+id: q-282
+kind: DEFINITION
+natural_name: "proposition Q282"
+-/
+opaque Q282 : Prop
+
+/-
+@@ telelean v1
+id: q-283
+kind: DEFINITION
+natural_name: "proposition Q283"
+-/
+opaque Q283 : Prop
+
+/-
+@@ telelean v1
+id: q-284
+kind: DEFINITION
+natural_name: "proposition Q284"
+-/
+opaque Q284 : Prop
+
+/-
+@@ telelean v1
+id: q-285
+kind: DEFINITION
+natural_name: "proposition Q285"
+-/
+opaque Q285 : Prop
+
+/-
+@@ telelean v1
+id: q-286
+kind: DEFINITION
+natural_name: "proposition Q286"
+-/
+opaque Q286 : Prop
+
+/-
+@@ telelean v1
+id: q-287
+kind: DEFINITION
+natural_name: "proposition Q287"
+-/
+opaque Q287 : Prop
+
+/-
+@@ telelean v1
+id: q-288
+kind: DEFINITION
+natural_name: "proposition Q288"
+-/
+opaque Q288 : Prop
+
+/-
+@@ telelean v1
+id: q-289
+kind: DEFINITION
+natural_name: "proposition Q289"
+-/
+opaque Q289 : Prop
+
+/-
+@@ telelean v1
+id: q-290
+kind: DEFINITION
+natural_name: "proposition Q290"
+-/
+opaque Q290 : Prop
+
+/-
+@@ telelean v1
+id: q-291
+kind: DEFINITION
+natural_name: "proposition Q291"
+-/
+opaque Q291 : Prop
+
+/-
+@@ telelean v1
+id: q-292
+kind: DEFINITION
+natural_name: "proposition Q292"
+-/
+opaque Q292 : Prop
+
+/-
+@@ telelean v1
+id: q-293
+kind: DEFINITION
+natural_name: "proposition Q293"
+-/
+opaque Q293 : Prop
+
+/-
+@@ telelean v1
+id: q-294
+kind: DEFINITION
+natural_name: "proposition Q294"
+-/
+opaque Q294 : Prop
+
+/-
+@@ telelean v1
+id: q-295
+kind: DEFINITION
+natural_name: "proposition Q295"
+-/
+opaque Q295 : Prop
+
+/-
+@@ telelean v1
+id: q-296
+kind: DEFINITION
+natural_name: "proposition Q296"
+-/
+opaque Q296 : Prop
+
+/-
+@@ telelean v1
+id: q-297
+kind: DEFINITION
+natural_name: "proposition Q297"
+-/
+opaque Q297 : Prop
+
+/-
+@@ telelean v1
+id: q-298
+kind: DEFINITION
+natural_name: "proposition Q298"
+-/
+opaque Q298 : Prop
+
+/-
+@@ telelean v1
+id: q-299
+kind: DEFINITION
+natural_name: "proposition Q299"
+-/
+opaque Q299 : Prop
+
+/-
+@@ telelean v1
+id: q-300
+kind: DEFINITION
+natural_name: "proposition Q300"
+-/
+opaque Q300 : Prop
+
+/-
+@@ telelean v1
+id: q-301
+kind: DEFINITION
+natural_name: "proposition Q301"
+-/
+opaque Q301 : Prop
+
+/-
+@@ telelean v1
+id: q-302
+kind: DEFINITION
+natural_name: "proposition Q302"
+-/
+opaque Q302 : Prop
+
+/-
+@@ telelean v1
+id: q-303
+kind: DEFINITION
+natural_name: "proposition Q303"
+-/
+opaque Q303 : Prop
+
+/-
+@@ telelean v1
+id: q-304
+kind: DEFINITION
+natural_name: "proposition Q304"
+-/
+opaque Q304 : Prop
+
+/-
+@@ telelean v1
+id: q-305
+kind: DEFINITION
+natural_name: "proposition Q305"
+-/
+opaque Q305 : Prop
+
+/-
+@@ telelean v1
+id: q-306
+kind: DEFINITION
+natural_name: "proposition Q306"
+-/
+opaque Q306 : Prop
+
+/-
+@@ telelean v1
+id: q-307
+kind: DEFINITION
+natural_name: "proposition Q307"
+-/
+opaque Q307 : Prop
+
+/-
+@@ telelean v1
+id: q-308
+kind: DEFINITION
+natural_name: "proposition Q308"
+-/
+opaque Q308 : Prop
+
+/-
+@@ telelean v1
+id: q-309
+kind: DEFINITION
+natural_name: "proposition Q309"
+-/
+opaque Q309 : Prop
+
+/-
+@@ telelean v1
+id: q-310
+kind: DEFINITION
+natural_name: "proposition Q310"
+-/
+opaque Q310 : Prop
+
+/-
+@@ telelean v1
+id: q-311
+kind: DEFINITION
+natural_name: "proposition Q311"
+-/
+opaque Q311 : Prop
+
+/-
+@@ telelean v1
+id: q-312
+kind: DEFINITION
+natural_name: "proposition Q312"
+-/
+opaque Q312 : Prop
+
+/-
+@@ telelean v1
+id: q-313
+kind: DEFINITION
+natural_name: "proposition Q313"
+-/
+opaque Q313 : Prop
+
+/-
+@@ telelean v1
+id: q-314
+kind: DEFINITION
+natural_name: "proposition Q314"
+-/
+opaque Q314 : Prop
+
+/-
+@@ telelean v1
+id: q-315
+kind: DEFINITION
+natural_name: "proposition Q315"
+-/
+opaque Q315 : Prop
+
+/-
+@@ telelean v1
+id: q-316
+kind: DEFINITION
+natural_name: "proposition Q316"
+-/
+opaque Q316 : Prop
+
+/-
+@@ telelean v1
+id: q-317
+kind: DEFINITION
+natural_name: "proposition Q317"
+-/
+opaque Q317 : Prop
+
+/-
+@@ telelean v1
+id: q-318
+kind: DEFINITION
+natural_name: "proposition Q318"
+-/
+opaque Q318 : Prop
+
+/-
+@@ telelean v1
+id: q-319
+kind: DEFINITION
+natural_name: "proposition Q319"
+-/
+opaque Q319 : Prop
+
+/-
+@@ telelean v1
+id: q-320
+kind: DEFINITION
+natural_name: "proposition Q320"
+-/
+opaque Q320 : Prop
+
+/-
+@@ telelean v1
+id: q-321
+kind: DEFINITION
+natural_name: "proposition Q321"
+-/
+opaque Q321 : Prop
+
+/-
+@@ telelean v1
+id: q-322
+kind: DEFINITION
+natural_name: "proposition Q322"
+-/
+opaque Q322 : Prop
+
+/-
+@@ telelean v1
+id: q-323
+kind: DEFINITION
+natural_name: "proposition Q323"
+-/
+opaque Q323 : Prop
+
+/-
+@@ telelean v1
+id: q-324
+kind: DEFINITION
+natural_name: "proposition Q324"
+-/
+opaque Q324 : Prop
+
+/-
+@@ telelean v1
+id: q-325
+kind: DEFINITION
+natural_name: "proposition Q325"
+-/
+opaque Q325 : Prop
+
+/-
+@@ telelean v1
+id: q-326
+kind: DEFINITION
+natural_name: "proposition Q326"
+-/
+opaque Q326 : Prop
+
+/-
+@@ telelean v1
+id: q-327
+kind: DEFINITION
+natural_name: "proposition Q327"
+-/
+opaque Q327 : Prop
+
+/-
+@@ telelean v1
+id: q-328
+kind: DEFINITION
+natural_name: "proposition Q328"
+-/
+opaque Q328 : Prop
+
+/-
+@@ telelean v1
+id: q-329
+kind: DEFINITION
+natural_name: "proposition Q329"
+-/
+opaque Q329 : Prop
+
+/-
+@@ telelean v1
+id: q-330
+kind: DEFINITION
+natural_name: "proposition Q330"
+-/
+opaque Q330 : Prop
+
+/-
+@@ telelean v1
+id: q-331
+kind: DEFINITION
+natural_name: "proposition Q331"
+-/
+opaque Q331 : Prop
+
+/-
+@@ telelean v1
+id: q-332
+kind: DEFINITION
+natural_name: "proposition Q332"
+-/
+opaque Q332 : Prop
+
+/-
+@@ telelean v1
+id: q-333
+kind: DEFINITION
+natural_name: "proposition Q333"
+-/
+opaque Q333 : Prop
+
+/-
+@@ telelean v1
+id: q-334
+kind: DEFINITION
+natural_name: "proposition Q334"
+-/
+opaque Q334 : Prop
+
+/-
+@@ telelean v1
+id: q-335
+kind: DEFINITION
+natural_name: "proposition Q335"
+-/
+opaque Q335 : Prop
+
+/-
+@@ telelean v1
+id: q-336
+kind: DEFINITION
+natural_name: "proposition Q336"
+-/
+opaque Q336 : Prop
+
+/-
+@@ telelean v1
+id: q-337
+kind: DEFINITION
+natural_name: "proposition Q337"
+-/
+opaque Q337 : Prop
+
+/-
+@@ telelean v1
+id: q-338
+kind: DEFINITION
+natural_name: "proposition Q338"
+-/
+opaque Q338 : Prop
+
+/-
+@@ telelean v1
+id: q-339
+kind: DEFINITION
+natural_name: "proposition Q339"
+-/
+opaque Q339 : Prop
+
+/-
+@@ telelean v1
+id: q-340
+kind: DEFINITION
+natural_name: "proposition Q340"
+-/
+opaque Q340 : Prop
+
+/-
+@@ telelean v1
+id: q-341
+kind: DEFINITION
+natural_name: "proposition Q341"
+-/
+opaque Q341 : Prop
+
+/-
+@@ telelean v1
+id: q-342
+kind: DEFINITION
+natural_name: "proposition Q342"
+-/
+opaque Q342 : Prop
+
+/-
+@@ telelean v1
+id: q-343
+kind: DEFINITION
+natural_name: "proposition Q343"
+-/
+opaque Q343 : Prop
+
+/-
+@@ telelean v1
+id: q-344
+kind: DEFINITION
+natural_name: "proposition Q344"
+-/
+opaque Q344 : Prop
+
+/-
+@@ telelean v1
+id: q-345
+kind: DEFINITION
+natural_name: "proposition Q345"
+-/
+opaque Q345 : Prop
+
+/-
+@@ telelean v1
+id: q-346
+kind: DEFINITION
+natural_name: "proposition Q346"
+-/
+opaque Q346 : Prop
+
+/-
+@@ telelean v1
+id: q-347
+kind: DEFINITION
+natural_name: "proposition Q347"
+-/
+opaque Q347 : Prop
+
+/-
+@@ telelean v1
+id: q-348
+kind: DEFINITION
+natural_name: "proposition Q348"
+-/
+opaque Q348 : Prop
+
+/-
+@@ telelean v1
+id: q-349
+kind: DEFINITION
+natural_name: "proposition Q349"
+-/
+opaque Q349 : Prop
+
+/-
+@@ telelean v1
+id: q-350
+kind: DEFINITION
+natural_name: "proposition Q350"
+-/
+opaque Q350 : Prop
+
+/-
+@@ telelean v1
+id: q-351
+kind: DEFINITION
+natural_name: "proposition Q351"
+-/
+opaque Q351 : Prop
+
+/-
+@@ telelean v1
+id: q-352
+kind: DEFINITION
+natural_name: "proposition Q352"
+-/
+opaque Q352 : Prop
+
+/-
+@@ telelean v1
+id: q-353
+kind: DEFINITION
+natural_name: "proposition Q353"
+-/
+opaque Q353 : Prop
+
+/-
+@@ telelean v1
+id: q-354
+kind: DEFINITION
+natural_name: "proposition Q354"
+-/
+opaque Q354 : Prop
+
+/-
+@@ telelean v1
+id: q-355
+kind: DEFINITION
+natural_name: "proposition Q355"
+-/
+opaque Q355 : Prop
+
+/-
+@@ telelean v1
+id: q-356
+kind: DEFINITION
+natural_name: "proposition Q356"
+-/
+opaque Q356 : Prop
+
+/-
+@@ telelean v1
+id: q-357
+kind: DEFINITION
+natural_name: "proposition Q357"
+-/
+opaque Q357 : Prop
+
+/-
+@@ telelean v1
+id: q-358
+kind: DEFINITION
+natural_name: "proposition Q358"
+-/
+opaque Q358 : Prop
+
+/-
+@@ telelean v1
+id: q-359
+kind: DEFINITION
+natural_name: "proposition Q359"
+-/
+opaque Q359 : Prop
+
+/-
+@@ telelean v1
+id: q-360
+kind: DEFINITION
+natural_name: "proposition Q360"
+-/
+opaque Q360 : Prop
+
+/-
+@@ telelean v1
+id: q-361
+kind: DEFINITION
+natural_name: "proposition Q361"
+-/
+opaque Q361 : Prop
+
+/-
+@@ telelean v1
+id: q-362
+kind: DEFINITION
+natural_name: "proposition Q362"
+-/
+opaque Q362 : Prop
+
+/-
+@@ telelean v1
+id: q-363
+kind: DEFINITION
+natural_name: "proposition Q363"
+-/
+opaque Q363 : Prop
+
+/-
+@@ telelean v1
+id: q-364
+kind: DEFINITION
+natural_name: "proposition Q364"
+-/
+opaque Q364 : Prop
+
+/-
+@@ telelean v1
+id: q-365
+kind: DEFINITION
+natural_name: "proposition Q365"
+-/
+opaque Q365 : Prop
+
+/-
+@@ telelean v1
+id: q-366
+kind: DEFINITION
+natural_name: "proposition Q366"
+-/
+opaque Q366 : Prop
+
+/-
+@@ telelean v1
+id: q-367
+kind: DEFINITION
+natural_name: "proposition Q367"
+-/
+opaque Q367 : Prop
+
+/-
+@@ telelean v1
+id: q-368
+kind: DEFINITION
+natural_name: "proposition Q368"
+-/
+opaque Q368 : Prop
+
+/-
+@@ telelean v1
+id: q-369
+kind: DEFINITION
+natural_name: "proposition Q369"
+-/
+opaque Q369 : Prop
+
+/-
+@@ telelean v1
+id: q-370
+kind: DEFINITION
+natural_name: "proposition Q370"
+-/
+opaque Q370 : Prop
+
+/-
+@@ telelean v1
+id: q-371
+kind: DEFINITION
+natural_name: "proposition Q371"
+-/
+opaque Q371 : Prop
+
+/-
+@@ telelean v1
+id: q-372
+kind: DEFINITION
+natural_name: "proposition Q372"
+-/
+opaque Q372 : Prop
+
+/-
+@@ telelean v1
+id: q-373
+kind: DEFINITION
+natural_name: "proposition Q373"
+-/
+opaque Q373 : Prop
+
+/-
+@@ telelean v1
+id: q-374
+kind: DEFINITION
+natural_name: "proposition Q374"
+-/
+opaque Q374 : Prop
+
+/-
+@@ telelean v1
+id: q-375
+kind: DEFINITION
+natural_name: "proposition Q375"
+-/
+opaque Q375 : Prop
+
+/-
+@@ telelean v1
+id: q-376
+kind: DEFINITION
+natural_name: "proposition Q376"
+-/
+opaque Q376 : Prop
+
+/-
+@@ telelean v1
+id: q-377
+kind: DEFINITION
+natural_name: "proposition Q377"
+-/
+opaque Q377 : Prop
+
+/-
+@@ telelean v1
+id: q-378
+kind: DEFINITION
+natural_name: "proposition Q378"
+-/
+opaque Q378 : Prop
+
+/-
+@@ telelean v1
+id: q-379
+kind: DEFINITION
+natural_name: "proposition Q379"
+-/
+opaque Q379 : Prop
+
+/-
+@@ telelean v1
+id: q-380
+kind: DEFINITION
+natural_name: "proposition Q380"
+-/
+opaque Q380 : Prop
+
+/-
+@@ telelean v1
+id: q-381
+kind: DEFINITION
+natural_name: "proposition Q381"
+-/
+opaque Q381 : Prop
+
+/-
+@@ telelean v1
+id: q-382
+kind: DEFINITION
+natural_name: "proposition Q382"
+-/
+opaque Q382 : Prop
+
+/-
+@@ telelean v1
+id: q-383
+kind: DEFINITION
+natural_name: "proposition Q383"
+-/
+opaque Q383 : Prop
+
+/-
+@@ telelean v1
+id: q-384
+kind: DEFINITION
+natural_name: "proposition Q384"
+-/
+opaque Q384 : Prop
+
+/-
+@@ telelean v1
+id: q-385
+kind: DEFINITION
+natural_name: "proposition Q385"
+-/
+opaque Q385 : Prop
+
+/-
+@@ telelean v1
+id: q-386
+kind: DEFINITION
+natural_name: "proposition Q386"
+-/
+opaque Q386 : Prop
+
+/-
+@@ telelean v1
+id: q-387
+kind: DEFINITION
+natural_name: "proposition Q387"
+-/
+opaque Q387 : Prop
+
+/-
+@@ telelean v1
+id: q-388
+kind: DEFINITION
+natural_name: "proposition Q388"
+-/
+opaque Q388 : Prop
+
+/-
+@@ telelean v1
+id: q-389
+kind: DEFINITION
+natural_name: "proposition Q389"
+-/
+opaque Q389 : Prop
+
+/-
+@@ telelean v1
+id: q-390
+kind: DEFINITION
+natural_name: "proposition Q390"
+-/
+opaque Q390 : Prop
+
+/-
+@@ telelean v1
+id: q-391
+kind: DEFINITION
+natural_name: "proposition Q391"
+-/
+opaque Q391 : Prop
+
+/-
+@@ telelean v1
+id: q-392
+kind: DEFINITION
+natural_name: "proposition Q392"
+-/
+opaque Q392 : Prop
+
+/-
+@@ telelean v1
+id: q-393
+kind: DEFINITION
+natural_name: "proposition Q393"
+-/
+opaque Q393 : Prop
+
+/-
+@@ telelean v1
+id: q-394
+kind: DEFINITION
+natural_name: "proposition Q394"
+-/
+opaque Q394 : Prop
+
+/-
+@@ telelean v1
+id: q-395
+kind: DEFINITION
+natural_name: "proposition Q395"
+-/
+opaque Q395 : Prop
+
+/-
+@@ telelean v1
+id: q-396
+kind: DEFINITION
+natural_name: "proposition Q396"
+-/
+opaque Q396 : Prop
+
+/-
+@@ telelean v1
+id: q-397
+kind: DEFINITION
+natural_name: "proposition Q397"
+-/
+opaque Q397 : Prop
+
+/-
+@@ telelean v1
+id: q-398
+kind: DEFINITION
+natural_name: "proposition Q398"
+-/
+opaque Q398 : Prop
+
+/-
+@@ telelean v1
+id: q-399
+kind: DEFINITION
+natural_name: "proposition Q399"
+-/
+opaque Q399 : Prop
+
+/-
+@@ telelean v1
+id: q-400
+kind: DEFINITION
+natural_name: "proposition Q400"
+-/
+opaque Q400 : Prop
+
+/-
+@@ telelean v1
+id: q-401
+kind: DEFINITION
+natural_name: "proposition Q401"
+-/
+opaque Q401 : Prop
+
+/-
+@@ telelean v1
+id: q-402
+kind: DEFINITION
+natural_name: "proposition Q402"
+-/
+opaque Q402 : Prop
+
+/-
+@@ telelean v1
+id: q-403
+kind: DEFINITION
+natural_name: "proposition Q403"
+-/
+opaque Q403 : Prop
+
+/-
+@@ telelean v1
+id: q-404
+kind: DEFINITION
+natural_name: "proposition Q404"
+-/
+opaque Q404 : Prop
+
+/-
+@@ telelean v1
+id: q-405
+kind: DEFINITION
+natural_name: "proposition Q405"
+-/
+opaque Q405 : Prop
+
+/-
+@@ telelean v1
+id: q-406
+kind: DEFINITION
+natural_name: "proposition Q406"
+-/
+opaque Q406 : Prop
+
+/-
+@@ telelean v1
+id: q-407
+kind: DEFINITION
+natural_name: "proposition Q407"
+-/
+opaque Q407 : Prop
+
+/-
+@@ telelean v1
+id: q-408
+kind: DEFINITION
+natural_name: "proposition Q408"
+-/
+opaque Q408 : Prop
+
+/-
+@@ telelean v1
+id: q-409
+kind: DEFINITION
+natural_name: "proposition Q409"
+-/
+opaque Q409 : Prop
+
+/-
+@@ telelean v1
+id: q-410
+kind: DEFINITION
+natural_name: "proposition Q410"
+-/
+opaque Q410 : Prop
+
+/-
+@@ telelean v1
+id: q-411
+kind: DEFINITION
+natural_name: "proposition Q411"
+-/
+opaque Q411 : Prop
+
+/-
+@@ telelean v1
+id: q-412
+kind: DEFINITION
+natural_name: "proposition Q412"
+-/
+opaque Q412 : Prop
+
+/-
+@@ telelean v1
+id: q-413
+kind: DEFINITION
+natural_name: "proposition Q413"
+-/
+opaque Q413 : Prop
+
+/-
+@@ telelean v1
+id: q-414
+kind: DEFINITION
+natural_name: "proposition Q414"
+-/
+opaque Q414 : Prop
+
+/-
+@@ telelean v1
+id: q-415
+kind: DEFINITION
+natural_name: "proposition Q415"
+-/
+opaque Q415 : Prop
+
+/-
+@@ telelean v1
+id: q-416
+kind: DEFINITION
+natural_name: "proposition Q416"
+-/
+opaque Q416 : Prop
+
+/-
+@@ telelean v1
+id: q-417
+kind: DEFINITION
+natural_name: "proposition Q417"
+-/
+opaque Q417 : Prop
+
+/-
+@@ telelean v1
+id: q-418
+kind: DEFINITION
+natural_name: "proposition Q418"
+-/
+opaque Q418 : Prop
+
+/-
+@@ telelean v1
+id: q-419
+kind: DEFINITION
+natural_name: "proposition Q419"
+-/
+opaque Q419 : Prop
+
+/-
+@@ telelean v1
+id: q-420
+kind: DEFINITION
+natural_name: "proposition Q420"
+-/
+opaque Q420 : Prop
+
+/-
+@@ telelean v1
+id: q-421
+kind: DEFINITION
+natural_name: "proposition Q421"
+-/
+opaque Q421 : Prop
+
+/-
+@@ telelean v1
+id: q-422
+kind: DEFINITION
+natural_name: "proposition Q422"
+-/
+opaque Q422 : Prop
+
+/-
+@@ telelean v1
+id: q-423
+kind: DEFINITION
+natural_name: "proposition Q423"
+-/
+opaque Q423 : Prop
+
+/-
+@@ telelean v1
+id: q-424
+kind: DEFINITION
+natural_name: "proposition Q424"
+-/
+opaque Q424 : Prop
+
+/-
+@@ telelean v1
+id: q-425
+kind: DEFINITION
+natural_name: "proposition Q425"
+-/
+opaque Q425 : Prop
+
+/-
+@@ telelean v1
+id: q-426
+kind: DEFINITION
+natural_name: "proposition Q426"
+-/
+opaque Q426 : Prop
+
+/-
+@@ telelean v1
+id: q-427
+kind: DEFINITION
+natural_name: "proposition Q427"
+-/
+opaque Q427 : Prop
+
+/-
+@@ telelean v1
+id: q-428
+kind: DEFINITION
+natural_name: "proposition Q428"
+-/
+opaque Q428 : Prop
+
+/-
+@@ telelean v1
+id: q-429
+kind: DEFINITION
+natural_name: "proposition Q429"
+-/
+opaque Q429 : Prop
+
+/-
+@@ telelean v1
+id: q-430
+kind: DEFINITION
+natural_name: "proposition Q430"
+-/
+opaque Q430 : Prop
+
+/-
+@@ telelean v1
+id: q-431
+kind: DEFINITION
+natural_name: "proposition Q431"
+-/
+opaque Q431 : Prop
+
+/-
+@@ telelean v1
+id: q-432
+kind: DEFINITION
+natural_name: "proposition Q432"
+-/
+opaque Q432 : Prop
+
+/-
+@@ telelean v1
+id: q-433
+kind: DEFINITION
+natural_name: "proposition Q433"
+-/
+opaque Q433 : Prop
+
+/-
+@@ telelean v1
+id: q-434
+kind: DEFINITION
+natural_name: "proposition Q434"
+-/
+opaque Q434 : Prop
+
+/-
+@@ telelean v1
+id: q-435
+kind: DEFINITION
+natural_name: "proposition Q435"
+-/
+opaque Q435 : Prop
+
+/-
+@@ telelean v1
+id: q-436
+kind: DEFINITION
+natural_name: "proposition Q436"
+-/
+opaque Q436 : Prop
+
+/-
+@@ telelean v1
+id: q-437
+kind: DEFINITION
+natural_name: "proposition Q437"
+-/
+opaque Q437 : Prop
+
+/-
+@@ telelean v1
+id: q-438
+kind: DEFINITION
+natural_name: "proposition Q438"
+-/
+opaque Q438 : Prop
+
+/-
+@@ telelean v1
+id: q-439
+kind: DEFINITION
+natural_name: "proposition Q439"
+-/
+opaque Q439 : Prop
+
+/-
+@@ telelean v1
+id: q-440
+kind: DEFINITION
+natural_name: "proposition Q440"
+-/
+opaque Q440 : Prop
+
+/-
+@@ telelean v1
+id: q-441
+kind: DEFINITION
+natural_name: "proposition Q441"
+-/
+opaque Q441 : Prop
+
+/-
+@@ telelean v1
+id: q-442
+kind: DEFINITION
+natural_name: "proposition Q442"
+-/
+opaque Q442 : Prop
+
+/-
+@@ telelean v1
+id: q-443
+kind: DEFINITION
+natural_name: "proposition Q443"
+-/
+opaque Q443 : Prop
+
+/-
+@@ telelean v1
+id: q-444
+kind: DEFINITION
+natural_name: "proposition Q444"
+-/
+opaque Q444 : Prop
+
+/-
+@@ telelean v1
+id: q-445
+kind: DEFINITION
+natural_name: "proposition Q445"
+-/
+opaque Q445 : Prop
+
+/-
+@@ telelean v1
+id: q-446
+kind: DEFINITION
+natural_name: "proposition Q446"
+-/
+opaque Q446 : Prop
+
+/-
+@@ telelean v1
+id: q-447
+kind: DEFINITION
+natural_name: "proposition Q447"
+-/
+opaque Q447 : Prop
+
+/-
+@@ telelean v1
+id: q-448
+kind: DEFINITION
+natural_name: "proposition Q448"
+-/
+opaque Q448 : Prop
+
+/-
+@@ telelean v1
+id: q-449
+kind: DEFINITION
+natural_name: "proposition Q449"
+-/
+opaque Q449 : Prop
+
+/-
+@@ telelean v1
+id: q-450
+kind: DEFINITION
+natural_name: "proposition Q450"
+-/
+opaque Q450 : Prop
+
+/-
+@@ telelean v1
+id: q-451
+kind: DEFINITION
+natural_name: "proposition Q451"
+-/
+opaque Q451 : Prop
+
+/-
+@@ telelean v1
+id: q-452
+kind: DEFINITION
+natural_name: "proposition Q452"
+-/
+opaque Q452 : Prop
+
+/-
+@@ telelean v1
+id: q-453
+kind: DEFINITION
+natural_name: "proposition Q453"
+-/
+opaque Q453 : Prop
+
+/-
+@@ telelean v1
+id: q-454
+kind: DEFINITION
+natural_name: "proposition Q454"
+-/
+opaque Q454 : Prop
+
+/-
+@@ telelean v1
+id: q-455
+kind: DEFINITION
+natural_name: "proposition Q455"
+-/
+opaque Q455 : Prop
+
+/-
+@@ telelean v1
+id: q-456
+kind: DEFINITION
+natural_name: "proposition Q456"
+-/
+opaque Q456 : Prop
+
+/-
+@@ telelean v1
+id: q-457
+kind: DEFINITION
+natural_name: "proposition Q457"
+-/
+opaque Q457 : Prop
+
+/-
+@@ telelean v1
+id: q-458
+kind: DEFINITION
+natural_name: "proposition Q458"
+-/
+opaque Q458 : Prop
+
+/-
+@@ telelean v1
+id: q-459
+kind: DEFINITION
+natural_name: "proposition Q459"
+-/
+opaque Q459 : Prop
+
+/-
+@@ telelean v1
+id: q-460
+kind: DEFINITION
+natural_name: "proposition Q460"
+-/
+opaque Q460 : Prop
+
+/-
+@@ telelean v1
+id: q-461
+kind: DEFINITION
+natural_name: "proposition Q461"
+-/
+opaque Q461 : Prop
+
+/-
+@@ telelean v1
+id: q-462
+kind: DEFINITION
+natural_name: "proposition Q462"
+-/
+opaque Q462 : Prop
+
+/-
+@@ telelean v1
+id: q-463
+kind: DEFINITION
+natural_name: "proposition Q463"
+-/
+opaque Q463 : Prop
+
+/-
+@@ telelean v1
+id: q-464
+kind: DEFINITION
+natural_name: "proposition Q464"
+-/
+opaque Q464 : Prop
+
+/-
+@@ telelean v1
+id: q-465
+kind: DEFINITION
+natural_name: "proposition Q465"
+-/
+opaque Q465 : Prop
+
+/-
+@@ telelean v1
+id: q-466
+kind: DEFINITION
+natural_name: "proposition Q466"
+-/
+opaque Q466 : Prop
+
+/-
+@@ telelean v1
+id: q-467
+kind: DEFINITION
+natural_name: "proposition Q467"
+-/
+opaque Q467 : Prop
+
+/-
+@@ telelean v1
+id: q-468
+kind: DEFINITION
+natural_name: "proposition Q468"
+-/
+opaque Q468 : Prop
+
+/-
+@@ telelean v1
+id: q-469
+kind: DEFINITION
+natural_name: "proposition Q469"
+-/
+opaque Q469 : Prop
+
+/-
+@@ telelean v1
+id: q-470
+kind: DEFINITION
+natural_name: "proposition Q470"
+-/
+opaque Q470 : Prop
+
+/-
+@@ telelean v1
+id: q-471
+kind: DEFINITION
+natural_name: "proposition Q471"
+-/
+opaque Q471 : Prop
+
+/-
+@@ telelean v1
+id: q-472
+kind: DEFINITION
+natural_name: "proposition Q472"
+-/
+opaque Q472 : Prop
+
+/-
+@@ telelean v1
+id: q-473
+kind: DEFINITION
+natural_name: "proposition Q473"
+-/
+opaque Q473 : Prop
+
+/-
+@@ telelean v1
+id: q-474
+kind: DEFINITION
+natural_name: "proposition Q474"
+-/
+opaque Q474 : Prop
+
+/-
+@@ telelean v1
+id: q-475
+kind: DEFINITION
+natural_name: "proposition Q475"
+-/
+opaque Q475 : Prop
+
+/-
+@@ telelean v1
+id: q-476
+kind: DEFINITION
+natural_name: "proposition Q476"
+-/
+opaque Q476 : Prop
+
+/-
+@@ telelean v1
+id: q-477
+kind: DEFINITION
+natural_name: "proposition Q477"
+-/
+opaque Q477 : Prop
+
+/-
+@@ telelean v1
+id: q-478
+kind: DEFINITION
+natural_name: "proposition Q478"
+-/
+opaque Q478 : Prop
+
+/-
+@@ telelean v1
+id: q-479
+kind: DEFINITION
+natural_name: "proposition Q479"
+-/
+opaque Q479 : Prop
+
+/-
+@@ telelean v1
+id: q-480
+kind: DEFINITION
+natural_name: "proposition Q480"
+-/
+opaque Q480 : Prop
+
+/-
+@@ telelean v1
+id: q-481
+kind: DEFINITION
+natural_name: "proposition Q481"
+-/
+opaque Q481 : Prop
+
+/-
+@@ telelean v1
+id: q-482
+kind: DEFINITION
+natural_name: "proposition Q482"
+-/
+opaque Q482 : Prop
+
+/-
+@@ telelean v1
+id: q-483
+kind: DEFINITION
+natural_name: "proposition Q483"
+-/
+opaque Q483 : Prop
+
+/-
+@@ telelean v1
+id: q-484
+kind: DEFINITION
+natural_name: "proposition Q484"
+-/
+opaque Q484 : Prop
+
+/-
+@@ telelean v1
+id: q-485
+kind: DEFINITION
+natural_name: "proposition Q485"
+-/
+opaque Q485 : Prop
+
+/-
+@@ telelean v1
+id: q-486
+kind: DEFINITION
+natural_name: "proposition Q486"
+-/
+opaque Q486 : Prop
+
+/-
+@@ telelean v1
+id: q-487
+kind: DEFINITION
+natural_name: "proposition Q487"
+-/
+opaque Q487 : Prop
+
+/-
+@@ telelean v1
+id: q-488
+kind: DEFINITION
+natural_name: "proposition Q488"
+-/
+opaque Q488 : Prop
+
+/-
+@@ telelean v1
+id: q-489
+kind: DEFINITION
+natural_name: "proposition Q489"
+-/
+opaque Q489 : Prop
+
+/-
+@@ telelean v1
+id: q-490
+kind: DEFINITION
+natural_name: "proposition Q490"
+-/
+opaque Q490 : Prop
+
+/-
+@@ telelean v1
+id: q-491
+kind: DEFINITION
+natural_name: "proposition Q491"
+-/
+opaque Q491 : Prop
+
+/-
+@@ telelean v1
+id: q-492
+kind: DEFINITION
+natural_name: "proposition Q492"
+-/
+opaque Q492 : Prop
+
+/-
+@@ telelean v1
+id: q-493
+kind: DEFINITION
+natural_name: "proposition Q493"
+-/
+opaque Q493 : Prop
+
+/-
+@@ telelean v1
+id: q-494
+kind: DEFINITION
+natural_name: "proposition Q494"
+-/
+opaque Q494 : Prop
+
+/-
+@@ telelean v1
+id: q-495
+kind: DEFINITION
+natural_name: "proposition Q495"
+-/
+opaque Q495 : Prop
+
+/-
+@@ telelean v1
+id: q-496
+kind: DEFINITION
+natural_name: "proposition Q496"
+-/
+opaque Q496 : Prop
+
+/-
+@@ telelean v1
+id: q-497
+kind: DEFINITION
+natural_name: "proposition Q497"
+-/
+opaque Q497 : Prop
+
+/-
+@@ telelean v1
+id: q-498
+kind: DEFINITION
+natural_name: "proposition Q498"
+-/
+opaque Q498 : Prop
+
+/-
+@@ telelean v1
+id: q-499
+kind: DEFINITION
+natural_name: "proposition Q499"
+-/
+opaque Q499 : Prop
+
+/-
+@@ telelean v1
+id: q-500
+kind: DEFINITION
+natural_name: "proposition Q500"
+-/
+opaque Q500 : Prop
+
+/-
+@@ telelean v1
+id: q-501
+kind: DEFINITION
+natural_name: "proposition Q501"
+-/
+opaque Q501 : Prop
+
+/-
+@@ telelean v1
+id: q-502
+kind: DEFINITION
+natural_name: "proposition Q502"
+-/
+opaque Q502 : Prop
+
+/-
+@@ telelean v1
+id: q-503
+kind: DEFINITION
+natural_name: "proposition Q503"
+-/
+opaque Q503 : Prop
+
+/-
+@@ telelean v1
+id: q-504
+kind: DEFINITION
+natural_name: "proposition Q504"
+-/
+opaque Q504 : Prop
+
+/-
+@@ telelean v1
+id: q-505
+kind: DEFINITION
+natural_name: "proposition Q505"
+-/
+opaque Q505 : Prop
+
+/-
+@@ telelean v1
+id: q-506
+kind: DEFINITION
+natural_name: "proposition Q506"
+-/
+opaque Q506 : Prop
+
+/-
+@@ telelean v1
+id: q-507
+kind: DEFINITION
+natural_name: "proposition Q507"
+-/
+opaque Q507 : Prop
+
+/-
+@@ telelean v1
+id: q-508
+kind: DEFINITION
+natural_name: "proposition Q508"
+-/
+opaque Q508 : Prop
+
+/-
+@@ telelean v1
+id: q-509
+kind: DEFINITION
+natural_name: "proposition Q509"
+-/
+opaque Q509 : Prop
+
+/-
+@@ telelean v1
+id: q-510
+kind: DEFINITION
+natural_name: "proposition Q510"
+-/
+opaque Q510 : Prop
+
+/-
+@@ telelean v1
+id: q-511
+kind: DEFINITION
+natural_name: "proposition Q511"
+-/
+opaque Q511 : Prop
+
+/-
+@@ telelean v1
+id: q-512
+kind: DEFINITION
+natural_name: "proposition Q512"
+-/
+opaque Q512 : Prop
+
+/-
+@@ telelean v1
+id: q-513
+kind: DEFINITION
+natural_name: "proposition Q513"
+-/
+opaque Q513 : Prop
+
+/-
+@@ telelean v1
+id: q-514
+kind: DEFINITION
+natural_name: "proposition Q514"
+-/
+opaque Q514 : Prop
+
+/-
+@@ telelean v1
+id: q-515
+kind: DEFINITION
+natural_name: "proposition Q515"
+-/
+opaque Q515 : Prop
+
+/-
+@@ telelean v1
+id: q-516
+kind: DEFINITION
+natural_name: "proposition Q516"
+-/
+opaque Q516 : Prop
+
+/-
+@@ telelean v1
+id: q-517
+kind: DEFINITION
+natural_name: "proposition Q517"
+-/
+opaque Q517 : Prop
+
+/-
+@@ telelean v1
+id: q-518
+kind: DEFINITION
+natural_name: "proposition Q518"
+-/
+opaque Q518 : Prop
+
+/-
+@@ telelean v1
+id: q-519
+kind: DEFINITION
+natural_name: "proposition Q519"
+-/
+opaque Q519 : Prop
+
+/-
+@@ telelean v1
+id: q-520
+kind: DEFINITION
+natural_name: "proposition Q520"
+-/
+opaque Q520 : Prop
+
+/-
+@@ telelean v1
+id: q-521
+kind: DEFINITION
+natural_name: "proposition Q521"
+-/
+opaque Q521 : Prop
+
+/-
+@@ telelean v1
+id: q-522
+kind: DEFINITION
+natural_name: "proposition Q522"
+-/
+opaque Q522 : Prop
+
+/-
+@@ telelean v1
+id: q-523
+kind: DEFINITION
+natural_name: "proposition Q523"
+-/
+opaque Q523 : Prop
+
+/-
+@@ telelean v1
+id: q-524
+kind: DEFINITION
+natural_name: "proposition Q524"
+-/
+opaque Q524 : Prop
+
+/-
+@@ telelean v1
+id: q-525
+kind: DEFINITION
+natural_name: "proposition Q525"
+-/
+opaque Q525 : Prop
+
+/-
+@@ telelean v1
+id: q-526
+kind: DEFINITION
+natural_name: "proposition Q526"
+-/
+opaque Q526 : Prop
+
+/-
+@@ telelean v1
+id: q-527
+kind: DEFINITION
+natural_name: "proposition Q527"
+-/
+opaque Q527 : Prop
+
+/-
+@@ telelean v1
+id: q-528
+kind: DEFINITION
+natural_name: "proposition Q528"
+-/
+opaque Q528 : Prop
+
+/-
+@@ telelean v1
+id: q-529
+kind: DEFINITION
+natural_name: "proposition Q529"
+-/
+opaque Q529 : Prop
+
+/-
+@@ telelean v1
+id: q-530
+kind: DEFINITION
+natural_name: "proposition Q530"
+-/
+opaque Q530 : Prop
+
+/-
+@@ telelean v1
+id: q-531
+kind: DEFINITION
+natural_name: "proposition Q531"
+-/
+opaque Q531 : Prop
+
+/-
+@@ telelean v1
+id: q-532
+kind: DEFINITION
+natural_name: "proposition Q532"
+-/
+opaque Q532 : Prop
+
+/-
+@@ telelean v1
+id: q-533
+kind: DEFINITION
+natural_name: "proposition Q533"
+-/
+opaque Q533 : Prop
+
+/-
+@@ telelean v1
+id: q-534
+kind: DEFINITION
+natural_name: "proposition Q534"
+-/
+opaque Q534 : Prop
+
+/-
+@@ telelean v1
+id: q-535
+kind: DEFINITION
+natural_name: "proposition Q535"
+-/
+opaque Q535 : Prop
+
+/-
+@@ telelean v1
+id: q-536
+kind: DEFINITION
+natural_name: "proposition Q536"
+-/
+opaque Q536 : Prop
+
+/-
+@@ telelean v1
+id: q-537
+kind: DEFINITION
+natural_name: "proposition Q537"
+-/
+opaque Q537 : Prop
+
+/-
+@@ telelean v1
+id: q-538
+kind: DEFINITION
+natural_name: "proposition Q538"
+-/
+opaque Q538 : Prop
+
+/-
+@@ telelean v1
+id: q-539
+kind: DEFINITION
+natural_name: "proposition Q539"
+-/
+opaque Q539 : Prop
+
+/-
+@@ telelean v1
+id: q-540
+kind: DEFINITION
+natural_name: "proposition Q540"
+-/
+opaque Q540 : Prop
+
+/-
+@@ telelean v1
+id: q-541
+kind: DEFINITION
+natural_name: "proposition Q541"
+-/
+opaque Q541 : Prop
+
+/-
+@@ telelean v1
+id: q-542
+kind: DEFINITION
+natural_name: "proposition Q542"
+-/
+opaque Q542 : Prop
+
+/-
+@@ telelean v1
+id: q-543
+kind: DEFINITION
+natural_name: "proposition Q543"
+-/
+opaque Q543 : Prop
+
+/-
+@@ telelean v1
+id: q-544
+kind: DEFINITION
+natural_name: "proposition Q544"
+-/
+opaque Q544 : Prop
+
+/-
+@@ telelean v1
+id: q-545
+kind: DEFINITION
+natural_name: "proposition Q545"
+-/
+opaque Q545 : Prop
+
+/-
+@@ telelean v1
+id: q-546
+kind: DEFINITION
+natural_name: "proposition Q546"
+-/
+opaque Q546 : Prop
+
+/-
+@@ telelean v1
+id: q-547
+kind: DEFINITION
+natural_name: "proposition Q547"
+-/
+opaque Q547 : Prop
+
+/-
+@@ telelean v1
+id: q-548
+kind: DEFINITION
+natural_name: "proposition Q548"
+-/
+opaque Q548 : Prop
+
+/-
+@@ telelean v1
+id: q-549
+kind: DEFINITION
+natural_name: "proposition Q549"
+-/
+opaque Q549 : Prop
+
+/-
+@@ telelean v1
+id: q-550
+kind: DEFINITION
+natural_name: "proposition Q550"
+-/
+opaque Q550 : Prop
+
+/-
+@@ telelean v1
+id: q-551
+kind: DEFINITION
+natural_name: "proposition Q551"
+-/
+opaque Q551 : Prop
+
+/-
+@@ telelean v1
+id: q-552
+kind: DEFINITION
+natural_name: "proposition Q552"
+-/
+opaque Q552 : Prop
+
+/-
+@@ telelean v1
+id: q-553
+kind: DEFINITION
+natural_name: "proposition Q553"
+-/
+opaque Q553 : Prop
+
+/-
+@@ telelean v1
+id: q-554
+kind: DEFINITION
+natural_name: "proposition Q554"
+-/
+opaque Q554 : Prop
+
+/-
+@@ telelean v1
+id: q-555
+kind: DEFINITION
+natural_name: "proposition Q555"
+-/
+opaque Q555 : Prop
+
+/-
+@@ telelean v1
+id: q-556
+kind: DEFINITION
+natural_name: "proposition Q556"
+-/
+opaque Q556 : Prop
+
+/-
+@@ telelean v1
+id: q-557
+kind: DEFINITION
+natural_name: "proposition Q557"
+-/
+opaque Q557 : Prop
+
+/-
+@@ telelean v1
+id: q-558
+kind: DEFINITION
+natural_name: "proposition Q558"
+-/
+opaque Q558 : Prop
+
+/-
+@@ telelean v1
+id: q-559
+kind: DEFINITION
+natural_name: "proposition Q559"
+-/
+opaque Q559 : Prop
+
+/-
+@@ telelean v1
+id: q-560
+kind: DEFINITION
+natural_name: "proposition Q560"
+-/
+opaque Q560 : Prop
+
+/-
+@@ telelean v1
+id: q-561
+kind: DEFINITION
+natural_name: "proposition Q561"
+-/
+opaque Q561 : Prop
+
+/-
+@@ telelean v1
+id: q-562
+kind: DEFINITION
+natural_name: "proposition Q562"
+-/
+opaque Q562 : Prop
+
+/-
+@@ telelean v1
+id: q-563
+kind: DEFINITION
+natural_name: "proposition Q563"
+-/
+opaque Q563 : Prop
+
+/-
+@@ telelean v1
+id: q-564
+kind: DEFINITION
+natural_name: "proposition Q564"
+-/
+opaque Q564 : Prop
+
+/-
+@@ telelean v1
+id: q-565
+kind: DEFINITION
+natural_name: "proposition Q565"
+-/
+opaque Q565 : Prop
+
+/-
+@@ telelean v1
+id: q-566
+kind: DEFINITION
+natural_name: "proposition Q566"
+-/
+opaque Q566 : Prop
+
+/-
+@@ telelean v1
+id: q-567
+kind: DEFINITION
+natural_name: "proposition Q567"
+-/
+opaque Q567 : Prop
+
+/-
+@@ telelean v1
+id: q-568
+kind: DEFINITION
+natural_name: "proposition Q568"
+-/
+opaque Q568 : Prop
+
+/-
+@@ telelean v1
+id: q-569
+kind: DEFINITION
+natural_name: "proposition Q569"
+-/
+opaque Q569 : Prop
+
+/-
+@@ telelean v1
+id: q-570
+kind: DEFINITION
+natural_name: "proposition Q570"
+-/
+opaque Q570 : Prop
+
+/-
+@@ telelean v1
+id: q-571
+kind: DEFINITION
+natural_name: "proposition Q571"
+-/
+opaque Q571 : Prop
+
+/-
+@@ telelean v1
+id: q-572
+kind: DEFINITION
+natural_name: "proposition Q572"
+-/
+opaque Q572 : Prop
+
+/-
+@@ telelean v1
+id: q-573
+kind: DEFINITION
+natural_name: "proposition Q573"
+-/
+opaque Q573 : Prop
+
+/-
+@@ telelean v1
+id: q-574
+kind: DEFINITION
+natural_name: "proposition Q574"
+-/
+opaque Q574 : Prop
+
+/-
+@@ telelean v1
+id: q-575
+kind: DEFINITION
+natural_name: "proposition Q575"
+-/
+opaque Q575 : Prop
+
+/-
+@@ telelean v1
+id: q-576
+kind: DEFINITION
+natural_name: "proposition Q576"
+-/
+opaque Q576 : Prop
+
+/-
+@@ telelean v1
+id: q-577
+kind: DEFINITION
+natural_name: "proposition Q577"
+-/
+opaque Q577 : Prop
+
+/-
+@@ telelean v1
+id: q-578
+kind: DEFINITION
+natural_name: "proposition Q578"
+-/
+opaque Q578 : Prop
+
+/-
+@@ telelean v1
+id: q-579
+kind: DEFINITION
+natural_name: "proposition Q579"
+-/
+opaque Q579 : Prop
+
+/-
+@@ telelean v1
+id: q-580
+kind: DEFINITION
+natural_name: "proposition Q580"
+-/
+opaque Q580 : Prop
+
+/-
+@@ telelean v1
+id: q-581
+kind: DEFINITION
+natural_name: "proposition Q581"
+-/
+opaque Q581 : Prop
+
+/-
+@@ telelean v1
+id: q-582
+kind: DEFINITION
+natural_name: "proposition Q582"
+-/
+opaque Q582 : Prop
+
+/-
+@@ telelean v1
+id: q-583
+kind: DEFINITION
+natural_name: "proposition Q583"
+-/
+opaque Q583 : Prop
+
+/-
+@@ telelean v1
+id: q-584
+kind: DEFINITION
+natural_name: "proposition Q584"
+-/
+opaque Q584 : Prop
+
+/-
+@@ telelean v1
+id: q-585
+kind: DEFINITION
+natural_name: "proposition Q585"
+-/
+opaque Q585 : Prop
+
+/-
+@@ telelean v1
+id: q-586
+kind: DEFINITION
+natural_name: "proposition Q586"
+-/
+opaque Q586 : Prop
+
+/-
+@@ telelean v1
+id: q-587
+kind: DEFINITION
+natural_name: "proposition Q587"
+-/
+opaque Q587 : Prop
+
+/-
+@@ telelean v1
+id: q-588
+kind: DEFINITION
+natural_name: "proposition Q588"
+-/
+opaque Q588 : Prop
+
+/-
+@@ telelean v1
+id: q-589
+kind: DEFINITION
+natural_name: "proposition Q589"
+-/
+opaque Q589 : Prop
+
+/-
+@@ telelean v1
+id: q-590
+kind: DEFINITION
+natural_name: "proposition Q590"
+-/
+opaque Q590 : Prop
+
+/-
+@@ telelean v1
+id: q-591
+kind: DEFINITION
+natural_name: "proposition Q591"
+-/
+opaque Q591 : Prop
+
+/-
+@@ telelean v1
+id: q-592
+kind: DEFINITION
+natural_name: "proposition Q592"
+-/
+opaque Q592 : Prop
+
+/-
+@@ telelean v1
+id: q-593
+kind: DEFINITION
+natural_name: "proposition Q593"
+-/
+opaque Q593 : Prop
+
+/-
+@@ telelean v1
+id: q-594
+kind: DEFINITION
+natural_name: "proposition Q594"
+-/
+opaque Q594 : Prop
+
+/-
+@@ telelean v1
+id: q-595
+kind: DEFINITION
+natural_name: "proposition Q595"
+-/
+opaque Q595 : Prop
+
+/-
+@@ telelean v1
+id: q-596
+kind: DEFINITION
+natural_name: "proposition Q596"
+-/
+opaque Q596 : Prop
+
+/-
+@@ telelean v1
+id: q-597
+kind: DEFINITION
+natural_name: "proposition Q597"
+-/
+opaque Q597 : Prop
+
+/-
+@@ telelean v1
+id: q-598
+kind: DEFINITION
+natural_name: "proposition Q598"
+-/
+opaque Q598 : Prop
+
+/-
+@@ telelean v1
+id: q-599
+kind: DEFINITION
+natural_name: "proposition Q599"
+-/
+opaque Q599 : Prop
+
+/-
+@@ telelean v1
+id: q-600
+kind: DEFINITION
+natural_name: "proposition Q600"
+-/
+opaque Q600 : Prop
+
+/-
+@@ telelean v1
+id: q-601
+kind: DEFINITION
+natural_name: "proposition Q601"
+-/
+opaque Q601 : Prop
+
+/-
+@@ telelean v1
+id: q-602
+kind: DEFINITION
+natural_name: "proposition Q602"
+-/
+opaque Q602 : Prop
+
+/-
+@@ telelean v1
+id: q-603
+kind: DEFINITION
+natural_name: "proposition Q603"
+-/
+opaque Q603 : Prop
+
+/-
+@@ telelean v1
+id: q-604
+kind: DEFINITION
+natural_name: "proposition Q604"
+-/
+opaque Q604 : Prop
+
+/-
+@@ telelean v1
+id: q-605
+kind: DEFINITION
+natural_name: "proposition Q605"
+-/
+opaque Q605 : Prop
+
+/-
+@@ telelean v1
+id: q-606
+kind: DEFINITION
+natural_name: "proposition Q606"
+-/
+opaque Q606 : Prop
+
+/-
+@@ telelean v1
+id: q-607
+kind: DEFINITION
+natural_name: "proposition Q607"
+-/
+opaque Q607 : Prop
+
+/-
+@@ telelean v1
+id: q-608
+kind: DEFINITION
+natural_name: "proposition Q608"
+-/
+opaque Q608 : Prop
+
+/-
+@@ telelean v1
+id: q-609
+kind: DEFINITION
+natural_name: "proposition Q609"
+-/
+opaque Q609 : Prop
+
+/-
+@@ telelean v1
+id: q-610
+kind: DEFINITION
+natural_name: "proposition Q610"
+-/
+opaque Q610 : Prop
+
+/-
+@@ telelean v1
+id: q-611
+kind: DEFINITION
+natural_name: "proposition Q611"
+-/
+opaque Q611 : Prop
+
+/-
+@@ telelean v1
+id: q-612
+kind: DEFINITION
+natural_name: "proposition Q612"
+-/
+opaque Q612 : Prop
+
+/-
+@@ telelean v1
+id: q-613
+kind: DEFINITION
+natural_name: "proposition Q613"
+-/
+opaque Q613 : Prop
+
+/-
+@@ telelean v1
+id: q-614
+kind: DEFINITION
+natural_name: "proposition Q614"
+-/
+opaque Q614 : Prop
+
+/-
+@@ telelean v1
+id: q-615
+kind: DEFINITION
+natural_name: "proposition Q615"
+-/
+opaque Q615 : Prop
+
+/-
+@@ telelean v1
+id: q-616
+kind: DEFINITION
+natural_name: "proposition Q616"
+-/
+opaque Q616 : Prop
+
+/-
+@@ telelean v1
+id: q-617
+kind: DEFINITION
+natural_name: "proposition Q617"
+-/
+opaque Q617 : Prop
+
+/-
+@@ telelean v1
+id: q-618
+kind: DEFINITION
+natural_name: "proposition Q618"
+-/
+opaque Q618 : Prop
+
+/-
+@@ telelean v1
+id: q-619
+kind: DEFINITION
+natural_name: "proposition Q619"
+-/
+opaque Q619 : Prop
+
+/-
+@@ telelean v1
+id: q-620
+kind: DEFINITION
+natural_name: "proposition Q620"
+-/
+opaque Q620 : Prop
+
+/-
+@@ telelean v1
+id: q-621
+kind: DEFINITION
+natural_name: "proposition Q621"
+-/
+opaque Q621 : Prop
+
+/-
+@@ telelean v1
+id: q-622
+kind: DEFINITION
+natural_name: "proposition Q622"
+-/
+opaque Q622 : Prop
+
+/-
+@@ telelean v1
+id: q-623
+kind: DEFINITION
+natural_name: "proposition Q623"
+-/
+opaque Q623 : Prop
+
+/-
+@@ telelean v1
+id: q-624
+kind: DEFINITION
+natural_name: "proposition Q624"
+-/
+opaque Q624 : Prop
+
+/-
+@@ telelean v1
+id: q-625
+kind: DEFINITION
+natural_name: "proposition Q625"
+-/
+opaque Q625 : Prop
+
+/-
+@@ telelean v1
+id: q-626
+kind: DEFINITION
+natural_name: "proposition Q626"
+-/
+opaque Q626 : Prop
+
+/-
+@@ telelean v1
+id: q-627
+kind: DEFINITION
+natural_name: "proposition Q627"
+-/
+opaque Q627 : Prop
+
+/-
+@@ telelean v1
+id: q-628
+kind: DEFINITION
+natural_name: "proposition Q628"
+-/
+opaque Q628 : Prop
+
+/-
+@@ telelean v1
+id: q-629
+kind: DEFINITION
+natural_name: "proposition Q629"
+-/
+opaque Q629 : Prop
+
+/-
+@@ telelean v1
+id: q-630
+kind: DEFINITION
+natural_name: "proposition Q630"
+-/
+opaque Q630 : Prop
+
+/-
+@@ telelean v1
+id: q-631
+kind: DEFINITION
+natural_name: "proposition Q631"
+-/
+opaque Q631 : Prop
+
+/-
+@@ telelean v1
+id: q-632
+kind: DEFINITION
+natural_name: "proposition Q632"
+-/
+opaque Q632 : Prop
+
+/-
+@@ telelean v1
+id: q-633
+kind: DEFINITION
+natural_name: "proposition Q633"
+-/
+opaque Q633 : Prop
+
+/-
+@@ telelean v1
+id: q-634
+kind: DEFINITION
+natural_name: "proposition Q634"
+-/
+opaque Q634 : Prop
+
+/-
+@@ telelean v1
+id: q-635
+kind: DEFINITION
+natural_name: "proposition Q635"
+-/
+opaque Q635 : Prop
+
+/-
+@@ telelean v1
+id: q-636
+kind: DEFINITION
+natural_name: "proposition Q636"
+-/
+opaque Q636 : Prop
+
+/-
+@@ telelean v1
+id: q-637
+kind: DEFINITION
+natural_name: "proposition Q637"
+-/
+opaque Q637 : Prop
+
+/-
+@@ telelean v1
+id: q-638
+kind: DEFINITION
+natural_name: "proposition Q638"
+-/
+opaque Q638 : Prop
+
+/-
+@@ telelean v1
+id: q-639
+kind: DEFINITION
+natural_name: "proposition Q639"
+-/
+opaque Q639 : Prop
+
+/-
+@@ telelean v1
+id: q-640
+kind: DEFINITION
+natural_name: "proposition Q640"
+-/
+opaque Q640 : Prop
+
+/-
+@@ telelean v1
+id: q-641
+kind: DEFINITION
+natural_name: "proposition Q641"
+-/
+opaque Q641 : Prop
+
+/-
+@@ telelean v1
+id: q-642
+kind: DEFINITION
+natural_name: "proposition Q642"
+-/
+opaque Q642 : Prop
+
+/-
+@@ telelean v1
+id: q-643
+kind: DEFINITION
+natural_name: "proposition Q643"
+-/
+opaque Q643 : Prop
+
+/-
+@@ telelean v1
+id: q-644
+kind: DEFINITION
+natural_name: "proposition Q644"
+-/
+opaque Q644 : Prop
+
+/-
+@@ telelean v1
+id: q-645
+kind: DEFINITION
+natural_name: "proposition Q645"
+-/
+opaque Q645 : Prop
+
+/-
+@@ telelean v1
+id: q-646
+kind: DEFINITION
+natural_name: "proposition Q646"
+-/
+opaque Q646 : Prop
+
+/-
+@@ telelean v1
+id: q-647
+kind: DEFINITION
+natural_name: "proposition Q647"
+-/
+opaque Q647 : Prop
+
+/-
+@@ telelean v1
+id: q-648
+kind: DEFINITION
+natural_name: "proposition Q648"
+-/
+opaque Q648 : Prop
+
+/-
+@@ telelean v1
+id: q-649
+kind: DEFINITION
+natural_name: "proposition Q649"
+-/
+opaque Q649 : Prop
+
+/-
+@@ telelean v1
+id: q-650
+kind: DEFINITION
+natural_name: "proposition Q650"
+-/
+opaque Q650 : Prop
+
+/-
+@@ telelean v1
+id: q-651
+kind: DEFINITION
+natural_name: "proposition Q651"
+-/
+opaque Q651 : Prop
+
+/-
+@@ telelean v1
+id: q-652
+kind: DEFINITION
+natural_name: "proposition Q652"
+-/
+opaque Q652 : Prop
+
+/-
+@@ telelean v1
+id: q-653
+kind: DEFINITION
+natural_name: "proposition Q653"
+-/
+opaque Q653 : Prop
+
+/-
+@@ telelean v1
+id: q-654
+kind: DEFINITION
+natural_name: "proposition Q654"
+-/
+opaque Q654 : Prop
+
+/-
+@@ telelean v1
+id: q-655
+kind: DEFINITION
+natural_name: "proposition Q655"
+-/
+opaque Q655 : Prop
+
+/-
+@@ telelean v1
+id: q-656
+kind: DEFINITION
+natural_name: "proposition Q656"
+-/
+opaque Q656 : Prop
+
+/-
+@@ telelean v1
+id: q-657
+kind: DEFINITION
+natural_name: "proposition Q657"
+-/
+opaque Q657 : Prop
+
+/-
+@@ telelean v1
+id: q-658
+kind: DEFINITION
+natural_name: "proposition Q658"
+-/
+opaque Q658 : Prop
+
+/-
+@@ telelean v1
+id: q-659
+kind: DEFINITION
+natural_name: "proposition Q659"
+-/
+opaque Q659 : Prop
+
+/-
+@@ telelean v1
+id: q-660
+kind: DEFINITION
+natural_name: "proposition Q660"
+-/
+opaque Q660 : Prop
+
+/-
+@@ telelean v1
+id: q-661
+kind: DEFINITION
+natural_name: "proposition Q661"
+-/
+opaque Q661 : Prop
+
+/-
+@@ telelean v1
+id: q-662
+kind: DEFINITION
+natural_name: "proposition Q662"
+-/
+opaque Q662 : Prop
+
+/-
+@@ telelean v1
+id: q-663
+kind: DEFINITION
+natural_name: "proposition Q663"
+-/
+opaque Q663 : Prop
+
+/-
+@@ telelean v1
+id: q-664
+kind: DEFINITION
+natural_name: "proposition Q664"
+-/
+opaque Q664 : Prop
+
+/-
+@@ telelean v1
+id: q-665
+kind: DEFINITION
+natural_name: "proposition Q665"
+-/
+opaque Q665 : Prop
+
+/-
+@@ telelean v1
+id: q-666
+kind: DEFINITION
+natural_name: "proposition Q666"
+-/
+opaque Q666 : Prop
+
+/-
+@@ telelean v1
+id: q-667
+kind: DEFINITION
+natural_name: "proposition Q667"
+-/
+opaque Q667 : Prop
+
+/-
+@@ telelean v1
+id: q-668
+kind: DEFINITION
+natural_name: "proposition Q668"
+-/
+opaque Q668 : Prop
+
+/-
+@@ telelean v1
+id: q-669
+kind: DEFINITION
+natural_name: "proposition Q669"
+-/
+opaque Q669 : Prop
+
+/-
+@@ telelean v1
+id: q-670
+kind: DEFINITION
+natural_name: "proposition Q670"
+-/
+opaque Q670 : Prop
+
+/-
+@@ telelean v1
+id: q-671
+kind: DEFINITION
+natural_name: "proposition Q671"
+-/
+opaque Q671 : Prop
+
+/-
+@@ telelean v1
+id: q-672
+kind: DEFINITION
+natural_name: "proposition Q672"
+-/
+opaque Q672 : Prop
+
+/-
+@@ telelean v1
+id: q-673
+kind: DEFINITION
+natural_name: "proposition Q673"
+-/
+opaque Q673 : Prop
+
+/-
+@@ telelean v1
+id: q-674
+kind: DEFINITION
+natural_name: "proposition Q674"
+-/
+opaque Q674 : Prop
+
+/-
+@@ telelean v1
+id: q-675
+kind: DEFINITION
+natural_name: "proposition Q675"
+-/
+opaque Q675 : Prop
+
+/-
+@@ telelean v1
+id: q-676
+kind: DEFINITION
+natural_name: "proposition Q676"
+-/
+opaque Q676 : Prop
+
+/-
+@@ telelean v1
+id: q-677
+kind: DEFINITION
+natural_name: "proposition Q677"
+-/
+opaque Q677 : Prop
+
+/-
+@@ telelean v1
+id: q-678
+kind: DEFINITION
+natural_name: "proposition Q678"
+-/
+opaque Q678 : Prop
+
+/-
+@@ telelean v1
+id: q-679
+kind: DEFINITION
+natural_name: "proposition Q679"
+-/
+opaque Q679 : Prop
+
+/-
+@@ telelean v1
+id: q-680
+kind: DEFINITION
+natural_name: "proposition Q680"
+-/
+opaque Q680 : Prop
+
+/-
+@@ telelean v1
+id: q-681
+kind: DEFINITION
+natural_name: "proposition Q681"
+-/
+opaque Q681 : Prop
+
+/-
+@@ telelean v1
+id: q-682
+kind: DEFINITION
+natural_name: "proposition Q682"
+-/
+opaque Q682 : Prop
+
+/-
+@@ telelean v1
+id: q-683
+kind: DEFINITION
+natural_name: "proposition Q683"
+-/
+opaque Q683 : Prop
+
+/-
+@@ telelean v1
+id: q-684
+kind: DEFINITION
+natural_name: "proposition Q684"
+-/
+opaque Q684 : Prop
+
+/-
+@@ telelean v1
+id: q-685
+kind: DEFINITION
+natural_name: "proposition Q685"
+-/
+opaque Q685 : Prop
+
+/-
+@@ telelean v1
+id: q-686
+kind: DEFINITION
+natural_name: "proposition Q686"
+-/
+opaque Q686 : Prop
+
+/-
+@@ telelean v1
+id: q-687
+kind: DEFINITION
+natural_name: "proposition Q687"
+-/
+opaque Q687 : Prop
+
+/-
+@@ telelean v1
+id: q-688
+kind: DEFINITION
+natural_name: "proposition Q688"
+-/
+opaque Q688 : Prop
+
+/-
+@@ telelean v1
+id: q-689
+kind: DEFINITION
+natural_name: "proposition Q689"
+-/
+opaque Q689 : Prop
+
+/-
+@@ telelean v1
+id: q-690
+kind: DEFINITION
+natural_name: "proposition Q690"
+-/
+opaque Q690 : Prop
+
+/-
+@@ telelean v1
+id: q-691
+kind: DEFINITION
+natural_name: "proposition Q691"
+-/
+opaque Q691 : Prop
+
+/-
+@@ telelean v1
+id: q-692
+kind: DEFINITION
+natural_name: "proposition Q692"
+-/
+opaque Q692 : Prop
+
+/-
+@@ telelean v1
+id: q-693
+kind: DEFINITION
+natural_name: "proposition Q693"
+-/
+opaque Q693 : Prop
+
+/-
+@@ telelean v1
+id: q-694
+kind: DEFINITION
+natural_name: "proposition Q694"
+-/
+opaque Q694 : Prop
+
+/-
+@@ telelean v1
+id: q-695
+kind: DEFINITION
+natural_name: "proposition Q695"
+-/
+opaque Q695 : Prop
+
+/-
+@@ telelean v1
+id: q-696
+kind: DEFINITION
+natural_name: "proposition Q696"
+-/
+opaque Q696 : Prop
+
+/-
+@@ telelean v1
+id: q-697
+kind: DEFINITION
+natural_name: "proposition Q697"
+-/
+opaque Q697 : Prop
+
+/-
+@@ telelean v1
+id: q-698
+kind: DEFINITION
+natural_name: "proposition Q698"
+-/
+opaque Q698 : Prop
+
+/-
+@@ telelean v1
+id: q-699
+kind: DEFINITION
+natural_name: "proposition Q699"
+-/
+opaque Q699 : Prop
+
+/-
+@@ telelean v1
+id: q-700
+kind: DEFINITION
+natural_name: "proposition Q700"
+-/
+opaque Q700 : Prop
+
+/-
+@@ telelean v1
+id: q-701
+kind: DEFINITION
+natural_name: "proposition Q701"
+-/
+opaque Q701 : Prop
+
+/-
+@@ telelean v1
+id: q-702
+kind: DEFINITION
+natural_name: "proposition Q702"
+-/
+opaque Q702 : Prop
+
+/-
+@@ telelean v1
+id: q-703
+kind: DEFINITION
+natural_name: "proposition Q703"
+-/
+opaque Q703 : Prop
+
+/-
+@@ telelean v1
+id: q-704
+kind: DEFINITION
+natural_name: "proposition Q704"
+-/
+opaque Q704 : Prop
+
+/-
+@@ telelean v1
+id: q-705
+kind: DEFINITION
+natural_name: "proposition Q705"
+-/
+opaque Q705 : Prop
+
+/-
+@@ telelean v1
+id: q-706
+kind: DEFINITION
+natural_name: "proposition Q706"
+-/
+opaque Q706 : Prop
+
+/-
+@@ telelean v1
+id: q-707
+kind: DEFINITION
+natural_name: "proposition Q707"
+-/
+opaque Q707 : Prop
+
+/-
+@@ telelean v1
+id: q-708
+kind: DEFINITION
+natural_name: "proposition Q708"
+-/
+opaque Q708 : Prop
+
+/-
+@@ telelean v1
+id: q-709
+kind: DEFINITION
+natural_name: "proposition Q709"
+-/
+opaque Q709 : Prop
+
+/-
+@@ telelean v1
+id: q-710
+kind: DEFINITION
+natural_name: "proposition Q710"
+-/
+opaque Q710 : Prop
+
+/-
+@@ telelean v1
+id: q-711
+kind: DEFINITION
+natural_name: "proposition Q711"
+-/
+opaque Q711 : Prop
+
+/-
+@@ telelean v1
+id: q-712
+kind: DEFINITION
+natural_name: "proposition Q712"
+-/
+opaque Q712 : Prop
+
+/-
+@@ telelean v1
+id: q-713
+kind: DEFINITION
+natural_name: "proposition Q713"
+-/
+opaque Q713 : Prop
+
+/-
+@@ telelean v1
+id: q-714
+kind: DEFINITION
+natural_name: "proposition Q714"
+-/
+opaque Q714 : Prop
+
+/-
+@@ telelean v1
+id: q-715
+kind: DEFINITION
+natural_name: "proposition Q715"
+-/
+opaque Q715 : Prop
+
+/-
+@@ telelean v1
+id: q-716
+kind: DEFINITION
+natural_name: "proposition Q716"
+-/
+opaque Q716 : Prop
+
+/-
+@@ telelean v1
+id: q-717
+kind: DEFINITION
+natural_name: "proposition Q717"
+-/
+opaque Q717 : Prop
+
+/-
+@@ telelean v1
+id: q-718
+kind: DEFINITION
+natural_name: "proposition Q718"
+-/
+opaque Q718 : Prop
+
+/-
+@@ telelean v1
+id: q-719
+kind: DEFINITION
+natural_name: "proposition Q719"
+-/
+opaque Q719 : Prop
+
+/-
+@@ telelean v1
+id: q-720
+kind: DEFINITION
+natural_name: "proposition Q720"
+-/
+opaque Q720 : Prop
+
+/-
+@@ telelean v1
+id: q-721
+kind: DEFINITION
+natural_name: "proposition Q721"
+-/
+opaque Q721 : Prop
+
+/-
+@@ telelean v1
+id: q-722
+kind: DEFINITION
+natural_name: "proposition Q722"
+-/
+opaque Q722 : Prop
+
+/-
+@@ telelean v1
+id: q-723
+kind: DEFINITION
+natural_name: "proposition Q723"
+-/
+opaque Q723 : Prop
+
+/-
+@@ telelean v1
+id: q-724
+kind: DEFINITION
+natural_name: "proposition Q724"
+-/
+opaque Q724 : Prop
+
+/-
+@@ telelean v1
+id: q-725
+kind: DEFINITION
+natural_name: "proposition Q725"
+-/
+opaque Q725 : Prop
+
+/-
+@@ telelean v1
+id: q-726
+kind: DEFINITION
+natural_name: "proposition Q726"
+-/
+opaque Q726 : Prop
+
+/-
+@@ telelean v1
+id: q-727
+kind: DEFINITION
+natural_name: "proposition Q727"
+-/
+opaque Q727 : Prop
+
+/-
+@@ telelean v1
+id: q-728
+kind: DEFINITION
+natural_name: "proposition Q728"
+-/
+opaque Q728 : Prop
+
+/-
+@@ telelean v1
+id: q-729
+kind: DEFINITION
+natural_name: "proposition Q729"
+-/
+opaque Q729 : Prop
+
+/-
+@@ telelean v1
+id: q-730
+kind: DEFINITION
+natural_name: "proposition Q730"
+-/
+opaque Q730 : Prop
+
+/-
+@@ telelean v1
+id: q-731
+kind: DEFINITION
+natural_name: "proposition Q731"
+-/
+opaque Q731 : Prop
+
+/-
+@@ telelean v1
+id: q-732
+kind: DEFINITION
+natural_name: "proposition Q732"
+-/
+opaque Q732 : Prop
+
+/-
+@@ telelean v1
+id: q-733
+kind: DEFINITION
+natural_name: "proposition Q733"
+-/
+opaque Q733 : Prop
+
+/-
+@@ telelean v1
+id: q-734
+kind: DEFINITION
+natural_name: "proposition Q734"
+-/
+opaque Q734 : Prop
+
+/-
+@@ telelean v1
+id: q-735
+kind: DEFINITION
+natural_name: "proposition Q735"
+-/
+opaque Q735 : Prop
+
+/-
+@@ telelean v1
+id: q-736
+kind: DEFINITION
+natural_name: "proposition Q736"
+-/
+opaque Q736 : Prop
+
+/-
+@@ telelean v1
+id: q-737
+kind: DEFINITION
+natural_name: "proposition Q737"
+-/
+opaque Q737 : Prop
+
+/-
+@@ telelean v1
+id: q-738
+kind: DEFINITION
+natural_name: "proposition Q738"
+-/
+opaque Q738 : Prop
+
+/-
+@@ telelean v1
+id: q-739
+kind: DEFINITION
+natural_name: "proposition Q739"
+-/
+opaque Q739 : Prop
+
+/-
+@@ telelean v1
+id: q-740
+kind: DEFINITION
+natural_name: "proposition Q740"
+-/
+opaque Q740 : Prop
+
+/-
+@@ telelean v1
+id: q-741
+kind: DEFINITION
+natural_name: "proposition Q741"
+-/
+opaque Q741 : Prop
+
+/-
+@@ telelean v1
+id: q-742
+kind: DEFINITION
+natural_name: "proposition Q742"
+-/
+opaque Q742 : Prop
+
+/-
+@@ telelean v1
+id: q-743
+kind: DEFINITION
+natural_name: "proposition Q743"
+-/
+opaque Q743 : Prop
+
+/-
+@@ telelean v1
+id: q-744
+kind: DEFINITION
+natural_name: "proposition Q744"
+-/
+opaque Q744 : Prop
+
+/-
+@@ telelean v1
+id: q-745
+kind: DEFINITION
+natural_name: "proposition Q745"
+-/
+opaque Q745 : Prop
+
+/-
+@@ telelean v1
+id: q-746
+kind: DEFINITION
+natural_name: "proposition Q746"
+-/
+opaque Q746 : Prop
+
+/-
+@@ telelean v1
+id: q-747
+kind: DEFINITION
+natural_name: "proposition Q747"
+-/
+opaque Q747 : Prop
+
+/-
+@@ telelean v1
+id: q-748
+kind: DEFINITION
+natural_name: "proposition Q748"
+-/
+opaque Q748 : Prop
+
+/-
+@@ telelean v1
+id: q-749
+kind: DEFINITION
+natural_name: "proposition Q749"
+-/
+opaque Q749 : Prop
+
+/-
+@@ telelean v1
+id: q-750
+kind: DEFINITION
+natural_name: "proposition Q750"
+-/
+opaque Q750 : Prop
+
+/-
+@@ telelean v1
+id: q-751
+kind: DEFINITION
+natural_name: "proposition Q751"
+-/
+opaque Q751 : Prop
+
+/-
+@@ telelean v1
+id: q-752
+kind: DEFINITION
+natural_name: "proposition Q752"
+-/
+opaque Q752 : Prop
+
+/-
+@@ telelean v1
+id: q-753
+kind: DEFINITION
+natural_name: "proposition Q753"
+-/
+opaque Q753 : Prop
+
+/-
+@@ telelean v1
+id: q-754
+kind: DEFINITION
+natural_name: "proposition Q754"
+-/
+opaque Q754 : Prop
+
+/-
+@@ telelean v1
+id: q-755
+kind: DEFINITION
+natural_name: "proposition Q755"
+-/
+opaque Q755 : Prop
+
+/-
+@@ telelean v1
+id: q-756
+kind: DEFINITION
+natural_name: "proposition Q756"
+-/
+opaque Q756 : Prop
+
+/-
+@@ telelean v1
+id: q-757
+kind: DEFINITION
+natural_name: "proposition Q757"
+-/
+opaque Q757 : Prop
+
+/-
+@@ telelean v1
+id: q-758
+kind: DEFINITION
+natural_name: "proposition Q758"
+-/
+opaque Q758 : Prop
+
+/-
+@@ telelean v1
+id: q-759
+kind: DEFINITION
+natural_name: "proposition Q759"
+-/
+opaque Q759 : Prop
+
+/-
+@@ telelean v1
+id: q-760
+kind: DEFINITION
+natural_name: "proposition Q760"
+-/
+opaque Q760 : Prop
+
+/-
+@@ telelean v1
+id: q-761
+kind: DEFINITION
+natural_name: "proposition Q761"
+-/
+opaque Q761 : Prop
+
+/-
+@@ telelean v1
+id: q-762
+kind: DEFINITION
+natural_name: "proposition Q762"
+-/
+opaque Q762 : Prop
+
+/-
+@@ telelean v1
+id: q-763
+kind: DEFINITION
+natural_name: "proposition Q763"
+-/
+opaque Q763 : Prop
+
+/-
+@@ telelean v1
+id: q-764
+kind: DEFINITION
+natural_name: "proposition Q764"
+-/
+opaque Q764 : Prop
+
+/-
+@@ telelean v1
+id: q-765
+kind: DEFINITION
+natural_name: "proposition Q765"
+-/
+opaque Q765 : Prop
+
+/-
+@@ telelean v1
+id: q-766
+kind: DEFINITION
+natural_name: "proposition Q766"
+-/
+opaque Q766 : Prop
+
+/-
+@@ telelean v1
+id: q-767
+kind: DEFINITION
+natural_name: "proposition Q767"
+-/
+opaque Q767 : Prop
+
+/-
+@@ telelean v1
+id: q-768
+kind: DEFINITION
+natural_name: "proposition Q768"
+-/
+opaque Q768 : Prop
+
+/-
+@@ telelean v1
+id: q-769
+kind: DEFINITION
+natural_name: "proposition Q769"
+-/
+opaque Q769 : Prop
+
+/-
+@@ telelean v1
+id: q-770
+kind: DEFINITION
+natural_name: "proposition Q770"
+-/
+opaque Q770 : Prop
+
+/-
+@@ telelean v1
+id: q-771
+kind: DEFINITION
+natural_name: "proposition Q771"
+-/
+opaque Q771 : Prop
+
+/-
+@@ telelean v1
+id: q-772
+kind: DEFINITION
+natural_name: "proposition Q772"
+-/
+opaque Q772 : Prop
+
+/-
+@@ telelean v1
+id: q-773
+kind: DEFINITION
+natural_name: "proposition Q773"
+-/
+opaque Q773 : Prop
+
+/-
+@@ telelean v1
+id: q-774
+kind: DEFINITION
+natural_name: "proposition Q774"
+-/
+opaque Q774 : Prop
+
+/-
+@@ telelean v1
+id: q-775
+kind: DEFINITION
+natural_name: "proposition Q775"
+-/
+opaque Q775 : Prop
+
+/-
+@@ telelean v1
+id: q-776
+kind: DEFINITION
+natural_name: "proposition Q776"
+-/
+opaque Q776 : Prop
+
+/-
+@@ telelean v1
+id: q-777
+kind: DEFINITION
+natural_name: "proposition Q777"
+-/
+opaque Q777 : Prop
+
+/-
+@@ telelean v1
+id: q-778
+kind: DEFINITION
+natural_name: "proposition Q778"
+-/
+opaque Q778 : Prop
+
+/-
+@@ telelean v1
+id: q-779
+kind: DEFINITION
+natural_name: "proposition Q779"
+-/
+opaque Q779 : Prop
+
+/-
+@@ telelean v1
+id: q-780
+kind: DEFINITION
+natural_name: "proposition Q780"
+-/
+opaque Q780 : Prop
+
+/-
+@@ telelean v1
+id: q-781
+kind: DEFINITION
+natural_name: "proposition Q781"
+-/
+opaque Q781 : Prop
+
+/-
+@@ telelean v1
+id: q-782
+kind: DEFINITION
+natural_name: "proposition Q782"
+-/
+opaque Q782 : Prop
+
+/-
+@@ telelean v1
+id: q-783
+kind: DEFINITION
+natural_name: "proposition Q783"
+-/
+opaque Q783 : Prop
+
+/-
+@@ telelean v1
+id: q-784
+kind: DEFINITION
+natural_name: "proposition Q784"
+-/
+opaque Q784 : Prop
+
+/-
+@@ telelean v1
+id: q-785
+kind: DEFINITION
+natural_name: "proposition Q785"
+-/
+opaque Q785 : Prop
+
+/-
+@@ telelean v1
+id: q-786
+kind: DEFINITION
+natural_name: "proposition Q786"
+-/
+opaque Q786 : Prop
+
+/-
+@@ telelean v1
+id: q-787
+kind: DEFINITION
+natural_name: "proposition Q787"
+-/
+opaque Q787 : Prop
+
+/-
+@@ telelean v1
+id: q-788
+kind: DEFINITION
+natural_name: "proposition Q788"
+-/
+opaque Q788 : Prop
+
+/-
+@@ telelean v1
+id: q-789
+kind: DEFINITION
+natural_name: "proposition Q789"
+-/
+opaque Q789 : Prop
+
+/-
+@@ telelean v1
+id: q-790
+kind: DEFINITION
+natural_name: "proposition Q790"
+-/
+opaque Q790 : Prop
+
+/-
+@@ telelean v1
+id: q-791
+kind: DEFINITION
+natural_name: "proposition Q791"
+-/
+opaque Q791 : Prop
+
+/-
+@@ telelean v1
+id: q-792
+kind: DEFINITION
+natural_name: "proposition Q792"
+-/
+opaque Q792 : Prop
+
+/-
+@@ telelean v1
+id: q-793
+kind: DEFINITION
+natural_name: "proposition Q793"
+-/
+opaque Q793 : Prop
+
+/-
+@@ telelean v1
+id: q-794
+kind: DEFINITION
+natural_name: "proposition Q794"
+-/
+opaque Q794 : Prop
+
+/-
+@@ telelean v1
+id: q-795
+kind: DEFINITION
+natural_name: "proposition Q795"
+-/
+opaque Q795 : Prop
+
+/-
+@@ telelean v1
+id: q-796
+kind: DEFINITION
+natural_name: "proposition Q796"
+-/
+opaque Q796 : Prop
+
+/-
+@@ telelean v1
+id: q-797
+kind: DEFINITION
+natural_name: "proposition Q797"
+-/
+opaque Q797 : Prop
+
+/-
+@@ telelean v1
+id: q-798
+kind: DEFINITION
+natural_name: "proposition Q798"
+-/
+opaque Q798 : Prop
+
+/-
+@@ telelean v1
+id: q-799
+kind: DEFINITION
+natural_name: "proposition Q799"
+-/
+opaque Q799 : Prop
+

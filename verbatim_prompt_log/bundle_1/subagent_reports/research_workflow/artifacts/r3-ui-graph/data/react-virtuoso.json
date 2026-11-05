@@ -1,0 +1,53 @@
+{
+ "name": "react-virtuoso",
+ "latest": "4.18.20",
+ "dist_tags": {
+  "@autoheight": "0.17.6-beta",
+  "preview": "1.10.3-beta.0",
+  "next": "2.2.9-beta.1",
+  "rollup-build": "2.8.0-alpha.4",
+  "default-export": "0.0.0-development",
+  "prepend": "0.0.0-prepend",
+  "initial-location-fix": "4.8.0-development",
+  "horizontal": "0.0.0-semantic-release",
+  "latest": "4.18.20"
+ },
+ "latest_published": "2026-10-29T07:45:22.511Z",
+ "modified": "2026-10-29T07:45:22.845Z",
+ "created": "2019-05-04T05:54:19.610Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 248065,
+ "fileCount": 6,
+ "tarball": "https://registry.npmjs.org/react-virtuoso/-/react-virtuoso-4.18.20.tgz",
+ "dependencies": {},
+ "peerDependencies": {
+  "react": ">=16 || >=17 || >= 18 || >= 19",
+  "react-dom": ">=16 || >=17 || >= 18 || >=19"
+ },
+ "repository": "git+https://github.com/petyosi/react-virtuoso.git",
+ "recent_versions": [
+  [
+   "4.18.16",
+   "2026-09-29T16:03:47.020Z"
+  ],
+  [
+   "4.18.17",
+   "2026-10-13T06:16:13.384Z"
+  ],
+  [
+   "4.18.18",
+   "2026-10-13T07:32:47.952Z"
+  ],
+  [
+   "4.18.19",
+   "2026-10-13T07:44:45.279Z"
+  ],
+  [
+   "4.18.20",
+   "2026-10-29T07:45:22.511Z"
+  ]
+ ],
+ "homepage": "https://virtuoso.dev/",
+ "description": "A virtual scroll React component for efficiently rendering large scrollable lists, grids, tables, and feeds"
+}

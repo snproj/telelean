@@ -1,0 +1,51 @@
+{
+ "name": "@dnd-kit/react",
+ "latest": "0.5.3",
+ "dist_tags": {
+  "latest": "0.5.3",
+  "beta": "0.5.3-beta-20261031140713"
+ },
+ "latest_published": "2026-10-31T14:09:27.111Z",
+ "modified": "2026-10-31T14:09:27.419Z",
+ "created": "2024-06-03T16:57:28.692Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 243784,
+ "fileCount": 23,
+ "tarball": "https://registry.npmjs.org/@dnd-kit/react/-/react-0.5.3.tgz",
+ "dependencies": {
+  "tslib": "^2.6.2",
+  "@dnd-kit/dom": "^0.5.3",
+  "@dnd-kit/state": "^0.5.3",
+  "@dnd-kit/abstract": "^0.5.3"
+ },
+ "peerDependencies": {
+  "react": "^18.0.0 || ^19.0.0",
+  "react-dom": "^18.0.0 || ^19.0.0"
+ },
+ "repository": "git+https://github.com/clauderic/dnd-kit.git",
+ "recent_versions": [
+  [
+   "0.5.2-beta-20261029020134",
+   "2026-10-29T02:02:47.359Z"
+  ],
+  [
+   "0.5.2-beta-20261030024109",
+   "2026-10-30T02:42:15.105Z"
+  ],
+  [
+   "0.5.2",
+   "2026-10-31T14:04:54.387Z"
+  ],
+  [
+   "0.5.3-beta-20261031140713",
+   "2026-10-31T14:08:17.478Z"
+  ],
+  [
+   "0.5.3",
+   "2026-10-31T14:09:27.111Z"
+  ]
+ ],
+ "homepage": "https://github.com/clauderic/dnd-kit#readme",
+ "description": "[![Stable release](https://img.shields.io/npm/v/@dnd-kit/react.svg)](https://npm.im/@dnd-kit/react)"
+}

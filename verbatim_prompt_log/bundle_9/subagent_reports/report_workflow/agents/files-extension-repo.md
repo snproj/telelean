@@ -1,0 +1,337 @@
+# files:extension-repo (agent a6b2e74445d528f31)
+
+## package_overview
+This slice covers everything around the core, runner and webview libraries: the VS Code adapter (packages/extension), the monorepo's root configuration and scripts, the sample model, the shared Lean test fixtures and the design and status docs.
+
+packages/extension is the thin host described in m1-plan section 2. It owns no model semantics: parsing, statuses, edit planning, undo and history, Lean checking and Claude runs are delegated to the runner, and through it to core. extension.ts builds a TeleleanHost (vscode/host.ts). The host contributes three commands (Open Board, Initialize Model Here, Refresh Lean Check) and a serializer for the 'telelean.board' webview panel. Activation is triggered by a workspace that contains .telelean/config.json, or by a board restored after a reload, and it is cheap: nothing parses files, runs Lean or resolves a Claude binary until a board opens and the user starts a run. Untrusted and virtual workspaces are not supported.
+
+The source has three module groups:
+- **src/logic/** holds vscode-free logic that is unit-tested.
+  - BoardSession dispatches messages for one board. Board edits go through one FIFO queue and run messages through a second, so a run start or an Accept never blocks typing. Cancel and read-only requests skip both queues. Publishes are coalesced, a subject that vanishes makes the board switch to another, and dependentCards are added to needs-confirmation answers.
+  - Around it sit actionMapping (protocol message to BoardAction), editApplier, changeBatcher, modelPaths, textSource, settings, runs, initialize, restore, roots, groups and the history and proposal preview helpers.
+  - editApplier (CheckedEditApplier) checks each file's current text against the planned before-text, writes minimal line edits, undoes a partially applied edit, and saves.
+  - changeBatcher debounces events and recognises echoes of telelean's own writes.
+  - modelPaths keeps paths inside the root and refuses symlinks that point out of it.
+  - settings clamps the telelean.* values into the runner's settings.
+  - runs holds the consent texts, the lazy Claude backend factory (which refuses in Test mode) and the busy check.
+- **src/vscode/** holds the VS Code adapters.
+  - host.ts: the commands, one BoardPanel per root, restore after reload, the consent modal (only a yes is remembered, per root, in globalState), RunManager construction, and the TeleleanApi with Test-mode hooks.
+  - registry.ts: one ModelWorkspace and one RunManager per root, kept until the window closes. Typing, saves and file-watcher events become invalidate calls, plus Lean refreshes while the root's board is open.
+  - editor.ts: the WorkspaceEdit port and a TextSource that reads open buffers first.
+  - historyProvider.ts: read-only telelean-history: and telelean-proposal: multi-file diffs, opened beside the board.
+  - runner.ts: a replaceable record of the runner's factory functions.
+- **src/board/** holds BoardPanel: the webview lifecycle, strict nonce-CSP HTML from html.ts, validation of every inbound message with core.parseWebviewToHost, queueing until the session attaches, and the static sample boards.
+
+The data flow runs both ways:
+1. A gesture in the webview reaches BoardPanel, which validates it and passes it to BoardSession. BoardSession calls ModelWorkspace.perform, undo, redo or revert, or RunManager.start, answer, accept and so on.
+2. The workspace writes through the extension's CheckedEditApplier (one WorkspaceEdit, then a save) and fires onDidChange. The registry forwards that to the session, which republishes workspace and graph. RunManager.onDidChange produces run and proposal messages.
+3. Typing, saves and writes by other programs come back through the registry's watchers, with echoes of telelean's own writes suppressed.
+
+**Build and test.** tsconfig paths resolve @telelean/core and @telelean/runner/* to their TypeScript sources. esbuild bundles src, including the runner's llm, run, gate, shadow and proposal modules, the MCP SDK and diff, into a CommonJS dist/extension.js with an injected import.meta.url. The build copies the runner's PreToolUse path guard to dist/bin and checks that the bundle loads under a stub vscode module. packages/webview builds dist/webview separately. Unit tests run in vitest against a vscode stub. Smoke and e2e suites run in an isolated xvfb VS Code 1.140 profile that scripts/smoke.mjs prepares. Every layer sets TELELEAN_NO_REAL_CLAUDE=1 and uses the FakeBackend.
+
+**Root and support files.**
+- The root is an npm workspaces monorepo with exact-pinned root devDependencies and no runtime dependencies, Node 24.22.2 and one strict shared tsconfig base. It is not currently a git repository.
+- scripts/ holds the M0 CLI smoke test, the M2 walkthrough driver and the shared quota-tripwire rule. Both scripts are dry by default and go live only with a flag plus an environment variable. The live walkthrough has not been run.
+- mental_model/ is the Spyro sample (a Lean 4.35 Lake project plus .telelean sidecars). The smoke tests, the runner's integration tests and the walkthrough copy it rather than build it in place.
+- test-fixtures/ holds the M0-era Spyro base project and the overlays, recordings, edit scripts and FakeBackend scripts behind the runner's lean, semantic, gate and run tests.
+- docs/ holds the design amendments, the M0 report, the M1 and M2 plans, the decisions log and the user guide.
+
+**Where the docs and code disagree:**
+- Both plans ask for a docs/m1-report.md and a docs/m2-report.md; neither exists.
+- m2-plan section 8.2 says the consent choice is remembered, but the code remembers only a yes.
+- m0-report is an outdated snapshot.
+
+## files
+- **path:** .gitignore
+  - **purpose:** Root ignore list: node_modules/, dist/, out/, .vscode-test/, *.tsbuildinfo, Playwright's test-results/ and playwright-report/, and Lean's .lake/. The repository root is currently not a git repository, so the file is inert; if it became one, the built extension (packages/extension/dist) and the downloaded VS Code test build would stay untracked.
+  - **key_exports:** n/a (ignore patterns)
+  - **depends_on:** none
+- **path:** .node-version
+  - **purpose:** Pins Node 24.22.2 (the installed node is v24.22.2), matching the root package.json engines field (node >=24.22.2).
+  - **key_exports:** 24.22.2
+  - **depends_on:** none
+- **path:** package.json
+  - **purpose:** Root of the npm-workspaces monorepo 'telelean-monorepo' (private, 0.0.0, workspaces packages/*); `npm run build` and `npm test` run each package's script with --if-present; engines node >=24.22.2. Every tool and library is an exact-pinned root devDependency, and no package declares runtime dependencies (the extension bundles what it needs).
+  - **key_exports:** scripts build, test. devDependencies: typescript 6.0.3, esbuild 0.28.2, vite 8.3.5, @vitejs/plugin-react, vitest 5.0.5, react/react-dom 19.3.1, zustand 5.0.16, zod 4.6.7, @atlaskit/pragmatic-drag-and-drop (+auto-scroll, hitbox), @vscode/codicons, @types/vscode 1.140.0, @types/vscode-webview, @vscode/test-cli 0.0.15, @vscode/test-electron 3.1.0, @playwright/test 1.64.1, @modelcontextprotocol/sdk 1.32.2, diff 9.0.0, @types/node 24.19.2, @types/mocha, @types/react(-dom)
+  - **depends_on:** packages/* workspaces
+- **path:** tsconfig.base.json
+  - **purpose:** Shared compiler options that the packages extend: target and lib ES2023, module/moduleResolution NodeNext, strict plus noUncheckedIndexedAccess, isolatedModules, esModuleInterop, resolveJsonModule, skipLibCheck, forceConsistentCasingInFileNames, sourceMap.
+  - **key_exports:** compilerOptions
+  - **depends_on:** extended by packages/*/tsconfig.json (the extension overrides module/moduleResolution to Preserve/Bundler)
+- **path:** docs/decisions-log.md
+  - **purpose:** Running log (~100 KB) of every smaller decision taken while planning, building, integrating and fixing M1 and M2: one bold line per decision, then its reason and source (plan, WP1-WP6, int, fix). It opens with 'Decisions awaiting you', currently one question: whether 'Raw Lean diff…' should open beside the board (the current code) or as a tab in the board's own group. Sections 1-13 are M1 and 14-31 are M2.
+  - **key_exports:** M1 sections: 1 model folder, 2 markup, 3 Lean checks, 4 statuses/arrows/vocabulary, 5 board actions, 6 undo/history, 7 board, 8 extension host, 9 tests, 10-11 post-verification fixes, 12-13 closing fixes (echo detection, dependentCards). M2 sections: 14 runs, 15 shadow, 16 prototype gate, 17 check loop, 18 suggested premises, 19 proposal/review/Accept, 20 attempt logs, 21 egress/backend/quota safety, 22 extension host and settings, 23 board, 24 M1 carry-overs, 25 tests, 26 integration, 27-29 verification fix rounds, 30-31 closing rounds (run.reuseLeanBuild off by default, empty systemd scope fix, Accepted vs Recorded via the run's accepted field)
+  - **depends_on:** docs/m1-plan.md (sections 13.1, 14), docs/m2-plan.md (section 15.1); describes code in packages/* and scripts/
+- **path:** docs/design-amendments.md
+  - **purpose:** The user-approved amendments of turn 2 (2026-11-01). They override 02_design_decisions.md and 03_architecture.md where those conflict, and define the CLI-based Claude harness, the gate loop and the git-ref history that M1 and M2 implement.
+  - **key_exports:** A1: Claude through the user's own Claude Code CLI (stream-json; file tools plus telelean's MCP tools only; no shell, web, user settings, hooks, CLAUDE.md or API-key env) behind an LLM-agnostic LlmBackend; the Agent SDK is dropped. A2: the gate loop (build, #print axioms footprint, no sorry, frozen statement via lake comparator, no forbidden commands, user text untouched), automatic retry with the exact failure, revert after 3 attempts. A3: history as private refs refs/telelean/… with preview, revert, disk counter and keep-last-N. A4: several subjects. A5: xvfb tests; mental_model/ is the sample. A6: M0 is three spikes plus one announced smoke test. A7: ~/telelean_scripts commands mapped to board actions. A8: pointer to the M0 lessons.
+  - **depends_on:** verbatim_prompt_log/bundle_1/user_requested_documents/02_design_decisions.md and 03_architecture.md; docs/m0-report.md (A8)
+- **path:** docs/m0-report.md
+  - **purpose:** Report of milestone M0 (2026-11-01). It covers three spikes: sandboxed Lean under systemd-run/MemoryMax/bwrap with lake comparator; the offline Claude CLI harness plus a live Haiku smoke test whose scenarios a/b/c passed for about $0.003; the board prototype in a real VS Code 1.140 webview. It is a historical snapshot: its inventory, its test count (201) and its note that the board 'shows the static Spyro sample; nothing reads your files yet' were superseded by M1 and M2.
+  - **key_exports:** What exists now; Spike 1-3 evidence tables; Design changes learned in M0 (keeper with setpriv --pdeathsig, OOMPolicy=stop, bwrap exit-code as the start signal, toolchain-first PATH, comparator wording, MCP alwaysLoad + ENABLE_TOOL_SEARCH=false, per-server timeout, initialize account check, hook-listing check, minimum CLI 2.1.295, Grep/Glob hidden-file rule, one-dot colour ids, queued webview messages); Open items; Re-running commands
+  - **depends_on:** docs/design-amendments.md (A6, A8); scripts/smoke-claude.mjs; packages/*
+- **path:** docs/m1-plan.md
+  - **purpose:** Architect's plan for M1, 'the map without AI' (2026-11-01, turn 9), corrected by an independent review and later annotated with '(fix)' notes. Builders implemented WP1-WP6 against its frozen contracts; WP5 is this extension host (activation/opt-in, the three commands, BoardPanel per root with serializer, EditApplier/TextSource, watchers and refresh triggers, history diff provider, colours, isolated smoke profile). Integration step 6 asks for a docs/m1-report.md, which does not exist.
+  - **key_exports:** 0 status; 1 scope checklist; 2 architecture diagram and data flows (files to board, board to files, refresh triggers); 3 runtime flows; 4 semantic layer (lake build + .ilean + generated check file -> LeanFacts); 5 frozen contracts; 6 core semantics (binding, D-11 kind changes, D-15 statuses, D-13 edges, vocabulary, diagnostics, graph.json, escaping); 7 folder layout, Initialize, subjects, sample; 8 undo vs history; 9 work packages and owned paths; 10 test isolation and RAM rules; 11 integration; 12 risks; 13 decisions; 14 contract change log; 15 review changes
+  - **depends_on:** docs/design-amendments.md, docs/m0-report.md, 02_design_decisions.md, 03_architecture.md
+- **path:** docs/m2-plan.md
+  - **purpose:** Architect's plan for M2, one-shot 'These suffice' with Claude (2026-11-01, turn 9, reviewer-corrected; ~196 KB, the largest doc). Section 8 specifies the extension's part (RunManager per root, egress consent, model/effort/claude.path/run.* settings, lazy backend factory refused in Test mode, runsDir in globalStorage, bundling with the copied path guard); section 12 is the live-Claude walkthrough procedure, not yet executed. It disagrees with the code in two places: section 8.2 says the consent 'choice is remembered per root', but the host remembers only a yes (Cancel asks again, as the user guide says); integration step 7 asks for a docs/m2-report.md, which does not exist.
+  - **key_exports:** 0/0.1 status and reviewer corrections; 1 scope; 2 run state machine; 3 prototype gate (G0 denylist/file rules, permitted set, G1/G3/G5 rules, normalisation, findings, environment failures, gate loop and revert, ghost check), re-checked line by line against the code in the closing rounds; 4 runner flows (preflight, shadow, tool host, caps, proposal, persistence, cancel, feedback, adoption); 5 system prompt, context bundle, tool descriptions; 6 protocol and board data; 7 Accept; 8 extension host, settings, bundling; 9 WP1-WP6 with acceptance tests (WP5: AT5.1-AT5.9); 10 testing without real Claude and the three quota tripwires; 11 integration; 12 walkthrough procedure and cost estimate; 13 risks; 14 contract change log; 15 decisions
+  - **depends_on:** docs/design-amendments.md, docs/m0-report.md, docs/m1-plan.md, 02/03 design docs
+- **path:** docs/user-guide.md
+  - **purpose:** User-facing guide. Sections 1-9 cover the M1 board: loading the build, Initialize, layout and keyboard, every action and its on-disk effect, D-11 kind changes, history, subjects, badges/chips/arrows, limits, troubleshooting. Section 10 covers M2 runs: starting one, consent and what leaves the machine, run panel, questions, check loop, proposal overlay, review, suggested premises, Accept/Feedback/Discard, reload/resume, caps, settings, limits, troubleshooting. Its settings, defaults and bounds match packages/extension/package.json, and its consent behaviour (yes remembered, Cancel not) matches the host code.
+  - **key_exports:** Sections 1-9 (M1 board), 10.1-10.15 (M2 runs)
+  - **depends_on:** describes packages/extension (commands, settings), the webview board and the runner's behaviour
+- **path:** mental_model/.gitignore
+  - **purpose:** Gitignores telelean's generated outputs in the sample model: /.lake/, /.telelean/graph.json, /.telelean/frozen/, /.telelean/sessions/, /.telelean/*.tmp. These are the same paths the extension's classifyModelPath ignores.
+  - **key_exports:** n/a
+  - **depends_on:** none
+- **path:** mental_model/.telelean/config.json
+  - **purpose:** The opt-in marker that makes this folder a telelean model root ({format 'telelean-config', version 1, library 'Model'}). The extension's activation event, findModelRoots and isModelRoot all key on this file; without it there is no workspace and no Lean. The folder currently has no .lake, graph.json or M2 sidecars (decisions.json and attempts.jsonl appear after runs).
+  - **key_exports:** format, version, library
+  - **depends_on:** lakefile.toml (library Model)
+- **path:** mental_model/.telelean/subjects/Spyro/layout.json
+  - **purpose:** Card-order sidecar for subject Spyro ({format 'telelean-layout', version 1, columns ASSUMPTION/DERIVATION/GOAL}). All columns are empty, so the board uses file order until a reorder writes this file.
+  - **key_exports:** columns
+  - **depends_on:** Model/Spyro/*.lean (card ids)
+- **path:** mental_model/lakefile.toml
+  - **purpose:** Lake package 'Model': default target Model, autoImplicit and relaxedAutoImplicit off, one lean_lib 'Model'.
+  - **key_exports:** lean_lib Model
+  - **depends_on:** lean-toolchain
+- **path:** mental_model/lake-manifest.json
+  - **purpose:** Lake manifest with an empty package list (version 1.3.0, name Model). The sample has no Lake dependencies; telelean refuses projects that have them.
+  - **key_exports:** packages: []
+  - **depends_on:** lakefile.toml
+- **path:** mental_model/lean-toolchain
+  - **purpose:** Pins leanprover/lean4:v4.35.0, the only toolchain telelean checks with Lean (other toolchains fall back to syntactic mode).
+  - **key_exports:** leanprover/lean4:v4.35.0
+  - **depends_on:** none
+- **path:** mental_model/Model.lean
+  - **purpose:** Library root: `import Model.Spyro`. create-subject adds one import per new subject here.
+  - **key_exports:** module Model
+  - **depends_on:** Model/Spyro.lean
+- **path:** mental_model/Model/Spyro.lean
+  - **purpose:** Subject root module; imports Model.Spyro.Vocabulary, Model.Spyro.Inbox and Model.Spyro.Main.
+  - **key_exports:** module Model.Spyro
+  - **depends_on:** Model/Spyro/{Vocabulary,Inbox,Main}.lean
+- **path:** mental_model/Model/Spyro/Inbox.lean
+  - **purpose:** An empty `namespace Spyro` (importing Vocabulary). The board's add-card action appends new comment-only cards here.
+  - **key_exports:** module Model.Spyro.Inbox
+  - **depends_on:** Model/Spyro/Vocabulary.lean
+- **path:** mental_model/Model/Spyro/Main.lean
+  - **purpose:** The Spyro walkthrough as four '@@ telelean v1' blocks. pg-no-dark-past is an ASSUMPTION with stance rule and no lean: pin, the card a run must formalise. cynder-dark-past and new-spyro-pg are formalised ASSUMPTIONs (abbrev statement + `axiom ….holds`); cynder-not-good is a GOAL declaring all three as premises, with `abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro` and no proof. It is the target of the M2 walkthrough and the extension's run suites.
+  - **key_exports:** cards pg-no-dark-past, cynder-dark-past, new-spyro-pg, cynder-not-good; Lean Spyro.cynder_dark_past(.holds), Spyro.new_spyro_pg(.holds), Spyro.cynder_not_good
+  - **depends_on:** Model/Spyro/Vocabulary.lean, Model/Spyro/Inbox.lean
+- **path:** mental_model/Model/Spyro/Vocabulary.lean
+  - **purpose:** The subject's vocabulary in namespace Spyro, each item with a docstring gloss: sorts Character and Game (axioms), existence presuppositions Character.exists/Game.exists with Nonempty instances, predicates HasDarkPast, IsPG, GoodAddition, and noncomputable opaque constants cynder and newSpyro.
+  - **key_exports:** Character, Game, Character.exists, Game.exists, HasDarkPast, IsPG, GoodAddition, cynder, newSpyro
+  - **depends_on:** none (Lean core only)
+- **path:** packages/extension/.vscode-test.mjs
+  - **purpose:** @vscode/test-cli config for the in-VS-Code tests. It refuses to start without TELELEAN_SMOKE_DIR (the isolated profile from scripts/smoke.mjs) and runs two instances one after the other on the VS Code 1.140.0 build in ./.vscode-test/ (~1 GB, never re-downloaded): 'smoke' (activation.test.js first, then every suite except e2e*) and 'e2e' (e2e.test.js, then e2e-runs.test.js, with --remote-debugging-port from TELELEAN_CDP_PORT). Both use mocha tdd (60 s timeout), user-data, extensions and HOME/XDG_* inside the scratch profile, disabled extensions/telemetry/trust/GPU, X11, no VSCODE_*/ELECTRON_* variables, isolated git config, LEAN_NUM_THREADS=4 and TELELEAN_NO_REAL_CLAUDE=1.
+  - **key_exports:** default export defineConfig([smoke, e2e])
+  - **depends_on:** scripts/smoke.mjs (sets TELELEAN_SMOKE_DIR, TELELEAN_TEST_TMP, TELELEAN_E2E_ROOT, TELELEAN_RUNS_ROOT, TELELEAN_RUNS_E2E_ROOT, TELELEAN_CDP_PORT); out/test/suite/*.test.js built by scripts/build.mjs
+- **path:** packages/extension/package.json
+  - **purpose:** Manifest of the VS Code extension 'telelean': publisher telelean, version 0.0.1, private, engines vscode ^1.140.0, main ./dist/extension.js; extension id telelean.telelean. It activates on workspaceContains:**/.telelean/config.json and onWebviewPanel:telelean.board, and does not support untrusted or virtual workspaces (Lean builds can run code). It declares no dependencies; scripts: build, build:all (webview first), typecheck, test:unit (vitest), test:smoke (scripts/smoke.mjs), test (all of them).
+  - **key_exports:** Commands: telelean.openBoard 'Open Board'; telelean.initializeModel 'Initialize Model Here' (also in the Explorer folder context menu); telelean.refresh 'Refresh Lean Check' (declares a $(refresh) icon that no menu uses). Settings (17; all take effect after a window reload; resource-scoped unless noted): memory.capGiB 4 (1-64, machine-overridable); memory.minAvailableGiB 2 (0-64, machine-overridable); refresh.enabled true; refresh.debounceMs 750 (0-60000); git.snapshotRefs true; git.path 'git' (machine); model 'claude-opus-5-5'; effort 'high' (low|medium|high|xhigh|max); claude.path '' (machine; empty means auto-detect: VS Code Claude Code extension binary, then PATH, then ~/.local/bin; needs version 2.1.295+); run.maxTurns 80 (1-1000); run.maxChecks 25 (1-500); run.maxAgentMinutes 20 (1-240); run.leanJobSeconds 120 (10-1800); run.maxGateAttempts 3 (1-10); run.keepRuns 10 (1-100, machine); run.contextScope 'subject'|'neighbourhood'; run.reuseLeanBuild false. Colours (dark/light/high-contrast/high-contrast-light defaults; dark shown): telelean.kindAssumption #B180D7, telelean.kindDerivation #89D185, telelean.kindGoal #D18616, telelean.formalizedAura #3794FF, telelean.vocabulary #4EC9B0, telelean.highlight #E5C07B
+  - **depends_on:** scripts/build.mjs, scripts/smoke.mjs, ../webview (build:all), root devDependencies
+- **path:** packages/extension/scripts/build.mjs
+  - **purpose:** npm run build. Deletes dist/extension.js(.map) and dist/bin, bundles src/extension.ts with esbuild into dist/extension.js (logging which runner src/ folders went in), copies the path guard, checks that the bundle loads, then rebuilds out/test/suite/*.test.js for the VS Code suites. It never touches dist/webview, which packages/webview builds (build:all runs both).
+  - **key_exports:** none (script)
+  - **depends_on:** ./build-steps.mjs, ./esbuild-options.mjs, esbuild
+- **path:** packages/extension/scripts/build-steps.mjs
+  - **purpose:** Build steps shared by build.mjs and test/unit/bundle.test.ts. copyGuardScript copies packages/runner/bin/telelean-path-guard.mjs to <dist>/bin/ and checks the copy is byte-identical; the Claude CLI runs it as a PreToolUse hook, and the extension passes its path explicitly. checkBundleLoads runs check-bundle.cjs in a fresh Node (60 s timeout, TELELEAN_NO_REAL_CLAUDE=1) and throws with the output if the bundle does not load.
+  - **key_exports:** GUARD_SOURCE, GUARD_NAME, copyGuardScript, checkBundleLoads
+  - **depends_on:** ../../runner/bin/telelean-path-guard.mjs, ./check-bundle.cjs
+- **path:** packages/extension/scripts/check-bundle.cjs
+  - **purpose:** Standalone check (node scripts/check-bundle.cjs <bundle>). It maps `vscode` to a minimal stub (version, ExtensionMode) via Module._resolveFilename and require.cache, then requires the bundle without activating it. It exits non-zero unless the bundle exports activate and deactivate, which catches module-load crashes such as import.meta.url in CommonJS.
+  - **key_exports:** none (CLI script)
+  - **depends_on:** the bundle path argument
+- **path:** packages/extension/scripts/esbuild-options.mjs
+  - **purpose:** esbuild options shared by build.mjs and the bundle unit test. commonOptions: bundle, platform node, CommonJS, target node22, sourcemaps, tsconfig.json paths, `import.meta.url` defined as teleleanImportMetaUrl (injected from import-meta-url.mjs). extensionOptions: src/extension.ts -> dist/extension.js with vscode external. suiteOptions: test/suite/*.test.ts -> out/test/suite with vscode, mocha and playwright-core external.
+  - **key_exports:** IMPORT_META_URL_INJECT, commonOptions, extensionOptions, suiteOptions
+  - **depends_on:** ./import-meta-url.mjs, ../tsconfig.json
+- **path:** packages/extension/scripts/import-meta-url.mjs
+  - **purpose:** esbuild inject module exporting teleleanImportMetaUrl = pathToFileURL(__filename).href. Bundled runner llm/ and path-guard modules that read import.meta.url get the bundle's file URL instead of undefined in CommonJS (m2-plan section 8.4, risk R2); the extension still passes the guard path explicitly.
+  - **key_exports:** teleleanImportMetaUrl
+  - **depends_on:** none
+- **path:** packages/extension/scripts/smoke.mjs
+  - **purpose:** npm run test:smoke. Makes an isolated profile $TELELEAN_TEST_TMP/vscode-<pid>/ (refusing paths under the real HOME). In ws/ it puts two copies of mental_model/ (mental_model; second_model with an escape.lean symlink pointing outside it), plain_folder and empty_folder; three more copies sit outside ws/ (e2e/e2e_model, runs/runs_model, runs-e2e/runs_e2e_model; the header comment says 'two more'). It writes user settings that turn off AI features, telemetry, updates and trust, then runs `xvfb-run -a npx vscode-test` with core dumps off and TELELEAN_NO_REAL_CLAUDE=1. Afterwards it checks that the isolated user-data dir was used, that the real ~/.copilot, ~/.config/Code, ~/.config/google-chrome and Trash listings are unchanged, and that no process or telelean-* systemd unit is left (killing or stopping leftovers); it writes smoke-summary.json and exits 1 on any failure.
+  - **key_exports:** none (script)
+  - **depends_on:** ./smoke-units.mjs, ../.vscode-test.mjs, mental_model/, xvfb-run, systemctl --user, pgrep
+- **path:** packages/extension/scripts/smoke-units.mjs
+  - **purpose:** Plain helpers (unit-tested in test/unit/smokeUnits.test.ts) that decide whether a leftover telelean-<run id>-<n>.scope systemd unit belongs to this smoke run. Run ids are tlws<pid>_<w>_<k> (workspace refreshes), p<pid> (runLean default) or Claude run ids, matched against extension-host pids and run ids found in the instance's logs and globalStorage run dirs. leftoverAction returns 'fail' (a live process of this run inside), 'stop' (this run's but empty, a regression of the scope-leak fix) or 'keep' (another builder's).
+  - **key_exports:** SCOPE_UNIT, idsInLog, collectOwners, unitOwner, leftoverAction
+  - **depends_on:** node:fs (reads the instance's user-data logs and runs dirs)
+- **path:** packages/extension/src/api.ts
+  - **purpose:** Type-only definition of the TeleleanApi that `activate` returns, which tests (and later integrations) use to observe and drive boards, plus the Test-mode-only `testing` hooks and the argument/result types of the commands.
+  - **key_exports:** TeleleanApi (onDidReceiveBoardMessage, onDidReceiveBoardEvent, onDidPostToBoard, boardPanel, boards(), boardFor, simulateBoardMessage, workspaceFor, runsFor, restoreBoard, boardRecords, testing?), TeleleanTesting (useRunner, answerPrompts, useRunBackend, disposeWorkspace, reset), BoardInfo, BoardMessageEvent, BoardPostEvent, PromptId ('initGit'|'initializeGit'|'initializeLakeProject'|'claudeConsent'), OpenBoardArgs (root, subject, pick, sample 'spyro'|'spyro-proved'|'large', offerInitialize), OpenBoardResult, InitializeArgs, RefreshResult, re-export RunBackendOverride
+  - **depends_on:** @telelean/core protocol types; runner run/types (RunManager), workspace (ModelWorkspace); ./logic/restore, ./logic/runs, ./vscode/runner (types)
+- **path:** packages/extension/src/board/BoardPanel.ts
+  - **purpose:** Wraps one WebviewPanel (viewType 'telelean.board') for a model root or a static sample. It sets the webview options (scripts on, command URIs off, local resources limited to dist/webview; new panels also get the find widget and retainContextWhenHidden), renders the nonce-CSP HTML, validates every inbound message with core.parseWebviewToHost, and routes it by mode: loading queues it, session hands it to BoardSession, sample answers ready/copy and shows a notice for edits, failed resends the error on 'ready'. post() resolves at once without waiting for delivery (VS Code delays it for restored webviews) and reports delivery to the log and onPost later.
+  - **key_exports:** BoardPanel (viewType, createPanel, webviewOptions, attach, showSample, fail, receive, post, reveal, dispose, onDidDispose, session, isSample, isFailed), BoardPanelDeps, SampleName, SAMPLE_NAMES, sampleGraph
+  - **depends_on:** @telelean/core (hostMessage, parseWebviewToHost, spyroGraph, spyroProvedGraph, largeGraph), ./html, ../logic/boardSession (type), node:crypto
+- **path:** packages/extension/src/board/html.ts
+  - **purpose:** Pure (vscode-free) generator of the board's webview HTML with a strict CSP: default-src 'none'; scripts by nonce only; styles from the webview origin or nonce; images and fonts from the origin; no unsafe-inline or unsafe-eval. The classic boot.js loads in <head> before the stylesheet, so its securitypolicyviolation listener sees refused resources; the module webview.js loads after parsing. All attributes are HTML-escaped.
+  - **key_exports:** renderBoardHtml, boardCsp, BoardHtmlArgs
+  - **depends_on:** none
+- **path:** packages/extension/src/extension.ts
+  - **purpose:** Entry point, bundled to dist/extension.js. activate creates the 'telelean' log output channel, constructs and registers a TeleleanHost, logs the mode and returns host.api(). deactivate awaits host.shutdown(), which disposes every root's RunManager first (active runs saved as interrupted, Claude sessions closed) before VS Code disposes the subscriptions.
+  - **key_exports:** activate, deactivate; re-exported API types (BoardInfo, BoardMessageEvent, BoardPostEvent, InitializeArgs, OpenBoardArgs, OpenBoardResult, RefreshResult, RunBackendOverride, TeleleanApi)
+  - **depends_on:** ./vscode/host, ./api
+- **path:** packages/extension/src/logic/actionMapping.ts
+  - **purpose:** Maps the seven board-edit protocol messages (addNode, kindChange, theseSuffice, editNode, deleteNode, reorder, createSubject) to runner BoardActions (add-node; change-kind including confirmedDependents; set-premises; edit-node; delete-node including confirmed; reorder; create-subject), filling in the board's subject. A theseSuffice with no premises maps to nothing, and the host answers not-yet with SELF_EVIDENT_NOT_YET, which points to the tray's 'Self-evident?' run.
+  - **key_exports:** ACTION_MESSAGE_TYPES, ActionMessageType, ActionMessage, isActionMessage, toBoardAction, requestIdOf, SELF_EVIDENT_NOT_YET
+  - **depends_on:** @telelean/core (BoardAction, WebviewToHostMessage types)
+- **path:** packages/extension/src/logic/boardSession.ts
+  - **purpose:** vscode-free controller for one board (BoardSession): it handles every validated webview message for a root and posts workspace, graph, history, actionResult, notice, run and proposal messages back through BoardSessionPorts. Board edits (actions, undo/redo, subject switch, history revert/prune, initGit) run one at a time in one queue and run messages in a second; read-only requests (copy, open in editor, refresh, history list/preview, openProposalDiff) and cancelRun skip the queues. It coalesces publishes, switches away from a vanished subject, adds dependentCards (cards in any subject) to needs-confirmation outcomes, and starts a run as busy check -> egress consent -> RunManager.start (the manager runs preflight and declares the premises), with a toast after run successes (Undo only on Accept).
+  - **key_exports:** BoardSession (handle, publishRuns, onWorkspaceChange, requestPublish, dispose, root, subject, workspace), BoardSessionPorts, BoardSessionOptions, ConfirmId, LogLevel, outcomeFromError, emptyHistoryListing, describeAvailability
+  - **depends_on:** @telelean/core (ActionError, hostMessage, LIMITS, protocol/model types); runner run/types (RunManager, RunChange), workspace (ModelWorkspace, WorkspaceChange); ./actionMapping, ./proposalPreview, ./runs
+- **path:** packages/extension/src/logic/changeBatcher.ts
+  - **purpose:** PathBatcher is a trailing debounce of file paths with flush and drop. SelfWrites remembers for 5 s the texts telelean wrote to each file (null = deleted), separately for the 'editor' and 'disk' streams, so watcher events that only echo telelean's writes (or saves already handled) are ignored, while any other text makes that stream forget. isDiskEcho reads a file once and matches it against several SelfWrites sources before any of them forgets.
+  - **key_exports:** PathBatcher, SelfWrites (record, isEcho, has, matches), EchoStream, isDiskEcho
+  - **depends_on:** none
+- **path:** packages/extension/src/logic/editApplier.ts
+  - **purpose:** CheckedEditApplier, the runner EditApplier behind every board write. It refuses paths outside the root and duplicate paths, opens in-place documents first, and refuses with ActionError 'conflict' if any file's current text (open buffer first) differs from FileChange.before. Otherwise it plans one batch (line-level minimal replacements via diffLines, plus create/delete), announces the writes to onWillWrite and applies it. If VS Code refuses a partly applied edit, it changes the applied files back ('conflict') or reports the files left changed ('internal'); finally it saves edited files and reports unsaved ones through onUnsaved.
+  - **key_exports:** CheckedEditApplier, CheckedEditApplierOptions, WorkspaceEditPort (prepare?, apply, save), FileOperation, planFileOperations, minimalTextEdits, applyTextReplacements, lineStarts, positionAt, TextReplacement
+  - **depends_on:** @telelean/core (ActionError, FileChange, Position, Range); runner workspace (EditApplier, TextSource types); diff (diffLines); ./modelPaths
+- **path:** packages/extension/src/logic/groups.ts
+  - **purpose:** Chooses where files and diffs open, beside the board but never over it, and without splitting its group when another group exists. groupBesideBoard returns a group already showing the file, else the first other group, else undefined (the caller then uses ViewColumn.Beside). focusCommandBesideBoard returns the workbench.action.focus*EditorGroup command that makes that group active (creating group 2 when the board is alone), since vscode.changes takes no view column.
+  - **key_exports:** GroupInfo, groupBesideBoard, FOCUS_GROUP_COMMANDS, focusCommandBesideBoard
+  - **depends_on:** none
+- **path:** packages/extension/src/logic/historyPreview.ts
+  - **purpose:** vscode-free part of the read-only history preview (D-33). It defines the telelean-history scheme, builds the tab title ('History: <label, max 40 chars> (<time>)' plus ' vs now'), formats entry times, maps a HistoryDiff to multi-file-diff rows with per-side document keys, and keeps a PreviewStore of the last 10 previews (older ones show EXPIRED_PREVIEW_TEXT).
+  - **key_exports:** HISTORY_SCHEME, PreviewDocument, PreviewRow, formatEntryTime, shortEntryTime, PREVIEW_LABEL_MAX, previewTitle, previewRows, PreviewStore, EXPIRED_PREVIEW_TEXT
+  - **depends_on:** @telelean/core (HistoryDiff type)
+- **path:** packages/extension/src/logic/initialize.ts
+  - **purpose:** vscode-free flow of 'Initialize Model Here'. It inspects the folder (empty, already a model, dependency-free Lake project, or unsupported with a reason), asks for the first subject (validated; defaultSubjectName derives one from the folder name) or confirms adding telelean to the Lake project, and plans the files and applies them through the EditApplier. It then offers git init when the folder is outside a repository and opens the board, returning an InitializeResult.
+  - **key_exports:** defaultSubjectName, subjectNameProblem, InitializePorts, GitOutcome, InitializeResult, runInitialize
+  - **depends_on:** @telelean/core (isSubjectName, SUBJECT_NAME_PATTERN, FileChange, HistoryAvailability); runner workspace (FolderInspection, InitializeOptions types)
+- **path:** packages/extension/src/logic/modelPaths.ts
+  - **purpose:** Path safety and event classification for a model root. resolveInsideRoot refuses absolute paths, backslashes, NUL, empty/./.. segments and escapes; resolveModelFile also checks the realpath so a symlink cannot leave the root; rootOfPath finds the innermost root. classifyModelPath ignores .lake/.git/node_modules, .telelean/graph.json, .telelean/frozen/, .telelean/sessions/ and top-level .telelean/*.tmp, and labels a file as sidecar (.telelean/), project (lakefile.toml/.lean, lean-toolchain, lake-manifest.json; triggers a refresh) or model (*.lean).
+  - **key_exports:** OutsideRootError, isInside, relativeModelPath, resolveInsideRoot, resolveModelFile, rootOfPath, ModelPathEvent, classifyModelPath
+  - **depends_on:** node:path, node:fs/promises (realpath)
+- **path:** packages/extension/src/logic/proposalPreview.ts
+  - **purpose:** vscode-free part of 'Raw Lean diff…' for a Claude proposal: the telelean-proposal scheme, the ProposalDiff the session hands the host (runId, proposalId, title, files from the run's base to the proposal), the tab title ('Raw Lean diff: <subject> (round n)' or the file name), the diff rows, and EXPIRED_PROPOSAL_TEXT.
+  - **key_exports:** PROPOSAL_SCHEME, ProposalDiff, proposalDiffTitle, proposalRows, EXPIRED_PROPOSAL_TEXT
+  - **depends_on:** @telelean/core (FileChange type), ./historyPreview (PreviewRow type)
+- **path:** packages/extension/src/logic/restore.ts
+  - **purpose:** Maps a board panel restored after a reload back to its model root and subject (D-22). The host keeps its own records in workspaceState because it cannot write the webview's state. restoreTarget tries, in order: a root saved by the webview, the record with the panel's title, the only root the title names, and the only root in the window.
+  - **key_exports:** BoardRecord, BOARD_TITLE_PREFIX ('telelean: '), boardTitle (adds the parent folder on name clashes), RestoreInput, RestoreTarget, restoreTarget, updateRecords (newest first, one per root, max 50), parseRecords
+  - **depends_on:** node:path
+- **path:** packages/extension/src/logic/roots.ts
+  - **purpose:** Chooses a model root for Open Board (D-28: one board per opted-in root). chooseRoot returns none (offer Initialize), single, or ask (quick pick); matchRoot accepts an absolute path or a folder name that only one root has; rootPickItems builds the quick-pick items.
+  - **key_exports:** RootChoice, chooseRoot, matchRoot, rootPickItems, ROOT_SEARCH_DEPTH (6)
+  - **depends_on:** node:path
+- **path:** packages/extension/src/logic/runs.ts
+  - **purpose:** Host-side M2 run helpers without the vscode API. It routes RUN_MESSAGE_TYPES, defines RunsHandle (a manager with its recovery promise, or a reason runs are unavailable) and the egress-consent constants. claudeBackendSettings builds the backend input: guard path dist/bin/telelean-path-guard.mjs, the running Claude Code extension's folder searched first, ~ expansion, clientApp telelean/<version>, pdeathsig. runBackendFactory builds the backend lazily at the first start that passes preflight; in Test mode it uses only a test-installed override, else rejects 'real Claude is disabled in Test mode', and never calls createClaudeBackend. busyRefusal gives the refusal text for each active run state.
+  - **key_exports:** RunRequestType, RunRequestMessage, isRunRequest, RunsHandle, RUNS_UNAVAILABLE, CONSENT_KEY_PREFIX, consentKey, CONSENT_MESSAGE, CONSENT_DETAIL, CONSENT_YES, CONSENT_DECLINED, TEST_MODE_NO_CLAUDE, GUARD_SCRIPT_NAME, CLAUDE_EXTENSION_ID ('anthropic.claude-code'), guardScriptPath, claudeExtensionDirs, expandHome, ClaudeBackendInput, claudeBackendSettings, RunBackendOverride, RunBackendDeps, runBackendFactory, busyRefusal, RUN_SUCCESS_NOTICES
+  - **depends_on:** @telelean/core (isTerminalRunState, RUN_MESSAGE_TYPES, RunView); runner llm (ResolvedBinary, HookRuntime, LlmBackend types), run/types (ClaudeBackendSettings, RunManager)
+- **path:** packages/extension/src/logic/settings.ts
+  - **purpose:** Reads the telelean.* settings through a getter into runner settings; mistyped values fall back to defaults and numbers are clamped to the schema bounds. semantic: enabled, memoryMax ('4G' or a byte count), minAvailableBytes, debounceMs. git: enabled, gitPath. run: model checked by MODEL_PATTERN, effort enum, caps (maxTurns, maxChecks, maxAgentMs, leanJobMs, maxGateAttempts), memory, contextScope, keepRuns, reuseLeanBuild. claudePath is trimmed, and a value with control characters is ignored.
+  - **key_exports:** SETTING_DEFAULTS, SettingKey, SettingGetter, RUN_SETTING_BOUNDS, EFFORTS, CONTEXT_SCOPES, MODEL_PATTERN, TeleleanSettings, memoryMaxFor, readSettings
+  - **depends_on:** runner llm/types (Effort), run/types (RunSettings), workspace (GitSettings, SemanticSettings) types
+- **path:** packages/extension/src/logic/textSource.ts
+  - **purpose:** createTextSource(root, ports) is the runner TextSource in which an open, possibly unsaved, editor buffer wins over the file on disk, so the board, history snapshots and the applier's before-check agree with the editor. readTextFile reads UTF-8, strips a BOM, and returns null for ENOENT/ENOTDIR.
+  - **key_exports:** TextSourcePorts, createTextSource, readTextFile
+  - **depends_on:** runner workspace (TextSource type), ./modelPaths, node:fs/promises
+- **path:** packages/extension/src/vscode/editor.ts
+  - **purpose:** VS Code adapters for reading and writing model files. VscodeWorkspaceEditPort opens documents before the check, applies a batch as one WorkspaceEdit (createFile without overwrite, deleteFile, replace) and saves; vscodeEditApplier wraps it in a CheckedEditApplier with an unsaved-file warning toast. vscodeTextSource reads open buffers first; editorGroups maps tab groups to GroupInfo.
+  - **key_exports:** openDocument, editorGroups, vscodeTextSource, VscodeWorkspaceEditPort, unsavedWarning, vscodeEditApplier
+  - **depends_on:** vscode; ../logic/editApplier, ../logic/groups, ../logic/textSource; runner workspace (TextSource type)
+- **path:** packages/extension/src/vscode/historyProvider.ts
+  - **purpose:** Read-only multi-file diffs beside the board. DiffPreviews registers a TextDocumentContentProvider for a scheme backed by a PreviewStore, focuses the group beside the board and runs vscode.changes; provider documents cannot be edited or saved, so a preview never writes anything. HistoryPreviews (telelean-history:) shows what a history entry changed and ProposalPreviews (telelean-proposal:) shows a proposal's raw Lean diff.
+  - **key_exports:** DiffPreviews, HistoryPreviews, ProposalPreviews
+  - **depends_on:** vscode; ../logic/groups, ../logic/historyPreview, ../logic/proposalPreview; ./editor
+- **path:** packages/extension/src/vscode/host.ts
+  - **purpose:** TeleleanHost, the extension controller. It registers the three commands and the board serializer, finds model roots in file workspace folders (depth 6), keeps one BoardPanel per root titled 'telelean: <folder>', attaches a BoardSession once the root's workspace loads (then requests an 'open' refresh), restores panels after a reload from workspaceState records, and runs Initialize (runInitialize with input box and modals) and Refresh. For M2 it builds each root's RunManager (runsDir globalStorage/runs, telelean.* run settings, lazy backend factory, Lean check engine, proposal service, sidecar store), asks the per-root consent (only a yes is stored, as telelean.claudeConsent.<rootKey> in globalState), shows proposal diffs, disposes run managers first on shutdown, and exposes the TeleleanApi (with `testing`, where an unanswered modal counts as no, only in ExtensionMode.Test).
+  - **key_exports:** TeleleanHost (register, openBoardCommand, initializeCommand, refreshCommand, openBoard, restoreBoard, shutdown, api, dispose), TeleleanHostOptions, SAMPLE_TITLE ('telelean: sample')
+  - **depends_on:** vscode; @telelean/core; runner shadow (rootKeyOf), run/types, workspace types; ../api; ../board/BoardPanel; ../logic/{boardSession, groups, initialize, modelPaths, restore, roots, runs, settings}; ./editor, ./historyProvider, ./registry, ./runner
+- **path:** packages/extension/src/vscode/registry.ts
+  - **purpose:** WorkspaceRegistry keeps one runner ModelWorkspace per root: created on first use and loaded once, with a self-write-recording vscodeEditApplier, and kept until the window closes so in-memory Undo survives closing the board. Since M2 it also creates the root's RunManager after load, starts recover() once, and disposes the manager before the workspace (shutdownRuns waits at most 4 s); if runs cannot be created the board still works. Typing is batched for 200 ms and then invalidates; a save invalidates and refreshes; watcher events on **/*.lean, .telelean/**, lakefile.toml, lean-toolchain and lake-manifest.json are batched for 300 ms and refresh for Lean or project files. Echoes, handled saves and changes under dirty editors are ignored, and Lean refreshes run only while the root's board is open.
+  - **key_exports:** WorkspaceRegistry (get, peek, runs, peekRunManager, roots, forget, shutdownRuns, dispose), RegistryDeps, Log, TYPING_DEBOUNCE_MS (200), RUNS_SHUTDOWN_MS (4000)
+  - **depends_on:** vscode; runner run/types, workspace types; ../logic/{changeBatcher, modelPaths, runs, settings, textSource}; ./editor; ./runner
+- **path:** packages/extension/src/vscode/runner.ts
+  - **purpose:** One replaceable record (RunnerFunctions, default DEFAULT_RUNNER) of the runner factories the extension calls. Tests swap it via testing.useRunner in Test mode or TeleleanHostOptions.runner in unit tests. It imports only runner subpaths, never the package root.
+  - **key_exports:** RunnerFunctions, DEFAULT_RUNNER (createModelWorkspace, findModelRoots, inspectFolder, planInitialize, createRunManager, createClaudeBackend, createLeanCheckEngine, createProposalService, createRunSidecarStore, defaultHookRuntime)
+  - **depends_on:** @telelean/runner/workspace, run, gate, proposal, llm/confinement
+- **path:** packages/extension/tsconfig.json
+  - **purpose:** Type-check-only config (noEmit; esbuild does the bundling) extending tsconfig.base.json with module Preserve, moduleResolution Bundler, lib ES2023 and types node/vscode/mocha. Its paths map @telelean/core, @telelean/runner and @telelean/runner/* to the packages' TypeScript sources, so no build step or workspace link is needed; it covers src, test and vitest.config.mts.
+  - **key_exports:** compilerOptions.paths
+  - **depends_on:** ../../tsconfig.base.json, ../core/src, ../runner/src
+- **path:** packages/extension/vitest.config.mts
+  - **purpose:** vitest config for test/unit/**/*.test.ts. It aliases @telelean/core and runner to their sources and `vscode` to test/unit/vscodeStub.ts, turns off file parallelism, caches in out/.vite, and sets TELELEAN_NO_REAL_CLAUDE=1.
+  - **key_exports:** default defineConfig
+  - **depends_on:** ../core/src, ../runner/src, test/unit/vscodeStub.ts
+- **path:** scripts/quota-tripwire.mjs
+  - **purpose:** Import-free helper holding the quota-tripwire rule: TELELEAN_NO_REAL_CLAUDE arms it with any non-empty value other than 0 or false (case and spaces ignored), mirroring the runner's realClaudeDisabled() (a runner test keeps the two in step). walkthrough-claude.mjs imports it; smoke-claude.mjs inlines the same rule. It is not a script to run.
+  - **key_exports:** NO_REAL_CLAUDE_ENV, quotaTripwireArmed(env)
+  - **depends_on:** none
+- **path:** scripts/smoke-claude.mjs
+  - **purpose:** M0 smoke test of the Claude Code CLI backend (D-23(b)); it loads the runner's llm/ TypeScript sources directly via a registered resolve hook, plus the MCP SDK client. It is dry by default: it sets the tripwire, resolves the binary (`claude --version`), prepares argv, environment, MCP config and settings in a work dir, self-tests the path guard, lists the tools of a local tool server and prints JSON. Live mode needs --live plus TELELEAN_SMOKE_LIVE=yes and is refused if the tripwire is armed; on claude-haiku-5-5 at effort low it runs a (login + a 75 s blocking ask_user + finish), b (hook-only confinement: reads, Grep and Glob inside vs outside a copy of test-fixtures/spyro, with canary-leak checks) and c (kill mid-question, then --resume).
+  - **key_exports:** none (CLI: --dry-run|--live, --scenario a,b,c, --binary, --model, --effort, --work-dir, --answer-delay-ms, --max-turns, --budget-usd, --scenario-timeout-ms, --no-cli-fences, --read-bashrc)
+  - **depends_on:** packages/runner/src/llm/index.ts (ClaudeCliBackend, StubToolHost, startToolServer, selfTestGuard, resolveClaudeBinary, UsageTracker, renderAnswersAsUserTurn, GUARD_SELFTEST_SESSION); @modelcontextprotocol/sdk client; test-fixtures/spyro
+- **path:** scripts/walkthrough-claude.mjs
+  - **purpose:** M2 walkthrough driver (m2-plan section 12). It bundles the runner with esbuild into <work>/bundle; per reading (normative, literal or both) it copies mental_model/, git-inits the copy with isolated config, refreshes it with Lean, and drives a RunManager as a scripted user (target cynder-not-good, the three premises). Modality or 'cannot' questions get the reading's free-text answer and others 'Decide for me'; the literal reading adopts the first gap-closing suggestion in round 1; proved proposals are accepted with their recommended card changes (definitions only with --approve-definitions); a live run cancels at the first non-'allowed' rate limit. The default dry run plays test-fixtures/walkthrough/{normative,literal}.json on the FakeBackend against the real engine and sandboxed Lean; --binary-check also runs `claude --version` and ClaudeCliBackend.prepare (no session); live needs --live plus TELELEAN_WALKTHROUGH_LIVE=yes and is refused under an armed tripwire. It writes summary JSON and exits 0 only when every reading passes; it has not yet been run live.
+  - **key_exports:** none (CLI: --dry-run|--live, --binary-check, --reading, --work-dir, --model, --effort, --max-turns, --max-checks, --max-agent-minutes, --binary, --approve-definitions)
+  - **depends_on:** ./quota-tripwire.mjs; esbuild; packages/runner/src/index.ts (llm, run, gate, proposal, workspace, shadow namespaces); packages/runner/bin/telelean-path-guard.mjs; test-fixtures/walkthrough; mental_model/; git
+- **path:** test-fixtures/gate/
+  - **purpose:** M2 WP2 fixtures for the runner's shadow and Lean check engine tests, applied over scratch copies of ../spyro (builds only in scratch). The README documents the edit scripts, the inert snippets and the overlays.
+  - **key_exports:** README.md, edits.json, overlays/, snippets/
+  - **depends_on:** base test-fixtures/spyro; used by packages/runner/test/{gate,shadow,run,proposal} helpers
+- **path:** test-fixtures/gate/edits.json
+  - **purpose:** Named edit scripts in the shape of Claude's Edit tool ({path, oldString, newString or newStringFile}; oldString must be unique, null creates a file). Each names what Claude would do and which gate finding it must produce.
+  - **key_exports:** formalise-normative, formalise-literal, formalise-definition, prove-normative, adopt-ghost, prove-literal-adopted, cheat-axiom, cheat-sorry, cheat-weakened-abbrev, cheat-weakened-type, cheat-vocabulary-redefined, cheat-edited-words, cheat-eval, rebind-target, lemma-unselected, shape-violation, stray-notes
+  - **depends_on:** test-fixtures/spyro; gate/snippets (newStringFile)
+- **path:** test-fixtures/gate/overlays/
+  - **purpose:** Overlays copied over the Spyro base before a shadow is made: slow (150 `decide` proofs, ~12 s build, for job-timeout and cancellation tests), broken-other (second subject Other with a Lean error at line 3), pending (normative formalisation pinned; the target is a DERIVATION whose .holds is still an axiom, used by a cardless lemma) and proved-derivation (target already proved). The last two check that the freeze copy drops those proofs.
+  - **key_exports:** slow/, broken-other/, pending/, proved-derivation/
+  - **depends_on:** test-fixtures/spyro
+- **path:** test-fixtures/gate/snippets/
+  - **purpose:** Inert .lean.txt replacement texts with forbidden commands: eval-command.lean.txt (#eval 1) and sorry-proof.lean.txt (:= sorry). They are only placed into scratch copies, where G0 refuses them before any Lean runs; never rename them to .lean.
+  - **key_exports:** eval-command.lean.txt, sorry-proof.lean.txt
+  - **depends_on:** referenced by edits.json
+- **path:** test-fixtures/runner-lean/
+  - **purpose:** M0 sandboxed-Lean spike fixtures for packages/runner/test/lean. Its overlays/ hold complete replacements of Model/Spyro/Main.lean for each run stage: formalised, proved (the honest proof), weakened (goal abbrev ∨ True), weakened-type (theorem typed ∨ True), smuggled (axiom shortcut), and noisy-build-error (an #eval that imitates comparator output before a type error). They cover comparator accept/reject cases and the footprint test.
+  - **key_exports:** README.md, overlays/{formalised,proved,weakened,weakened-type,smuggled,noisy-build-error}, probes/
+  - **depends_on:** base test-fixtures/spyro
+- **path:** test-fixtures/runner-lean/probes/
+  - **purpose:** Inert sandbox probes stored as .lean.txt. Tests copy each into a sandboxed shadow as Probe.lean and run it with `lake env lean` under runLean: ListHome lists $HOME, /run and /tmp and session variables; Network tries DNS, TCP, the D-Bus socket and the abstract X11 socket via python3; WriteHome tries writing to $HOME, ~/.elan, the shadow sources and .lake. Never open them with a Lean server.
+  - **key_exports:** ListHome.lean.txt, Network.lean.txt, WriteHome.lean.txt
+  - **depends_on:** used by packages/runner/test/lean
+- **path:** test-fixtures/semantic/
+  - **purpose:** M1 WP3 fixtures for the semantic layer (lake build + .ilean + check file -> LeanFacts), used by packages/runner/test/semantic; tests always copy ../spyro to $TELELEAN_TEST_TMP first. Its overlays are build-error (multi-line type error), extras, nonbmp-error (a UTF-16 vs code-point column case), toolchain (v4.34.0 -> unsupported-toolchain) and manifest-package (mathlib listed -> unsupported-project).
+  - **key_exports:** README.md, overlays/{build-error,extras,nonbmp-error,toolchain,manifest-package}, recorded/
+  - **depends_on:** base test-fixtures/spyro
+- **path:** test-fixtures/semantic/overlays/extras/
+  - **purpose:** A catalogue of declaration shapes for the fact parser: conditional theorems (d1.holds, d3.holds with a wrapped #check), a derivation used by a proof (d0 -> g2), a proof through an untracked lemma (g3), a sorry theorem, hidden and constant axioms, a def used by a statement, a structure field, a data instance and a private theorem. It also has Orphan.lean, which nothing imports (module state not-built).
+  - **key_exports:** Model/Spyro/Main.lean, Model/Spyro/Orphan.lean
+  - **depends_on:** test-fixtures/spyro
+- **path:** test-fixtures/semantic/recorded/
+  - **purpose:** Real Lake 5.0 / Lean 4.35.0 outputs captured 2026-11-01, with paths anonymised, used as parser inputs: lake build stdout/stderr (build error, extras built/replayed, missing import, lakefile error, non-BMP error), .ilean JSON, check files with their `lake env lean --stdin --json` output, and spyro-facts.json / extras-facts.json. refresh.test.ts compares the two facts snapshots and rewrites them with UPDATE_SEMANTIC_RECORDINGS=1; the README says core tests use them too.
+  - **key_exports:** lake-*.txt, spyro-*.ilean.json, extras-Main.ilean.json, check-spyro/extras.{lean,jsonl}, spyro-facts.json, extras-facts.json
+  - **depends_on:** test-fixtures/spyro and semantic overlays (as captured)
+- **path:** test-fixtures/spyro/
+  - **purpose:** The verified M0-era base Lean project (v4.35.0, no dependencies, autoImplicit off). Model.lean imports Model.Spyro.Main directly; there is no Inbox.lean and no .telelean/, which tests generate in scratch copies. Vocabulary.lean equals mental_model's and Main.lean differs only by lacking the Inbox import. It is the base for the runner's lean, semantic, gate, shadow and llm tests and for smoke-claude.mjs shadows.
+  - **key_exports:** Model.lean, Model/Spyro/{Main,Vocabulary}.lean, lakefile.toml, lake-manifest.json, lean-toolchain, Check/Normative.lean
+  - **depends_on:** none
+- **path:** test-fixtures/spyro/Check/Normative.lean
+  - **purpose:** A check file outside the Model library: it imports Model, adds the normative formalisation of pg_no_dark_past and the honest proof of cynder_not_good.holds, and ends with `#print axioms`. It is the reference for core's proved Spyro sample and the runner-lean 'proved' overlay, and shadow tests assert it never enters a shadow.
+  - **key_exports:** Spyro.pg_no_dark_past, Spyro.cynder_not_good.holds
+  - **depends_on:** test-fixtures/spyro Model library
+- **path:** test-fixtures/walkthrough/
+  - **purpose:** FakeBackend scripts stored as data (README format: name, description, answer, premises, optional adopt and userEdits, expect, and turns[{match, steps}] with read/edit/writeFile/callTool/text/usage/rateLimit/sleep/result steps), played by the runner's llm.playFakeScript. Used by the runner's walkthrough.e2e.test.ts, the RunManager unit tests and walkthrough-claude.mjs --dry-run; Lean text appears only inside JSON strings.
+  - **key_exports:** README.md, normative.json, literal.json, 20 cheat-*.json
+  - **depends_on:** mental_model/ and test-fixtures/spyro (edits apply to both); runner src/llm/fakeScripts.ts
+- **path:** test-fixtures/walkthrough/cheat-*.json
+  - **purpose:** Twenty cheating scenarios, each with an `expect` (first failure, freeze refusal or check violation, verdict, gate attempts); most then retry honestly. They cover: smuggled axiom, sorry, weakened abbrev or type, unselected premise, re-bound target pin, lemma or private lemma in a not-proved round, belief hidden in a definition, redefined vocabulary, #eval, proof before freeze, edited user words, give-up after 3 attempts, axiom or belief below a code-less GOAL premise, a proof of a selected derivation premise, proof carriers (PLift def, instance, structure default) in not-proved and proved rounds, and `example`.
+  - **key_exports:** cheat-added-axiom, -carrier-not-proved, -carrier-proved, -definition-belief, -derivation-premise-proof, -edited-words, -eval, -example-not-proved, -give-up, -goal-premise-axiom, -goal-premise-belief, -lemma-not-proved, -private-lemma, -proof-before-freeze, -rebind-target, -sorry, -unselected, -vocabulary-redefined, -weakened-abbrev, -weakened-type
+  - **depends_on:** runner fake-script player; runner gate rules under test
+- **path:** test-fixtures/walkthrough/literal.json
+  - **purpose:** Walkthrough reading B: the modality question is answered literally (option 1); the script adds axiom InGame, formalises literally, freezes, proposes the missing premise ghost-1 (not_in_game_not_good) with its gap proof and finishes not_proved. A second turn, matching 'The person adopted your suggestion', proves the goal through it.
+  - **key_exports:** expect {round1 not-proved, round2 proved, ghostNode a-character-who-cannot-be-in}; adopt {ghost-1, 'it seems obvious to me'}
+  - **depends_on:** mental_model/ (copied by the test or script)
+- **path:** test-fixtures/walkthrough/normative.json
+  - **purpose:** Walkthrough reading A: the modality question is answered 'a rule' (option 0); the script formalises pg_no_dark_past normatively, checks, freezes, proves the goal from the three premises and finishes proved.
+  - **key_exports:** expect {verdict proved, lifecycle [l1] (Goal->Derivation), footprint = the three cards + presup:Spyro.Character.exists, presup:Spyro.Game.exists}
+  - **depends_on:** mental_model/ (copied by the test or script)
+

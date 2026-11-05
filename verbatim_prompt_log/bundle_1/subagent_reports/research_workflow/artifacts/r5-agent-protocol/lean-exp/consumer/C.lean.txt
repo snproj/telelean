@@ -1,0 +1,2 @@
+import Dep
+theorem C.t : Dep.answer = 42 := rfl

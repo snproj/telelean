@@ -1,0 +1,6 @@
+/-! @@ telelean
+type: GOAL
+-/
+/- @@ telelean
+type: ASSUMPTION
+-/

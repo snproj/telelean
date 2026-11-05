@@ -1,0 +1,3 @@
+import Canonical.Vocabulary
+import Canonical.Assumptions
+import Canonical.Goals

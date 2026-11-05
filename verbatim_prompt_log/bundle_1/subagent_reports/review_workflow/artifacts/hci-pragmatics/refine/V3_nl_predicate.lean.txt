@@ -1,0 +1,13 @@
+-- User's mixed notation:  cynder "is a bad character to include in the" game
+-- Partial formalisation: entities extracted, predicate still the user's own words.
+axiom Character : Type
+axiom Game : Type
+axiom cynder : Character
+axiom game : Game
+axiom «is a character that explores a dark past» : Character → Prop
+axiom «is a bad character to include in the» : Character → Game → Prop
+axiom h1 : «is a character that explores a dark past» cynder
+theorem goal_stmt_typechecks : True := trivial
+example : Prop := «is a bad character to include in the» cynder game
+#check «is a bad character to include in the» cynder game
+#check h1

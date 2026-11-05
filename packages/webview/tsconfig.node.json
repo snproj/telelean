@@ -1,0 +1,16 @@
+{
+  // Build configs and tests: they run in Node, and the Playwright tests also evaluate DOM code in the page.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "types": ["node"],
+    "noEmit": true,
+    "paths": {
+      "@telelean/core": ["../core/src/index.ts"]
+    }
+  },
+  "include": ["vite.config.ts", "vitest.config.ts", "playwright.config.ts", "test/**/*.ts"]
+}

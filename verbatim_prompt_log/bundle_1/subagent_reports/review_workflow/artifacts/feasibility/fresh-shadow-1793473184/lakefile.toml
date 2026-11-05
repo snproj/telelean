@@ -1,0 +1,8 @@
+name = "Tiny"
+defaultTargets = ["Tiny"]
+
+[leanOptions]
+autoImplicit = false
+
+[[lean_lib]]
+name = "Tiny"

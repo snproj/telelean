@@ -1,0 +1,10 @@
+name = "consumer"
+defaultTargets = ["C"]
+
+[[require]]
+name = "dep"
+git = "/tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r5-agent-protocol/lean-exp/depgit"
+rev = "main"
+
+[[lean_lib]]
+name = "C"

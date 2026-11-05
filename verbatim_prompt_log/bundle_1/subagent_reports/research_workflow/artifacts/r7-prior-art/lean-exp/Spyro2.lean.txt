@@ -1,0 +1,78 @@
+import Lean
+
+/-!
+@@ telelean
+id: goal-cynder-not-good
+natural_name: "Cynder would not be a good addition to the new Spyro game"
+type: GOAL
+-/
+
+/-
+@@ telelean
+id: plain-comment-node
+natural_name: "A node that exists only as a plain comment"
+type: ASSUMPTION
+why: "just testing"
+-/
+
+-- Vocabulary: inductive/structure types are inhabited by construction, no axioms needed.
+/-- A character in the game universe. -/
+inductive Character where
+  | cynder | spyro
+  deriving DecidableEq, Inhabited
+
+/-- A game. -/
+inductive Game where
+  | newSpyro
+  deriving Inhabited
+
+/-- Whether a character has a dark past (uninterpreted predicate). -/
+opaque hasDarkPast : Character → Prop
+opaque isPG : Game → Prop
+opaque goodAddition : Character → Game → Prop
+
+/-- Cynder is a character who has a dark past.
+
+@@ telelean
+type: ASSUMPTION
+why: "familiar with gaming lore"
+-/
+axiom cynder_dark_past : hasDarkPast .cynder
+
+/-- The new Spyro game is PG. -/
+axiom spyro_pg : isPG .newSpyro
+
+/-- PG games cannot have characters with dark pasts (as good additions). -/
+axiom pg_no_dark : ∀ (g : Game) (c : Character), isPG g → hasDarkPast c → ¬ goodAddition c g
+
+/-- An unrelated assumption that the goal should NOT depend on. -/
+axiom unrelated : isPG .newSpyro → True
+
+/-- Cynder would not be a good addition to the new Spyro game. -/
+theorem cynder_not_good : ¬ goodAddition .cynder .newSpyro :=
+  pg_no_dark .newSpyro .cynder spyro_pg cynder_dark_past
+
+theorem classical_use : ¬ goodAddition .cynder .newSpyro ∨ True := by
+  by_cases h : goodAddition .cynder .newSpyro
+  · exact Or.inr trivial
+  · exact Or.inl h
+
+theorem cheating : ¬ goodAddition .cynder .newSpyro := by
+  sorry
+
+#print axioms cynder_not_good
+#print axioms classical_use
+#print axioms cheating
+
+open Lean Elab Command in
+#eval show CommandElabM Unit from do
+  let env ← getEnv
+  let docs := getMainModuleDoc env
+  for d in docs.toArray do
+    logInfo m!"module doc: {repr d.doc} at {repr d.declarationRange.pos}"
+  match ← findDocString? env ``cynder_dark_past with
+  | some s => logInfo m!"docstring of cynder_dark_past: {s}"
+  | none => logInfo "no docstring"
+  -- Collect axioms programmatically
+  let axs ← liftCoreM <| Lean.collectAxioms ``cynder_not_good
+  logInfo m!"collectAxioms: {axs}"

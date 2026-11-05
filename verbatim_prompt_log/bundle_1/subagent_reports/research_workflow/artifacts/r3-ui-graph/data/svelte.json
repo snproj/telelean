@@ -1,0 +1,59 @@
+{
+ "name": "svelte",
+ "latest": "5.57.3",
+ "dist_tags": {
+  "next": "5.0.0-next.272",
+  "latest": "5.57.3"
+ },
+ "latest_published": "2026-10-26T18:16:20.865Z",
+ "modified": "2026-10-26T18:16:21.446Z",
+ "created": "2016-11-17T22:58:41.644Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 2947315,
+ "fileCount": 388,
+ "tarball": "https://registry.npmjs.org/svelte/-/svelte-5.57.3.tgz",
+ "dependencies": {
+  "clsx": "^2.1.1",
+  "acorn": "^8.18.0",
+  "esrap": "^2.3.6",
+  "devalue": "^5.9.2",
+  "esm-env": "^1.2.1",
+  "aria-query": "5.3.1",
+  "zimmerframe": "^1.1.2",
+  "is-reference": "^3.0.3",
+  "magic-string": "^0.30.11",
+  "@types/estree": "^1.0.9",
+  "axobject-query": "^4.1.0",
+  "locate-character": "^3.0.0",
+  "@jridgewell/remapping": "^2.3.5",
+  "@sveltejs/acorn-typescript": "^1.0.13",
+  "@jridgewell/sourcemap-codec": "^1.6.0"
+ },
+ "peerDependencies": {},
+ "repository": "git+https://github.com/sveltejs/svelte.git",
+ "recent_versions": [
+  [
+   "5.56.10",
+   "2026-08-20T19:26:03.676Z"
+  ],
+  [
+   "5.57.0",
+   "2026-08-28T23:33:45.038Z"
+  ],
+  [
+   "5.57.1",
+   "2026-09-18T23:52:47.113Z"
+  ],
+  [
+   "5.57.2",
+   "2026-10-06T14:24:31.209Z"
+  ],
+  [
+   "5.57.3",
+   "2026-10-26T18:16:20.865Z"
+  ]
+ ],
+ "homepage": "https://svelte.dev",
+ "description": "Cybernetically enhanced web apps"
+}

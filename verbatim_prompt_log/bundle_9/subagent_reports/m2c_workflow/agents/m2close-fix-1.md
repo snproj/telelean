@@ -1,0 +1,160 @@
+# m2close-fix-1 (agent ade8a4151a6d0c42a)
+
+## summary
+I closed all six open items. Everything was rebuilt from the repo root and every suite I was allowed to run passed. The two live-script tests are left for you, as instructed.
+
+1. Seed race (major). I used the preferred approach.
+   - By default a run's working copy no longer copies your `.lake/build`; its first Lean job builds the model from scratch, which takes about a second for Spyro.
+   - Seeding is kept only behind a new setting, `telelean.run.reuseLeanBuild`, which is off by default. Even then it uses only telelean's own last refresh output, and only if nothing has touched it since:
+     - Inside the board refresh's own Lean job, `noteRefreshOutput` records the tree (every directory and file: device, inode, size, mtime, ctime). It does so only after a refresh with status `ok` and every module fresh, and only when the tree is a complete build. Any other refresh forgets the record.
+     - `createRunShadow` copies the tree, under the same lock, only when a listing matches the record, both before and after the copy.
+   - A seed problem now only means no seed: it is logged and never refuses a start or causes a gate finding. A symlink inside `.lake/build` no longer refuses the run either, since nothing from it is copied.
+   - `seed.test.ts` is now deterministic: there is no background writer, and changes happen at exact points through the copy hook, including the verifier's write-then-delete case. It passed 30 times in a row, plus 3 times under strace.
+   - A real-Lake probe in scratch, with an outside `lake build` loop running: 60 starts, none refused. Exactly one seed was used, before the outside build first wrote the tree, and it was byte-identical to the recorded tree. After that, 0 seeds were used until a new refresh recorded the tree again.
+   - On this kernel (6.17, ext4) a change made after a stat always got a new ctime: 0 of 2000 directory write-then-delete cases and 0 of 5000 same-size rewrites went unnoticed.
+   - The decision is recorded in decisions-log section 30.
+
+2. Seed claims in docs and comments now match the new behaviour: seed.ts, shadow index and types, the manager, the e2e comment, m2-plan (4.2, AT2.1, 8.3, the diagram, section 14), decisions-log (sections 15, 29 and 30) and the user guide (start step and settings table).
+
+3. Leftover systemd scope. When a job was cancelled just as it started, runLean killed systemd-run while systemd was still creating the scope, which left an empty scope behind.
+   - Now the kill waits for bwrap's `child-pid` report (at most 3 s, then systemd-run is killed anyway).
+   - After the job ends, a unit that is still active, activating or deactivating gets SIGKILL and `systemctl --user stop` (new `stopUnit` helper), and a failed one is reset.
+   - New test: 42 cancels, 0 to 20 ms after the start. The old code left one unit behind (cleaned up by the test); the new code leaves none.
+
+4. Webview. `acceptChangedFiles` and `endedOutcome` now read `RunView.accepted` first, then the board's own Accept. The parsing of the runner's notice wording is removed, and the coupling entry in plan section 14 is marked resolved.
+
+5. Extension e2e. A new test, "race", presses "These suffice" while the board's refresh is rebuilding `.lake/build`. It removes both Lake traces and calls `telelean.refresh` without awaiting it, so there is no wait for idle Lean. Lean was "checking" when the button was pressed; the run proved and was discarded.
+
+6. Gate docs. m2-plan section 3 (3.1 to 3.3, plus small fixes in 3.4 and 3.8) was checked line by line against the code and rewritten: G0 token and file rules, the permitted set formula (including that it takes only proofs you already had), every rule including carriers, new-axiom, examples, statement-changed, markup and comparator.
+   - The text corrections are listed in decisions-log section 30; the code did not change.
+   - The Raw Lean diff placement question is now under a new heading "Decisions awaiting you" at the top of decisions-log, with a pointer in plan 15.2.
+
+## files_changed
+- /home/zhengyew/telelean/packages/runner/src/shadow/seed.ts (rewritten: noteRefreshOutput, seedFromRefreshOutput, SeedHooks; round 3's listBuildSeed/copyBuildSeed removed)
+- /home/zhengyew/telelean/packages/runner/src/shadow/index.ts
+- /home/zhengyew/telelean/packages/runner/src/shadow/types.ts (docs)
+- /home/zhengyew/telelean/packages/runner/src/workspace/modelWorkspace.ts
+- /home/zhengyew/telelean/packages/runner/src/run/types.ts
+- /home/zhengyew/telelean/packages/runner/src/run/index.ts
+- /home/zhengyew/telelean/packages/runner/src/run/manager.ts
+- /home/zhengyew/telelean/packages/runner/src/lean/runLean.ts
+- /home/zhengyew/telelean/packages/runner/src/lean/systemd.ts
+- /home/zhengyew/telelean/packages/runner/test/shadow/seed.test.ts (rewritten, deterministic)
+- /home/zhengyew/telelean/packages/runner/test/shadow/shadow.test.ts
+- /home/zhengyew/telelean/packages/runner/test/workspace/refresh.test.ts
+- /home/zhengyew/telelean/packages/runner/test/run/manager.start.test.ts
+- /home/zhengyew/telelean/packages/runner/test/run/helpers/harness.ts
+- /home/zhengyew/telelean/packages/runner/test/lean/sandbox.test.ts
+- /home/zhengyew/telelean/packages/webview/src/model/run.ts
+- /home/zhengyew/telelean/packages/webview/test/unit/run.test.ts
+- /home/zhengyew/telelean/packages/webview/test/e2e/m2-review.spec.ts
+- /home/zhengyew/telelean/packages/extension/src/logic/settings.ts
+- /home/zhengyew/telelean/packages/extension/package.json (new setting telelean.run.reuseLeanBuild)
+- /home/zhengyew/telelean/packages/extension/test/unit/settings.test.ts
+- /home/zhengyew/telelean/packages/extension/test/unit/packageJson.test.ts
+- /home/zhengyew/telelean/packages/extension/test/suite/e2e-runs.test.ts (new 'race' test, comment fix)
+- /home/zhengyew/telelean/packages/extension/scripts/smoke.mjs (one message text)
+- /home/zhengyew/telelean/packages/extension/scripts/smoke-units.mjs (comment)
+- /home/zhengyew/telelean/docs/m2-plan.md (section 3 rewritten; 4.2, AT2.1, 8.3, diagram, 14, 15.2)
+- /home/zhengyew/telelean/docs/decisions-log.md (new 'Decisions awaiting you' heading, section 30, amendments to 15 and 29)
+- /home/zhengyew/telelean/docs/user-guide.md (start step 4, settings table)
+- Build outputs regenerated by the root npm run build and the webview build: /home/zhengyew/telelean/packages/core/dist/**, /home/zhengyew/telelean/packages/extension/dist/extension.js(.map), dist/bin/telelean-path-guard.mjs, dist/webview/*, /home/zhengyew/telelean/packages/extension/out/test/suite/*
+- Test artifacts inside the repo: /home/zhengyew/telelean/packages/webview/test-results/ (Playwright screenshots), vitest caches (node_modules/.vitest-cache, packages/*/node_modules/.vite, packages/extension/out/.vite)
+
+## test_runs
+Every run used my env.sh: LEAN_NUM_THREADS=4, TELELEAN_NO_REAL_CLAUDE=1, TMPDIR and TELELEAN_TEST_TMP in scratch, npm_config_logs_dir in scratch, isolated git config, ulimit -c 0, and the *_LIVE variables unset. A MemAvailable watchdog ran during the heavy runs; the lowest it saw was about 48.5 GB. Logs are in /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/closing-fix-1/logs.
+
+Final results:
+- **Root build:** `npm run build` exit 0, run twice; the final one came after the last runner change, and `dist/extension.js` contains the new code.
+- **Core:** `npm test`, 48 files, 497 passed.
+- **Runner, full suite** (`npx vitest run` excluding test/run/walkthroughScript.test.ts and test/run/smokeScript.test.ts): 53 files, 532 passed, 1 skipped (the opt-in real `claude --version` test), 942 s.
+  - An earlier full run was stopped by me partway through so I could refine runLean first; it is not counted.
+- **Webview:** `npm test` (typecheck, vite build, unit, Playwright): 8 unit files, 130 passed; Playwright 81 passed; home guard unchanged.
+  - The first webview run had 1 Playwright failure in the test I had edited. A notice text I added contained "Undo", which broke a not-contains-Undo assertion. I fixed the test's notice text, and the full rerun passed.
+- **Extension:** `npm run typecheck` clean; unit tests 20 files, 171 passed.
+- **Extension smoke and e2e:** `node scripts/smoke.mjs` under xvfb with an isolated profile: smoke 36 passing, e2e 21 passing (including the new race test, where Lean was "checking" at the press). 0 isolation failures, 0 warnings, so no leftover-scope warning.
+- **Walkthrough:** `node scripts/walkthrough-claude.mjs --dry-run --work-dir <scratch>/walk-parent/walk`: exit 0, live false, normative and literal both passed.
+
+Extra runs for the new code:
+- `seed.test.ts` without the real-Lean case, 30 runs in a row: 30 of 30 passed. The full file 3 times under `strace -f`: passed.
+- The new runLean test before the fix: failed with 1 unit left. After the fix, run 4 times: passed, 0 units.
+- All runner Lean tests (`test/lean`, 48 tests) passed, and so did `test/shadow` and `test/workspace/refresh.test.ts`.
+- Real-Lake seed race probe in scratch: passed, no problems; the result is in `probes/out/seedrace-result.json`.
+
+Not run: runner test/run/walkthroughScript.test.ts and test/run/smokeScript.test.ts. The safety rules reserve them for the main session.
+
+## resolved
+- 1 [major, runner] By default a run's working copy no longer copies your .lake/build: the mirror builds from scratch (`copyBuild` now defaults to false).
+- Seeding stays only behind the new setting `telelean.run.reuseLeanBuild`, off by default (`RunSettings.reuseLeanBuild`, passed by the RunManager as `copyBuild`).
+- Even then it uses only telelean's own last refresh output, untouched since. The record is taken inside the refresh's Lean job, only after a refresh with status ok and every module fresh, and only when the tree is a complete build. The copy happens under the same lock and only when the tree still matches the record before and after the copy.
+- A partial or mixed seed is never used. Any seed problem only means no seed: it is logged, never refuses the start and never becomes a gate finding.
+- `seed.test.ts` is deterministic. The real-Lake probe used no seed that was not byte-identical to the recorded tree.
+- The decision is in decisions-log section 30.
+- 2 [minor, docs] Every claim about seeds now matches the new behaviour: code comments (seed.ts, shadow index and types, manager, modelWorkspace, the e2e test), m2-plan (4.2, AT2.1, 8.3, the diagram, section 14 with round 3's entry marked superseded), decisions-log (section 15, the section 29 amendment, section 30) and the user guide (start step and settings table).
+- 3 [minor, runner] runLean no longer kills systemd-run while systemd creates the scope.
+- A cancel or timeout before bwrap's child-pid report waits for that report (at most 3 s, then systemd-run is killed anyway and its unit is checked again).
+- A unit still active, activating or deactivating after the job ends gets SIGKILL and `systemctl --user stop` (new `stopUnit`); a failed one is reset.
+- New test in test/lean/sandbox.test.ts: 42 cancels 0 to 20 ms after the start leave no unit. It fails on the old code and passes now.
+- 4 [minor, webview] `acceptChangedFiles` and `endedOutcome` read `RunView.accepted` first, then the board's own Accept. `RECORDED_NOTICE` and the notice parsing are removed. Unit tests and the Playwright test now use the field, and their notices deliberately contradict it. Plan section 14 marks the coupling resolved.
+- 5 [minor, extension] The new e2e test 'race' presses These suffice while the board's Lean refresh rebuilds .lake/build: both Lake traces removed, `telelean.refresh` not awaited, no wait for idle Lean, and it asserts Lean was 'checking' at the press. It passed in the smoke run (e2e 21 passing).
+- 6 [minor, docs] m2-plan section 3 (gate, permitted set, all rules, carriers, new-axiom, proofs you already had, examples) was checked line by line against the code and rewritten to match. The corrections are listed in decisions-log 30. The open Raw Lean diff question (beside the board, the current default, or a tab in the board's group) is under 'Decisions awaiting you' at the top of decisions-log, with a pointer in plan 15.2.
+- Rebuilt from the root and ran every allowed suite sequentially: core, runner (minus the two script tests), webview (typecheck, build, unit, Playwright), extension (typecheck, unit, smoke and e2e), and the walkthrough dry run. All passed.
+
+## open_issues
+- Main session: run `npx vitest run test/run/walkthroughScript.test.ts test/run/smokeScript.test.ts` in /home/zhengyew/telelean/packages/runner with TELELEAN_NO_REAL_CLAUDE=1. The safety rules did not allow me to run them; I did not change scripts/.
+- User decision still pending: where 'Raw Lean diff…' should open (beside the board, the current default, or as a tab in the board's group). Recorded in docs/decisions-log.md under 'Decisions awaiting you'.
+- Limit of the opt-in seed check: it relies on ctime changing on every write, create, delete or rename.
+- That holds strictly on Linux 6.13+ with multigrain timestamps (ext4, xfs, btrfs, tmpfs), and I confirmed it on this machine (6.17, ext4).
+- On an older kernel or another filesystem, a change landing in the same timestamp tick as the refresh's last write could in theory go unnoticed. Lake's own per-module hash check would still keep results correct.
+- The setting is off by default.
+- The record of the refresh output is taken on every successful board refresh, even with the setting off. That is one stat walk of .lake/build per refresh, a few milliseconds for the sample model.
+- Home-folder evidence: my before-snapshot was taken at 05:42, mid-session, just before the Chrome and VS Code test runs, not at the start of my session. No step before it launched Chrome or VS Code.
+
+## minor_decisions
+- **decision:** Combined both of the task's options: no seed by default, plus an off-by-default setting under which only telelean's own recorded refresh output is ever seeded.
+  - **rationale:** The setting alone could not rule out a partial or mixed seed from an outside Lake build. The record alone would still seed by default. Together they meet 'off by default' and 'never partial or mixed'.
+- **decision:** Named the setting `telelean.run.reuseLeanBuild`, boolean, default false, scope resource. Added it as optional `RunSettings.reuseLeanBuild` (false in DEFAULT_RUN_SETTINGS).
+  - **rationale:** It follows the existing telelean.run.* pattern and the additive-only rule for the frozen RunSettings type. Even if a workspace turns it on, it can only enable seeding of telelean's own verified output.
+- **decision:** The model workspace records the refresh output on every successful refresh, without knowing the setting.
+  - **rationale:** No settings plumbing into the workspace is needed, and the cost is one small stat walk.
+- **decision:** A record is taken only after status `ok` with every module fresh or not-built, and only for a complete tree. Any other refresh outcome, or a mismatch at seed time, forgets the record.
+  - **rationale:** A tree that was not one finished build of one source version, or that anything touched later, must never be seeded.
+- **decision:** A symlink or special file in the user's .lake/build no longer refuses the shadow; it only means no seed.
+  - **rationale:** Nothing from .lake/build is copied then, so the D-24 safety goal holds, and a seed problem never blocks a run.
+- **decision:** Removed round 3's listBuildSeed and copyBuildSeed instead of keeping them as dead code.
+  - **rationale:** The new path replaces them completely, and seed.ts is not re-exported. Logged in plan section 14.
+- **decision:** runLean defers a pre-scope kill until bwrap's child-pid report, with a 3 s fallback. After the job, a still-live unit gets SIGKILL first and then `systemctl --user stop`; a failed one gets reset-failed.
+  - **rationale:** The child-pid report proves the scope exists and holds the job, which removes the race. SIGKILL before stop avoids waiting out a stop timeout. Stop ends an empty scope, which kill cannot.
+- **decision:** Webview precedence: the runner's `RunView.accepted` first, then the board's own Accept, otherwise null. No fallback to the notice text.
+  - **rationale:** The runner's record is authoritative. Runs accepted before the field existed do not exist in practice (no real run was ever started), so dropping the parsing removes the coupling completely.
+- **decision:** The forced race in VS Code is a separate e2e test; the other tests keep waiting for idle Lean. In it, the cards are selected first, both Vocabulary and Main traces are removed, and the button is pressed as soon as the board shows 'checking'.
+  - **rationale:** The other tests' assertions need fresh facts. Selecting first and widening the rebuild keeps the press inside the refresh, which the test asserts.
+- **decision:** Deterministic seed tests wait 30 ms (`settle()`) after writing the fake build, before recording it.
+  - **rationale:** A later change then always gets a new ctime, even on kernels without fine-grained timestamps. The test does not depend on scheduling.
+- **decision:** Plan section 3 was rewritten in place, with a one-line 'checked against the code' note. Round 3's section 14 entries were marked superseded or resolved rather than deleted.
+  - **rationale:** Section 14 and the decisions log are append-only histories; marking keeps them honest.
+- **decision:** 'Decisions awaiting you' is an unnumbered heading at the top of decisions-log.
+  - **rationale:** You see it first, and the existing section numbers that other documents cite stay the same.
+
+## effects_outside_repo
+- Scratch folder /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/closing-fix-1 (about 77 MB). It holds:
+- logs and npm logs, test temp trees, the smoke profile vscode-2309360
+- the walkthrough work dir, the probe (vitest config, seedrace.probe.ts, out/seedrace-result.json), lake-home
+- doc backups, home and mental_model snapshots, env.sh, ramwatch.sh, finalcheck.sh, the timestamp probes probe/mgtime*.mjs
+- Your systemd user session got many short-lived telelean-* transient scopes, with their journal lines, from the sandboxed Lean jobs of the runner suite, smoke and e2e, walkthrough and probe.
+- Run against the old runLean to confirm it reproduces the bug, my new test left telelean-t2259874s-21.scope; the test's finally block stopped and reset it at once.
+- I stopped my own first runner-suite run partway through (its process group) to apply a fix.
+- Final state: 0 telelean-* units, 0 failed units, no process of mine left.
+- Ran the toolchain's lake directly (~/.elan/toolchains/leanprover--lean4---v4.35.0/bin/lake, never an elan proxy), unsandboxed, only in my seed race probe, on scratch copies of mental_model with HOME/XDG pointed into scratch. ~/.elan/known-projects is unchanged: 37 lines, mtime Nov 1 09:09.
+- Smoke run: xvfb-run created and removed its socket in /tmp/.X11-unix. VS Code test instances used the isolated profile, and smoke's checks found ~/.copilot, ~/.config/Code, google-chrome and Trash unchanged.
+- Playwright: Chrome used a temp dir /tmp/tl-pw-chrome-*, created and deleted by the test teardown, with HOME/XDG isolated; its home guard reported unchanged.
+- Network: loopback only (Playwright server 127.0.0.1:41739, the e2e DevTools port).
+- Real home, comparing listings at 05:42 and 06:18: only files touched by other programs changed.
+- ~/.claude.json: Claude Code itself.
+- ~/.config/Code (directory mtime, DIPS-wal, TransportSecurity) at 06:05 to 06:06: your running VS Code. This was before my smoke run started at 06:11; Playwright's Chrome had its HOME isolated.
+- ~/.local/share/gnome-shell and ~/.local/share/Steam: desktop apps.
+- Unchanged: ~/.cache, ~/.npm/_logs, ~/.vscode/extensions, ~/.gitconfig, ~/telelean_scripts, ~/.config/google-chrome.
+- /home/zhengyew/telelean/mental_model is unchanged (listing and sha256), has no .lake and is still not a git repository. The packages/extension/.vscode-test listing is unchanged, and it was not copied.
+- Inside the repo but not source files: build outputs (core/dist, extension/dist and out), Playwright screenshots in packages/webview/test-results, and vitest caches.
+- Not done at all: no git outside the tests' own isolated scratch repositories, no pushes, messages, uploads, downloads or installs. No Claude CLI or LLM session; the walkthrough ran with --dry-run only. The two live-script tests were not run, and TELELEAN_WALKTHROUGH_LIVE / TELELEAN_SMOKE_LIVE were never set.
+

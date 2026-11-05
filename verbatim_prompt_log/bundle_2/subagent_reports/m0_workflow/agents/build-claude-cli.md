@@ -1,0 +1,221 @@
+# build:claude-cli (agent aada370aac8501d37)
+
+## summary
+I built the LLM harness spike, entirely offline. It has typed provider-agnostic types, a `ClaudeCliBackend` that drives the user's own Claude Code 2.1.314 CLI in headless stream-json mode, a fake backend for tests, a loopback MCP server that serves the agent tools, and a fail-closed PreToolUse path guard. 79 vitest tests pass and the typecheck is clean.
+
+The smoke script `scripts/smoke-claude.mjs` is written but was not run live, as instructed; only `--dry-run` was run. So everything that needs the real CLI is still unverified.
+
+Findings that change the design:
+1. **Tool search.** By default the CLI hides MCP tools behind a ToolSearch tool, and ToolSearch is not in our allowed tool list. The MCP config therefore sets `alwaysLoad: true` and the environment sets `ENABLE_TOOL_SEARCH=false`.
+2. **Long `ask_user` waits.** The idle timeout for HTTP MCP servers defaults to 5 min. A per-server `timeout` of one day raises both the hard limit and the idle floor.
+3. **Silently ignored settings.** In `-p` mode the CLI ignores a settings file that fails validation, without any error. So the backend asks the running CLI for its hooks list (`get_hooks_listing`) and refuses to start unless the guard is listed. The hook uses `onFailure: "block"`, which needs CLI 2.1.295 or newer; that is now the minimum version.
+4. **Auth check before any prompt.** The `initialize` control request returns the account (provider, subscription type, API-key source). Anything other than a claude.ai subscription is refused before a prompt is sent, so a refusal costs no quota.
+5. **Environment from a parent session.** Launching from inside Claude Code / VS Code passes on parent-session variables, as this very shell showed: `CLAUDECODE`, `CLAUDE_CODE_SESSION_ID`, `CLAUDE_CODE_MESSAGING_SOCKET`. The sanitiser therefore strips every `CLAUDE*` and `ANTHROPIC_*` variable, keeping only `CLAUDE_CONFIG_DIR`.
+
+**Tool server.** I chose loopback HTTP inside the same Node process over a stdio bridge: 127.0.0.1, random port, per-run bearer token, plus Host and Origin checks. It runs on MCP SDK 1.32.2. It sends SSE response headers at once and keepalives every 15 s. A cancelled or killed call marks the pending question as orphaned, so the answer can go into the resumed session's next turn.
+
+**Smoke script.** It runs three scenarios on claude-haiku-5-5 with thinking off, at most 6 turns and a 5-minute cap each:
+- (a) auth check, then an `ask_user` answered after 75 s, then `finish`;
+- (b) the guard alone (the CLI's own fences switched off) must deny `/etc/hostname` and `~/.bashrc`, checked from the guard's log; this scenario also tests the `claude/endTurn` result marker;
+- (c) the CLI is stopped with SIGTERM while `ask_user` waits, then resumed with `--resume` and given the answer as a user turn.
+
+It prints a JSON summary per scenario and in total: checks passed or failed, API requests, input/output/cache tokens, the CLI's cost estimate, and wall time.
+
+## files
+- /home/zhengyew/telelean/packages/runner/src/llm/types.ts
+- /home/zhengyew/telelean/packages/runner/src/llm/toolSchemas.ts
+- /home/zhengyew/telelean/packages/runner/src/llm/env.ts
+- /home/zhengyew/telelean/packages/runner/src/llm/binary.ts
+- /home/zhengyew/telelean/packages/runner/src/llm/confinement.ts
+- /home/zhengyew/telelean/packages/runner/src/llm/streamJson.ts
+- /home/zhengyew/telelean/packages/runner/src/llm/toolServer.ts
+- /home/zhengyew/telelean/packages/runner/src/llm/stubToolHost.ts
+- /home/zhengyew/telelean/packages/runner/src/llm/claudeCli.ts
+- /home/zhengyew/telelean/packages/runner/src/llm/fake.ts
+- /home/zhengyew/telelean/packages/runner/src/llm/index.ts
+- /home/zhengyew/telelean/packages/runner/bin/telelean-path-guard.mjs
+- /home/zhengyew/telelean/packages/runner/bin/telelean-path-guard.d.mts
+- /home/zhengyew/telelean/packages/runner/test/llm/helpers.ts
+- /home/zhengyew/telelean/packages/runner/test/llm/pathGuard.test.ts
+- /home/zhengyew/telelean/packages/runner/test/llm/argvEnv.test.ts
+- /home/zhengyew/telelean/packages/runner/test/llm/streamJson.test.ts
+- /home/zhengyew/telelean/packages/runner/test/llm/toolServer.test.ts
+- /home/zhengyew/telelean/packages/runner/test/llm/fake.test.ts
+- /home/zhengyew/telelean/packages/runner/test/llm/cliSession.test.ts
+- /home/zhengyew/telelean/packages/runner/test/llm/binary.test.ts
+- /home/zhengyew/telelean/packages/runner/test/llm/fixtures/fake-claude.mjs
+- /home/zhengyew/telelean/scripts/smoke-claude.mjs
+- /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn2/llm-harness/dry-run.json
+- /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn2/llm-harness/vitest-verbose.txt
+- /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn2/llm-harness/claude-help.txt
+
+## how_to_run_tests
+Tests (about 41 s; one test deliberately waits 30 s; nothing contacts Anthropic): cd /home/zhengyew/telelean/packages/runner && npx vitest run test/llm
+  Optional: TELELEAN_TEST_TMPDIR=<dir> keeps the tests' temporary directories out of /tmp (they are deleted afterwards either way).
+Typecheck: cd /home/zhengyew/telelean && npx tsc -p packages/runner/tsconfig.json --noEmit
+  This covers src/ only. The tests were also typechecked with a scratch tsconfig: /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn2/llm-harness/tsconfig.tests.json.
+Smoke dry run (runs only `claude --version`, writes config files, starts no CLI session): node /home/zhengyew/telelean/scripts/smoke-claude.mjs --dry-run [--work-dir DIR] [--scenario a,b,c]
+LIVE smoke (spends a little subscription quota; only after the user agrees): node /home/zhengyew/telelean/scripts/smoke-claude.mjs [--safe-targets]
+  --safe-targets makes scenario b read a canary file instead of ~/.bashrc.
+  Progress goes to stderr; the JSON summary goes to stdout and to <work-dir>/summary.json.
+  The work dir also gets events-<scenario>.jsonl (recorded CLI streams, usable for replay tests) and hooks-listing-*.json.
+  Exit code: 0 all passed, 1 a check failed, 2 setup error.
+
+## test_output
+$ cd packages/runner && TELELEAN_TEST_TMPDIR=<scratchpad>/testtmp npx vitest run test/llm
+ RUN  v5.0.5 /home/zhengyew/telelean/packages/runner
+
+ Test Files  7 passed (7)
+      Tests  79 passed (79)
+   Start at  07:21:32
+   Duration  41.22s (tests 98%, import 1%)
+
+no leftover test processes
+36 /home/zhengyew/.elan/known-projects
+
+$ npx tsc -p packages/runner/tsconfig.json --noEmit  -> exit=0
+$ npx tsc -p <scratchpad>/tsconfig.tests.json (src/llm + test/llm) -> exit=0
+$ npx tsc -p packages/runner/tsconfig.json --noEmit --erasableSyntaxOnly -> no errors in src/llm or bin/
+
+Verbose run (same 79), selected lines:
+ ✓ toolServer.test.ts > ask_user blocks for 30 s until the host answers, with progress notifications meanwhile
+ ✓ toolServer.test.ts > sends SSE response headers at once for a pending call (the CLI first-byte timer is 60 s)
+ ✓ toolServer.test.ts > refuses requests without the right token, with a foreign Host, or from a browser origin
+ ✓ cliSession.test.ts > refuses an API-key login before any prompt is sent
+ ✓ cliSession.test.ts > refuses to run when the CLI does not list the path guard (fail closed)
+ ✓ cliSession.test.ts > close() ends the whole process group, grandchildren included
+ ✓ cliSession.test.ts > a CLI killed during ask_user (window reload) orphans the question and ends the turn
+ ✓ pathGuard.test.ts > denies a symlink inside the shadow that points outside (file and directory)
+ ✓ pathGuard.test.ts > denies absolute patterns, .. segments and hidden names in patterns
+ ✓ pathGuard.test.ts > exits 2 (blocking) when the policy is missing or the input is not JSON
+ ✓ binary.test.ts > finds the user's own Claude Code binary (runs only `claude --version`)
+
+$ node scripts/smoke-claude.mjs --dry-run --work-dir <scratchpad>/smoke-dry   -> dry-run exit=0
+$ node scripts/smoke-claude.mjs --dry-run --scenario b --safe-targets --work-dir <scratchpad>/smoke-dry-safe -> exit=0
+Generated hook, run exactly as the settings file specifies:
+exit=0 decision=(no output = pass)     .../smoke-dry/ws-b/Model.lean
+exit=0 decision=deny                   /etc/hostname
+exit=0 decision=deny                   ~/.bashrc
+
+## claims
+- **claim:** The user's binary is Claude Code 2.1.314 and answers --version.
+  - **evidence:** $ .../native-binary/claude --version -> "2.1.314 (Claude Code)" exit=0
+- **claim:** Every candidate flag except --max-turns, --system-prompt-file and --thinking is listed in `claude --help` (2.1.314); those three exist as hidden options.
+  - **evidence:** --help (313 lines, saved at <scratchpad>/claude-help.txt) shows -p, --input-format, --output-format, --verbose, --include-partial-messages, --include-hook-events, --replay-user-messages, --model, --system-prompt, --tools, --allowedTools, --disallowedTools, --permission-mode (choices acceptEdits/auto/bypassPermissions/manual/dontAsk/plan), --permission-prompts, --mcp-config, --strict-mcp-config, --settings, --setting-sources, --max-budget-usd, --resume, --session-id, --effort, --restricted, --bare. Binary option table: "--max-turns <turns> Maximum number of agentic turns in non-interactive mode... (only works with --print)", "--system-prompt-file <file> Read system prompt from a file", and `new As("--thinking <mode>","Thinking mode: enabled (equivalent to adaptive), disabled").choices(["enabled","adaptive","disabled"]).hideHelp()`.
+- **claim:** --setting-sources with an empty value loads no user, project or local settings.
+  - **evidence:** Binary: `function hcs(e){if(e==="")return[];let n=e.split(",")...` and the CLI itself emits the empty form: `function ycs(){let e=HEe();return e===void 0?[]:[`--setting-sources=${e}`]}`
+- **claim:** In -p mode the CLI silently ignores a settings file that fails validation, so the hook must be checked at runtime. The backend asks for get_hooks_listing before the first prompt and refuses to start if the guard is missing.
+  - **evidence:** --help, -p entry: "Settings files that fail validation are silently ignored in this mode (no error dialog is shown)." Binary schema for get_hooks_listing: rows with event, matcher, source, type, commandText, disabled, plus policy {disabledByPolicy, managedOnly, allDisabled}. Test: "refuses to run when the CLI does not list the path guard (fail closed)" passes.
+- **claim:** A hook exit code other than 0 or 2, a timeout or a crash does NOT block by default; `onFailure: "block"` (2.1.295+) makes the guard fail closed.
+  - **evidence:** Hooks docs: "Exit code 1 without valid JSON output is a non-blocking error"; "On PreToolUse, a timed-out command ... hook doesn't block the tool call... set onFailure: \"block\""; onFailure "Requires Claude Code v2.1.295 or later". Exit form: "When present, command is resolved as an executable and spawned directly with args as the argument vector, with no shell involved."
+- **claim:** MCP tool-call limits in 2.1.314: hard limit = per-server `timeout` or MCP_TOOL_TIMEOUT, default 1e8 ms (~27.8 h). Idle limit defaults to 300000 ms for HTTP and 1800000 ms for stdio; the per-server timeout is its floor and 0 disables it. The config sets a per-server timeout of 86400000 plus MCP_TOOL_TIMEOUT and CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT=0.
+  - **evidence:** Binary: `function ar(e){let n=(e?.timeout!==void 0&&e.timeout>=1000?e.timeout:void 0)??i.MCP_TOOL_TIMEOUT??Zr;return Math.min(Math.max(n,1000),Jd)}` with `var Zr=1e8`; `var tn=300000,on=1800000,rn=new Set(["sse-ide","ws-ide","sdk"]);function nn(e){...let n=i.CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT??(r==="stdio"?on:tn);if(n<=0)return 0;...}`. MCP docs: "The idle window defaults to five minutes for HTTP...", "A per-server timeout of at least 1000 also acts as a floor on the idle timeout".
+- **claim:** Long MCP calls are not moved to the background in -p mode; the config still sets CLAUDE_CODE_MCP_AUTO_BACKGROUND_MS=0 as a second safeguard.
+  - **evidence:** Binary: `if(r&&!i.CLAUDE_AUTO_BACKGROUND_TASKS)return 0;let n=i.CLAUDE_CODE_MCP_AUTO_BACKGROUND_MS;if(n!==void 0)return Math.min(Math.max(0,n),Jd);return v("tengu_mcp_auto_background",!0)?ie:0` with ie=120000. Docs: calls never backgrounded include "Calls in non-interactive mode, unless CLAUDE_AUTO_BACKGROUND_TASKS is set to 1".
+- **claim:** By default MCP tools are deferred behind ToolSearch; `alwaysLoad: true` on the server and ENABLE_TOOL_SEARCH=false keep mcp__telelean__* in the prompt.
+  - **evidence:** Binary description: "When true, all tools from this server are always included in the prompt and never deferred behind tool search... Default: tools are deferred when tool search is enabled. As a side effect, true also blocks startup until the server is connected (capped at the standard 5s connect timeout)". MCP docs ENABLE_TOOL_SEARCH table: "(unset) All MCP tools deferred and loaded on demand"; "false All MCP tools loaded upfront, no deferral".
+- **claim:** The `initialize` control request returns the account, so subscription auth can be checked before any prompt. A claude.ai subscription shows apiProvider=firstParty plus a subscriptionType, with no apiKeySource and no tokenSource.
+  - **evidence:** Binary: `function CUe(){if(Ae()!=="firstParty")return;let{source:n}=ca(),r={};if(n==="CLAUDE_CODE_OAUTH_TOKEN"||...)r.tokenSource=n;else if(kt())r.subscription=Neo();else if(n!=="profile")r.tokenSource=n;let{key:s,source:h}=Gp();if(s)r.apiKeySource=h;...}` and `SCn(){return{email:...,subscriptionType:e?.subscription,tokenSource:e?.tokenSource,apiKeySource:e?.apiKeySource,apiProvider:Ae()}}`; the initialize response schema contains `account:UA()`. SDK docs: apiKeySource "none: No API key. The session authenticates another way, such as a claude.ai login". Test: "refuses an API-key login before any prompt is sent" checks that no user line reached the CLI.
+- **claim:** Control protocol: requests are {type:control_request, request_id, request:{subtype}} and replies are {type:control_response, response:{subtype:success|error, request_id, response|error}}. The subtypes initialize, interrupt, end_session and get_hooks_listing exist.
+  - **evidence:** Binary: `function Y2(e,n){return{type:"control_response",response:{subtype:"success",request_id:e,response:n}}}`; print.ts handlers `q.request.subtype==="interrupt"`, `==="end_session"`, `==="initialize"`, `==="get_hooks_listing"`. Input user message keys allowed: `new Set(["type","message","uuid","session_id","parent_tool_use_id","timestamp"])`.
+- **claim:** Starting from inside Claude Code / VS Code (snap) passes on parent-session and snap variables; the sanitiser removes them, as the dry run shows.
+  - **evidence:** Shell env names include CLAUDECODE CLAUDE_CODE_SESSION_ID CLAUDE_CODE_MESSAGING_SOCKET CLAUDE_CODE_MESSAGING_TOKEN CLAUDE_EFFORT MCP_CONNECTION_NONBLOCKING ELECTRON_RUN_AS_NODE SNAP* GTK_* VSCODE_*. Dry-run env.removed lists all of them; env.set = {CLAUDE_CODE_DISABLE_AUTO_MEMORY:1, CLAUDE_CODE_DISABLE_CLAUDE_MDS:1, ENABLE_CLAUDEAI_MCP_SERVERS:false, ENABLE_TOOL_SEARCH:false, CLAUDE_CODE_MCP_AUTO_BACKGROUND_MS:0, CLAUDE_CODE_DISABLE_BACKGROUND_TASKS:1, MCP_TOOL_TIMEOUT:86400000, CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT:0, CLAUDE_CODE_DISABLE_TERMINAL_TITLE:1, DISABLE_AUTOUPDATER:1, CLAUDE_AGENT_SDK_CLIENT_APP:telelean-smoke/0.0.0}; XDG_DATA_DIRS/XDG_CONFIG_DIRS restored from *_VSCODE_SNAP_ORIG.
+- **claim:** A blocking ask_user over the loopback HTTP MCP server waits 30 s until the host answers, receives progress notifications meanwhile, and gets its SSE response headers in under 1.5 s (which clears the CLI's 60 s first-byte timer).
+  - **evidence:** Tests "ask_user blocks for 30 s until the host answers, with progress notifications meanwhile" (elapsed >= 29500 ms, >= 10 progress notifications) and "sends SSE response headers at once for a pending call" pass. SDK: `export const DEFAULT_SSE_KEEP_ALIVE_MS = 15000;`. CLI fetch wrapper clears its timer when the response headers arrive: `try{return await e(s,{...h,headers:C,signal:T,...gr(r)>300000&&{timeout:!1}})}finally{clearTimeout(P)}`.
+- **claim:** The guard denies outside paths, ~ and .. paths, a symlink inside the shadow pointing outside (file or directory), dangling symlinks, absolute Glob patterns, hidden entries (.lake, .telelean, .git, dotfiles) by name or by symlink target, and unknown tools. Run as the CLI runs it, it prints the documented deny JSON and exits 0, and exits 2 on internal errors.
+  - **evidence:** 18 path-guard tests pass, including "denies a symlink inside the shadow that points outside (file and directory)", "denies writing through a dangling symlink", "denies absolute patterns, .. segments and hidden names in patterns", "exits 2 (blocking) when the policy is missing or the input is not JSON". The generated hook run on dry-run artifacts: "exit=0 decision=deny /etc/hostname", "exit=0 decision=deny ~/.bashrc", Model.lean -> no output (pass).
+- **claim:** ClaudeCliBackend works against a stand-in CLI: preflight, multi-turn, ask_user and finish over MCP, the generated hook, interrupt, graceful and forced close (whole process group), reload orphaning, and resume.
+  - **evidence:** All 14 cliSession tests pass. Afterwards `ps ... | grep -E 'fake-claude|sleep 300|telelean-path-guard'` -> "no leftover test processes".
+- **claim:** The `claude/endTurn` MCP result marker that the design relies on exists in 2.1.314; its exact effect is unverified.
+  - **evidence:** Binary strings: "claude/endTurn claude/endTurnHonorsStopHooks mcp_meta_blockable mcp_meta". The tool server sets it only on a final finish when endTurnOnFinish is on (test "marks only a final finish with claude/endTurn when asked to" passes); smoke scenario (b) reports endTurnMetaHonored.
+- **claim:** On Linux, Glob and Grep are missing from the default tool set; naming them in --tools brings them back. ask_user must not be marked requiresUserInteraction, because dontAsk denies such tools.
+  - **evidence:** Tools docs: "On macOS, Linux, and WSL, Claude Code leaves Glob and Grep out of the default tool set ... You name Glob or Grep in --tools or --allowedTools". MCP docs: "In dontAsk mode, which never prompts, Claude Code denies the call instead." Test asserts `ask?._meta?.['anthropic/requiresUserInteraction']` is undefined.
+- **claim:** Hard rules respected: no -p or prompt runs of the real CLI (only --help, --version and subcommand --help), no installs, no Lean or elan use, credentials never read, writes only in the assigned paths and the scratchpad.
+  - **evidence:** `wc -l ~/.elan/known-projects` -> 36. Real-binary invocations: --version, --help, mcp --help, auth --help, mcp add --help, mcp serve --help. The smoke script ran only with --dry-run, which spawns no CLI session (the dry-run ps check shows only the user's own VS Code Claude processes, started before this task).
+
+## deviations_from_design
+- Backend is the Claude Code CLI (`-p` stream-json), not the Agent SDK (amendment 1). 03 §8.2's SDK options are mapped to CLI flags. The SDK packaging and binary resolution are replaced by: explicit setting -> newest VS Code extension binary -> PATH -> ~/.local/bin, each with a --version check, minimum 2.1.295.
+- Confinement has layers: the PreToolUse guard via --settings (primary, fail closed through onFailure:block plus the hooks-listing preflight), and by default the CLI's own fences as a second layer: --restricted, permissions.blockReads/WritesOutsideWorkingDirectories, and deny rules for .lake/.telelean/.git. They are switched off only in smoke scenario (b), to test the hook alone.
+- The guard implements the full realpath design from the [H] milestone (canonical paths, '..' refused, absolute Glob patterns refused, dotfiles checked relative to the shadow, new files resolved through the parent's realpath, dangling symlinks refused), although the prototype profile deferred it; the task asked for it. It does not use O_NOFOLLOW, so a race between check and use remains. It is an allowlist: unknown tools are denied.
+- The auth preflight uses the `initialize` control reply's account before any prompt, instead of the SDK init message; the init message's apiKeySource is a second check that stops the run.
+- AgentToolHost: every method takes a ToolCallContext (an AbortSignal, so a reload can orphan a question). freeze_statements is included (listed in 03 §8.3, missing from the §8.1 interface). GateVerdict gains attempt, maxAttempts and next=accept|retry|give_up for amendment 2's gate loop (default cap 3).
+- LlmSession adds onEvent() and close({force}). send() writes the turn immediately and returns the turn's event stream.
+- One tool server (new port and token) per CLI process, so a reloaded or resumed session gets a fresh endpoint.
+- The design's Stop-hook fallback (`requireFinish`) is not implemented (M2). The `claude/endTurn` result marker is implemented behind an opt-in flag.
+
+## open_issues
+- The live smoke test was NOT run (by instruction). Unverified against the real CLI until it runs: the initialize `account` shape and the 'subscription' verdict; the get_hooks_listing reply shape; that --restricted works with the other flags; the effect of alwaysLoad and ENABLE_TOOL_SEARCH; the 75 s wait; the SIGTERM-then-resume flow; the claude/endTurn marker; that the model id claude-haiku-5-5 is valid; `--thinking disabled` on Haiku. A preflight failure costs no quota, because nothing is sent before it passes.
+- If the real account reply lacks subscriptionType, the auth check refuses (fail closed). The smoke summary prints the auth fields (never the email). classifyAuth may need adjusting after seeing real data; the smoke script deliberately has no flag to bypass the check.
+- packages/runner/src/index.ts (not my file) does not re-export ./llm; the main session may add `export * from './llm/index.js'`.
+- A live smoke run has side effects in ~/.claude: Claude Code saves transcripts for its 4 sessions under ~/.claude/projects/<slug of the work dir>/ (needed for --resume) and may add project entries to ~/.claude.json.
+- Scenario (b) reads ~/.bashrc by default, as specified. If the guard failed, its contents would be sent to Anthropic. The preflight check and the unit tests make this unlikely; `--safe-targets` swaps in a canary file. Worth mentioning to the user before the run.
+- If the extension host is SIGKILLed, the detached CLI keeps running until it notices stdin EOF, then finishes its current turn (bounded by --max-turns). A normal exit kills every live process group. M1 may want a watchdog.
+- Running the hook under the snap VS Code extension host is untested. defaultHookRuntime() now prefers a real `node` on PATH or ~/.local/bin over Electron in Node mode; verify in M1.
+- check_lean `files` must be validated to lie inside the shadow by the real host (M1); the stub host does not.
+- The token estimate for Claude Code's built-in tool prompts (Read/Glob/Grep/Edit/Write) is a guess, because the binary assembles those prompts at runtime. The real prompt size will be the first request's input plus cache-creation tokens in the smoke summary.
+- Running `npx vitest run test/llm` without TELELEAN_TEST_TMPDIR puts temp dirs under /tmp; they are removed afterwards.
+
+## design_feedback
+- 03 §8.2 / D-23: with the CLI, the MCP config must set `alwaysLoad: true` and the env `ENABLE_TOOL_SEARCH=false`. Otherwise mcp__telelean__* tools are deferred behind ToolSearch, which is not in `--tools Read,Glob,Grep,Edit,Write`.
+- 03 §8.2: long ask_user waits need the per-server MCP `timeout` (the HTTP idle default is 300000 ms). Add MCP_TOOL_TIMEOUT / CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT=0 to the env list. Auto-backgrounding is already off in -p mode (keep CLAUDE_CODE_MCP_AUTO_BACKGROUND_MS=0 as a second safeguard).
+- 03 §8.2 'Auth preflight ... check the SDK's init message': use the `initialize` control request's account (apiProvider/subscriptionType/apiKeySource/tokenSource) BEFORE any prompt; the init message arrives only after the first user turn is sent.
+- 03 §8.2 'fails closed if neither is active': -p silently ignores invalid settings files, so this must be a runtime check (get_hooks_listing preflight) plus `onFailure: "block"` on the hook; the minimum CLI version becomes 2.1.295.
+- D-23 sanitising: strip the whole CLAUDE* and ANTHROPIC_* families (keep CLAUDE_CONFIG_DIR) plus MCP_*, ENABLE_*, DISABLE_* (keep the user's privacy switches). A Claude-enabled VS Code exports parent-session links such as CLAUDE_CODE_MESSAGING_SOCKET, CLAUDE_CODE_SESSION_ID and CLAUDECODE.
+- D-24 / prototype profile: CLI 2.1.314 has built-in fences (`--restricted`, permissions.blockReadsOutsideWorkingDirectories / blockWritesOutsideWorkingDirectories, symlink-aware rule matching). They are a nearly free second layer, but they may refuse a call before the PreToolUse hook sees it, so testing the hook requires switching them off.
+- 03 §8.3: finish ending the turn via `_meta claude/endTurn` is plausible: the key exists in 2.1.314 (also `claude/endTurnHonorsStopHooks`). Smoke (b) measures whether it is honoured.
+- 03 §8.1: the AgentToolHost interface should list freeze_statements and pass a per-call context with an AbortSignal (for cancellation and orphaning on reload).
+- D-25 resume: SIGTERM -> exit 143 with the turn left unfinished and no result; on --resume the next prompt drives the conversation. Do NOT set CLAUDE_CODE_RESUME_INTERRUPTED_TURN=1. With --system-prompt-snapshot (default on), a resumed session reuses the originally recorded system prompt, so later prompt edits do not reach old sessions.
+- 03 §8.1 'Recorded stream': record the CLI stream (the smoke script writes events-<scenario>.jsonl) instead of an SDK stream, for replay tests.
+- --max-turns counts per user turn in stream-json mode (docs: a queued message starts a new turn with its own limit); the D-25 cap of 80 turns per run must be enforced by the host across turns.
+- Token budget: telelean's 5 tool schemas are 4744 chars of tools/list JSON (~1.3k tokens) and go with every request; keep tool descriptions short.
+
+## extra
+VERIFIED FLAG TABLE (Claude Code 2.1.314; H = hidden, found in the binary's option table and the CLI docs):
+| flag | status | telelean use |
+| -p/--print | --help | yes |
+| --input-format stream-json | --help (choices text, stream-json) | yes |
+| --output-format stream-json | --help | yes |
+| --verbose | --help (docs: needed with stream-json output) | yes |
+| --include-partial-messages | --help | optional (off) |
+| --include-hook-events | --help | yes (guard decisions visible in the stream) |
+| --replay-user-messages | --help | no |
+| --model | --help | yes |
+| --system-prompt / --system-prompt-file | --help / H ("Read system prompt from a file") | --system-prompt-file |
+| --tools | --help ("" = none, "default", or names) | Read,Glob,Grep,Edit,Write |
+| --allowedTools | --help (mcp__<server>__* allowed only after a literal server prefix) | + mcp__telelean__* |
+| --disallowedTools | --help (a bare name removes the tool) | Bash,WebFetch,WebSearch,Agent,AskUserQuestion,NotebookEdit |
+| --permission-mode | --help (acceptEdits, auto, bypassPermissions, manual, dontAsk, plan) | dontAsk |
+| --permission-prompts host|none | --help (2.1.259+) | none |
+| --mcp-config / --strict-mcp-config | --help | yes |
+| --settings | --help (file <= 2 MiB) | generated hook settings |
+| --setting-sources | --help; "" parsed as [] | --setting-sources= |
+| --max-turns | H | yes (6 in smoke) |
+| --max-budget-usd | --help | 1 in smoke |
+| --resume / --session-id / --fork-session | --help (session id must be a UUID) | resume + session-id |
+| --effort | --help (low..max) | supported, not used in smoke |
+| --thinking enabled|adaptive|disabled | H | disabled in smoke |
+| --restricted | --help (new) | yes by default (second layer) |
+| --bare | --help (never reads OAuth) | NEVER |
+| --no-session-persistence | --help | no (resume needs persistence) |
+| --permission-prompt-tool | H | no |
+(Unrelated observation: the user's VS Code extension runs the same binary with `--output-format stream-json --verbose --input-format stream-json --permission-prompt-tool=stdio --setting-sources=user,project,local --replay-user-messages ...`.)
+
+ENV VARIABLES the backend sets (all checked in the binary; most in the docs): CLAUDE_CODE_DISABLE_AUTO_MEMORY=1, CLAUDE_CODE_DISABLE_CLAUDE_MDS=1, ENABLE_CLAUDEAI_MCP_SERVERS=false, ENABLE_TOOL_SEARCH=false, CLAUDE_CODE_MCP_AUTO_BACKGROUND_MS=0, CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1, MCP_TOOL_TIMEOUT=86400000, CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT=0, CLAUDE_CODE_DISABLE_TERMINAL_TITLE=1 (skips the small-model session-title request), DISABLE_AUTOUPDATER=1, CLAUDE_AGENT_SDK_CLIENT_APP=telelean/<ver>. MCP config entry: {type:http, url:127.0.0.1:<random>/mcp, headers:{Authorization:Bearer <64 hex>}, timeout:86400000, alwaysLoad:true}; written with mode 0600.
+
+MCP DEFAULTS FOUND (binary + docs): hard limit default 1e8 ms; idle 300 s for HTTP / 1800 s for stdio, reset by progress notifications; per-request first-byte timer max(60 s, tool timeout, MCP_TIMEOUT); when the tool timeout exceeds 300 s the CLI also turns off Bun's own fetch timeout; startup wait with --mcp-config = MCP_TIMEOUT (30 s); alwaysLoad holds startup up to 5 s; the CLI emits tool_progress heartbeats every 30 s.
+
+TOKEN ESTIMATE for the live smoke run (measured parts plus clearly labelled guesses):
+- System prompt: 303 chars ≈ 85 tokens (measured).
+- telelean tool schemas: 4744 chars of tools/list JSON ≈ 1.2-1.3k tokens (measured).
+- User turns: ≈ 490-510 chars ≈ 140 tokens each (measured).
+- Built-in Read/Glob/Grep/Edit/Write prompts plus schemas: ≈ 8-11k chars ≈ 2.3-3k tokens (estimate).
+- Possible CLI-injected context: 0-0.5k tokens (estimate).
+- Prefix per request ≈ 3.6-4.7k tokens.
+- Requests: a ≈ 3 (ask -> finish -> DONE); b ≈ 3-5 (reads may come in parallel or one by one; DONE may be skipped if endTurn is honoured); c ≈ 1 before the kill + 2 after resume. Total ≈ 9-11 API requests.
+- Input ≈ 35-60k tokens in total. Whether those are cache reads depends on the model's minimum cacheable prefix, which for Haiku-class models has been 2k-4k tokens; this prefix is borderline.
+- Output ≈ 1-1.5k tokens with thinking off.
+- The CLI's cost estimate at Haiku-4.5-like list prices ($1 in / $5 out per MTok) should be under $0.07 even fully uncached. The --max-budget-usd 1 per process is only a runaway guard.
+- Wall time ≈ 2.5-3.5 min (scenario a alone includes the 75 s wait).
+
+OFFLINE TIMINGS: full suite 41.2 s (the 30 s wait test dominates); path guard as a hook ≈ one node start (~50 ms) per tool call; smoke dry run < 2 s.
+

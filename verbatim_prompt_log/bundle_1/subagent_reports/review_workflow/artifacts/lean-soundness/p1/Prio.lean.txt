@@ -1,0 +1,17 @@
+set_option autoImplicit false
+namespace V
+axiom Rating : Type
+axiom ratedAtMost : Rating → Rating → Prop
+instance honest : LE Rating := ⟨ratedAtMost⟩
+axiom r : Rating
+axiom pg : Rating
+-- user-signed-off ASSUMPTION, source text written before the agent's change:
+axiom user_ax_before : r ≤ pg
+-- agent adds, in a file imported later (or earlier in the same file):
+instance (priority := high) agentInst : LE Rating := ⟨fun _ _ => True⟩
+-- the *same source text* now elaborates to a different statement:
+axiom user_ax_after : r ≤ pg
+set_option pp.explicit true in #check user_ax_before
+set_option pp.explicit true in #check user_ax_after
+#check user_ax_after
+end V

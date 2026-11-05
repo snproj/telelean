@@ -1,0 +1,153 @@
+# verify:semantics (agent a70b1ea393bc915c8)
+
+## verdict
+needs-work
+
+## what_i_ran
+I edited nothing under /home/zhengyew/telelean. I bundled the real core and runner sources into one scratch ESM harness (esbuild, @telelean/core aliased to core/src) and drove it from Node scripts in /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/verify-semantics/tests/ (t1..t24). Real Lean ran only on scratch copies of mental_model, through runner refreshLeanFacts / ModelWorkspace (runLean sandbox, LEAN_NUM_THREADS=4). I checked free -m before each build: 36+ GB available, one build at a time.
+
+What the scripts cover:
+- Statuses, footprints, edges, uses, refs, presupposes and glosses against the real .ilean data and check output: the baseline sample plus an adversarial module with 19 node kinds (t3, t4, t22).
+- Failure paths: a module error after a non-BMP character, a Vocabulary error, a missing root import, a lakefile syntax error (t14, t19).
+- Stale-by-name facts (t16) and a toolchain switch (t20).
+- Markup: field edits on many layouts (t1), a 3000-run seeded fuzz (t18), every planner action on a CRLF copy (t9), blocks next to declarations (t17), duplicate keys (t23), block rebinding (t24).
+- 14 delimiter-heavy sentences through add-node and edit-node with the docstring mirror, each state rebuilt by Lean (t13).
+- D-11 and D-18 on real files with rebuilds: column-0 comments (t5, t6), delete with untracked and cross-subject users (t7), hypothesis rewrite with lemma chains, implicit binders, @-uses and parentheses (t8, t8b), conditional .holds (t15, t15b), dependents written through `open` in an unchecked file (t12).
+- Undo with LF and CRLF (t11), graph.json against the zod schema and determinism (t10), vocabulary binders in Lean vs syntactic mode (t21).
+- One direct toolchain `lean` run on a scratch BOM probe. Result: Lean rejects a BOM, so that path does not matter.
+
+Existing suites, run with --cache=false --fsModuleCache=false and TELELEAN_TEST_TMP set to scratch:
+- core vitest: "Test Files 28 passed (28) / Tests 320 passed (320)".
+- runner test/integration + test/semantic: "Test Files 8 passed (8) / Tests 53 passed (53)".
+- `find -newer <marker>` showed no files written under the repo. mental_model still has no .lake and no .git.
+
+Not run by me: the webview Playwright tests and the VS Code suites.
+
+## issues
+- **severity:** blocker
+  - **package:** core
+  - **description:** A column-0 comment inside a declaration ends that declaration's syntactic span. Plan 6.1 itself lists `--` and `/-` at column 0 as command starts, and decls.ts adds every line-initial comment to commandStart. Every edit that removes or replaces a declaration therefore cuts it in half. This hits holds-theorem-to-axiom (D->A, G->A), remove-holds (A->G or D->G without dependents) and remove-decl (delete with Lean). A file that compiled stops compiling, and the user's proof ends up split between the attic and the file. The same truncated span also cuts the card's code and its Copy text, and drops refs after the cut. The stale-file dependents scan (textUsers) misses uses after the cut, and Lean errors after the cut are not attributed to the node.
+  - **evidence:** t5_col0_comment.mjs, real Lean.
+- Before: "status ok", d-col0 "proved". Its card code already ends at "  unfold d_col0".
+- perform D->A: {"ok":true,"label":"Make Assumption: The game is PG again"}.
+- Main.lean after the edit: "axiom d_col0.holds : d_col0\n-- the key step: use the assumption\n  exact new_spyro_pg.holds".
+- The attic holds only "theorem d_col0.holds : d_col0 := by\n  unfold d_col0".
+- Rebuild: "build-errors ... Model.Spyro.Main failed", Lean "Function expected at".
+
+t6_col0_more.mjs:
+- D->G on a proof with a column-0 `/- older attempt: ... -/` leaves "/- older attempt:\n  simp\n-/\n  exact new_spyro_pg.holds".
+- Deleting (with Lean) `abbrev a_multi : Prop :=\n-- the game is PG\n  IsPG newSpyro` leaves "-- the game is PG\n  IsPG newSpyro".
+- The card code shown for a_multi is "abbrev a_multi : Prop :=\n\naxiom a_multi.holds : a_multi".
+  - **suggested_fix:** In markup/decls.ts, count a column-0 comment as a command start only when the next non-blank, non-comment line is itself a command start (or EOF). Alternatively, never end a span inside a declaration whose `:=` / `by` value has started and whose next code line is indented. For fresh files, take spans for remove/replace/code from the .ilean full range (DeclFacts.range). In applyLeanOps, refuse when the line after a span is an indented continuation. Correct plan 6.1 too. Add tests with column-0 `--` and `/-` inside tactic proofs and multi-line statements.
+- **severity:** major
+  - **package:** core
+  - **description:** Delete never asks about dependents the core already knows about. planDelete computes brokenDependents: untracked lemmas, other subjects' proofs, axiom-list users and text-scanned users. Nothing outside core and its tests ever calls it, so the list is never shown. The webview's DeleteDialog uses deleteDependents(), which sees only this subject's graph edges. The host performs delete-node with keepLean=false without any confirmation. Plan 1.1 item 8 and D-18 require a confirmation that lists the affected dependents.
+  - **evidence:** t7_delete_untracked.mjs, real Lean.
+- A->G without a choice correctly gives {"ok":false,"code":"needs-confirmation","dependents":["other-goal","Spyro.helper_lemma"]}.
+- The Spyro graph has only premise edges, so the dependents the dialog computes are {"proofs":[]} and it says "Nothing else refers to it."
+- delete keepLean=false: {"ok":true,"label":"Delete: Cynder is a character who has a dark past"}.
+- Rebuild: "failed lake build reported errors: Model.Spyro.Main failed; Model.Other.Main, Model.Other, Model.Spyro, Model not built". Lean: "Unknown identifier `cynder_dark_past`", "Unknown identifier `cynder_dark_past.holds`".
+- The other subject's goal went from proved to ["none","not-checked"].
+- grep shows no caller of planDelete or brokenDependents outside core and its tests.
+  - **suggested_fix:** In planDeleteNode, throw ActionError needs-confirmation listing planDel(...).brokenDependents when keepLean is false and dependents exist, unless the request confirms (reuse the `dependents` choice or add a confirmed flag to deleteNode). The webview should show that list in DeleteDialog; it already handles needs-confirmation for kind changes. Add an end-to-end test with an untracked lemma and a cross-subject user.
+- **severity:** major
+  - **package:** core
+  - **description:** D-11 assumes S.holds : S, but the model explicitly supports conditional proofs (theorem d.holds (h : a) : d), and the A->G rewrite itself produces them.
+1. D->A (and G->A) on a conditional derivation writes `axiom d.holds : d`. Dependents that apply `(d.holds h)` break, while the drop-zone text promises "1 proof that uses it stays valid".
+2. D->G / A->G with "rewrite" replaces `d.holds` by `h_d : d` inside `(d.holds h)`, giving `(h_d h)`, which does not compile.
+The natural sequence "demote a premise (rewrite), then demote the derivation" therefore breaks the model.
+  - **evidence:** t15_cond_to_axiom.mjs (real Lean).
+- After the A->G rewrite on cynder-dark-past: d1 is conditional on ["cynder-dark-past"], and g1.holds is "(d1.holds h_cynder_dark_past).2".
+- The webview impact for D->A on d1: "`theorem d1.holds` becomes `axiom d1.holds`; the proof is kept in the attic. 1 proof that uses it stays valid."
+- D->A: ok:true. The file has "axiom d1.holds : d1".
+- Refresh: "failed". LEAN error on g1: "Function expected at |   d1.holds".
+
+t15b_cond_rewrite.mjs:
+- D->G on d1 with dependents:'rewrite': {"ok":true,"label":"Make Goal: Both hold (dependents rewritten)"}.
+- Result: "theorem g1.holds (h_d1 : d1) (h_cynder_dark_past : cynder_dark_past) : g1 := (h_d1 h_cynder_dark_past).2".
+- Lean: "Function expected at |   h_d1".
+  - **suggested_fix:** In planKind and kindChangeImpact, read H's #check type (or proof.kind === 'conditional').
+- For D->A / G->A with a conditional H: ask before acting, and also rewrite the dependents' applications `(d.holds h…)` back to `d.holds`; or refuse. Do not claim that dependents stay valid.
+- For the rewrite: use hypType = H's full type (a → … → S), or refuse with "choose mark broken".
+Add a Lean-backed test of A->G(rewrite) followed by D->A and by D->G(rewrite).
+- **severity:** minor
+  - **package:** core
+  - **description:** While a file is not freshly checked (typed since the last refresh, new, or in a failed module), the only guard for "never remove a .holds others use" is the text scan textUsers. It resolves names only against the declaration's enclosing namespaces, not against `open` / `open … in`. A use written through an open namespace is therefore missed, and A->G (and delete) removes the .holds without asking.
+  - **evidence:** t12_stale_users.mjs. Fresh facts first; then an unchecked file Model/Spyro/Uses.lean that uses cynder_dark_past.holds once.
+- "inside namespace Spyro": {"refused":"needs-confirmation","dependents":["Spyro.uses_it"]}
+- "fully qualified in Other": {"refused":"needs-confirmation","dependents":["Other.uses_it"]}
+- "open Spyro in (root namespace)": {"leanOps":[["remove-holds"]]}
+- "open Spyro (root namespace)": {"leanOps":[["remove-holds"]]}
+- "namespace Other + open Spyro": {"leanOps":[["remove-holds"]]}
+  - **suggested_fix:** In dependents.ts textUsers, also resolve tokens against the namespaces `open`ed before the declaration (in the file or in `open … in`). Or, while facts are not fresh, treat any token whose dotted suffix matches the target (e.g. `cynder_dark_past.holds`) as a possible use.
+- **severity:** minor
+  - **package:** core
+  - **description:** A goal proved only from a hidden (unmarked) axiom is flagged `self-evident` ("proved with no node in the footprint"), while TL103 and TL104 are raised for the same proof. Calling a proof that rests on a hidden assumption self-evident contradicts D-5/D-6 ("Self-evident?" means zero premises).
+  - **evidence:** t4_extras.mjs (real Lean): g-secret has {"proof":{"kind":"proved","footprint":["presup:Spyro.Character.exists","axiom:Spyro.secret"]},"flags":["proved-goal","self-evident"]}, together with diagnostic TL103 "The proof uses Spyro.secret, which is neither an assumption … nor vocabulary."
+  - **suggested_fix:** In build.ts, set self-evident only when the footprint holds no node id and no `axiom:` entry (presuppositions and standard axioms only).
+- **severity:** minor
+  - **package:** core
+  - **description:** The mechanical rewrite refuses common but harmless use forms, with messages that do not suggest "mark broken":
+- `@H`: the .ilean ref range includes the `@`, and add-hypothesis does not allow it.
+- `@c` for a rewritten lemma: .ilean records two refs, with and without the `@`, so apply-hypothesis gets overlapping spans.
+- `(c)`: the ref range covers the parentheses.
+The refusals are safe; no file is changed.
+  - **evidence:** t8_rewrite.mjs and t8b.mjs (real facts):
+- With `@cynder_dark_past.holds`: "unsafe" "The occurrence \"@cynder_dark_past.holds\" at Model/Spyro/Main.lean:72:36 is not an identifier inside `Spyro.lem4`."
+- With `@lem5`: "Two operations change overlapping text at Model/Spyro/Main.lean:75:36." The .ilean refs of lem4 were ["Spyro.lem5",{line:74,character:35}..40] and ["Spyro.lem5",{line:74,character:36}..40].
+- With `(lem5)`: "The occurrence \"(lem5)\" ... is not an identifier".
+  - **suggested_fix:** In planKind, deduplicate ref spans that end at the same identifier: keep the one starting at the identifier, and keep a leading `@` for apply-hypothesis. Allow a leading `@` in add-hypothesis. Shrink parenthesised ranges to the inner identifier. Otherwise refuse with the documented "choose mark broken" text.
+- **severity:** minor
+  - **package:** core
+  - **description:** "Delete card only, keep Lean" on a card whose block sits directly under another block (no blank line; a supported way to write a code-less node) makes the upper card silently bind by adjacency to the deleted card's declarations. The upper card's meaning changes: a goal becomes "assumed". The dialog had said that `axiom …holds` becomes an unmarked axiom. Deleting with Lean can likewise leave the upper block adjacent to a following untracked declaration.
+  - **evidence:** t24_rebind.mjs.
+- Before: [["upper","none",null,"none"],["lower","adjacent","Spyro.new_spyro_pg","assumed"]].
+- After delete lower with keepLean=true: [["upper","adjacent","Spyro.new_spyro_pg","formalized","assumed"]].
+- The file now reads "...natural_name: An informal goal written just above\n-/\n/-- The new Spyro game is PG -/\nabbrev new_spyro_pg ...".
+  - **suggested_fix:** When removing a block (or declarations after it), keep or insert a blank line whenever the line before is another block's closer and a declaration follows. Alternatively, re-parse the planned text and refuse or pin if any other block's binding changed. A final check of "no other block's binding changed" in EditSession would catch all such cases.
+- **severity:** minor
+  - **package:** core
+  - **description:** Editing a field that has duplicate lines (TL005) silently deletes the later lines, which are text the user typed. Only the first value is ever shown.
+  - **evidence:** t23_dup.mjs. A block with "rationale: first reason" and "rationale: a second reason I typed later" (TL005 "the first value is used") becomes, after setBlockField(rationale,'edited'), a block with only "rationale: edited". The second line is gone without notice.
+  - **suggested_fix:** Edit only the first line and keep the duplicates (TL005 stays). Or refuse the board edit with a message pointing to the duplicate, instead of deleting user text.
+- **severity:** minor
+  - **package:** runner
+  - **description:** unsupported-toolchain and unsupported-project are in NO_FACTS_STATUSES, so the previous v4.35 facts stay in use. File hashes are unchanged, so those facts still count as fresh. The board shows Lean-derived statuses, uses and refs while the detail says the board is syntactic (D-7).
+  - **evidence:** t20_toolchain.mjs.
+- Step 1: "fresh", cynder-not-good flags ["uses-sorry"], uses counts 2/2/3.
+- After lean-toolchain was set to v4.36.0: "2 unsupported-toolchain lean-toolchain pins \"leanprover/lean4:v4.36.0\"; telelean checks only leanprover/lean4:v4.35.0 (D-7), so the board stays …", and the nodes are unchanged (still uses-sorry, the same uses).
+  - **suggested_fix:** For unsupported-toolchain and unsupported-project, drop the facts in use, or mark every file stale. The board then really becomes syntactic, as the detail and D-7 say.
+- **severity:** minor
+  - **package:** core
+  - **description:** Cross-subject vocabulary has no target. A card in subject Other that uses Spyro's vocabulary (D-10, explicit import) gets `uses` and `refs` with fully qualified names, as the plan intends. But subjectGraph includes only the board's own subject's vocabulary, so hovering shows no gloss and clicking has nothing to highlight.
+  - **evidence:** t22_uses_closure.mjs (real Lean): other-a uses ["Spyro.IsPG","Spyro.newSpyro"], refs ["Spyro.IsPG","Spyro.newSpyro","Other.other_a"], and the "Other vocabulary names" list is [], so gloss found for each ref = [false,false,false].
+  - **suggested_fix:** Add the referenced items from imported subjects to the subject graph as read-only foreign entries, or carry the gloss on the ref and uses data.
+- **severity:** minor
+  - **package:** core
+  - **description:** graph.json writes a conditional proof's `footprint` as its hypotheses (`on`), so external scripts cannot see the assumptions a conditional result rests on. The board has them. This matches the frozen contract comment, but it loses data D-1 cares about.
+  - **evidence:** t10_graphjson.mjs: d-cond in graph.json has {"proof":"conditional","footprint":["cynder-not-good"]}, while the board has {"kind":"conditional","on":["cynder-not-good"],"footprint":["new-spyro-pg","presup:Spyro.Character.exists","presup:Spyro.Game.exists"]}. The export validates against the schema and is deterministic.
+  - **suggested_fix:** Add an optional `conditional_on` (format 1.1) and keep `footprint` as the real footprint for conditional proofs.
+
+## strengths
+- D-15 statuses agree with real Lean 4.35 output for 19 node kinds in one adversarial module: assumed, proved with footprint, a goal proved through a derivation (verified arrow d-both->g-via from references), pending-promotion with claimed and rests-on-claimed, uses-sorry (also propagated to a goal), conditional with on/footprint plus TL102, a goal asserted as an axiom (TL116), provable-assumption (TL106), hidden axiom (TL104/TL103), not-a-Prop (TL113), holds mismatch (TL114), existence-commitment (TL108), and a pin by short name.
+- uses, refs, presupposes and glosses match the .ilean references exactly, including first-occurrence order, the statement closure through node statements and vocabulary definitions (definitional-choice), and UTF-16 ref ranges on lines with non-BMP characters. The vocabulary has the expected 9 items, glosses come from the docstrings, and the presupposition instances are hidden.
+- Refresh freshness: a failing module gives build-errors. Dependents become dependency-failed and fall back to syntactic statuses with not-checked, and nothing is ever shown as proved without Lean. Error positions after non-BMP characters convert correctly and are attributed to the right node (ill-formed). A broken Vocabulary, a missing root import and a lakefile syntax error are all handled sensibly.
+- Markup round-trip is strong. A 3000-run seeded fuzz of setBlockFields with delimiter-heavy values on 5 block layouts (LF and CRLF, closer on the field line, glued closer, indented, Markdown body with a nested comment) had 0 failures: values read back exactly, other blocks and declarations stay byte-identical, unknown and dotted keys are preserved, no stray comment appears and CRLF is kept. Every planner action on a CRLF copy keeps CRLF and leaves untouched blocks identical.
+- Escapes survive Lean: 14 adversarial sentences (leading `--`, `/--`, `/-!`, `-/` at either end, `/-/`, `-/-`, a lone `-` or `/`, a tab, non-BMP characters, quotes, a backslash) went through add-node and through edit-node with the D-9 docstring mirror. Every state built fresh with Lean, the sentences read back exactly, and the mirror kept following.
+- The D-11 rewrite is sound for unconditional .holds: lemma chains, an implicit-binder lemma (`lem3 {g} (hg)` called as `((lem3 h) new_spyro_pg.holds).2`) and tactic uses all compile after the rewrite. Statuses become conditional on the demoted node, and undo is byte-exact. It refuses safely, without writing anything, when it cannot handle a use.
+- D-11 dependents are found from the .ilean references across untracked lemmas and other subjects: A->G asked with ["other-goal","Spyro.helper_lemma"].
+- Undo reverse-patches around unrelated manual edits (LF and CRLF) and refuses a conflicting edit without writing.
+- Vocabulary classification is identical in Lean-facts mode and syntactic mode for 30 declarations with explicit, implicit and multi-name binders, functions, constants, sorts, hidden axioms and shape violations.
+- graph.json validates against the zod schema and is deterministic for the adversarial model.
+- The integrator's claimed suite results reproduce: core 28 files / 320 tests and runner integration+semantic 8 files / 53 tests, all passing, with no writes into the repo.
+
+## effects_outside_repo
+- Scratch dir only, about 5.8 MB: /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/verify-semantics/. It holds the esbuild harness bundle, the test scripts, work copies of mental_model (with .lake build output), an empty test-temp dir tt/ and a BOM probe file.
+- Transient systemd --user scopes (telelean-*) created by runLean for about 30 Lean builds and check runs on scratch copies (my vsem<pid>_<n> run ids plus the runner tests' own ids). `systemctl --user list-units 'telelean-*'` is empty afterwards.
+- One direct run of the toolchain binary ~/.elan/toolchains/leanprover--lean4---v4.35.0/bin/lean on a scratch file (LEAN_NUM_THREADS=4, ulimit -c 0). The toolchain was only read, the elan proxies were never used, and ~/.elan/known-projects is unchanged (last modified 09:09).
+- The runner integration tests ran git only in their scratch repos under my TELELEAN_TEST_TMP, with GIT_CONFIG_GLOBAL=/dev/null and GIT_CONFIG_NOSYSTEM=1. I ran no git commands myself.
+- vitest ran with --cache=false --fsModuleCache=false. `find /home/zhengyew/telelean -newer <marker>` found no files written in the repo. mental_model still has no .lake and no .git, and the repo still has no .git.
+- Read-only: /proc/meminfo, systemctl listings, the design docs and the agent reports.
+- Seen but not caused by me: ~/.config/Code state files updated by the user's running VS Code, and /tmp/.X99-lock. I launched no VS Code, Xvfb or browser.
+- No network use, no npm install, no pushes or sends, no credentials read, no Claude CLI runs.
+

@@ -1,0 +1,43 @@
+{
+ "name": "perfect-arrows",
+ "latest": "0.3.7",
+ "dist_tags": {
+  "latest": "0.3.7",
+  "beta": "0.4.0-beta"
+ },
+ "latest_published": "2021-09-28T20:45:51.499Z",
+ "modified": "2022-05-12T19:23:38.919Z",
+ "created": "2020-07-17T21:07:05.147Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 269055,
+ "fileCount": 26,
+ "tarball": "https://registry.npmjs.org/perfect-arrows/-/perfect-arrows-0.3.7.tgz",
+ "dependencies": {},
+ "peerDependencies": {},
+ "repository": "https://github.com/steveruizok/perfect-arrows",
+ "recent_versions": [
+  [
+   "0.3.3",
+   "2020-09-28T11:07:31.982Z"
+  ],
+  [
+   "0.4.0-beta",
+   "2020-10-04T13:49:48.206Z"
+  ],
+  [
+   "0.3.4",
+   "2021-06-11T12:15:45.959Z"
+  ],
+  [
+   "0.3.5",
+   "2021-06-11T15:15:21.943Z"
+  ],
+  [
+   "0.3.7",
+   "2021-09-28T20:45:51.499Z"
+  ]
+ ],
+ "homepage": "https://github.com/steveruizok/perfect-arrows",
+ "description": "Draw perfect arrows between points or shapes"
+}

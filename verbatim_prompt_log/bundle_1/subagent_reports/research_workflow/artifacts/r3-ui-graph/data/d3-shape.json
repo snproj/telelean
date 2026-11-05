@@ -1,0 +1,45 @@
+{
+ "name": "d3-shape",
+ "latest": "3.2.0",
+ "dist_tags": {
+  "latest": "3.2.0",
+  "next": "2.0.0-rc.1"
+ },
+ "latest_published": "2022-12-20T23:39:17.478Z",
+ "modified": "2023-04-12T04:39:59.194Z",
+ "created": "2015-11-11T19:35:32.768Z",
+ "license": "ISC",
+ "deprecated": null,
+ "unpackedSize": 247267,
+ "fileCount": 65,
+ "tarball": "https://registry.npmjs.org/d3-shape/-/d3-shape-3.2.0.tgz",
+ "dependencies": {
+  "d3-path": "^3.1.0"
+ },
+ "peerDependencies": {},
+ "repository": "git+https://github.com/d3/d3-shape.git",
+ "recent_versions": [
+  [
+   "2.1.0",
+   "2021-03-10T20:19:32.154Z"
+  ],
+  [
+   "3.0.0",
+   "2021-06-04T19:28:57.351Z"
+  ],
+  [
+   "3.0.1",
+   "2021-06-05T18:25:01.546Z"
+  ],
+  [
+   "3.1.0",
+   "2022-01-07T17:29:26.861Z"
+  ],
+  [
+   "3.2.0",
+   "2022-12-20T23:39:17.478Z"
+  ]
+ ],
+ "homepage": "https://d3js.org/d3-shape/",
+ "description": "Graphical primitives for visualization, such as lines and areas."
+}

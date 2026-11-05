@@ -1,0 +1,42 @@
+{
+ "name": "tm-themes",
+ "latest": "1.12.12",
+ "dist_tags": {
+  "latest": "1.12.12"
+ },
+ "latest_published": "2026-09-22T03:19:05.467Z",
+ "modified": "2026-09-22T03:19:05.843Z",
+ "created": "2023-12-20T16:48:50.634Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 1944849,
+ "fileCount": 71,
+ "tarball": "https://registry.npmjs.org/tm-themes/-/tm-themes-1.12.12.tgz",
+ "dependencies": {},
+ "peerDependencies": {},
+ "repository": "git+https://github.com/shikijs/textmate-grammars-themes.git",
+ "recent_versions": [
+  [
+   "1.12.8",
+   "2026-08-20T01:04:47.976Z"
+  ],
+  [
+   "1.12.9",
+   "2026-08-26T01:08:58.581Z"
+  ],
+  [
+   "1.12.10",
+   "2026-08-29T05:37:32.377Z"
+  ],
+  [
+   "1.12.11",
+   "2026-09-09T03:03:59.202Z"
+  ],
+  [
+   "1.12.12",
+   "2026-09-22T03:19:05.467Z"
+  ]
+ ],
+ "homepage": "https://github.com/shikijs/textmate-grammars-themes#readme",
+ "description": "Collecton of TextMate grammars in JSON"
+}

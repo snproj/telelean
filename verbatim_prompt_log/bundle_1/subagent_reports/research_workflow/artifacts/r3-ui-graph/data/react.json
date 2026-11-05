@@ -1,0 +1,48 @@
+{
+ "name": "react",
+ "latest": "19.3.1",
+ "dist_tags": {
+  "beta": "19.0.0-beta-26f2496093-20240514",
+  "rc": "19.0.0-rc.1",
+  "next": "19.3.0-canary-d5736f09-20260507",
+  "latest": "19.3.1",
+  "backport": "19.1.10",
+  "experimental": "0.0.0-experimental-e84e1492-20261031",
+  "canary": "19.3.0-canary-e84e1492-20261031"
+ },
+ "latest_published": "2026-10-14T16:47:15.290Z",
+ "modified": "2026-10-31T09:15:40.031Z",
+ "created": "2011-10-26T17:46:21.942Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 178663,
+ "fileCount": 27,
+ "tarball": "https://registry.npmjs.org/react/-/react-19.3.1.tgz",
+ "dependencies": {},
+ "peerDependencies": {},
+ "repository": "git+https://github.com/react/react.git",
+ "recent_versions": [
+  [
+   "0.0.0-experimental-c5ec5c6d-20261029",
+   "2026-10-29T16:26:22.669Z"
+  ],
+  [
+   "19.3.0-canary-a703ca64-20261030",
+   "2026-10-30T16:19:40.009Z"
+  ],
+  [
+   "0.0.0-experimental-a703ca64-20261030",
+   "2026-10-30T16:21:41.273Z"
+  ],
+  [
+   "19.3.0-canary-e84e1492-20261031",
+   "2026-10-31T09:14:14.740Z"
+  ],
+  [
+   "0.0.0-experimental-e84e1492-20261031",
+   "2026-10-31T09:15:39.748Z"
+  ]
+ ],
+ "homepage": "https://react.dev/",
+ "description": "React is a JavaScript library for building user interfaces."
+}

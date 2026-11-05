@@ -1,0 +1,2 @@
+abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro
+theorem cynder_not_good.holds : cynder_not_good := sorry

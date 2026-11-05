@@ -1,0 +1,6 @@
+/-
+@@ telelean v1
+name: "A -\/ B and C /\u002d D"
+-/
+def d := 1
+#print d

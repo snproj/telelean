@@ -1,0 +1,46 @@
+{
+ "name": "cytoscape-elk",
+ "latest": "2.3.0",
+ "dist_tags": {
+  "latest": "2.3.0"
+ },
+ "latest_published": "2024-11-26T16:36:28.523Z",
+ "modified": "2024-11-26T16:36:28.694Z",
+ "created": "2018-07-03T11:32:37.424Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 346787,
+ "fileCount": 30,
+ "tarball": "https://registry.npmjs.org/cytoscape-elk/-/cytoscape-elk-2.3.0.tgz",
+ "dependencies": {
+  "elkjs": "^0.9.3"
+ },
+ "peerDependencies": {
+  "cytoscape": "^3.2.0"
+ },
+ "repository": "git+https://github.com/cytoscape/cytoscape.js-elk.git",
+ "recent_versions": [
+  [
+   "2.0.1",
+   "2021-02-09T17:16:11.478Z"
+  ],
+  [
+   "2.0.2",
+   "2021-02-23T18:16:49.926Z"
+  ],
+  [
+   "2.1.0",
+   "2022-09-21T17:23:05.004Z"
+  ],
+  [
+   "2.2.0",
+   "2023-06-21T11:01:17.867Z"
+  ],
+  [
+   "2.3.0",
+   "2024-11-26T16:36:28.523Z"
+  ]
+ ],
+ "homepage": "https://github.com/cytoscape/cytoscape.js-elk",
+ "description": "The ELK layout algorithm adapter for Cytoscape.js"
+}

@@ -1,0 +1,42 @@
+{
+ "name": "leader-line-new",
+ "latest": "1.1.9",
+ "dist_tags": {
+  "latest": "1.1.9"
+ },
+ "latest_published": "2020-07-28T13:23:06.166Z",
+ "modified": "2022-05-07T18:24:46.197Z",
+ "created": "2020-07-25T13:41:56.412Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 155669,
+ "fileCount": 5,
+ "tarball": "https://registry.npmjs.org/leader-line-new/-/leader-line-new-1.1.9.tgz",
+ "dependencies": {},
+ "peerDependencies": {},
+ "repository": "git://github.com/II-alex-II/leader-line-new.git",
+ "recent_versions": [
+  [
+   "1.1.5",
+   "2020-07-28T11:42:13.374Z"
+  ],
+  [
+   "1.1.6",
+   "2020-07-28T11:44:12.483Z"
+  ],
+  [
+   "1.1.7",
+   "2020-07-28T13:12:58.444Z"
+  ],
+  [
+   "1.1.8",
+   "2020-07-28T13:19:09.099Z"
+  ],
+  [
+   "1.1.9",
+   "2020-07-28T13:23:06.166Z"
+  ]
+ ],
+ "homepage": "https://github.com/II-alex-II/leader-line-new#readme",
+ "description": "Draw a leader line in your web page. Export lib"
+}

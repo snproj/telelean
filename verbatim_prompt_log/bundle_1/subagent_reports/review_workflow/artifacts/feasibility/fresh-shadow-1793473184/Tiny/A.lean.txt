@@ -1,0 +1,4 @@
+axiom P : Prop
+axiom hp : P
+theorem t : P := hp
+-- 16G

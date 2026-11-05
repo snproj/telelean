@@ -1,0 +1,52 @@
+{
+ "name": "@vscode/test-cli",
+ "latest": "0.0.15",
+ "dist_tags": {
+  "latest": "0.0.15"
+ },
+ "latest_published": "2026-06-22T19:29:03.489Z",
+ "modified": "2026-06-22T19:29:03.641Z",
+ "created": "2023-10-12T16:27:20.182Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 60817,
+ "fileCount": 35,
+ "tarball": "https://registry.npmjs.org/@vscode/test-cli/-/test-cli-0.0.15.tgz",
+ "dependencies": {
+  "@types/mocha": "^10.0.10",
+  "c8": "^11.0.0",
+  "chokidar": "^5.0.0",
+  "enhanced-resolve": "^5.24.0",
+  "glob": "^13.0.6",
+  "minimatch": "^10.2.5",
+  "mocha": "^11.7.6",
+  "supports-color": "^10.2.2",
+  "yargs": "^18.0.0"
+ },
+ "peerDependencies": {},
+ "repository": "git+https://github.com/Microsoft/vscode-test-cli.git",
+ "recent_versions": [
+  [
+   "0.0.10",
+   "2024-07-09T17:01:54.072Z"
+  ],
+  [
+   "0.0.11",
+   "2025-05-27T21:03:43.029Z"
+  ],
+  [
+   "0.0.12",
+   "2025-10-09T17:42:26.987Z"
+  ],
+  [
+   "0.0.14",
+   "2026-06-22T17:32:50.510Z"
+  ],
+  [
+   "0.0.15",
+   "2026-06-22T19:29:03.489Z"
+  ]
+ ],
+ "homepage": "https://github.com/Microsoft/vscode-test-cli#readme",
+ "description": "Command-line runner for VS Code extension tests"
+}

@@ -1,0 +1,11 @@
+name = "mentalmodel"
+version = "0.1.0"
+defaultTargets = ["Model"]
+
+[leanOptions]
+autoImplicit = false
+relaxedAutoImplicit = false
+linter.unusedSectionVars = false
+
+[[lean_lib]]
+name = "Model"

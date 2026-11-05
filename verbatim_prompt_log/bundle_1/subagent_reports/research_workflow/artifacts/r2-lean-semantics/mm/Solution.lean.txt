@@ -1,0 +1,6 @@
+import MentalModel.Assumptions
+namespace MM
+theorem helper : IsPG newSpyro ∧ HasDarkPast Cynder := ⟨spyro_pg, cynder_dark⟩
+theorem cynder_goal : ¬ GoodAddition Cynder newSpyro :=
+  pg_no_dark _ _ helper.1 helper.2
+end MM

@@ -1,0 +1,10 @@
+name = "big"
+defaultTargets = ["Big"]
+
+[[lean_lib]]
+name = "Big"
+
+[[lean_exe]]
+name = "facts"
+root = "FactsMain"
+supportInterpreter = true

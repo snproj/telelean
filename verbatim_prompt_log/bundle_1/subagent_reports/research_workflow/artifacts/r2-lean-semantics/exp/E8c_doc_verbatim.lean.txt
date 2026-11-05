@@ -1,0 +1,68 @@
+import Lean
+open Lean Elab Command
+
+/-- docstring, then a plain comment, then the declaration -/
+/- @@ telelean
+id: n1
+-/
+def y := 2
+
+/--
+Cynder is a character who has a dark past.
+
+@@ telelean
+id: assumption.cynder_dark
+kind: ASSUMPTION
+natural_name: "Cynder is a character who has a dark past"
+why: "familiar with gaming lore: see *Legend of Spyro* (2006)"
+tags: [lore, characters]
+  indented: line with `code`, a {brace}, a colon: and a "quote"
+-/
+axiom cynder_dark : True
+
+/-- one-line doc with trailing spaces    -/
+def w := 1
+
+/--   Leading spaces.
+    Indented second line.
+        More indented third line.
+  -/
+def v := 1
+
+/-- Contains a nested /- block comment -/ inside a docstring. -/
+def u := 1
+
+structure S where
+  /-- field doc -/
+  fld : Nat
+
+inductive Color where
+  /-- ctor doc -/
+  | red
+
+/-!
+# Module doc
+@@ telelean
+id: nl.only.node
+kind: GOAL
+natural_name: "Cynder would not be a good addition"
+-/
+
+elab "#show_doc " n:ident : command => do
+  let env ← getEnv
+  let d ← findDocString? env n.getId
+  let s ← findSimpleDocString? env n.getId
+  logInfo m!"findDocString? = {repr d}\nfindSimpleDocString? = {repr s}"
+
+#show_doc y
+#show_doc cynder_dark
+#show_doc w
+#show_doc v
+#show_doc u
+#show_doc S.fld
+#show_doc Color.red
+
+elab "#show_moddocs" : command => do
+  for d in getMainModuleDoc (← getEnv) do
+    logInfo m!"moduledoc @ {d.declarationRange.pos}: {repr d.doc}"
+#show_moddocs

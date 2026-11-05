@@ -1,0 +1,74 @@
+{
+ "name": "d3",
+ "latest": "7.9.0",
+ "dist_tags": {
+  "next": "6.0.0-rc.4",
+  "latest": "7.9.0"
+ },
+ "latest_published": "2024-03-12T22:15:07.703Z",
+ "modified": "2025-05-17T15:07:03.565Z",
+ "created": "2011-08-18T17:05:26.410Z",
+ "license": "ISC",
+ "deprecated": null,
+ "unpackedSize": 871285,
+ "fileCount": 6,
+ "tarball": "https://registry.npmjs.org/d3/-/d3-7.9.0.tgz",
+ "dependencies": {
+  "d3-dsv": "3",
+  "d3-geo": "3",
+  "d3-axis": "3",
+  "d3-drag": "3",
+  "d3-ease": "3",
+  "d3-path": "3",
+  "d3-time": "3",
+  "d3-zoom": "3",
+  "d3-array": "3",
+  "d3-brush": "3",
+  "d3-chord": "3",
+  "d3-color": "3",
+  "d3-fetch": "3",
+  "d3-force": "3",
+  "d3-scale": "4",
+  "d3-shape": "3",
+  "d3-timer": "3",
+  "d3-format": "3",
+  "d3-random": "3",
+  "d3-contour": "4",
+  "d3-polygon": "3",
+  "d3-delaunay": "6",
+  "d3-dispatch": "3",
+  "d3-quadtree": "3",
+  "d3-hierarchy": "3",
+  "d3-selection": "3",
+  "d3-transition": "3",
+  "d3-interpolate": "3",
+  "d3-time-format": "4",
+  "d3-scale-chromatic": "3"
+ },
+ "peerDependencies": {},
+ "repository": "git+https://github.com/d3/d3.git",
+ "recent_versions": [
+  [
+   "7.8.2",
+   "2023-01-18T18:34:13.398Z"
+  ],
+  [
+   "7.8.3",
+   "2023-03-25T01:24:46.589Z"
+  ],
+  [
+   "7.8.4",
+   "2023-04-01T02:43:04.843Z"
+  ],
+  [
+   "7.8.5",
+   "2023-06-03T00:29:30.820Z"
+  ],
+  [
+   "7.9.0",
+   "2024-03-12T22:15:07.703Z"
+  ]
+ ],
+ "homepage": "https://d3js.org",
+ "description": "Data-Driven Documents"
+}

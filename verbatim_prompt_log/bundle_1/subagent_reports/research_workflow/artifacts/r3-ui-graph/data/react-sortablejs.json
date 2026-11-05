@@ -1,0 +1,50 @@
+{
+ "name": "react-sortablejs",
+ "latest": "6.1.4",
+ "dist_tags": {
+  "latest": "6.1.4"
+ },
+ "latest_published": "2022-05-31T07:19:03.552Z",
+ "modified": "2022-06-26T08:20:41.115Z",
+ "created": "2015-01-11T23:07:46.693Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 74104,
+ "fileCount": 7,
+ "tarball": "https://registry.npmjs.org/react-sortablejs/-/react-sortablejs-6.1.4.tgz",
+ "dependencies": {
+  "classnames": "2.3.1",
+  "tiny-invariant": "1.2.0"
+ },
+ "peerDependencies": {
+  "@types/sortablejs": "1",
+  "react": ">=16.9.0",
+  "react-dom": ">=16.9.0",
+  "sortablejs": "1"
+ },
+ "repository": "git+https://github.com/SortableJS/react-sortablejs.git",
+ "recent_versions": [
+  [
+   "6.0.0",
+   "2020-09-27T14:13:11.476Z"
+  ],
+  [
+   "6.0.3",
+   "2022-01-14T17:42:40.386Z"
+  ],
+  [
+   "6.1.0",
+   "2022-01-30T16:07:12.647Z"
+  ],
+  [
+   "6.1.1",
+   "2022-02-08T10:01:11.564Z"
+  ],
+  [
+   "6.1.4",
+   "2022-05-31T07:19:03.552Z"
+  ]
+ ],
+ "homepage": "https://github.com/SortableJS/react-sortablejs#readme",
+ "description": "React bindings to [SortableJS](https://github.com/SortableJS/Sortable)"
+}

@@ -1,0 +1,13 @@
+axiom Game : Type
+axiom newSpyro : Game
+axiom IsSpyroGame : Game → Prop
+axiom IsPG : Game → Prop
+axiom spyro_is_spyro : IsSpyroGame newSpyro
+/-- new ASSUMPTION that makes spyro_pg derivable -/
+axiom all_spyro_pg : ∀ g, IsSpyroGame g → IsPG g
+/-- DERIVATION (after promotion): same name, same statement, now with a proof -/
+theorem spyro_pg : IsPG newSpyro := all_spyro_pg _ spyro_is_spyro
+/-- dependent: source text UNCHANGED -/
+theorem uses_pg : IsPG newSpyro ∧ True := ⟨spyro_pg, trivial⟩
+#print axioms uses_pg
+-- demotion back: derivation → assumption is `theorem … := proof` ↦ `axiom …` (same name/type)

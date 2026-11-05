@@ -1,0 +1,241 @@
+{
+ "summary": "WP3 implemented: RunManager (state machine of plan section 2: preflight -> lazy backend factory -> premises declaration -> shadow -> base check -> session -> context bundle; per-round caps with the host-enforced turn/check/agent-time caps deferred while a tool call runs; the A2 gate loop with exact failures, give-up at maxGateAttempts, gate-pass = the judged commit and ws/ reset at the turn's end; revert -> normalise -> re-check for give-up/no-finish/caps; environment retry after 30 s then failed; one nudge; cancel via interrupt + lean.cancelRun; Feedback and ghost-adoption rounds; Accept per 7.1 incl. the drift path with accept-base/rebase commits and planAccept(shownState); attempts.jsonl/decisions.json via the sidecar store; transcript.jsonl; atomic run.json; recover() and dispose()), the RunToolHost (check_lean/freeze_statements/ask_user/propose_assumption/finish; guesses never in RunView before the answer; no readOnlyHint), runPreflight (4.1), createClaudeBackend (M0 resolution with extensionDirs + settings.resolve hooks, absolute setpriv --pdeathsig KILL launcher, explicit guard path), both quota tripwires, buildSystemPrompt (5.1 verbatim, generated from the plan) and buildContextBundle/later turns (5.2/5.3), FakeBackend usage/rateLimit/sleep steps + data-script player, the 15 walkthrough/cheating scripts as JSON in test-fixtures/walkthrough, the gated end-to-end tests, and scripts/walkthrough-claude.mjs (esbuild bundle, dry run by default, double opt-in live). All my tests pass; the gated E2E tests already ran and passed against the WP1/WP2/WP4 code present (real Lean), and the script's --dry-run completed both readings.",
+ "files": [
+  "/home/zhengyew/telelean/packages/runner/src/run/index.ts",
+  "/home/zhengyew/telelean/packages/runner/src/run/types.ts",
+  "/home/zhengyew/telelean/packages/runner/src/run/manager.ts",
+  "/home/zhengyew/telelean/packages/runner/src/run/preflight.ts",
+  "/home/zhengyew/telelean/packages/runner/src/run/backend.ts",
+  "/home/zhengyew/telelean/packages/runner/src/run/prompts.ts",
+  "/home/zhengyew/telelean/packages/runner/src/run/persist.ts",
+  "/home/zhengyew/telelean/packages/runner/src/run/systemPrompt.ts",
+  "/home/zhengyew/telelean/packages/runner/src/llm/fake.ts",
+  "/home/zhengyew/telelean/packages/runner/src/llm/fakeScripts.ts",
+  "/home/zhengyew/telelean/packages/runner/src/llm/claudeCli.ts",
+  "/home/zhengyew/telelean/packages/runner/src/llm/toolSchemas.ts",
+  "/home/zhengyew/telelean/packages/runner/src/llm/index.ts",
+  "/home/zhengyew/telelean/packages/runner/test/run/helpers/env.ts",
+  "/home/zhengyew/telelean/packages/runner/test/run/helpers/fakeShadow.ts",
+  "/home/zhengyew/telelean/packages/runner/test/run/helpers/fakeEngine.ts",
+  "/home/zhengyew/telelean/packages/runner/test/run/helpers/fakeServices.ts",
+  "/home/zhengyew/telelean/packages/runner/test/run/helpers/harness.ts",
+  "/home/zhengyew/telelean/packages/runner/test/run/fixtures/system-prompt-5.1.txt",
+  "/home/zhengyew/telelean/packages/runner/test/run/manager.happy.test.ts",
+  "/home/zhengyew/telelean/packages/runner/test/run/manager.gate.test.ts",
+  "/home/zhengyew/telelean/packages/runner/test/run/manager.caps.test.ts",
+  "/home/zhengyew/telelean/packages/runner/test/run/manager.lifecycle.test.ts",
+  "/home/zhengyew/telelean/packages/runner/test/run/manager.rounds.test.ts",
+  "/home/zhengyew/telelean/packages/runner/test/run/manager.accept.test.ts",
+  "/home/zhengyew/telelean/packages/runner/test/run/manager.start.test.ts",
+  "/home/zhengyew/telelean/packages/runner/test/run/prompts.test.ts",
+  "/home/zhengyew/telelean/packages/runner/test/run/backend.test.ts",
+  "/home/zhengyew/telelean/packages/runner/test/run/walkthrough.e2e.test.ts",
+  "/home/zhengyew/telelean/packages/runner/test/run/walkthroughScript.test.ts",
+  "/home/zhengyew/telelean/packages/runner/test/llm/tripwire.test.ts",
+  "/home/zhengyew/telelean/packages/runner/test/llm/m2Harness.test.ts",
+  "/home/zhengyew/telelean/test-fixtures/walkthrough/README.md",
+  "/home/zhengyew/telelean/test-fixtures/walkthrough/normative.json",
+  "/home/zhengyew/telelean/test-fixtures/walkthrough/literal.json",
+  "/home/zhengyew/telelean/test-fixtures/walkthrough/cheat-added-axiom.json",
+  "/home/zhengyew/telelean/test-fixtures/walkthrough/cheat-sorry.json",
+  "/home/zhengyew/telelean/test-fixtures/walkthrough/cheat-weakened-abbrev.json",
+  "/home/zhengyew/telelean/test-fixtures/walkthrough/cheat-weakened-type.json",
+  "/home/zhengyew/telelean/test-fixtures/walkthrough/cheat-unselected.json",
+  "/home/zhengyew/telelean/test-fixtures/walkthrough/cheat-rebind-target.json",
+  "/home/zhengyew/telelean/test-fixtures/walkthrough/cheat-lemma-not-proved.json",
+  "/home/zhengyew/telelean/test-fixtures/walkthrough/cheat-definition-belief.json",
+  "/home/zhengyew/telelean/test-fixtures/walkthrough/cheat-vocabulary-redefined.json",
+  "/home/zhengyew/telelean/test-fixtures/walkthrough/cheat-eval.json",
+  "/home/zhengyew/telelean/test-fixtures/walkthrough/cheat-proof-before-freeze.json",
+  "/home/zhengyew/telelean/test-fixtures/walkthrough/cheat-edited-words.json",
+  "/home/zhengyew/telelean/test-fixtures/walkthrough/cheat-give-up.json",
+  "/home/zhengyew/telelean/scripts/walkthrough-claude.mjs"
+ ],
+ "how_to_run_tests": "cd /home/zhengyew/telelean/packages/runner && npm run typecheck && TELELEAN_TEST_TMP=<scratch dir> npx vitest run test/run test/llm   (includes the gated real-Lean E2E file test/run/walkthrough.e2e.test.ts, ~4 min; add `--exclude test/run/walkthrough.e2e.test.ts` for the ~50 s unit-only run). The vitest config already sets TELELEAN_NO_REAL_CLAUDE=1. Walkthrough dry run (FakeBackend + real Lean, contacts nothing): node scripts/walkthrough-claude.mjs --dry-run --work-dir <scratch dir> (with TELELEAN_WALKTHROUGH_LIVE unset).",
+ "test_output": "npm run typecheck (tsc -p tsconfig.test.json): no errors.\nFinal unit run (21:20, after all fixes): `npx vitest run test/run test/llm --exclude test/run/walkthrough.e2e.test.ts` -> Test Files 19 passed (19); Tests 171 passed (171); Duration 51.27s.\nCombined run incl. the gated E2E (21:16, after the persist/cleanup changes): Test Files 1 failed | 19 passed (20); Tests 1 failed | 185 passed (186); Duration 223.13s. The one failure was my own timing-sensitive assertion in manager.caps.test.ts (round 2 counters.agentMs was 1 ms instead of exactly 0 right after Feedback). I loosened it to \"reset, below 5 s\", then ran that file 3 times: 4/4 passed each time. The E2E file (15 tests) passed in this run.\nFirst E2E run (20:58): test/run/walkthrough.e2e.test.ts -> Test Files 1 passed (1); Tests 15 passed (15); Duration 175.63s (real engine/shadow/proposals/Lean; both walkthrough readings and all 13 cheating scripts).\nFull runner suite (21:06, before the last two small changes): `npx vitest run` -> Test Files 2 failed | 49 passed (51); Tests 5 failed | 499 passed (504); Duration 442.87s. All 5 failures are in integrator-owned files: test/integration/session.test.ts (3) and test/integration/fixes.test.ts (2). They are kind changes without confirmedDependents, now answered needs-confirmation by WP1's carry-over 3. None is in WP3 paths.\nnode scripts/walkthrough-claude.mjs --dry-run --work-dir <scratch>/walk-dry-1 -> exit 0. normative: PASSED (proved, accept ok, final cynder-not-good DERIVATION proved, footprint = 3 cards + 2 presuppositions). literal: PASSED (round 1 not-proved with ghost-1, adopted, round 2 proved, accepted, adopted card wordedBy agent). elanKnownProjectsLines before 38 / after 38.\nNo telelean-* systemd unit or vitest process left after the runs.",
+ "acceptance": [
+  {
+   "test": "AT3.1 happy path with fakes",
+   "status": "pass",
+   "evidence": "test/run/manager.happy.test.ts: start -> working -> waiting-for-answer (no claudesGuess in the view or in run.json's view; agentMs unchanged after 10 min on a manual clock) -> answer (DecisionRecord recorded with answerText and claudesGuess, guess revealed in answered) -> freeze -> finish -> gate pass -> review with proposal p1. State sequence starting,working,waiting-for-answer,working,gate,working,review, identical in run.json at each change. Usage summed from usage events; cost 0.01, then 0.03 after Feedback (not summed)."
+  },
+  {
+   "test": "AT3.2 gate loop (+[gated: WP1] real attemptNotice)",
+   "status": "pass",
+   "evidence": "manager.gate.test.ts: failures at attempts 1 and 2 give two gate-failed notices (fake texts), the exact failure in each finish tool result, and verdict proved. Three failures give give_up, ws/ equal to the freeze commit, normalise + uncounted re-check, proposal verdict gave-up, notices gave-up + reverted. The gated test ran because WP1 has landed: it produced exactly the plan 3.5 sentences."
+  },
+  {
+   "test": "AT3.2b edits after finish discarded",
+   "status": "pass",
+   "evidence": "manager.gate.test.ts: after finish returned accept the script edits Main.lean and calls check_lean (refused, 'The run is complete; stop here.'). At the turn's end ws/ equals the gate-pass commit, an info notice says 'Changes made after finish were discarded…', and the proposal is built from the gate-pass files."
+  },
+  {
+   "test": "AT3.3 environment outcome in the gate",
+   "status": "pass",
+   "evidence": "manager.gate.test.ts with fake timers: environment then pass gives a retry exactly at 30 s (not at 29 s), gateAttempts 1, review proved. Environment twice gives state failed with the reason, notices environment (warning, error), and a tool result saying 'not your fault … not counted'."
+  },
+  {
+   "test": "AT3.4 caps",
+   "status": "pass",
+   "evidence": "manager.caps.test.ts: the 26th check gets a tool error 'check budget used up (25 of 25): call finish' and no engine call. maxTurns=3 counted from usage events (deduplicated by message id) interrupts the session: cap-reached, cap + reverted notices; Feedback resets the counters. The time cap on fake timers is paused for 30 min while a question waits and fires just past 60 s of work: cap-reached. A time cap reached during a slow gate is deferred until it returns; the pass is honoured (verdict proved)."
+  },
+  {
+   "test": "AT3.5 turn without finish",
+   "status": "pass",
+   "evidence": "manager.gate.test.ts: exactly one nudge (NUDGE_TURN text), then no-finish: revert to the freeze commit, normalise, re-check, proposal verdict no-finish. A finish in the nudge turn ends the round normally."
+  },
+  {
+   "test": "AT3.6 cancel during a check",
+   "status": "pass",
+   "evidence": "manager.lifecycle.test.ts: cancel while the fake check blocks. cancelLean is called with the run id, the session is interrupted and closed, state is cancelled, an attempt with verdict cancelled is recorded, and run.json says cancelled. The check returning later changes nothing; dismiss works."
+  },
+  {
+   "test": "AT3.7 recovery",
+   "status": "pass",
+   "evidence": "manager.lifecycle.test.ts: manager B's recover() shows A's pending question with no session started. Answering starts a session with resumeSessionId = A's session id and sends renderAnswersAsUserTurn exactly; the run finishes proved. Usage spans both processes and cost = latest 0.03. With two non-terminal run dirs the newer comes back and the older is failed with 'superseded by a newer run', session id dropped. A working run comes back interrupted, and Resume sends the resume turn."
+  },
+  {
+   "test": "AT3.8 Feedback round",
+   "status": "pass",
+   "evidence": "manager.rounds.test.ts: round 2 is in stage formalise with no frozen and no proposal. finish(proved) without a freeze gives not_frozen (retry). After a freeze it passes. The freeze and gates got roundStartCommit = the round-2 start commit, so a fake proof-before-freeze rule did not trigger on the earlier proof."
+  },
+  {
+   "test": "AT3.9 ghosts",
+   "status": "pass",
+   "evidence": "manager.rounds.test.ts: propose_assumption gives a GhostView with leanStatement = the engine's collapsed text and leanName not_in_game_not_good. adoptGhost calls the fake core planGhostAdoption with the exact request (rationale, session, today), commits adopt then freeze, freezes with adoptedGhosts/teleleanBlocks, starts round 2 in stage prove, and sends the plan 5.3 adoption turn naming Spyro.not_in_game_not_good. A refused re-freeze restores ws/ byte-for-byte and stays in review; rejectGhost works."
+  },
+  {
+   "test": "AT3.10 Accept orchestration",
+   "status": "pass",
+   "evidence": "manager.accept.test.ts: no drift gives planAccept + apply, state accepted, resolution accepted. With drift: accept-base holds the user's edit, rebase holds the merge; normalise/freeze/gate get baseCommit = accept-base and roundStartCommit = rebase; planAccept is called again with shownState = the re-gated files, and those files are applied. A failed re-gate is refused (conflict) with the described findings and ws/ restored. A missing definition approval gives invalid with the exact text."
+  },
+  {
+   "test": "AT3.11 preflight refusals / premises declaration / base check",
+   "status": "pass",
+   "evidence": "manager.start.test.ts: toolchain, Lake deps, sandbox, memory, ASSUMPTION target, unknown premise, target among premises and unknown target each give not-yet with no factory call, no perform and no run dir; busy gives conflict. A rejecting factory gives not-yet with its message, nothing created or declared. New premises are declared in the order backend, set-premises, createShadow, and the base holds the declaration. Unchanged (any order) and empty selections are not declared. A refused declaration refuses the start. A base check with Lean errors fails the run with the file:line error and startSession is never called."
+  },
+  {
+   "test": "AT3.12 prompts",
+   "status": "pass",
+   "evidence": "prompts.test.ts: buildSystemPrompt() equals the fixture copy and still equals plan section 5.1 read from docs/m2-plan.md. The Spyro context bundle equals the golden 5.2 text (cards verbatim, vocabulary, decisions in force). neighbourhood omits the unrelated card unless a lean-ref edge mentions it. The 5.3 Feedback, adoption, resume and nudge texts are asserted exactly."
+  },
+  {
+   "test": "AT3.13 createClaudeBackend + tripwires",
+   "status": "pass",
+   "evidence": "backend.test.ts: fake binaries with settings.resolve cover resolution order (named extension dir, then defaults, PATH, ~/.local/bin), the 2.1.295 floor, the absolute setpriv launcher ['--pdeathsig','KILL','--'], the explicit guard path and default hook runtime. The fakes logged only '--version'. Without resolve, createClaudeBackend throws 'process' before running anything. tripwire.test.ts (spawn spy): a non-node launcher throws before spawn; M0's double with process.execPath still runs."
+  },
+  {
+   "test": "AT3.14 walkthrough end to end [gated: WP1, WP2, WP4]",
+   "status": "pass",
+   "evidence": "walkthrough.e2e.test.ts ran because the gates were open, with the real engine, shadow, proposals, sidecars and Lean on a scratch git copy of mental_model. (a) normative: proved; real model files untouched before Accept; Accept writes the pin, docstring, abbrev, axiom, theorem and type: DERIVATION; one accept-proposal history entry; Undo restores; attempts.jsonl has an 'accepted' resolution. (b) literal: not-proved with ghost-1 (closesGap, not aloneEntails), InGame in the vocabulary review; adopt gives round 2 proved; Accept writes the card with worded_by: agent, origin: agent, session and rationale."
+  },
+  {
+   "test": "AT3.15 cheating scripts end to end [gated: WP1, WP2, WP4]",
+   "status": "pass",
+   "evidence": "walkthrough.e2e.test.ts: all 13 scripts (added-axiom, sorry, weakened-abbrev, weakened-type, unselected, rebind-target, lemma-not-proved, definition-belief, vocabulary-redefined, eval, proof-before-freeze, edited-words, give-up) passed against real Lean. Each shows its first failure or refusal and notice, and the replacing retry passes. definition-belief needs approval before Accept. give-up reverts (no 'axiom shortcut' in the shown files)."
+  },
+  {
+   "test": "AT3.16 walkthrough script (dry run [gated] + refusals)",
+   "status": "pass",
+   "evidence": "walkthroughScript.test.ts: --live without TELELEAN_WALKTHROUGH_LIVE=yes, the flag without --live, both flags with TELELEAN_NO_REAL_CLAUDE=1, --live --dry-run, and a bad --reading all exit 2 before any bundle, copy or binary use (a fake --binary is never invoked, the work dir is never created). I also ran `node scripts/walkthrough-claude.mjs --dry-run`: both readings PASSED, exit 0."
+  }
+ ],
+ "contract_changes": [
+  "packages/runner/src/run/types.ts: RunServices.cancelLean?: (runId: string) => Promise<unknown> (additive, default lean.cancelRun; tests pass a spy).",
+  "packages/runner/src/run/types.ts: PreflightInput.activeRunId?: string, checkSandbox?: () => Promise<string | undefined>, readMemAvailable?: () => number | undefined (additive; the manager passes activeRunId; the other two are test hooks).",
+  "packages/runner/src/run/index.ts: new exports adoptionTurn, budgetText, collapseWhitespace, feedbackTurn, NUDGE_TURN, resumeTurn, shortNames, condenseRateLimit, ENVIRONMENT_RETRY_MS, gateCheckOf, validateAnswers, verdictOfStatus, missingWorkspaceMembers, PDEATHSIG_ARGS, setprivLauncher, readPersistedRun, scanRuns, ScannedRun. The frozen functions are implemented with unchanged signatures.",
+  "Behaviour note, no signature change: RunManager.current()/proposal() return the run as last written to run.json (deep copies), never a state ahead of the file. A second concurrent user action (answer, accept, feedback, adoptGhost, resume, discard) is refused with conflict; cancel is never locked out.",
+  "packages/runner/src/llm/fake.ts: FakeStep gains kinds 'usage' {messageId?, model?, usage?}, 'rateLimit' {info} and 'sleep' {ms}; 'result' gains costEstimateUsd? and usage?. Implicit results now repeat the session's latest explicit cost (previously always 0), as the CLI's figure is cumulative.",
+  "packages/runner/src/llm/fakeScripts.ts (new; exported from llm/index.ts): FakeScriptFile, FakeScriptTurn, FakeScriptPlayer, PlayedTurn, playFakeScript, validateFakeScriptFile.",
+  "packages/runner/src/llm/claudeCli.ts: new exports NO_REAL_CLAUDE_ENV and realClaudeDisabled(). ClaudeCliBackend.startSession throws LlmHarnessError 'process' first thing under TELELEAN_NO_REAL_CLAUDE=1 unless options.launcher.command === process.execPath (the documented tripwire).",
+  "packages/runner/src/llm/toolSchemas.ts: renderCheckResult is compact text instead of JSON; renderFreezeResult lists FreezeResult.permitted; renderAdoption appends the alone-entails note; renderGateVerdict renders an environment give-up as not Claude's fault; multi-line details are indented. The strings the M0 tests assert are kept ('Gate passed', 'Gate failed (attempt k of n)', 'attempt limit (n) is reached', 'Statements frozen').",
+  "Not done (outside my paths): rows in docs/m2-plan.md section 14 for the above. The integrator should log them."
+ ],
+ "minor_decisions": [
+  {
+   "decision": "current()/proposal() show the last persisted snapshot of the run, not the live in-memory state.",
+   "rationale": "The plan requires run.json after every state change. With this the board never shows a state the file does not hold. A test exposed the race when the view was read directly."
+  },
+  {
+   "decision": "One user action at a time per manager; a concurrent second action gets conflict (Cancel exempt).",
+   "rationale": "A double-clicked answer or Accept could interleave across awaits: a second answer used to go the 'orphaned' path and send a second turn. Cheap insurance even though the extension routes messages in order."
+  },
+  {
+   "decision": "Premises count as 'unchanged' when the set equals the declared premises (order ignored).",
+   "rationale": "Re-declaring only to reorder would add a pointless undoable history entry."
+  },
+  {
+   "decision": "A backend factory that rejected is tried again at the next start; once it succeeds it is never called again.",
+   "rationale": "The user may install or update the Claude extension after a refused start. 'Called once' holds for successful creation."
+  },
+  {
+   "decision": "A run that fails before Claude is contacted (base check, session refusal) records no attempt in attempts.jsonl.",
+   "rationale": "No round with Claude took place; an attempt record there would be noise in the per-goal history."
+  },
+  {
+   "decision": "On recover(), a run found in 'starting' becomes failed even when it has a session id.",
+   "rationale": "The first turn (context bundle) may never have been sent, so the resume turn ('while you were working') would be wrong."
+  },
+  {
+   "decision": "Accept after drift re-freezes only for a proved proposal; other verdicts are re-gated as gate-other without a freeze. The re-gate status is 'proved' only for a proved verdict.",
+   "rationale": "The readiness rules apply to the freeze, so freezing an honest 'could not formalise' proposal would always refuse Accept. gate-other needs no freeze."
+  },
+  {
+   "decision": "After the gate passed, a cap reached later only interrupts the session; it adds no cap notice and never changes the verdict.",
+   "rationale": "The round already ended properly; the interrupt just saves quota on edits that will be discarded anyway."
+  },
+  {
+   "decision": "The 30 s environment-retry wait counts as agent-active time (state gate).",
+   "rationale": "Simplest consistent rule (the clock runs in working and gate). It is at most 30 s of a 20-minute cap, once per finish."
+  },
+  {
+   "decision": "Answers that could not reach a live tool call are kept in run.json (undeliveredAnswers) until a resumed session has received them; Resume re-sends them instead of the generic resume turn.",
+   "rationale": "An answer must never be lost when the resumed CLI fails to start."
+  },
+  {
+   "decision": "The tool host derives the ghost's display name (lean_name if valid, free and not a keyword, else a slug of the sentence with ghost_ and _2 suffix rules). After adoption the GhostView takes core planGhostAdoption's final name (short form).",
+   "rationale": "GhostView.leanName must be shown before adoption, while core decides the final name."
+  },
+  {
+   "decision": "Context bundle: a formalised selected ASSUMPTION without its .holds axiom is described as 'assumed, but its axiom <S>.<name>.holds is missing (add it)'.",
+   "rationale": "The 5.2 template has no wording for this case, and the system prompt tells Claude to add the axiom."
+  },
+  {
+   "decision": "'Stop' (discard) of an interrupted run appends an attempt with verdict 'cancelled' and then the resolution 'discarded'. Cancel during review resolves the already-recorded attempt as 'discarded'.",
+   "rationale": "Every ended round gets exactly one AttemptRecord, with a resolution when the user ends it."
+  },
+  {
+   "decision": "Terminal transitions wait at most 10 s for the CLI session to close (it is killed in the background after that).",
+   "rationale": "Accept, Discard and Cancel should not hang on a misbehaving CLI."
+  },
+  {
+   "decision": "The CLI's 'max_turns' result counts as the turn cap. Rate-limit statuses other than 'allowed' post one warning notice per status change.",
+   "rationale": "Belt and braces with the host cap; the board should show when usage is near a limit."
+  },
+  {
+   "decision": "The walkthrough JSON fixtures carry test metadata (answer, premises, adopt, expect) beside the playable turns, and turns are matched by text (match) rather than by per-session index.",
+   "rationale": "Keeps a script in step across nudges and --resume sessions, and lets the E2E test and the dry-run script share the same files."
+  },
+  {
+   "decision": "The system prompt module (src/run/systemPrompt.ts) and its fixture copy were generated from the plan's section 5.1 text by a script, one string per line.",
+   "rationale": "Guarantees byte-exactness (special characters, backticks). A test also compares against the live plan section."
+  }
+ ],
+ "open_issues": [
+  "5 failing tests in integrator-owned files: packages/runner/test/integration/session.test.ts (3) and fixes.test.ts (2). M1 kind changes without confirmedDependents now get needs-confirmation from WP1's carry-over 3. The integrator must update them (plan 11 steps 2/3). Not in WP3 paths.",
+  "If shadow creation fails after the premises declaration (e.g. a symlink in .lake/build), the declaration stays (an ordinary undoable M1 action) and the start is refused not-yet. The plan's ordering (base must contain the declaration) makes this unavoidable without undoing the user's history.",
+  "A refused re-freeze after a ghost adoption restores ws/ but leaves the 'adopt' commit in the shadow's history. The engine takes RuleInput.adopted from the newest adopt commit; this is harmless as long as WP1/WP2 key the ghost checks on teleleanBlocks (the E2E passes). Worth a look at integration.",
+  "docs/m2-plan.md section 14 was not updated (outside my assigned paths); the contract changes are listed in contract_changes.",
+  "I did not run scripts/walkthrough-claude.mjs --binary-check, because it runs the real `claude --version` and the brief says builders run only --dry-run. Only its refusals and the dry run were exercised.",
+  "27 temporary directories left in /tmp by my earlier test runs, about 0.5 MB, before I set TELELEAN_TEST_TMP and fixed the helper's cleanup: 26 /tmp/telelean-run-tests-* and /tmp/telelean-llm-sys3XS (from a hung test I stopped). My `rm -rf /tmp/telelean-run-tests-*` was refused by the permission system, so they remain. The user can remove them with `rm -rf /tmp/telelean-run-tests-* /tmp/telelean-llm-sys3XS`. The helpers now remove their own scratch base, and run files no longer recreate deleted directories.",
+  "The gated tests (walkthrough.e2e.test.ts and the real-attemptNotice test in manager.gate.test.ts) already run and pass against the current WP1/WP2/WP4 code; the integrator can remove the gates."
+ ],
+ "integration_notes": "Wiring for WP5: createRunManager({ root, runsDir: <globalStorage>/runs, workspace, services: { backend: () => run.createClaudeBackend({ claudePath, guardScriptPath: <ext>/dist/bin/telelean-path-guard.mjs, hookRuntime: llm.defaultHookRuntime(), clientApp, extensionDirs, pdeathsig: true }).then(r => r.backend), engine: gate.createLeanCheckEngine(), proposals: proposal.createProposalService(), sidecars: proposal.createRunSidecarStore(), log }, settings }); call recover() once; post `run`/`proposal` from manager.current()/proposal() on onDidChange and on ready; dispose() on window close (it persists synchronously and force-closes the CLI).\nSemantics to rely on:\n- start() resolves once the run is working, or after a refusal. Preflight refusals give not-yet, busy gives conflict, and nothing is created or declared.\n- A failed base check or session refusal returns not-yet AND leaves a failed run whose RunView.error says why.\n- A second concurrent user action gets conflict; cancel is always allowed.\n- The CLI session stays open during review, so Feedback continues it. It is closed on accept/discard/cancel/failure, and resumed with --resume when needed.\n- RunServices.cancelLean defaults to lean.cancelRun.\nVerified at integration level already (with the WP1/WP2/WP4 code present 2026-11-01 ~21:00-21:20): the gated E2E file (both readings, 13 cheats, real Lean), the real attemptNotice sentences, and `node scripts/walkthrough-claude.mjs --dry-run` (both readings PASSED; summaries in my scratch: /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/wp3/walk-dry-1/summary.json).\nWalkthrough fixtures:\n- They live in test-fixtures/walkthrough/*.json, documented in its README.\n- Every edit applies to both mental_model/ and test-fixtures/spyro/ (checked).\n- The scripted retries replace the cheat; rebind-target and lemma-not-proved are included.\nQuota tripwire grep for the integrator (plan 10.4): `createClaudeBackend(` appears in tests only in test/run/backend.test.ts, always with settings.resolve (fake binaries) or to assert the tripwire. `new ClaudeCliBackend(` appears in test/run/backend.test.ts (non-node launcher, asserting the refusal), test/llm/tripwire.test.ts (refusals + process.execPath double) and the M0 tests (process.execPath double).",
+ "effects_outside_repo": [
+  "27 directories in /tmp created by my test runs before I set TELELEAN_TEST_TMP and fixed the cleanup (about 0.5 MB total): 26 x /tmp/telelean-run-tests-* and /tmp/telelean-llm-sys3XS (a hung test I stopped mid-run). A bulk delete was refused by the permission system, so they remain for the user to remove.",
+  "All other test, E2E and dry-run files were written under my scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/wp3/: the generator script, logs, model copies with scratch git repos (isolated git config), runs dirs, the esbuild bundle and walkthrough summaries.",
+  "Transient systemd user scopes telelean-<runId>-* for the sandboxed Lean jobs of the E2E tests and the dry run. All ended; none left (checked with systemctl --user list-units 'telelean-*').",
+  "Read only: the line count of ~/.elan/known-projects (38 before and after the dry run; file last modified 09:09, before my work). No other file in ~/.elan, ~/.claude, ~/.config or git global config was read or written.",
+  "No real Claude CLI was started (not even --version); no network use; nothing pushed, published or sent."
+ ]
+}

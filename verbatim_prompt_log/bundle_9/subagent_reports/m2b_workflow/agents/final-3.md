@@ -1,0 +1,144 @@
+# final-3 (agent a0c73cbd13cd92a3f)
+
+## verdict
+needs-work
+
+## what_i_ran
+Everything ran in a scratch copy of the repo, which I first checked was byte-identical to the real repo (all files apart from the Playwright screenshots I left out of the copy). The copy is at /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2verify-r3/repo; logs are in /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2verify-r3/logs.
+
+Environment for every run:
+- LEAN_NUM_THREADS=4 and TELELEAN_NO_REAL_CLAUDE=1.
+- TMPDIR and TELELEAN_TEST_TMP in scratch; isolated git config; ulimit -c 0.
+- A MemAvailable watchdog (the lowest seen was 49.6 GB) and one heavy job at a time.
+- strace recorded every program start in all runs except the two VS Code smoke runs.
+- A watcher looked for any new 'claude' process for the whole session (03:47 to 04:54).
+
+(1) CLEAN BUILD: I deleted core/dist, extension/dist, extension/out and every vitest cache in the copy, then ran the root `npm run build`: exit 0. The real repo's extension/dist (8 files), core/dist (183 files) and extension/out test bundles are byte-identical to this clean build.
+
+(2) CORE `npm test`: 48 files, 497 passed.
+
+(3) RUNNER, full suite: 53 files; 1 FAILED, 528 passed, 1 skipped; 1165 s.
+- I excluded walkthroughScript.test.ts and smokeScript.test.ts: they start the scripts with --live and set the *_LIVE variables, which the safety rules forbid here.
+- The failure: test/shadow/seed.test.ts 'the race probe', 'expected 400 to be 401'.
+- I re-ran that one test 10 times plain and 12 times under strace: all passed. So it failed about 1 time in 23.
+
+(4) WEBVIEW `npm test`: typecheck and vite build clean; 8 files, 130 unit tests passed; 81 Playwright tests passed. Its home guard reported the real home unchanged.
+
+(5) EXTENSION:
+- typecheck clean; unit tests 20 files, 171 passed.
+- `node scripts/smoke.mjs` (xvfb, isolated profile): smoke 36 passing, e2e 20 passing, 0 isolation failures, 1 warning (an empty telelean-* scope of this run was left active; smoke.mjs stopped it).
+
+(6) `node scripts/walkthrough-claude.mjs --dry-run --work-dir <scratch>/walk`: exit 0, live=false. Normative: proved. Literal: not proved, then proved after adopting the suggestion. No claude program was started.
+
+(7) THE MAJOR'S SCENARIO, checked four ways:
+- (a) Round 2's race probe, re-run with 100 starts while the build was being rewritten: 0 starts refused (round 2: 6 of 10). No seed was used during the churn (each start gave a reason), no temp file was ever copied, and once the writer stopped the quiet tree was copied in full (801 files, 3 of 3).
+- (b) A start while the board's refresh rebuilds .lake/build, at the RunManager level with real Lean and the normative script, three ways: after a save; after set-premises then Undo; and with the start's own premises write. All 3 started (each waited 2.6 to 2.9 s for the refresh), were proved in 1 attempt, and Accept wrote the proof.
+- (c) Real Lake: an outside `lake build` loop (not under telelean's lock; 9 builds alternating two versions of Vocabulary.lean and Main.lean) ran while createRunShadow was called 120 times. 0 starts refused; 99 seeds used, 21 skipped. I then built every mirror whose seed was used: every .olean equals a clean build of the run's own sources (Lean's .olean files proved deterministic, and a name check confirmed no version-B declaration was left in any of them).
+- (d) VS Code: in a scratch copy of e2e-runs.test.ts, instead of waiting for idle Lean, the test deletes Main's Lake trace, runs telelean.refresh and presses 'These suffice' 150 ms later. All 6 starts happened while Lean was 'checking'; 20 of 20 e2e and 36 smoke tests passed, 0 warnings. I then restored the original test file in the copy.
+- Plus aba.probe.ts, which reproduces the test failure deterministically.
+
+(8) GATE CHEATS: 22 variants with real Lean and the FakeBackend, each followed by Accept into a scratch git copy of mental_model.
+- Round 2's 17: added axiom (7), weakened goal (6), vocabulary turned into a def (4).
+- 5 new ones: `variable {h : cynder_not_good}` plus `include h`; `variable (GoodAddition : Character → Game → Prop)` placed above the target block, which changes the meaning of the user's unchanged target text; GoodAddition as an empty inductive; GoodAddition as a structure with a False field; an axiom named «short cut».
+- All 22 were refused for the intended reason, the honest retries passed, and no cheat text reached the proposal or the files after Accept.
+
+(9) NO REAL CLAUDE: strace covered the build, core, runner, extension unit, walkthrough and all probe runs. The only 'claude' programs started were 11 fake binaries that binary.test.ts creates inside my scratch tmp; 0 outside scratch. No elan proxy was started; Lake always ran as the toolchain's own binary (1481 times). The watcher saw no new claude process, including during both smoke runs.
+
+(10) FINAL CHECKS:
+- mental_model: unchanged (listing with mtimes and sha256 of 11 files); still not a git repo; no .lake.
+- Real repo: unchanged (sha256 of 790 files); no node_modules cache touched.
+- .vscode-test listing unchanged.
+- ~/.elan/known-projects: 37 lines, same mtime. ~/.gitconfig, the VS Code settings, the installed extensions, ~/telelean_scripts and ~/.npm/_logs are unchanged.
+- 0 telelean-* units; no process of mine is left.
+
+## issues
+- **severity:** major
+  - **package:** runner
+  - **description:** The new seed race test fails now and then, so the runner suite failed in my clean run. In packages/runner/test/shadow/seed.test.ts, 'the race probe ... no seed is partial' got a 400-file seed where a used seed must have 401: the file being replaced was missing.
+
+The cause is in the stability check: it compares two lists of regular files, one taken before the copy and one after. A file that is missing at both moments is not noticed, even when Lake re-created it and deleted it again in between, so the seed is used without that file. In other words, the test asserts a guarantee the code does not give.
+
+As far as I can tell this does not affect proof integrity. With Lake 4.35 a missing output only makes Lake rebuild that module (see the evidence), and my real-Lake probe found no wrong result. But the runner suite does not reliably pass.
+  - **evidence:** - Runner log /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2verify-r3/logs/runner.log: 'FAIL test/shadow/seed.test.ts > seeding the build mirror (fixer round 3) > the race probe ...: AssertionError: expected 400 to be 401' at seed.test.ts:207, and 'Tests 1 failed | 528 passed | 1 skipped (530)'.
+- Re-runs of that one test: 10 of 10 passed plain, 12 of 12 under strace, so about 1 failure in 23.
+- Deterministic reproduction with seed.ts's own afterCopy hook: /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2verify-r3/probes/probes/aba.probe.ts, result in /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2verify-r3/probes/out/aba-result.json. 40 files listed; the victim was written and removed during the copy; outcome {files: 40}, victimInSeed false. The directory's mtime and ctime both changed (zzDirMtimeChanged and zzDirCtimeChanged are true).
+- Code: /home/zhengyew/telelean/packages/runner/src/shadow/seed.ts:85-123 (walk records regular files only), :179-189 (sameListing compares files only), :229.
+- Lake 4.35 with a missing output (read-only, in ~/.elan/toolchains/leanprover--lean4---v4.35.0/src/lean/lake/Lake): Build/Common.lean:218-219 (a matching hash still needs checkExists); Build/Module.lean:836-850 (checkExists means an .ltar file exists or every artifact exists, otherwise Lake rebuilds); Module.lean:684-695 (clearOutputArtifacts also deletes the .ltar).
+- Real-Lake probe /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2verify-r3/probes/out/lakerace-result.json: 99 seeds used, 0 wrong .olean after Lake built each mirror.
+  - **suggested_fix:** In seed.ts, record every directory below .lake/build (dev, ino, mtimeNs, ctimeNs) in both listings and treat any difference as 'changed while the build was copied'. Every create, unlink or rename changes its directory's mtime and ctime, as aba.probe.ts shows. Keep the test's 401 assertion. Then run seed.test.ts about 30 times in a loop, including once under load such as strace -f. Alternatively, if you keep the file-only check, weaken the test to what is actually guaranteed: no temp file and no changed file in a used seed.
+- **severity:** minor
+  - **package:** docs
+  - **description:** The docs and code comments claim more than the seed checks guarantee. They say a run takes your .lake/build 'only when it is a finished build', and the fixer's report says 'two builds are never mixed'.
+
+In my real-Lake race, where an outside lake build was running (as the Lean extension or a terminal would), 98 of the 99 seeds that were used were snapshots of a build in progress: some module had no .olean, or modules came from both versions of the files.
+
+This is safe only because Lake checks every module against a hash of its inputs and rebuilds anything missing or out of date. All 99 mirrors ended with the correct .olean files.
+
+What the checks really guarantee: no module output is newer than its trace, there is no Lake temp file or lock, and no listed file changed during the copy. Telelean's own refresh is kept out by the lock, so for that case the claim does hold.
+  - **evidence:** - /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2verify-r3/probes/out/lakerace-result.json: summary starts 120, used 99, skipped 21, problems [] (no wrong .olean).
+- Per-seed 'seededFrom' entries such as 'Spyro/Main.olean:none Spyro/Vocabulary.olean:B' or 'Model.olean:none ... Spyro/Main.olean:B'.
+- The claims: /home/zhengyew/telelean/docs/decisions-log.md:467 ('takes your Lean build (`.lake/build`) only when it is a finished build; while Lake is writing it, the run starts with an empty build instead'); /home/zhengyew/telelean/packages/runner/src/shadow/seed.ts:11 and :192, shadow/index.ts:111, shadow/types.ts:97 ('used only when it is a snapshot of a finished build').
+  - **suggested_fix:** Reword decisions-log section 29, plan 4.2 and section 14, and the seed.ts, index.ts and types.ts comments along these lines: the seed is used when every module's files are consistent (no output newer than its trace, no temp file or lock, nothing changed during the copy), and correctness rests on Lake's own hash check of every module, which rebuilds whatever is missing or out of date. Optionally add the integrity check from lakerace.probe.ts (build the mirror, compare with a clean build) as a runner test.
+- **severity:** minor
+  - **package:** runner
+  - **description:** Still open from the extension fixer; the core-runner fixer did not fix it. When a Lean job is cancelled just as it starts, runLean can leave a telelean-* systemd scope behind in the user's systemd session. I saw both kinds this round:
+- In the first smoke run, an empty scope of that run stayed active; smoke.mjs now finds and stops it, and printed a WARN.
+- My runner-only probe (outside smoke) left two scopes: one active with 0 tasks, and one failed with result 'resources' that runLean never reset.
+
+They run nothing, but they pile up until logout, and failed ones show in `systemctl --user --failed`. In normal use this happens when a board is closed or a refresh is replaced just as it starts. Only the smoke test cleans up after itself.
+  - **evidence:** - /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2verify-r3/logs/smoke.log: 'WARN systemd unit telelean-tlws2117147_2_1-23.scope of this run ... was left active running, 0 process(es) in its cgroup, now stopped'.
+- After /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2verify-r3/probes/probes/startrefresh.probe.ts: telelean-tlws2173226_2_4-39.scope was ActiveState=active, SubState=running, TasksCurrent=0; telelean-tlws2173226_3_4-60.scope was ActiveState=failed, Result=resources.
+- The journal for the second: 'Couldn't move process 2176745 to requested cgroup ...: No such process', then 'Failed with result resources'. I stopped the first scope and reset the second.
+- Code: /home/zhengyew/telelean/packages/runner/src/lean/runLean.ts:397-404 (terminate sends SIGKILL to systemd-run); :478-485 (after the 2 s wait it only runs `systemctl kill`, which cannot end an empty scope); :487 (reset-failed only if the unit is seen as failed at that moment).
+  - **suggested_fix:** After the wait, if the scope is still active or deactivating, run `systemctl --user stop <unit>.scope` and then reset-failed it. Also reset-failed a unit whose start failed (Result=resources). Optionally, let terminate() wait for systemd-run's child-pid record before killing it. Add a test that cancels a job 5 to 20 ms after it starts, in a loop, and checks that no telelean-<runId>-* unit is left.
+- **severity:** minor
+  - **package:** webview
+  - **description:** Left by the core-runner fixer for the webview, and not done: no webview file changed this round. Core now has RunView.accepted { changedFiles }, set by the runner's Accept and saved in run.json. The webview still tells 'Accepted' from 'Recorded' by parsing the wording of the runner's notice. It works today, but the board still depends on that wording (now recorded in plan section 14).
+  - **evidence:** - /home/zhengyew/telelean/packages/webview/src/model/run.ts:289-318: the RECORDED_NOTICE regex; acceptChangedFiles and endedOutcome read run.notices with type Pick<RunView, 'runId' | 'notices'>.
+- /home/zhengyew/telelean/packages/core/src/run.ts:317 (the new field) and /home/zhengyew/telelean/packages/runner/src/run/manager.ts:1743 (where it is set).
+- A diff against round 2's copy shows no change under packages/webview.
+  - **suggested_fix:** In acceptChangedFiles and endedOutcome, read run.accepted?.changedFiles first (add 'accepted' to the Pick types). Keep the notice-text fallback only for runs accepted before the field existed. Add a unit test for a board that did not send the Accept.
+- **severity:** minor
+  - **package:** extension
+  - **description:** The VS Code e2e test still waits for idle Lean before each start, so no shipped VS Code test starts a run while Lean is refreshing. Users can do exactly that: the tray does not block 'These suffice' while Lean is checking. I ran that scenario with a patched copy of the test and it passes now, so the wait can be replaced with a forced race.
+
+Also still open from the extension fixer, low priority: smoke.mjs does not point the test instance's TMPDIR at its profile. In my runs only Xvfb's own /tmp/.X11-unix entries changed (and were removed), and /tmp/vscode-typescript1002 did not change.
+  - **evidence:** - /home/zhengyew/telelean/packages/extension/test/suite/e2e-runs.test.ts:176 waits with waitFor(fresh, ...) before selecting the cards.
+- My patch is /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2verify-r3/patch-e2e-race.py: it deletes Main's Lake trace, runs telelean.refresh without awaiting it, sleeps 150 ms, then presses 'These suffice'.
+- /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2verify-r3/logs/smoke-race.log: 6 times '[verifier-race] ... at start: checking', '20 passing (3m)', 0 isolation failures, 0 warnings.
+- /home/zhengyew/telelean/packages/webview/src/tray/SelectionTray.tsx:101-102: the button is blocked only by the selection or an active run.
+  - **suggested_fix:** In startFromTray, replace the wait with the forced-race steps (or add one test that does them), and keep waits only where an assertion needs fresh facts.
+- **severity:** minor
+  - **package:** runner
+  - **description:** Two runner test files were not run by anyone this round: test/run/walkthroughScript.test.ts and test/run/smokeScript.test.ts. They start scripts/walkthrough-claude.mjs and scripts/smoke-claude.mjs with --live and set TELELEAN_WALKTHROUGH_LIVE / TELELEAN_SMOKE_LIVE (with a fake --binary; one case also removes the TELELEAN_NO_REAL_CLAUDE guard). The safety rules forbid that for subagents. The tests check that the scripts refuse; scripts/ did not change this round.
+  - **evidence:** - /home/zhengyew/telelean/packages/runner/test/run/walkthroughScript.test.ts:36-55: runScript(['--live'], { TELELEAN_NO_REAL_CLAUDE: undefined }) and TELELEAN_WALKTHROUGH_LIVE: 'yes'.
+- /home/zhengyew/telelean/packages/runner/test/run/smokeScript.test.ts:37-75.
+- I excluded both from my runner run with --exclude; the core-runner fixer did the same.
+  - **suggested_fix:** Main session: run `npx vitest run test/run/walkthroughScript.test.ts test/run/smokeScript.test.ts` in packages/runner with TELELEAN_NO_REAL_CLAUDE=1 set.
+- **severity:** minor
+  - **package:** docs
+  - **description:** Still open for the user (a decision, not a defect): where 'Raw Lean diff…' should open, beside the board or as a tab in the board's group. Until the user chooses, it opens beside the board.
+  - **evidence:** /home/zhengyew/telelean/docs/decisions-log.md:471 ('Still open for you: where "Raw Lean diff…" should open (section 28).'); the core-runner fixer's open issues.
+  - **suggested_fix:** Main session: ask the user.
+
+## strengths
+- The major's reported symptoms are fixed. Across 100 synthetic and 120 real-Lake race starts, no start was refused (round 2: 6 of 10 refused with ENOENT), and Lake's temp files were never copied into a seed. The exact reported scenario, a start right after a save or Undo while the board's refresh rebuilds in place, now waits for the refresh: 3 of 3 RunManager runs and 6 of 6 VS Code starts proceeded and were proved.
+- Proof integrity held under a real outside Lake build: all 99 used seeds, including 98 snapshots of a build in progress, ended with exactly the clean-build .olean files once Lake had built the mirror.
+- Telelean's own refresh and the seed copy are correctly kept apart by semantic.runExclusive (a single promise-chain lock in the bundled module). Symlinks in .lake/build still refuse the start before anything is created.
+- The gate held against all 22 variants of the three most dangerous cheats, 5 of them new. Each was refused for the right reason: the refusal messages are clear and name what was changed, including 'text is unchanged but its meaning changed' for a section variable that changes what the user's unchanged target text means. No cheat text reached the files after Accept.
+- The real repo's build outputs are byte-identical to a clean rebuild of the same sources.
+- The fixers' other changes are present and tested: the `example` rule applies in every check, the system prompt rule now covers definitions and structures, and RunView.accepted is saved in run.json.
+- smoke.mjs now identifies leftover scopes of its own run by their names and stops them; I saw this work in a real run.
+- Isolation is intact. Smoke and Playwright both reported the real home unchanged; no real Claude was started (strace of every non-VS-Code run plus a session-long process watcher); Lake ran only as the toolchain's own binary, never through an elan proxy.
+
+## effects_outside_repo
+- Scratch folder /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2verify-r3, about 487 MB in total. It holds the repo copy (287 MB with node_modules; .vscode-test is a symlink to the real one), logs, strace files, test temp trees, the probes and their JSON results, the walkthrough dry-run output, the two VS Code smoke profiles and lake-home (HOME/XDG for my direct lake runs).
+- Real repo /home/zhengyew/telelean: unchanged (sha256 of 790 files, build outputs included; no node_modules cache touched), because every build and test ran in the scratch copy. The real packages/extension/.vscode-test was used read-only through the copy's symlink; its listing is unchanged.
+- The user's systemd session: many short-lived telelean-* scopes from the sandboxed Lean jobs of the runner suite, walkthrough, probes and smoke runs, with their journal lines. Three were left behind. smoke.mjs stopped telelean-tlws2117147_2_1-23.scope. My start-during-refresh probe left telelean-tlws2173226_2_4-39.scope (active, 0 tasks; I ran `systemctl --user stop`) and telelean-tlws2173226_3_4-60.scope (failed; I ran `systemctl --user reset-failed`). Final state: 0 telelean-* units, 0 failed.
+- Ran /home/zhengyew/.elan/toolchains/leanprover--lean4---v4.35.0/bin/lake and lean directly, never through an elan proxy. The tests ran them in their bwrap sandbox. My lakerace probe ran them unsandboxed, only on scratch copies of mental_model, with HOME and XDG set to scratch. ~/.elan is unchanged (known-projects 37 lines with the same mtime; same toolchain listing).
+- Read-only: grep and sed over the Lake sources in ~/.elan/toolchains/leanprover--lean4---v4.35.0/src/lean/lake.
+- xvfb-run/Xvfb for the two VS Code smoke runs created a socket in /tmp/.X11-unix and an X lock file in /tmp for a while; both were removed. The VS Code test instances used isolated user-data, HOME and XDG folders under scratch. Playwright launched the installed Google Chrome with HOME and XDG in its own temp folder; its home guard reported the real home unchanged.
+- Local network only: the Playwright test server on 127.0.0.1:41739 and the e2e's DevTools port on loopback. No external network use, no downloads, no installs.
+- Real home: none of my commands changed it. Changes seen during the session were made by others: the user's own running VS Code (pid 630165, session 20261031T225029: ~/.config/Code logs, globalStorage and workspaceStorage, and the Claude Code extension's log); the main session's prompt log (/home/zhengyew/telelean/verbatim_prompt_log/bundle_9, two files at 03:54); desktop activity (a screenshot at 04:08:31 in ~/Pictures/Screenshots, recently-used.xbel, nautilus tags, gnome-shell, Steam, wireplumber, tracker3, and the mtime of the ~/.gnupg directory at 04:06; no gpg appears in any of my traces). mental_model is unchanged.
+- No git outside scratch (git ran only in the tests' scratch repositories, with isolated config). No pushes, no messages, no uploads. No Claude CLI and no LLM session; the walkthrough ran with --dry-run only, and the live script tests were not run.
+

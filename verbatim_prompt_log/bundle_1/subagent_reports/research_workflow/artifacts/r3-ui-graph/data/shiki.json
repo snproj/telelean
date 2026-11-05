@@ -1,0 +1,52 @@
+{
+ "name": "shiki",
+ "latest": "4.5.0",
+ "dist_tags": {
+  "next": "0.9.4",
+  "latest": "4.5.0"
+ },
+ "latest_published": "2026-10-01T06:46:31.760Z",
+ "modified": "2026-10-01T06:46:32.169Z",
+ "created": "2014-05-07T12:21:16.760Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 602495,
+ "fileCount": 885,
+ "tarball": "https://registry.npmjs.org/shiki/-/shiki-4.5.0.tgz",
+ "dependencies": {
+  "@types/hast": "^3.0.5",
+  "@shikijs/core": "4.5.0",
+  "@shikijs/langs": "4.5.0",
+  "@shikijs/types": "4.5.0",
+  "@shikijs/themes": "4.5.0",
+  "@shikijs/vscode-textmate": "^10.0.2",
+  "@shikijs/engine-oniguruma": "4.5.0",
+  "@shikijs/engine-javascript": "4.5.0"
+ },
+ "peerDependencies": {},
+ "repository": "git+https://github.com/shikijs/shiki.git",
+ "recent_versions": [
+  [
+   "4.4.0",
+   "2026-07-31T09:55:22.057Z"
+  ],
+  [
+   "4.4.1",
+   "2026-07-31T09:59:11.715Z"
+  ],
+  [
+   "4.4.2",
+   "2026-08-05T00:41:14.729Z"
+  ],
+  [
+   "4.4.3",
+   "2026-08-10T04:57:41.135Z"
+  ],
+  [
+   "4.5.0",
+   "2026-10-01T06:46:31.760Z"
+  ]
+ ],
+ "homepage": "https://github.com/shikijs/shiki#readme",
+ "description": "A beautiful Syntax Highlighter."
+}

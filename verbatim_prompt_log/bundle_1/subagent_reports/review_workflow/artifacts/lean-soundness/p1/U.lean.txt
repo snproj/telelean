@@ -1,0 +1,35 @@
+set_option autoImplicit false
+/-! E2: universe-polymorphic `Sort u` vocabulary collapses by proof irrelevance at u = 0 -/
+namespace U
+universe u
+axiom Character : Sort u
+axiom Game : Type
+axiom cynder : Character.{u}
+axiom spyro : Character.{u}
+axiom newSpyro : Game
+axiom GoodAddition : Character.{0} → Game → Prop
+-- the only (selected) assumption, about a DIFFERENT character:
+axiom spyro_not_good : ¬ GoodAddition spyro newSpyro
+theorem cynder_not_good : ¬ GoodAddition cynder newSpyro := spyro_not_good
+theorem cynder_is_spyro : (cynder : Character.{0}) = spyro := rfl
+#check cynder_not_good
+set_option pp.notation false in #check cynder_not_good
+set_option pp.universes true in #check cynder_not_good
+#print axioms cynder_not_good
+#print axioms cynder_is_spyro
+end U
+
+/-! E3: a rigged instance is invisible under `pp.notation false`; only pp.explicit shows it -/
+namespace I
+axiom Game : Type
+axiom Rating : Type
+axiom pg : Rating
+axiom rating : Game → Rating
+axiom newSpyro : Game
+instance : LE Rating := ⟨fun _ _ => True⟩
+theorem spyro_at_most_pg : rating newSpyro ≤ pg := trivial
+#check spyro_at_most_pg
+set_option pp.notation false in #check spyro_at_most_pg
+set_option pp.explicit true in #check spyro_at_most_pg
+#print axioms spyro_at_most_pg
+end I

@@ -1,0 +1,10 @@
+import Lean
+/- @@ telelean v1
+id: f
+-/
+/-- Docstring for f. -/
+def f := 1
+open Lean in
+#eval show MetaM Unit from do
+  let d? ← findDocString? (← getEnv) `f
+  IO.println s!"doc(f) = {d?}"

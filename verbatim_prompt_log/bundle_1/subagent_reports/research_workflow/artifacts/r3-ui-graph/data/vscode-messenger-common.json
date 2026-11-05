@@ -1,0 +1,43 @@
+{
+ "name": "vscode-messenger-common",
+ "latest": "0.7.0",
+ "dist_tags": {
+  "latest": "0.7.0",
+  "next": "0.7.0-next.ab54f39"
+ },
+ "latest_published": "2026-09-04T11:16:28.182Z",
+ "modified": "2026-09-04T11:16:28.616Z",
+ "created": "2022-04-22T08:14:56.212Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 36834,
+ "fileCount": 22,
+ "tarball": "https://registry.npmjs.org/vscode-messenger-common/-/vscode-messenger-common-0.7.0.tgz",
+ "dependencies": {},
+ "peerDependencies": {},
+ "repository": "git+https://github.com/TypeFox/vscode-messenger.git",
+ "recent_versions": [
+  [
+   "0.6.0-next.aea0a84",
+   "2026-01-15T15:04:42.978Z"
+  ],
+  [
+   "0.6.0",
+   "2026-01-15T15:09:37.566Z"
+  ],
+  [
+   "0.6.1",
+   "2026-05-22T07:51:48.774Z"
+  ],
+  [
+   "0.7.0-next.ab54f39",
+   "2026-09-04T09:06:40.601Z"
+  ],
+  [
+   "0.7.0",
+   "2026-09-04T11:16:28.182Z"
+  ]
+ ],
+ "homepage": "https://github.com/TypeFox/vscode-messenger#readme",
+ "description": "VS Code Messenger: common code shared by extension and webviews"
+}

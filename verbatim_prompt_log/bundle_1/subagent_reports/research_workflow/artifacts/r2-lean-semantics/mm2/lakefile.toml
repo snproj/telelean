@@ -1,0 +1,10 @@
+name = "mm2"
+version = "0.1.0"
+defaultTargets = ["Model"]
+
+[[require]]
+name = "telelean"
+path = "../telelean-lean"
+
+[[lean_lib]]
+name = "Model"

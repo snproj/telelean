@@ -1,0 +1,44 @@
+{
+ "name": "immer",
+ "latest": "11.2.9",
+ "dist_tags": {
+  "next": "4.0.0-beta.0",
+  "beta": "10.0.4-beta",
+  "latest": "11.2.9"
+ },
+ "latest_published": "2026-10-22T11:26:03.287Z",
+ "modified": "2026-10-22T11:26:03.762Z",
+ "created": "2016-10-07T12:18:54.835Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 976898,
+ "fileCount": 34,
+ "tarball": "https://registry.npmjs.org/immer/-/immer-11.2.9.tgz",
+ "dependencies": {},
+ "peerDependencies": {},
+ "repository": "git+https://github.com/immerjs/immer.git",
+ "recent_versions": [
+  [
+   "11.2.5",
+   "2026-10-21T06:15:08.394Z"
+  ],
+  [
+   "11.2.6",
+   "2026-10-21T06:24:31.040Z"
+  ],
+  [
+   "11.2.7",
+   "2026-10-21T14:08:31.659Z"
+  ],
+  [
+   "11.2.8",
+   "2026-10-22T11:24:33.243Z"
+  ],
+  [
+   "11.2.9",
+   "2026-10-22T11:26:03.287Z"
+  ]
+ ],
+ "homepage": "https://github.com/immerjs/immer#readme",
+ "description": "Create your next immutable state by mutating the current one"
+}

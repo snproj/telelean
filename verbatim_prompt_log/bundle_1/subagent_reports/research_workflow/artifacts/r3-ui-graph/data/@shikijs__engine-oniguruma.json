@@ -1,0 +1,45 @@
+{
+ "name": "@shikijs/engine-oniguruma",
+ "latest": "4.5.0",
+ "dist_tags": {
+  "latest": "4.5.0"
+ },
+ "latest_published": "2026-10-01T06:45:24.495Z",
+ "modified": "2026-10-01T06:45:24.912Z",
+ "created": "2024-09-11T09:17:08.391Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 643892,
+ "fileCount": 9,
+ "tarball": "https://registry.npmjs.org/@shikijs/engine-oniguruma/-/engine-oniguruma-4.5.0.tgz",
+ "dependencies": {
+  "@shikijs/types": "4.5.0",
+  "@shikijs/vscode-textmate": "^10.0.2"
+ },
+ "peerDependencies": {},
+ "repository": "git+https://github.com/shikijs/shiki.git",
+ "recent_versions": [
+  [
+   "4.4.0",
+   "2026-07-31T09:55:33.975Z"
+  ],
+  [
+   "4.4.1",
+   "2026-07-31T09:57:21.478Z"
+  ],
+  [
+   "4.4.2",
+   "2026-08-05T00:39:26.559Z"
+  ],
+  [
+   "4.4.3",
+   "2026-08-10T04:58:53.302Z"
+  ],
+  [
+   "4.5.0",
+   "2026-10-01T06:45:24.495Z"
+  ]
+ ],
+ "homepage": "https://github.com/shikijs/shiki#readme",
+ "description": "Engine for Shiki using Oniguruma RegExp engine in WebAssembly"
+}

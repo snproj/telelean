@@ -1,0 +1,86 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>cull bench</title>
+<style>
+  html, body { margin: 0; height: 100%; font: 13px system-ui, sans-serif; background: #1e1e1e; color: #ddd; }
+  #wrap { position: relative; width: 1500px; height: 900px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 60px; padding: 0 30px; box-sizing: border-box; }
+  .col { position: relative; overflow-y: auto; height: 900px; z-index: 1; }
+  .card { margin: 8px 6px; padding: 8px 10px; background: #2b2b2b; border: 1px solid #444; border-radius: 6px; }
+  svg#edges, canvas#edges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
+  svg#edges path { fill: none; stroke: #4aa3ff; stroke-width: 1.5; }
+  svg#edges path.clamped { stroke-dasharray: 4 3; stroke-opacity: .5; }
+</style></head>
+<body>
+<div id="wrap"></div>
+<script>
+let seed = 99; const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+const W = 'cynder spyro game character dark past rated pg lore news assumption derivation goal proof lemma axiom'.split(' ');
+const sentence = () => { const n = 4 + Math.floor(rnd() * 18); let s = []; for (let i = 0; i < n; i++) s.push(W[Math.floor(rnd() * W.length)]); return s.join(' '); };
+const raf = () => new Promise(r => requestAnimationFrame(r));
+function stats(arr) { const a = [...arr].sort((x, y) => x - y); const sum = a.reduce((s, x) => s + x, 0); return { mean: +(sum / a.length).toFixed(2), p50: +a[Math.floor(a.length * .5)].toFixed(2), p95: +a[Math.floor(a.length * .95)].toFixed(2) }; }
+const PAD = 6;
+function build(N, E, kind) {
+  const wrap = document.getElementById('wrap'); wrap.innerHTML = '';
+  const cols = [], nodes = [];
+  for (let c = 0; c < 3; c++) { const col = document.createElement('div'); col.className = 'col'; for (let i = 0; i < N; i++) { const el = document.createElement('div'); el.className = 'card'; el.textContent = sentence(); col.appendChild(el); nodes.push({ el, c, top: 0, h: 0 }); } wrap.appendChild(col); cols.push(col); }
+  void wrap.offsetHeight;
+  for (const n of nodes) { n.top = n.el.offsetTop; n.h = n.el.offsetHeight; }
+  const edges = [];
+  for (let k = 0; k < E; k++) { const r = rnd(); let ca, cb; if (r < 0.4) { ca = 0; cb = 1; } else if (r < 0.7) { ca = 1; cb = 2; } else if (r < 0.9) { ca = 0; cb = 2; } else { ca = 1; cb = 1; } edges.push({ id: k, a: ca * N + Math.floor(rnd() * N), b: cb * N + Math.floor(rnd() * N), ca, cb }); }
+  let layer;
+  if (kind.startsWith('canvas')) { layer = document.createElement('canvas'); layer.id = 'edges'; layer.width = 1500 * devicePixelRatio; layer.height = 900 * devicePixelRatio; }
+  else { layer = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); layer.id = 'edges'; }
+  wrap.appendChild(layer);
+  return { wrap, cols, nodes, edges, layer, pool: new Map() };
+}
+function crsOf(cols) { return cols.map(c => ({ left: c.offsetLeft, top: c.offsetTop, width: c.clientWidth, height: c.clientHeight, st: c.scrollTop })); }
+function ep(cr, n, side) { let y = cr.top + n.top - cr.st + n.h / 2, cl = 0; if (y < cr.top + PAD) { y = cr.top + PAD; cl = -1; } else if (y > cr.top + cr.height - PAD) { y = cr.top + cr.height - PAD; cl = 1; } return { x: side === 'R' ? cr.left + cr.width - 8 : cr.left + 8, y, cl }; }
+function geom(e, crs, nodes) {
+  const A = nodes[e.a], B = nodes[e.b];
+  if (e.ca === e.cb) { const p = ep(crs[e.ca], A, 'R'), q = ep(crs[e.cb], B, 'R'); const k = 24 + Math.min(60, Math.abs(q.y - p.y) * .15); return { p, q, c1x: p.x + k, c1y: p.y, c2x: q.x + k, c2y: q.y }; }
+  const p = ep(crs[e.ca], A, 'R'), q = ep(crs[e.cb], B, 'L'); const dx = Math.max(40, Math.abs(q.x - p.x) / 2); return { p, q, c1x: p.x + dx, c1y: p.y, c2x: q.x - dx, c2y: q.y };
+}
+function drawSVGCulled(S, crs, cull) {
+  let drawn = 0; const seen = new Set();
+  for (const e of S.edges) {
+    const g = geom(e, crs, S.nodes);
+    if (cull && g.p.cl !== 0 && g.q.cl !== 0) continue; // both endpoints off-screen -> counted in badges, not drawn
+    seen.add(e.id); drawn++;
+    let path = S.pool.get(e.id);
+    if (!path) { path = document.createElementNS('http://www.w3.org/2000/svg', 'path'); S.layer.appendChild(path); S.pool.set(e.id, path); path._d = ''; path._c = ''; }
+    const d = `M${g.p.x},${g.p.y}C${g.c1x},${g.c1y} ${g.c2x},${g.c2y} ${g.q.x},${g.q.y}`;
+    if (d !== path._d) { path._d = d; path.setAttribute('d', d); }
+    const c = (g.p.cl || g.q.cl) ? 'clamped' : ''; if (c !== path._c) { path._c = c; path.setAttribute('class', c); }
+  }
+  for (const [id, path] of S.pool) if (!seen.has(id)) { path.remove(); S.pool.delete(id); }
+  return drawn;
+}
+function drawCanvas(S, crs, cull) {
+  const ctx = S.layer.getContext('2d'); const dpr = devicePixelRatio; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, 1500, 900);
+  ctx.lineWidth = 1.5; let drawn = 0;
+  const solid = new Path2D(), dashed = new Path2D();
+  for (const e of S.edges) { const g = geom(e, crs, S.nodes); if (cull && g.p.cl !== 0 && g.q.cl !== 0) continue; drawn++; const P = (g.p.cl || g.q.cl) ? dashed : solid; P.moveTo(g.p.x, g.p.y); P.bezierCurveTo(g.c1x, g.c1y, g.c2x, g.c2y, g.q.x, g.q.y); }
+  ctx.strokeStyle = '#4aa3ff'; ctx.setLineDash([]); ctx.stroke(solid); ctx.strokeStyle = 'rgba(74,163,255,.5)'; ctx.setLineDash([4, 3]); ctx.stroke(dashed);
+  return drawn;
+}
+async function run(N, E, kind) {
+  const S = build(N, E, kind); const cull = kind.endsWith('cull');
+  let crs = crsOf(S.cols);
+  const draw = kind.startsWith('canvas') ? drawCanvas : drawSVGCulled;
+  if (kind !== 'static') draw(S, crs, cull); else drawSVGCulled(S, crs, true);
+  await raf(); await raf();
+  const js = [], frame = [], drawnArr = []; let last = performance.now();
+  for (let f = 0; f < 90; f++) {
+    await raf(); const now = performance.now(); frame.push(now - last); last = now;
+    S.cols[1].scrollTop += 9; if (f % 3 === 0) S.cols[0].scrollTop += 5;
+    const t0 = performance.now();
+    if (kind !== 'static') { crs = crsOf(S.cols); drawnArr.push(draw(S, crs, cull)); }
+    js.push(performance.now() - t0);
+  }
+  return { N, E, kind, drawnMean: drawnArr.length ? Math.round(drawnArr.reduce((a, b) => a + b, 0) / drawnArr.length) : 0, js: stats(js), raf: stats(frame.slice(5)), slow20: frame.slice(5).filter(x => x > 20).length };
+}
+(async () => {
+  const out = [];
+  for (const a of [[1000, 300, 'static'], [1000, 10000, 'svg-cull'], [1000, 10000, 'canvas-cull'], [1000, 10000, 'canvas-all'], [1000, 3000, 'svg-cull'], [1000, 3000, 'svg-all'], [300, 1000, 'svg-cull'], [300, 1000, 'canvas-all']]) out.push(await run(...a));
+  await fetch('/result', { method: 'POST', body: JSON.stringify({ label: new URLSearchParams(location.search).get('label'), dpr: devicePixelRatio, out }) });
+})();
+</script></body></html>

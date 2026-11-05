@@ -1,0 +1,35 @@
+import Spyro.Assumptions
+
+/-
+@@ telelean v1
+id: cynder-not-good
+kind: DERIVATION
+natural_name: "Cynder would not be a good addition to the new Spyro game"
+premises: cynder-dark-past, new-spyro-pg, pg-no-dark-past
+origin: llm
+-/
+/-- Proved from the three user assumptions. -/
+theorem cynder_not_good : ¬ goodAddition cynder newSpyro :=
+  pg_no_dark_past newSpyro cynder new_spyro_pg cynder_dark_past
+
+/-- An unannotated helper axiom (a "hidden assumption" the validator must flag). -/
+axiom fans_hate_change : ∀ g : Game, isPG g → isPG g
+
+/-
+@@ telelean v1
+id: uses-hidden
+kind: DERIVATION
+natural_name: "A derivation that silently relies on an unmarked axiom"
+-/
+theorem uses_hidden : isPG newSpyro := fans_hate_change newSpyro new_spyro_pg
+
+namespace Deep.Inner
+/-
+@@ telelean v1
+id: private-helper-derivation
+kind: DERIVATION
+natural_name: "A private derivation inside a namespace"
+premises: new-spyro-pg
+-/
+private theorem priv_deriv : isPG newSpyro := new_spyro_pg
+end Deep.Inner

@@ -1,0 +1,44 @@
+import Canonical.Vocabulary
+namespace Canonical
+
+/-
+@@ telelean v1
+id: lore-matters
+kind: ASSUMPTION
+natural_name: "Lore consistency matters to long-time fans"
+rationale: "Years of reading fan forums"
+origin: user
+-/
+
+/-
+@@ telelean v1
+id: cynder-dark-past
+kind: ASSUMPTION
+natural_name: "Cynder is a character who has a dark past"
+rationale: "Familiar with gaming lore"
+origin: user
+-/
+/-- Encoding: the opaque predicate `hasDarkPast` holds of `cynder`. -/
+axiom cynder_dark_past : hasDarkPast cynder
+
+/-
+@@ telelean v1
+id: new-spyro-pg
+kind: ASSUMPTION
+natural_name: "The new Spyro game is PG"
+rationale: "Known from gaming news"
+origin: user
+-/
+axiom new_spyro_pg : newSpyro.isPG
+
+/-
+@@ telelean v1
+id: pg-no-dark-past
+kind: ASSUMPTION
+natural_name: "PG games cannot have characters with dark pasts"
+rationale: "My understanding of age ratings"
+origin: user
+-/
+axiom pg_no_dark_past : ∀ (g : Game) (c : Character), g.isPG → hasDarkPast c → ¬ goodAddition c g
+
+end Canonical

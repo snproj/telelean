@@ -1,0 +1,7202 @@
+import Big.Facts
+
+/-
+@@ telelean v1
+id: rule-0
+kind: ASSUMPTION
+natural_name: "P34 and P145 give Q0"
+rationale: "domain knowledge"
+-/
+axiom r0 : P34 → P145 → Q0
+
+/-
+@@ telelean v1
+id: rule-1
+kind: ASSUMPTION
+natural_name: "P195 and P16 give Q1"
+rationale: "domain knowledge"
+-/
+axiom r1 : P195 → P16 → Q1
+
+/-
+@@ telelean v1
+id: rule-2
+kind: ASSUMPTION
+natural_name: "P65 and P30 give Q2"
+rationale: "domain knowledge"
+-/
+axiom r2 : P65 → P30 → Q2
+
+/-
+@@ telelean v1
+id: rule-3
+kind: ASSUMPTION
+natural_name: "P126 and P194 give Q3"
+rationale: "domain knowledge"
+-/
+axiom r3 : P126 → P194 → Q3
+
+/-
+@@ telelean v1
+id: rule-4
+kind: ASSUMPTION
+natural_name: "P115 and P120 give Q4"
+rationale: "domain knowledge"
+-/
+axiom r4 : P115 → P120 → Q4
+
+/-
+@@ telelean v1
+id: rule-5
+kind: ASSUMPTION
+natural_name: "P166 and P97 give Q5"
+rationale: "domain knowledge"
+-/
+axiom r5 : P166 → P97 → Q5
+
+/-
+@@ telelean v1
+id: rule-6
+kind: ASSUMPTION
+natural_name: "P53 and P24 give Q6"
+rationale: "domain knowledge"
+-/
+axiom r6 : P53 → P24 → Q6
+
+/-
+@@ telelean v1
+id: rule-7
+kind: ASSUMPTION
+natural_name: "P124 and P7 give Q7"
+rationale: "domain knowledge"
+-/
+axiom r7 : P124 → P7 → Q7
+
+/-
+@@ telelean v1
+id: rule-8
+kind: ASSUMPTION
+natural_name: "P99 and P110 give Q8"
+rationale: "domain knowledge"
+-/
+axiom r8 : P99 → P110 → Q8
+
+/-
+@@ telelean v1
+id: rule-9
+kind: ASSUMPTION
+natural_name: "P155 and P195 give Q9"
+rationale: "domain knowledge"
+-/
+axiom r9 : P155 → P195 → Q9
+
+/-
+@@ telelean v1
+id: rule-10
+kind: ASSUMPTION
+natural_name: "P196 and P0 give Q10"
+rationale: "domain knowledge"
+-/
+axiom r10 : P196 → P0 → Q10
+
+/-
+@@ telelean v1
+id: rule-11
+kind: ASSUMPTION
+natural_name: "P178 and P114 give Q11"
+rationale: "domain knowledge"
+-/
+axiom r11 : P178 → P114 → Q11
+
+/-
+@@ telelean v1
+id: rule-12
+kind: ASSUMPTION
+natural_name: "P68 and P184 give Q12"
+rationale: "domain knowledge"
+-/
+axiom r12 : P68 → P184 → Q12
+
+/-
+@@ telelean v1
+id: rule-13
+kind: ASSUMPTION
+natural_name: "P58 and P151 give Q13"
+rationale: "domain knowledge"
+-/
+axiom r13 : P58 → P151 → Q13
+
+/-
+@@ telelean v1
+id: rule-14
+kind: ASSUMPTION
+natural_name: "P26 and P81 give Q14"
+rationale: "domain knowledge"
+-/
+axiom r14 : P26 → P81 → Q14
+
+/-
+@@ telelean v1
+id: rule-15
+kind: ASSUMPTION
+natural_name: "P7 and P5 give Q15"
+rationale: "domain knowledge"
+-/
+axiom r15 : P7 → P5 → Q15
+
+/-
+@@ telelean v1
+id: rule-16
+kind: ASSUMPTION
+natural_name: "P6 and P166 give Q16"
+rationale: "domain knowledge"
+-/
+axiom r16 : P6 → P166 → Q16
+
+/-
+@@ telelean v1
+id: rule-17
+kind: ASSUMPTION
+natural_name: "P138 and P2 give Q17"
+rationale: "domain knowledge"
+-/
+axiom r17 : P138 → P2 → Q17
+
+/-
+@@ telelean v1
+id: rule-18
+kind: ASSUMPTION
+natural_name: "P97 and P175 give Q18"
+rationale: "domain knowledge"
+-/
+axiom r18 : P97 → P175 → Q18
+
+/-
+@@ telelean v1
+id: rule-19
+kind: ASSUMPTION
+natural_name: "P55 and P108 give Q19"
+rationale: "domain knowledge"
+-/
+axiom r19 : P55 → P108 → Q19
+
+/-
+@@ telelean v1
+id: rule-20
+kind: ASSUMPTION
+natural_name: "P185 and P7 give Q20"
+rationale: "domain knowledge"
+-/
+axiom r20 : P185 → P7 → Q20
+
+/-
+@@ telelean v1
+id: rule-21
+kind: ASSUMPTION
+natural_name: "P135 and P56 give Q21"
+rationale: "domain knowledge"
+-/
+axiom r21 : P135 → P56 → Q21
+
+/-
+@@ telelean v1
+id: rule-22
+kind: ASSUMPTION
+natural_name: "P195 and P112 give Q22"
+rationale: "domain knowledge"
+-/
+axiom r22 : P195 → P112 → Q22
+
+/-
+@@ telelean v1
+id: rule-23
+kind: ASSUMPTION
+natural_name: "P126 and P141 give Q23"
+rationale: "domain knowledge"
+-/
+axiom r23 : P126 → P141 → Q23
+
+/-
+@@ telelean v1
+id: rule-24
+kind: ASSUMPTION
+natural_name: "P59 and P88 give Q24"
+rationale: "domain knowledge"
+-/
+axiom r24 : P59 → P88 → Q24
+
+/-
+@@ telelean v1
+id: rule-25
+kind: ASSUMPTION
+natural_name: "P59 and P173 give Q25"
+rationale: "domain knowledge"
+-/
+axiom r25 : P59 → P173 → Q25
+
+/-
+@@ telelean v1
+id: rule-26
+kind: ASSUMPTION
+natural_name: "P56 and P194 give Q26"
+rationale: "domain knowledge"
+-/
+axiom r26 : P56 → P194 → Q26
+
+/-
+@@ telelean v1
+id: rule-27
+kind: ASSUMPTION
+natural_name: "P117 and P74 give Q27"
+rationale: "domain knowledge"
+-/
+axiom r27 : P117 → P74 → Q27
+
+/-
+@@ telelean v1
+id: rule-28
+kind: ASSUMPTION
+natural_name: "P5 and P106 give Q28"
+rationale: "domain knowledge"
+-/
+axiom r28 : P5 → P106 → Q28
+
+/-
+@@ telelean v1
+id: rule-29
+kind: ASSUMPTION
+natural_name: "P142 and P164 give Q29"
+rationale: "domain knowledge"
+-/
+axiom r29 : P142 → P164 → Q29
+
+/-
+@@ telelean v1
+id: rule-30
+kind: ASSUMPTION
+natural_name: "P25 and P47 give Q30"
+rationale: "domain knowledge"
+-/
+axiom r30 : P25 → P47 → Q30
+
+/-
+@@ telelean v1
+id: rule-31
+kind: ASSUMPTION
+natural_name: "P161 and P185 give Q31"
+rationale: "domain knowledge"
+-/
+axiom r31 : P161 → P185 → Q31
+
+/-
+@@ telelean v1
+id: rule-32
+kind: ASSUMPTION
+natural_name: "P75 and P30 give Q32"
+rationale: "domain knowledge"
+-/
+axiom r32 : P75 → P30 → Q32
+
+/-
+@@ telelean v1
+id: rule-33
+kind: ASSUMPTION
+natural_name: "P190 and P85 give Q33"
+rationale: "domain knowledge"
+-/
+axiom r33 : P190 → P85 → Q33
+
+/-
+@@ telelean v1
+id: rule-34
+kind: ASSUMPTION
+natural_name: "P184 and P182 give Q34"
+rationale: "domain knowledge"
+-/
+axiom r34 : P184 → P182 → Q34
+
+/-
+@@ telelean v1
+id: rule-35
+kind: ASSUMPTION
+natural_name: "P128 and P108 give Q35"
+rationale: "domain knowledge"
+-/
+axiom r35 : P128 → P108 → Q35
+
+/-
+@@ telelean v1
+id: rule-36
+kind: ASSUMPTION
+natural_name: "P129 and P171 give Q36"
+rationale: "domain knowledge"
+-/
+axiom r36 : P129 → P171 → Q36
+
+/-
+@@ telelean v1
+id: rule-37
+kind: ASSUMPTION
+natural_name: "P48 and P77 give Q37"
+rationale: "domain knowledge"
+-/
+axiom r37 : P48 → P77 → Q37
+
+/-
+@@ telelean v1
+id: rule-38
+kind: ASSUMPTION
+natural_name: "P72 and P150 give Q38"
+rationale: "domain knowledge"
+-/
+axiom r38 : P72 → P150 → Q38
+
+/-
+@@ telelean v1
+id: rule-39
+kind: ASSUMPTION
+natural_name: "P127 and P129 give Q39"
+rationale: "domain knowledge"
+-/
+axiom r39 : P127 → P129 → Q39
+
+/-
+@@ telelean v1
+id: rule-40
+kind: ASSUMPTION
+natural_name: "P100 and P150 give Q40"
+rationale: "domain knowledge"
+-/
+axiom r40 : P100 → P150 → Q40
+
+/-
+@@ telelean v1
+id: rule-41
+kind: ASSUMPTION
+natural_name: "P8 and P122 give Q41"
+rationale: "domain knowledge"
+-/
+axiom r41 : P8 → P122 → Q41
+
+/-
+@@ telelean v1
+id: rule-42
+kind: ASSUMPTION
+natural_name: "P62 and P190 give Q42"
+rationale: "domain knowledge"
+-/
+axiom r42 : P62 → P190 → Q42
+
+/-
+@@ telelean v1
+id: rule-43
+kind: ASSUMPTION
+natural_name: "P103 and P106 give Q43"
+rationale: "domain knowledge"
+-/
+axiom r43 : P103 → P106 → Q43
+
+/-
+@@ telelean v1
+id: rule-44
+kind: ASSUMPTION
+natural_name: "P170 and P44 give Q44"
+rationale: "domain knowledge"
+-/
+axiom r44 : P170 → P44 → Q44
+
+/-
+@@ telelean v1
+id: rule-45
+kind: ASSUMPTION
+natural_name: "P93 and P140 give Q45"
+rationale: "domain knowledge"
+-/
+axiom r45 : P93 → P140 → Q45
+
+/-
+@@ telelean v1
+id: rule-46
+kind: ASSUMPTION
+natural_name: "P179 and P198 give Q46"
+rationale: "domain knowledge"
+-/
+axiom r46 : P179 → P198 → Q46
+
+/-
+@@ telelean v1
+id: rule-47
+kind: ASSUMPTION
+natural_name: "P172 and P188 give Q47"
+rationale: "domain knowledge"
+-/
+axiom r47 : P172 → P188 → Q47
+
+/-
+@@ telelean v1
+id: rule-48
+kind: ASSUMPTION
+natural_name: "P95 and P22 give Q48"
+rationale: "domain knowledge"
+-/
+axiom r48 : P95 → P22 → Q48
+
+/-
+@@ telelean v1
+id: rule-49
+kind: ASSUMPTION
+natural_name: "P112 and P169 give Q49"
+rationale: "domain knowledge"
+-/
+axiom r49 : P112 → P169 → Q49
+
+/-
+@@ telelean v1
+id: rule-50
+kind: ASSUMPTION
+natural_name: "P130 and P27 give Q50"
+rationale: "domain knowledge"
+-/
+axiom r50 : P130 → P27 → Q50
+
+/-
+@@ telelean v1
+id: rule-51
+kind: ASSUMPTION
+natural_name: "P199 and P41 give Q51"
+rationale: "domain knowledge"
+-/
+axiom r51 : P199 → P41 → Q51
+
+/-
+@@ telelean v1
+id: rule-52
+kind: ASSUMPTION
+natural_name: "P133 and P100 give Q52"
+rationale: "domain knowledge"
+-/
+axiom r52 : P133 → P100 → Q52
+
+/-
+@@ telelean v1
+id: rule-53
+kind: ASSUMPTION
+natural_name: "P94 and P125 give Q53"
+rationale: "domain knowledge"
+-/
+axiom r53 : P94 → P125 → Q53
+
+/-
+@@ telelean v1
+id: rule-54
+kind: ASSUMPTION
+natural_name: "P187 and P7 give Q54"
+rationale: "domain knowledge"
+-/
+axiom r54 : P187 → P7 → Q54
+
+/-
+@@ telelean v1
+id: rule-55
+kind: ASSUMPTION
+natural_name: "P120 and P11 give Q55"
+rationale: "domain knowledge"
+-/
+axiom r55 : P120 → P11 → Q55
+
+/-
+@@ telelean v1
+id: rule-56
+kind: ASSUMPTION
+natural_name: "P78 and P180 give Q56"
+rationale: "domain knowledge"
+-/
+axiom r56 : P78 → P180 → Q56
+
+/-
+@@ telelean v1
+id: rule-57
+kind: ASSUMPTION
+natural_name: "P157 and P151 give Q57"
+rationale: "domain knowledge"
+-/
+axiom r57 : P157 → P151 → Q57
+
+/-
+@@ telelean v1
+id: rule-58
+kind: ASSUMPTION
+natural_name: "P148 and P100 give Q58"
+rationale: "domain knowledge"
+-/
+axiom r58 : P148 → P100 → Q58
+
+/-
+@@ telelean v1
+id: rule-59
+kind: ASSUMPTION
+natural_name: "P165 and P43 give Q59"
+rationale: "domain knowledge"
+-/
+axiom r59 : P165 → P43 → Q59
+
+/-
+@@ telelean v1
+id: rule-60
+kind: ASSUMPTION
+natural_name: "P43 and P128 give Q60"
+rationale: "domain knowledge"
+-/
+axiom r60 : P43 → P128 → Q60
+
+/-
+@@ telelean v1
+id: rule-61
+kind: ASSUMPTION
+natural_name: "P58 and P3 give Q61"
+rationale: "domain knowledge"
+-/
+axiom r61 : P58 → P3 → Q61
+
+/-
+@@ telelean v1
+id: rule-62
+kind: ASSUMPTION
+natural_name: "P197 and P51 give Q62"
+rationale: "domain knowledge"
+-/
+axiom r62 : P197 → P51 → Q62
+
+/-
+@@ telelean v1
+id: rule-63
+kind: ASSUMPTION
+natural_name: "P138 and P140 give Q63"
+rationale: "domain knowledge"
+-/
+axiom r63 : P138 → P140 → Q63
+
+/-
+@@ telelean v1
+id: rule-64
+kind: ASSUMPTION
+natural_name: "P59 and P103 give Q64"
+rationale: "domain knowledge"
+-/
+axiom r64 : P59 → P103 → Q64
+
+/-
+@@ telelean v1
+id: rule-65
+kind: ASSUMPTION
+natural_name: "P131 and P88 give Q65"
+rationale: "domain knowledge"
+-/
+axiom r65 : P131 → P88 → Q65
+
+/-
+@@ telelean v1
+id: rule-66
+kind: ASSUMPTION
+natural_name: "P147 and P90 give Q66"
+rationale: "domain knowledge"
+-/
+axiom r66 : P147 → P90 → Q66
+
+/-
+@@ telelean v1
+id: rule-67
+kind: ASSUMPTION
+natural_name: "P117 and P68 give Q67"
+rationale: "domain knowledge"
+-/
+axiom r67 : P117 → P68 → Q67
+
+/-
+@@ telelean v1
+id: rule-68
+kind: ASSUMPTION
+natural_name: "P168 and P140 give Q68"
+rationale: "domain knowledge"
+-/
+axiom r68 : P168 → P140 → Q68
+
+/-
+@@ telelean v1
+id: rule-69
+kind: ASSUMPTION
+natural_name: "P155 and P186 give Q69"
+rationale: "domain knowledge"
+-/
+axiom r69 : P155 → P186 → Q69
+
+/-
+@@ telelean v1
+id: rule-70
+kind: ASSUMPTION
+natural_name: "P1 and P98 give Q70"
+rationale: "domain knowledge"
+-/
+axiom r70 : P1 → P98 → Q70
+
+/-
+@@ telelean v1
+id: rule-71
+kind: ASSUMPTION
+natural_name: "P189 and P131 give Q71"
+rationale: "domain knowledge"
+-/
+axiom r71 : P189 → P131 → Q71
+
+/-
+@@ telelean v1
+id: rule-72
+kind: ASSUMPTION
+natural_name: "P33 and P132 give Q72"
+rationale: "domain knowledge"
+-/
+axiom r72 : P33 → P132 → Q72
+
+/-
+@@ telelean v1
+id: rule-73
+kind: ASSUMPTION
+natural_name: "P199 and P143 give Q73"
+rationale: "domain knowledge"
+-/
+axiom r73 : P199 → P143 → Q73
+
+/-
+@@ telelean v1
+id: rule-74
+kind: ASSUMPTION
+natural_name: "P52 and P109 give Q74"
+rationale: "domain knowledge"
+-/
+axiom r74 : P52 → P109 → Q74
+
+/-
+@@ telelean v1
+id: rule-75
+kind: ASSUMPTION
+natural_name: "P14 and P123 give Q75"
+rationale: "domain knowledge"
+-/
+axiom r75 : P14 → P123 → Q75
+
+/-
+@@ telelean v1
+id: rule-76
+kind: ASSUMPTION
+natural_name: "P93 and P145 give Q76"
+rationale: "domain knowledge"
+-/
+axiom r76 : P93 → P145 → Q76
+
+/-
+@@ telelean v1
+id: rule-77
+kind: ASSUMPTION
+natural_name: "P141 and P51 give Q77"
+rationale: "domain knowledge"
+-/
+axiom r77 : P141 → P51 → Q77
+
+/-
+@@ telelean v1
+id: rule-78
+kind: ASSUMPTION
+natural_name: "P129 and P105 give Q78"
+rationale: "domain knowledge"
+-/
+axiom r78 : P129 → P105 → Q78
+
+/-
+@@ telelean v1
+id: rule-79
+kind: ASSUMPTION
+natural_name: "P124 and P91 give Q79"
+rationale: "domain knowledge"
+-/
+axiom r79 : P124 → P91 → Q79
+
+/-
+@@ telelean v1
+id: rule-80
+kind: ASSUMPTION
+natural_name: "P106 and P88 give Q80"
+rationale: "domain knowledge"
+-/
+axiom r80 : P106 → P88 → Q80
+
+/-
+@@ telelean v1
+id: rule-81
+kind: ASSUMPTION
+natural_name: "P0 and P137 give Q81"
+rationale: "domain knowledge"
+-/
+axiom r81 : P0 → P137 → Q81
+
+/-
+@@ telelean v1
+id: rule-82
+kind: ASSUMPTION
+natural_name: "P138 and P159 give Q82"
+rationale: "domain knowledge"
+-/
+axiom r82 : P138 → P159 → Q82
+
+/-
+@@ telelean v1
+id: rule-83
+kind: ASSUMPTION
+natural_name: "P156 and P84 give Q83"
+rationale: "domain knowledge"
+-/
+axiom r83 : P156 → P84 → Q83
+
+/-
+@@ telelean v1
+id: rule-84
+kind: ASSUMPTION
+natural_name: "P117 and P153 give Q84"
+rationale: "domain knowledge"
+-/
+axiom r84 : P117 → P153 → Q84
+
+/-
+@@ telelean v1
+id: rule-85
+kind: ASSUMPTION
+natural_name: "P7 and P58 give Q85"
+rationale: "domain knowledge"
+-/
+axiom r85 : P7 → P58 → Q85
+
+/-
+@@ telelean v1
+id: rule-86
+kind: ASSUMPTION
+natural_name: "P162 and P45 give Q86"
+rationale: "domain knowledge"
+-/
+axiom r86 : P162 → P45 → Q86
+
+/-
+@@ telelean v1
+id: rule-87
+kind: ASSUMPTION
+natural_name: "P140 and P149 give Q87"
+rationale: "domain knowledge"
+-/
+axiom r87 : P140 → P149 → Q87
+
+/-
+@@ telelean v1
+id: rule-88
+kind: ASSUMPTION
+natural_name: "P46 and P23 give Q88"
+rationale: "domain knowledge"
+-/
+axiom r88 : P46 → P23 → Q88
+
+/-
+@@ telelean v1
+id: rule-89
+kind: ASSUMPTION
+natural_name: "P141 and P65 give Q89"
+rationale: "domain knowledge"
+-/
+axiom r89 : P141 → P65 → Q89
+
+/-
+@@ telelean v1
+id: rule-90
+kind: ASSUMPTION
+natural_name: "P8 and P172 give Q90"
+rationale: "domain knowledge"
+-/
+axiom r90 : P8 → P172 → Q90
+
+/-
+@@ telelean v1
+id: rule-91
+kind: ASSUMPTION
+natural_name: "P18 and P21 give Q91"
+rationale: "domain knowledge"
+-/
+axiom r91 : P18 → P21 → Q91
+
+/-
+@@ telelean v1
+id: rule-92
+kind: ASSUMPTION
+natural_name: "P4 and P115 give Q92"
+rationale: "domain knowledge"
+-/
+axiom r92 : P4 → P115 → Q92
+
+/-
+@@ telelean v1
+id: rule-93
+kind: ASSUMPTION
+natural_name: "P3 and P193 give Q93"
+rationale: "domain knowledge"
+-/
+axiom r93 : P3 → P193 → Q93
+
+/-
+@@ telelean v1
+id: rule-94
+kind: ASSUMPTION
+natural_name: "P193 and P71 give Q94"
+rationale: "domain knowledge"
+-/
+axiom r94 : P193 → P71 → Q94
+
+/-
+@@ telelean v1
+id: rule-95
+kind: ASSUMPTION
+natural_name: "P63 and P68 give Q95"
+rationale: "domain knowledge"
+-/
+axiom r95 : P63 → P68 → Q95
+
+/-
+@@ telelean v1
+id: rule-96
+kind: ASSUMPTION
+natural_name: "P28 and P159 give Q96"
+rationale: "domain knowledge"
+-/
+axiom r96 : P28 → P159 → Q96
+
+/-
+@@ telelean v1
+id: rule-97
+kind: ASSUMPTION
+natural_name: "P47 and P88 give Q97"
+rationale: "domain knowledge"
+-/
+axiom r97 : P47 → P88 → Q97
+
+/-
+@@ telelean v1
+id: rule-98
+kind: ASSUMPTION
+natural_name: "P74 and P17 give Q98"
+rationale: "domain knowledge"
+-/
+axiom r98 : P74 → P17 → Q98
+
+/-
+@@ telelean v1
+id: rule-99
+kind: ASSUMPTION
+natural_name: "P42 and P40 give Q99"
+rationale: "domain knowledge"
+-/
+axiom r99 : P42 → P40 → Q99
+
+/-
+@@ telelean v1
+id: rule-100
+kind: ASSUMPTION
+natural_name: "P65 and P135 give Q100"
+rationale: "domain knowledge"
+-/
+axiom r100 : P65 → P135 → Q100
+
+/-
+@@ telelean v1
+id: rule-101
+kind: ASSUMPTION
+natural_name: "P43 and P168 give Q101"
+rationale: "domain knowledge"
+-/
+axiom r101 : P43 → P168 → Q101
+
+/-
+@@ telelean v1
+id: rule-102
+kind: ASSUMPTION
+natural_name: "P69 and P165 give Q102"
+rationale: "domain knowledge"
+-/
+axiom r102 : P69 → P165 → Q102
+
+/-
+@@ telelean v1
+id: rule-103
+kind: ASSUMPTION
+natural_name: "P182 and P75 give Q103"
+rationale: "domain knowledge"
+-/
+axiom r103 : P182 → P75 → Q103
+
+/-
+@@ telelean v1
+id: rule-104
+kind: ASSUMPTION
+natural_name: "P116 and P179 give Q104"
+rationale: "domain knowledge"
+-/
+axiom r104 : P116 → P179 → Q104
+
+/-
+@@ telelean v1
+id: rule-105
+kind: ASSUMPTION
+natural_name: "P82 and P127 give Q105"
+rationale: "domain knowledge"
+-/
+axiom r105 : P82 → P127 → Q105
+
+/-
+@@ telelean v1
+id: rule-106
+kind: ASSUMPTION
+natural_name: "P121 and P29 give Q106"
+rationale: "domain knowledge"
+-/
+axiom r106 : P121 → P29 → Q106
+
+/-
+@@ telelean v1
+id: rule-107
+kind: ASSUMPTION
+natural_name: "P6 and P79 give Q107"
+rationale: "domain knowledge"
+-/
+axiom r107 : P6 → P79 → Q107
+
+/-
+@@ telelean v1
+id: rule-108
+kind: ASSUMPTION
+natural_name: "P98 and P87 give Q108"
+rationale: "domain knowledge"
+-/
+axiom r108 : P98 → P87 → Q108
+
+/-
+@@ telelean v1
+id: rule-109
+kind: ASSUMPTION
+natural_name: "P107 and P48 give Q109"
+rationale: "domain knowledge"
+-/
+axiom r109 : P107 → P48 → Q109
+
+/-
+@@ telelean v1
+id: rule-110
+kind: ASSUMPTION
+natural_name: "P66 and P27 give Q110"
+rationale: "domain knowledge"
+-/
+axiom r110 : P66 → P27 → Q110
+
+/-
+@@ telelean v1
+id: rule-111
+kind: ASSUMPTION
+natural_name: "P64 and P186 give Q111"
+rationale: "domain knowledge"
+-/
+axiom r111 : P64 → P186 → Q111
+
+/-
+@@ telelean v1
+id: rule-112
+kind: ASSUMPTION
+natural_name: "P130 and P53 give Q112"
+rationale: "domain knowledge"
+-/
+axiom r112 : P130 → P53 → Q112
+
+/-
+@@ telelean v1
+id: rule-113
+kind: ASSUMPTION
+natural_name: "P155 and P110 give Q113"
+rationale: "domain knowledge"
+-/
+axiom r113 : P155 → P110 → Q113
+
+/-
+@@ telelean v1
+id: rule-114
+kind: ASSUMPTION
+natural_name: "P5 and P57 give Q114"
+rationale: "domain knowledge"
+-/
+axiom r114 : P5 → P57 → Q114
+
+/-
+@@ telelean v1
+id: rule-115
+kind: ASSUMPTION
+natural_name: "P4 and P101 give Q115"
+rationale: "domain knowledge"
+-/
+axiom r115 : P4 → P101 → Q115
+
+/-
+@@ telelean v1
+id: rule-116
+kind: ASSUMPTION
+natural_name: "P37 and P9 give Q116"
+rationale: "domain knowledge"
+-/
+axiom r116 : P37 → P9 → Q116
+
+/-
+@@ telelean v1
+id: rule-117
+kind: ASSUMPTION
+natural_name: "P184 and P41 give Q117"
+rationale: "domain knowledge"
+-/
+axiom r117 : P184 → P41 → Q117
+
+/-
+@@ telelean v1
+id: rule-118
+kind: ASSUMPTION
+natural_name: "P114 and P180 give Q118"
+rationale: "domain knowledge"
+-/
+axiom r118 : P114 → P180 → Q118
+
+/-
+@@ telelean v1
+id: rule-119
+kind: ASSUMPTION
+natural_name: "P129 and P173 give Q119"
+rationale: "domain knowledge"
+-/
+axiom r119 : P129 → P173 → Q119
+
+/-
+@@ telelean v1
+id: rule-120
+kind: ASSUMPTION
+natural_name: "P109 and P139 give Q120"
+rationale: "domain knowledge"
+-/
+axiom r120 : P109 → P139 → Q120
+
+/-
+@@ telelean v1
+id: rule-121
+kind: ASSUMPTION
+natural_name: "P56 and P161 give Q121"
+rationale: "domain knowledge"
+-/
+axiom r121 : P56 → P161 → Q121
+
+/-
+@@ telelean v1
+id: rule-122
+kind: ASSUMPTION
+natural_name: "P177 and P132 give Q122"
+rationale: "domain knowledge"
+-/
+axiom r122 : P177 → P132 → Q122
+
+/-
+@@ telelean v1
+id: rule-123
+kind: ASSUMPTION
+natural_name: "P115 and P57 give Q123"
+rationale: "domain knowledge"
+-/
+axiom r123 : P115 → P57 → Q123
+
+/-
+@@ telelean v1
+id: rule-124
+kind: ASSUMPTION
+natural_name: "P134 and P166 give Q124"
+rationale: "domain knowledge"
+-/
+axiom r124 : P134 → P166 → Q124
+
+/-
+@@ telelean v1
+id: rule-125
+kind: ASSUMPTION
+natural_name: "P7 and P101 give Q125"
+rationale: "domain knowledge"
+-/
+axiom r125 : P7 → P101 → Q125
+
+/-
+@@ telelean v1
+id: rule-126
+kind: ASSUMPTION
+natural_name: "P172 and P147 give Q126"
+rationale: "domain knowledge"
+-/
+axiom r126 : P172 → P147 → Q126
+
+/-
+@@ telelean v1
+id: rule-127
+kind: ASSUMPTION
+natural_name: "P82 and P168 give Q127"
+rationale: "domain knowledge"
+-/
+axiom r127 : P82 → P168 → Q127
+
+/-
+@@ telelean v1
+id: rule-128
+kind: ASSUMPTION
+natural_name: "P161 and P109 give Q128"
+rationale: "domain knowledge"
+-/
+axiom r128 : P161 → P109 → Q128
+
+/-
+@@ telelean v1
+id: rule-129
+kind: ASSUMPTION
+natural_name: "P15 and P188 give Q129"
+rationale: "domain knowledge"
+-/
+axiom r129 : P15 → P188 → Q129
+
+/-
+@@ telelean v1
+id: rule-130
+kind: ASSUMPTION
+natural_name: "P76 and P32 give Q130"
+rationale: "domain knowledge"
+-/
+axiom r130 : P76 → P32 → Q130
+
+/-
+@@ telelean v1
+id: rule-131
+kind: ASSUMPTION
+natural_name: "P54 and P12 give Q131"
+rationale: "domain knowledge"
+-/
+axiom r131 : P54 → P12 → Q131
+
+/-
+@@ telelean v1
+id: rule-132
+kind: ASSUMPTION
+natural_name: "P78 and P18 give Q132"
+rationale: "domain knowledge"
+-/
+axiom r132 : P78 → P18 → Q132
+
+/-
+@@ telelean v1
+id: rule-133
+kind: ASSUMPTION
+natural_name: "P19 and P79 give Q133"
+rationale: "domain knowledge"
+-/
+axiom r133 : P19 → P79 → Q133
+
+/-
+@@ telelean v1
+id: rule-134
+kind: ASSUMPTION
+natural_name: "P76 and P190 give Q134"
+rationale: "domain knowledge"
+-/
+axiom r134 : P76 → P190 → Q134
+
+/-
+@@ telelean v1
+id: rule-135
+kind: ASSUMPTION
+natural_name: "P40 and P106 give Q135"
+rationale: "domain knowledge"
+-/
+axiom r135 : P40 → P106 → Q135
+
+/-
+@@ telelean v1
+id: rule-136
+kind: ASSUMPTION
+natural_name: "P144 and P64 give Q136"
+rationale: "domain knowledge"
+-/
+axiom r136 : P144 → P64 → Q136
+
+/-
+@@ telelean v1
+id: rule-137
+kind: ASSUMPTION
+natural_name: "P33 and P2 give Q137"
+rationale: "domain knowledge"
+-/
+axiom r137 : P33 → P2 → Q137
+
+/-
+@@ telelean v1
+id: rule-138
+kind: ASSUMPTION
+natural_name: "P143 and P9 give Q138"
+rationale: "domain knowledge"
+-/
+axiom r138 : P143 → P9 → Q138
+
+/-
+@@ telelean v1
+id: rule-139
+kind: ASSUMPTION
+natural_name: "P151 and P55 give Q139"
+rationale: "domain knowledge"
+-/
+axiom r139 : P151 → P55 → Q139
+
+/-
+@@ telelean v1
+id: rule-140
+kind: ASSUMPTION
+natural_name: "P145 and P117 give Q140"
+rationale: "domain knowledge"
+-/
+axiom r140 : P145 → P117 → Q140
+
+/-
+@@ telelean v1
+id: rule-141
+kind: ASSUMPTION
+natural_name: "P43 and P199 give Q141"
+rationale: "domain knowledge"
+-/
+axiom r141 : P43 → P199 → Q141
+
+/-
+@@ telelean v1
+id: rule-142
+kind: ASSUMPTION
+natural_name: "P180 and P159 give Q142"
+rationale: "domain knowledge"
+-/
+axiom r142 : P180 → P159 → Q142
+
+/-
+@@ telelean v1
+id: rule-143
+kind: ASSUMPTION
+natural_name: "P130 and P9 give Q143"
+rationale: "domain knowledge"
+-/
+axiom r143 : P130 → P9 → Q143
+
+/-
+@@ telelean v1
+id: rule-144
+kind: ASSUMPTION
+natural_name: "P96 and P51 give Q144"
+rationale: "domain knowledge"
+-/
+axiom r144 : P96 → P51 → Q144
+
+/-
+@@ telelean v1
+id: rule-145
+kind: ASSUMPTION
+natural_name: "P88 and P25 give Q145"
+rationale: "domain knowledge"
+-/
+axiom r145 : P88 → P25 → Q145
+
+/-
+@@ telelean v1
+id: rule-146
+kind: ASSUMPTION
+natural_name: "P52 and P146 give Q146"
+rationale: "domain knowledge"
+-/
+axiom r146 : P52 → P146 → Q146
+
+/-
+@@ telelean v1
+id: rule-147
+kind: ASSUMPTION
+natural_name: "P172 and P110 give Q147"
+rationale: "domain knowledge"
+-/
+axiom r147 : P172 → P110 → Q147
+
+/-
+@@ telelean v1
+id: rule-148
+kind: ASSUMPTION
+natural_name: "P151 and P49 give Q148"
+rationale: "domain knowledge"
+-/
+axiom r148 : P151 → P49 → Q148
+
+/-
+@@ telelean v1
+id: rule-149
+kind: ASSUMPTION
+natural_name: "P126 and P26 give Q149"
+rationale: "domain knowledge"
+-/
+axiom r149 : P126 → P26 → Q149
+
+/-
+@@ telelean v1
+id: rule-150
+kind: ASSUMPTION
+natural_name: "P170 and P99 give Q150"
+rationale: "domain knowledge"
+-/
+axiom r150 : P170 → P99 → Q150
+
+/-
+@@ telelean v1
+id: rule-151
+kind: ASSUMPTION
+natural_name: "P75 and P129 give Q151"
+rationale: "domain knowledge"
+-/
+axiom r151 : P75 → P129 → Q151
+
+/-
+@@ telelean v1
+id: rule-152
+kind: ASSUMPTION
+natural_name: "P127 and P4 give Q152"
+rationale: "domain knowledge"
+-/
+axiom r152 : P127 → P4 → Q152
+
+/-
+@@ telelean v1
+id: rule-153
+kind: ASSUMPTION
+natural_name: "P83 and P156 give Q153"
+rationale: "domain knowledge"
+-/
+axiom r153 : P83 → P156 → Q153
+
+/-
+@@ telelean v1
+id: rule-154
+kind: ASSUMPTION
+natural_name: "P102 and P72 give Q154"
+rationale: "domain knowledge"
+-/
+axiom r154 : P102 → P72 → Q154
+
+/-
+@@ telelean v1
+id: rule-155
+kind: ASSUMPTION
+natural_name: "P4 and P40 give Q155"
+rationale: "domain knowledge"
+-/
+axiom r155 : P4 → P40 → Q155
+
+/-
+@@ telelean v1
+id: rule-156
+kind: ASSUMPTION
+natural_name: "P51 and P83 give Q156"
+rationale: "domain knowledge"
+-/
+axiom r156 : P51 → P83 → Q156
+
+/-
+@@ telelean v1
+id: rule-157
+kind: ASSUMPTION
+natural_name: "P144 and P34 give Q157"
+rationale: "domain knowledge"
+-/
+axiom r157 : P144 → P34 → Q157
+
+/-
+@@ telelean v1
+id: rule-158
+kind: ASSUMPTION
+natural_name: "P86 and P109 give Q158"
+rationale: "domain knowledge"
+-/
+axiom r158 : P86 → P109 → Q158
+
+/-
+@@ telelean v1
+id: rule-159
+kind: ASSUMPTION
+natural_name: "P54 and P68 give Q159"
+rationale: "domain knowledge"
+-/
+axiom r159 : P54 → P68 → Q159
+
+/-
+@@ telelean v1
+id: rule-160
+kind: ASSUMPTION
+natural_name: "P172 and P24 give Q160"
+rationale: "domain knowledge"
+-/
+axiom r160 : P172 → P24 → Q160
+
+/-
+@@ telelean v1
+id: rule-161
+kind: ASSUMPTION
+natural_name: "P97 and P140 give Q161"
+rationale: "domain knowledge"
+-/
+axiom r161 : P97 → P140 → Q161
+
+/-
+@@ telelean v1
+id: rule-162
+kind: ASSUMPTION
+natural_name: "P88 and P175 give Q162"
+rationale: "domain knowledge"
+-/
+axiom r162 : P88 → P175 → Q162
+
+/-
+@@ telelean v1
+id: rule-163
+kind: ASSUMPTION
+natural_name: "P136 and P124 give Q163"
+rationale: "domain knowledge"
+-/
+axiom r163 : P136 → P124 → Q163
+
+/-
+@@ telelean v1
+id: rule-164
+kind: ASSUMPTION
+natural_name: "P196 and P136 give Q164"
+rationale: "domain knowledge"
+-/
+axiom r164 : P196 → P136 → Q164
+
+/-
+@@ telelean v1
+id: rule-165
+kind: ASSUMPTION
+natural_name: "P60 and P16 give Q165"
+rationale: "domain knowledge"
+-/
+axiom r165 : P60 → P16 → Q165
+
+/-
+@@ telelean v1
+id: rule-166
+kind: ASSUMPTION
+natural_name: "P185 and P10 give Q166"
+rationale: "domain knowledge"
+-/
+axiom r166 : P185 → P10 → Q166
+
+/-
+@@ telelean v1
+id: rule-167
+kind: ASSUMPTION
+natural_name: "P21 and P34 give Q167"
+rationale: "domain knowledge"
+-/
+axiom r167 : P21 → P34 → Q167
+
+/-
+@@ telelean v1
+id: rule-168
+kind: ASSUMPTION
+natural_name: "P43 and P42 give Q168"
+rationale: "domain knowledge"
+-/
+axiom r168 : P43 → P42 → Q168
+
+/-
+@@ telelean v1
+id: rule-169
+kind: ASSUMPTION
+natural_name: "P137 and P54 give Q169"
+rationale: "domain knowledge"
+-/
+axiom r169 : P137 → P54 → Q169
+
+/-
+@@ telelean v1
+id: rule-170
+kind: ASSUMPTION
+natural_name: "P68 and P194 give Q170"
+rationale: "domain knowledge"
+-/
+axiom r170 : P68 → P194 → Q170
+
+/-
+@@ telelean v1
+id: rule-171
+kind: ASSUMPTION
+natural_name: "P85 and P153 give Q171"
+rationale: "domain knowledge"
+-/
+axiom r171 : P85 → P153 → Q171
+
+/-
+@@ telelean v1
+id: rule-172
+kind: ASSUMPTION
+natural_name: "P129 and P65 give Q172"
+rationale: "domain knowledge"
+-/
+axiom r172 : P129 → P65 → Q172
+
+/-
+@@ telelean v1
+id: rule-173
+kind: ASSUMPTION
+natural_name: "P94 and P86 give Q173"
+rationale: "domain knowledge"
+-/
+axiom r173 : P94 → P86 → Q173
+
+/-
+@@ telelean v1
+id: rule-174
+kind: ASSUMPTION
+natural_name: "P87 and P29 give Q174"
+rationale: "domain knowledge"
+-/
+axiom r174 : P87 → P29 → Q174
+
+/-
+@@ telelean v1
+id: rule-175
+kind: ASSUMPTION
+natural_name: "P74 and P60 give Q175"
+rationale: "domain knowledge"
+-/
+axiom r175 : P74 → P60 → Q175
+
+/-
+@@ telelean v1
+id: rule-176
+kind: ASSUMPTION
+natural_name: "P154 and P199 give Q176"
+rationale: "domain knowledge"
+-/
+axiom r176 : P154 → P199 → Q176
+
+/-
+@@ telelean v1
+id: rule-177
+kind: ASSUMPTION
+natural_name: "P183 and P125 give Q177"
+rationale: "domain knowledge"
+-/
+axiom r177 : P183 → P125 → Q177
+
+/-
+@@ telelean v1
+id: rule-178
+kind: ASSUMPTION
+natural_name: "P34 and P148 give Q178"
+rationale: "domain knowledge"
+-/
+axiom r178 : P34 → P148 → Q178
+
+/-
+@@ telelean v1
+id: rule-179
+kind: ASSUMPTION
+natural_name: "P141 and P197 give Q179"
+rationale: "domain knowledge"
+-/
+axiom r179 : P141 → P197 → Q179
+
+/-
+@@ telelean v1
+id: rule-180
+kind: ASSUMPTION
+natural_name: "P26 and P82 give Q180"
+rationale: "domain knowledge"
+-/
+axiom r180 : P26 → P82 → Q180
+
+/-
+@@ telelean v1
+id: rule-181
+kind: ASSUMPTION
+natural_name: "P10 and P104 give Q181"
+rationale: "domain knowledge"
+-/
+axiom r181 : P10 → P104 → Q181
+
+/-
+@@ telelean v1
+id: rule-182
+kind: ASSUMPTION
+natural_name: "P18 and P97 give Q182"
+rationale: "domain knowledge"
+-/
+axiom r182 : P18 → P97 → Q182
+
+/-
+@@ telelean v1
+id: rule-183
+kind: ASSUMPTION
+natural_name: "P37 and P32 give Q183"
+rationale: "domain knowledge"
+-/
+axiom r183 : P37 → P32 → Q183
+
+/-
+@@ telelean v1
+id: rule-184
+kind: ASSUMPTION
+natural_name: "P87 and P29 give Q184"
+rationale: "domain knowledge"
+-/
+axiom r184 : P87 → P29 → Q184
+
+/-
+@@ telelean v1
+id: rule-185
+kind: ASSUMPTION
+natural_name: "P157 and P150 give Q185"
+rationale: "domain knowledge"
+-/
+axiom r185 : P157 → P150 → Q185
+
+/-
+@@ telelean v1
+id: rule-186
+kind: ASSUMPTION
+natural_name: "P96 and P19 give Q186"
+rationale: "domain knowledge"
+-/
+axiom r186 : P96 → P19 → Q186
+
+/-
+@@ telelean v1
+id: rule-187
+kind: ASSUMPTION
+natural_name: "P146 and P140 give Q187"
+rationale: "domain knowledge"
+-/
+axiom r187 : P146 → P140 → Q187
+
+/-
+@@ telelean v1
+id: rule-188
+kind: ASSUMPTION
+natural_name: "P57 and P144 give Q188"
+rationale: "domain knowledge"
+-/
+axiom r188 : P57 → P144 → Q188
+
+/-
+@@ telelean v1
+id: rule-189
+kind: ASSUMPTION
+natural_name: "P20 and P68 give Q189"
+rationale: "domain knowledge"
+-/
+axiom r189 : P20 → P68 → Q189
+
+/-
+@@ telelean v1
+id: rule-190
+kind: ASSUMPTION
+natural_name: "P93 and P75 give Q190"
+rationale: "domain knowledge"
+-/
+axiom r190 : P93 → P75 → Q190
+
+/-
+@@ telelean v1
+id: rule-191
+kind: ASSUMPTION
+natural_name: "P144 and P136 give Q191"
+rationale: "domain knowledge"
+-/
+axiom r191 : P144 → P136 → Q191
+
+/-
+@@ telelean v1
+id: rule-192
+kind: ASSUMPTION
+natural_name: "P29 and P117 give Q192"
+rationale: "domain knowledge"
+-/
+axiom r192 : P29 → P117 → Q192
+
+/-
+@@ telelean v1
+id: rule-193
+kind: ASSUMPTION
+natural_name: "P70 and P27 give Q193"
+rationale: "domain knowledge"
+-/
+axiom r193 : P70 → P27 → Q193
+
+/-
+@@ telelean v1
+id: rule-194
+kind: ASSUMPTION
+natural_name: "P11 and P75 give Q194"
+rationale: "domain knowledge"
+-/
+axiom r194 : P11 → P75 → Q194
+
+/-
+@@ telelean v1
+id: rule-195
+kind: ASSUMPTION
+natural_name: "P3 and P157 give Q195"
+rationale: "domain knowledge"
+-/
+axiom r195 : P3 → P157 → Q195
+
+/-
+@@ telelean v1
+id: rule-196
+kind: ASSUMPTION
+natural_name: "P171 and P3 give Q196"
+rationale: "domain knowledge"
+-/
+axiom r196 : P171 → P3 → Q196
+
+/-
+@@ telelean v1
+id: rule-197
+kind: ASSUMPTION
+natural_name: "P23 and P105 give Q197"
+rationale: "domain knowledge"
+-/
+axiom r197 : P23 → P105 → Q197
+
+/-
+@@ telelean v1
+id: rule-198
+kind: ASSUMPTION
+natural_name: "P29 and P10 give Q198"
+rationale: "domain knowledge"
+-/
+axiom r198 : P29 → P10 → Q198
+
+/-
+@@ telelean v1
+id: rule-199
+kind: ASSUMPTION
+natural_name: "P48 and P61 give Q199"
+rationale: "domain knowledge"
+-/
+axiom r199 : P48 → P61 → Q199
+
+/-
+@@ telelean v1
+id: rule-200
+kind: ASSUMPTION
+natural_name: "P150 and P107 give Q200"
+rationale: "domain knowledge"
+-/
+axiom r200 : P150 → P107 → Q200
+
+/-
+@@ telelean v1
+id: rule-201
+kind: ASSUMPTION
+natural_name: "P41 and P29 give Q201"
+rationale: "domain knowledge"
+-/
+axiom r201 : P41 → P29 → Q201
+
+/-
+@@ telelean v1
+id: rule-202
+kind: ASSUMPTION
+natural_name: "P115 and P42 give Q202"
+rationale: "domain knowledge"
+-/
+axiom r202 : P115 → P42 → Q202
+
+/-
+@@ telelean v1
+id: rule-203
+kind: ASSUMPTION
+natural_name: "P174 and P61 give Q203"
+rationale: "domain knowledge"
+-/
+axiom r203 : P174 → P61 → Q203
+
+/-
+@@ telelean v1
+id: rule-204
+kind: ASSUMPTION
+natural_name: "P40 and P190 give Q204"
+rationale: "domain knowledge"
+-/
+axiom r204 : P40 → P190 → Q204
+
+/-
+@@ telelean v1
+id: rule-205
+kind: ASSUMPTION
+natural_name: "P26 and P111 give Q205"
+rationale: "domain knowledge"
+-/
+axiom r205 : P26 → P111 → Q205
+
+/-
+@@ telelean v1
+id: rule-206
+kind: ASSUMPTION
+natural_name: "P96 and P138 give Q206"
+rationale: "domain knowledge"
+-/
+axiom r206 : P96 → P138 → Q206
+
+/-
+@@ telelean v1
+id: rule-207
+kind: ASSUMPTION
+natural_name: "P75 and P140 give Q207"
+rationale: "domain knowledge"
+-/
+axiom r207 : P75 → P140 → Q207
+
+/-
+@@ telelean v1
+id: rule-208
+kind: ASSUMPTION
+natural_name: "P64 and P182 give Q208"
+rationale: "domain knowledge"
+-/
+axiom r208 : P64 → P182 → Q208
+
+/-
+@@ telelean v1
+id: rule-209
+kind: ASSUMPTION
+natural_name: "P122 and P80 give Q209"
+rationale: "domain knowledge"
+-/
+axiom r209 : P122 → P80 → Q209
+
+/-
+@@ telelean v1
+id: rule-210
+kind: ASSUMPTION
+natural_name: "P25 and P53 give Q210"
+rationale: "domain knowledge"
+-/
+axiom r210 : P25 → P53 → Q210
+
+/-
+@@ telelean v1
+id: rule-211
+kind: ASSUMPTION
+natural_name: "P166 and P81 give Q211"
+rationale: "domain knowledge"
+-/
+axiom r211 : P166 → P81 → Q211
+
+/-
+@@ telelean v1
+id: rule-212
+kind: ASSUMPTION
+natural_name: "P10 and P6 give Q212"
+rationale: "domain knowledge"
+-/
+axiom r212 : P10 → P6 → Q212
+
+/-
+@@ telelean v1
+id: rule-213
+kind: ASSUMPTION
+natural_name: "P2 and P75 give Q213"
+rationale: "domain knowledge"
+-/
+axiom r213 : P2 → P75 → Q213
+
+/-
+@@ telelean v1
+id: rule-214
+kind: ASSUMPTION
+natural_name: "P185 and P152 give Q214"
+rationale: "domain knowledge"
+-/
+axiom r214 : P185 → P152 → Q214
+
+/-
+@@ telelean v1
+id: rule-215
+kind: ASSUMPTION
+natural_name: "P81 and P115 give Q215"
+rationale: "domain knowledge"
+-/
+axiom r215 : P81 → P115 → Q215
+
+/-
+@@ telelean v1
+id: rule-216
+kind: ASSUMPTION
+natural_name: "P100 and P80 give Q216"
+rationale: "domain knowledge"
+-/
+axiom r216 : P100 → P80 → Q216
+
+/-
+@@ telelean v1
+id: rule-217
+kind: ASSUMPTION
+natural_name: "P102 and P16 give Q217"
+rationale: "domain knowledge"
+-/
+axiom r217 : P102 → P16 → Q217
+
+/-
+@@ telelean v1
+id: rule-218
+kind: ASSUMPTION
+natural_name: "P16 and P81 give Q218"
+rationale: "domain knowledge"
+-/
+axiom r218 : P16 → P81 → Q218
+
+/-
+@@ telelean v1
+id: rule-219
+kind: ASSUMPTION
+natural_name: "P153 and P116 give Q219"
+rationale: "domain knowledge"
+-/
+axiom r219 : P153 → P116 → Q219
+
+/-
+@@ telelean v1
+id: rule-220
+kind: ASSUMPTION
+natural_name: "P28 and P64 give Q220"
+rationale: "domain knowledge"
+-/
+axiom r220 : P28 → P64 → Q220
+
+/-
+@@ telelean v1
+id: rule-221
+kind: ASSUMPTION
+natural_name: "P55 and P158 give Q221"
+rationale: "domain knowledge"
+-/
+axiom r221 : P55 → P158 → Q221
+
+/-
+@@ telelean v1
+id: rule-222
+kind: ASSUMPTION
+natural_name: "P199 and P138 give Q222"
+rationale: "domain knowledge"
+-/
+axiom r222 : P199 → P138 → Q222
+
+/-
+@@ telelean v1
+id: rule-223
+kind: ASSUMPTION
+natural_name: "P176 and P120 give Q223"
+rationale: "domain knowledge"
+-/
+axiom r223 : P176 → P120 → Q223
+
+/-
+@@ telelean v1
+id: rule-224
+kind: ASSUMPTION
+natural_name: "P169 and P91 give Q224"
+rationale: "domain knowledge"
+-/
+axiom r224 : P169 → P91 → Q224
+
+/-
+@@ telelean v1
+id: rule-225
+kind: ASSUMPTION
+natural_name: "P66 and P46 give Q225"
+rationale: "domain knowledge"
+-/
+axiom r225 : P66 → P46 → Q225
+
+/-
+@@ telelean v1
+id: rule-226
+kind: ASSUMPTION
+natural_name: "P138 and P53 give Q226"
+rationale: "domain knowledge"
+-/
+axiom r226 : P138 → P53 → Q226
+
+/-
+@@ telelean v1
+id: rule-227
+kind: ASSUMPTION
+natural_name: "P78 and P50 give Q227"
+rationale: "domain knowledge"
+-/
+axiom r227 : P78 → P50 → Q227
+
+/-
+@@ telelean v1
+id: rule-228
+kind: ASSUMPTION
+natural_name: "P63 and P92 give Q228"
+rationale: "domain knowledge"
+-/
+axiom r228 : P63 → P92 → Q228
+
+/-
+@@ telelean v1
+id: rule-229
+kind: ASSUMPTION
+natural_name: "P20 and P71 give Q229"
+rationale: "domain knowledge"
+-/
+axiom r229 : P20 → P71 → Q229
+
+/-
+@@ telelean v1
+id: rule-230
+kind: ASSUMPTION
+natural_name: "P22 and P192 give Q230"
+rationale: "domain knowledge"
+-/
+axiom r230 : P22 → P192 → Q230
+
+/-
+@@ telelean v1
+id: rule-231
+kind: ASSUMPTION
+natural_name: "P114 and P23 give Q231"
+rationale: "domain knowledge"
+-/
+axiom r231 : P114 → P23 → Q231
+
+/-
+@@ telelean v1
+id: rule-232
+kind: ASSUMPTION
+natural_name: "P166 and P147 give Q232"
+rationale: "domain knowledge"
+-/
+axiom r232 : P166 → P147 → Q232
+
+/-
+@@ telelean v1
+id: rule-233
+kind: ASSUMPTION
+natural_name: "P164 and P86 give Q233"
+rationale: "domain knowledge"
+-/
+axiom r233 : P164 → P86 → Q233
+
+/-
+@@ telelean v1
+id: rule-234
+kind: ASSUMPTION
+natural_name: "P58 and P99 give Q234"
+rationale: "domain knowledge"
+-/
+axiom r234 : P58 → P99 → Q234
+
+/-
+@@ telelean v1
+id: rule-235
+kind: ASSUMPTION
+natural_name: "P78 and P10 give Q235"
+rationale: "domain knowledge"
+-/
+axiom r235 : P78 → P10 → Q235
+
+/-
+@@ telelean v1
+id: rule-236
+kind: ASSUMPTION
+natural_name: "P83 and P47 give Q236"
+rationale: "domain knowledge"
+-/
+axiom r236 : P83 → P47 → Q236
+
+/-
+@@ telelean v1
+id: rule-237
+kind: ASSUMPTION
+natural_name: "P81 and P148 give Q237"
+rationale: "domain knowledge"
+-/
+axiom r237 : P81 → P148 → Q237
+
+/-
+@@ telelean v1
+id: rule-238
+kind: ASSUMPTION
+natural_name: "P77 and P62 give Q238"
+rationale: "domain knowledge"
+-/
+axiom r238 : P77 → P62 → Q238
+
+/-
+@@ telelean v1
+id: rule-239
+kind: ASSUMPTION
+natural_name: "P85 and P25 give Q239"
+rationale: "domain knowledge"
+-/
+axiom r239 : P85 → P25 → Q239
+
+/-
+@@ telelean v1
+id: rule-240
+kind: ASSUMPTION
+natural_name: "P139 and P156 give Q240"
+rationale: "domain knowledge"
+-/
+axiom r240 : P139 → P156 → Q240
+
+/-
+@@ telelean v1
+id: rule-241
+kind: ASSUMPTION
+natural_name: "P148 and P152 give Q241"
+rationale: "domain knowledge"
+-/
+axiom r241 : P148 → P152 → Q241
+
+/-
+@@ telelean v1
+id: rule-242
+kind: ASSUMPTION
+natural_name: "P23 and P62 give Q242"
+rationale: "domain knowledge"
+-/
+axiom r242 : P23 → P62 → Q242
+
+/-
+@@ telelean v1
+id: rule-243
+kind: ASSUMPTION
+natural_name: "P56 and P5 give Q243"
+rationale: "domain knowledge"
+-/
+axiom r243 : P56 → P5 → Q243
+
+/-
+@@ telelean v1
+id: rule-244
+kind: ASSUMPTION
+natural_name: "P62 and P102 give Q244"
+rationale: "domain knowledge"
+-/
+axiom r244 : P62 → P102 → Q244
+
+/-
+@@ telelean v1
+id: rule-245
+kind: ASSUMPTION
+natural_name: "P18 and P68 give Q245"
+rationale: "domain knowledge"
+-/
+axiom r245 : P18 → P68 → Q245
+
+/-
+@@ telelean v1
+id: rule-246
+kind: ASSUMPTION
+natural_name: "P141 and P18 give Q246"
+rationale: "domain knowledge"
+-/
+axiom r246 : P141 → P18 → Q246
+
+/-
+@@ telelean v1
+id: rule-247
+kind: ASSUMPTION
+natural_name: "P186 and P19 give Q247"
+rationale: "domain knowledge"
+-/
+axiom r247 : P186 → P19 → Q247
+
+/-
+@@ telelean v1
+id: rule-248
+kind: ASSUMPTION
+natural_name: "P5 and P162 give Q248"
+rationale: "domain knowledge"
+-/
+axiom r248 : P5 → P162 → Q248
+
+/-
+@@ telelean v1
+id: rule-249
+kind: ASSUMPTION
+natural_name: "P2 and P74 give Q249"
+rationale: "domain knowledge"
+-/
+axiom r249 : P2 → P74 → Q249
+
+/-
+@@ telelean v1
+id: rule-250
+kind: ASSUMPTION
+natural_name: "P192 and P91 give Q250"
+rationale: "domain knowledge"
+-/
+axiom r250 : P192 → P91 → Q250
+
+/-
+@@ telelean v1
+id: rule-251
+kind: ASSUMPTION
+natural_name: "P126 and P120 give Q251"
+rationale: "domain knowledge"
+-/
+axiom r251 : P126 → P120 → Q251
+
+/-
+@@ telelean v1
+id: rule-252
+kind: ASSUMPTION
+natural_name: "P39 and P25 give Q252"
+rationale: "domain knowledge"
+-/
+axiom r252 : P39 → P25 → Q252
+
+/-
+@@ telelean v1
+id: rule-253
+kind: ASSUMPTION
+natural_name: "P128 and P199 give Q253"
+rationale: "domain knowledge"
+-/
+axiom r253 : P128 → P199 → Q253
+
+/-
+@@ telelean v1
+id: rule-254
+kind: ASSUMPTION
+natural_name: "P83 and P19 give Q254"
+rationale: "domain knowledge"
+-/
+axiom r254 : P83 → P19 → Q254
+
+/-
+@@ telelean v1
+id: rule-255
+kind: ASSUMPTION
+natural_name: "P130 and P170 give Q255"
+rationale: "domain knowledge"
+-/
+axiom r255 : P130 → P170 → Q255
+
+/-
+@@ telelean v1
+id: rule-256
+kind: ASSUMPTION
+natural_name: "P44 and P45 give Q256"
+rationale: "domain knowledge"
+-/
+axiom r256 : P44 → P45 → Q256
+
+/-
+@@ telelean v1
+id: rule-257
+kind: ASSUMPTION
+natural_name: "P198 and P38 give Q257"
+rationale: "domain knowledge"
+-/
+axiom r257 : P198 → P38 → Q257
+
+/-
+@@ telelean v1
+id: rule-258
+kind: ASSUMPTION
+natural_name: "P36 and P81 give Q258"
+rationale: "domain knowledge"
+-/
+axiom r258 : P36 → P81 → Q258
+
+/-
+@@ telelean v1
+id: rule-259
+kind: ASSUMPTION
+natural_name: "P78 and P27 give Q259"
+rationale: "domain knowledge"
+-/
+axiom r259 : P78 → P27 → Q259
+
+/-
+@@ telelean v1
+id: rule-260
+kind: ASSUMPTION
+natural_name: "P181 and P131 give Q260"
+rationale: "domain knowledge"
+-/
+axiom r260 : P181 → P131 → Q260
+
+/-
+@@ telelean v1
+id: rule-261
+kind: ASSUMPTION
+natural_name: "P154 and P75 give Q261"
+rationale: "domain knowledge"
+-/
+axiom r261 : P154 → P75 → Q261
+
+/-
+@@ telelean v1
+id: rule-262
+kind: ASSUMPTION
+natural_name: "P32 and P52 give Q262"
+rationale: "domain knowledge"
+-/
+axiom r262 : P32 → P52 → Q262
+
+/-
+@@ telelean v1
+id: rule-263
+kind: ASSUMPTION
+natural_name: "P36 and P139 give Q263"
+rationale: "domain knowledge"
+-/
+axiom r263 : P36 → P139 → Q263
+
+/-
+@@ telelean v1
+id: rule-264
+kind: ASSUMPTION
+natural_name: "P184 and P8 give Q264"
+rationale: "domain knowledge"
+-/
+axiom r264 : P184 → P8 → Q264
+
+/-
+@@ telelean v1
+id: rule-265
+kind: ASSUMPTION
+natural_name: "P199 and P80 give Q265"
+rationale: "domain knowledge"
+-/
+axiom r265 : P199 → P80 → Q265
+
+/-
+@@ telelean v1
+id: rule-266
+kind: ASSUMPTION
+natural_name: "P159 and P172 give Q266"
+rationale: "domain knowledge"
+-/
+axiom r266 : P159 → P172 → Q266
+
+/-
+@@ telelean v1
+id: rule-267
+kind: ASSUMPTION
+natural_name: "P141 and P191 give Q267"
+rationale: "domain knowledge"
+-/
+axiom r267 : P141 → P191 → Q267
+
+/-
+@@ telelean v1
+id: rule-268
+kind: ASSUMPTION
+natural_name: "P176 and P52 give Q268"
+rationale: "domain knowledge"
+-/
+axiom r268 : P176 → P52 → Q268
+
+/-
+@@ telelean v1
+id: rule-269
+kind: ASSUMPTION
+natural_name: "P45 and P76 give Q269"
+rationale: "domain knowledge"
+-/
+axiom r269 : P45 → P76 → Q269
+
+/-
+@@ telelean v1
+id: rule-270
+kind: ASSUMPTION
+natural_name: "P110 and P137 give Q270"
+rationale: "domain knowledge"
+-/
+axiom r270 : P110 → P137 → Q270
+
+/-
+@@ telelean v1
+id: rule-271
+kind: ASSUMPTION
+natural_name: "P40 and P12 give Q271"
+rationale: "domain knowledge"
+-/
+axiom r271 : P40 → P12 → Q271
+
+/-
+@@ telelean v1
+id: rule-272
+kind: ASSUMPTION
+natural_name: "P182 and P170 give Q272"
+rationale: "domain knowledge"
+-/
+axiom r272 : P182 → P170 → Q272
+
+/-
+@@ telelean v1
+id: rule-273
+kind: ASSUMPTION
+natural_name: "P63 and P64 give Q273"
+rationale: "domain knowledge"
+-/
+axiom r273 : P63 → P64 → Q273
+
+/-
+@@ telelean v1
+id: rule-274
+kind: ASSUMPTION
+natural_name: "P199 and P16 give Q274"
+rationale: "domain knowledge"
+-/
+axiom r274 : P199 → P16 → Q274
+
+/-
+@@ telelean v1
+id: rule-275
+kind: ASSUMPTION
+natural_name: "P174 and P114 give Q275"
+rationale: "domain knowledge"
+-/
+axiom r275 : P174 → P114 → Q275
+
+/-
+@@ telelean v1
+id: rule-276
+kind: ASSUMPTION
+natural_name: "P110 and P140 give Q276"
+rationale: "domain knowledge"
+-/
+axiom r276 : P110 → P140 → Q276
+
+/-
+@@ telelean v1
+id: rule-277
+kind: ASSUMPTION
+natural_name: "P64 and P138 give Q277"
+rationale: "domain knowledge"
+-/
+axiom r277 : P64 → P138 → Q277
+
+/-
+@@ telelean v1
+id: rule-278
+kind: ASSUMPTION
+natural_name: "P112 and P137 give Q278"
+rationale: "domain knowledge"
+-/
+axiom r278 : P112 → P137 → Q278
+
+/-
+@@ telelean v1
+id: rule-279
+kind: ASSUMPTION
+natural_name: "P116 and P2 give Q279"
+rationale: "domain knowledge"
+-/
+axiom r279 : P116 → P2 → Q279
+
+/-
+@@ telelean v1
+id: rule-280
+kind: ASSUMPTION
+natural_name: "P101 and P86 give Q280"
+rationale: "domain knowledge"
+-/
+axiom r280 : P101 → P86 → Q280
+
+/-
+@@ telelean v1
+id: rule-281
+kind: ASSUMPTION
+natural_name: "P43 and P66 give Q281"
+rationale: "domain knowledge"
+-/
+axiom r281 : P43 → P66 → Q281
+
+/-
+@@ telelean v1
+id: rule-282
+kind: ASSUMPTION
+natural_name: "P124 and P6 give Q282"
+rationale: "domain knowledge"
+-/
+axiom r282 : P124 → P6 → Q282
+
+/-
+@@ telelean v1
+id: rule-283
+kind: ASSUMPTION
+natural_name: "P165 and P106 give Q283"
+rationale: "domain knowledge"
+-/
+axiom r283 : P165 → P106 → Q283
+
+/-
+@@ telelean v1
+id: rule-284
+kind: ASSUMPTION
+natural_name: "P146 and P4 give Q284"
+rationale: "domain knowledge"
+-/
+axiom r284 : P146 → P4 → Q284
+
+/-
+@@ telelean v1
+id: rule-285
+kind: ASSUMPTION
+natural_name: "P15 and P177 give Q285"
+rationale: "domain knowledge"
+-/
+axiom r285 : P15 → P177 → Q285
+
+/-
+@@ telelean v1
+id: rule-286
+kind: ASSUMPTION
+natural_name: "P90 and P148 give Q286"
+rationale: "domain knowledge"
+-/
+axiom r286 : P90 → P148 → Q286
+
+/-
+@@ telelean v1
+id: rule-287
+kind: ASSUMPTION
+natural_name: "P35 and P151 give Q287"
+rationale: "domain knowledge"
+-/
+axiom r287 : P35 → P151 → Q287
+
+/-
+@@ telelean v1
+id: rule-288
+kind: ASSUMPTION
+natural_name: "P32 and P35 give Q288"
+rationale: "domain knowledge"
+-/
+axiom r288 : P32 → P35 → Q288
+
+/-
+@@ telelean v1
+id: rule-289
+kind: ASSUMPTION
+natural_name: "P66 and P70 give Q289"
+rationale: "domain knowledge"
+-/
+axiom r289 : P66 → P70 → Q289
+
+/-
+@@ telelean v1
+id: rule-290
+kind: ASSUMPTION
+natural_name: "P101 and P144 give Q290"
+rationale: "domain knowledge"
+-/
+axiom r290 : P101 → P144 → Q290
+
+/-
+@@ telelean v1
+id: rule-291
+kind: ASSUMPTION
+natural_name: "P102 and P44 give Q291"
+rationale: "domain knowledge"
+-/
+axiom r291 : P102 → P44 → Q291
+
+/-
+@@ telelean v1
+id: rule-292
+kind: ASSUMPTION
+natural_name: "P156 and P22 give Q292"
+rationale: "domain knowledge"
+-/
+axiom r292 : P156 → P22 → Q292
+
+/-
+@@ telelean v1
+id: rule-293
+kind: ASSUMPTION
+natural_name: "P59 and P124 give Q293"
+rationale: "domain knowledge"
+-/
+axiom r293 : P59 → P124 → Q293
+
+/-
+@@ telelean v1
+id: rule-294
+kind: ASSUMPTION
+natural_name: "P1 and P45 give Q294"
+rationale: "domain knowledge"
+-/
+axiom r294 : P1 → P45 → Q294
+
+/-
+@@ telelean v1
+id: rule-295
+kind: ASSUMPTION
+natural_name: "P135 and P81 give Q295"
+rationale: "domain knowledge"
+-/
+axiom r295 : P135 → P81 → Q295
+
+/-
+@@ telelean v1
+id: rule-296
+kind: ASSUMPTION
+natural_name: "P128 and P166 give Q296"
+rationale: "domain knowledge"
+-/
+axiom r296 : P128 → P166 → Q296
+
+/-
+@@ telelean v1
+id: rule-297
+kind: ASSUMPTION
+natural_name: "P112 and P175 give Q297"
+rationale: "domain knowledge"
+-/
+axiom r297 : P112 → P175 → Q297
+
+/-
+@@ telelean v1
+id: rule-298
+kind: ASSUMPTION
+natural_name: "P163 and P187 give Q298"
+rationale: "domain knowledge"
+-/
+axiom r298 : P163 → P187 → Q298
+
+/-
+@@ telelean v1
+id: rule-299
+kind: ASSUMPTION
+natural_name: "P57 and P61 give Q299"
+rationale: "domain knowledge"
+-/
+axiom r299 : P57 → P61 → Q299
+
+/-
+@@ telelean v1
+id: rule-300
+kind: ASSUMPTION
+natural_name: "P80 and P126 give Q300"
+rationale: "domain knowledge"
+-/
+axiom r300 : P80 → P126 → Q300
+
+/-
+@@ telelean v1
+id: rule-301
+kind: ASSUMPTION
+natural_name: "P175 and P122 give Q301"
+rationale: "domain knowledge"
+-/
+axiom r301 : P175 → P122 → Q301
+
+/-
+@@ telelean v1
+id: rule-302
+kind: ASSUMPTION
+natural_name: "P57 and P182 give Q302"
+rationale: "domain knowledge"
+-/
+axiom r302 : P57 → P182 → Q302
+
+/-
+@@ telelean v1
+id: rule-303
+kind: ASSUMPTION
+natural_name: "P105 and P86 give Q303"
+rationale: "domain knowledge"
+-/
+axiom r303 : P105 → P86 → Q303
+
+/-
+@@ telelean v1
+id: rule-304
+kind: ASSUMPTION
+natural_name: "P143 and P156 give Q304"
+rationale: "domain knowledge"
+-/
+axiom r304 : P143 → P156 → Q304
+
+/-
+@@ telelean v1
+id: rule-305
+kind: ASSUMPTION
+natural_name: "P186 and P167 give Q305"
+rationale: "domain knowledge"
+-/
+axiom r305 : P186 → P167 → Q305
+
+/-
+@@ telelean v1
+id: rule-306
+kind: ASSUMPTION
+natural_name: "P70 and P165 give Q306"
+rationale: "domain knowledge"
+-/
+axiom r306 : P70 → P165 → Q306
+
+/-
+@@ telelean v1
+id: rule-307
+kind: ASSUMPTION
+natural_name: "P56 and P12 give Q307"
+rationale: "domain knowledge"
+-/
+axiom r307 : P56 → P12 → Q307
+
+/-
+@@ telelean v1
+id: rule-308
+kind: ASSUMPTION
+natural_name: "P18 and P195 give Q308"
+rationale: "domain knowledge"
+-/
+axiom r308 : P18 → P195 → Q308
+
+/-
+@@ telelean v1
+id: rule-309
+kind: ASSUMPTION
+natural_name: "P130 and P165 give Q309"
+rationale: "domain knowledge"
+-/
+axiom r309 : P130 → P165 → Q309
+
+/-
+@@ telelean v1
+id: rule-310
+kind: ASSUMPTION
+natural_name: "P94 and P40 give Q310"
+rationale: "domain knowledge"
+-/
+axiom r310 : P94 → P40 → Q310
+
+/-
+@@ telelean v1
+id: rule-311
+kind: ASSUMPTION
+natural_name: "P130 and P196 give Q311"
+rationale: "domain knowledge"
+-/
+axiom r311 : P130 → P196 → Q311
+
+/-
+@@ telelean v1
+id: rule-312
+kind: ASSUMPTION
+natural_name: "P52 and P79 give Q312"
+rationale: "domain knowledge"
+-/
+axiom r312 : P52 → P79 → Q312
+
+/-
+@@ telelean v1
+id: rule-313
+kind: ASSUMPTION
+natural_name: "P76 and P177 give Q313"
+rationale: "domain knowledge"
+-/
+axiom r313 : P76 → P177 → Q313
+
+/-
+@@ telelean v1
+id: rule-314
+kind: ASSUMPTION
+natural_name: "P76 and P141 give Q314"
+rationale: "domain knowledge"
+-/
+axiom r314 : P76 → P141 → Q314
+
+/-
+@@ telelean v1
+id: rule-315
+kind: ASSUMPTION
+natural_name: "P95 and P42 give Q315"
+rationale: "domain knowledge"
+-/
+axiom r315 : P95 → P42 → Q315
+
+/-
+@@ telelean v1
+id: rule-316
+kind: ASSUMPTION
+natural_name: "P179 and P179 give Q316"
+rationale: "domain knowledge"
+-/
+axiom r316 : P179 → P179 → Q316
+
+/-
+@@ telelean v1
+id: rule-317
+kind: ASSUMPTION
+natural_name: "P188 and P118 give Q317"
+rationale: "domain knowledge"
+-/
+axiom r317 : P188 → P118 → Q317
+
+/-
+@@ telelean v1
+id: rule-318
+kind: ASSUMPTION
+natural_name: "P152 and P21 give Q318"
+rationale: "domain knowledge"
+-/
+axiom r318 : P152 → P21 → Q318
+
+/-
+@@ telelean v1
+id: rule-319
+kind: ASSUMPTION
+natural_name: "P31 and P155 give Q319"
+rationale: "domain knowledge"
+-/
+axiom r319 : P31 → P155 → Q319
+
+/-
+@@ telelean v1
+id: rule-320
+kind: ASSUMPTION
+natural_name: "P131 and P146 give Q320"
+rationale: "domain knowledge"
+-/
+axiom r320 : P131 → P146 → Q320
+
+/-
+@@ telelean v1
+id: rule-321
+kind: ASSUMPTION
+natural_name: "P96 and P45 give Q321"
+rationale: "domain knowledge"
+-/
+axiom r321 : P96 → P45 → Q321
+
+/-
+@@ telelean v1
+id: rule-322
+kind: ASSUMPTION
+natural_name: "P39 and P64 give Q322"
+rationale: "domain knowledge"
+-/
+axiom r322 : P39 → P64 → Q322
+
+/-
+@@ telelean v1
+id: rule-323
+kind: ASSUMPTION
+natural_name: "P109 and P55 give Q323"
+rationale: "domain knowledge"
+-/
+axiom r323 : P109 → P55 → Q323
+
+/-
+@@ telelean v1
+id: rule-324
+kind: ASSUMPTION
+natural_name: "P145 and P184 give Q324"
+rationale: "domain knowledge"
+-/
+axiom r324 : P145 → P184 → Q324
+
+/-
+@@ telelean v1
+id: rule-325
+kind: ASSUMPTION
+natural_name: "P193 and P13 give Q325"
+rationale: "domain knowledge"
+-/
+axiom r325 : P193 → P13 → Q325
+
+/-
+@@ telelean v1
+id: rule-326
+kind: ASSUMPTION
+natural_name: "P126 and P174 give Q326"
+rationale: "domain knowledge"
+-/
+axiom r326 : P126 → P174 → Q326
+
+/-
+@@ telelean v1
+id: rule-327
+kind: ASSUMPTION
+natural_name: "P100 and P183 give Q327"
+rationale: "domain knowledge"
+-/
+axiom r327 : P100 → P183 → Q327
+
+/-
+@@ telelean v1
+id: rule-328
+kind: ASSUMPTION
+natural_name: "P163 and P89 give Q328"
+rationale: "domain knowledge"
+-/
+axiom r328 : P163 → P89 → Q328
+
+/-
+@@ telelean v1
+id: rule-329
+kind: ASSUMPTION
+natural_name: "P98 and P131 give Q329"
+rationale: "domain knowledge"
+-/
+axiom r329 : P98 → P131 → Q329
+
+/-
+@@ telelean v1
+id: rule-330
+kind: ASSUMPTION
+natural_name: "P42 and P139 give Q330"
+rationale: "domain knowledge"
+-/
+axiom r330 : P42 → P139 → Q330
+
+/-
+@@ telelean v1
+id: rule-331
+kind: ASSUMPTION
+natural_name: "P186 and P10 give Q331"
+rationale: "domain knowledge"
+-/
+axiom r331 : P186 → P10 → Q331
+
+/-
+@@ telelean v1
+id: rule-332
+kind: ASSUMPTION
+natural_name: "P134 and P23 give Q332"
+rationale: "domain knowledge"
+-/
+axiom r332 : P134 → P23 → Q332
+
+/-
+@@ telelean v1
+id: rule-333
+kind: ASSUMPTION
+natural_name: "P65 and P160 give Q333"
+rationale: "domain knowledge"
+-/
+axiom r333 : P65 → P160 → Q333
+
+/-
+@@ telelean v1
+id: rule-334
+kind: ASSUMPTION
+natural_name: "P25 and P68 give Q334"
+rationale: "domain knowledge"
+-/
+axiom r334 : P25 → P68 → Q334
+
+/-
+@@ telelean v1
+id: rule-335
+kind: ASSUMPTION
+natural_name: "P188 and P21 give Q335"
+rationale: "domain knowledge"
+-/
+axiom r335 : P188 → P21 → Q335
+
+/-
+@@ telelean v1
+id: rule-336
+kind: ASSUMPTION
+natural_name: "P35 and P198 give Q336"
+rationale: "domain knowledge"
+-/
+axiom r336 : P35 → P198 → Q336
+
+/-
+@@ telelean v1
+id: rule-337
+kind: ASSUMPTION
+natural_name: "P157 and P168 give Q337"
+rationale: "domain knowledge"
+-/
+axiom r337 : P157 → P168 → Q337
+
+/-
+@@ telelean v1
+id: rule-338
+kind: ASSUMPTION
+natural_name: "P175 and P179 give Q338"
+rationale: "domain knowledge"
+-/
+axiom r338 : P175 → P179 → Q338
+
+/-
+@@ telelean v1
+id: rule-339
+kind: ASSUMPTION
+natural_name: "P20 and P113 give Q339"
+rationale: "domain knowledge"
+-/
+axiom r339 : P20 → P113 → Q339
+
+/-
+@@ telelean v1
+id: rule-340
+kind: ASSUMPTION
+natural_name: "P61 and P97 give Q340"
+rationale: "domain knowledge"
+-/
+axiom r340 : P61 → P97 → Q340
+
+/-
+@@ telelean v1
+id: rule-341
+kind: ASSUMPTION
+natural_name: "P110 and P101 give Q341"
+rationale: "domain knowledge"
+-/
+axiom r341 : P110 → P101 → Q341
+
+/-
+@@ telelean v1
+id: rule-342
+kind: ASSUMPTION
+natural_name: "P42 and P83 give Q342"
+rationale: "domain knowledge"
+-/
+axiom r342 : P42 → P83 → Q342
+
+/-
+@@ telelean v1
+id: rule-343
+kind: ASSUMPTION
+natural_name: "P112 and P32 give Q343"
+rationale: "domain knowledge"
+-/
+axiom r343 : P112 → P32 → Q343
+
+/-
+@@ telelean v1
+id: rule-344
+kind: ASSUMPTION
+natural_name: "P159 and P124 give Q344"
+rationale: "domain knowledge"
+-/
+axiom r344 : P159 → P124 → Q344
+
+/-
+@@ telelean v1
+id: rule-345
+kind: ASSUMPTION
+natural_name: "P54 and P30 give Q345"
+rationale: "domain knowledge"
+-/
+axiom r345 : P54 → P30 → Q345
+
+/-
+@@ telelean v1
+id: rule-346
+kind: ASSUMPTION
+natural_name: "P110 and P153 give Q346"
+rationale: "domain knowledge"
+-/
+axiom r346 : P110 → P153 → Q346
+
+/-
+@@ telelean v1
+id: rule-347
+kind: ASSUMPTION
+natural_name: "P136 and P104 give Q347"
+rationale: "domain knowledge"
+-/
+axiom r347 : P136 → P104 → Q347
+
+/-
+@@ telelean v1
+id: rule-348
+kind: ASSUMPTION
+natural_name: "P30 and P169 give Q348"
+rationale: "domain knowledge"
+-/
+axiom r348 : P30 → P169 → Q348
+
+/-
+@@ telelean v1
+id: rule-349
+kind: ASSUMPTION
+natural_name: "P75 and P71 give Q349"
+rationale: "domain knowledge"
+-/
+axiom r349 : P75 → P71 → Q349
+
+/-
+@@ telelean v1
+id: rule-350
+kind: ASSUMPTION
+natural_name: "P63 and P96 give Q350"
+rationale: "domain knowledge"
+-/
+axiom r350 : P63 → P96 → Q350
+
+/-
+@@ telelean v1
+id: rule-351
+kind: ASSUMPTION
+natural_name: "P191 and P143 give Q351"
+rationale: "domain knowledge"
+-/
+axiom r351 : P191 → P143 → Q351
+
+/-
+@@ telelean v1
+id: rule-352
+kind: ASSUMPTION
+natural_name: "P1 and P48 give Q352"
+rationale: "domain knowledge"
+-/
+axiom r352 : P1 → P48 → Q352
+
+/-
+@@ telelean v1
+id: rule-353
+kind: ASSUMPTION
+natural_name: "P135 and P112 give Q353"
+rationale: "domain knowledge"
+-/
+axiom r353 : P135 → P112 → Q353
+
+/-
+@@ telelean v1
+id: rule-354
+kind: ASSUMPTION
+natural_name: "P148 and P5 give Q354"
+rationale: "domain knowledge"
+-/
+axiom r354 : P148 → P5 → Q354
+
+/-
+@@ telelean v1
+id: rule-355
+kind: ASSUMPTION
+natural_name: "P7 and P160 give Q355"
+rationale: "domain knowledge"
+-/
+axiom r355 : P7 → P160 → Q355
+
+/-
+@@ telelean v1
+id: rule-356
+kind: ASSUMPTION
+natural_name: "P155 and P62 give Q356"
+rationale: "domain knowledge"
+-/
+axiom r356 : P155 → P62 → Q356
+
+/-
+@@ telelean v1
+id: rule-357
+kind: ASSUMPTION
+natural_name: "P66 and P52 give Q357"
+rationale: "domain knowledge"
+-/
+axiom r357 : P66 → P52 → Q357
+
+/-
+@@ telelean v1
+id: rule-358
+kind: ASSUMPTION
+natural_name: "P44 and P72 give Q358"
+rationale: "domain knowledge"
+-/
+axiom r358 : P44 → P72 → Q358
+
+/-
+@@ telelean v1
+id: rule-359
+kind: ASSUMPTION
+natural_name: "P37 and P138 give Q359"
+rationale: "domain knowledge"
+-/
+axiom r359 : P37 → P138 → Q359
+
+/-
+@@ telelean v1
+id: rule-360
+kind: ASSUMPTION
+natural_name: "P51 and P69 give Q360"
+rationale: "domain knowledge"
+-/
+axiom r360 : P51 → P69 → Q360
+
+/-
+@@ telelean v1
+id: rule-361
+kind: ASSUMPTION
+natural_name: "P79 and P149 give Q361"
+rationale: "domain knowledge"
+-/
+axiom r361 : P79 → P149 → Q361
+
+/-
+@@ telelean v1
+id: rule-362
+kind: ASSUMPTION
+natural_name: "P193 and P64 give Q362"
+rationale: "domain knowledge"
+-/
+axiom r362 : P193 → P64 → Q362
+
+/-
+@@ telelean v1
+id: rule-363
+kind: ASSUMPTION
+natural_name: "P174 and P114 give Q363"
+rationale: "domain knowledge"
+-/
+axiom r363 : P174 → P114 → Q363
+
+/-
+@@ telelean v1
+id: rule-364
+kind: ASSUMPTION
+natural_name: "P43 and P139 give Q364"
+rationale: "domain knowledge"
+-/
+axiom r364 : P43 → P139 → Q364
+
+/-
+@@ telelean v1
+id: rule-365
+kind: ASSUMPTION
+natural_name: "P91 and P125 give Q365"
+rationale: "domain knowledge"
+-/
+axiom r365 : P91 → P125 → Q365
+
+/-
+@@ telelean v1
+id: rule-366
+kind: ASSUMPTION
+natural_name: "P107 and P31 give Q366"
+rationale: "domain knowledge"
+-/
+axiom r366 : P107 → P31 → Q366
+
+/-
+@@ telelean v1
+id: rule-367
+kind: ASSUMPTION
+natural_name: "P196 and P53 give Q367"
+rationale: "domain knowledge"
+-/
+axiom r367 : P196 → P53 → Q367
+
+/-
+@@ telelean v1
+id: rule-368
+kind: ASSUMPTION
+natural_name: "P146 and P98 give Q368"
+rationale: "domain knowledge"
+-/
+axiom r368 : P146 → P98 → Q368
+
+/-
+@@ telelean v1
+id: rule-369
+kind: ASSUMPTION
+natural_name: "P52 and P72 give Q369"
+rationale: "domain knowledge"
+-/
+axiom r369 : P52 → P72 → Q369
+
+/-
+@@ telelean v1
+id: rule-370
+kind: ASSUMPTION
+natural_name: "P27 and P6 give Q370"
+rationale: "domain knowledge"
+-/
+axiom r370 : P27 → P6 → Q370
+
+/-
+@@ telelean v1
+id: rule-371
+kind: ASSUMPTION
+natural_name: "P30 and P145 give Q371"
+rationale: "domain knowledge"
+-/
+axiom r371 : P30 → P145 → Q371
+
+/-
+@@ telelean v1
+id: rule-372
+kind: ASSUMPTION
+natural_name: "P191 and P3 give Q372"
+rationale: "domain knowledge"
+-/
+axiom r372 : P191 → P3 → Q372
+
+/-
+@@ telelean v1
+id: rule-373
+kind: ASSUMPTION
+natural_name: "P139 and P75 give Q373"
+rationale: "domain knowledge"
+-/
+axiom r373 : P139 → P75 → Q373
+
+/-
+@@ telelean v1
+id: rule-374
+kind: ASSUMPTION
+natural_name: "P172 and P194 give Q374"
+rationale: "domain knowledge"
+-/
+axiom r374 : P172 → P194 → Q374
+
+/-
+@@ telelean v1
+id: rule-375
+kind: ASSUMPTION
+natural_name: "P185 and P166 give Q375"
+rationale: "domain knowledge"
+-/
+axiom r375 : P185 → P166 → Q375
+
+/-
+@@ telelean v1
+id: rule-376
+kind: ASSUMPTION
+natural_name: "P34 and P19 give Q376"
+rationale: "domain knowledge"
+-/
+axiom r376 : P34 → P19 → Q376
+
+/-
+@@ telelean v1
+id: rule-377
+kind: ASSUMPTION
+natural_name: "P128 and P95 give Q377"
+rationale: "domain knowledge"
+-/
+axiom r377 : P128 → P95 → Q377
+
+/-
+@@ telelean v1
+id: rule-378
+kind: ASSUMPTION
+natural_name: "P146 and P79 give Q378"
+rationale: "domain knowledge"
+-/
+axiom r378 : P146 → P79 → Q378
+
+/-
+@@ telelean v1
+id: rule-379
+kind: ASSUMPTION
+natural_name: "P111 and P128 give Q379"
+rationale: "domain knowledge"
+-/
+axiom r379 : P111 → P128 → Q379
+
+/-
+@@ telelean v1
+id: rule-380
+kind: ASSUMPTION
+natural_name: "P173 and P91 give Q380"
+rationale: "domain knowledge"
+-/
+axiom r380 : P173 → P91 → Q380
+
+/-
+@@ telelean v1
+id: rule-381
+kind: ASSUMPTION
+natural_name: "P194 and P135 give Q381"
+rationale: "domain knowledge"
+-/
+axiom r381 : P194 → P135 → Q381
+
+/-
+@@ telelean v1
+id: rule-382
+kind: ASSUMPTION
+natural_name: "P82 and P0 give Q382"
+rationale: "domain knowledge"
+-/
+axiom r382 : P82 → P0 → Q382
+
+/-
+@@ telelean v1
+id: rule-383
+kind: ASSUMPTION
+natural_name: "P31 and P113 give Q383"
+rationale: "domain knowledge"
+-/
+axiom r383 : P31 → P113 → Q383
+
+/-
+@@ telelean v1
+id: rule-384
+kind: ASSUMPTION
+natural_name: "P183 and P115 give Q384"
+rationale: "domain knowledge"
+-/
+axiom r384 : P183 → P115 → Q384
+
+/-
+@@ telelean v1
+id: rule-385
+kind: ASSUMPTION
+natural_name: "P89 and P78 give Q385"
+rationale: "domain knowledge"
+-/
+axiom r385 : P89 → P78 → Q385
+
+/-
+@@ telelean v1
+id: rule-386
+kind: ASSUMPTION
+natural_name: "P138 and P102 give Q386"
+rationale: "domain knowledge"
+-/
+axiom r386 : P138 → P102 → Q386
+
+/-
+@@ telelean v1
+id: rule-387
+kind: ASSUMPTION
+natural_name: "P86 and P187 give Q387"
+rationale: "domain knowledge"
+-/
+axiom r387 : P86 → P187 → Q387
+
+/-
+@@ telelean v1
+id: rule-388
+kind: ASSUMPTION
+natural_name: "P174 and P146 give Q388"
+rationale: "domain knowledge"
+-/
+axiom r388 : P174 → P146 → Q388
+
+/-
+@@ telelean v1
+id: rule-389
+kind: ASSUMPTION
+natural_name: "P126 and P28 give Q389"
+rationale: "domain knowledge"
+-/
+axiom r389 : P126 → P28 → Q389
+
+/-
+@@ telelean v1
+id: rule-390
+kind: ASSUMPTION
+natural_name: "P165 and P96 give Q390"
+rationale: "domain knowledge"
+-/
+axiom r390 : P165 → P96 → Q390
+
+/-
+@@ telelean v1
+id: rule-391
+kind: ASSUMPTION
+natural_name: "P97 and P52 give Q391"
+rationale: "domain knowledge"
+-/
+axiom r391 : P97 → P52 → Q391
+
+/-
+@@ telelean v1
+id: rule-392
+kind: ASSUMPTION
+natural_name: "P142 and P0 give Q392"
+rationale: "domain knowledge"
+-/
+axiom r392 : P142 → P0 → Q392
+
+/-
+@@ telelean v1
+id: rule-393
+kind: ASSUMPTION
+natural_name: "P71 and P162 give Q393"
+rationale: "domain knowledge"
+-/
+axiom r393 : P71 → P162 → Q393
+
+/-
+@@ telelean v1
+id: rule-394
+kind: ASSUMPTION
+natural_name: "P153 and P184 give Q394"
+rationale: "domain knowledge"
+-/
+axiom r394 : P153 → P184 → Q394
+
+/-
+@@ telelean v1
+id: rule-395
+kind: ASSUMPTION
+natural_name: "P189 and P186 give Q395"
+rationale: "domain knowledge"
+-/
+axiom r395 : P189 → P186 → Q395
+
+/-
+@@ telelean v1
+id: rule-396
+kind: ASSUMPTION
+natural_name: "P130 and P50 give Q396"
+rationale: "domain knowledge"
+-/
+axiom r396 : P130 → P50 → Q396
+
+/-
+@@ telelean v1
+id: rule-397
+kind: ASSUMPTION
+natural_name: "P118 and P153 give Q397"
+rationale: "domain knowledge"
+-/
+axiom r397 : P118 → P153 → Q397
+
+/-
+@@ telelean v1
+id: rule-398
+kind: ASSUMPTION
+natural_name: "P132 and P104 give Q398"
+rationale: "domain knowledge"
+-/
+axiom r398 : P132 → P104 → Q398
+
+/-
+@@ telelean v1
+id: rule-399
+kind: ASSUMPTION
+natural_name: "P190 and P182 give Q399"
+rationale: "domain knowledge"
+-/
+axiom r399 : P190 → P182 → Q399
+
+/-
+@@ telelean v1
+id: rule-400
+kind: ASSUMPTION
+natural_name: "P78 and P179 give Q400"
+rationale: "domain knowledge"
+-/
+axiom r400 : P78 → P179 → Q400
+
+/-
+@@ telelean v1
+id: rule-401
+kind: ASSUMPTION
+natural_name: "P43 and P115 give Q401"
+rationale: "domain knowledge"
+-/
+axiom r401 : P43 → P115 → Q401
+
+/-
+@@ telelean v1
+id: rule-402
+kind: ASSUMPTION
+natural_name: "P158 and P171 give Q402"
+rationale: "domain knowledge"
+-/
+axiom r402 : P158 → P171 → Q402
+
+/-
+@@ telelean v1
+id: rule-403
+kind: ASSUMPTION
+natural_name: "P135 and P50 give Q403"
+rationale: "domain knowledge"
+-/
+axiom r403 : P135 → P50 → Q403
+
+/-
+@@ telelean v1
+id: rule-404
+kind: ASSUMPTION
+natural_name: "P92 and P134 give Q404"
+rationale: "domain knowledge"
+-/
+axiom r404 : P92 → P134 → Q404
+
+/-
+@@ telelean v1
+id: rule-405
+kind: ASSUMPTION
+natural_name: "P0 and P173 give Q405"
+rationale: "domain knowledge"
+-/
+axiom r405 : P0 → P173 → Q405
+
+/-
+@@ telelean v1
+id: rule-406
+kind: ASSUMPTION
+natural_name: "P99 and P148 give Q406"
+rationale: "domain knowledge"
+-/
+axiom r406 : P99 → P148 → Q406
+
+/-
+@@ telelean v1
+id: rule-407
+kind: ASSUMPTION
+natural_name: "P109 and P103 give Q407"
+rationale: "domain knowledge"
+-/
+axiom r407 : P109 → P103 → Q407
+
+/-
+@@ telelean v1
+id: rule-408
+kind: ASSUMPTION
+natural_name: "P86 and P159 give Q408"
+rationale: "domain knowledge"
+-/
+axiom r408 : P86 → P159 → Q408
+
+/-
+@@ telelean v1
+id: rule-409
+kind: ASSUMPTION
+natural_name: "P149 and P187 give Q409"
+rationale: "domain knowledge"
+-/
+axiom r409 : P149 → P187 → Q409
+
+/-
+@@ telelean v1
+id: rule-410
+kind: ASSUMPTION
+natural_name: "P179 and P191 give Q410"
+rationale: "domain knowledge"
+-/
+axiom r410 : P179 → P191 → Q410
+
+/-
+@@ telelean v1
+id: rule-411
+kind: ASSUMPTION
+natural_name: "P17 and P126 give Q411"
+rationale: "domain knowledge"
+-/
+axiom r411 : P17 → P126 → Q411
+
+/-
+@@ telelean v1
+id: rule-412
+kind: ASSUMPTION
+natural_name: "P190 and P63 give Q412"
+rationale: "domain knowledge"
+-/
+axiom r412 : P190 → P63 → Q412
+
+/-
+@@ telelean v1
+id: rule-413
+kind: ASSUMPTION
+natural_name: "P163 and P166 give Q413"
+rationale: "domain knowledge"
+-/
+axiom r413 : P163 → P166 → Q413
+
+/-
+@@ telelean v1
+id: rule-414
+kind: ASSUMPTION
+natural_name: "P74 and P161 give Q414"
+rationale: "domain knowledge"
+-/
+axiom r414 : P74 → P161 → Q414
+
+/-
+@@ telelean v1
+id: rule-415
+kind: ASSUMPTION
+natural_name: "P5 and P104 give Q415"
+rationale: "domain knowledge"
+-/
+axiom r415 : P5 → P104 → Q415
+
+/-
+@@ telelean v1
+id: rule-416
+kind: ASSUMPTION
+natural_name: "P184 and P161 give Q416"
+rationale: "domain knowledge"
+-/
+axiom r416 : P184 → P161 → Q416
+
+/-
+@@ telelean v1
+id: rule-417
+kind: ASSUMPTION
+natural_name: "P39 and P162 give Q417"
+rationale: "domain knowledge"
+-/
+axiom r417 : P39 → P162 → Q417
+
+/-
+@@ telelean v1
+id: rule-418
+kind: ASSUMPTION
+natural_name: "P199 and P101 give Q418"
+rationale: "domain knowledge"
+-/
+axiom r418 : P199 → P101 → Q418
+
+/-
+@@ telelean v1
+id: rule-419
+kind: ASSUMPTION
+natural_name: "P69 and P45 give Q419"
+rationale: "domain knowledge"
+-/
+axiom r419 : P69 → P45 → Q419
+
+/-
+@@ telelean v1
+id: rule-420
+kind: ASSUMPTION
+natural_name: "P196 and P18 give Q420"
+rationale: "domain knowledge"
+-/
+axiom r420 : P196 → P18 → Q420
+
+/-
+@@ telelean v1
+id: rule-421
+kind: ASSUMPTION
+natural_name: "P198 and P154 give Q421"
+rationale: "domain knowledge"
+-/
+axiom r421 : P198 → P154 → Q421
+
+/-
+@@ telelean v1
+id: rule-422
+kind: ASSUMPTION
+natural_name: "P2 and P89 give Q422"
+rationale: "domain knowledge"
+-/
+axiom r422 : P2 → P89 → Q422
+
+/-
+@@ telelean v1
+id: rule-423
+kind: ASSUMPTION
+natural_name: "P67 and P181 give Q423"
+rationale: "domain knowledge"
+-/
+axiom r423 : P67 → P181 → Q423
+
+/-
+@@ telelean v1
+id: rule-424
+kind: ASSUMPTION
+natural_name: "P105 and P175 give Q424"
+rationale: "domain knowledge"
+-/
+axiom r424 : P105 → P175 → Q424
+
+/-
+@@ telelean v1
+id: rule-425
+kind: ASSUMPTION
+natural_name: "P139 and P77 give Q425"
+rationale: "domain knowledge"
+-/
+axiom r425 : P139 → P77 → Q425
+
+/-
+@@ telelean v1
+id: rule-426
+kind: ASSUMPTION
+natural_name: "P38 and P118 give Q426"
+rationale: "domain knowledge"
+-/
+axiom r426 : P38 → P118 → Q426
+
+/-
+@@ telelean v1
+id: rule-427
+kind: ASSUMPTION
+natural_name: "P66 and P124 give Q427"
+rationale: "domain knowledge"
+-/
+axiom r427 : P66 → P124 → Q427
+
+/-
+@@ telelean v1
+id: rule-428
+kind: ASSUMPTION
+natural_name: "P43 and P119 give Q428"
+rationale: "domain knowledge"
+-/
+axiom r428 : P43 → P119 → Q428
+
+/-
+@@ telelean v1
+id: rule-429
+kind: ASSUMPTION
+natural_name: "P130 and P11 give Q429"
+rationale: "domain knowledge"
+-/
+axiom r429 : P130 → P11 → Q429
+
+/-
+@@ telelean v1
+id: rule-430
+kind: ASSUMPTION
+natural_name: "P69 and P130 give Q430"
+rationale: "domain knowledge"
+-/
+axiom r430 : P69 → P130 → Q430
+
+/-
+@@ telelean v1
+id: rule-431
+kind: ASSUMPTION
+natural_name: "P25 and P190 give Q431"
+rationale: "domain knowledge"
+-/
+axiom r431 : P25 → P190 → Q431
+
+/-
+@@ telelean v1
+id: rule-432
+kind: ASSUMPTION
+natural_name: "P151 and P108 give Q432"
+rationale: "domain knowledge"
+-/
+axiom r432 : P151 → P108 → Q432
+
+/-
+@@ telelean v1
+id: rule-433
+kind: ASSUMPTION
+natural_name: "P17 and P90 give Q433"
+rationale: "domain knowledge"
+-/
+axiom r433 : P17 → P90 → Q433
+
+/-
+@@ telelean v1
+id: rule-434
+kind: ASSUMPTION
+natural_name: "P17 and P168 give Q434"
+rationale: "domain knowledge"
+-/
+axiom r434 : P17 → P168 → Q434
+
+/-
+@@ telelean v1
+id: rule-435
+kind: ASSUMPTION
+natural_name: "P113 and P5 give Q435"
+rationale: "domain knowledge"
+-/
+axiom r435 : P113 → P5 → Q435
+
+/-
+@@ telelean v1
+id: rule-436
+kind: ASSUMPTION
+natural_name: "P42 and P129 give Q436"
+rationale: "domain knowledge"
+-/
+axiom r436 : P42 → P129 → Q436
+
+/-
+@@ telelean v1
+id: rule-437
+kind: ASSUMPTION
+natural_name: "P181 and P41 give Q437"
+rationale: "domain knowledge"
+-/
+axiom r437 : P181 → P41 → Q437
+
+/-
+@@ telelean v1
+id: rule-438
+kind: ASSUMPTION
+natural_name: "P176 and P23 give Q438"
+rationale: "domain knowledge"
+-/
+axiom r438 : P176 → P23 → Q438
+
+/-
+@@ telelean v1
+id: rule-439
+kind: ASSUMPTION
+natural_name: "P102 and P162 give Q439"
+rationale: "domain knowledge"
+-/
+axiom r439 : P102 → P162 → Q439
+
+/-
+@@ telelean v1
+id: rule-440
+kind: ASSUMPTION
+natural_name: "P176 and P70 give Q440"
+rationale: "domain knowledge"
+-/
+axiom r440 : P176 → P70 → Q440
+
+/-
+@@ telelean v1
+id: rule-441
+kind: ASSUMPTION
+natural_name: "P154 and P77 give Q441"
+rationale: "domain knowledge"
+-/
+axiom r441 : P154 → P77 → Q441
+
+/-
+@@ telelean v1
+id: rule-442
+kind: ASSUMPTION
+natural_name: "P53 and P135 give Q442"
+rationale: "domain knowledge"
+-/
+axiom r442 : P53 → P135 → Q442
+
+/-
+@@ telelean v1
+id: rule-443
+kind: ASSUMPTION
+natural_name: "P53 and P60 give Q443"
+rationale: "domain knowledge"
+-/
+axiom r443 : P53 → P60 → Q443
+
+/-
+@@ telelean v1
+id: rule-444
+kind: ASSUMPTION
+natural_name: "P85 and P68 give Q444"
+rationale: "domain knowledge"
+-/
+axiom r444 : P85 → P68 → Q444
+
+/-
+@@ telelean v1
+id: rule-445
+kind: ASSUMPTION
+natural_name: "P17 and P19 give Q445"
+rationale: "domain knowledge"
+-/
+axiom r445 : P17 → P19 → Q445
+
+/-
+@@ telelean v1
+id: rule-446
+kind: ASSUMPTION
+natural_name: "P178 and P133 give Q446"
+rationale: "domain knowledge"
+-/
+axiom r446 : P178 → P133 → Q446
+
+/-
+@@ telelean v1
+id: rule-447
+kind: ASSUMPTION
+natural_name: "P168 and P94 give Q447"
+rationale: "domain knowledge"
+-/
+axiom r447 : P168 → P94 → Q447
+
+/-
+@@ telelean v1
+id: rule-448
+kind: ASSUMPTION
+natural_name: "P119 and P130 give Q448"
+rationale: "domain knowledge"
+-/
+axiom r448 : P119 → P130 → Q448
+
+/-
+@@ telelean v1
+id: rule-449
+kind: ASSUMPTION
+natural_name: "P142 and P188 give Q449"
+rationale: "domain knowledge"
+-/
+axiom r449 : P142 → P188 → Q449
+
+/-
+@@ telelean v1
+id: rule-450
+kind: ASSUMPTION
+natural_name: "P12 and P43 give Q450"
+rationale: "domain knowledge"
+-/
+axiom r450 : P12 → P43 → Q450
+
+/-
+@@ telelean v1
+id: rule-451
+kind: ASSUMPTION
+natural_name: "P76 and P167 give Q451"
+rationale: "domain knowledge"
+-/
+axiom r451 : P76 → P167 → Q451
+
+/-
+@@ telelean v1
+id: rule-452
+kind: ASSUMPTION
+natural_name: "P188 and P182 give Q452"
+rationale: "domain knowledge"
+-/
+axiom r452 : P188 → P182 → Q452
+
+/-
+@@ telelean v1
+id: rule-453
+kind: ASSUMPTION
+natural_name: "P142 and P69 give Q453"
+rationale: "domain knowledge"
+-/
+axiom r453 : P142 → P69 → Q453
+
+/-
+@@ telelean v1
+id: rule-454
+kind: ASSUMPTION
+natural_name: "P91 and P156 give Q454"
+rationale: "domain knowledge"
+-/
+axiom r454 : P91 → P156 → Q454
+
+/-
+@@ telelean v1
+id: rule-455
+kind: ASSUMPTION
+natural_name: "P189 and P59 give Q455"
+rationale: "domain knowledge"
+-/
+axiom r455 : P189 → P59 → Q455
+
+/-
+@@ telelean v1
+id: rule-456
+kind: ASSUMPTION
+natural_name: "P100 and P143 give Q456"
+rationale: "domain knowledge"
+-/
+axiom r456 : P100 → P143 → Q456
+
+/-
+@@ telelean v1
+id: rule-457
+kind: ASSUMPTION
+natural_name: "P102 and P44 give Q457"
+rationale: "domain knowledge"
+-/
+axiom r457 : P102 → P44 → Q457
+
+/-
+@@ telelean v1
+id: rule-458
+kind: ASSUMPTION
+natural_name: "P123 and P66 give Q458"
+rationale: "domain knowledge"
+-/
+axiom r458 : P123 → P66 → Q458
+
+/-
+@@ telelean v1
+id: rule-459
+kind: ASSUMPTION
+natural_name: "P156 and P84 give Q459"
+rationale: "domain knowledge"
+-/
+axiom r459 : P156 → P84 → Q459
+
+/-
+@@ telelean v1
+id: rule-460
+kind: ASSUMPTION
+natural_name: "P183 and P56 give Q460"
+rationale: "domain knowledge"
+-/
+axiom r460 : P183 → P56 → Q460
+
+/-
+@@ telelean v1
+id: rule-461
+kind: ASSUMPTION
+natural_name: "P66 and P156 give Q461"
+rationale: "domain knowledge"
+-/
+axiom r461 : P66 → P156 → Q461
+
+/-
+@@ telelean v1
+id: rule-462
+kind: ASSUMPTION
+natural_name: "P180 and P62 give Q462"
+rationale: "domain knowledge"
+-/
+axiom r462 : P180 → P62 → Q462
+
+/-
+@@ telelean v1
+id: rule-463
+kind: ASSUMPTION
+natural_name: "P169 and P7 give Q463"
+rationale: "domain knowledge"
+-/
+axiom r463 : P169 → P7 → Q463
+
+/-
+@@ telelean v1
+id: rule-464
+kind: ASSUMPTION
+natural_name: "P159 and P103 give Q464"
+rationale: "domain knowledge"
+-/
+axiom r464 : P159 → P103 → Q464
+
+/-
+@@ telelean v1
+id: rule-465
+kind: ASSUMPTION
+natural_name: "P81 and P110 give Q465"
+rationale: "domain knowledge"
+-/
+axiom r465 : P81 → P110 → Q465
+
+/-
+@@ telelean v1
+id: rule-466
+kind: ASSUMPTION
+natural_name: "P194 and P63 give Q466"
+rationale: "domain knowledge"
+-/
+axiom r466 : P194 → P63 → Q466
+
+/-
+@@ telelean v1
+id: rule-467
+kind: ASSUMPTION
+natural_name: "P68 and P48 give Q467"
+rationale: "domain knowledge"
+-/
+axiom r467 : P68 → P48 → Q467
+
+/-
+@@ telelean v1
+id: rule-468
+kind: ASSUMPTION
+natural_name: "P18 and P160 give Q468"
+rationale: "domain knowledge"
+-/
+axiom r468 : P18 → P160 → Q468
+
+/-
+@@ telelean v1
+id: rule-469
+kind: ASSUMPTION
+natural_name: "P187 and P42 give Q469"
+rationale: "domain knowledge"
+-/
+axiom r469 : P187 → P42 → Q469
+
+/-
+@@ telelean v1
+id: rule-470
+kind: ASSUMPTION
+natural_name: "P148 and P113 give Q470"
+rationale: "domain knowledge"
+-/
+axiom r470 : P148 → P113 → Q470
+
+/-
+@@ telelean v1
+id: rule-471
+kind: ASSUMPTION
+natural_name: "P148 and P186 give Q471"
+rationale: "domain knowledge"
+-/
+axiom r471 : P148 → P186 → Q471
+
+/-
+@@ telelean v1
+id: rule-472
+kind: ASSUMPTION
+natural_name: "P37 and P155 give Q472"
+rationale: "domain knowledge"
+-/
+axiom r472 : P37 → P155 → Q472
+
+/-
+@@ telelean v1
+id: rule-473
+kind: ASSUMPTION
+natural_name: "P67 and P117 give Q473"
+rationale: "domain knowledge"
+-/
+axiom r473 : P67 → P117 → Q473
+
+/-
+@@ telelean v1
+id: rule-474
+kind: ASSUMPTION
+natural_name: "P134 and P41 give Q474"
+rationale: "domain knowledge"
+-/
+axiom r474 : P134 → P41 → Q474
+
+/-
+@@ telelean v1
+id: rule-475
+kind: ASSUMPTION
+natural_name: "P35 and P199 give Q475"
+rationale: "domain knowledge"
+-/
+axiom r475 : P35 → P199 → Q475
+
+/-
+@@ telelean v1
+id: rule-476
+kind: ASSUMPTION
+natural_name: "P35 and P183 give Q476"
+rationale: "domain knowledge"
+-/
+axiom r476 : P35 → P183 → Q476
+
+/-
+@@ telelean v1
+id: rule-477
+kind: ASSUMPTION
+natural_name: "P112 and P92 give Q477"
+rationale: "domain knowledge"
+-/
+axiom r477 : P112 → P92 → Q477
+
+/-
+@@ telelean v1
+id: rule-478
+kind: ASSUMPTION
+natural_name: "P79 and P192 give Q478"
+rationale: "domain knowledge"
+-/
+axiom r478 : P79 → P192 → Q478
+
+/-
+@@ telelean v1
+id: rule-479
+kind: ASSUMPTION
+natural_name: "P102 and P61 give Q479"
+rationale: "domain knowledge"
+-/
+axiom r479 : P102 → P61 → Q479
+
+/-
+@@ telelean v1
+id: rule-480
+kind: ASSUMPTION
+natural_name: "P29 and P183 give Q480"
+rationale: "domain knowledge"
+-/
+axiom r480 : P29 → P183 → Q480
+
+/-
+@@ telelean v1
+id: rule-481
+kind: ASSUMPTION
+natural_name: "P52 and P183 give Q481"
+rationale: "domain knowledge"
+-/
+axiom r481 : P52 → P183 → Q481
+
+/-
+@@ telelean v1
+id: rule-482
+kind: ASSUMPTION
+natural_name: "P174 and P78 give Q482"
+rationale: "domain knowledge"
+-/
+axiom r482 : P174 → P78 → Q482
+
+/-
+@@ telelean v1
+id: rule-483
+kind: ASSUMPTION
+natural_name: "P17 and P27 give Q483"
+rationale: "domain knowledge"
+-/
+axiom r483 : P17 → P27 → Q483
+
+/-
+@@ telelean v1
+id: rule-484
+kind: ASSUMPTION
+natural_name: "P58 and P101 give Q484"
+rationale: "domain knowledge"
+-/
+axiom r484 : P58 → P101 → Q484
+
+/-
+@@ telelean v1
+id: rule-485
+kind: ASSUMPTION
+natural_name: "P82 and P126 give Q485"
+rationale: "domain knowledge"
+-/
+axiom r485 : P82 → P126 → Q485
+
+/-
+@@ telelean v1
+id: rule-486
+kind: ASSUMPTION
+natural_name: "P25 and P47 give Q486"
+rationale: "domain knowledge"
+-/
+axiom r486 : P25 → P47 → Q486
+
+/-
+@@ telelean v1
+id: rule-487
+kind: ASSUMPTION
+natural_name: "P11 and P14 give Q487"
+rationale: "domain knowledge"
+-/
+axiom r487 : P11 → P14 → Q487
+
+/-
+@@ telelean v1
+id: rule-488
+kind: ASSUMPTION
+natural_name: "P152 and P5 give Q488"
+rationale: "domain knowledge"
+-/
+axiom r488 : P152 → P5 → Q488
+
+/-
+@@ telelean v1
+id: rule-489
+kind: ASSUMPTION
+natural_name: "P192 and P55 give Q489"
+rationale: "domain knowledge"
+-/
+axiom r489 : P192 → P55 → Q489
+
+/-
+@@ telelean v1
+id: rule-490
+kind: ASSUMPTION
+natural_name: "P174 and P8 give Q490"
+rationale: "domain knowledge"
+-/
+axiom r490 : P174 → P8 → Q490
+
+/-
+@@ telelean v1
+id: rule-491
+kind: ASSUMPTION
+natural_name: "P126 and P180 give Q491"
+rationale: "domain knowledge"
+-/
+axiom r491 : P126 → P180 → Q491
+
+/-
+@@ telelean v1
+id: rule-492
+kind: ASSUMPTION
+natural_name: "P135 and P185 give Q492"
+rationale: "domain knowledge"
+-/
+axiom r492 : P135 → P185 → Q492
+
+/-
+@@ telelean v1
+id: rule-493
+kind: ASSUMPTION
+natural_name: "P156 and P113 give Q493"
+rationale: "domain knowledge"
+-/
+axiom r493 : P156 → P113 → Q493
+
+/-
+@@ telelean v1
+id: rule-494
+kind: ASSUMPTION
+natural_name: "P87 and P169 give Q494"
+rationale: "domain knowledge"
+-/
+axiom r494 : P87 → P169 → Q494
+
+/-
+@@ telelean v1
+id: rule-495
+kind: ASSUMPTION
+natural_name: "P70 and P30 give Q495"
+rationale: "domain knowledge"
+-/
+axiom r495 : P70 → P30 → Q495
+
+/-
+@@ telelean v1
+id: rule-496
+kind: ASSUMPTION
+natural_name: "P156 and P177 give Q496"
+rationale: "domain knowledge"
+-/
+axiom r496 : P156 → P177 → Q496
+
+/-
+@@ telelean v1
+id: rule-497
+kind: ASSUMPTION
+natural_name: "P44 and P24 give Q497"
+rationale: "domain knowledge"
+-/
+axiom r497 : P44 → P24 → Q497
+
+/-
+@@ telelean v1
+id: rule-498
+kind: ASSUMPTION
+natural_name: "P56 and P102 give Q498"
+rationale: "domain knowledge"
+-/
+axiom r498 : P56 → P102 → Q498
+
+/-
+@@ telelean v1
+id: rule-499
+kind: ASSUMPTION
+natural_name: "P59 and P126 give Q499"
+rationale: "domain knowledge"
+-/
+axiom r499 : P59 → P126 → Q499
+
+/-
+@@ telelean v1
+id: rule-500
+kind: ASSUMPTION
+natural_name: "P115 and P96 give Q500"
+rationale: "domain knowledge"
+-/
+axiom r500 : P115 → P96 → Q500
+
+/-
+@@ telelean v1
+id: rule-501
+kind: ASSUMPTION
+natural_name: "P192 and P43 give Q501"
+rationale: "domain knowledge"
+-/
+axiom r501 : P192 → P43 → Q501
+
+/-
+@@ telelean v1
+id: rule-502
+kind: ASSUMPTION
+natural_name: "P59 and P60 give Q502"
+rationale: "domain knowledge"
+-/
+axiom r502 : P59 → P60 → Q502
+
+/-
+@@ telelean v1
+id: rule-503
+kind: ASSUMPTION
+natural_name: "P72 and P118 give Q503"
+rationale: "domain knowledge"
+-/
+axiom r503 : P72 → P118 → Q503
+
+/-
+@@ telelean v1
+id: rule-504
+kind: ASSUMPTION
+natural_name: "P140 and P148 give Q504"
+rationale: "domain knowledge"
+-/
+axiom r504 : P140 → P148 → Q504
+
+/-
+@@ telelean v1
+id: rule-505
+kind: ASSUMPTION
+natural_name: "P99 and P54 give Q505"
+rationale: "domain knowledge"
+-/
+axiom r505 : P99 → P54 → Q505
+
+/-
+@@ telelean v1
+id: rule-506
+kind: ASSUMPTION
+natural_name: "P115 and P183 give Q506"
+rationale: "domain knowledge"
+-/
+axiom r506 : P115 → P183 → Q506
+
+/-
+@@ telelean v1
+id: rule-507
+kind: ASSUMPTION
+natural_name: "P66 and P84 give Q507"
+rationale: "domain knowledge"
+-/
+axiom r507 : P66 → P84 → Q507
+
+/-
+@@ telelean v1
+id: rule-508
+kind: ASSUMPTION
+natural_name: "P127 and P151 give Q508"
+rationale: "domain knowledge"
+-/
+axiom r508 : P127 → P151 → Q508
+
+/-
+@@ telelean v1
+id: rule-509
+kind: ASSUMPTION
+natural_name: "P28 and P54 give Q509"
+rationale: "domain knowledge"
+-/
+axiom r509 : P28 → P54 → Q509
+
+/-
+@@ telelean v1
+id: rule-510
+kind: ASSUMPTION
+natural_name: "P20 and P11 give Q510"
+rationale: "domain knowledge"
+-/
+axiom r510 : P20 → P11 → Q510
+
+/-
+@@ telelean v1
+id: rule-511
+kind: ASSUMPTION
+natural_name: "P3 and P1 give Q511"
+rationale: "domain knowledge"
+-/
+axiom r511 : P3 → P1 → Q511
+
+/-
+@@ telelean v1
+id: rule-512
+kind: ASSUMPTION
+natural_name: "P122 and P81 give Q512"
+rationale: "domain knowledge"
+-/
+axiom r512 : P122 → P81 → Q512
+
+/-
+@@ telelean v1
+id: rule-513
+kind: ASSUMPTION
+natural_name: "P98 and P148 give Q513"
+rationale: "domain knowledge"
+-/
+axiom r513 : P98 → P148 → Q513
+
+/-
+@@ telelean v1
+id: rule-514
+kind: ASSUMPTION
+natural_name: "P73 and P50 give Q514"
+rationale: "domain knowledge"
+-/
+axiom r514 : P73 → P50 → Q514
+
+/-
+@@ telelean v1
+id: rule-515
+kind: ASSUMPTION
+natural_name: "P102 and P40 give Q515"
+rationale: "domain knowledge"
+-/
+axiom r515 : P102 → P40 → Q515
+
+/-
+@@ telelean v1
+id: rule-516
+kind: ASSUMPTION
+natural_name: "P194 and P165 give Q516"
+rationale: "domain knowledge"
+-/
+axiom r516 : P194 → P165 → Q516
+
+/-
+@@ telelean v1
+id: rule-517
+kind: ASSUMPTION
+natural_name: "P38 and P7 give Q517"
+rationale: "domain knowledge"
+-/
+axiom r517 : P38 → P7 → Q517
+
+/-
+@@ telelean v1
+id: rule-518
+kind: ASSUMPTION
+natural_name: "P3 and P99 give Q518"
+rationale: "domain knowledge"
+-/
+axiom r518 : P3 → P99 → Q518
+
+/-
+@@ telelean v1
+id: rule-519
+kind: ASSUMPTION
+natural_name: "P37 and P170 give Q519"
+rationale: "domain knowledge"
+-/
+axiom r519 : P37 → P170 → Q519
+
+/-
+@@ telelean v1
+id: rule-520
+kind: ASSUMPTION
+natural_name: "P138 and P14 give Q520"
+rationale: "domain knowledge"
+-/
+axiom r520 : P138 → P14 → Q520
+
+/-
+@@ telelean v1
+id: rule-521
+kind: ASSUMPTION
+natural_name: "P144 and P97 give Q521"
+rationale: "domain knowledge"
+-/
+axiom r521 : P144 → P97 → Q521
+
+/-
+@@ telelean v1
+id: rule-522
+kind: ASSUMPTION
+natural_name: "P65 and P33 give Q522"
+rationale: "domain knowledge"
+-/
+axiom r522 : P65 → P33 → Q522
+
+/-
+@@ telelean v1
+id: rule-523
+kind: ASSUMPTION
+natural_name: "P20 and P118 give Q523"
+rationale: "domain knowledge"
+-/
+axiom r523 : P20 → P118 → Q523
+
+/-
+@@ telelean v1
+id: rule-524
+kind: ASSUMPTION
+natural_name: "P166 and P77 give Q524"
+rationale: "domain knowledge"
+-/
+axiom r524 : P166 → P77 → Q524
+
+/-
+@@ telelean v1
+id: rule-525
+kind: ASSUMPTION
+natural_name: "P3 and P9 give Q525"
+rationale: "domain knowledge"
+-/
+axiom r525 : P3 → P9 → Q525
+
+/-
+@@ telelean v1
+id: rule-526
+kind: ASSUMPTION
+natural_name: "P137 and P15 give Q526"
+rationale: "domain knowledge"
+-/
+axiom r526 : P137 → P15 → Q526
+
+/-
+@@ telelean v1
+id: rule-527
+kind: ASSUMPTION
+natural_name: "P134 and P33 give Q527"
+rationale: "domain knowledge"
+-/
+axiom r527 : P134 → P33 → Q527
+
+/-
+@@ telelean v1
+id: rule-528
+kind: ASSUMPTION
+natural_name: "P10 and P70 give Q528"
+rationale: "domain knowledge"
+-/
+axiom r528 : P10 → P70 → Q528
+
+/-
+@@ telelean v1
+id: rule-529
+kind: ASSUMPTION
+natural_name: "P199 and P30 give Q529"
+rationale: "domain knowledge"
+-/
+axiom r529 : P199 → P30 → Q529
+
+/-
+@@ telelean v1
+id: rule-530
+kind: ASSUMPTION
+natural_name: "P110 and P23 give Q530"
+rationale: "domain knowledge"
+-/
+axiom r530 : P110 → P23 → Q530
+
+/-
+@@ telelean v1
+id: rule-531
+kind: ASSUMPTION
+natural_name: "P48 and P7 give Q531"
+rationale: "domain knowledge"
+-/
+axiom r531 : P48 → P7 → Q531
+
+/-
+@@ telelean v1
+id: rule-532
+kind: ASSUMPTION
+natural_name: "P127 and P163 give Q532"
+rationale: "domain knowledge"
+-/
+axiom r532 : P127 → P163 → Q532
+
+/-
+@@ telelean v1
+id: rule-533
+kind: ASSUMPTION
+natural_name: "P33 and P190 give Q533"
+rationale: "domain knowledge"
+-/
+axiom r533 : P33 → P190 → Q533
+
+/-
+@@ telelean v1
+id: rule-534
+kind: ASSUMPTION
+natural_name: "P71 and P175 give Q534"
+rationale: "domain knowledge"
+-/
+axiom r534 : P71 → P175 → Q534
+
+/-
+@@ telelean v1
+id: rule-535
+kind: ASSUMPTION
+natural_name: "P49 and P169 give Q535"
+rationale: "domain knowledge"
+-/
+axiom r535 : P49 → P169 → Q535
+
+/-
+@@ telelean v1
+id: rule-536
+kind: ASSUMPTION
+natural_name: "P114 and P99 give Q536"
+rationale: "domain knowledge"
+-/
+axiom r536 : P114 → P99 → Q536
+
+/-
+@@ telelean v1
+id: rule-537
+kind: ASSUMPTION
+natural_name: "P84 and P161 give Q537"
+rationale: "domain knowledge"
+-/
+axiom r537 : P84 → P161 → Q537
+
+/-
+@@ telelean v1
+id: rule-538
+kind: ASSUMPTION
+natural_name: "P68 and P66 give Q538"
+rationale: "domain knowledge"
+-/
+axiom r538 : P68 → P66 → Q538
+
+/-
+@@ telelean v1
+id: rule-539
+kind: ASSUMPTION
+natural_name: "P164 and P162 give Q539"
+rationale: "domain knowledge"
+-/
+axiom r539 : P164 → P162 → Q539
+
+/-
+@@ telelean v1
+id: rule-540
+kind: ASSUMPTION
+natural_name: "P62 and P62 give Q540"
+rationale: "domain knowledge"
+-/
+axiom r540 : P62 → P62 → Q540
+
+/-
+@@ telelean v1
+id: rule-541
+kind: ASSUMPTION
+natural_name: "P15 and P150 give Q541"
+rationale: "domain knowledge"
+-/
+axiom r541 : P15 → P150 → Q541
+
+/-
+@@ telelean v1
+id: rule-542
+kind: ASSUMPTION
+natural_name: "P151 and P44 give Q542"
+rationale: "domain knowledge"
+-/
+axiom r542 : P151 → P44 → Q542
+
+/-
+@@ telelean v1
+id: rule-543
+kind: ASSUMPTION
+natural_name: "P89 and P109 give Q543"
+rationale: "domain knowledge"
+-/
+axiom r543 : P89 → P109 → Q543
+
+/-
+@@ telelean v1
+id: rule-544
+kind: ASSUMPTION
+natural_name: "P154 and P178 give Q544"
+rationale: "domain knowledge"
+-/
+axiom r544 : P154 → P178 → Q544
+
+/-
+@@ telelean v1
+id: rule-545
+kind: ASSUMPTION
+natural_name: "P143 and P163 give Q545"
+rationale: "domain knowledge"
+-/
+axiom r545 : P143 → P163 → Q545
+
+/-
+@@ telelean v1
+id: rule-546
+kind: ASSUMPTION
+natural_name: "P133 and P15 give Q546"
+rationale: "domain knowledge"
+-/
+axiom r546 : P133 → P15 → Q546
+
+/-
+@@ telelean v1
+id: rule-547
+kind: ASSUMPTION
+natural_name: "P90 and P140 give Q547"
+rationale: "domain knowledge"
+-/
+axiom r547 : P90 → P140 → Q547
+
+/-
+@@ telelean v1
+id: rule-548
+kind: ASSUMPTION
+natural_name: "P105 and P137 give Q548"
+rationale: "domain knowledge"
+-/
+axiom r548 : P105 → P137 → Q548
+
+/-
+@@ telelean v1
+id: rule-549
+kind: ASSUMPTION
+natural_name: "P51 and P182 give Q549"
+rationale: "domain knowledge"
+-/
+axiom r549 : P51 → P182 → Q549
+
+/-
+@@ telelean v1
+id: rule-550
+kind: ASSUMPTION
+natural_name: "P137 and P108 give Q550"
+rationale: "domain knowledge"
+-/
+axiom r550 : P137 → P108 → Q550
+
+/-
+@@ telelean v1
+id: rule-551
+kind: ASSUMPTION
+natural_name: "P169 and P17 give Q551"
+rationale: "domain knowledge"
+-/
+axiom r551 : P169 → P17 → Q551
+
+/-
+@@ telelean v1
+id: rule-552
+kind: ASSUMPTION
+natural_name: "P182 and P68 give Q552"
+rationale: "domain knowledge"
+-/
+axiom r552 : P182 → P68 → Q552
+
+/-
+@@ telelean v1
+id: rule-553
+kind: ASSUMPTION
+natural_name: "P190 and P156 give Q553"
+rationale: "domain knowledge"
+-/
+axiom r553 : P190 → P156 → Q553
+
+/-
+@@ telelean v1
+id: rule-554
+kind: ASSUMPTION
+natural_name: "P184 and P192 give Q554"
+rationale: "domain knowledge"
+-/
+axiom r554 : P184 → P192 → Q554
+
+/-
+@@ telelean v1
+id: rule-555
+kind: ASSUMPTION
+natural_name: "P18 and P64 give Q555"
+rationale: "domain knowledge"
+-/
+axiom r555 : P18 → P64 → Q555
+
+/-
+@@ telelean v1
+id: rule-556
+kind: ASSUMPTION
+natural_name: "P45 and P24 give Q556"
+rationale: "domain knowledge"
+-/
+axiom r556 : P45 → P24 → Q556
+
+/-
+@@ telelean v1
+id: rule-557
+kind: ASSUMPTION
+natural_name: "P38 and P15 give Q557"
+rationale: "domain knowledge"
+-/
+axiom r557 : P38 → P15 → Q557
+
+/-
+@@ telelean v1
+id: rule-558
+kind: ASSUMPTION
+natural_name: "P52 and P109 give Q558"
+rationale: "domain knowledge"
+-/
+axiom r558 : P52 → P109 → Q558
+
+/-
+@@ telelean v1
+id: rule-559
+kind: ASSUMPTION
+natural_name: "P11 and P13 give Q559"
+rationale: "domain knowledge"
+-/
+axiom r559 : P11 → P13 → Q559
+
+/-
+@@ telelean v1
+id: rule-560
+kind: ASSUMPTION
+natural_name: "P163 and P23 give Q560"
+rationale: "domain knowledge"
+-/
+axiom r560 : P163 → P23 → Q560
+
+/-
+@@ telelean v1
+id: rule-561
+kind: ASSUMPTION
+natural_name: "P131 and P120 give Q561"
+rationale: "domain knowledge"
+-/
+axiom r561 : P131 → P120 → Q561
+
+/-
+@@ telelean v1
+id: rule-562
+kind: ASSUMPTION
+natural_name: "P128 and P94 give Q562"
+rationale: "domain knowledge"
+-/
+axiom r562 : P128 → P94 → Q562
+
+/-
+@@ telelean v1
+id: rule-563
+kind: ASSUMPTION
+natural_name: "P25 and P80 give Q563"
+rationale: "domain knowledge"
+-/
+axiom r563 : P25 → P80 → Q563
+
+/-
+@@ telelean v1
+id: rule-564
+kind: ASSUMPTION
+natural_name: "P10 and P32 give Q564"
+rationale: "domain knowledge"
+-/
+axiom r564 : P10 → P32 → Q564
+
+/-
+@@ telelean v1
+id: rule-565
+kind: ASSUMPTION
+natural_name: "P136 and P8 give Q565"
+rationale: "domain knowledge"
+-/
+axiom r565 : P136 → P8 → Q565
+
+/-
+@@ telelean v1
+id: rule-566
+kind: ASSUMPTION
+natural_name: "P113 and P170 give Q566"
+rationale: "domain knowledge"
+-/
+axiom r566 : P113 → P170 → Q566
+
+/-
+@@ telelean v1
+id: rule-567
+kind: ASSUMPTION
+natural_name: "P32 and P101 give Q567"
+rationale: "domain knowledge"
+-/
+axiom r567 : P32 → P101 → Q567
+
+/-
+@@ telelean v1
+id: rule-568
+kind: ASSUMPTION
+natural_name: "P195 and P181 give Q568"
+rationale: "domain knowledge"
+-/
+axiom r568 : P195 → P181 → Q568
+
+/-
+@@ telelean v1
+id: rule-569
+kind: ASSUMPTION
+natural_name: "P114 and P6 give Q569"
+rationale: "domain knowledge"
+-/
+axiom r569 : P114 → P6 → Q569
+
+/-
+@@ telelean v1
+id: rule-570
+kind: ASSUMPTION
+natural_name: "P188 and P134 give Q570"
+rationale: "domain knowledge"
+-/
+axiom r570 : P188 → P134 → Q570
+
+/-
+@@ telelean v1
+id: rule-571
+kind: ASSUMPTION
+natural_name: "P69 and P23 give Q571"
+rationale: "domain knowledge"
+-/
+axiom r571 : P69 → P23 → Q571
+
+/-
+@@ telelean v1
+id: rule-572
+kind: ASSUMPTION
+natural_name: "P64 and P83 give Q572"
+rationale: "domain knowledge"
+-/
+axiom r572 : P64 → P83 → Q572
+
+/-
+@@ telelean v1
+id: rule-573
+kind: ASSUMPTION
+natural_name: "P21 and P77 give Q573"
+rationale: "domain knowledge"
+-/
+axiom r573 : P21 → P77 → Q573
+
+/-
+@@ telelean v1
+id: rule-574
+kind: ASSUMPTION
+natural_name: "P8 and P98 give Q574"
+rationale: "domain knowledge"
+-/
+axiom r574 : P8 → P98 → Q574
+
+/-
+@@ telelean v1
+id: rule-575
+kind: ASSUMPTION
+natural_name: "P14 and P187 give Q575"
+rationale: "domain knowledge"
+-/
+axiom r575 : P14 → P187 → Q575
+
+/-
+@@ telelean v1
+id: rule-576
+kind: ASSUMPTION
+natural_name: "P66 and P80 give Q576"
+rationale: "domain knowledge"
+-/
+axiom r576 : P66 → P80 → Q576
+
+/-
+@@ telelean v1
+id: rule-577
+kind: ASSUMPTION
+natural_name: "P188 and P33 give Q577"
+rationale: "domain knowledge"
+-/
+axiom r577 : P188 → P33 → Q577
+
+/-
+@@ telelean v1
+id: rule-578
+kind: ASSUMPTION
+natural_name: "P66 and P97 give Q578"
+rationale: "domain knowledge"
+-/
+axiom r578 : P66 → P97 → Q578
+
+/-
+@@ telelean v1
+id: rule-579
+kind: ASSUMPTION
+natural_name: "P29 and P173 give Q579"
+rationale: "domain knowledge"
+-/
+axiom r579 : P29 → P173 → Q579
+
+/-
+@@ telelean v1
+id: rule-580
+kind: ASSUMPTION
+natural_name: "P77 and P24 give Q580"
+rationale: "domain knowledge"
+-/
+axiom r580 : P77 → P24 → Q580
+
+/-
+@@ telelean v1
+id: rule-581
+kind: ASSUMPTION
+natural_name: "P108 and P62 give Q581"
+rationale: "domain knowledge"
+-/
+axiom r581 : P108 → P62 → Q581
+
+/-
+@@ telelean v1
+id: rule-582
+kind: ASSUMPTION
+natural_name: "P128 and P142 give Q582"
+rationale: "domain knowledge"
+-/
+axiom r582 : P128 → P142 → Q582
+
+/-
+@@ telelean v1
+id: rule-583
+kind: ASSUMPTION
+natural_name: "P52 and P84 give Q583"
+rationale: "domain knowledge"
+-/
+axiom r583 : P52 → P84 → Q583
+
+/-
+@@ telelean v1
+id: rule-584
+kind: ASSUMPTION
+natural_name: "P86 and P130 give Q584"
+rationale: "domain knowledge"
+-/
+axiom r584 : P86 → P130 → Q584
+
+/-
+@@ telelean v1
+id: rule-585
+kind: ASSUMPTION
+natural_name: "P100 and P149 give Q585"
+rationale: "domain knowledge"
+-/
+axiom r585 : P100 → P149 → Q585
+
+/-
+@@ telelean v1
+id: rule-586
+kind: ASSUMPTION
+natural_name: "P123 and P26 give Q586"
+rationale: "domain knowledge"
+-/
+axiom r586 : P123 → P26 → Q586
+
+/-
+@@ telelean v1
+id: rule-587
+kind: ASSUMPTION
+natural_name: "P33 and P167 give Q587"
+rationale: "domain knowledge"
+-/
+axiom r587 : P33 → P167 → Q587
+
+/-
+@@ telelean v1
+id: rule-588
+kind: ASSUMPTION
+natural_name: "P114 and P134 give Q588"
+rationale: "domain knowledge"
+-/
+axiom r588 : P114 → P134 → Q588
+
+/-
+@@ telelean v1
+id: rule-589
+kind: ASSUMPTION
+natural_name: "P143 and P184 give Q589"
+rationale: "domain knowledge"
+-/
+axiom r589 : P143 → P184 → Q589
+
+/-
+@@ telelean v1
+id: rule-590
+kind: ASSUMPTION
+natural_name: "P148 and P179 give Q590"
+rationale: "domain knowledge"
+-/
+axiom r590 : P148 → P179 → Q590
+
+/-
+@@ telelean v1
+id: rule-591
+kind: ASSUMPTION
+natural_name: "P133 and P137 give Q591"
+rationale: "domain knowledge"
+-/
+axiom r591 : P133 → P137 → Q591
+
+/-
+@@ telelean v1
+id: rule-592
+kind: ASSUMPTION
+natural_name: "P7 and P74 give Q592"
+rationale: "domain knowledge"
+-/
+axiom r592 : P7 → P74 → Q592
+
+/-
+@@ telelean v1
+id: rule-593
+kind: ASSUMPTION
+natural_name: "P190 and P40 give Q593"
+rationale: "domain knowledge"
+-/
+axiom r593 : P190 → P40 → Q593
+
+/-
+@@ telelean v1
+id: rule-594
+kind: ASSUMPTION
+natural_name: "P51 and P94 give Q594"
+rationale: "domain knowledge"
+-/
+axiom r594 : P51 → P94 → Q594
+
+/-
+@@ telelean v1
+id: rule-595
+kind: ASSUMPTION
+natural_name: "P99 and P133 give Q595"
+rationale: "domain knowledge"
+-/
+axiom r595 : P99 → P133 → Q595
+
+/-
+@@ telelean v1
+id: rule-596
+kind: ASSUMPTION
+natural_name: "P83 and P24 give Q596"
+rationale: "domain knowledge"
+-/
+axiom r596 : P83 → P24 → Q596
+
+/-
+@@ telelean v1
+id: rule-597
+kind: ASSUMPTION
+natural_name: "P104 and P88 give Q597"
+rationale: "domain knowledge"
+-/
+axiom r597 : P104 → P88 → Q597
+
+/-
+@@ telelean v1
+id: rule-598
+kind: ASSUMPTION
+natural_name: "P32 and P147 give Q598"
+rationale: "domain knowledge"
+-/
+axiom r598 : P32 → P147 → Q598
+
+/-
+@@ telelean v1
+id: rule-599
+kind: ASSUMPTION
+natural_name: "P16 and P11 give Q599"
+rationale: "domain knowledge"
+-/
+axiom r599 : P16 → P11 → Q599
+
+/-
+@@ telelean v1
+id: rule-600
+kind: ASSUMPTION
+natural_name: "P76 and P166 give Q600"
+rationale: "domain knowledge"
+-/
+axiom r600 : P76 → P166 → Q600
+
+/-
+@@ telelean v1
+id: rule-601
+kind: ASSUMPTION
+natural_name: "P136 and P80 give Q601"
+rationale: "domain knowledge"
+-/
+axiom r601 : P136 → P80 → Q601
+
+/-
+@@ telelean v1
+id: rule-602
+kind: ASSUMPTION
+natural_name: "P106 and P76 give Q602"
+rationale: "domain knowledge"
+-/
+axiom r602 : P106 → P76 → Q602
+
+/-
+@@ telelean v1
+id: rule-603
+kind: ASSUMPTION
+natural_name: "P81 and P90 give Q603"
+rationale: "domain knowledge"
+-/
+axiom r603 : P81 → P90 → Q603
+
+/-
+@@ telelean v1
+id: rule-604
+kind: ASSUMPTION
+natural_name: "P69 and P83 give Q604"
+rationale: "domain knowledge"
+-/
+axiom r604 : P69 → P83 → Q604
+
+/-
+@@ telelean v1
+id: rule-605
+kind: ASSUMPTION
+natural_name: "P191 and P191 give Q605"
+rationale: "domain knowledge"
+-/
+axiom r605 : P191 → P191 → Q605
+
+/-
+@@ telelean v1
+id: rule-606
+kind: ASSUMPTION
+natural_name: "P133 and P128 give Q606"
+rationale: "domain knowledge"
+-/
+axiom r606 : P133 → P128 → Q606
+
+/-
+@@ telelean v1
+id: rule-607
+kind: ASSUMPTION
+natural_name: "P2 and P134 give Q607"
+rationale: "domain knowledge"
+-/
+axiom r607 : P2 → P134 → Q607
+
+/-
+@@ telelean v1
+id: rule-608
+kind: ASSUMPTION
+natural_name: "P31 and P38 give Q608"
+rationale: "domain knowledge"
+-/
+axiom r608 : P31 → P38 → Q608
+
+/-
+@@ telelean v1
+id: rule-609
+kind: ASSUMPTION
+natural_name: "P81 and P186 give Q609"
+rationale: "domain knowledge"
+-/
+axiom r609 : P81 → P186 → Q609
+
+/-
+@@ telelean v1
+id: rule-610
+kind: ASSUMPTION
+natural_name: "P83 and P83 give Q610"
+rationale: "domain knowledge"
+-/
+axiom r610 : P83 → P83 → Q610
+
+/-
+@@ telelean v1
+id: rule-611
+kind: ASSUMPTION
+natural_name: "P146 and P17 give Q611"
+rationale: "domain knowledge"
+-/
+axiom r611 : P146 → P17 → Q611
+
+/-
+@@ telelean v1
+id: rule-612
+kind: ASSUMPTION
+natural_name: "P115 and P71 give Q612"
+rationale: "domain knowledge"
+-/
+axiom r612 : P115 → P71 → Q612
+
+/-
+@@ telelean v1
+id: rule-613
+kind: ASSUMPTION
+natural_name: "P122 and P116 give Q613"
+rationale: "domain knowledge"
+-/
+axiom r613 : P122 → P116 → Q613
+
+/-
+@@ telelean v1
+id: rule-614
+kind: ASSUMPTION
+natural_name: "P93 and P189 give Q614"
+rationale: "domain knowledge"
+-/
+axiom r614 : P93 → P189 → Q614
+
+/-
+@@ telelean v1
+id: rule-615
+kind: ASSUMPTION
+natural_name: "P97 and P20 give Q615"
+rationale: "domain knowledge"
+-/
+axiom r615 : P97 → P20 → Q615
+
+/-
+@@ telelean v1
+id: rule-616
+kind: ASSUMPTION
+natural_name: "P148 and P14 give Q616"
+rationale: "domain knowledge"
+-/
+axiom r616 : P148 → P14 → Q616
+
+/-
+@@ telelean v1
+id: rule-617
+kind: ASSUMPTION
+natural_name: "P34 and P12 give Q617"
+rationale: "domain knowledge"
+-/
+axiom r617 : P34 → P12 → Q617
+
+/-
+@@ telelean v1
+id: rule-618
+kind: ASSUMPTION
+natural_name: "P134 and P125 give Q618"
+rationale: "domain knowledge"
+-/
+axiom r618 : P134 → P125 → Q618
+
+/-
+@@ telelean v1
+id: rule-619
+kind: ASSUMPTION
+natural_name: "P147 and P64 give Q619"
+rationale: "domain knowledge"
+-/
+axiom r619 : P147 → P64 → Q619
+
+/-
+@@ telelean v1
+id: rule-620
+kind: ASSUMPTION
+natural_name: "P62 and P179 give Q620"
+rationale: "domain knowledge"
+-/
+axiom r620 : P62 → P179 → Q620
+
+/-
+@@ telelean v1
+id: rule-621
+kind: ASSUMPTION
+natural_name: "P146 and P191 give Q621"
+rationale: "domain knowledge"
+-/
+axiom r621 : P146 → P191 → Q621
+
+/-
+@@ telelean v1
+id: rule-622
+kind: ASSUMPTION
+natural_name: "P86 and P92 give Q622"
+rationale: "domain knowledge"
+-/
+axiom r622 : P86 → P92 → Q622
+
+/-
+@@ telelean v1
+id: rule-623
+kind: ASSUMPTION
+natural_name: "P164 and P94 give Q623"
+rationale: "domain knowledge"
+-/
+axiom r623 : P164 → P94 → Q623
+
+/-
+@@ telelean v1
+id: rule-624
+kind: ASSUMPTION
+natural_name: "P103 and P78 give Q624"
+rationale: "domain knowledge"
+-/
+axiom r624 : P103 → P78 → Q624
+
+/-
+@@ telelean v1
+id: rule-625
+kind: ASSUMPTION
+natural_name: "P118 and P153 give Q625"
+rationale: "domain knowledge"
+-/
+axiom r625 : P118 → P153 → Q625
+
+/-
+@@ telelean v1
+id: rule-626
+kind: ASSUMPTION
+natural_name: "P87 and P136 give Q626"
+rationale: "domain knowledge"
+-/
+axiom r626 : P87 → P136 → Q626
+
+/-
+@@ telelean v1
+id: rule-627
+kind: ASSUMPTION
+natural_name: "P129 and P42 give Q627"
+rationale: "domain knowledge"
+-/
+axiom r627 : P129 → P42 → Q627
+
+/-
+@@ telelean v1
+id: rule-628
+kind: ASSUMPTION
+natural_name: "P7 and P37 give Q628"
+rationale: "domain knowledge"
+-/
+axiom r628 : P7 → P37 → Q628
+
+/-
+@@ telelean v1
+id: rule-629
+kind: ASSUMPTION
+natural_name: "P64 and P175 give Q629"
+rationale: "domain knowledge"
+-/
+axiom r629 : P64 → P175 → Q629
+
+/-
+@@ telelean v1
+id: rule-630
+kind: ASSUMPTION
+natural_name: "P56 and P144 give Q630"
+rationale: "domain knowledge"
+-/
+axiom r630 : P56 → P144 → Q630
+
+/-
+@@ telelean v1
+id: rule-631
+kind: ASSUMPTION
+natural_name: "P34 and P28 give Q631"
+rationale: "domain knowledge"
+-/
+axiom r631 : P34 → P28 → Q631
+
+/-
+@@ telelean v1
+id: rule-632
+kind: ASSUMPTION
+natural_name: "P47 and P196 give Q632"
+rationale: "domain knowledge"
+-/
+axiom r632 : P47 → P196 → Q632
+
+/-
+@@ telelean v1
+id: rule-633
+kind: ASSUMPTION
+natural_name: "P105 and P186 give Q633"
+rationale: "domain knowledge"
+-/
+axiom r633 : P105 → P186 → Q633
+
+/-
+@@ telelean v1
+id: rule-634
+kind: ASSUMPTION
+natural_name: "P158 and P12 give Q634"
+rationale: "domain knowledge"
+-/
+axiom r634 : P158 → P12 → Q634
+
+/-
+@@ telelean v1
+id: rule-635
+kind: ASSUMPTION
+natural_name: "P25 and P139 give Q635"
+rationale: "domain knowledge"
+-/
+axiom r635 : P25 → P139 → Q635
+
+/-
+@@ telelean v1
+id: rule-636
+kind: ASSUMPTION
+natural_name: "P174 and P68 give Q636"
+rationale: "domain knowledge"
+-/
+axiom r636 : P174 → P68 → Q636
+
+/-
+@@ telelean v1
+id: rule-637
+kind: ASSUMPTION
+natural_name: "P182 and P27 give Q637"
+rationale: "domain knowledge"
+-/
+axiom r637 : P182 → P27 → Q637
+
+/-
+@@ telelean v1
+id: rule-638
+kind: ASSUMPTION
+natural_name: "P52 and P66 give Q638"
+rationale: "domain knowledge"
+-/
+axiom r638 : P52 → P66 → Q638
+
+/-
+@@ telelean v1
+id: rule-639
+kind: ASSUMPTION
+natural_name: "P17 and P161 give Q639"
+rationale: "domain knowledge"
+-/
+axiom r639 : P17 → P161 → Q639
+
+/-
+@@ telelean v1
+id: rule-640
+kind: ASSUMPTION
+natural_name: "P146 and P134 give Q640"
+rationale: "domain knowledge"
+-/
+axiom r640 : P146 → P134 → Q640
+
+/-
+@@ telelean v1
+id: rule-641
+kind: ASSUMPTION
+natural_name: "P164 and P20 give Q641"
+rationale: "domain knowledge"
+-/
+axiom r641 : P164 → P20 → Q641
+
+/-
+@@ telelean v1
+id: rule-642
+kind: ASSUMPTION
+natural_name: "P18 and P55 give Q642"
+rationale: "domain knowledge"
+-/
+axiom r642 : P18 → P55 → Q642
+
+/-
+@@ telelean v1
+id: rule-643
+kind: ASSUMPTION
+natural_name: "P164 and P44 give Q643"
+rationale: "domain knowledge"
+-/
+axiom r643 : P164 → P44 → Q643
+
+/-
+@@ telelean v1
+id: rule-644
+kind: ASSUMPTION
+natural_name: "P130 and P110 give Q644"
+rationale: "domain knowledge"
+-/
+axiom r644 : P130 → P110 → Q644
+
+/-
+@@ telelean v1
+id: rule-645
+kind: ASSUMPTION
+natural_name: "P5 and P151 give Q645"
+rationale: "domain knowledge"
+-/
+axiom r645 : P5 → P151 → Q645
+
+/-
+@@ telelean v1
+id: rule-646
+kind: ASSUMPTION
+natural_name: "P94 and P124 give Q646"
+rationale: "domain knowledge"
+-/
+axiom r646 : P94 → P124 → Q646
+
+/-
+@@ telelean v1
+id: rule-647
+kind: ASSUMPTION
+natural_name: "P181 and P72 give Q647"
+rationale: "domain knowledge"
+-/
+axiom r647 : P181 → P72 → Q647
+
+/-
+@@ telelean v1
+id: rule-648
+kind: ASSUMPTION
+natural_name: "P56 and P51 give Q648"
+rationale: "domain knowledge"
+-/
+axiom r648 : P56 → P51 → Q648
+
+/-
+@@ telelean v1
+id: rule-649
+kind: ASSUMPTION
+natural_name: "P153 and P126 give Q649"
+rationale: "domain knowledge"
+-/
+axiom r649 : P153 → P126 → Q649
+
+/-
+@@ telelean v1
+id: rule-650
+kind: ASSUMPTION
+natural_name: "P60 and P108 give Q650"
+rationale: "domain knowledge"
+-/
+axiom r650 : P60 → P108 → Q650
+
+/-
+@@ telelean v1
+id: rule-651
+kind: ASSUMPTION
+natural_name: "P115 and P172 give Q651"
+rationale: "domain knowledge"
+-/
+axiom r651 : P115 → P172 → Q651
+
+/-
+@@ telelean v1
+id: rule-652
+kind: ASSUMPTION
+natural_name: "P93 and P139 give Q652"
+rationale: "domain knowledge"
+-/
+axiom r652 : P93 → P139 → Q652
+
+/-
+@@ telelean v1
+id: rule-653
+kind: ASSUMPTION
+natural_name: "P48 and P123 give Q653"
+rationale: "domain knowledge"
+-/
+axiom r653 : P48 → P123 → Q653
+
+/-
+@@ telelean v1
+id: rule-654
+kind: ASSUMPTION
+natural_name: "P185 and P18 give Q654"
+rationale: "domain knowledge"
+-/
+axiom r654 : P185 → P18 → Q654
+
+/-
+@@ telelean v1
+id: rule-655
+kind: ASSUMPTION
+natural_name: "P65 and P104 give Q655"
+rationale: "domain knowledge"
+-/
+axiom r655 : P65 → P104 → Q655
+
+/-
+@@ telelean v1
+id: rule-656
+kind: ASSUMPTION
+natural_name: "P51 and P2 give Q656"
+rationale: "domain knowledge"
+-/
+axiom r656 : P51 → P2 → Q656
+
+/-
+@@ telelean v1
+id: rule-657
+kind: ASSUMPTION
+natural_name: "P191 and P136 give Q657"
+rationale: "domain knowledge"
+-/
+axiom r657 : P191 → P136 → Q657
+
+/-
+@@ telelean v1
+id: rule-658
+kind: ASSUMPTION
+natural_name: "P197 and P97 give Q658"
+rationale: "domain knowledge"
+-/
+axiom r658 : P197 → P97 → Q658
+
+/-
+@@ telelean v1
+id: rule-659
+kind: ASSUMPTION
+natural_name: "P131 and P124 give Q659"
+rationale: "domain knowledge"
+-/
+axiom r659 : P131 → P124 → Q659
+
+/-
+@@ telelean v1
+id: rule-660
+kind: ASSUMPTION
+natural_name: "P19 and P103 give Q660"
+rationale: "domain knowledge"
+-/
+axiom r660 : P19 → P103 → Q660
+
+/-
+@@ telelean v1
+id: rule-661
+kind: ASSUMPTION
+natural_name: "P157 and P130 give Q661"
+rationale: "domain knowledge"
+-/
+axiom r661 : P157 → P130 → Q661
+
+/-
+@@ telelean v1
+id: rule-662
+kind: ASSUMPTION
+natural_name: "P148 and P149 give Q662"
+rationale: "domain knowledge"
+-/
+axiom r662 : P148 → P149 → Q662
+
+/-
+@@ telelean v1
+id: rule-663
+kind: ASSUMPTION
+natural_name: "P108 and P10 give Q663"
+rationale: "domain knowledge"
+-/
+axiom r663 : P108 → P10 → Q663
+
+/-
+@@ telelean v1
+id: rule-664
+kind: ASSUMPTION
+natural_name: "P90 and P117 give Q664"
+rationale: "domain knowledge"
+-/
+axiom r664 : P90 → P117 → Q664
+
+/-
+@@ telelean v1
+id: rule-665
+kind: ASSUMPTION
+natural_name: "P1 and P48 give Q665"
+rationale: "domain knowledge"
+-/
+axiom r665 : P1 → P48 → Q665
+
+/-
+@@ telelean v1
+id: rule-666
+kind: ASSUMPTION
+natural_name: "P76 and P178 give Q666"
+rationale: "domain knowledge"
+-/
+axiom r666 : P76 → P178 → Q666
+
+/-
+@@ telelean v1
+id: rule-667
+kind: ASSUMPTION
+natural_name: "P176 and P164 give Q667"
+rationale: "domain knowledge"
+-/
+axiom r667 : P176 → P164 → Q667
+
+/-
+@@ telelean v1
+id: rule-668
+kind: ASSUMPTION
+natural_name: "P1 and P138 give Q668"
+rationale: "domain knowledge"
+-/
+axiom r668 : P1 → P138 → Q668
+
+/-
+@@ telelean v1
+id: rule-669
+kind: ASSUMPTION
+natural_name: "P30 and P77 give Q669"
+rationale: "domain knowledge"
+-/
+axiom r669 : P30 → P77 → Q669
+
+/-
+@@ telelean v1
+id: rule-670
+kind: ASSUMPTION
+natural_name: "P131 and P191 give Q670"
+rationale: "domain knowledge"
+-/
+axiom r670 : P131 → P191 → Q670
+
+/-
+@@ telelean v1
+id: rule-671
+kind: ASSUMPTION
+natural_name: "P80 and P198 give Q671"
+rationale: "domain knowledge"
+-/
+axiom r671 : P80 → P198 → Q671
+
+/-
+@@ telelean v1
+id: rule-672
+kind: ASSUMPTION
+natural_name: "P139 and P165 give Q672"
+rationale: "domain knowledge"
+-/
+axiom r672 : P139 → P165 → Q672
+
+/-
+@@ telelean v1
+id: rule-673
+kind: ASSUMPTION
+natural_name: "P146 and P141 give Q673"
+rationale: "domain knowledge"
+-/
+axiom r673 : P146 → P141 → Q673
+
+/-
+@@ telelean v1
+id: rule-674
+kind: ASSUMPTION
+natural_name: "P72 and P134 give Q674"
+rationale: "domain knowledge"
+-/
+axiom r674 : P72 → P134 → Q674
+
+/-
+@@ telelean v1
+id: rule-675
+kind: ASSUMPTION
+natural_name: "P105 and P138 give Q675"
+rationale: "domain knowledge"
+-/
+axiom r675 : P105 → P138 → Q675
+
+/-
+@@ telelean v1
+id: rule-676
+kind: ASSUMPTION
+natural_name: "P132 and P104 give Q676"
+rationale: "domain knowledge"
+-/
+axiom r676 : P132 → P104 → Q676
+
+/-
+@@ telelean v1
+id: rule-677
+kind: ASSUMPTION
+natural_name: "P154 and P161 give Q677"
+rationale: "domain knowledge"
+-/
+axiom r677 : P154 → P161 → Q677
+
+/-
+@@ telelean v1
+id: rule-678
+kind: ASSUMPTION
+natural_name: "P148 and P78 give Q678"
+rationale: "domain knowledge"
+-/
+axiom r678 : P148 → P78 → Q678
+
+/-
+@@ telelean v1
+id: rule-679
+kind: ASSUMPTION
+natural_name: "P115 and P77 give Q679"
+rationale: "domain knowledge"
+-/
+axiom r679 : P115 → P77 → Q679
+
+/-
+@@ telelean v1
+id: rule-680
+kind: ASSUMPTION
+natural_name: "P33 and P129 give Q680"
+rationale: "domain knowledge"
+-/
+axiom r680 : P33 → P129 → Q680
+
+/-
+@@ telelean v1
+id: rule-681
+kind: ASSUMPTION
+natural_name: "P113 and P150 give Q681"
+rationale: "domain knowledge"
+-/
+axiom r681 : P113 → P150 → Q681
+
+/-
+@@ telelean v1
+id: rule-682
+kind: ASSUMPTION
+natural_name: "P35 and P140 give Q682"
+rationale: "domain knowledge"
+-/
+axiom r682 : P35 → P140 → Q682
+
+/-
+@@ telelean v1
+id: rule-683
+kind: ASSUMPTION
+natural_name: "P197 and P41 give Q683"
+rationale: "domain knowledge"
+-/
+axiom r683 : P197 → P41 → Q683
+
+/-
+@@ telelean v1
+id: rule-684
+kind: ASSUMPTION
+natural_name: "P64 and P162 give Q684"
+rationale: "domain knowledge"
+-/
+axiom r684 : P64 → P162 → Q684
+
+/-
+@@ telelean v1
+id: rule-685
+kind: ASSUMPTION
+natural_name: "P2 and P108 give Q685"
+rationale: "domain knowledge"
+-/
+axiom r685 : P2 → P108 → Q685
+
+/-
+@@ telelean v1
+id: rule-686
+kind: ASSUMPTION
+natural_name: "P188 and P169 give Q686"
+rationale: "domain knowledge"
+-/
+axiom r686 : P188 → P169 → Q686
+
+/-
+@@ telelean v1
+id: rule-687
+kind: ASSUMPTION
+natural_name: "P144 and P9 give Q687"
+rationale: "domain knowledge"
+-/
+axiom r687 : P144 → P9 → Q687
+
+/-
+@@ telelean v1
+id: rule-688
+kind: ASSUMPTION
+natural_name: "P94 and P107 give Q688"
+rationale: "domain knowledge"
+-/
+axiom r688 : P94 → P107 → Q688
+
+/-
+@@ telelean v1
+id: rule-689
+kind: ASSUMPTION
+natural_name: "P102 and P72 give Q689"
+rationale: "domain knowledge"
+-/
+axiom r689 : P102 → P72 → Q689
+
+/-
+@@ telelean v1
+id: rule-690
+kind: ASSUMPTION
+natural_name: "P168 and P192 give Q690"
+rationale: "domain knowledge"
+-/
+axiom r690 : P168 → P192 → Q690
+
+/-
+@@ telelean v1
+id: rule-691
+kind: ASSUMPTION
+natural_name: "P171 and P4 give Q691"
+rationale: "domain knowledge"
+-/
+axiom r691 : P171 → P4 → Q691
+
+/-
+@@ telelean v1
+id: rule-692
+kind: ASSUMPTION
+natural_name: "P23 and P23 give Q692"
+rationale: "domain knowledge"
+-/
+axiom r692 : P23 → P23 → Q692
+
+/-
+@@ telelean v1
+id: rule-693
+kind: ASSUMPTION
+natural_name: "P1 and P98 give Q693"
+rationale: "domain knowledge"
+-/
+axiom r693 : P1 → P98 → Q693
+
+/-
+@@ telelean v1
+id: rule-694
+kind: ASSUMPTION
+natural_name: "P68 and P118 give Q694"
+rationale: "domain knowledge"
+-/
+axiom r694 : P68 → P118 → Q694
+
+/-
+@@ telelean v1
+id: rule-695
+kind: ASSUMPTION
+natural_name: "P69 and P95 give Q695"
+rationale: "domain knowledge"
+-/
+axiom r695 : P69 → P95 → Q695
+
+/-
+@@ telelean v1
+id: rule-696
+kind: ASSUMPTION
+natural_name: "P162 and P191 give Q696"
+rationale: "domain knowledge"
+-/
+axiom r696 : P162 → P191 → Q696
+
+/-
+@@ telelean v1
+id: rule-697
+kind: ASSUMPTION
+natural_name: "P123 and P196 give Q697"
+rationale: "domain knowledge"
+-/
+axiom r697 : P123 → P196 → Q697
+
+/-
+@@ telelean v1
+id: rule-698
+kind: ASSUMPTION
+natural_name: "P86 and P99 give Q698"
+rationale: "domain knowledge"
+-/
+axiom r698 : P86 → P99 → Q698
+
+/-
+@@ telelean v1
+id: rule-699
+kind: ASSUMPTION
+natural_name: "P116 and P29 give Q699"
+rationale: "domain knowledge"
+-/
+axiom r699 : P116 → P29 → Q699
+
+/-
+@@ telelean v1
+id: rule-700
+kind: ASSUMPTION
+natural_name: "P123 and P90 give Q700"
+rationale: "domain knowledge"
+-/
+axiom r700 : P123 → P90 → Q700
+
+/-
+@@ telelean v1
+id: rule-701
+kind: ASSUMPTION
+natural_name: "P37 and P106 give Q701"
+rationale: "domain knowledge"
+-/
+axiom r701 : P37 → P106 → Q701
+
+/-
+@@ telelean v1
+id: rule-702
+kind: ASSUMPTION
+natural_name: "P37 and P4 give Q702"
+rationale: "domain knowledge"
+-/
+axiom r702 : P37 → P4 → Q702
+
+/-
+@@ telelean v1
+id: rule-703
+kind: ASSUMPTION
+natural_name: "P44 and P66 give Q703"
+rationale: "domain knowledge"
+-/
+axiom r703 : P44 → P66 → Q703
+
+/-
+@@ telelean v1
+id: rule-704
+kind: ASSUMPTION
+natural_name: "P94 and P32 give Q704"
+rationale: "domain knowledge"
+-/
+axiom r704 : P94 → P32 → Q704
+
+/-
+@@ telelean v1
+id: rule-705
+kind: ASSUMPTION
+natural_name: "P150 and P73 give Q705"
+rationale: "domain knowledge"
+-/
+axiom r705 : P150 → P73 → Q705
+
+/-
+@@ telelean v1
+id: rule-706
+kind: ASSUMPTION
+natural_name: "P105 and P66 give Q706"
+rationale: "domain knowledge"
+-/
+axiom r706 : P105 → P66 → Q706
+
+/-
+@@ telelean v1
+id: rule-707
+kind: ASSUMPTION
+natural_name: "P131 and P73 give Q707"
+rationale: "domain knowledge"
+-/
+axiom r707 : P131 → P73 → Q707
+
+/-
+@@ telelean v1
+id: rule-708
+kind: ASSUMPTION
+natural_name: "P189 and P107 give Q708"
+rationale: "domain knowledge"
+-/
+axiom r708 : P189 → P107 → Q708
+
+/-
+@@ telelean v1
+id: rule-709
+kind: ASSUMPTION
+natural_name: "P176 and P70 give Q709"
+rationale: "domain knowledge"
+-/
+axiom r709 : P176 → P70 → Q709
+
+/-
+@@ telelean v1
+id: rule-710
+kind: ASSUMPTION
+natural_name: "P110 and P85 give Q710"
+rationale: "domain knowledge"
+-/
+axiom r710 : P110 → P85 → Q710
+
+/-
+@@ telelean v1
+id: rule-711
+kind: ASSUMPTION
+natural_name: "P198 and P124 give Q711"
+rationale: "domain knowledge"
+-/
+axiom r711 : P198 → P124 → Q711
+
+/-
+@@ telelean v1
+id: rule-712
+kind: ASSUMPTION
+natural_name: "P55 and P183 give Q712"
+rationale: "domain knowledge"
+-/
+axiom r712 : P55 → P183 → Q712
+
+/-
+@@ telelean v1
+id: rule-713
+kind: ASSUMPTION
+natural_name: "P125 and P102 give Q713"
+rationale: "domain knowledge"
+-/
+axiom r713 : P125 → P102 → Q713
+
+/-
+@@ telelean v1
+id: rule-714
+kind: ASSUMPTION
+natural_name: "P183 and P108 give Q714"
+rationale: "domain knowledge"
+-/
+axiom r714 : P183 → P108 → Q714
+
+/-
+@@ telelean v1
+id: rule-715
+kind: ASSUMPTION
+natural_name: "P23 and P16 give Q715"
+rationale: "domain knowledge"
+-/
+axiom r715 : P23 → P16 → Q715
+
+/-
+@@ telelean v1
+id: rule-716
+kind: ASSUMPTION
+natural_name: "P33 and P52 give Q716"
+rationale: "domain knowledge"
+-/
+axiom r716 : P33 → P52 → Q716
+
+/-
+@@ telelean v1
+id: rule-717
+kind: ASSUMPTION
+natural_name: "P38 and P58 give Q717"
+rationale: "domain knowledge"
+-/
+axiom r717 : P38 → P58 → Q717
+
+/-
+@@ telelean v1
+id: rule-718
+kind: ASSUMPTION
+natural_name: "P186 and P6 give Q718"
+rationale: "domain knowledge"
+-/
+axiom r718 : P186 → P6 → Q718
+
+/-
+@@ telelean v1
+id: rule-719
+kind: ASSUMPTION
+natural_name: "P26 and P64 give Q719"
+rationale: "domain knowledge"
+-/
+axiom r719 : P26 → P64 → Q719
+
+/-
+@@ telelean v1
+id: rule-720
+kind: ASSUMPTION
+natural_name: "P39 and P122 give Q720"
+rationale: "domain knowledge"
+-/
+axiom r720 : P39 → P122 → Q720
+
+/-
+@@ telelean v1
+id: rule-721
+kind: ASSUMPTION
+natural_name: "P198 and P25 give Q721"
+rationale: "domain knowledge"
+-/
+axiom r721 : P198 → P25 → Q721
+
+/-
+@@ telelean v1
+id: rule-722
+kind: ASSUMPTION
+natural_name: "P102 and P166 give Q722"
+rationale: "domain knowledge"
+-/
+axiom r722 : P102 → P166 → Q722
+
+/-
+@@ telelean v1
+id: rule-723
+kind: ASSUMPTION
+natural_name: "P185 and P47 give Q723"
+rationale: "domain knowledge"
+-/
+axiom r723 : P185 → P47 → Q723
+
+/-
+@@ telelean v1
+id: rule-724
+kind: ASSUMPTION
+natural_name: "P0 and P22 give Q724"
+rationale: "domain knowledge"
+-/
+axiom r724 : P0 → P22 → Q724
+
+/-
+@@ telelean v1
+id: rule-725
+kind: ASSUMPTION
+natural_name: "P109 and P156 give Q725"
+rationale: "domain knowledge"
+-/
+axiom r725 : P109 → P156 → Q725
+
+/-
+@@ telelean v1
+id: rule-726
+kind: ASSUMPTION
+natural_name: "P13 and P140 give Q726"
+rationale: "domain knowledge"
+-/
+axiom r726 : P13 → P140 → Q726
+
+/-
+@@ telelean v1
+id: rule-727
+kind: ASSUMPTION
+natural_name: "P55 and P136 give Q727"
+rationale: "domain knowledge"
+-/
+axiom r727 : P55 → P136 → Q727
+
+/-
+@@ telelean v1
+id: rule-728
+kind: ASSUMPTION
+natural_name: "P108 and P88 give Q728"
+rationale: "domain knowledge"
+-/
+axiom r728 : P108 → P88 → Q728
+
+/-
+@@ telelean v1
+id: rule-729
+kind: ASSUMPTION
+natural_name: "P12 and P166 give Q729"
+rationale: "domain knowledge"
+-/
+axiom r729 : P12 → P166 → Q729
+
+/-
+@@ telelean v1
+id: rule-730
+kind: ASSUMPTION
+natural_name: "P26 and P188 give Q730"
+rationale: "domain knowledge"
+-/
+axiom r730 : P26 → P188 → Q730
+
+/-
+@@ telelean v1
+id: rule-731
+kind: ASSUMPTION
+natural_name: "P141 and P173 give Q731"
+rationale: "domain knowledge"
+-/
+axiom r731 : P141 → P173 → Q731
+
+/-
+@@ telelean v1
+id: rule-732
+kind: ASSUMPTION
+natural_name: "P107 and P171 give Q732"
+rationale: "domain knowledge"
+-/
+axiom r732 : P107 → P171 → Q732
+
+/-
+@@ telelean v1
+id: rule-733
+kind: ASSUMPTION
+natural_name: "P189 and P30 give Q733"
+rationale: "domain knowledge"
+-/
+axiom r733 : P189 → P30 → Q733
+
+/-
+@@ telelean v1
+id: rule-734
+kind: ASSUMPTION
+natural_name: "P67 and P175 give Q734"
+rationale: "domain knowledge"
+-/
+axiom r734 : P67 → P175 → Q734
+
+/-
+@@ telelean v1
+id: rule-735
+kind: ASSUMPTION
+natural_name: "P71 and P45 give Q735"
+rationale: "domain knowledge"
+-/
+axiom r735 : P71 → P45 → Q735
+
+/-
+@@ telelean v1
+id: rule-736
+kind: ASSUMPTION
+natural_name: "P122 and P180 give Q736"
+rationale: "domain knowledge"
+-/
+axiom r736 : P122 → P180 → Q736
+
+/-
+@@ telelean v1
+id: rule-737
+kind: ASSUMPTION
+natural_name: "P12 and P54 give Q737"
+rationale: "domain knowledge"
+-/
+axiom r737 : P12 → P54 → Q737
+
+/-
+@@ telelean v1
+id: rule-738
+kind: ASSUMPTION
+natural_name: "P173 and P164 give Q738"
+rationale: "domain knowledge"
+-/
+axiom r738 : P173 → P164 → Q738
+
+/-
+@@ telelean v1
+id: rule-739
+kind: ASSUMPTION
+natural_name: "P22 and P99 give Q739"
+rationale: "domain knowledge"
+-/
+axiom r739 : P22 → P99 → Q739
+
+/-
+@@ telelean v1
+id: rule-740
+kind: ASSUMPTION
+natural_name: "P31 and P171 give Q740"
+rationale: "domain knowledge"
+-/
+axiom r740 : P31 → P171 → Q740
+
+/-
+@@ telelean v1
+id: rule-741
+kind: ASSUMPTION
+natural_name: "P114 and P75 give Q741"
+rationale: "domain knowledge"
+-/
+axiom r741 : P114 → P75 → Q741
+
+/-
+@@ telelean v1
+id: rule-742
+kind: ASSUMPTION
+natural_name: "P174 and P130 give Q742"
+rationale: "domain knowledge"
+-/
+axiom r742 : P174 → P130 → Q742
+
+/-
+@@ telelean v1
+id: rule-743
+kind: ASSUMPTION
+natural_name: "P127 and P100 give Q743"
+rationale: "domain knowledge"
+-/
+axiom r743 : P127 → P100 → Q743
+
+/-
+@@ telelean v1
+id: rule-744
+kind: ASSUMPTION
+natural_name: "P29 and P155 give Q744"
+rationale: "domain knowledge"
+-/
+axiom r744 : P29 → P155 → Q744
+
+/-
+@@ telelean v1
+id: rule-745
+kind: ASSUMPTION
+natural_name: "P122 and P27 give Q745"
+rationale: "domain knowledge"
+-/
+axiom r745 : P122 → P27 → Q745
+
+/-
+@@ telelean v1
+id: rule-746
+kind: ASSUMPTION
+natural_name: "P38 and P98 give Q746"
+rationale: "domain knowledge"
+-/
+axiom r746 : P38 → P98 → Q746
+
+/-
+@@ telelean v1
+id: rule-747
+kind: ASSUMPTION
+natural_name: "P157 and P179 give Q747"
+rationale: "domain knowledge"
+-/
+axiom r747 : P157 → P179 → Q747
+
+/-
+@@ telelean v1
+id: rule-748
+kind: ASSUMPTION
+natural_name: "P51 and P42 give Q748"
+rationale: "domain knowledge"
+-/
+axiom r748 : P51 → P42 → Q748
+
+/-
+@@ telelean v1
+id: rule-749
+kind: ASSUMPTION
+natural_name: "P133 and P65 give Q749"
+rationale: "domain knowledge"
+-/
+axiom r749 : P133 → P65 → Q749
+
+/-
+@@ telelean v1
+id: rule-750
+kind: ASSUMPTION
+natural_name: "P106 and P190 give Q750"
+rationale: "domain knowledge"
+-/
+axiom r750 : P106 → P190 → Q750
+
+/-
+@@ telelean v1
+id: rule-751
+kind: ASSUMPTION
+natural_name: "P137 and P73 give Q751"
+rationale: "domain knowledge"
+-/
+axiom r751 : P137 → P73 → Q751
+
+/-
+@@ telelean v1
+id: rule-752
+kind: ASSUMPTION
+natural_name: "P126 and P162 give Q752"
+rationale: "domain knowledge"
+-/
+axiom r752 : P126 → P162 → Q752
+
+/-
+@@ telelean v1
+id: rule-753
+kind: ASSUMPTION
+natural_name: "P139 and P54 give Q753"
+rationale: "domain knowledge"
+-/
+axiom r753 : P139 → P54 → Q753
+
+/-
+@@ telelean v1
+id: rule-754
+kind: ASSUMPTION
+natural_name: "P194 and P159 give Q754"
+rationale: "domain knowledge"
+-/
+axiom r754 : P194 → P159 → Q754
+
+/-
+@@ telelean v1
+id: rule-755
+kind: ASSUMPTION
+natural_name: "P86 and P124 give Q755"
+rationale: "domain knowledge"
+-/
+axiom r755 : P86 → P124 → Q755
+
+/-
+@@ telelean v1
+id: rule-756
+kind: ASSUMPTION
+natural_name: "P26 and P2 give Q756"
+rationale: "domain knowledge"
+-/
+axiom r756 : P26 → P2 → Q756
+
+/-
+@@ telelean v1
+id: rule-757
+kind: ASSUMPTION
+natural_name: "P193 and P186 give Q757"
+rationale: "domain knowledge"
+-/
+axiom r757 : P193 → P186 → Q757
+
+/-
+@@ telelean v1
+id: rule-758
+kind: ASSUMPTION
+natural_name: "P168 and P88 give Q758"
+rationale: "domain knowledge"
+-/
+axiom r758 : P168 → P88 → Q758
+
+/-
+@@ telelean v1
+id: rule-759
+kind: ASSUMPTION
+natural_name: "P181 and P68 give Q759"
+rationale: "domain knowledge"
+-/
+axiom r759 : P181 → P68 → Q759
+
+/-
+@@ telelean v1
+id: rule-760
+kind: ASSUMPTION
+natural_name: "P14 and P138 give Q760"
+rationale: "domain knowledge"
+-/
+axiom r760 : P14 → P138 → Q760
+
+/-
+@@ telelean v1
+id: rule-761
+kind: ASSUMPTION
+natural_name: "P160 and P112 give Q761"
+rationale: "domain knowledge"
+-/
+axiom r761 : P160 → P112 → Q761
+
+/-
+@@ telelean v1
+id: rule-762
+kind: ASSUMPTION
+natural_name: "P76 and P194 give Q762"
+rationale: "domain knowledge"
+-/
+axiom r762 : P76 → P194 → Q762
+
+/-
+@@ telelean v1
+id: rule-763
+kind: ASSUMPTION
+natural_name: "P25 and P58 give Q763"
+rationale: "domain knowledge"
+-/
+axiom r763 : P25 → P58 → Q763
+
+/-
+@@ telelean v1
+id: rule-764
+kind: ASSUMPTION
+natural_name: "P130 and P70 give Q764"
+rationale: "domain knowledge"
+-/
+axiom r764 : P130 → P70 → Q764
+
+/-
+@@ telelean v1
+id: rule-765
+kind: ASSUMPTION
+natural_name: "P69 and P180 give Q765"
+rationale: "domain knowledge"
+-/
+axiom r765 : P69 → P180 → Q765
+
+/-
+@@ telelean v1
+id: rule-766
+kind: ASSUMPTION
+natural_name: "P63 and P105 give Q766"
+rationale: "domain knowledge"
+-/
+axiom r766 : P63 → P105 → Q766
+
+/-
+@@ telelean v1
+id: rule-767
+kind: ASSUMPTION
+natural_name: "P37 and P33 give Q767"
+rationale: "domain knowledge"
+-/
+axiom r767 : P37 → P33 → Q767
+
+/-
+@@ telelean v1
+id: rule-768
+kind: ASSUMPTION
+natural_name: "P65 and P49 give Q768"
+rationale: "domain knowledge"
+-/
+axiom r768 : P65 → P49 → Q768
+
+/-
+@@ telelean v1
+id: rule-769
+kind: ASSUMPTION
+natural_name: "P104 and P143 give Q769"
+rationale: "domain knowledge"
+-/
+axiom r769 : P104 → P143 → Q769
+
+/-
+@@ telelean v1
+id: rule-770
+kind: ASSUMPTION
+natural_name: "P161 and P153 give Q770"
+rationale: "domain knowledge"
+-/
+axiom r770 : P161 → P153 → Q770
+
+/-
+@@ telelean v1
+id: rule-771
+kind: ASSUMPTION
+natural_name: "P14 and P136 give Q771"
+rationale: "domain knowledge"
+-/
+axiom r771 : P14 → P136 → Q771
+
+/-
+@@ telelean v1
+id: rule-772
+kind: ASSUMPTION
+natural_name: "P155 and P130 give Q772"
+rationale: "domain knowledge"
+-/
+axiom r772 : P155 → P130 → Q772
+
+/-
+@@ telelean v1
+id: rule-773
+kind: ASSUMPTION
+natural_name: "P38 and P105 give Q773"
+rationale: "domain knowledge"
+-/
+axiom r773 : P38 → P105 → Q773
+
+/-
+@@ telelean v1
+id: rule-774
+kind: ASSUMPTION
+natural_name: "P69 and P71 give Q774"
+rationale: "domain knowledge"
+-/
+axiom r774 : P69 → P71 → Q774
+
+/-
+@@ telelean v1
+id: rule-775
+kind: ASSUMPTION
+natural_name: "P122 and P178 give Q775"
+rationale: "domain knowledge"
+-/
+axiom r775 : P122 → P178 → Q775
+
+/-
+@@ telelean v1
+id: rule-776
+kind: ASSUMPTION
+natural_name: "P78 and P68 give Q776"
+rationale: "domain knowledge"
+-/
+axiom r776 : P78 → P68 → Q776
+
+/-
+@@ telelean v1
+id: rule-777
+kind: ASSUMPTION
+natural_name: "P125 and P54 give Q777"
+rationale: "domain knowledge"
+-/
+axiom r777 : P125 → P54 → Q777
+
+/-
+@@ telelean v1
+id: rule-778
+kind: ASSUMPTION
+natural_name: "P127 and P94 give Q778"
+rationale: "domain knowledge"
+-/
+axiom r778 : P127 → P94 → Q778
+
+/-
+@@ telelean v1
+id: rule-779
+kind: ASSUMPTION
+natural_name: "P153 and P120 give Q779"
+rationale: "domain knowledge"
+-/
+axiom r779 : P153 → P120 → Q779
+
+/-
+@@ telelean v1
+id: rule-780
+kind: ASSUMPTION
+natural_name: "P61 and P86 give Q780"
+rationale: "domain knowledge"
+-/
+axiom r780 : P61 → P86 → Q780
+
+/-
+@@ telelean v1
+id: rule-781
+kind: ASSUMPTION
+natural_name: "P45 and P155 give Q781"
+rationale: "domain knowledge"
+-/
+axiom r781 : P45 → P155 → Q781
+
+/-
+@@ telelean v1
+id: rule-782
+kind: ASSUMPTION
+natural_name: "P194 and P46 give Q782"
+rationale: "domain knowledge"
+-/
+axiom r782 : P194 → P46 → Q782
+
+/-
+@@ telelean v1
+id: rule-783
+kind: ASSUMPTION
+natural_name: "P189 and P148 give Q783"
+rationale: "domain knowledge"
+-/
+axiom r783 : P189 → P148 → Q783
+
+/-
+@@ telelean v1
+id: rule-784
+kind: ASSUMPTION
+natural_name: "P177 and P115 give Q784"
+rationale: "domain knowledge"
+-/
+axiom r784 : P177 → P115 → Q784
+
+/-
+@@ telelean v1
+id: rule-785
+kind: ASSUMPTION
+natural_name: "P136 and P38 give Q785"
+rationale: "domain knowledge"
+-/
+axiom r785 : P136 → P38 → Q785
+
+/-
+@@ telelean v1
+id: rule-786
+kind: ASSUMPTION
+natural_name: "P14 and P129 give Q786"
+rationale: "domain knowledge"
+-/
+axiom r786 : P14 → P129 → Q786
+
+/-
+@@ telelean v1
+id: rule-787
+kind: ASSUMPTION
+natural_name: "P83 and P135 give Q787"
+rationale: "domain knowledge"
+-/
+axiom r787 : P83 → P135 → Q787
+
+/-
+@@ telelean v1
+id: rule-788
+kind: ASSUMPTION
+natural_name: "P176 and P34 give Q788"
+rationale: "domain knowledge"
+-/
+axiom r788 : P176 → P34 → Q788
+
+/-
+@@ telelean v1
+id: rule-789
+kind: ASSUMPTION
+natural_name: "P165 and P194 give Q789"
+rationale: "domain knowledge"
+-/
+axiom r789 : P165 → P194 → Q789
+
+/-
+@@ telelean v1
+id: rule-790
+kind: ASSUMPTION
+natural_name: "P54 and P80 give Q790"
+rationale: "domain knowledge"
+-/
+axiom r790 : P54 → P80 → Q790
+
+/-
+@@ telelean v1
+id: rule-791
+kind: ASSUMPTION
+natural_name: "P159 and P126 give Q791"
+rationale: "domain knowledge"
+-/
+axiom r791 : P159 → P126 → Q791
+
+/-
+@@ telelean v1
+id: rule-792
+kind: ASSUMPTION
+natural_name: "P122 and P84 give Q792"
+rationale: "domain knowledge"
+-/
+axiom r792 : P122 → P84 → Q792
+
+/-
+@@ telelean v1
+id: rule-793
+kind: ASSUMPTION
+natural_name: "P30 and P32 give Q793"
+rationale: "domain knowledge"
+-/
+axiom r793 : P30 → P32 → Q793
+
+/-
+@@ telelean v1
+id: rule-794
+kind: ASSUMPTION
+natural_name: "P35 and P178 give Q794"
+rationale: "domain knowledge"
+-/
+axiom r794 : P35 → P178 → Q794
+
+/-
+@@ telelean v1
+id: rule-795
+kind: ASSUMPTION
+natural_name: "P65 and P57 give Q795"
+rationale: "domain knowledge"
+-/
+axiom r795 : P65 → P57 → Q795
+
+/-
+@@ telelean v1
+id: rule-796
+kind: ASSUMPTION
+natural_name: "P22 and P162 give Q796"
+rationale: "domain knowledge"
+-/
+axiom r796 : P22 → P162 → Q796
+
+/-
+@@ telelean v1
+id: rule-797
+kind: ASSUMPTION
+natural_name: "P137 and P179 give Q797"
+rationale: "domain knowledge"
+-/
+axiom r797 : P137 → P179 → Q797
+
+/-
+@@ telelean v1
+id: rule-798
+kind: ASSUMPTION
+natural_name: "P12 and P144 give Q798"
+rationale: "domain knowledge"
+-/
+axiom r798 : P12 → P144 → Q798
+
+/-
+@@ telelean v1
+id: rule-799
+kind: ASSUMPTION
+natural_name: "P44 and P175 give Q799"
+rationale: "domain knowledge"
+-/
+axiom r799 : P44 → P175 → Q799
+

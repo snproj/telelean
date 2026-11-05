@@ -1,0 +1,43 @@
+{
+ "name": "prismjs",
+ "latest": "1.30.0",
+ "dist_tags": {
+  "latest": "1.30.0",
+  "alpha": "2.0.0-alpha.1"
+ },
+ "latest_published": "2025-03-10T17:56:20.460Z",
+ "modified": "2026-09-08T13:46:48.447Z",
+ "created": "2015-05-12T23:54:40.643Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 2052735,
+ "fileCount": 700,
+ "tarball": "https://registry.npmjs.org/prismjs/-/prismjs-1.30.0.tgz",
+ "dependencies": {},
+ "peerDependencies": {},
+ "repository": "git+https://github.com/PrismJS/prism.git",
+ "recent_versions": [
+  [
+   "1.27.0",
+   "2022-02-17T21:38:58.307Z"
+  ],
+  [
+   "1.28.0",
+   "2022-04-17T12:21:38.540Z"
+  ],
+  [
+   "1.29.0",
+   "2022-08-23T10:42:14.395Z"
+  ],
+  [
+   "1.30.0",
+   "2025-03-10T17:56:20.460Z"
+  ],
+  [
+   "2.0.0-alpha.1",
+   "2026-09-08T13:46:47.564Z"
+  ]
+ ],
+ "homepage": "https://github.com/PrismJS/prism#readme",
+ "description": "Lightweight, robust, elegant syntax highlighting. A spin-off project from Dabblet."
+}

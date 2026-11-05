@@ -1,0 +1,143 @@
+import Lean
+/-!
+# Telelean: Lean-native node markup (prototype)
+
+* `@[telelean goal "natural name"]` / `@[telelean assumption "…" (why := "…")]` on a declaration
+* `telelean_node goal g.id "natural name"` for code-less (natural-language only) nodes
+* `#telelean_status` prints every node with a mechanically computed status
+* `#telelean_consistency_statement name` defines `name : Prop` asserting that the
+  current set of axioms in a namespace has a model.
+-/
+open Lean Elab Command Meta
+
+namespace Telelean
+
+inductive NodeKind where
+  | assumption | derivation | goal | support
+deriving Repr, Inhabited, BEq, ToJson, FromJson
+
+def NodeKind.ofName? : Name → Option NodeKind
+  | `assumption => some .assumption
+  | `derivation => some .derivation
+  | `goal => some .goal
+  | `support => some .support
+  | _ => none
+
+structure NodeEntry where
+  id          : Name
+  kind        : NodeKind
+  naturalName : String
+  why         : Option String := none
+  /-- attached declaration; `none` = natural-language-only node -/
+  decl        : Option Name := none
+  module      : Name := .anonymous
+deriving Repr, Inhabited, ToJson
+
+initialize nodeExt : SimplePersistentEnvExtension NodeEntry (Array NodeEntry) ←
+  registerSimplePersistentEnvExtension {
+    addEntryFn := Array.push
+    addImportedFn := fun arrs => arrs.foldl (· ++ ·) #[]
+  }
+
+/-- all nodes: imported ones plus those of the current module -/
+def allNodes (env : Environment) : Array NodeEntry :=
+  nodeExt.getState env
+
+syntax teleleanWhy := "(" &"why" " := " str ")"
+syntax (name := teleleanAttr) "telelean " ident (ppSpace str)? (ppSpace teleleanWhy)? : attr
+
+initialize registerBuiltinAttribute {
+  name := `teleleanAttr
+  descr := "mark a declaration as a telelean node (assumption/derivation/goal/support)"
+  applicationTime := .afterTypeChecking
+  add := fun decl stx _kind => do
+    let `(attr| telelean $k:ident $[$nn:str]? $[(why := $w:str)]?) := stx
+      | throwError "invalid telelean attribute syntax"
+    let some kind := NodeKind.ofName? k.getId
+      | throwErrorAt k "unknown node kind {k.getId}; expected assumption|derivation|goal|support"
+    let doc ← findDocString? (← getEnv) decl
+    let naturalName := (nn.map (·.getString)).getD (doc.getD (toString decl))
+    modifyEnv (nodeExt.addEntry · {
+      id := decl, kind, naturalName, why := w.map (·.getString), decl := some decl,
+      module := (← getEnv).mainModule })
+}
+
+/-- natural-language-only node (no Lean code yet) -/
+syntax (name := teleleanNode) "telelean_node " ident ident str (ppSpace teleleanWhy)? : command
+
+@[command_elab teleleanNode] def elabTeleleanNode : CommandElab := fun stx => do
+  let `(telelean_node $k:ident $id:ident $nn:str $[(why := $w:str)]?) := stx
+    | throwUnsupportedSyntax
+  let some kind := NodeKind.ofName? k.getId
+    | throwErrorAt k "unknown node kind {k.getId}"
+  modifyEnv (nodeExt.addEntry · {
+    id := id.getId, kind, naturalName := nn.getString, why := w.map (·.getString),
+    module := (← getEnv).mainModule })
+
+def standardAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]
+
+/-- Mechanical status of one node. -/
+def nodeStatus (n : NodeEntry) (allowed : NameSet) : CoreM String := do
+  let some d := n.decl | return "natural-language-only"
+  let env ← getEnv
+  let some ci := env.find? d | return "missing-declaration"
+  let axs ← collectAxioms d
+  if axs.contains ``sorryAx then return "statement-with-sorry"
+  match ci with
+  | .axiomInfo _ => return "assumed (axiom)"
+  | .defnInfo _ =>
+    if ci.type == mkSort .zero then return "statement-formalized (Prop def, unproved)"
+    else return "definition"
+  | .thmInfo _ =>
+    let bad := axs.filter fun a => !(standardAxioms.contains a) && !allowed.contains a
+    if bad.isEmpty then return "proved" else return s!"proved-using-undeclared-axioms {bad}"
+  | _ => return "declaration"
+
+elab "#telelean_status" : command => do
+  let env ← getEnv
+  let nodes := allNodes env
+  -- allowed axioms = declarations of assumption/support nodes
+  let allowed : NameSet := nodes.foldl (init := {}) fun s n =>
+    if n.kind == .assumption || n.kind == .support then (n.decl.map s.insert).getD s else s
+  for n in nodes do
+    let st ← liftCoreM (nodeStatus n allowed)
+    logInfo m!"[{repr n.kind}] {n.id}: \"{n.naturalName}\" -- {st}"
+
+/-- Build `∃ x₁ … xₙ, True` where each axiom/opaque `aᵢ` in namespace `ns` is replaced
+by a bound variable `xᵢ` (project definitions are delta-expanded first). A proof of the
+result that uses only standard axioms is a *model* of the axioms, i.e. a consistency
+certificate. -/
+def mkConsistencyProp (ns : Name) : MetaM Expr := do
+  let env ← getEnv
+  let mine := fun (n : Name) => ns.isPrefixOf n
+  -- abstracted symbols in declaration order (by source position)
+  let mut symsPos : Array (Name × Nat) := #[]
+  for (n, ci) in env.constants.toList do
+    if !mine n || n.isInternalDetail then continue
+    if ci matches .axiomInfo _ || ci matches .opaqueInfo _ then
+      let pos := ((← findDeclarationRanges? n).map (·.range.pos.line)).getD 0
+      let modIdx := ((env.getModuleIdxFor? n).map (·.toNat)).getD 1000000
+      symsPos := symsPos.push (n, modIdx * 100000 + pos)
+  let syms : Array Name := (symsPos.qsort (fun a b => a.2 < b.2)).map (·.1)
+  let isDefToUnfold := fun (n : Name) => mine n && (env.find? n matches some (.defnInfo _))
+  let rec go (i : Nat) (fvars : Array Expr) : MetaM Expr := do
+    if h : i < syms.size then
+      let ci ← getConstInfo syms[i]
+      let ty ← deltaExpand ci.type isDefToUnfold
+      let ty := ty.replace fun e => match e with
+        | .const c _ => (syms.idxOf? c).bind fun j => fvars[j]?
+        | _ => none
+      withLocalDeclD (ci.name.componentsRev.head!) ty fun x => do
+        let body ← go (i+1) (fvars.push x)
+        mkAppM ``Exists #[← mkLambdaFVars #[x] body]
+    else return mkConst ``True
+  go 0 #[]
+
+elab "#telelean_consistency_statement " target:ident " for " ns:ident : command => do
+  let p ← liftTermElabM (mkConsistencyProp ns.getId)
+  liftTermElabM do logInfo m!"{target.getId} : Prop :={indentExpr p}"
+  liftCoreM <| addDecl (.defnDecl {
+    name := target.getId, levelParams := [], type := mkSort .zero, value := p,
+    hints := .abbrev, safety := .safe })
+
+end Telelean

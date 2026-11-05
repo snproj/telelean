@@ -1,0 +1,44 @@
+{
+ "name": "@dagrejs/dagre",
+ "latest": "3.1.3",
+ "dist_tags": {
+  "latest": "3.1.3"
+ },
+ "latest_published": "2026-10-24T21:48:02.059Z",
+ "modified": "2026-10-24T21:48:02.258Z",
+ "created": "2017-12-26T17:28:14.726Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 1423484,
+ "fileCount": 78,
+ "tarball": "https://registry.npmjs.org/@dagrejs/dagre/-/dagre-3.1.3.tgz",
+ "dependencies": {
+  "@dagrejs/graphlib": "4.0.6"
+ },
+ "peerDependencies": {},
+ "repository": "git+https://github.com/dagrejs/dagre.git",
+ "recent_versions": [
+  [
+   "3.0.0",
+   "2026-03-22T16:11:26.902Z"
+  ],
+  [
+   "3.1.0",
+   "2026-08-02T17:55:40.556Z"
+  ],
+  [
+   "3.1.1",
+   "2026-08-08T15:10:12.165Z"
+  ],
+  [
+   "3.1.2",
+   "2026-10-23T22:05:38.341Z"
+  ],
+  [
+   "3.1.3",
+   "2026-10-24T21:48:02.059Z"
+  ]
+ ],
+ "homepage": "https://github.com/dagrejs/dagre#readme",
+ "description": "Graph layout for JavaScript"
+}

@@ -1,0 +1,476 @@
+{
+ "topic": "R5: LLM agent protocol and trust model for telelean (assert-sufficient button and all other prompt kinds)",
+ "summary": "NOTE ON THE REPORT FILE: the harness refused to write REPORT.md (\"Subagents should return findings as text, not write report files\"), so this structured output IS the report. The runnable artifacts are under /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r5-agent-protocol/lean-exp/ :\n- tools/Audit.lean: axiom auditor.\n- tools/Ramsey.lean: certificate-statement generator.\n- model/Model/Cynder.lean: the spec's walkthrough formalized.\n- model/CertConsistency.lean and model/CertIndependence.lean: proved certificates.\n- exploits/X/*.lean: cheating attempts.\n- comparator-{ok,bad,axmod,stmt}/: statement-freeze tests.\n- sbx-shadow/: bwrap containment test.\n- Agent SDK 0.3.316 type definitions (read-only): /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r5-agent-protocol/dl/agent-sdk/package/sdk.d.ts and sdk-tools.d.ts.\n\nDESIGN: The LLM is untrusted. The user's verbatim words and approvals are ground truth. The arbiter is a deterministic gate in the extension, built on the Lean kernel and on new Lake 5.0.0 (Lean 4.35.0) tooling that I verified locally:\n- `lake comparator --challenge-from-export <frozen.ndjson>` rejects a weakened goal statement, a silently changed approved assumption with the same name, and a smuggled axiom. It accepts an honest proof in ~3 s.\n- `leanchecker` catches debug.skipKernelTC environment hacking, which fools collectAxioms.\n- A meta-level axiom audit, with untrusted modules imported with loadExts:=false so their initializers never run, classifies every axiom: user ASSUMPTION (Prop), harmless signature-like vocabulary, or rejected. It computes exactly which assumptions each theorem rests on, flags native_decide (in 4.35 it creates an auxiliary Prop axiom per use), sorry, private axioms and macro-generated axioms, and spots vacuity (goal proved from zero assumptions).\n\nBuilding agent-written Lean is arbitrary code execution. Verified: a run_cmd wrote outside the project, listed the real $HOME and resolved DNS. A bwrap profile contained all three, so every Lean invocation on agent code must be sandboxed.\n\nPROTOCOL:\n- Adding a node from the text box calls NO LLM. It deterministically writes a comment-only @@ telelean block with natural_name = the user's verbatim text, plus a mandatory rationale for ASSUMPTIONs, exactly as in the spec walkthrough.\n- The main button runs a two-phase session in a shadow copy of the workspace.\n  - Phase A formalizes the selected nodes: vocabulary axioms, ASSUMPTIONs as Prop axioms, the GOAL as `theorem ... := by sorry`. It asks targeted pragmatic questions: hidden premises/enthymemes, generic vs universal readings, modality, granularity. Answers persist as DECISION records. Phase A ends at a blocking sign-off checkpoint; signed-off statements are frozen as a comparator challenge export.\n  - Phase B proves under iteration caps. It ends with a finish tool, which triggers the gate: lint, sandboxed build, leanchecker, audit, comparator, markup policy (user NL immutable, ids stable, only GOAL->DERIVATION reclassification), plus semantic flags.\n- The proposal is shown as a graph-diff overlay plus VS Code text diffs. On accept, a base-hash check runs; if the workspace diverged, a 3-way merge (`git merge-file`) and a re-gate follow before WorkspaceEdit.\n\nFORMALIZATION GAP: it cannot be closed mechanically. It is squeezed by:\n- statements shown next to the NL;\n- a deterministic logical-skeleton English rendering;\n- an independent back-translation (fresh tool-less session that never sees the user's NL);\n- hash-bound per-node sign-off;\n- a rule that user concepts are uninterpreted vocabulary and that definitions on statement paths need sign-off (definitions are where meaning is smuggled);\n- Ramsey-sentence certificates, verified on the Cynder example. A proof with no axioms of `∃ vocabulary, A1 ∧ ... ∧ An` certifies consistency. A proof of `∃ vocabulary, A1 ∧ ... ∧ An ∧ ¬G` certifies that G does NOT follow. The user's three Cynder assumptions provably do not entail the goal: the hidden premise \"a character who cannot appear is not a good addition\" must come from the user.\n\nWhen assumptions are insufficient, the agent never adds axioms. It reports the gap, proposes ghost ASSUMPTION nodes (adopted only with a user-written rationale), and ideally supplies the countermodel certificate.\n\nHARNESS: @anthropic-ai/claude-agent-sdk 0.3.316 driving the unmodified Claude Code binary with:\n- settingSources: [] and strictMcpConfig: true;\n- tools: Read/Glob/Grep/Edit/Write only (no Bash);\n- permissionMode: \"dontAsk\" with a PreToolUse path-guard hook;\n- verbatimPrompts: true;\n- model \"claude-opus-5-5\", effort \"high\";\n- an in-process MCP server with check_lean, ask_user (custom, because AskUserQuestion is denied in dontAsk mode and unavailable in subagents), propose_formalization, propose_assumption, certify and finish. finish returns `_meta {\"claude/endTurn\": true}`.\n\nFeedback resumes the same session in the same shadow; alternatives use forkSession plus a copied shadow; partial acceptance is v2 (dependency closure, then re-gate). Never use --bare: it never reads OAuth. The policy text allows an end user signing into the unmodified Claude Code binary with their own subscription, and forbids intermediating credentials.\n\nMinimal v1 action set: AddNode (no LLM), Prove-from-selection (includes Phase A), Formalize-only, Instruct (free-form, same gate), and deterministic move/edit/delete/accept/reject. v1.5: Check-consistency and Explain. v2: partial accept, lean-lsp-mcp goal tools (sandboxed), --paranoid external kernels.",
+ "findings": [
+  {
+   "claim": "The Lean v4.35.0 toolchain (installed) ships `lake comparator` and `lake check` in Lake 5.0.0, plus bundled checkers: leanchecker, leanchecker-paranoid, lean4lean, nanoda_bin 0.4.19, leanexport (lean4export 3.1.0), con-leche, con-ron.",
+   "evidence": "`ls ~/.elan/toolchains/leanprover--lean4---v4.35.0/bin` lists them. `lake help comparator`: 'Establishes that every named theorem in the solution proves the same statement as the challenge, uses no axiom outside the permitted list, and is accepted by the kernel', runs in a bwrap sandbox, config JSON {challenge_module, solution_module, theorem_names, definition_names, permitted_axioms, external_kernels}, exit codes 0 accepted / 1 rejected / 2 could not start, options --challenge-from-export/--solution-from-export/--paranoid/--inadvisably-no-sandbox, env COMPARATOR_BWRAP, requires lake-manifest.json. Release notes: lake check #14990, comparator #14885/#15146/#15147, --paranoid #15145, leanchecker --from-export #15050.",
+   "confidence": "verified-locally",
+   "source": "lake help comparator; lake help check; https://lean-lang.org/doc/reference/4.35.0/releases/v4.35.0/"
+  },
+  {
+   "claim": "`lake comparator` works as a statement-freeze plus axiom-whitelist gate for an axiomatic model and runs in ~3 s. It accepts an honest proof and rejects (a) a smuggled axiom, (b) a silently changed approved assumption with the same name, and (c) a weakened goal statement.",
+   "evidence": "comparator-ok: 'Lean default kernel accepts the solution / Your solution is okay!' exit 0, 2.76 s wall, 111 MB. comparator-bad (solution adds `axiom shortcut`): 'error: Illegal axiom detected: Telelean.Model.shortcut' exit 1. comparator-axmod with --challenge-from-export base_challenge.ndjson (agent changed `good_needs_appear` in the shared Defs): 'error: Challenge and solution theorem statement do not match: Telelean.Model.good_needs_appear' exit 1. comparator-stmt (goal changed to `... ∨ True`): '... do not match: Telelean.Model.cynder_not_good' exit 1. The same honest solution against the frozen export was accepted (exit 0).",
+   "confidence": "verified-locally",
+   "source": "/tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r5-agent-protocol/lean-exp/comparator-{ok,bad,axmod,stmt}"
+  },
+  {
+   "claim": "comparator compares the challenge and solution exports at theoremNames ++ legalAxioms, so permitted axioms are checked by type, not just by name. The challenge must therefore be exported from the frozen (user-approved) snapshot, not rebuilt from the agent's workspace.",
+   "evidence": "Lake source `lake/Lake/CLI/Check.lean` verifyMatch: `let targets := (← getTheoremNames) ++ (← getLegalAxioms)` then `compareAt challenge solution targets definitionNames primitiveTargets` and `checkAxioms solution theoremNames definitionNames legalAxioms`. Export command: `lake env leanexport <Module> -- <decl names...>` (NDJSON on stdout; 18,538 lines for the toy model). Built-in targets comparator exports: Quot Quot.mk Quot.lift Quot.ind propext Quot.sound Classical.choice Nat.add Nat.sub Nat.mul Nat.pow Nat.gcd Nat.div Nat.mod Nat.beq Nat.ble Nat.land Nat.lor Nat.xor Nat.shiftLeft Nat.shiftRight String.ofList Char.ofNat List eagerReduce Nat String String.mk Char optParam autoParam semiOutParam outParam.",
+   "confidence": "verified-locally",
+   "source": "~/.elan/toolchains/leanprover--lean4---v4.35.0/src/lean/lake/Lake/CLI/Check.lean; base_challenge.ndjson test"
+  },
+  {
+   "claim": "`lake check` is unsuitable as the default gate for an axiomatic model: 148 s on a toy project, and it rejects every non-standard axiom with no permitted-axioms option.",
+   "evidence": "Output: 'Lean default kernel accepts the solution', then 'error: Axiom Telelean.Model.Character is not permitted; it is used by Telelean.Model.GoodAdditionTo' (and likewise for each model axiom); exit 1; wall=148.38s.",
+   "confidence": "verified-locally",
+   "source": "lake check run in lean-exp/model"
+  },
+  {
+   "claim": "`leanchecker` (kernel replay, ~0.9 s) catches environment hacking that fools collectAxioms/#print axioms. A model file with `set_option debug.skipKernelTC true in run_cmd liftCoreM do addDecl (.thmDecl {name := X.bogus, type := False, value := True.intro})` BUILDS, and `theorem anything (P : Prop) : P := X.bogus.elim` reports no axioms.",
+   "evidence": "`lake build X.SkipKernel` succeeded. The audit showed `X.anything assumptions=[]` with no flags. `lake env leanchecker -v X.SkipKernel`: '(kernel) declaration type mismatch, X.bogus has type True but it is expected to have type False', exit 1. LeanChecker.lean docstring: 'This is not an external verifier, simply a tool to detect environment hacking'.",
+   "confidence": "verified-locally",
+   "source": "lean-exp/exploits/X/SkipKernel.lean; src/lean/LeanChecker.lean"
+  },
+  {
+   "claim": "In Lean 4.35.0, native_decide creates an auxiliary Prop axiom per use, named <decl>._native.native_decide.ax_N_M. Lean.reduceBool/reduceNat/ofReduceBool/ofReduceNat/trustCompiler were removed. `decide +kernel` introduces no axioms.",
+   "evidence": "The audit listed `X.big._native.native_decide.ax_1_1 : decide (2^20 % 7 = 4) = true` as a class-prop axiom, and `X.big` uses it. `X.viaDecideKernel` has axioms []. Release notes #14953: 'removes Lean.reduceBool, Lean.reduceNat, Lean.ofReduceBool, Lean.ofReduceNat and Lean.trustCompiler'. A grep of Init found only propext, Quot.sound, sorryAx, Classical.choice as axioms.",
+   "confidence": "verified-locally",
+   "source": "lean-exp/exploits/X/Native.lean; https://lean-lang.org/doc/reference/4.35.0/releases/v4.35.0/"
+  },
+  {
+   "claim": "Other cheating patterns and how they surface. sorry shows as sorryAx. A private axiom appears as `_private.<Mod>.0.<name>` (Prop class, flagged). A macro that expands a 'theorem' into an `axiom` shows as a new Prop axiom. Using an `unsafe def` in a theorem is rejected by the kernel. Trivializing via a definition (def GoodAddition' _ := False) builds, and the goal proof uses ZERO assumptions, which is detectable only as a vacuity flag.",
+   "evidence": "Audit summary: `goal_sorry assumptions=[] SORRY FOREIGN:sorryAx`; `_private.X.PrivateAxiom.0.X.secret [PRIVATE]`; `X.goal_macro : Not (X.GoodAddition X.cynder)` as an axiom; '(kernel) invalid declaration, it uses unsafe declaration X.u'; `X.goal_trivial assumptions=[]`.",
+   "confidence": "verified-locally",
+   "source": "lean-exp/exploits/X/*.lean"
+  },
+  {
+   "claim": "Building agent-written Lean is arbitrary code execution. A bwrap sandbox (no network, tmpfs $HOME with read-only ~/.elan, only the shadow writable) contained it.",
+   "evidence": "Unsandboxed forced rebuild of X/Escape.lean (run_cmd): 'WRITE-OUTSIDE: succeeded' (file appeared outside the project), 'HOME=/home/zhengyew entries=66', 'NET: exit=0 ... example.com'. Sandboxed with `bwrap --ro-bind / / --dev /dev --proc /proc --tmpfs /tmp --tmpfs $HOME --ro-bind $ELAN $ELAN --bind $SHADOW $SHADOW --chdir $SHADOW --unshare-all --die-with-parent --new-session --setenv HOME $HOME --setenv PATH $ELAN/bin:/usr/bin:/bin $ELAN/bin/lake build`: the outside write went to the throwaway tmpfs (no file on the real fs), HOME had 1 entry, DNS exit=2, and the inside-shadow write succeeded. bwrap 0.9.0 works unprivileged here despite kernel.apparmor_restrict_unprivileged_userns=1.",
+   "confidence": "verified-locally",
+   "source": "lean-exp/sbx-shadow"
+  },
+  {
+   "claim": "autoImplicit is still on by default in Lean 4.35. A typo in a theorem statement is auto-bound (here it produced 'type of theorem is not a proposition'). `-DautoImplicit=false` turns typos into 'Unknown identifier' errors.",
+   "evidence": "X/AutoImplicit.lean: 'type of theorem X.goal_typo is not a proposition'. With -DautoImplicit=false: 'error(lean.unknownIdentifier): Unknown identifier NewSpyroIsPg ... autoImplicit option is set to false'.",
+   "confidence": "verified-locally",
+   "source": "lean-exp/exploits/X/AutoImplicit.lean"
+  },
+  {
+   "claim": "A Lean meta-program (Audit.lean, run via `lake env lean --run`) can produce, per declaration: kind, safety, Prop-ness, transitively used axioms (Lean.collectAxioms), model assumptions used, foreign axioms, sorry, implemented_by/extern, and source ranges for joining with markup. It also classifies each axiom as prop / sort-former / symbol / symbol-std / nonsignature, without running untrusted initializers.",
+   "evidence": "Cynder output: Character, Game, HasDarkPast, IsPG, AppearsIn, GoodAdditionTo are sort-former; cynder and newSpyro are symbol; cynder_dark_past, newSpyro_pg, pg_no_dark, good_needs_appear are prop. cynder_not_good uses 4 assumptions; cynder_not_in_new_spyro uses the user's 3. Without loadExts, type-class synthesis fails ('type class instance expected Nonempty X.Character'), so the Nonempty check runs in a separate trusted Init-only environment. Initializers run only inside finalizePersistentExtensions when loadExts=true (Environment.lean; InitAttr.lean runInitAttrs). Timing: 3.2 s interpreted.",
+   "confidence": "verified-locally",
+   "source": "/tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r5-agent-protocol/lean-exp/tools/Audit.lean"
+  },
+  {
+   "claim": "Ramsey-sentence certificates work. Existentially abstracting every vocabulary axiom and conjoining the selected assumptions (optionally with ¬goal) gives a statement whose proof, using no model axioms, certifies consistency, or certifies that the goal does NOT follow from those assumptions. For the spec's Cynder example, the user's three assumptions do not entail the goal.",
+   "evidence": "Ramsey.lean generated both statements (pretty-printed with pp.fullNames; they re-elaborate). Witness proofs, e.g. `⟨Unit, Unit, (), (), fun _ => True, fun _ => True, fun _ _ => False, fun _ _ => True, trivial, trivial, fun _ _ _ _ h => h, fun h => h trivial⟩`, compiled. `#print axioms` gave 'telelean_independence does not depend on any axioms', and likewise for telelean_consistency (all 4 assumptions). The generator correctly delta-expanded `def Excluded c g := ¬ AppearsIn c g` over the abstracted vocabulary. The path that refuses inductive types over vocabulary is implemented but was not exercised.",
+   "confidence": "verified-locally",
+   "source": "lean-exp/tools/Ramsey.lean; lean-exp/model/CertConsistency.lean, CertIndependence.lean; lean-exp/model2"
+  },
+  {
+   "claim": "Vocabulary constants of uninterpreted sorts cannot be `opaque`; they must be `axiom`s (made safe by the signature check). `opaque Character : Type` and `opaque HasDarkPast : Character → Prop` work, but `opaque cynder : Character` fails.",
+   "evidence": "'error: failed to synthesize Inhabited or Nonempty instance for Character'.",
+   "confidence": "verified-locally",
+   "source": "lean-exp/model/ProbeOpaque.lean"
+  },
+  {
+   "claim": "A shadow workspace made by `cp -a --reflink=auto` (including .lake/build) builds incrementally and leaves the original untouched. Symlinking .lake/packages to the real one is safe for unchanged dependencies.",
+   "evidence": "Copied model: 'Build completed successfully' with no rebuild. After editing one file only Model.Cynder rebuilt (1.11 s). Original: 'All targets up-to-date'. Consumer project with a local git dependency (require dep from git): the shadow with a symlinked .lake/packages rebuilt only module C, and `find <orig>/.lake/packages -newer stamp` was empty.",
+   "confidence": "verified-locally",
+   "source": "lean-exp/shadow1, lean-exp/consumer, lean-exp/shadow2"
+  },
+  {
+   "claim": "Structured diagnostics are available. `lake lean <file> -- --json` builds the file's imports, then emits one JSON object per message ({caption,data,endPos{line,column},fileName,isSilent,keepFullRange,kind,pos,severity}), exiting 1 on errors. `#print axioms` text is namespace-relative and should not be parsed.",
+   "evidence": "Output e.g. {\"data\":\"unsolved goals\\n⊢ False\",\"kind\":\"Tactic.unsolvedGoals\",\"severity\":\"error\",...} and kind 'hasSorry' for sorry. #print axioms printed '[AppearsIn, Character, ...]' (short names).",
+   "confidence": "verified-locally",
+   "source": "lean-exp/model/Probe.lean; lean-exp/shadow1"
+  },
+  {
+   "claim": "Gate step timings on the toy model (14-core machine).",
+   "evidence": "lake build incremental 0.49 s (cold 0.78 s); lake lean --json 0.59 s; Audit.lean 3.2 s (interpreted; a compiled lean_exe should be faster, inferred); leanchecker 0.9 s; Ramsey generator 3.0 s; lake comparator ~2.8 s; lake check 148 s.",
+   "confidence": "verified-locally",
+   "source": "time measurements in lean-exp/model"
+  },
+  {
+   "claim": "Claude Agent SDK facts. Latest @anthropic-ai/claude-agent-sdk is 0.3.316 (2026-10-31). package.json has claudeCodeVersion 2.1.316, peers zod ^4, @anthropic-ai/sdk >=0.93.0, @modelcontextprotocol/sdk ^1.29.0, Node >=18.14. Platform binaries ship as optional deps; pathToClaudeCodeExecutable can override.",
+   "evidence": "npm registry dist-tags latest=next=0.3.316; tarball package.json and README read in scratch.",
+   "confidence": "documented",
+   "source": "https://registry.npmjs.org/@anthropic-ai/claude-agent-sdk ; dl/agent-sdk/package/package.json"
+  },
+  {
+   "claim": "Options that matter for telelean (all exact names from 0.3.316 sdk.d.ts):\n- `settingSources` ('When omitted, all sources are loaded ... Pass [] to disable filesystem settings (SDK isolation mode)').\n- `strictMcpConfig`, `tools`, `allowedTools`, `disallowedTools`, `toolAliases`.\n- `permissionMode` ('default'|'acceptEdits'|'bypassPermissions'|'plan'|'dontAsk'|'auto'), `permissionPrompts` ('host'|'none'), `canUseTool`, `hooks`.\n- `mcpServers`, `model`, `effort` ('low'..'max'), `thinking`, `maxTurns`, `maxBudgetUsd`, `taskBudget` (alpha).\n- `resume`, `forkSession`, `sessionId`, `resumeSessionAt`, `resumeDropsTurn`, `persistSession`.\n- `outputFormat` {type:'json_schema'}, `abortController`, `includePartialMessages`, `verbatimPrompts` (no @path or slash-command expansion; CLI >=2.1.248).\n- `systemPrompt` (string | string[] with SYSTEM_PROMPT_DYNAMIC_BOUNDARY | {type:'custom',prompt,snapshot} | preset claude_code with append/excludeDynamicSections).\n- `toolConfig.askUserQuestion.previewFormat`, `enableFileCheckpointing`, `sandbox`, `env` (replaces the environment entirely), `pathToClaudeCodeExecutable`.\n- Query methods: interrupt, setPermissionMode, setModel, streamInput, close, mcpServerStatus, getContextUsage, rewindFiles.",
+   "evidence": "Read in the Options type (lines 1581-2532) and the Query interface (lines 2938-3345) of sdk.d.ts.",
+   "confidence": "documented",
+   "source": "/tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r5-agent-protocol/dl/agent-sdk/package/sdk.d.ts"
+  },
+  {
+   "claim": "AskUserQuestion schema: 1-4 questions, each {question, header (max 12 chars), options[2-4]{label, description, preview?}, multiSelect}; an 'Other' option is added automatically. The host answers through canUseTool (toolName 'AskUserQuestion') with {behavior:'allow', updatedInput:{questions, answers:{<question text>: <label or free text>}}} and an optional `response`. It is NOT available in subagents and is denied in dontAsk mode. Output type includes `annotations[q].notes` and `unanswered`.",
+   "evidence": "sdk-tools.d.ts AskUserQuestionInput/Output. Docs: 'AskUserQuestion is not currently available in subagents'. Permissions doc: in dontAsk 'Tools that require user interaction, such as AskUserQuestion ... are denied even when an allow rule matches'.",
+   "confidence": "documented",
+   "source": "https://code.claude.com/docs/en/agent-sdk/user-input ; https://code.claude.com/docs/en/agent-sdk/permissions ; sdk-tools.d.ts"
+  },
+  {
+   "claim": "Permission evaluation order is hooks -> deny rules -> ask rules -> permission mode -> allow rules -> canUseTool. dontAsk converts every prompt into a denial. A PreToolUse hook is the only check that applies to every call ('a hook deny applies even in bypassPermissions mode'). Allow-rule globs work only after a literal mcp__<server>__ prefix. Bare-name disallowedTools removes the tool from context.",
+   "evidence": "Quoted from the permissions page sections 'How permissions are evaluated' and 'Allow and deny rules'.",
+   "confidence": "documented",
+   "source": "https://code.claude.com/docs/en/agent-sdk/permissions"
+  },
+  {
+   "claim": "In-process custom tools:\n- `createSdkMcpServer({name, version, instructions, tools, alwaysLoad, timeout})` and `tool(name, description, zodShape, handler, {annotations, searchHint, alwaysLoad})`; tools are exposed as mcp__<server>__<tool>.\n- Results support content, structuredContent and isError.\n- Tool search defers SDK MCP tools by default; alwaysLoad keeps them in the prompt.\n- Per-server timeout is in ms; MCP_TOOL_TIMEOUT defaults to ~28 h.\n- MCP output: warning above 10,000 tokens, default cap 25,000 tokens (MAX_MCP_OUTPUT_TOKENS).\n- TypeScript permission_policy always_ask/always_deny exists (SDK >=0.3.301).",
+   "evidence": "custom-tools doc; sdk.d.ts createSdkMcpServer and tool() declarations; MCP doc limits section.",
+   "confidence": "documented",
+   "source": "https://code.claude.com/docs/en/agent-sdk/custom-tools ; https://code.claude.com/docs/en/mcp"
+  },
+  {
+   "claim": "An MCP tool result carrying `_meta: {\"claude/endTurn\": true}` ends the agent's turn (useful for a `finish` tool). Stop hooks may block that only if `claude/endTurnHonorsStopHooks` is also true. Recognized tool `_meta` keys: anthropic/searchHint, anthropic/alwaysLoad, anthropic/maxResultSizeChars, anthropic/requiresUserInteraction.",
+   "evidence": "sdk.d.ts resumeDropsTurn comment mentions 'any MCP tool using _meta[claude/endTurn]'. Strings in the CLI 2.1.314 binary: `var DB=\"claude/endTurn\",g2=\"claude/endTurnHonorsStopHooks\";function KZt(e){if(e?._meta?.[DB]!==!0)return!1;return e._meta[g2]===!0?\"mcp_meta_blockable\":\"mcp_meta\"}` and `H2={searchHint:\"anthropic/searchHint\",alwaysLoad:...,maxResultSizeChars:...,requiresUserInteraction:...}`.",
+   "confidence": "inferred",
+   "source": "sdk.d.ts; ~/.vscode/extensions/anthropic.claude-code-2.1.314-linux-x64/resources/native-binary/claude (strings only)"
+  },
+  {
+   "claim": "Hooks:\n- PreToolUse returns hookSpecificOutput.permissionDecision ('allow'|'deny'|'ask'|'defer') with permissionDecisionReason and updatedInput.\n- PostToolUse can add additionalContext or updatedToolOutput.\n- Stop hooks use top-level decision:'block' + reason to keep the agent working; StopHookInput.stop_hook_active guards loops.\n- Default hook timeout 600 s. Matchers match tool names; regex is allowed (e.g. ^mcp__).",
+   "evidence": "hooks guide and reference decision table: Stop is listed under top-level decision 'block' + reason. sdk.d.ts SyncHookJSONOutput {decision?: 'approve'|'block', reason?} and StopHookInput.",
+   "confidence": "documented",
+   "source": "https://code.claude.com/docs/en/agent-sdk/hooks ; https://code.claude.com/docs/en/hooks"
+  },
+  {
+   "claim": "Sessions are stored at ~/.claude/projects/<encoded-cwd>/*.jsonl. resume takes a session id. forkSession creates a new id and 'branches the conversation history, not the filesystem'. Cross-directory resume lookup exists since CLI 2.1.223. The session id comes from the init system message or any result message.",
+   "evidence": "Quoted from the sessions doc.",
+   "confidence": "documented",
+   "source": "https://code.claude.com/docs/en/agent-sdk/sessions"
+  },
+  {
+   "claim": "Usage reporting: SDKResultMessage has total_cost_usd ('An estimate, not a billing statement'), modelUsage, usage, num_turns, duration_ms, and subtypes success / error_max_turns / error_max_budget_usd / error_during_execution / error_max_structured_output_retries. Subscription users get rate_limit_event messages with rate_limit_info {status 'allowed'|'allowed_warning'|'rejected', resetsAt, rateLimitType five_hour|seven_day|seven_day_opus|..., utilization}.",
+   "evidence": "sdk.d.ts SDKResultSuccess/SDKResultError/SDKRateLimitEvent/SDKRateLimitInfo.",
+   "confidence": "documented",
+   "source": "dl/agent-sdk/package/sdk.d.ts"
+  },
+  {
+   "claim": "Auth policy. The Agent SDK overview says: 'Unless previously approved, Anthropic does not allow third party developers to offer claude.ai login or rate limits for their products, including agents built on the Claude Agent SDK.' The legal page says OAuth is 'designed to support ordinary use of Claude Code'; developers 'may not collect, store, or intermediate Claude.ai credentials'; but this does not 'prevent an end user from signing in to the unmodified Claude Code binary with their own Claude subscription'; and plan limits 'assume ordinary, individual usage of Claude Code and the Agent SDK'.",
+   "evidence": "Quoted verbatim from both pages.",
+   "confidence": "documented",
+   "source": "https://code.claude.com/docs/en/agent-sdk/overview ; https://code.claude.com/docs/en/legal-and-compliance"
+  },
+  {
+   "claim": "Claude Code CLI 2.1.314 `--bare` mode never reads OAuth, so it must not be used for subscription auth. The CLI has all the headless flags needed to drive it without the SDK.",
+   "evidence": "`claude --help`: '--bare ... Anthropic auth is strictly ANTHROPIC_API_KEY or apiKeyHelper via --settings (OAuth and keychain are never read)'. Flags present: -p, --input-format/--output-format stream-json, --include-partial-messages, --resume, --fork-session, --session-id, --json-schema, --max-budget-usd, --permission-mode, --permission-prompts host|none, --setting-sources, --settings, --strict-mcp-config, --mcp-config, --tools, --allowedTools/--disallowedTools, --no-session-persistence, --system-prompt(-snapshot), --append-system-prompt, --effort, --fallback-model, --agents.",
+   "confidence": "verified-locally",
+   "source": "~/.vscode/extensions/anthropic.claude-code-2.1.314-linux-x64/resources/native-binary/claude --help"
+  },
+  {
+   "claim": "lean-lsp-mcp status: v0.32.0 released 2026-10-26, MIT, Python >=3.10, depends on leanclient>=0.13.2 and mcp[cli]==2.2.0. Run with `uvx lean-lsp-mcp`; it runs `lake serve` in LEAN_PROJECT_PATH.\n- Local tools: lean_file_outline, lean_diagnostic_messages, lean_goal, lean_term_goal, lean_hover_info, lean_declaration_file, lean_references, lean_completions, lean_run_code, lean_multi_attempt, lean_code_actions, lean_get_widgets, lean_get_widget_source, lean_profile_proof, lean_verify (axioms + source pattern scan), lean_minimal_hypotheses, lean_build, lean_local_search.\n- External rate-limited web search tools: lean_leansearch, lean_loogle, lean_leanfinder, lean_hammer_premise (disable with LEAN_MCP_DISABLED_TOOLS).\n- uv and pip3 are not installed here.",
+   "evidence": "PyPI JSON and the GitHub README / docs/tools.md.",
+   "confidence": "documented",
+   "source": "https://pypi.org/pypi/lean-lsp-mcp/json ; https://github.com/oOo0oOo/lean-lsp-mcp ; https://raw.githubusercontent.com/oOo0oOo/lean-lsp-mcp/main/docs/tools.md"
+  },
+  {
+   "claim": "Recent literature confirms that kernel acceptance does not imply faithfulness and supports back-translation, roundtrip, vacuity and witness-based checks.",
+   "evidence": "- Mohammad & Sheikh, 'The Faithfulness Gap' (arXiv 2606.16541, Jun 2026): 'a formal statement can typecheck and be provable, yet still encode a different theorem than the source intended'; Bidirectional Provability Fingerprinting detects 89.6% of drifted formalizations at 3.0% FPR, vs 63.3% for an LLM judge and 41.2% for typecheck-only.\n- Amrollahi, Lopez, Barrett, 'Faithful Autoformalization via Roundtrip Verification and Repair' (arXiv 2604.25031): formalize -> back-translate -> re-formalize -> check equivalence.\n- Yang & Osorio, 'Counterexample-Carrying FormalRx' (ICML 2026): Lean-checkable witnesses of misalignment; 'repair fixes proof engineering, not semantic understanding'.\n- Zhou et al., 'Don't Trust: Verify' (ICLR 2024, arXiv 2403.18120): vacuity (contradictory premises) and self-critique filters.",
+   "confidence": "documented",
+   "source": "https://arxiv.org/abs/2606.16541 ; https://arxiv.org/abs/2604.25031 ; https://icml.cc/virtual/2026/82532 ; https://arxiv.org/abs/2403.18120"
+  },
+  {
+   "claim": "learnharness (the user's reference) supports 'the Claude Code CLI' as an LLM provider and stores knowledge as propositions plus reasoning chains (premises -> claims) in local plain files. This is consistent with telelean driving the user's Claude Code binary.",
+   "evidence": "GitHub README summary.",
+   "confidence": "documented",
+   "source": "https://github.com/amosblomqvist/learnharness"
+  },
+  {
+   "claim": "The installed v4.35.0 lean4lean binary printed 'incompatible header' errors when run directly on the toolchain's oleans. It is probably meant to be used through export files / `lake check --paranoid`.",
+   "evidence": "`lean4lean --help` began checking and reported 'failed to read file .../Std/Internal/UV.olean, incompatible header'.",
+   "confidence": "uncertain",
+   "source": "~/.elan/toolchains/leanprover--lean4---v4.35.0/bin/lean4lean"
+  }
+ ],
+ "recommendations": [
+  {
+   "decision": "Trust model and invariants",
+   "recommendation": "Treat the LLM as untrusted. The trusted computing base is the Lean kernel (plus optional external kernels), the extension's deterministic gate, and the user's own words and approvals. Enforce these invariants mechanically:\n- I1: a node is shown as proved only if the gate passed and its axioms ⊆ {propext, Classical.choice, Quot.sound} ∪ vocabulary ∪ the assumptions the action allows (exactly the selected ones for the main button).\n- I2: every Prop-typed axiom is an ASSUMPTION node; agent-made ones block acceptance until the user approves each with their own rationale.\n- I3: natural_name and rationale of existing nodes are byte-identical in agent proposals.\n- I4: node ids and the decl names of approved/frozen nodes are stable.\n- I5: signed-off statements are frozen, and proofs must prove exactly them.\n- I6: nothing touches the real workspace before accept, and accept re-checks the base.\nShow provenance badges on every field and claim: user / kernel-checked / approved / agent-proposed / stale.",
+   "rationale": "Formal-methods users need to see exactly what is machine-checked versus what is an LLM claim. Every invariant here is checkable without trusting the agent (§G0-G6).",
+   "alternatives": "Trusting the agent's self-reports or an LLM judge as the arbiter: rejected, because verified exploits show LLM-written Lean can fake #print axioms (skipKernelTC) and trivialize goals."
+  },
+  {
+   "decision": "Semantics of the text box + switch (adding nodes)",
+   "recommendation": "Add-node never calls the LLM. It deterministically writes a comment-only `/- @@ telelean ... -/` block with natural_name = the user's verbatim text, type from the switch, a mandatory `rationale` field for ASSUMPTIONs, origin: user, status nl-only, and a stable generated id. A user-typed ASSUMPTION counts as approved. A user-typed DERIVATION is marked 'unverified' until proved from existing approved assumptions; if that fails, offer reclassification to GOAL. Add a fourth, unmarked switch position, 'Instruct', for free-form agent requests that run under the same gate. An optional off-by-default LLM lint (duplicate detection, split compound claims) may appear only as suggestions.",
+   "rationale": "The spec walkthrough says three times that no Lean code is generated on add. The NL is the specification the formalization is judged against, so paraphrasing would add an NL->NL gap. Deterministic adds are also instant, free and offline. The spec says prompts 'should be able to be marked', which implies unmarked prompts exist.",
+   "alternatives": "LLM rewrites the text into a canonical natural_name: rejected as silent drift. LLM formalizes on add: rejected because it contradicts the walkthrough."
+  },
+  {
+   "decision": "Minimal v1 action set",
+   "recommendation": "v1:\n- AddNode (no LLM).\n- Prove-from-selection (main button: ≥0 ASSUMPTIONs + 1 target GOAL/DERIVATION; strict selection).\n- Prove-derivation (same pipeline; selection = all approved assumptions or a user subset).\n- Formalize-only (Phase A alone).\n- Instruct (free-form, gated).\n- Deterministic ops: promote/demote between sections (a manual GOAL->DERIVATION or ASSUMPTION->DERIVATION move shows the node as 'unverified' until proved), edit NL, delete, accept/reject.\nv1.5: Check-consistency (Ramsey certificate, or proof of False plus conflict set) and standalone Explain/back-translate (read-only).\nv2: node-level partial accept, goal-at-position tooling (lean-lsp-mcp sandboxed or custom), the lake comparator --paranoid 'high assurance' button, multi-target proofs.",
+   "rationale": "This covers every spec sentence with the fewest LLM entry points. Each of them shares one shadow + gate pipeline.",
+   "alternatives": "Separate bespoke pipelines per action: more code, inconsistent guarantees."
+  },
+  {
+   "decision": "Main-button protocol (state machine)",
+   "recommendation": "1. Preflight: target type valid; model files saved (or snapshot dirty TextDocuments); bwrap available; per-file SHA-256 of the base.\n2. Shadow: copy sources + `cp -a --reflink=auto .lake/build` + symlink .lake/packages (bound read-only in the sandbox) + `git init/commit base` inside the shadow.\n3. Phase A, formalize: the agent reads the bundle, asks questions, writes vocabulary axioms, ASSUMPTION axioms and `theorem goal : stmt := by sorry`, runs check_lean, then calls propose_formalization. That call is a BLOCKING sign-off UI showing NL | formal | deterministic skeleton | independent back-translation | flags.\n4. Freeze: from the approved snapshot, run `lake env leanexport <Root> -- <builtin targets> <goal decls> <permitted axioms> > .telelean/frozen/<run>.ndjson`.\n5. Phase B, prove: check_lean loop with caps (25 check_lean calls, maxTurns 80, 20 min, stop after 3 identical first errors). If an extra premise is needed: ask_user to add an existing approved assumption to the selection, or propose_assumption, then re-freeze.\n6. finish(status=proved|insufficient|inconsistent|failed|needs_user) runs the full gate. Violations go back to the agent while budget remains.\n7. Proposal: graph-diff overlay + text diffs + report card.\n8. Accept (base check, merge/rebase + re-gate if diverged, WorkspaceEdit), feedback (resume the same session), or discard.",
+   "rationale": "Freezing statements before proving stops the agent from adjusting statements to make proofs go through. comparator then enforces this mechanically (verified). The blocking checkpoint keeps the user's sign-off cheap and timely.",
+   "alternatives": "One-shot (formalize and prove, sign off at the end): simpler, but the agent's statements are shaped by what it could prove, and the user reviews a fait accompli."
+  },
+  {
+   "decision": "Input packaging (context the agent gets)",
+   "recommendation": "Static, cacheable system prompt: role, invariants with reasons, workflow, markup grammar, modeling conventions. Per-run JSON bundle in the first user message (or after SYSTEM_PROMPT_DYNAMIC_BOUNDARY):\n- action;\n- target {id, type, natural_name verbatim, status, decl};\n- selected_assumptions [{id, natural_name, rationale, status, decl}];\n- model_index (all nodes, compact: id, type, natural_name, decl, has_lean, proved);\n- vocabulary (from the audit: decl, type, short doc, file);\n- relevant + global DECISION records;\n- files {write_new_declarations_to, root_module};\n- budgets {check_lean_calls, question_batches, questions_per_batch}.\nThe agent Reads/Greps the shadow for full Lean source. Pass prompts with verbatimPrompts:true.",
+   "rationale": "The agent needs the user's exact words plus the existing vocabulary to reuse names and avoid duplicates. Kernel-derived facts come from the audit, not from the agent's own parsing. verbatimPrompts prevents a node text like '/foo' or '@file' from being expanded.",
+   "alternatives": "Dumping all Lean files into the prompt: wasteful for big models; the agent can Read on demand."
+  },
+  {
+   "decision": "Agent tool surface",
+   "recommendation": "Built-ins: Read, Glob, Grep, Edit, Write. Path-guarded by a PreToolUse hook: deny outside the shadow; deny lakefile.*, lean-toolchain, lake-manifest.json, .lake/**, .telelean/frozen/**. No Bash, Web*, Agent or AskUserQuestion. One in-process MCP server 'telelean' (createSdkMcpServer, alwaysLoad:true):\n- check_lean({files?, audit?}) -> structuredContent {ok, diagnostics[{file,line,col,endLine,endCol,severity,kind,message}], decls[{name,node_id,kind,typeIsProp,assumptions_used,vocabulary_used,flags}], policy{violations,warnings}, budget}. Runs in bwrap: lake build, `lake lean <f> -- --json`, Audit. Timeout 120 s; output truncated below the 25k-token MCP cap.\n- ask_user({questions[1-3]{id, kind: hidden_premise|semantic|granularity|convention|other, text, options[2-4]{label, description, formal_preview?}, recommended?, allow_free_text, affects_nodes[], persist: decision|none}}) -> {answers[{id, choice?, free_text?, delegated?, persisted_as?}]}.\n- propose_formalization({nodes[{node_id, decl, role, note?}], summary}) -> {approved[], rejected[{node_id, feedback}], frozen}. The extension reads the real declarations itself and never trusts the description.\n- propose_assumption({natural_name, lean_statement?, why_needed, blocks[]}) -> {status, node_id?, user_rationale?}.\n- certify({kind: consistency|independence, assumptions[], goal?}) -> {statement_file (extension-generated, read-only), theorem, proof_slot_file}.\n- finish({status, summary_for_user, proved[], gap?{explanation, candidate_assumptions[], countermodel_certificate?}, conflict?{assumptions[], proof_of_false_decl?}, assumptions_unused?, decisions_made?}) -> gate verdict; its result carries _meta {'claude/endTurn': true}.\nAdd a Stop hook that blocks stopping without finish (decision:'block'), honoring stop_hook_active.",
+   "rationale": "Dedicated tools give the harness typed hooks to gate, render and audit, which Bash cannot. A custom ask_user is needed because AskUserQuestion is denied in dontAsk mode, is unavailable in subagents, and cannot carry affects_nodes/kind/persist. Its shape mirrors AskUserQuestion for model fluency.",
+   "alternatives": "Built-in AskUserQuestion via canUseTool (would require permissionMode 'default' instead of 'dontAsk'). Bash + lake for checks (opaque, hard to sandbox and gate). lean-lsp-mcp for checks (see the lean-lsp-mcp recommendation)."
+  },
+  {
+   "decision": "Harness configuration (Claude Agent SDK 0.3.316)",
+   "recommendation": "query({ prompt: AsyncIterable<SDKUserMessage> (streaming input, for feedback and interrupts), options: { cwd: shadowDir, model: 'claude-opus-5-5', effort: 'high' (Opus 5.5 defaults to medium), systemPrompt: {type:'custom', snapshot:true, prompt:[STATIC_RULES, SYSTEM_PROMPT_DYNAMIC_BOUNDARY, projectContext]}, settingSources: [], strictMcpConfig: true, mcpServers: {telelean}, tools: ['Read','Glob','Grep','Edit','Write'], disallowedTools: ['Bash','WebFetch','WebSearch','Agent','AskUserQuestion','NotebookEdit'], allowedTools: ['Read','Glob','Grep','Edit','Write','mcp__telelean__*'], permissionMode: 'dontAsk', hooks: {PreToolUse:[{matcher:'Read|Edit|Write|Glob|Grep', hooks:[pathGuard]}], Stop:[{hooks:[requireFinish]}]}, maxTurns: 80, abortController, verbatimPrompts: true, includePartialMessages: true, persistSession: true, env: {...process.env, CLAUDE_AGENT_SDK_CLIENT_APP: 'telelean/0.1.0'} } }).\nDisplay usage from result.modelUsage, total_cost_usd (labelled an estimate) and rate_limit_event. Never use --bare.",
+   "rationale": "settingSources:[] and strictMcpConfig isolate runs from the user's global CLAUDE.md, hooks and MCP servers. dontAsk plus explicit allow rules gives a fixed tool surface, and the hook enforces path scope on every call. --bare would disable OAuth.",
+   "alternatives": "Spawning `claude -p --input-format stream-json --output-format stream-json ...` directly: all flags verified in 2.1.314, but in-process tools would then need a separate stdio MCP server process."
+  },
+  {
+   "decision": "Clarifying questions: ask-vs-assume policy, presentation, persistence",
+   "recommendation": "Ask (blocking) when the answer changes truth conditions, provability or future reuse:\n(1) hidden premises / bridging inferences (the Cynder 'good addition => can appear' gap);\n(2) semantic ambiguity: genericity ('PG games cannot have characters with dark pasts' is a generic and may tolerate exceptions), quantifier scope, modality (deontic vs alethic 'cannot'), definite descriptions / presupposition, vague or gradable predicates (keep them uninterpreted), tense, defeasibility;\n(3) granularity ('model characters as entities?', relations vs properties, time, events).\nAssume, and record as a provisional decision shown in the proposal, for Lean engineering choices or when an existing DECISION covers the case.\nBudget: at most 3 questions per batch, at most 2 batches before the first proposal; order hidden premises > semantics > granularity > conventions.\nUI: a question card that highlights the affected nodes on the graph; options with plain-language consequences and a collapsible formal reading; a pre-selected recommended option, 'Decide for me (and record it)', and free text.\nPersist answers as DECISION records in a dedicated Lean file of comment blocks (id, question, answer, scope [node ids] or global, source user|delegated|agent-default, session). Feed them to every future run, and let the user revoke them (dependents become stale).",
+   "rationale": "This matches the spec's pragmatics goal (level of detail, unspoken context). Persistence keeps future runs consistent, so 'characters' is not modeled differently each time. Batching respects the user's attention.",
+   "alternatives": "Ask freely without a budget (annoying); never ask and assume everything (silently decides meaning); persist decisions in a JSON sidecar (simpler to parse, but splits the source of truth)."
+  },
+  {
+   "decision": "Isolation: shadow workspace and sandbox",
+   "recommendation": "Shadow at <globalStorage>/runs/<runId>/ws:\n- copy *.lean, lakefile.*, lean-toolchain, lake-manifest.json;\n- `cp -a --reflink=auto .lake/build` (preserving mtimes avoids rebuilds; verified);\n- symlink .lake/packages (verified untouched) and bind it read-only in the sandbox;\n- git init + base commit inside the shadow, so diffs come from `git diff base` and each feedback iteration is a commit.\nRun EVERY Lean invocation on agent code under: bwrap --ro-bind / / --dev /dev --proc /proc --tmpfs /tmp --tmpfs $HOME --ro-bind $HOME/.elan $HOME/.elan --bind $SHADOW $SHADOW --ro-bind $REAL/.lake/packages $REAL/.lake/packages --chdir $SHADOW --unshare-all --die-with-parent --new-session --setenv HOME $HOME --setenv PATH $HOME/.elan/bin:/usr/bin:/bin lake build. Add memory and time limits (e.g. systemd-run --user --scope -p MemoryMax=4G). Fail closed if bwrap is missing, unless the user explicitly opts into unsafe mode.",
+   "rationale": "Verified: agent Lean can write outside the project, read the real $HOME (including ~/.claude) and use the network at build time; this profile contained all of it. Whole-.lake symlinks would race with the user's Lean server; git worktrees need a git repo and lose unsaved work.",
+   "alternatives": "git worktree (rejected for v1), overlayfs/fuse (not installed), unsandboxed builds (unsafe)."
+  },
+  {
+   "decision": "User edits the real files during a run",
+   "recommendation": "On accept, recompute per-file hashes.\n- Unchanged: apply via vscode.workspace.applyEdit(WorkspaceEdit) and save.\n- Changed files disjoint from the proposal: still re-run the FULL gate on (current real files + proposal) in a fresh shadow, because Lean dependencies cross files; then apply.\n- Overlap: per-file 3-way merge `git merge-file -p <current> <base> <proposal>`; clean merges go through the re-gate; conflicts open a merge view.\n- Fallback, refuse-and-rebase: resume the agent session with 'the user changed X since you started' plus the diff.\nDuring a run, mark involved nodes 'under proposal' in the panel and warn on edits.",
+   "rationale": "Text merges can break proofs, so re-gating is mandatory. Deterministic merge first is cheap; the agent rebase covers semantic conflicts.",
+   "alternatives": "Lock the files during runs (bad UX); always refuse on any change (frustrating)."
+  },
+  {
+   "decision": "Mechanical verification gate (enforced by the extension)",
+   "recommendation": "G0 lint (text): changed files ⊆ allowed. Deny set_option debug.*, maxHeartbeats 0, run_cmd/run_elab/run_meta/#eval/#exit, elab/macro/macro_rules/syntax/notation, initialize/builtin_initialize, @[extern]/@[implemented_by]/@[csimp], unsafe/partial, native_decide/decide +native/bv_decide, imports outside {Init, Std, own modules}, and autoImplicit true. Enforce autoImplicit=false via the user-owned lakefile leanOptions.\nG1: sandboxed lake build with zero errors; sorry only on formalized-not-proved nodes.\nG2: `lake env leanchecker <Root>` (kernel replay; catches environment hacking).\nG3: Audit (Appendix: tools/Audit.lean). Prop axioms ↔ approved ASSUMPTION nodes. Vocabulary must be sort-former/symbol/symbol-std. Reject nonsignature/private/unsafe/_native.native_decide axioms. For each proved node: assumptions_used ⊆ allowed, no sorryAx, foreign axioms ⊆ standard 3. Import untrusted modules with loadExts:=false.\nG4: `lake comparator --challenge-from-export .telelean/frozen/<run>.ndjson` with a generated comparator.json {challenge_module, solution_module, theorem_names: [target decls], permitted_axioms: [standard 3 + vocabulary axioms + SELECTED approved assumption axioms]}.\nG5 markup policy: valid; ids unique/stable; no deletions; NL fields byte-identical; type change only GOAL->DERIVATION when proved; agent nodes origin:agent; agent ASSUMPTIONs status:proposed; frozen decl names unchanged; each Prop axiom attached to one ASSUMPTION block; each statement-path definition has a DEFINITION node.\nG6 non-blocking flags: proved from zero assumptions; unused selected assumptions; new definitions on statement paths; trivial statement shapes; consistency status certified/unknown/refuted; back-translation mismatch (advisory).",
+   "rationale": "Each layer was exercised against a real exploit: G2 skipKernelTC; G3 native_decide aux axioms, sorry, private axioms, macro axioms; G4 statement/assumption tampering and smuggled axioms; G6 trivialization. Total cost on the toy model is a few seconds.",
+   "alternatives": "lake check as the gate (148 s, rejects all custom axioms); #print axioms text parsing (namespace-relative, fooled by environment hacks); trusting lean-lsp-mcp lean_verify (advisory source scan)."
+  },
+  {
+   "decision": "Modeling convention for nodes in Lean",
+   "recommendation": "Vocabulary (sorts, constants, predicates, functions) and ASSUMPTIONs are global `axiom`s. GOALs and DERIVATIONs are `theorem`s. A formalized-but-unproven GOAL is `theorem ... := by sorry` (by the user's own semantics, sorry means 'we have a representation, not yet inhabited'). NL-only nodes stay comment-only. User concepts are uninterpreted vocabulary. Every connection between concepts is an ASSUMPTION or a proved DERIVATION. Any def/abbrev/structure on a goal or assumption statement path becomes a DEFINITION node requiring sign-off. Use namespace Telelean.Model (or per project) and stable decl names.",
+   "rationale": "collectAxioms then gives each result's exact assumption set (kernel-derived dependency edges). comparator's permitted_axioms encodes the selection directly. opaque cannot express constants of uninterpreted sorts (verified). Definitions are conservative but can silently fix meaning or trivialize goals (verified).",
+   "alternatives": "Assumptions as variables or a `structure World` (local consistency, but verbose statements and lost assumption=axiom correspondence). `def goal_stmt : Prop` for unproven goals (no sorry warnings, but comparator needs a theorem to compare)."
+  },
+  {
+   "decision": "Formalization-gap mitigations (UI + protocol)",
+   "recommendation": "- Two-phase protocol with a blocking sign-off and statement freeze.\n- Side-by-side view: user NL | pretty-printed formal statement (hover shows vocabulary) | a deterministic Expr->English skeleton rendering of quantifiers and connectives, which cannot hallucinate | an INDEPENDENT back-translation from a fresh, tool-less session that never sees the user's NL or docstrings, only the Lean statement plus vocabulary names and types.\n- An optional non-binding LLM judge highlights divergences.\n- Per-node sign-off stored as formal_ok: <hash of the elaborated statement, toolchain-tagged>, auto-invalidated on change; the frozen NDJSON is the authoritative artifact.\n- Request sign-off only for user nodes, new DEFINITIONs and proposed ASSUMPTIONs, to limit fatigue.\n- v2: a full roundtrip that re-formalizes the back-translation and proves equivalence in Lean.",
+   "rationale": "Kernel acceptance says nothing about meaning (literature: Faithfulness Gap; FormalRx). Independence prevents the back-translator from parroting the NL. Hash-bound sign-offs make staleness mechanical.",
+   "alternatives": "Trust the agent's own explanation of its formalization (circular); require reading raw Lean (contradicts the spec's 'natural language first')."
+  },
+  {
+   "decision": "Consistency and insufficiency certificates (Ramsey sentences)",
+   "recommendation": "Ship the generator (tools/Ramsey.lean prototype). The extension generates the read-only statement `∃ vocabulary, A1 ∧ ... ∧ An` (consistency) or `... ∧ ¬G` (independence: G does not follow from these assumptions); the agent only fills the proof. Accept a certificate if its axioms ⊆ {propext, Classical.choice, Quot.sound} (audit, or comparator with those three permitted) and G0-G2 pass. Render the witness in English ('imagine good addition is true of everything and nobody appears in any game'). Use it for Check-consistency (v1.5) and attach it to insufficient-status reports. For inconsistency, accept a proof of False and display its axiom set as the conflict set.",
+   "rationale": "This turns 'your assumptions are insufficient/consistent' from an LLM opinion into a kernel-checked fact. Verified on Cynder: the user's three assumptions provably do not entail the goal.",
+   "alternatives": "LLM-asserted insufficiency only (unverifiable); finite model search tools (Nitpick-like; not available in Lean core)."
+  },
+  {
+   "decision": "Failure modes",
+   "recommendation": "- Insufficient: never add axioms (G3/G4 enforce this). finish(status:'insufficient') with an everyday-language gap explanation, candidate ASSUMPTIONs and, if possible, an independence certificate. Candidates appear as dashed ghost nodes; 'Adopt' requires the user to type their own rationale (an LLM hint may be shown greyed out but cannot be submitted unedited). Also offer 'reformulate the goal'.\n- Inconsistent: highlight the conflict set (often a mis-formalized generic that drops a guard); goals proved from an inconsistent set are shown as vacuously proved.\n- Lean errors: bounded self-repair (25 check_lean calls, maxTurns 80, stall detection after 3 identical first errors), then status failed with partial state and last diagnostics, plus a 'continue with more budget' (resume) option.\n- Timeouts: 120 s per check with process-group kill; keep default maxHeartbeats (lint forbids 0); wall-clock cap via AbortController.\n- Cancellation: abort/interrupt, kill Lean, keep the shadow and transcript, offer Resume or Discard.\n- Cost/usage: live turns and tool calls, modelUsage tokens, total_cost_usd labelled an estimate, rate_limit_event utilization and resetsAt, warning on allowed_warning; maxBudgetUsd as a hard stop in API-key mode.",
+   "rationale": "Assumptions are the user's beliefs, so their 'why' must be theirs. Caps prevent runaway subscription usage. Nothing reaches the real workspace on failure.",
+   "alternatives": "Auto-adding 'obvious' premises: rejected; it violates the spec's DERIVATION definition and the trust model."
+  },
+  {
+   "decision": "Feedback loop and partial acceptance",
+   "recommendation": "- Reject with feedback: keep the shadow and send the feedback into the SAME session (streaming input with q.streamInput while the panel is open; after restarts `resume: sessionId` with the same cwd). First rebase the shadow onto any real-workspace changes and tell the agent the diff.\n- Alternatives: `resume: sessionId, forkSession: true` plus a COPY of the shadow (forks branch conversation, not files); compare proposals side by side.\n- Partial acceptance in v1: all-or-nothing, plus 'accept but drop X' as feedback.\n- v2: node-level partial accept. Compute the dependency closure from audit/getUsedConstants, assemble declaration-aligned blocks (markup block + declaration as a unit), and re-run the full gate. A proof that depends on an unapproved assumption cannot be partially accepted by construction.",
+   "rationale": "Resuming preserves the agent's context and is cheaper than restarting. Lean's cross-declaration dependencies make naive text-level partial application unsafe.",
+   "alternatives": "Fresh session per feedback (loses context); text-hunk-level partial accept (breaks compilation)."
+  },
+  {
+   "decision": "System prompt skeleton (formalize-and-prove, Claude Opus 5.5 via Claude Code)",
+   "recommendation": "You are the formalization agent inside telelean, a VS Code extension in which a person maps their mental model of a subject as ASSUMPTIONs (their own axioms, each with their reason for believing it), DERIVATIONs (things that follow purely from assumptions) and GOALs (things they want to prove). Each node lives in a Lean 4 file as a `/- @@ telelean ... -/` markup block, optionally followed by Lean code. You work in an isolated copy of their workspace; nothing you write reaches them unless they accept your proposal, and a deterministic checker (Lean kernel, axiom audit, statement comparison) reviews everything you produce. Your job: turn their words into faithful Lean, and prove what can be proved from exactly the assumptions they selected.\n\nWhat matters most, and why\n- Their words are the specification. Never edit an existing node's natural_name or rationale; the person judges your Lean against those words.\n- Faithfulness beats provability. A proof of the wrong statement is worse than no proof. Prefer uninterpreted vocabulary (`axiom Character : Type`, `axiom HasDarkPast : Character → Prop`) and put every connection between concepts into an assumption or a proved derivation, never into a `def` body. A definition silently decides what a word means.\n- Only the person adds beliefs. Any premise you need beyond the selected assumptions goes through ask_user (if it already exists in the model) or propose_assumption (if new). Never declare a new Prop-valued axiom yourself; the checker rejects it.\n- Ask when an answer would change what their statements mean or which goals follow: unstated bridging premises, generic or modal sentences ('X cannot have Y': strict rule? norm? tendency?), quantifier scope, definite descriptions, level of detail ('model characters as entities?'). Decide yourself, and say so, for Lean engineering choices or when a recorded decision covers it. At most 3 questions per batch, each with 2-4 plain-language options, a recommended option, and the affected nodes; mark durable modeling choices persist=decision.\n- No shortcuts: no sorry in anything claimed as proved, no native_decide, no set_option debug.*, no run_cmd/#eval/macro/elab/initialize, no new imports, no edits to lakefile/toolchain/manifest. They are rejected anyway.\n\nWorkflow\n1. Read the context bundle and relevant files; reuse existing vocabulary and decisions.\n2. Formalize: write vocabulary and statements (assumptions as `axiom`, goals and derivations as `theorem ... := by sorry`) with markup blocks, run check_lean, call propose_formalization and wait. Do not prove before approval; approved statements are frozen and compared against your final theorems.\n3. Prove: replace the sorrys, iterating with check_lean, using only the selected assumptions.\n4. If the goal does not follow, explain the gap in everyday language, propose the missing assumption(s), and when possible build a countermodel with certify. If the assumptions contradict each other, show which (a proof of False and the assumptions it uses).\n5. Call finish with a short plain-language summary, unused assumptions, and every modeling decision you made.\n\nMarkup for each new declaration (agent-created nodes: origin: agent; new assumptions: status: proposed):\n/-\n@@ telelean\nid: <keep existing ids; leave empty for new ones>\ntype: ASSUMPTION | DERIVATION | GOAL   (or kind: VOCABULARY | DEFINITION)\nnatural_name: \"<plain-language statement>\"\norigin: agent\n-/\n\n[SYSTEM_PROMPT_DYNAMIC_BOUNDARY, then the per-project context: root module, target file, namespace and naming conventions, DECISION records, budgets]",
+   "rationale": "It is concise and gives reasons for each rule (newer Claude models generalize from intent better than from long rule lists). It encodes the trust invariants as working norms but does not rely on them, since the gate enforces everything.",
+   "alternatives": "Preset claude_code + append (more generic coding guidance, git instructions and dynamic sections that are irrelevant here; larger prompt)."
+  },
+  {
+   "decision": "lean-lsp-mcp vs a custom check tool",
+   "recommendation": "v1: custom check_lean (sandboxed lake build + `lake lean <file> -- --json` + Audit). It is the same code path as the gate, with no Python dependency, about 0.6 s per file on small models, and unsolved goals appear in error messages. v2: add goal-at-position introspection, either by running lean-lsp-mcp 0.32.0 inside bwrap (pre-installed environment; LEAN_PROJECT_PATH=<shadow>; web search tools disabled via LEAN_MCP_DISABLED_TOOLS) or with a small custom goal_at tool on `lean --server`. Treat lean_verify as advisory only.",
+   "rationale": "lean-lsp-mcp runs a long-lived `lake serve` that elaborates agent code outside our sandbox unless the whole server is wrapped. It needs uv (not installed). Its search tools target Mathlib and external web services.",
+   "alternatives": "lean-lsp-mcp as the primary check (richer interaction, weaker isolation); the Lean REPL (leanprover-community/repl; extra build per toolchain)."
+  },
+  {
+   "decision": "Auth path for 'use my Claude subscription'",
+   "recommendation": "Drive the UNMODIFIED Claude Code binary (bundled with the Agent SDK, or the one the user's VS Code extension installed, via pathToClaudeCodeExecutable). The user signs in through Anthropic's own flow; telelean never reads, copies or transmits credentials (never touch ~/.claude/.credentials.json) and never uses --bare. Offer an API-key mode as an alternative. Present the policy text to the user, who decides: personal use is the configuration the legal page explicitly does not prohibit; distributing telelean would require per-user API keys or per-user sign-in into the unmodified binary.",
+   "rationale": "Quoted policy: developers may not offer claude.ai login or intermediate credentials, but an end user may sign in to the unmodified Claude Code binary with their own subscription; plan limits assume ordinary individual use of Claude Code and the Agent SDK.",
+   "alternatives": "API key only (no policy ambiguity, but not what the user asked for)."
+  }
+ ],
+ "risks": [
+  "The formalization gap cannot be closed mechanically. Users may rubber-stamp sign-offs ('sign-off fatigue'); mitigate with targeted sign-offs, skeleton renderings, independent back-translations, hash-bound staleness and vacuity flags.",
+  "Global axioms make an inconsistent assumption set poison every result. Mitigate with per-theorem axiom sets (always shown), consistency certificates and conflict-set display.",
+  "Building agent-written Lean is arbitrary code execution (verified: writes outside the project, reads $HOME, uses the network). bwrap is the boundary and is Linux-only; without it telelean must fail closed. The lint is only defense in depth.",
+  "lake comparator / lake check / --paranoid are brand new (Lean 4.35.0, released 2026-10-12). Flags and message texts may change, so pin the toolchain and rely on exit codes (0/1/2). comparator requires lake-manifest.json and a working bwrap.",
+  "lake check is far too slow for interactive use (148 s on a toy model) and cannot permit custom axioms; do not build the gate on it.",
+  "collectAxioms-based auditing is fooled by environment hacking (verified). It must always be paired with leanchecker (G2) and/or comparator (G4).",
+  "The audit's signature classification is a conservative syntactic criterion: dependent vocabulary may be rejected as 'nonsignature'. The Ramsey generator refuses inductive types or structures over vocabulary (implemented, not exercised).",
+  "Policy ambiguity around subscription (OAuth) use through the Agent SDK. The documented position allows an end user signing into the unmodified Claude Code binary and forbids third-party credential intermediation; distributing telelean changes the analysis.",
+  "The `_meta['claude/endTurn']` semantics are inferred from type-doc comments plus minified CLI strings and could change. Keep a Stop-hook fallback that requires finish.",
+  "AskUserQuestion is denied in dontAsk mode and unavailable in subagents. If the design later switches to the built-in tool, permissionMode must change, which weakens the lockdown.",
+  "Opus 5.5 defaults to effort 'medium', so effort must be set explicitly. Long agent turns need streaming UX, caps and cancellation.",
+  "Disk growth: each run keeps a shadow copy (cheap with reflink, but not on ext4 without reflink support). A retention policy is needed.",
+  "Agent-written natural_name text for new support or derivation nodes can misdescribe kernel-true facts. Label it origin:agent and review it lightly.",
+  "Session transcripts are stored per shadow cwd under ~/.claude/projects. Deleting shadows does not delete transcripts; resuming needs the transcript plus the shadow."
+ ],
+ "report_path": "/tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r5-agent-protocol/REPORT.md (NOT WRITTEN: the harness blocks subagents from writing report files; the full report content is embedded in this structured output. Runnable prototypes and evidence live in /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r5-agent-protocol/lean-exp/ : tools/Audit.lean, tools/Ramsey.lean, model/Model/Cynder.lean, model/CertConsistency.lean, model/CertIndependence.lean, exploits/X/*.lean, comparator-{ok,bad,axmod,stmt}/, sbx-shadow/)",
+ "software_needed": [
+  {
+   "name": "Node.js + npm",
+   "purpose": "Build and bundle the VS Code extension and the Agent SDK host code",
+   "required": true,
+   "version": ">=18.14 (22 LTS suggested)",
+   "install_method": "Not installed; e.g. NodeSource apt repository or nvm (user approval required)"
+  },
+  {
+   "name": "@anthropic-ai/claude-agent-sdk",
+   "purpose": "Agent harness: query(), in-process MCP tools, hooks, sessions/resume/fork, usage reporting; drives the unmodified Claude Code binary",
+   "required": true,
+   "version": "0.3.316 (bundles Claude Code 2.1.316)",
+   "install_method": "npm install @anthropic-ai/claude-agent-sdk@0.3.316 (platform binary via optional dependency @anthropic-ai/claude-agent-sdk-linux-x64)"
+  },
+  {
+   "name": "zod",
+   "purpose": "Peer dependency of the Agent SDK; tool input schemas",
+   "required": true,
+   "version": "^4.0.0",
+   "install_method": "npm install zod@^4"
+  },
+  {
+   "name": "@anthropic-ai/sdk",
+   "purpose": "Peer dependency of the Agent SDK",
+   "required": true,
+   "version": ">=0.93.0",
+   "install_method": "npm install @anthropic-ai/sdk"
+  },
+  {
+   "name": "@modelcontextprotocol/sdk",
+   "purpose": "Peer dependency of the Agent SDK (MCP types such as CallToolResult)",
+   "required": true,
+   "version": "^1.29.0",
+   "install_method": "npm install @modelcontextprotocol/sdk@^1.29"
+  },
+  {
+   "name": "Lean 4 toolchain",
+   "purpose": "Kernel, lake build, lake lean --json, leanchecker, leanexport, lake comparator, optional --paranoid external kernels",
+   "required": true,
+   "version": "leanprover/lean4:v4.35.0 (Lake 5.0.0)",
+   "install_method": "Already installed via elan; pin lean-toolchain to v4.35.0"
+  },
+  {
+   "name": "bubblewrap (bwrap)",
+   "purpose": "Sandbox for every Lean build/check on agent-written code; required by lake comparator/check",
+   "required": true,
+   "version": "0.9.0",
+   "install_method": "Already installed at /usr/bin/bwrap (works unprivileged here)"
+  },
+  {
+   "name": "git",
+   "purpose": "Shadow-workspace diffs (git diff base) and 3-way merges (git merge-file) on accept",
+   "required": true,
+   "version": "2.43",
+   "install_method": "Already installed"
+  },
+  {
+   "name": "Claude Code CLI",
+   "purpose": "The unmodified binary the SDK drives; the user's subscription login lives there",
+   "required": true,
+   "version": "2.1.314 (VS Code extension) / 2.1.316 (bundled with SDK 0.3.316)",
+   "install_method": "Already installed via the anthropic.claude-code VS Code extension; or the SDK's optional platform package"
+  },
+  {
+   "name": "uv + lean-lsp-mcp",
+   "purpose": "Optional v2 goal-state introspection tools (lean_goal, lean_multi_attempt, lean_verify), run sandboxed",
+   "required": false,
+   "version": "lean-lsp-mcp 0.32.0 (Python >=3.10)",
+   "install_method": "Not installed; uv from astral.sh, then uvx lean-lsp-mcp (user approval required)"
+  }
+ ],
+ "design_decisions_for_user": [
+  {
+   "question": "How should ASSUMPTIONs and vocabulary be represented in Lean?",
+   "why_it_matters": "This determines whether dependency tracking is kernel-derived for free and whether comparator can enforce 'only these assumptions'. It also decides how an inconsistent set affects the model.",
+   "recommended": "Global `axiom`s for vocabulary and ASSUMPTIONs; theorems for GOALs and DERIVATIONs (verified with collectAxioms and lake comparator).",
+   "options": "(a) global axioms; (b) explicit hypotheses via variables or a `structure World` (local consistency, verbose, assumption usage must be inferred)"
+  },
+  {
+   "question": "One-shot or two-phase main button (formalize -> sign-off -> prove)?",
+   "why_it_matters": "With a frozen, signed-off statement the agent cannot reshape the goal to make the proof easy. One-shot is faster but reviews a fait accompli.",
+   "recommended": "Two-phase within one agent session, with a blocking propose_formalization checkpoint and statement freeze via lake comparator --challenge-from-export.",
+   "options": "(a) two-phase checkpoint; (b) one-shot with sign-off at proposal time"
+  },
+  {
+   "question": "Should the text-box switch get a fourth 'Instruct' (unmarked) position for free-form agent requests?",
+   "why_it_matters": "The spec's prompts 'should be able to be marked', which implies unmarked prompts exist. Refactoring requests need a home that does not create nodes.",
+   "recommended": "Yes: ASSUMPTION | DERIVATION | GOAL | Instruct.",
+   "options": "(a) 4 positions; (b) 3 positions + a separate command palette entry for instructions"
+  },
+  {
+   "question": "Should adding a node call the LLM at all?",
+   "why_it_matters": "The NL is the specification; paraphrasing introduces drift before formalization even starts. The spec walkthrough generates no Lean on add.",
+   "recommended": "No LLM on add; natural_name is the user's verbatim text; rationale is mandatory for ASSUMPTIONs; optional off-by-default lint suggestions only.",
+   "options": "(a) deterministic add; (b) LLM-cleaned wording shown as a suggestion; (c) LLM formalizes immediately"
+  },
+  {
+   "question": "How should a GOAL that has a formal statement but no proof be represented?",
+   "why_it_matters": "The user rejected sorry for nodes WITHOUT Lean code, but by their own description sorry fits 'representation exists but is not inhabited'. comparator needs a theorem to compare against.",
+   "recommended": "`theorem name : stmt := by sorry` (UI badge 'formalized, unproven'); comment-only blocks for NL-only nodes.",
+   "options": "(a) theorem with sorry; (b) `def name_stmt : Prop := ...` plus a separate theorem later"
+  },
+  {
+   "question": "Where should answered pragmatic choices (DECISIONs) live?",
+   "why_it_matters": "They keep future runs consistent ('characters are entities', 'generics read strictly'). Storage affects whether everything stays in the Lean workspace.",
+   "recommended": "As `@@ telelean` DECISION comment blocks in a dedicated Lean file, shown in a 'Modeling decisions' drawer, revocable (dependents become stale).",
+   "options": "(a) Lean comment blocks; (b) JSON sidecar .telelean/decisions.json; (c) not persisted"
+  },
+  {
+   "question": "Strict or lenient meaning of the main button's selection?",
+   "why_it_matters": "'I assert these assumptions must be enough' suggests strict: a proof using other existing assumptions would not test the user's assertion.",
+   "recommended": "Strict: comparator permitted_axioms = selected assumptions + vocabulary + standard. If more are needed, the agent asks 'add X to the selection?'.",
+   "options": "(a) strict; (b) selected + all approved assumptions"
+  },
+  {
+   "question": "Should a proven GOAL be auto-reclassified to DERIVATION?",
+   "why_it_matters": "The spec says goals move to derivations once proven, but reclassification changes the user's map.",
+   "recommended": "Propose GOAL->DERIVATION as part of the diff (gate-verified); the user accepts it with the proposal.",
+   "options": "(a) proposed in the diff; (b) automatic; (c) manual only"
+  },
+  {
+   "question": "Which auth mode should be the default?",
+   "why_it_matters": "The user wants their subscription. The policy allows an end user signing into the unmodified Claude Code binary and forbids third-party credential intermediation; --bare breaks OAuth.",
+   "recommended": "Default: the user's own sign-in to the unmodified Claude Code binary driven by the Agent SDK (personal use; no credential access). Offer API-key mode as an alternative.",
+   "options": "(a) subscription via the unmodified binary; (b) API key; (c) both selectable"
+  },
+  {
+   "question": "Which model performs the independent back-translation?",
+   "why_it_matters": "Independence from the formalizer reduces correlated misreadings; cost and latency differ.",
+   "recommended": "Claude Opus 5.5 in a fresh, tool-less session that never sees the user's NL (independence comes from context isolation); a different model is optional.",
+   "options": "(a) same model, fresh context; (b) a different Claude model; (c) deterministic skeleton rendering only"
+  },
+  {
+   "question": "What happens if the bwrap sandbox is unavailable?",
+   "why_it_matters": "Agent Lean can read $HOME (including ~/.claude), write anywhere and use the network at build time.",
+   "recommended": "Fail closed: refuse agent runs unless the user explicitly opts into an 'unsandboxed (unsafe)' mode per session.",
+   "options": "(a) fail closed; (b) warn and continue; (c) lint-only protection"
+  },
+  {
+   "question": "Should v1 support partial acceptance of proposals?",
+   "why_it_matters": "Lean dependencies make text-level partial application unsafe; node-level partial acceptance needs a dependency closure plus a re-gate.",
+   "recommended": "v1 all-or-nothing plus 'accept but drop X' via feedback; v2 node-level closure-based partial accept.",
+   "options": "(a) all-or-nothing in v1; (b) node-level in v1"
+  }
+ ],
+ "open_questions": [
+  "May DERIVATIONs depend on unproven GOALs? If yes, show them as 'conditional' (they transitively depend on sorryAx through the goal).",
+  "Multi-target semantics: can one button press prove several goals at once, and how are the permitted axioms scoped per goal?",
+  "File layout: which file receives new vocabulary and declarations, and how to keep declare-before-use ordering as the model grows (interacts with the markup/LSP research topic).",
+  "Should DECISION records and VOCABULARY/DEFINITION support nodes appear as graph nodes (a fourth section?) or only in drawers and overlays?",
+  "Exact statement-hash scheme for formal_ok (pp.all text vs export fragment) and how to migrate sign-offs across Lean toolchain upgrades.",
+  "If the user later adds Mathlib: check times, the shadow-copy strategy (symlinked packages verified with a local git dependency only) and the import allowlist need re-evaluation.",
+  "Does `settingSources: []` keep subscription OAuth working in SDK 0.3.316? Inferred yes (credentials are not settings), but not executed, to avoid spending the user's quota.",
+  "Timing and behavior of `lake comparator --paranoid` (external kernels) on realistic models: not measured.",
+  "Should the back-translation see vocabulary docstrings? They improve readability but are written by the formalizer and may parrot the user's NL (currently recommended: names and types only)."
+ ]
+}

@@ -1,0 +1,228 @@
+{
+  "name": "telelean",
+  "displayName": "telelean",
+  "description": "Your mental model as a board of ASSUMPTION / DERIVATION / GOAL cards, backed by Lean 4 (personal prototype)",
+  "version": "0.0.1",
+  "publisher": "telelean",
+  "private": true,
+  "license": "UNLICENSED",
+  "engines": {
+    "vscode": "^1.140.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "workspaceContains:**/.telelean/config.json",
+    "onWebviewPanel:telelean.board"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "telelean builds and checks the model folder with Lean, which can run code while it compiles."
+    },
+    "virtualWorkspaces": false
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "telelean.openBoard",
+        "title": "Open Board",
+        "category": "telelean"
+      },
+      {
+        "command": "telelean.initializeModel",
+        "title": "Initialize Model Here",
+        "category": "telelean"
+      },
+      {
+        "command": "telelean.refresh",
+        "title": "Refresh Lean Check",
+        "category": "telelean",
+        "icon": "$(refresh)"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "telelean.initializeModel",
+          "when": "explorerResourceIsFolder",
+          "group": "telelean@1"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "telelean",
+      "properties": {
+        "telelean.memory.capGiB": {
+          "type": "number",
+          "default": 4,
+          "minimum": 1,
+          "maximum": 64,
+          "scope": "machine-overridable",
+          "markdownDescription": "Memory cap in GiB for each sandboxed Lean build and check (systemd `MemoryMax`, no swap). Takes effect after a window reload (Developer: Reload Window)."
+        },
+        "telelean.memory.minAvailableGiB": {
+          "type": "number",
+          "default": 2,
+          "minimum": 0,
+          "maximum": 64,
+          "scope": "machine-overridable",
+          "markdownDescription": "Lean refreshes pause (\"paused: low memory\") while the system's available memory (`MemAvailable`) is below this many GiB. Takes effect after a window reload (Developer: Reload Window)."
+        },
+        "telelean.refresh.enabled": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "markdownDescription": "Check the model with Lean (`lake build` plus a generated check file) while its board is open. Off: the board runs in syntactic mode. Takes effect after a window reload (Developer: Reload Window)."
+        },
+        "telelean.refresh.debounceMs": {
+          "type": "integer",
+          "default": 750,
+          "minimum": 0,
+          "maximum": 60000,
+          "scope": "resource",
+          "markdownDescription": "How long telelean waits after a save (or its own edit) before it re-checks the model with Lean, in milliseconds. Takes effect after a window reload (Developer: Reload Window)."
+        },
+        "telelean.git.snapshotRefs": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "markdownDescription": "Record every change telelean makes as a private git ref (`refs/telelean/…`) in the model folder's own repository: the board's History dropdown, Revert and the storage counter. Never touches your branches, staging area or hooks. Takes effect after a window reload (Developer: Reload Window)."
+        },
+        "telelean.git.path": {
+          "type": "string",
+          "default": "git",
+          "scope": "machine",
+          "markdownDescription": "The `git` executable telelean uses for history snapshots (default: `git` on the PATH). Takes effect after a window reload (Developer: Reload Window)."
+        },
+        "telelean.model": {
+          "type": "string",
+          "default": "claude-opus-5-5",
+          "scope": "resource",
+          "markdownDescription": "The Claude model a \"These suffice\" run uses (passed to your Claude Code as `--model`, e.g. `claude-opus-5-5` or an alias such as `opus`). Takes effect after a window reload (Developer: Reload Window)."
+        },
+        "telelean.effort": {
+          "type": "string",
+          "default": "high",
+          "enum": ["low", "medium", "high", "xhigh", "max"],
+          "scope": "resource",
+          "markdownDescription": "How much effort Claude spends per response in a run (Claude Code's `--effort`). Takes effect after a window reload (Developer: Reload Window)."
+        },
+        "telelean.claude.path": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "markdownDescription": "The Claude Code executable for runs. Empty: telelean finds it (the VS Code Claude Code extension's binary, then `claude` on the PATH, then `~/.local/bin/claude`). When set it must work: telelean does not fall back to another one. Version 2.1.295 or newer. Takes effect after a window reload (Developer: Reload Window)."
+        },
+        "telelean.run.maxTurns": {
+          "type": "integer",
+          "default": 80,
+          "minimum": 1,
+          "maximum": 1000,
+          "scope": "resource",
+          "markdownDescription": "Most model responses Claude may use in one round of a run (the first round, each Feedback, each adopted suggestion). Takes effect after a window reload (Developer: Reload Window)."
+        },
+        "telelean.run.maxChecks": {
+          "type": "integer",
+          "default": 25,
+          "minimum": 1,
+          "maximum": 500,
+          "scope": "resource",
+          "markdownDescription": "Most Lean checks Claude may ask for in one round of a run (`check_lean`, `freeze_statements` and each suggested premise count one). Takes effect after a window reload (Developer: Reload Window)."
+        },
+        "telelean.run.maxAgentMinutes": {
+          "type": "integer",
+          "default": 20,
+          "minimum": 1,
+          "maximum": 240,
+          "scope": "resource",
+          "markdownDescription": "Most minutes Claude may work in one round of a run; the time it waits for your answers does not count. Takes effect after a window reload (Developer: Reload Window)."
+        },
+        "telelean.run.leanJobSeconds": {
+          "type": "integer",
+          "default": 120,
+          "minimum": 10,
+          "maximum": 1800,
+          "scope": "resource",
+          "markdownDescription": "Time limit in seconds of each Lean job of a run (build, check, comparator). Takes effect after a window reload (Developer: Reload Window)."
+        },
+        "telelean.run.maxGateAttempts": {
+          "type": "integer",
+          "default": 3,
+          "minimum": 1,
+          "maximum": 10,
+          "scope": "resource",
+          "markdownDescription": "How often Claude may claim to be finished in one round before telelean stops it: after each failed check it asks Claude to retry with the exact failure; after the last one it tells you and reverts Claude's working copy to the last state that passed. Takes effect after a window reload (Developer: Reload Window)."
+        },
+        "telelean.run.keepRuns": {
+          "type": "integer",
+          "default": 10,
+          "minimum": 1,
+          "maximum": 100,
+          "scope": "machine",
+          "markdownDescription": "How many finished runs per model folder telelean keeps (their working copies and transcripts, in VS Code's storage for telelean). Takes effect after a window reload (Developer: Reload Window)."
+        },
+        "telelean.run.contextScope": {
+          "type": "string",
+          "default": "subject",
+          "enum": ["subject", "neighbourhood"],
+          "enumDescriptions": [
+            "The first message to Claude lists every card of the subject.",
+            "The first message lists only the cards whose statements the target or a selected premise mentions."
+          ],
+          "scope": "resource",
+          "markdownDescription": "Which other cards of the subject the first message of a run lists as context. Takes effect after a window reload (Developer: Reload Window)."
+        },
+        "telelean.run.reuseLeanBuild": {
+          "type": "boolean",
+          "default": false,
+          "scope": "resource",
+          "markdownDescription": "Start each run's working copy from your model's Lean build (`.lake/build`) instead of building it from scratch, but only when the board's last Lean check succeeded and nothing has written that build since (otherwise the run builds from scratch anyway); Lake still rebuilds whatever in the copy does not match the run's files. Off: every run builds its working copy from scratch, a second or two for a small model. Takes effect after a window reload (Developer: Reload Window)."
+        }
+      }
+    },
+    "colors": [
+      {
+        "id": "telelean.kindAssumption",
+        "description": "Colour of ASSUMPTION cards and of the Assumptions column on the telelean board.",
+        "defaults": { "dark": "#B180D7", "light": "#652D90", "highContrast": "#D2A8FF", "highContrastLight": "#5A1E8C" }
+      },
+      {
+        "id": "telelean.kindDerivation",
+        "description": "Colour of DERIVATION cards and of the Derivations column on the telelean board.",
+        "defaults": { "dark": "#89D185", "light": "#388A34", "highContrast": "#8FE38A", "highContrastLight": "#1F6B1C" }
+      },
+      {
+        "id": "telelean.kindGoal",
+        "description": "Colour of GOAL cards and of the Goals column on the telelean board.",
+        "defaults": { "dark": "#D18616", "light": "#A85F00", "highContrast": "#FFA94D", "highContrastLight": "#8F4A00" }
+      },
+      {
+        "id": "telelean.formalizedAura",
+        "description": "The aura around cards that are formalised in Lean.",
+        "defaults": { "dark": "#3794FF", "light": "#1A85FF", "highContrast": "#6FC3FF", "highContrastLight": "#0F4A85" }
+      },
+      {
+        "id": "telelean.vocabulary",
+        "description": "Colour of the Vocabulary group and its items (types, predicates, constants) on the telelean board.",
+        "defaults": { "dark": "#4EC9B0", "light": "#16825D", "highContrast": "#5EE3C6", "highContrastLight": "#0B5E43" }
+      },
+      {
+        "id": "telelean.highlight",
+        "description": "Highlight of the item an identifier in a card's Lean code refers to (click an identifier to highlight it).",
+        "defaults": { "dark": "#E5C07B", "light": "#9A6700", "highContrast": "#FFE066", "highContrastLight": "#7A5200" }
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:all": "npm --prefix ../webview run build && node scripts/build.mjs",
+    "typecheck": "tsc -p tsconfig.json",
+    "test:unit": "vitest run",
+    "test:smoke": "node scripts/smoke.mjs",
+    "test": "npm run typecheck && npm run build:all && npm run test:unit && npm run test:smoke"
+  }
+}

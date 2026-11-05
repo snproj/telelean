@@ -1,0 +1,33 @@
+/- @@ telelean
+id: g1
+natural_name: "Cynder would not be a good addition to the new Spyro game"
+type: GOAL
+-/
+
+/- outer /- nested -/ still inside the outer comment -/
+
+/-! @@ telelean (module-doc variant, standalone is legal)
+id: a9
+-/
+
+axiom Character : Type
+axiom Cynder : Character
+axiom hasDarkPast : Character → Prop
+axiom a1 : hasDarkPast Cynder
+opaque isCharacter : Nat → Prop
+structure CynderS where
+  dummy : Nat
+def goalStmt : Prop := hasDarkPast Cynder
+theorem goalProof : goalStmt := a1
+#print axioms goalProof
+theorem usesOpaque : isCharacter 0 → isCharacter 0 := fun h => h
+#print axioms usesOpaque
+theorem usesStruct : CynderS → Nat := fun c => c.dummy
+#print axioms usesStruct
+theorem s : 1 + 1 = 2 := by sorry
+#print axioms s
+theorem nd : 10 < 20 := by native_decide
+#print axioms nd
+axiom bad1 : hasDarkPast Cynder → False
+theorem anything : (0 : Nat) = 1 := absurd a1 bad1
+#print axioms anything

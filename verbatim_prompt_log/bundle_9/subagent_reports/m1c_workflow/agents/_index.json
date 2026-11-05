@@ -1,0 +1,51 @@
+[
+ {
+  "label": "close-fix-1",
+  "agentId": "a756f55e72563ff32",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Edit",
+   "ToolSearch",
+   "TaskStop",
+   "Write",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "close-verify-1",
+  "agentId": "af0fd267f5802e42e",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Write",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "close-fix-2",
+  "agentId": "af5fcae4d1145fca4",
+  "toolsUsed": [
+   "Bash",
+   "Edit",
+   "ToolSearch",
+   "Monitor",
+   "Write",
+   "Read",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "close-verify-2",
+  "agentId": "a5ea43cd070f8625b",
+  "toolsUsed": [
+   "Bash",
+   "Write",
+   "Edit",
+   "Read",
+   "ToolSearch",
+   "Monitor",
+   "StructuredOutput"
+  ]
+ }
+]

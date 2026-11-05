@@ -1,0 +1,29 @@
+import Lean
+open Lean Elab Command
+
+/-! Escape 1: a metaprogram that adds an ill-typed theorem directly. -/
+elab "add_bad " n:ident : command => liftCoreM do
+  addDecl (.thmDecl { name := n.getId, levelParams := [], type := mkConst ``False,
+                      value := mkConst ``True.intro })
+
+-- (a) without skipKernelTC: kernel rejects
+add_bad bad1
+
+-- (b) with skipKernelTC: accepted silently
+set_option debug.skipKernelTC true in
+add_bad bad2
+
+#print axioms bad2
+theorem everything : 1 = 2 := absurd bad2 id
+#print axioms everything
+
+/-! Escape 2: debug.byAsSorry / proofAsSorry turn proofs into sorry -/
+set_option debug.byAsSorry true in
+theorem bas : 1 = 2 := by simp
+#print axioms bas
+set_option debug.proofAsSorry true in
+theorem pas : 1 = 2 := rfl
+#print axioms pas
+
+/-! Escape 3: build-time IO (arbitrary code execution while elaborating) -/
+#eval IO.FS.writeFile "pwned_by_eval.txt" "written at elaboration time\n"

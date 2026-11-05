@@ -1,0 +1,28 @@
+set_option autoImplicit false
+/-! Fix candidate: no data axioms; constants are `opaque`, existence is a Prop ASSUMPTION -/
+namespace O
+axiom Character : Type                                   -- sort former (harmless)
+axiom Game : Type
+axiom HasDarkPast : Character → Prop                     -- predicate (harmless)
+axiom IsPG : Game → Prop
+axiom GoodAddition : Character → Game → Prop
+axiom characters_exist : Nonempty Character              -- existence commitment = Prop axiom (selectable)
+axiom games_exist : Nonempty Game
+instance : Nonempty Character := characters_exist
+instance : Nonempty Game := games_exist
+noncomputable opaque cynder : Character
+noncomputable opaque spyro : Character
+noncomputable opaque newSpyro : Game
+axiom cynder_dark : HasDarkPast cynder                   -- A1 (unselected)
+axiom spyro_pg : IsPG newSpyro                           -- A2
+axiom pg_no_dark : ∀ (g : Game) (c : Character), IsPG g → HasDarkPast c → ¬ GoodAddition c g -- A3
+-- the laundering attempt, now with an opaque instead of a data axiom
+structure CynderProfile : Type where
+  dark : HasDarkPast cynder
+instance : Nonempty CynderProfile := ⟨⟨cynder_dark⟩⟩
+noncomputable opaque cynderProfile : CynderProfile
+theorem cynder_not_good : ¬ GoodAddition cynder newSpyro := pg_no_dark _ _ spyro_pg cynderProfile.dark
+#print axioms cynder_not_good
+-- distinct opaque constants are not provably equal (no collapse):
+example : cynder = spyro := rfl
+end O

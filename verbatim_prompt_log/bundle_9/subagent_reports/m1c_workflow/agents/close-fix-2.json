@@ -1,0 +1,80 @@
+{
+ "summary": "I fixed the major item and all five minor items. The only gap is the m1-plan §2 sentence, which is outside the part of that file I may edit. After the fixes I rebuilt everything and re-ran every suite, and all of them pass. The full extension suite (`npm test`) passed 7 runs in a row: two full-suite runs plus a dedicated loop of 5. In every run, the e2e log shows that VS Code's startup toast appeared and was cleared.\n\n**Major: e2e race with VS Code's \"extensions temporarily disabled\" toast**\n- I kept `--disable-extensions`, because m1-plan §10 lists it as part of the test isolation.\n- The harness now handles the toast instead. `test/suite/cdp.ts` has two new helpers. `settleStartupToasts` waits at most 20 s for that toast, then runs `notifications.clearAll`. `clearWorkbenchToasts` runs in a new `setup()` hook before every e2e test.\n- I checked VS Code 1.140's own code: `clearAll` closes every notification without progress, sticky ones included, and removes the toast from the page.\n- The e2e suiteSetup timeout went from 60 s to 90 s to fit the wait.\n\n**Minor: delete e2e test**\n- It now waits until Main.lean and layout.json both show the delete before reading them, and then asserts with readable diffs.\n- The expected layout is built from the layout before the delete, so the test no longer needs earlier tests to have put the card in the layout.\n\n**Minor: another subject's card shown by its raw id**\n- Core's failed `ActionOutcome` has a new optional field `dependentCards: Record<id, DependentCard>`, where `DependentCard` is `{subject, type, naturalName}`.\n- The extension host fills it for `needs-confirmation` answers, looking the ids up in every subject's graph, the board's own subject first.\n- The store passes it into both the delete dialog and the kind-change dependents dialog. They now show another subject's card as its kind letter, its sentence and a muted \"(subject Bayonetta)\". Lemmas without a card still show as Lean names in code font. I checked the Playwright screenshot of the dialog.\n\n**Minor: \"Nothing uses it.\" in the preview**\n- Core's preview text now says \"No card on this board uses it.\" This covers the conditional D→A case and the →Goal case with no dependents, since both are computed from the board's graph alone.\n\n**Minor: docs and wording**\n- Core's delete refusal is now singular for one dependent: \"breaks a declaration that uses it (X), which stops compiling.\"\n- User guide §7: added \"check failed\" to the Lean badge list. It also now explains how the delete dialog shows each dependent, and that the drop-zone text knows only this board's cards.\n- Decisions log: reworded the §12 bullet and added §13 for round 2.\n- m1-plan §14: added six rows for this round.\n\n**Minor: echo check in the file watcher**\n- New non-mutating `SelfWrites.matches()` and a pure helper `isDiskEcho()`, which `registry.ts` now uses. It reads the file once and checks both sources before either forgets. Only the source that matches records the match; if neither matches, both forget.\n\n**New tests**\n- Core:\n  - the singular delete message;\n  - a lemma without a card under a conditional proof: the preview says only \"No card on this board uses it\" and the host asks;\n  - the exact →Goal preview text.\n- Extension:\n  - `dependentCards` in the board session (fake workspace);\n  - a new `dependentCards.test.ts` that uses the real runner workspace and core on a copy of mental_model, with Lean and git off;\n  - `matches()`, plus three `isDiskEcho` cases, including the verifier's exact scenario.\n- Webview:\n  - the store keeps the cards for both dialogs;\n  - the Playwright delete spec now includes another subject's card.",
+ "files_changed": [
+  "/home/zhengyew/telelean/packages/core/src/actions.ts",
+  "/home/zhengyew/telelean/packages/core/src/kindChange.ts",
+  "/home/zhengyew/telelean/packages/core/src/edit/planAction.ts",
+  "/home/zhengyew/telelean/packages/core/test/contracts.test.ts",
+  "/home/zhengyew/telelean/packages/core/test/edit/conditional.test.ts",
+  "/home/zhengyew/telelean/packages/core/test/edit/delete.test.ts",
+  "/home/zhengyew/telelean/packages/extension/src/logic/boardSession.ts",
+  "/home/zhengyew/telelean/packages/extension/src/logic/changeBatcher.ts",
+  "/home/zhengyew/telelean/packages/extension/src/vscode/registry.ts",
+  "/home/zhengyew/telelean/packages/extension/test/suite/cdp.ts",
+  "/home/zhengyew/telelean/packages/extension/test/suite/e2e.test.ts",
+  "/home/zhengyew/telelean/packages/extension/test/unit/boardSession.test.ts",
+  "/home/zhengyew/telelean/packages/extension/test/unit/dependentCards.test.ts (new)",
+  "/home/zhengyew/telelean/packages/extension/test/unit/watchers.test.ts",
+  "/home/zhengyew/telelean/packages/webview/src/dialogs/Dialogs.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/state/store.ts",
+  "/home/zhengyew/telelean/packages/webview/src/styles/board.css",
+  "/home/zhengyew/telelean/packages/webview/test/unit/store.test.ts",
+  "/home/zhengyew/telelean/packages/webview/test/e2e/m1-edits.spec.ts",
+  "/home/zhengyew/telelean/docs/user-guide.md",
+  "/home/zhengyew/telelean/docs/decisions-log.md",
+  "/home/zhengyew/telelean/docs/m1-plan.md (section 14 only)",
+  "Rebuilt outputs (inside assigned paths): /home/zhengyew/telelean/packages/core/dist, /home/zhengyew/telelean/packages/extension/dist (extension.js and dist/webview), /home/zhengyew/telelean/packages/extension/out, /home/zhengyew/telelean/packages/webview/test-results"
+ ],
+ "test_runs": "All runs were in the real repo. Test temp folders, TMPDIR (except for the extension suite), npm logs and npm cache pointed into /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/closing-fixer-r2/; LEAN_NUM_THREADS=4; one suite at a time; my own RAM watchdog was running (minimum MemAvailable 35920 MB).\n\n**Full rebuild and every suite, twice.** Summaries: scratchpad/turn9/closing-fixer-r2/logs/full-1-summary.txt and full-2-summary.txt.\n- Root `npm run build`: exit 0 both times.\n- Core `npm test` (tsc plus vitest): 351 passed, 32 files.\n- Runner: typecheck exit 0; `npm test` 285 passed, 29 files (includes the real-Lean integration tests).\n- Webview `npm test`: typecheck, vite build, 90 unit tests passed (6 files), 49 Playwright tests passed.\n- Extension `npm test`: typecheck, build:all, vitest (102 passed in run 1; 103 passed in 15 files in run 2, after adding dependentCards.test.ts), smoke \"30 passing\", e2e \"13 passing\", \"0 isolation failure(s)\".\n\n**Extension suite 5 times in a row** (logs/extloop-a-summary.txt): runs 1 to 5 all exit 0, each with \"Tests 103 passed (103)\", \"30 passing\", \"13 passing\", \"0 isolation failure(s)\". Each log contains \"[e2e] VS Code's startup toast about --disable-extensions appeared and was cleared\", and the A|D|G test and the delete test passed in each run.\n\n**Total:** 7 of 7 consecutive full extension-suite runs passed (full-1, loop 1-5, full-2).\n\n**Earlier spot runs:** core `npm test` 351 passed; extension typecheck and vitest 102 passed; webview typecheck and vitest 90 passed; dependentCards.test.ts alone 1 passed.",
+ "resolved": [
+  "MAJOR, e2e toast race: the e2e suite now waits at most 20 s for VS Code's sticky, urgent 'All installed extensions are temporarily disabled' toast and clears it with notifications.clearAll, and clears any toast before every test. `--disable-extensions` stays (m1-plan §10). The suiteSetup timeout is now 90 s. Result: 7 of 7 consecutive full extension-suite passes (the 5-run loop plus 2 full runs), and every run logged that the toast appeared and was cleared.",
+  "MINOR, delete e2e test: (a) it waits until both Main.lean and layout.json match core's plan before taking the snapshot, then asserts with readable diffs; (b) the expected layout is built from the layout before the delete, and the precondition that the layout lists the card is gone.",
+  "MINOR, another subject's card shown as its raw id: new core type DependentCard and optional ActionOutcome.dependentCards. The extension host fills it for needs-confirmation answers from every subject's graph. Both dialogs show the card's kind letter, its sentence and '(subject X)'; lemmas stay Lean names. Tests: a board-session unit test, a cross-subject unit test with the real runner workspace and core, a store unit test, a Playwright spec, and a screenshot check. Decisions log §12 is reworded and §13 added.",
+  "MINOR, 'Nothing uses it.' contradicting the host: core's preview now says 'No card on this board uses it.' in both graph-only places (conditional D→A, and →Goal with no dependents). The user guide explains that the preview knows only this board's cards. Tests added.",
+  "MINOR, docs and wording: user guide §7 lists 'check failed'; core's delete refusal is singular for one dependent ('breaks a declaration that uses it (X), which stops compiling'), with a core test. The m1-plan §2 sentence is not done: see open_issues.",
+  "MINOR, file-watcher echo check: new non-mutating SelfWrites.matches() and a pure isDiskEcho() helper. It reads the file once and checks both sources before either forgets; only the matching source records the match, and both forget when neither matches. registry.ts uses it. Unit tests include the verifier's scenario (user save U, then telelean write T1: both events are echoes)."
+ ],
+ "open_issues": [
+  "docs/m1-plan.md §2 still lacks the outside-write refresh trigger, because I may edit only §14 of that file. Suggested edit for whoever may change §2: on the '**Refresh triggers**' line (about line 101), after 'lakefile/toolchain changed;' add 'a Lean file written by another program (file watcher; echoes of telelean's own writes and of saves already handled, and changes under an editor with unsaved typing, are ignored);'. Then the note '(Section 2's list itself is not updated.)' in the §14 row can go.",
+  "No real-VS-Code test shows another subject's card in the delete dialog. The parts are tested separately: the host with the real runner workspace and core (dependentCards.test.ts), the store, and the dialog rendering in Playwright. The VS Code e2e test still uses a single subject.",
+  "The 20 s wait in the e2e setup matches VS Code 1.140's toast text ('temporarily disabled'). If a future VS Code changes that text, the suite waits the 20 s and still clears any toast before each test; it gets slower, not red."
+ ],
+ "minor_decisions": [
+  {
+   "decision": "Kept `--disable-extensions` in .vscode-test.mjs and fixed the race in the e2e harness (wait for the startup toast, then clear it; clear any toast before each test) instead of removing the flag.",
+   "rationale": "m1-plan §10 lists the flag as part of the test isolation, and it keeps installed extensions out even if the isolated extensions folder were ever wrong. Do-not-disturb mode cannot help: the toast has priority 3 (urgent). notifications.clearAll does close it (checked in VS Code 1.140's own code)."
+  },
+  {
+   "decision": "`dependentCards` is a structured map (`{subject, type, naturalName}`) covering every card among the dependents in any subject, filled by the extension host from workspace.graph() of each subject, the board's own subject first. The webview prefers its own live card and adds '(subject X)' only for another subject's card.",
+   "rationale": "With the kind it can show the same kind letter as for its own cards, and it needs no change in the runner, which is outside my paths. It is additive and optional, so older hosts still work."
+  },
+  {
+   "decision": "Singular delete refusal worded as 'breaks a declaration that uses it (X), which stops compiling' rather than '…: it stops compiling'.",
+   "rationale": "A second 'it' after the colon would be ambiguous, since 'uses it' already refers to the card's code."
+  },
+  {
+   "decision": "Applied 'No card on this board uses it.' to the →Goal preview with no dependents as well, not only to the conditional D→A preview.",
+   "rationale": "Both are computed from the graph alone and have the same blind spot for lemmas without a card."
+  },
+  {
+   "decision": "Moved the file-watcher echo logic into a pure `isDiskEcho(sources, path, readText)` in changeBatcher.ts and added `SelfWrites.matches()`.",
+   "rationale": "registry.ts depends on vscode; the pure helper can be unit-tested with real SelfWrites objects, including the verifier's scenario. It also reads the file once instead of once per source."
+  },
+  {
+   "decision": "Delete e2e test: wait for both files with `.catch()`, then assert with assert.equal / deepEqual; expected layout built from the layout before the delete, with no precondition assert.",
+   "rationale": "A timeout shows the exact difference, and the test stays meaningful when earlier tests did not move the card."
+  },
+  {
+   "decision": "Did not touch packages/runner/src/workspace/types.ts.",
+   "rationale": "Round 1 already updated its EditApplier doc comment, and nothing in this round's items concerns the runner contract."
+  }
+ ],
+ "effects_outside_repo": [
+  "Real home: nothing written by my commands. Home snapshots before and after (names and mtimes only: scratchpad/turn9/closing-fixer-r2/snap/before.txt and after.txt) differ only in: (1) ~/.config/Code 'Network Persistent State' and 'TransportSecurity' mtimes, written by the user's own running VS Code (snap, pid 630165), not by the test instances. Evidence: changes at 17:36:36 and 17:42:18, before my first VS Code instance (17:48:50), an hourly pattern (16:56:46, 17:56:46), and each test instance wrote its own copies inside its isolated user-data folder. (2) ~/.claude and ~/.claude.json, updated by the Claude Code harness itself. Unchanged: ~/.copilot, ~/.config/google-chrome, ~/.npm/_logs, ~/.local/share/vitest, ~/.cache/ms-playwright, ~/.elan/known-projects, ~/.vscode/extensions, Trash. smoke.mjs's own isolation checks reported 0 failures in all 7 runs.",
+  "/tmp and /run/user/1002: no entries added or removed after the runs. During runs, xvfb-run.*, /tmp/.X99-lock, a playwright-artifacts-* folder and a VS Code main socket existed briefly; their owners removed them.",
+  "systemd --user: transient telelean-tlws*.scope units (runLean sandboxes) existed during the Lean checks; none are left. No processes of mine are left (checked by process group and scratch path); my RAM watchdog has stopped.",
+  "Inside the repo but outside my assigned paths, from running the suites as asked: the root node_modules/.vitest-cache (an existing cache; 33 files written or updated), and packages/runner/node_modules/.vite/vitest/<hash>/results.json plus packages/runner/node_modules/.vite-temp (vitest's results cache and temp folder). mental_model/, test-fixtures/, packages/extension/.vscode-test and verbatim_prompt_log/ were not modified.",
+  "Git ran only inside the e2e tests' scratch model copies (with GIT_CONFIG_GLOBAL=/dev/null); I ran no git command myself. No downloads, no npm install, npm offline, no Claude CLI, no pushes, nothing sent or published. The VS Code test instances (2 per run, 7 runs) used the isolated profile; any network activity they do on their own was not added or changed by me.",
+  "Scratch: about 85 MB in /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/closing-fixer-r2/: a backup of the original files, logs, snapshots, test profiles under tt/, npm logs and cache, and the helper scripts env.sh, full-suite.sh, ext-loop.sh, ramwatch.sh and snap.sh."
+ ]
+}

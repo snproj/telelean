@@ -1,0 +1,22 @@
+axiom Character : Type
+axiom Cynder : Character
+axiom Spyro : Character
+axiom HasDarkPast : Character → Prop
+axiom IsDragon : Character → Prop
+/-- "every character has a dark past" -/
+axiom a1 : ∀ c, HasDarkPast c
+/-- "dragons never have dark pasts" -/
+axiom a2 : ∀ c, IsDragon c → ¬ HasDarkPast c
+/-- "Cynder is a dragon" -/
+axiom a3 : IsDragon Cynder
+
+-- red-team: can automation derive False from the assumptions?
+set_option maxHeartbeats 20000 in
+theorem incons_grind : False := by grind [a1, a2, a3]
+#print axioms incons_grind
+theorem incons_simp : False := by
+  have := a2 Cynder a3; simp_all [a1]
+#print axioms incons_simp
+-- an unrelated derivation is "vacuously" provable from the inconsistent set:
+theorem anything (P : Prop) : P := absurd (a1 Cynder) (a2 Cynder a3)
+#print axioms anything

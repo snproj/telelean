@@ -1,0 +1,21 @@
+import Lean
+
+/-!
+@@ telelean
+id: goal-cynder-not-good
+natural_name: "Cynder would not be a good addition to the new Spyro game"
+type: GOAL
+-/
+
+/-
+@@ telelean
+id: plain-comment-node
+natural_name: "A node that exists only as a plain comment"
+type: ASSUMPTION
+why: "just testing"
+-/
+
+/-- A character in the game universe. -/
+opaque Character : Type
+/-- Vocabulary-level non-emptiness (needed so `opaque` constants of this type can exist). -/
+instance : Nonempty Character := sorry  -- deliberately NOT used below; see variant 2

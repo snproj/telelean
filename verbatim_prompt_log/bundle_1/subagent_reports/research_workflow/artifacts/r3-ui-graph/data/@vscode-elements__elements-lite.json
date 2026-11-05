@@ -1,0 +1,38 @@
+{
+ "name": "@vscode-elements/elements-lite",
+ "latest": "0.4.0",
+ "dist_tags": {
+  "latest": "0.4.0"
+ },
+ "latest_published": "2025-06-06T21:28:33.758Z",
+ "modified": "2025-06-06T21:28:33.952Z",
+ "created": "2024-10-07T15:25:29.564Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 25308,
+ "fileCount": 20,
+ "tarball": "https://registry.npmjs.org/@vscode-elements/elements-lite/-/elements-lite-0.4.0.tgz",
+ "dependencies": {},
+ "peerDependencies": {},
+ "repository": "git+https://github.com/vscode-elements/elements-lite.git",
+ "recent_versions": [
+  [
+   "0.1.0",
+   "2024-10-07T15:25:29.838Z"
+  ],
+  [
+   "0.2.0",
+   "2024-10-20T00:17:10.395Z"
+  ],
+  [
+   "0.3.0",
+   "2024-10-25T12:15:14.110Z"
+  ],
+  [
+   "0.4.0",
+   "2025-06-06T21:28:33.758Z"
+  ]
+ ],
+ "homepage": "https://vscode-elements.github.io/elements-lite",
+ "description": null
+}

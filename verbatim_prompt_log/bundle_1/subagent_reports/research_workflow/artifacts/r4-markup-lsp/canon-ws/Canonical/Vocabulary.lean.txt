@@ -1,0 +1,68 @@
+namespace Canonical
+
+/-
+@@ telelean v1
+id: character
+kind: DEFINITION
+natural_name: "A character that can appear in a game"
+origin: llm
+session: 2026-11-01T10-15-00Z-a1b2
+-/
+/-- A game character; only the name is modelled (the assistant asked: "do you want to model characters?"). -/
+structure Character where
+  name : String
+deriving Inhabited, Repr
+
+/-
+@@ telelean v1
+id: game-vocabulary
+kind: DEFINITION
+natural_name: "Games and their age rating"
+lean: Game, Game.isPG
+origin: llm
+session: 2026-11-01T10-15-00Z-a1b2
+-/
+opaque Game : Type
+opaque Game.isPG : Game → Prop
+
+/-
+@@ telelean v1
+id: has-dark-past
+kind: DEFINITION
+natural_name: "…has a dark past"
+origin: llm
+session: 2026-11-01T10-15-00Z-a1b2
+-/
+opaque hasDarkPast : Character → Prop
+
+/-
+@@ telelean v1
+id: good-addition
+kind: DEFINITION
+natural_name: "…would be a good addition to…"
+origin: llm
+session: 2026-11-01T10-15-00Z-a1b2
+-/
+opaque goodAddition : Character → Game → Prop
+
+/-
+@@ telelean v1
+id: cynder
+kind: DEFINITION
+natural_name: "Cynder"
+origin: llm
+session: 2026-11-01T10-15-00Z-a1b2
+-/
+def cynder : Character := ⟨"Cynder"⟩
+
+/-
+@@ telelean v1
+id: new-spyro
+kind: DEFINITION
+natural_name: "The new Spyro game"
+origin: llm
+session: 2026-11-01T10-15-00Z-a1b2
+-/
+axiom newSpyro : Game
+
+end Canonical

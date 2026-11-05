@@ -1,0 +1,6 @@
+/-
+@@ telelean v1
+name: "A /- B"
+-/
+def c := 1
+#print c

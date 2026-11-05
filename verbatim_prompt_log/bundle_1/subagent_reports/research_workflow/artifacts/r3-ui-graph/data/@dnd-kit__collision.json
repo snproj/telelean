@@ -1,0 +1,47 @@
+{
+ "name": "@dnd-kit/collision",
+ "latest": "0.5.3",
+ "dist_tags": {
+  "latest": "0.5.3",
+  "beta": "0.5.3-beta-20261031140713"
+ },
+ "latest_published": "2026-10-31T14:10:37.923Z",
+ "modified": "2026-10-31T14:10:38.201Z",
+ "created": "2024-06-03T16:57:28.581Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 18055,
+ "fileCount": 6,
+ "tarball": "https://registry.npmjs.org/@dnd-kit/collision/-/collision-0.5.3.tgz",
+ "dependencies": {
+  "tslib": "^2.6.2",
+  "@dnd-kit/abstract": "^0.5.3",
+  "@dnd-kit/geometry": "^0.5.3"
+ },
+ "peerDependencies": {},
+ "repository": "git+https://github.com/clauderic/dnd-kit.git",
+ "recent_versions": [
+  [
+   "0.5.2-beta-20261029020134",
+   "2026-10-29T02:02:52.293Z"
+  ],
+  [
+   "0.5.2-beta-20261030024109",
+   "2026-10-30T02:42:15.277Z"
+  ],
+  [
+   "0.5.2",
+   "2026-10-31T14:04:54.572Z"
+  ],
+  [
+   "0.5.3-beta-20261031140713",
+   "2026-10-31T14:08:37.669Z"
+  ],
+  [
+   "0.5.3",
+   "2026-10-31T14:10:37.923Z"
+  ]
+ ],
+ "homepage": "https://github.com/clauderic/dnd-kit#readme",
+ "description": null
+}

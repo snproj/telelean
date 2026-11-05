@@ -1,0 +1,35 @@
+import Lean
+open Lean Elab Command Meta
+structure World where
+  Character : Type
+  Cynder : Character
+  HasDarkPast : Character → Prop
+  IsVillain : Character → Prop
+  cynder_dark : HasDarkPast Cynder
+  dark_villain : ∀ c, HasDarkPast c → IsVillain c
+  unused : ∀ c, IsVillain c → HasDarkPast c
+theorem World.lemma (W : World) : W.IsVillain W.Cynder := W.dark_villain _ W.cynder_dark
+theorem World.goal (W : World) : W.IsVillain W.Cynder ∧ True := ⟨W.lemma, trivial⟩
+
+/-- transitive "which fields of `S` does `c` use" analysis (custom collectAxioms analogue) -/
+partial def fieldsUsed (S : Name) (c : Name) : CoreM NameSet := do
+  let env ← getEnv
+  let some info := getStructureInfo? env S | throwError "not a structure"
+  let fields : NameSet := info.fieldNames.foldl (init := {}) fun s f => s.insert (S ++ f)
+  let rec go (n : Name) (seen : NameSet) (acc : NameSet) : CoreM (NameSet × NameSet) := do
+    if seen.contains n then return (seen, acc)
+    let seen := seen.insert n
+    if fields.contains n then return (seen, acc.insert n)
+    let some ci := env.find? n | return (seen, acc)
+    let mut st := (seen, acc)
+    for d in (ci.type.getUsedConstants ++ ((ci.value? (allowOpaque := true)).elim #[] (·.getUsedConstants))) do
+      if d.getPrefix == S || (env.getModuleIdxFor? d).isNone then  -- only local consts / fields
+        st ← go d st.1 st.2
+    return st
+  return (← go c {} {}).2
+
+elab "#fields " s:ident c:ident : command => liftCoreM do
+  let r ← fieldsUsed s.getId c.getId
+  logInfo m!"{c.getId} uses fields: {r.toList}"
+#fields World World.goal
+#print axioms World.goal

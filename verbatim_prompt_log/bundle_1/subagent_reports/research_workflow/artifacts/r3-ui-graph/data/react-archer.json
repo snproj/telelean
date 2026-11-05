@@ -1,0 +1,49 @@
+{
+ "name": "react-archer",
+ "latest": "5.1.0",
+ "dist_tags": {
+  "latest": "5.1.0"
+ },
+ "latest_published": "2026-06-05T17:09:52.072Z",
+ "modified": "2026-06-05T17:09:52.203Z",
+ "created": "2018-02-27T16:11:40.929Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 383433,
+ "fileCount": 27,
+ "tarball": "https://registry.npmjs.org/react-archer/-/react-archer-5.1.0.tgz",
+ "dependencies": {
+  "react-compiler-runtime": "^1.0.0",
+  "react-fast-compare": "^3.2.2",
+  "resize-observer-polyfill": "^1.5.1"
+ },
+ "peerDependencies": {
+  "@types/react": "^18 || ^19",
+  "react": "^18 || ^19"
+ },
+ "repository": "git+https://github.com/pierpo/react-archer.git",
+ "recent_versions": [
+  [
+   "4.2.3",
+   "2023-03-08T00:07:19.223Z"
+  ],
+  [
+   "4.3.0",
+   "2023-07-04T22:30:35.406Z"
+  ],
+  [
+   "4.4.0",
+   "2024-05-07T23:47:08.797Z"
+  ],
+  [
+   "5.0.0",
+   "2026-05-29T08:26:57.774Z"
+  ],
+  [
+   "5.1.0",
+   "2026-06-05T17:09:52.072Z"
+  ]
+ ],
+ "homepage": "https://github.com/pierpo/react-archer",
+ "description": "Draw arrows between DOM elements in React"
+}

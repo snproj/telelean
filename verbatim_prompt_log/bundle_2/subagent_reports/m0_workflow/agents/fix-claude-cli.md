@@ -1,0 +1,142 @@
+# fix:claude-cli (agent a61bd64f3a13b6ea3)
+
+## summary
+I fixed the one major issue and all four minors in the claude-cli spike. All 93 offline tests pass (79 before plus 14 new), and both typechecks are clean. The live smoke test has still not run, so nothing here has been tested against the real CLI.
+
+**Major issue: Grep and Glob could reach hidden files.** The verifier was right. A hook only sees the folder a search starts from and the pattern text, while ripgrep walks everything below it, hidden files included. In 2.1.314, Grep runs ripgrep with `--hidden`, Glob runs `rg --files --hidden --no-ignore`, and a pattern like `**/*` matches dot-names. No pattern check can fix that.
+
+The guard now scans the search folder before allowing a Grep or Glob. It allows the call only if no hidden entry exists anywhere below that folder. The scan does not follow symlinks; ripgrep doesn't either. It fails closed if a folder cannot be listed or holds more than 20,000 entries. The deny message suggests folders that can be searched instead, such as `Model`. I also hardened the pattern checks:
+- they expand braces before checking;
+- they refuse a segment that starts with `.`, `\.`, `?`, or a character class that can match `.`;
+- they split Grep's `glob` argument the same way the CLI does.
+
+I re-ran the verifier's own probe (the real hook plus ripgrep with the CLI's arguments). Every case it got through before is now denied: root-wide Grep, `Glob **/*`, `?telelean/**`, `[.]telelean/**`, `.{telelean,lake}/**`, `{.,x}*`. Searches limited to `Model` still pass.
+
+The claim needs narrowing. The guard now keeps every file tool, Grep and Glob included, out of hidden entries. The price: **a workspace whose root holds `.lake/` or `.telelean/` can only be searched folder by folder.**
+
+Second layer (the CLI's own permission rules, on by default): it now denies Read and Edit for every dot-entry at any depth, which makes 10 rules. The CLI also turns Read deny rules into Grep/Glob exclusions. That layer is still unverified live. I also set `CLAUDE_CODE_GLOB_HIDDEN=false`; this is only partial, because I checked with ripgrep 15.0.0 that `**/*` still lists hidden files without `--hidden`.
+
+**Minor fixes:**
+1. **Hook start-up check.** Before the CLI starts, the backend now runs the hook exactly as the settings file installs it, on two synthetic reads: one outside the workspace (must be denied) and one inside (must pass). If the hook command cannot start, hangs, or doesn't deny, the run is refused without starting the CLI, so it costs no quota. The dry run shows this check too.
+2. **Thinking on Haiku 5.5.** The smoke script no longer passes `--thinking disabled`, which the CLI turns into adaptive thinking for this model. It uses `--effort low` instead.
+3. **FakeSession.** Interrupting a turn that nobody has read now ends it, so the next `send()` works. The verifier's exact sequence is now a test.
+4. **`~/.bashrc` is opt-in.** Scenario b reads a canary file by default; `--read-bashrc` turns the real file back on.
+
+**Smoke scenario b now:**
+- makes 5 calls in one message: three Reads, a root-wide Grep for a token stored only in `<shadow>/.telelean/`, and a root-wide `Glob **/*`;
+- checks the guard log;
+- checks that no tool result contains the canary contents or the hidden file's name.
+
+Because the model might make the calls one by one, b's turn cap is 8 instead of 6.
+
+**Token estimate, redone with the CLI's own Haiku 5.5 prices** ($0.10 in, $0.50 out, $0.125 cache write, $0.01 cache read per million tokens; the claude-api reference gives the same in/out list price):
+- Measured: system prompt 303 chars (about 84 tokens), telelean tool schemas 4744 chars (about 1.3k), user turns 491 / 777 / 488 chars for a / b / c.
+- Guessed: about 3.6–4.9k tokens of fixed prompt per request.
+- About 9–13 requests, 40–60k input tokens, and 1.5–4k output tokens (adaptive thinking at low effort).
+- The CLI's cost estimate should be roughly $0.003–$0.01 in total, about 10 times lower than the builder's $0.07.
+- Wall time is still about 2.5–3.5 minutes.
+
+**Other:** I also strip the cloud-runner variables `CCR_*` and `AGENT_PROXY_*`. `CLAUDE_AGENT_SDK_CLIENT_APP` is unchanged: it still labels requests in the user agent, as the design asks. `src/index.ts` (not my file) still doesn't re-export `./llm`.
+
+**Hard rules:**
+- The real binary was started only for `--version`.
+- One disclosure: this shell's `grep` is a function that runs the Claude binary as its built-in ugrep, and my first binary search went through it once (it failed at once on "exceeds complexity limits"). That does not contact Anthropic. After that I used `/usr/bin/grep`.
+- No installs, no Lean, no credentials read.
+- No `~/.claude/projects` session directories were created.
+
+**Files changed:**
+- /home/zhengyew/telelean/packages/runner/bin/telelean-path-guard.mjs
+- /home/zhengyew/telelean/packages/runner/bin/telelean-path-guard.d.mts
+- /home/zhengyew/telelean/packages/runner/src/llm/confinement.ts
+- /home/zhengyew/telelean/packages/runner/src/llm/claudeCli.ts
+- /home/zhengyew/telelean/packages/runner/src/llm/env.ts
+- /home/zhengyew/telelean/packages/runner/src/llm/fake.ts
+- /home/zhengyew/telelean/scripts/smoke-claude.mjs
+- /home/zhengyew/telelean/packages/runner/test/llm/helpers.ts
+- /home/zhengyew/telelean/packages/runner/test/llm/pathGuard.test.ts
+- /home/zhengyew/telelean/packages/runner/test/llm/argvEnv.test.ts
+- /home/zhengyew/telelean/packages/runner/test/llm/cliSession.test.ts
+- /home/zhengyew/telelean/packages/runner/test/llm/fake.test.ts
+
+**Evidence files:**
+- /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn2/fix-claude-cli/vitest-final.txt
+- /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn2/fix-claude-cli/dry-run.json
+- /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn2/fix-claude-cli/probe1/run-probe.sh
+
+## fixed
+- **issue:** MAJOR: the guard did not keep Grep or Glob out of hidden entries. Grep/Glob search hidden files (rg --hidden; Glob also uses --no-ignore), `**/*` matches dot-names, and patterns such as ?telelean/**, [.]telelean/**, .{telelean,lake}/** and {.,x}* got past the pattern check.
+  - **change:** bin/telelean-path-guard.mjs: Grep and Glob are now allowed only on a folder with no hidden entry at any depth. The scan does not follow symlinks (ripgrep doesn't either), stops at 20,000 entries (maxScanEntries), and denies if a folder cannot be listed. The deny message suggests folders without hidden entries. Pattern checks now expand braces (bounded at 256 alternatives) and refuse segments that start with a literal or escaped '.', with '?', or with a character class that can match '.'. They also refuse absolute or '..' parts after expansion and after unescaping, and split Grep's glob argument like the CLI (exclusions may name hidden entries). Verifier probe re-run with the real hook plus the CLI's ripgrep arguments: every leaking case now prints DENY, and searches with path Model pass. confinement.ts: the CLI deny rules now cover every dot-entry at any depth for Read and Edit (Read/Edit of root/**/.* and root/**/.*/**, plus the three hidden folders: 10 rules). env.ts: CLAUDE_CODE_GLOB_HIDDEN=false, documented as only partial. Smoke scenario b: root-wide Grep for a token stored only in <shadow>/.telelean/<random>.json, plus root-wide Glob **/*, with checks rootGrepDeniedByGuard, rootGlobDeniedByGuard, deniedSearchesReturnedErrors, hiddenCanaryNotLeaked (a secret suffix that appears in no prompt) and hiddenFileNotListed. Tests added for scope denial, nested hidden entries, no symlink following, fail-closed scanning, the verifier's bypass patterns, Grep glob tokens, and the hook-process protocol.
+- **issue:** Minor: `--thinking disabled` has no effect on claude-haiku-5-5 (marked rejects_disabled_thinking; the CLI's BSi() turns disabled into adaptive), and the cost estimate assumed $1/$5 per MTok.
+  - **change:** smoke-claude.mjs no longer passes `thinking`; it passes `effort` (new --effort option, default 'low'). The dry run shows --effort low and no --thinking. Header comment updated. The estimate is redone with the CLI's haiku_55 prices from the binary ($0.10 in / $0.50 out / $0.125 cache write / $0.01 cache read per MTok; the claude-api reference gives the same $0.10/$0.50 list price).
+- **issue:** Minor: the preflight proved the guard was listed, not that its command can start. With onFailure:block, a broken hook runtime would block every tool call after quota was already spent.
+  - **change:** confinement.ts: new selfTestGuard() runs the exact command and args from the generated settings, with the CLI's environment and working directory, on a synthetic outside Read (the policy file, must be denied) and an inside Read (a new file name, must pass). Timeout 30 s; a hanging hook is killed. claudeCli.ts runs it before spawning the CLI (option selfTestGuard, default true) and refuses with LlmHarnessError('confinement') on failure. The result is kept in preflightReport.guardSelfTest. The guard log marks these entries with session_id telelean-guard-selftest, and the smoke script filters them out. Tests: a missing hook binary and a hook that ignores the guard both refuse with no CLI start record; a hanging hook times out and leaves no process; the dry run shows ok:true for a, b and c.
+- **issue:** Minor: FakeSession stayed busy forever if send() was never iterated and the caller interrupted.
+  - **change:** fake.ts now keeps per-turn state. interrupt() or close() on a turn nobody has started reading ends it at once, telling listeners with an 'interrupted' result, so the next send() is accepted. Reading the cancelled turn later yields only that result. Overlapping send() calls are still refused. The verifier's exact probe is now a test.
+- **issue:** Minor: smoke scenario b read the real ~/.bashrc by default, with only the hook in the way.
+  - **change:** The canary file is now the default. Reading ~/.bashrc needs the new --read-bashrc flag. --safe-targets is still accepted for compatibility (it is now the default) and is rejected together with --read-bashrc.
+- **issue:** Informational (verifier): cloud-runner variables CCR_* and AGENT_PROXY_* were not stripped.
+  - **change:** env.ts STRIP_PREFIXES now includes 'CCR_' and 'AGENT_PROXY_'. The sanitiser test covers CCR_OAUTH_TOKEN_FILE, CCR_AGENT_PROXY_ENABLED, AGENT_PROXY_URL and AGENT_PROXY_AUTH_TOKEN.
+
+## not_fixed
+- **issue:** The verifier's preferred layout fix: give the agent a root that holds only model files, and bind .lake/ and .telelean/ only into the Lean sandbox.
+  - **reason:** That belongs to the shadow builder and the runLean sandbox (M1, other spikes' paths), not to my assigned paths. The guard now enforces the rule itself: if the agent's root holds hidden entries, root-wide Grep/Glob are denied and the model is pointed to subfolders such as Model and Check. With that layout, workspace-wide searches would work again. Design feedback for M1: the shadow should have no dotfiles at its root, or the agent's cwd should be a subfolder with only model files.
+- **issue:** Make the CLI's own permission rules mandatory outside tests.
+  - **reason:** Not needed now. The hook alone keeps all five file tools out of hidden entries (tested with fences off, as smoke scenario b runs). The CLI rules stay on by default as a second layer and now cover every dot-entry for Read and Edit. Switching them off still requires cliFences:false, which only smoke scenario b does.
+- **issue:** Live behaviour of the CLI-side rules for Grep/Glob, and of the new smoke checks.
+  - **reason:** Running the real CLI with a prompt is forbidden here. Read from the binary: Hnr()/wc() turn the rule Read(//root/**/.*) into ripgrep `--iglob !/**/.*` and filter results. That is unverified live; the next smoke run will show it.
+- **issue:** Check-then-use races in the guard (no O_NOFOLLOW; a hidden entry created between the scan and the search).
+  - **reason:** The prototype profile defers this to the hardening milestone. The agent cannot create dot-entries (writes to them are denied), and lake only creates .lake at the package root.
+- **issue:** CLAUDE_AGENT_SDK_CLIENT_APP tags the user's requests (x-client-app header and user agent).
+  - **reason:** No change: 03 §8.2 asks for this label explicitly. Worth mentioning to the user.
+- **issue:** packages/runner/src/index.ts does not re-export ./llm.
+  - **reason:** Not my file. The main session can add `export * from './llm/index.js'`.
+
+## test_output
+$ cd /home/zhengyew/telelean/packages/runner && TELELEAN_TEST_TMPDIR=<scratch>/testtmp npx vitest run test/llm --reporter=verbose
+(selected lines)
+ ✓ pathGuard.test.ts > path guard: Glob and Grep search scope > denies Grep and Glob over a folder that contains hidden entries, suggesting folders without them
+ ✓ pathGuard.test.ts > path guard: Glob and Grep search scope > finds hidden entries at any depth
+ ✓ pathGuard.test.ts > path guard: Glob and Grep search scope > does not follow symlinks below the search root (ripgrep does not either)
+ ✓ pathGuard.test.ts > path guard: Glob and Grep search scope > fails closed when the scan is too large or a folder cannot be listed
+ ✓ pathGuard.test.ts > path guard: Glob and Grep patterns > denies patterns that can match hidden names without spelling a leading dot (verifier bypasses)
+ ✓ pathGuard.test.ts > path guard: hook protocol (run as the CLI runs it) > denies a workspace-wide Grep when the workspace holds hidden entries, and allows one scoped to Model
+ ✓ pathGuard.test.ts > path guard: hook protocol (run as the CLI runs it) > the backend self-test passes for the real guard, and kills a hook that hangs 934ms
+ ✓ cliSession.test.ts > ClaudeCliBackend against a stand-in CLI > runs the guard as installed on synthetic calls before starting the CLI
+ ✓ cliSession.test.ts > ClaudeCliBackend against a stand-in CLI > refuses to start, without starting the CLI, when the hook command cannot run
+ ✓ cliSession.test.ts > ClaudeCliBackend against a stand-in CLI > refuses to start when the installed hook does not deny an outside read
+ ✓ fake.test.ts > FakeBackend > interrupting a turn nobody has read ends it, so the next send() is accepted (verifier probe)
+ Test Files  7 passed (7)
+      Tests  93 passed (93)
+   Start at  08:16:16
+   Duration  43.74s (tests 98%, import 1%)
+vitest exit=0
+no leftover test processes; testtmp entries: 0; `wc -l ~/.elan/known-projects` -> 36
+
+$ npx tsc -p packages/runner/tsconfig.json --noEmit -> exit=0
+$ npx tsc -p <scratch>/tsconfig.tests.json (src/llm + test/llm) -> exit=0
+$ npx tsc -p packages/runner/tsconfig.json --noEmit --erasableSyntaxOnly -> no errors in src/llm or bin/
+
+Verifier probe re-run (real hook + ripgrep 15.0.0 with the CLI's argv), <scratch>/probe1/run-probe.sh:
+Grep {pattern:SECRET} -> guard DENY
+Glob **/*                   guard=DENY
+Glob ?telelean/**           guard=DENY
+Glob [.]telelean/**         guard=DENY
+Glob .{telelean,lake}/**    guard=DENY
+Glob {.,x}*                 guard=DENY
+Grep {pattern:SECRET,path:Model} -> guard PASS   (ripgrep finds nothing secret under Model)
+Glob **/* path=Model guard=PASS;  [A-Z]*.lean PASS;  \.env DENY;  [!a]* DENY
+(The probe runs ripgrep whatever the guard decides, to show what would leak; with DENY the CLI never runs the search.)
+
+$ node scripts/smoke-claude.mjs --dry-run --work-dir <scratch>/smoke-dry -> exit=0 (ran only `claude --version` plus node+guard)
+a: cliFences=true --effort=low --thinking=undefined --max-turns=6 --restricted=true --bare=false; guardSelfTest ok (outside->deny, inside->pass); 10 deny rules
+b: cliFences=false --effort=low --max-turns=8; guardSelfTest ok; userTurn 777 chars (~216 tok)
+c: cliFences=true --effort=low --max-turns=6; guardSelfTest ok
+Sizes: system prompt 303 chars (~84 tok), telelean tools 4744 chars (~1318 tok)
+Scenario b calls run through the generated hook as its settings file specifies:
+exit=0 pass  Read <work>/ws-b/Model.lean
+exit=0 deny  Read /etc/hostname
+exit=0 deny  Read <work>/outside/canary.txt
+exit=0 deny  Grep (no path) - reason: "Grep would search '.', which contains the hidden entry '.telelean'. ... such as 'Check' or 'Model'"
+exit=0 deny  Glob **/* (no path)
+exit=0 pass  Grep path=Model
+

@@ -1,0 +1,101 @@
+[
+ {
+  "label": "build:runlean",
+  "agentId": "aeb59448f26242b28",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Write",
+   "Edit",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "build:claude-cli",
+  "agentId": "aada370aac8501d37",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "ToolSearch",
+   "WebFetch",
+   "Write",
+   "Edit",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "build:board",
+  "agentId": "a51ac0a30d2dd3348",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Write",
+   "Edit",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "verify:runlean",
+  "agentId": "af98707649ab6a829",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Write",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "verify:board",
+  "agentId": "a75787ffed0ac88e7",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Edit",
+   "Write",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "fix:runlean",
+  "agentId": "a488b57b975fce9f9",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Write",
+   "Edit",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "verify:claude-cli",
+  "agentId": "a7d3bf2eee148ebea",
+  "toolsUsed": [
+   "Bash",
+   "Write",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "fix:board",
+  "agentId": "a374495820c1f5990",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Edit",
+   "Write",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "fix:claude-cli",
+  "agentId": "a61bd64f3a13b6ea3",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Skill",
+   "Write",
+   "Edit",
+   "StructuredOutput"
+  ]
+ }
+]

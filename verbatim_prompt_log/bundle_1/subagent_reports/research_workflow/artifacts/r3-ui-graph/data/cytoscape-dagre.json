@@ -1,0 +1,44 @@
+{
+ "name": "cytoscape-dagre",
+ "latest": "4.0.1",
+ "dist_tags": {
+  "latest": "4.0.1"
+ },
+ "latest_published": "2026-08-28T12:23:25.690Z",
+ "modified": "2026-08-28T12:23:25.906Z",
+ "created": "2015-09-09T21:50:35.395Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 829754,
+ "fileCount": 18,
+ "tarball": "https://registry.npmjs.org/cytoscape-dagre/-/cytoscape-dagre-4.0.1.tgz",
+ "dependencies": {},
+ "peerDependencies": {
+  "cytoscape": "^3.2.22"
+ },
+ "repository": "git+https://github.com/cytoscape/cytoscape.js-dagre.git",
+ "recent_versions": [
+  [
+   "2.4.0",
+   "2022-01-27T18:14:08.857Z"
+  ],
+  [
+   "2.5.0",
+   "2022-10-31T15:24:03.768Z"
+  ],
+  [
+   "3.0.0",
+   "2026-05-15T14:50:41.393Z"
+  ],
+  [
+   "4.0.0",
+   "2026-06-04T13:34:41.104Z"
+  ],
+  [
+   "4.0.1",
+   "2026-08-28T12:23:25.690Z"
+  ]
+ ],
+ "homepage": "https://github.com/cytoscape/cytoscape.js-dagre",
+ "description": "The Dagre layout for DAGs and trees for Cytoscape.js"
+}

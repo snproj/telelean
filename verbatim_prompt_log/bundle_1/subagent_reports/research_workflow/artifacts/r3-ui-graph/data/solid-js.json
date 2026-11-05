@@ -1,0 +1,48 @@
+{
+ "name": "solid-js",
+ "latest": "1.9.18",
+ "dist_tags": {
+  "beta": "1.10.0-beta.0",
+  "latest": "1.9.18",
+  "next": "2.0.0-rc.20"
+ },
+ "latest_published": "2026-10-29T23:21:32.269Z",
+ "modified": "2026-10-29T23:21:32.427Z",
+ "created": "2018-04-25T04:09:31.206Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 1078147,
+ "fileCount": 76,
+ "tarball": "https://registry.npmjs.org/solid-js/-/solid-js-1.9.18.tgz",
+ "dependencies": {
+  "csstype": "^3.1.0",
+  "seroval": "~1.6.11",
+  "seroval-plugins": "~1.6.8"
+ },
+ "peerDependencies": {},
+ "repository": "git+https://github.com/solidjs/solid.git",
+ "recent_versions": [
+  [
+   "2.0.0-rc.17",
+   "2026-10-22T01:47:27.725Z"
+  ],
+  [
+   "2.0.0-rc.18",
+   "2026-10-23T09:25:58.429Z"
+  ],
+  [
+   "2.0.0-rc.19",
+   "2026-10-27T17:30:18.671Z"
+  ],
+  [
+   "2.0.0-rc.20",
+   "2026-10-29T19:14:22.630Z"
+  ],
+  [
+   "1.9.18",
+   "2026-10-29T23:21:32.269Z"
+  ]
+ ],
+ "homepage": "https://solidjs.com",
+ "description": "A declarative JavaScript library for building user interfaces."
+}

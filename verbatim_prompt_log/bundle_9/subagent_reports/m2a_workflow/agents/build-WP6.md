@@ -1,0 +1,225 @@
+# build:WP6 (agent ac82b7f6ba6872cc1)
+
+## summary
+I built WP6 (the M2 webview board) against core's frozen run.ts and protocol.ts contracts. I changed no frozen file: every edit is in packages/webview/**, plus the bundle Vite builds into packages/extension/dist/webview/**.
+
+Final checks, run by me:
+- typecheck clean in both configs;
+- vite build ok;
+- vitest: 8 files, 121/121 passed;
+- Playwright with isolated HOME and one worker: 70/70 passed (all 49 M1 tests plus 21 new M2 tests);
+- the home guard reported the real home folder unchanged.
+
+What was built:
+- **Run state in the store.** The `run` (RunView) and `proposal` (ProposalView) messages are stored as sent and never go through applyGraph. The proposed view reads a derived overlay through `boardView()`. The overlay is read-only: no selection, drag, edit or delete.
+- **Tray.** "These suffice ▶", "Self-evident?" (no premises) and "Add to its premises ▶" (the union) all post startRun. They are disabled, with the reason shown, while any run of the model folder is active, and when the target is an assumption ("…make it a Derivation first, then prove it.").
+- **Run panel** (beside the board; below it on boards narrower than 1000 px):
+  - status line: state·stage, round, checks n/25, turns n/80, agent time (paused while a question waits, interpolated between host updates), gate attempts k/3, tokens, "$x estimate" with the list-price tooltip, rate limit, Cancel;
+  - A2 notices with their details, then the activity feed, where Claude's text is italic with a marker;
+  - Resume/Stop for an interrupted run; failed/ended runs show the error and a Dismiss button;
+  - header badge, plus a compact "Show" line for another subject's run.
+- **Question cards.** Phenomenon tag; options with consequences and formal preview; "In my own words" (multi-line); Leave it open; Decide for me; scope per answer (default this run). Nothing is pre-selected, and no guess is shown before answering. After the run update, the answered list shows Claude's guess.
+- **Review stepper.** Statements first (sentence beside the Lean, "Fully explicit" toggle, closure, "Show on the board"), then new vocabulary (Revoke… pre-fills Feedback), definition questions (yes/no; "no" pre-fills Feedback), the report card (shown once past the statements or on "Show result"; each assumed-without-asking item has "Ask me instead"), then lifecycle ticks (recommended ones start ticked). Accept is disabled until every definition is "yes". Accept, Feedback (text), Discard and Raw Lean diff (whole proposal or per file) post their messages. The report card also lists the suggested premises, gate attempts, files, usage and durations.
+- **Proposal banner.** Counts plus a Current | Proposed toggle and Review…, Accept, Feedback, Discard, Raw Lean diff.
+- **Diff marks.** Each mark is a glyph plus a word plus colour plus a halo; in high contrast the halo becomes an outline. The Vocabulary group shows "+N new" and opens automatically in the proposed view.
+- **Result hidden until reviewed (D-19).** Until the review reveals the result, the overlay hides the target's proof status: its proof chips, its footprint, the verified arrows into it, and the verdict in the state line.
+- **"Claude suggests" cards.** Translucent, never dashed, at the top of the Assumptions column. They show the closes-gap chip and, when relevant, the gives-the-goal-alone flag. "I hold this" takes an optional one-line reason and posts adoptGhost; "No" posts rejectGhost.
+- **Attempts history** in the expanded card: date, verdict, premises, resolution, and Claude's summary in italics.
+- **Carry-overs:**
+  1. "Used by" and the delete dialog list externalUsers (lemmas in code font; other subjects' cards by sentence plus "(subject …)"). "Nothing else refers to it." appears only when nothing at all refers to the card.
+  2. The dialog's own words are singular/plural: "Rewrite that proof to …" / "Keep that proof, marked broken" versus "Rewrite them…" / "Keep them…".
+  3. kindChange posts `confirmedDependents` with the list the dialog showed. If the host answers needs-confirmation and lists more, the dialog re-opens with the host's list and a note; if it lists nothing new, an error toast appears instead of looping.
+- **Provenance.** All of Claude's text goes through `AgentText` (marked `data-provenance="agent"`, italic, with a marker). The AT6.10 test checks every on-screen string Claude wrote.
+
+WP1's singular texts landed during my work (core kindChange.ts and planKind.ts, 20:43), so the gated assertions of core's texts already ran and passed.
+
+## files
+- /home/zhengyew/telelean/packages/webview/src/model/run.ts
+- /home/zhengyew/telelean/packages/webview/src/state/store.ts
+- /home/zhengyew/telelean/packages/webview/src/App.tsx
+- /home/zhengyew/telelean/packages/webview/src/labels.ts
+- /home/zhengyew/telelean/packages/webview/src/styles/board.css
+- /home/zhengyew/telelean/packages/webview/src/tray/SelectionTray.tsx
+- /home/zhengyew/telelean/packages/webview/src/header/Header.tsx
+- /home/zhengyew/telelean/packages/webview/src/dialogs/Dialogs.tsx
+- /home/zhengyew/telelean/packages/webview/src/common/AgentText.tsx
+- /home/zhengyew/telelean/packages/webview/src/common/ExternalUser.tsx
+- /home/zhengyew/telelean/packages/webview/src/common/useNow.ts
+- /home/zhengyew/telelean/packages/webview/src/run/RunPanel.tsx
+- /home/zhengyew/telelean/packages/webview/src/run/Questions.tsx
+- /home/zhengyew/telelean/packages/webview/src/run/Review.tsx
+- /home/zhengyew/telelean/packages/webview/src/run/ReportCard.tsx
+- /home/zhengyew/telelean/packages/webview/src/run/ProposalBanner.tsx
+- /home/zhengyew/telelean/packages/webview/src/run/RunBadge.tsx
+- /home/zhengyew/telelean/packages/webview/src/run/GhostSuggestion.tsx
+- /home/zhengyew/telelean/packages/webview/src/board/GhostCards.tsx
+- /home/zhengyew/telelean/packages/webview/src/board/Board.tsx
+- /home/zhengyew/telelean/packages/webview/src/board/Column.tsx
+- /home/zhengyew/telelean/packages/webview/src/board/NodeCard.tsx
+- /home/zhengyew/telelean/packages/webview/src/board/CardDetails.tsx
+- /home/zhengyew/telelean/packages/webview/src/board/VocabularyGroup.tsx
+- /home/zhengyew/telelean/packages/webview/src/board/UsesLine.tsx
+- /home/zhengyew/telelean/packages/webview/src/board/LeanCode.tsx
+- /home/zhengyew/telelean/packages/webview/test/harness/harness.js
+- /home/zhengyew/telelean/packages/webview/test/e2e/helpers.ts
+- /home/zhengyew/telelean/packages/webview/test/shared/runs.ts
+- /home/zhengyew/telelean/packages/webview/test/shared/gates.ts
+- /home/zhengyew/telelean/packages/webview/test/unit/run.test.ts
+- /home/zhengyew/telelean/packages/webview/test/unit/store-run.test.ts
+- /home/zhengyew/telelean/packages/webview/test/unit/store.test.ts
+- /home/zhengyew/telelean/packages/webview/test/e2e/m2-run.spec.ts
+- /home/zhengyew/telelean/packages/webview/test/e2e/m2-questions.spec.ts
+- /home/zhengyew/telelean/packages/webview/test/e2e/m2-review.spec.ts
+- /home/zhengyew/telelean/packages/webview/test/e2e/m2-overlay.spec.ts
+- /home/zhengyew/telelean/packages/webview/test/e2e/m2-carryover.spec.ts
+- /home/zhengyew/telelean/packages/webview/test/e2e/m2-provenance.spec.ts
+- /home/zhengyew/telelean/packages/webview/test/e2e/board.spec.ts
+- /home/zhengyew/telelean/packages/webview/test/e2e/m1-drag.spec.ts
+- /home/zhengyew/telelean/packages/webview/test/e2e/m1-edits.spec.ts
+- /home/zhengyew/telelean/packages/webview/test/e2e/m1-fixes.spec.ts
+- /home/zhengyew/telelean/packages/extension/dist/webview/webview.js
+- /home/zhengyew/telelean/packages/extension/dist/webview/webview.js.map
+- /home/zhengyew/telelean/packages/extension/dist/webview/webview.css
+- /home/zhengyew/telelean/packages/extension/dist/webview/boot.js
+- /home/zhengyew/telelean/packages/extension/dist/webview/assets/codicon.ttf
+- /home/zhengyew/telelean/packages/webview/test-results/ (19 new m2-*.png screenshots, M1 screenshots refreshed)
+- /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2-wp6/final-unit.log
+- /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2-wp6/final-e2e.log
+
+## how_to_run_tests
+cd /home/zhengyew/telelean/packages/webview
+B=/home/zhengyew/telelean/node_modules/.bin
+$B/tsc -p tsconfig.json && $B/tsc -p tsconfig.node.json      # typecheck (sources; tests and configs)
+$B/vite build                                                  # writes packages/extension/dist/webview (the harness serves it)
+$B/vitest run                                                  # unit
+sh -c 'ulimit -c 0; /home/zhengyew/telelean/node_modules/.bin/playwright test'   # Playwright: installed Chrome, one worker, HOME/XDG/TMPDIR isolated by playwright.config.ts, home guard
+(`npm test` in packages/webview runs the same four steps, but npm also writes a debug log to ~/.npm/_logs.)
+
+## test_output
+Final run (logs in /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2-wp6/final-unit.log and final-e2e.log):
+== typecheck (tsconfig.json)  exit 0
+== typecheck (tsconfig.node.json)  exit 0
+== build  ✓ built in 219ms (../extension/dist/webview/webview.js 432.05 kB, webview.css 81.62 kB)
+== unit   Test Files  8 passed (8)   Tests  121 passed (121)
+== Playwright   70 passed (57.2s), exit 0 (49 M1 + 21 M2: m2-run 5, m2-questions 2, m2-review 2, m2-overlay 4, m2-carryover 5, m2-provenance 3)
+home guard: ~/.config/google-chrome 10 entries, ~/.cache/google-chrome absent, ~/.cache/fontconfig 113 entries, ~/.pki 4 entries, ~/.local/share/pki absent; unchanged
+Baseline before my changes: unit 90/90, tsc clean.
+
+## acceptance
+- **test:** AT6.1 tray: startRun for These suffice ▶ (premises + target), Self-evident? (premises []), Add to its premises ▶ (union); disabled with a reason during a run of the root and for an ASSUMPTION target
+  - **status:** pass
+  - **evidence:** m2-run.spec.ts 'AT6.1 the tray…'. Posted payloads were {target, premises:[cynder-dark-past,new-spyro-pg]}, then {…all three}, then {premises:[]}. During another subject's run the reason reads 'Claude is already working on Bayonetta: wait for it to finish, or cancel it.'; review state blocks too. An assumption target via ⊢ shows 'An assumption is something you hold: make it a Derivation first, then prove it.' Unit tests in store.test.ts and store-run.test.ts.
+- **test:** AT6.2 run panel: states, stage, counters, usage with 'estimate', rate limit, notices (gate-failed, gave-up, reverted, cap, environment), Claude's text italic + marker; Cancel posts cancelRun
+  - **status:** pass
+  - **evidence:** m2-run.spec.ts AT6.2, two tests. Checks 'Working · formalising', round 1, checks 3/25, turns 12/80, 'agent 4:05 / 20:00' (fixed clock), gate attempts 0/3, '12.3k in · 1.2k out', '$0.42 estimate' with the list-price tooltip, and rate limit 'close' with tone warn. All five notice kinds and levels render with details; the claude-text line is italic with a 'Claude' marker. Cancel posts {runId, requestId}. Covers starting, proving, waiting ('(paused)'), gate, interrupted (Resume posts resumeRun, Stop posts discardProposal) and failed (error with code spans; Dismiss posts dismissRun).
+- **test:** AT6.3 question card: phenomenon tag, options + consequences, free text, Leave it open, Decide for me, scope; submit posts answerQuestions; no guess before, guess shown after the run update
+  - **status:** pass
+  - **evidence:** m2-questions.spec.ts, two tests. Checks tags, labels, consequences, formal preview; nothing pre-selected; scope 'this run' checked; no 'guess' text anywhere. Send stays disabled until every question is answered (blank free text does not count). The posted answers were option 0 with scope nodes, and multi-line free text with scope subject. After the run update: 'Claude’s guess: A rule (normative) · Ratings usually express rules about content.' Leave-open and decide-for-me are posted; the card is disabled while sending and re-enabled after a refusal toast.
+- **test:** AT6.4 review order statements -> vocabulary -> definitions -> report card (Ask me instead per assumed item) -> lifecycle; Accept disabled until every definition approved; Accept/Feedback/Discard/Raw Lean diff post the right messages
+  - **status:** pass
+  - **evidence:** m2-review.spec.ts, two tests. Step pills appear in that order; the explicit toggle shows the 'Not (' form; the closure is listed. No verdict appears anywhere before the statements are done. Revoke and definition 'no' pre-fill Feedback. Accept and banner Accept stay disabled until d1 and d2 are 'yes'. The report card shows the verdict, footprint, consistency-unchecked note and gate attempts; 'Ask me instead' pre-fills Feedback. l1 starts ticked, l2 does not. acceptProposal posted {lifecycle:[l1,l2], definitions:[d1,d2]}. 'Show result' reveals early. openProposalDiff was posted for the whole proposal and per file, feedback with multi-line text, discardProposal, and Accept with l1 unticked sent lifecycle [].
+- **test:** AT6.5 overlay toggle; diff badges (glyph + colour + halo); '+N new' vocabulary expanded; ghost cards translucent with 'Claude suggests', posting adoptGhost (optional why) and rejectGhost
+  - **status:** pass
+  - **evidence:** m2-overlay.spec.ts. A new proposal switches the board to Proposed. Badges read '+new' and '~changed' in the git colours, and the card box-shadow contains that colour. Vocabulary shows '+1 new' and is open; InGame is marked. The result stays hidden until revealed, and the view is read-only. Current shows 4 cards and no marks. In high contrast the halo becomes an outline. Ghost cards have opacity <1, solid borders, an italic sentence and the closes-gap / alone-entails chips. adoptGhost was posted with rationale 'it seems obvious to me' and once without one (from the report card); rejectGhost was posted, and a host update marking the ghost rejected removes it.
+- **test:** AT6.6 attempts history in the expanded card (date, verdict, premises, resolution, Claude's summary italic)
+  - **status:** pass
+  - **evidence:** m2-overlay.spec.ts AT6.6. The goal lists 3 attempts: verdicts [proved, not proved, gave up…], resolutions [accepted, continued in a later round, discarded], dates as today's HH:MM and as 'Oct 3x HH:MM'. Premises are shown by sentence, and 'from no premises (self-evident?)' for an empty list. The summary has data-provenance=agent, is italic and carries a marker. Each card lists only its own attempts.
+- **test:** AT6.7 carry-over 1: Used by lists externalUsers (lemma in code font, other subject's card by sentence + '(subject …)'); 'Nothing else refers to it.' only when no board reference and no external user
+  - **status:** pass
+  - **evidence:** m2-carryover.spec.ts, two AT6.7 tests. Used by shows `Spyro.helper_lemma` in code and 'Bayonetta would not be a good addition either (subject Bayonetta)'. The goal with only an external user is not 'Nothing uses it yet.' The delete dialog lists them under 'Also used outside this board'. 'Nothing else refers to it.' appears only on a graph without any reference.
+- **test:** AT6.8 carry-over 2: singular and plural dialog texts; existing assertions of core's singular texts updated to plan 1.3 [gated: WP1]
+  - **status:** pass
+  - **evidence:** m2-carryover.spec.ts covers the dialog's own texts: 'Rewrite that proof to take it as a hypothesis' / 'Keep that proof, marked broken' for one dependent, and 'These pass it arguments:' with 'Rewrite them…' for two. The core texts in store.test.ts and m1-drag.spec.ts were updated to section 1.3, gated on CORE_SINGULAR_TEXTS (test/shared/gates.ts). WP1's change landed at 20:43, the gate detected it, and the gated assertions ran and passed.
+- **test:** AT6.9 carry-over 3: confirmedDependents posted; needs-confirmation with more dependents re-opens the dialog with the host's list
+  - **status:** pass
+  - **evidence:** m2-carryover.spec.ts AT6.9. The first post has confirmedDependents [cynder-not-good]. The host refuses listing 2, so the dialog re-opens with the relisted note and both entries; 'Keep them, marked broken' then posts confirmedDependents [cynder-not-good, Spyro.helper_lemma]. A refusal with nothing new gives an error toast and no loop. Unit tests also cover keeping the optional reason.
+- **test:** AT6.10 provenance: agent text (activity, ghost sentences, questions, summaries, agent glosses) never renders in user styling
+  - **status:** pass
+  - **evidence:** m2-provenance.spec.ts, three tests. Every agent string carries a token. A DOM scan checks each token text node is inside data-provenance=agent, computes to italic, has a marker (its own or its scope's), and appears in no data-provenance=user element. Screens covered: pending and answered questions, the activity feed, the board overlay, every review step and the report card with suggestions, the attempts history.
+- **test:** AT6.11 another subject's run shows a compact line with 'Show'
+  - **status:** pass
+  - **evidence:** m2-run.spec.ts AT6.11. Shows 'Claude’s run on Bayonetta: waiting for your answer.' with Show; no panel or question appears. The badge reads 'Claude: a question for you · Bayonetta'. Show posts selectSubject {subject:'Bayonetta'}.
+- **test:** AT6.12 webview unit and Playwright suites pass (isolated HOME, one worker), including the M1 specs
+  - **status:** pass
+  - **evidence:** Final run: tsc clean in both configs; vitest 121/121; Playwright 70/70 (49 M1 + 21 M2), workers=1, home guard unchanged. Updated M1 specs (board.spec, m1-edits, m1-fixes, m1-drag) now expect M2 behaviour: startRun from the tray, enabled Self-evident?, singular dialog words, confirmedDependents.
+
+## contract_changes
+- None. No frozen contract file was changed. All edits are inside packages/webview/** and the built packages/extension/dist/webview/**. The webview uses existing protocol messages and fields only, including the M2 run messages and kindChange.confirmedDependents.
+- Additive and webview-internal: HISTORY_ACTION_LABEL is now typed Record<HistoryActionKind | AcceptProposalAction, string> with 'accept-proposal': 'accept', as decision 27 prescribes. It keeps compiling after the integrator merges AcceptProposalAction into HistoryActionKind.
+
+## minor_decisions
+- **decision:** The run panel sits beside the board (width clamp(320px, 32vw, 460px)) instead of between the tray and the A|D|G box. On windows narrower than 1000 px it moves below the board. It opens by itself on a new run, a new question, review, interruption or end; the header badge opens and closes it.
+  - **rationale:** Questions and the review are tall content; beside the board they leave the board's height intact, so the overlay and the review can be read side by side. The narrow fallback keeps the three readable board columns.
+- **decision:** A new proposal switches the board to Proposed by itself (unless a drag or inline edit is in progress). Until the review reveals the result, the overlay hides the target's proof result, and that of any card whose proof changed: proof chips become 'result after the review', the footprint is hidden, verified arrows into them are not drawn, the verdict stays out of the state line and the banner, and 'proof'/'status' are left out of diff tooltips. The activity feed is folded during review.
+  - **rationale:** D-19's 'meaning before proof status' would be undone if the overlay showed '✓ proved' before the statements were read.
+- **decision:** 'Claude suggests' cards go at the top of the Assumptions column, above the Vocabulary group, and only in the proposed view. They carry no data-node-id and are marked as edge obstacles.
+  - **rationale:** The '+N new' vocabulary opens automatically and would push cards placed at the end out of view; suggestions need a decision. Without data-node-id they are not mistaken for model cards by arrows, card counts or the 'rendered' diagnostic.
+- **decision:** The proposed view is read-only: clicks neither select nor change the selection, and there is no drag, inline edit, delete, stance or Make buttons. Expanding and hovering still work. Adding a card from the A|D|G box switches back to Current.
+  - **rationale:** The overlay is not the user's files; the user's new card belongs to the current board (D-16: the box works during a run).
+- **decision:** The banner's Accept follows the same rule as the review's Accept: every definition question 'yes', lifecycle ticks from the review (recommended ones pre-ticked). So Accept is possible without stepping through the review when there are no definitions.
+  - **rationale:** The plan puts Accept in the banner; the only stated precondition is the definition approvals.
+- **decision:** Feedback pre-fills are added on a new line of a single Feedback draft. Texts: Ask me instead → 'You assumed this without asking: “<item>”. Please ask me about it instead of assuming it.'; Revoke… → 'Please don't add the vocabulary item `<Name>` (“<gloss>”): '; definition No → 'I don't endorse the definition `<Name>` (“<gloss>”): '. Ctrl+Enter sends.
+  - **rationale:** Several revocations or questions can go into one feedback round.
+- **decision:** 'Stop' on an interrupted run posts discardProposal.
+  - **rationale:** The plan, section 2: interrupted → 'Stop' (= Discard).
+- **decision:** Diff colours come from VS Code's gitDecoration added/modified/deleted colours, with fallbacks. No new contributed colours.
+  - **rationale:** WP5 owns the manifest, and the theme unit test forbids telelean colour variables that are not contributed.
+- **decision:** The agent clock interpolates counters.agentMs from RunView.updatedAt while the state is working or gate, capped at maxAgentMs. It is static otherwise and marked '(paused)' while a question waits.
+  - **rationale:** The host posts on events, not every second; without this the clock would freeze during long model turns.
+- **decision:** One-dependent wording in the dialog's own buttons: 'Rewrite that proof to take it as a hypothesis' / 'Rewrite that proof to use it directly' / 'Keep that proof, marked broken'. Intro texts as before.
+  - **rationale:** Matches core's frozen 'that proof' wording; every dependent of a .holds is a proof (a card's or a lemma's).
+- **decision:** Carry-over 3: a needs-confirmation that lists nothing beyond what the user just confirmed becomes an error toast, not another dialog. The optional reason of a change to Assumption is sent again with the answer to the host's question.
+  - **rationale:** This avoids a question loop, and the user's reason is no longer silently lost (an M1 gap noticed on the way).
+- **decision:** With a target and no premises, 'Self-evident?' replaces 'These suffice ▶', and the 'drops your declared premises' note is not shown.
+  - **rationale:** Self-evident? declares nothing (decision 4), so it drops nothing.
+- **decision:** The 'these cards' scope is disabled when a question names no affected card. Free-text answers may span lines; the reason for adopting a suggestion is one line (pasted line breaks become spaces).
+  - **rationale:** Follows the protocol validators: answers are freeText; adoptGhost.rationale must be a single line.
+- **decision:** The review is keyed by (runId, proposalId).
+  - **rationale:** Proposal ids (p1, p2, …) are unique within a run only, so a later run's p1 must start a fresh review.
+
+## open_issues
+- Integrator: remove the carry-over 2 gate. Grep CORE_SINGULAR_TEXTS (test/shared/gates.ts, used in test/unit/store.test.ts and test/e2e/m1-drag.spec.ts). WP1's frozen texts landed at 20:43 during this work, so the gated assertions already ran and passed.
+- WP5 / integrator: the tray never posts theseSuffice any more. 'These suffice ▶', 'Self-evident?' and 'Add to its premises ▶' all post startRun {target, premises, requestId}. Any extension test or VS Code smoke that drives the tray must expect startRun.
+- WP3: set RunView.updatedAt to the time counters.agentMs was measured. The board's agent clock interpolates from it while working or gate.
+- The 'rendered' diagnostic (main.tsx, unchanged) counts the [data-node-id] cards on screen. In the proposed view that is the proposal's cards (ghost cards have no data-node-id). Relevant only if the VS Code smoke reads 'rendered' while a proposal is shown.
+- For the user to review (reversible layout and UX choices): the run panel beside the board rather than under the tray; the automatic switch to the Proposed view; hiding the proof result in the overlay until the review reveals it.
+
+## integration_notes
+What the webview posts:
+- startRun {target, premises, requestId} for all three tray buttons;
+- answerQuestions {runId, setId, answers 1-3 × {question, choice, scope}, requestId};
+- cancelRun / resumeRun {runId, requestId};
+- discardProposal {runId, requestId}, from Discard and from Stop on an interrupted run;
+- acceptProposal {runId, proposalId, lifecycle: ticked ids, definitions: approved ids, requestId};
+- feedback {runId, text (trimmed, keeps line breaks), requestId};
+- adoptGhost {runId, ghostId, rationale? (one line), requestId}; rejectGhost {runId, ghostId, requestId};
+- openProposalDiff {runId, proposalId, file?} and dismissRun {runId}, both without requestId;
+- kindChange with confirmedDependents, always together with a dependents choice: exactly the ids or Lean names the dialog listed.
+
+Every run request disables its buttons until its actionResult arrives, or until a run update changes the state or question set. A refusal shows the host's error as a toast.
+
+What it consumes:
+- `run` and `proposal` independently, in any order. The proposal banner shows when the proposal's subject is the board's and the run is null or in review with the same runId.
+- The proposed view needs proposal.subject === the board subject.
+- Ghosts come from run.ghosts (state 'suggested') when run.runId === proposal.runId, else from proposal.ghosts. Adopt and reject are enabled only while run.state === 'review'.
+- Another subject's run shows a compact line under the header with Show (posts selectSubject), plus the header badge.
+- TlGraph.attempts is read in applyGraph (the current graph only).
+- LeanBinding.externalUsers is shown in Used by and in the delete dialog.
+
+Harness additions for the integrator's tests:
+- window.__TL_HARNESS__.run / .proposal are sent after the graph;
+- the run messages above get automatic ok actionResults (queue other outcomes with replyNext);
+- openBoard options: run, proposal, and clock (pins Date.now via page.clock.setFixedTime).
+Typed fixtures live in test/shared/runs.ts: runView, waitingRun, questionSet, MODALITY_QUESTION, normativeProposal, literalProposal, adoptedProposal, definitionProposal, reviewRun, attemptsGraph, externalUsersGraph.
+
+The built bundle in packages/extension/dist/webview is from the final run (21:07). The integrator rebuilds it anyway (plan 11.7). I did not run the VS Code smoke, as instructed.
+
+## effects_outside_repo
+- ~/.npm/_logs: my early `npx tsc/vitest/vite/playwright` invocations went through npm, which by default writes one small debug log per invocation and deletes logs beyond the newest 10. The folder is shared with the other builders' npm runs. Afterwards I called node_modules/.bin binaries directly, which write no npm logs. I listed file names only, never contents. npm_config_logs_max was never set.
+- /tmp/tl-pw-chrome-XXXXXX: each Playwright run's isolated Chrome TMPDIR/HOME/XDG directory, created by the existing playwright.config.ts and deleted by its global teardown. Checked afterwards: none left.
+- A local static server on 127.0.0.1:41739 (test/harness/serve.mjs) and headless Google Chrome ran during the Playwright runs only, with one worker. Both stopped with the runs; I verified none of my processes remain. The vitest processes still running belong to other builders, in packages/runner.
+- Home guard after every Playwright run: ~/.config/google-chrome, ~/.cache/google-chrome, ~/.cache/fontconfig, ~/.pki and ~/.local/share/pki unchanged.
+- Scratch writes: /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2-wp6/final-unit.log and final-e2e.log.
+- Within the repo but outside src/test: vitest's result cache in packages/webview/node_modules/.vite/vitest/ and Vite's config temp in packages/webview/node_modules/.vite-temp (my assigned path); Playwright's packages/webview/test-results/playwright/.last-run.json; screenshots in packages/webview/test-results/.
+- No network use, no installs or new packages, no git commands, no Claude CLI invocation, no Lean, no VS Code instance, no writes to the user's VS Code settings, ~/.config, ~/.claude or ~/.elan, and no credentials read.
+

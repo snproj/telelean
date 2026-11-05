@@ -1,0 +1,104 @@
+[
+ {
+  "label": "r2-lean-semantics",
+  "agentId": "aca4d11f56e12b6d0",
+  "toolsUsed": [
+   "Bash",
+   "ToolSearch",
+   "TaskStop",
+   "Write",
+   "WebFetch",
+   "WebSearch",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "t1-traceability",
+  "agentId": "a517088763223d810",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Skill",
+   "ToolSearch",
+   "WebFetch",
+   "Write",
+   "Edit",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "r1-claude-slot",
+  "agentId": "a887b54ab34e85fe6",
+  "toolsUsed": [
+   "Read",
+   "Bash",
+   "WebFetch",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "r3-ui-graph",
+  "agentId": "a6f5f2d5dab615921",
+  "toolsUsed": [
+   "Read",
+   "Bash",
+   "ToolSearch",
+   "Write",
+   "WebFetch",
+   "WebSearch",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "r4-markup-lsp",
+  "agentId": "a2d9ca4ebcec600d4",
+  "toolsUsed": [
+   "Read",
+   "Bash",
+   "ToolSearch",
+   "Write",
+   "WebFetch",
+   "WebSearch",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "r5-agent-protocol",
+  "agentId": "a132dcdc37d515a15",
+  "toolsUsed": [
+   "Read",
+   "Bash",
+   "Skill",
+   "ToolSearch",
+   "WebFetch",
+   "Write",
+   "WebSearch",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "r6-vscode-toolchain",
+  "agentId": "ac7b60c678b6f445a",
+  "toolsUsed": [
+   "Bash",
+   "ToolSearch",
+   "WebFetch",
+   "WebSearch",
+   "Write",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "r7-prior-art",
+  "agentId": "a668a4344fd8c7db7",
+  "toolsUsed": [
+   "Read",
+   "Bash",
+   "ToolSearch",
+   "WebFetch",
+   "WebSearch",
+   "Write",
+   "StructuredOutput"
+  ]
+ }
+]

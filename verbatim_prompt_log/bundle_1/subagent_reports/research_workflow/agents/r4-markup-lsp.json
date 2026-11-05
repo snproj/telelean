@@ -1,0 +1,459 @@
+{
+ "topic": "R4: telelean node markup language inside Lean files, the canonical graph model, versioned JSON export, and whether an LSP is the right design",
+ "summary": "NOTE ON THE REPORT FILE: the harness refused to write REPORT.md (\"Subagents should return findings as text, not write report files\"), so the full report is in this structured output (findings, recommendations, risks, decisions). The supporting artefacts are code and data files, so they were created and can be read by later agents. All are under /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r4-markup-lsp/:\n- proto/telelean_ref.py: Python reference lexer, parser, binder, validator and JSON exporter.\n- proto/test_telelean_ref.py: 20 unit tests, all passing.\n- proto/telelean-graph-1.0.schema.json: JSON Schema 2020-12 for the export.\n- lean-exp/Canonical/*.lean: the canonical markup examples; they compile with Lean 4.35.0.\n- lean-exp/Spyro/*.lean: a model with deliberate violations (sorry derivation, hidden axiom, already-proven goal).\n- lean-exp/Lex/*.lean: 19 lexing and docstring edge cases.\n- lean-exp/Extract.lean and scale/big3k/FactsMain.lean: Lean facts extractors (interpreted and compiled).\n- scripts/lsp_probe.py: Lean server re-elaboration probe.\n- scripts/yaml_pitfalls.py, scripts/example_analysis.py, scripts/validate_graph.py.\n- out/*.json: sample exports.\n\nANSWER TO THE USER'S QUESTION: an LSP is not the right first step. Build a reusable TypeScript core library: a Lean-aware comment lexer, block parser and canonical serializer, block-to-declaration binder, graph model, validator and pure text-edit operations. Use it in-process in the VS Code extension and in a Node CLI that emits a versioned JSON graph (`telelean export --format-version 1`) for graph-analysis scripts. Register VS Code providers directly: diagnostics, hover, completion, definition, references, rename, code lens, code actions, workspace symbols. The VS Code 1.140 typings and source show these merge cleanly with the Lean extension. Both selectors score 10, so they land in the same provider group; rename falls through when a provider returns undefined. The one hard rule: never register semantic tokens for lean4, because the best-matching provider replaces Lean's highlighting. A thin LSP adapter over the same core can come later, if Neovim or Emacs users want in-buffer markup help. Neovim and lsp-mode support an extra server natively; Eglot needs the Rassumfrassum multiplexer. Scripts should read the JSON export, the same reasoning that led to cargo metadata and LSIF/SCIP. Lean-native markup (attributes or commands) is rejected as the primary representation. The closest prior art, LeanArchitect (ITP 2026), represents informal nodes as `def x : (sorry : Type) := sorry` placeholders, which the user explicitly rejected. It also needs a toolchain bump for every Lean release and RC.\n\nMARKUP v1: a plain `/- ... -/` comment whose first line is `@@ telelean v1`, followed by line-oriented `key: value` fields.\n- Value types come from the key's schema, never from how the value looks (no YAML implicit typing). On this machine PyYAML turned `NO` into False, `1.10` into 1.1, and silently truncated `PG games #1 rule` to `PG games`.\n- Quoting is optional. A value starting with `\"` is a JSON string, which provides escapes for the comment delimiters `-/` and `/-`.\n- An optional `---` line starts a Markdown body.\n- Required fields: id (stable slug), kind (ASSUMPTION|DERIVATION|GOAL|DEFINITION; `type:` accepted as an alias), natural_name.\n- Optional fields: rationale, premises (a jointly-sufficient premise set), lean (explicit binding), tags, origin (user|llm), session, and dotted extension keys.\n- A block binds to the declaration starting on the next non-blank line (Go-style adjacency; docstring, attributes, modifiers and other comments may sit in between), or to an explicit `lean:` list. A code-less node is the block alone, followed by a blank line, with no sorry.\n- Natural language lives in the block. The Lean docstring is optional and documents the encoding.\n- Kind is metadata, not location: promotion or demotion changes one line plus the proof, and Lean names and statements stay put.\n- Layout and ordering live in `.telelean/layout.json`, never in .lean files. Two verified reasons: any comment edit makes the Lean server re-elaborate the preceding command and the rest of the file, and Lake rebuilds all downstream modules when an edit shifts line numbers (it has early cutoff only for same-position edits).\n- Statuses (formal, check, purity) are derived, not declared. A ~60-line Lean facts tool (collectAxioms, findDeclarationRanges?, isProp, references) enables a purity check: a DERIVATION's transitive axioms must be a subset of its ASSUMPTION axioms plus propext, Classical.choice and Quot.sound, with no sorryAx. It also detects hidden axioms and already-proven goals. All three were verified on the Spyro model. Compiled, it handles 2,980 declarations in about 1 s.\n\nMEASURED NUMBERS (CPython; TypeScript should be faster):\n- Markup parse and validate: 3,000 nodes in about 0.2–0.33 s; 30,000 nodes / 270k lines in 2.6 s, scaling linearly.\n- Lean: 3,000 trivial nodes take 2.9 s as one file and 4.6 s as a five-module Lake build.\n\nHAZARDS FOUND:\n- Core Lean's default autoImplicit turns an LLM typo in an assumption (`hasDarkPast cyndr`) into `∀ {cyndr : Character}, hasDarkPast cyndr` with no error. Fix: `leanOptions = { autoImplicit = false, relaxedAutoImplicit = false }` in lakefile.toml; verified that `lake build` then reports Unknown identifier.\n- Json.pretty takes 33 s on large output versus 5 s for Json.compress.\n- ConstantInfo.value? returns none for theorems unless `allowOpaque := true`.\n- The lean4 extension's Unicode input mode rewrites hand-typed `\\/` to ⧸.",
+ "findings": [
+  {
+   "claim": "VS Code merge semantics when several providers serve one language: hover, code actions, code lens, definition, declaration, typeDefinition, implementation, references, document and workspace symbols, document links, inlay hints, colors and selection ranges are asked in parallel and merged. Completion goes by score groups: equal-score providers are asked together and merged, and the process stops at the first group with results. Rename asks providers in sequence and the first result wins. Semantic tokens, document formatting, range formatting and on-type formatting use only the best-matching provider, and its failure fails the whole operation. Document highlights and signature help are called sequentially until a provider returns a result. Folding ranges are merged, but when two start at the same position the first registered wins.",
+   "evidence": "Doc comments of languages.register*Provider in @types/vscode 1.140.0 index.d.ts lines 14841-15255 (downloaded tarball, read only). Example: registerRenameProvider says 'sorted by their score and asked in sequence. The first provider producing a result defines the result of the whole operation.'",
+   "confidence": "documented",
+   "source": "https://registry.npmjs.org/@types/vscode/-/vscode-1.140.0.tgz (index.d.ts); local copy at r4-markup-lsp/dl/types-vscode-1.140.0/vscode/index.d.ts"
+  },
+  {
+   "claim": "The Lean client's document selector scores 10, and a telelean selector {language:'lean4'} also scores 10, so they share a provider group: completions merge, and rename order is decided by registration time (newest first).",
+   "evidence": "leanprover.lean4-0.0.240 dist/extension.js obtainClientOptions builds {language:'lean4', scheme:<folder scheme>, pattern:'<folder>/**/*'} plus the same with language:'lean'. VS Code 1.140.0 languageSelector.ts sets ret=10 for each matched scheme, language or pattern and takes the max. languageFeatureRegistry.ts _compareByScoreAndTime sorts by score, de-prioritizes built-in providers, then puts newer _time first.",
+   "confidence": "verified-locally",
+   "source": "~/.vscode/extensions/leanprover.lean4-0.0.240/dist/extension.js; https://github.com/microsoft/vscode/blob/1.140.0/src/vs/editor/common/languageSelector.ts and languageFeatureRegistry.ts"
+  },
+  {
+   "claim": "Rename coexists with Lean if the telelean provider returns undefined when the cursor is not on a telelean id. VS Code then moves on to the next provider (Lean's).",
+   "evidence": "VS Code 1.140.0 rename.ts RenameSkeleton.resolveRenameLocation: if a provider returns nothing it does `continue`, and if it returns a rejectReason it collects it and continues. _provideRenameEdits recurses to provider i+1 when the result is falsy or has a rejectReason.",
+   "confidence": "verified-locally",
+   "source": "https://github.com/microsoft/vscode/blob/1.140.0/src/vs/editor/contrib/rename/browser/rename.ts"
+  },
+  {
+   "claim": "Registering a DocumentSemanticTokensProvider for lean4 would replace Lean's semantic highlighting. Markup highlighting must use a TextMate injection grammar or decorations instead.",
+   "evidence": "getSemanticTokens.ts queries only orderedGroups(model)[0], the highest-score group. It returns the first result that has tokens and rethrows any provider error. Lean's grammar (scopeName source.lean4) scopes plain block comments as comment.block.lean4 and doc comments as comment.block.documentation.lean4, so an injection with injectTo:[\"source.lean4\"] and injectionSelector \"L:comment.block.lean4\" fits.",
+   "confidence": "verified-locally",
+   "source": "https://github.com/microsoft/vscode/blob/1.140.0/src/vs/editor/contrib/semanticTokens/common/getSemanticTokens.ts; ~/.vscode/extensions/leanprover.lean4-0.0.240/syntaxes/lean4.json; https://code.visualstudio.com/api/language-extensions/syntax-highlight-guide"
+  },
+  {
+   "claim": "The Lean 4.35 server advertises: completion (trigger '.'), hover, declaration, definition, typeDefinition, references, callHierarchy, rename with prepareProvider, workspaceSymbol, documentHighlight, documentSymbol, foldingRange, semanticTokens (full and range), codeAction (quickfix, refactor, source.organizeImports; extensible from Lean via @[code_action_provider]), inlayHint, signatureHelp, color, and experimental moduleHierarchyProvider and rpcProvider. Its documentSymbol returns declaration names with range and selectionRange.",
+   "evidence": "src/lean/Lean/Server/Watchdog.lean mkLeanServerCapabilities. The scripts/lsp_probe.py initialize response contains the same keys. documentSymbol on Probe.lean returned 201 symbols, e.g. {kind:6, name:'probeA', range:..., selectionRange:...}.",
+   "confidence": "verified-locally",
+   "source": "~/.elan/toolchains/leanprover--lean4---v4.35.0/src/lean/Lean/Server/Watchdog.lean; r4-markup-lsp/scripts/lsp_probe.py"
+  },
+  {
+   "claim": "The telelean extension can reuse Lean's language features without its own LSP. The stable route is VS Code's built-in commands (vscode.executeDocumentSymbolProvider, executeDefinitionProvider, executeReferenceProvider, executeHoverProvider, executeWorkspaceSymbolProvider, executeDocumentRenameProvider) plus vscode.languages.getDiagnostics(uri) and onDidChangeDiagnostics for Lean's diagnostics. The lean4 extension also exports an unofficial API: activate() returns {clientProvider, infoProvider, projectOperationProvider}, and clientProvider.getActiveClient() and findClient(uri) return a client with sendRequest and sendNotification.",
+   "evidence": "Built-in commands are listed on the VS Code commands reference page. In dist/extension.js the activate result is `{clientProvider:n,infoProvider:r,projectOperationProvider:o}`, and the client exposes `sendRequest(e,t,i){return this.running&&this.client?this.client.sendRequest(e,t,i):...}`. This is not a documented stable API.",
+   "confidence": "verified-locally",
+   "source": "https://code.visualstudio.com/api/references/commands; ~/.vscode/extensions/leanprover.lean4-0.0.240/dist/extension.js"
+  },
+  {
+   "claim": "Neovim attaches several LSP clients to one buffer natively, via vim.lsp.config plus vim.lsp.enable; buf_request_all returns a client_id:result map. lean.nvim uses the built-in client named 'leanls' with languageId 'lean' and supports Neovim 0.12.x, so a second 'telelean' client for filetype lean would be easy.",
+   "evidence": "The Neovim LSP docs show the vim.lsp.config example and buf_request_all semantics. lean.nvim lua/lean/lsp.lua calls vim.lsp.get_clients { name = 'leanls', bufnr = ... }. The README says it 'supports the latest stable neovim release (currently 0.12.x)'.",
+   "confidence": "documented",
+   "source": "https://neovim.io/doc/user/lsp/ ; https://github.com/Julian/lean.nvim (lua/lean/lsp.lua downloaded to dl/leannvim)"
+  },
+  {
+   "claim": "Emacs: lean4-mode depends on lsp-mode, which supports extra servers with :add-on? t. Eglot does not support several servers per buffer directly and recommends the Rassumfrassum ('rass') multiplexer. Whether rass forwards Lean's custom $/lean/* methods and RPC is unknown.",
+   "evidence": "The lean4-mode README says 'Install the Emacs packages Dash, lsp-mode and Magit-Section'. lsp-mode.el: \"'add-on?' when set to t the server will be started no matter whether there is another server handling the same mode\". The Eglot manual, section 6, says these use cases 'are not directly supported by Eglot's architecture' and describes rass.",
+   "confidence": "documented",
+   "source": "https://github.com/leanprover-community/lean4-mode ; https://github.com/emacs-lsp/lsp-mode/blob/master/lsp-mode.el ; https://www.gnu.org/software/emacs/manual/html_mono/eglot.html"
+  },
+  {
+   "claim": "LeanArchitect is the closest prior art for option (c), Lean-native markup. It shows two drawbacks for this user: informal nodes become sorry placeholders, and it needs a toolchain bump for every Lean release and RC.",
+   "evidence": "README syntax: @[blueprint \"label\" (statement := /-- ... -/) (uses := ...) (proofUses := ...) (notReady := ...)]. Dependencies are inferred from constants used, readiness from being sorry-free, and `lake build :blueprintJson` exports JSON. blueprintConvert --convert_informal generates `@[blueprint] def my_def : (sorry : Type) := sorry`. The GitHub API shows lean-toolchain at v4.36.0-rc2, with bump commits and tags for every RC and release (v4.32.0 through v4.36.0-rc2, 2-4 a month). Paper: 'LeanArchitect: Automating Blueprint Generation for Humans and AI', ITP 2026.",
+   "confidence": "documented",
+   "source": "https://github.com/hanwenzhu/LeanArchitect ; https://drops.dagstuhl.de/entities/document/10.4230/LIPIcs.ITP.2026.25"
+  },
+  {
+   "claim": "leanblueprint (LaTeX) binds informal statements to Lean explicitly by name and tracks dependencies and status: \\\\lean{...} lists Lean declaration names, \\\\uses{...} lists labels used, \\\\leanok means fully formalized, plus \\\\notready and \\\\mathlibok. It draws a colored dependency graph. learnharness models propositions plus multi-premise 'chains', drawn premise to junction to conclusion, and keeps presentation metadata in a versioned sidecar.",
+   "evidence": "leanblueprint README macro descriptions. learnharness docs/architecture.md section 6: 'A multi-premise chain creates a geometry junction with premise -> junction -> conclusion links', and organization metadata in data/graph/source-organization.json is 'lazy, versioned presentation metadata'.",
+   "confidence": "documented",
+   "source": "https://github.com/PatrickMassot/leanblueprint ; https://github.com/amosblomqvist/learnharness/blob/main/docs/architecture.md"
+  },
+  {
+   "claim": "YAML's implicit typing makes it unsafe for natural-language values, and different implementations disagree. PyYAML 6.0.1 (YAML 1.1) parses country: NO as False, yes/off as True/False, version: 1.10 as 1.1, 1:20 as 80, 0755 as 493, null and ~ as None, and a date as datetime.date. 'natural_name: Cynder: the dark dragon' is a ScannerError and 'natural_name: PG games #1 rule' silently becomes 'PG games'. The npm `yaml` package defaults to YAML 1.2 core, where 'No' stays a string, so a TypeScript extension and a Python script would build different graphs from the same file.",
+   "evidence": "scripts/yaml_pitfalls.py run with python3 -I. eemeli.org/yaml docs: default version '1.2', schema 'core'; parse('No') returns 'No' unless schema 'yaml-1.1' is used.",
+   "confidence": "verified-locally",
+   "source": "r4-markup-lsp/scripts/yaml_pitfalls.py; https://eemeli.org/yaml/ ; https://hitchdev.com/strictyaml/why/implicit-typing-removed/"
+  },
+  {
+   "claim": "TOML avoids implicit typing but requires every string to be quoted, and its parsers are all-or-nothing. The latest spec listed on toml.io is v1.1.0.",
+   "evidence": "tomllib: 'natural_name = Cynder' raises TOMLDecodeError Invalid value; the quoted form parses.",
+   "confidence": "verified-locally",
+   "source": "python3 tomllib; https://toml.io/en/"
+  },
+  {
+   "claim": "Lean 4.35 comment lexing, which the markup must respect: block comments nest (`/-` increments, `-/` decrements). A stray `-/` inside a markup value ends the comment early: error 'unexpected identifier; expected command', though later declarations still elaborate. A stray `/-` swallows the rest of the file ('unterminated comment') and later declarations are lost. `/--` and `/-!` are doc-comment tokens and any other `/-` is whitespace; `/---` is a docstring. Tabs are allowed inside comments but are an error in code. CRLF and non-BMP characters are fine.",
+   "evidence": "Lean/Parser/Basic.lean finishCommentBlock and whitespace (`if curr == '-' || curr == '!' then s -- \"/--\" and \"/-!\" doc comment are actual tokens`). Tests lean-exp/Lex/L01, L02, L03, L09, L09b, L10, L14, L17, L20, run with `lake env lean`.",
+   "confidence": "verified-locally",
+   "source": "~/.elan/toolchains/leanprover--lean4---v4.35.0/src/lean/Lean/Parser/Basic.lean; r4-markup-lsp/lean-exp/Lex/"
+  },
+  {
+   "claim": "Docstring facts. A /-- -/ docstring must be followed by a declaration, otherwise Lean reports an error. A plain comment between docstring and declaration does not detach it, and neither does a blank line. A telelean block written as /-- -/ becomes the declaration's docstring. /-! module docs may appear anywhere. So code-less nodes cannot use docstrings, and the markup must live in plain /- -/ comments.",
+   "evidence": "L05: '/-- doc -/' at end of file gives 'unexpected end of input; expected ... abbrev, axiom, ...'. L13: a docstring before #check is an error. L06: doc, then telelean comment, then def e gives findDocString? 'Docstring for e.'. L19: doc, blank line, def o still attaches. L16: findDocString? returns some \"@@ telelean v1\\nid: l\\n\". L11: getMainModuleDoc contains the /-! block.",
+   "confidence": "verified-locally",
+   "source": "r4-markup-lsp/lean-exp/Lex/L05,L06,L07,L11,L13,L16,L19"
+  },
+  {
+   "claim": "Escaping the comment delimiters works with JSON string escapes in header values and CommonMark escapes in the Markdown body. In headers, write -/ as -\\\\/ (JSON escaped solidus) and /- as \\\\u002f- (writing \\\\/- would still contain /-). In the body, write -\\\\/ and /\\\\-.",
+   "evidence": "L04 (name: \"A -\\\\/ B and C /\\\\u002d D\") compiles. The prototype decodes \"A -\\\\/ B and C \\\\u002f- D\" to 'A -/ B and C /- D' (unit test). CommonMark section 2.4: 'Any ASCII punctuation character may be backslash-escaped', and '-' and '/' are in U+0021-002F.",
+   "confidence": "verified-locally",
+   "source": "r4-markup-lsp/lean-exp/Lex/L04_escaped.lean; proto/test_telelean_ref.py; https://spec.commonmark.org/0.31.2/#backslash-escapes"
+  },
+  {
+   "claim": "The lean4 extension's Unicode input mode (lean4.input.enabled=true, leader \\\\, also active in comments) rewrites hand-typed backslash sequences: \\\\/ becomes ⧸ (U+29F8), \\\\- becomes ⁻¹, \\\\u becomes ↑. It starts tracking only when a change inserts exactly the single character \\\\, so programmatic WorkspaceEdits containing escapes are safe.",
+   "evidence": "The abbreviation table extracted from dist/extension.js has '/' to '⧸', '-' to '⁻¹', 'u' to '↑', '\\\\\\\\' to '\\\\\\\\'. AbbreviationRewriter.processChange: `if(e.newText===this.config.abbreviationCharacter&&!t&&!this.doNotTrackNewAbbr){...new TrackedAbbreviation...}`.",
+   "confidence": "verified-locally",
+   "source": "~/.vscode/extensions/leanprover.lean4-0.0.240/dist/extension.js and package.json (lean4.input.*)"
+  },
+  {
+   "claim": "Any edit inside a telelean comment makes the Lean server re-elaborate the preceding command and everything after it in that file. A comment is trailing trivia of the command before it, so even editing a comment placed after a slow command re-runs that command.",
+   "evidence": "scripts/lsp_probe.py against `lake serve`, file with a block, 200 theorems, then `#eval IO.sleep 3000` printing a timestamp, then another block. Initial open 4.02 s. Editing natural_name above the #eval: 3.26 s and a new timestamp. Editing natural_name in the block below the #eval: 3.08 s and a new timestamp. A same-length edit above: 3.23 s and a new timestamp.",
+   "confidence": "verified-locally",
+   "source": "r4-markup-lsp/scripts/lsp_probe.py; r4-markup-lsp/lsp-exp/"
+  },
+  {
+   "claim": "Lake 5.0 has early cutoff. A comment edit that keeps every line in place rebuilds only the edited module. An edit that adds a line rebuilds all downstream modules, because declaration positions are stored in the .olean.",
+   "evidence": "scale/big3k (Defs <- Facts <- Rules <- Derivs <- Goals). Changing natural_name \"P0 holds\" to \"P0 holds!!\" in Big/Facts.lean rebuilt only Big.Facts, and Big.Goals was 'Replayed'. Adding a 'tags: extra' line rebuilt Facts, Rules, Derivs, Goals and Big.",
+   "confidence": "verified-locally",
+   "source": "r4-markup-lsp/scale/big3k"
+  },
+  {
+   "claim": "Lean facts let telelean tell vocabulary from claims. opaque predicates and types and structures add no axioms. `axiom newSpyro : Game` is a data axiom (isProp=false) and appears in every dependent's collectAxioms. Prop-valued axioms are claims. A theorem proved with sorry includes sorryAx.",
+   "evidence": "Extract.lean on the Spyro model. Game, hasDarkPast, isPG and goodAddition (opaque) have axioms []. newSpyro: leanKind axiom, isProp false. cynder_not_good: axioms [cynder_dark_past, newSpyro, new_spyro_pg, pg_no_dark_past]. spyro_sells_well: [newSpyro, sorryAx], usesSorry true.",
+   "confidence": "verified-locally",
+   "source": "r4-markup-lsp/lean-exp/Extract.lean, extract_out.json"
+  },
+  {
+   "claim": "The purity check works end to end. With Lean facts merged into the markup graph, the validator flags a DERIVATION that uses sorry (TL102), a DERIVATION relying on an axiom that is not an ASSUMPTION node (TL103), an unbound Prop axiom as a hidden assumption (TL104), and a GOAL already proved purely (TL105, suggest promotion).",
+   "evidence": "proto/telelean_ref.py check lean-exp --facts lean-exp/extract_out.json printed: \"[TL102] DERIVATION 'hidden-helper-axiom-test' is not proved ('sneaky' depends on sorry)\", \"[TL103] DERIVATION 'uses-hidden' depends on axioms that are not ASSUMPTION nodes: fans_hate_change\", \"[TL105] GOAL 'proven-goal' is already proved from assumptions; promote it to DERIVATION?\", \"[TL104] hidden assumption: Prop-valued axiom 'fans_hate_change' is not bound to any telelean node\".",
+   "confidence": "verified-locally",
+   "source": "r4-markup-lsp/proto/telelean_ref.py; lean-exp/Spyro/"
+  },
+  {
+   "claim": "Lean 4.35 precomputes per-module axiom tables at .olean export, so collectAxioms on imported declarations is nearly free. For proof references, ConstantInfo.value? returns none for theorems unless called with (allowOpaque := true).",
+   "evidence": "Lean/Util/CollectAxioms.lean: exportedAxiomsExt with 'Entries are computed once by beforeExportFn when the olean is serialized'. Profile.lean: collectAxioms over 2,980 declarations took 26 ms. Lean/Declaration.lean L483-488: `.thmInfo {value, ..} => if allowOpaque then some value else none`. Before the fix, proof-level lean_ref edges were missing from the export.",
+   "confidence": "verified-locally",
+   "source": "~/.elan/toolchains/leanprover--lean4---v4.35.0/src/lean/Lean/Util/CollectAxioms.lean, Lean/Declaration.lean; r4-markup-lsp/scale/big3k/Profile.lean"
+  },
+  {
+   "claim": "Facts extraction is fast when compiled and slow when interpreted with Json.pretty. Compiled lean_exe: 0.93-1.05 s for 2,980 declarations (import 155-190 ms). Interpreted Extract.lean with import Lean: 5.1 s with Json.compress and 32.9 s with Json.pretty. The compiled binary is 231 MB (statically linked), takes 4.1 s to build, and works on another project via `lake env <exe> <Root>` (Spyro: 0.5 s) when the toolchain matches.",
+   "evidence": "/usr/bin/time measurements in scale/big3k. FactsMain.lean uses importModules #[{module:=root}] {} (loadExts := false); loadExts := true fails with 'enableInitializersExecution must be run before calling importModules (loadExts := true)'. Compiled and interpreted outputs give identical names and axioms. Profile: scanning env.constants.toList (210,938 constants) took about 1.4 s per pass, ppExpr for all 2,980 declarations took 235 ms.",
+   "confidence": "verified-locally",
+   "source": "r4-markup-lsp/scale/big3k/FactsMain.lean, Extract.lean, Profile.lean"
+  },
+  {
+   "claim": ".ilean files written by lake build (format version 5) give cross-declaration references without any metaprogram: decls maps a name to [l0,c0,l1,c1,sl0,sc0,sl1,sc1] (0-based), and references usages entries name the containing declaration. The format is internal and undocumented.",
+   "evidence": ".lake/build/lib/lean/Canonical/Goals.ilean has keys decls, directImports, module, references, version=5. Example: references['{\"c\":{\"m\":\"Canonical.Assumptions\",\"n\":\"Canonical.cynder_dark_past\"}}'].usages = [[16,47,16,63,'Canonical.cynder_not_good']].",
+   "confidence": "verified-locally",
+   "source": "r4-markup-lsp/lean-exp/.lake/build/lib/lean/Canonical/Goals.ilean"
+  },
+  {
+   "claim": "Lean declaration ranges start at the docstring and selectionRange starts at the name. DeclarationRange stores both codepoint columns and precomputed UTF-16 columns, so an LSP-style 0-based/UTF-16 position convention for the export is natural.",
+   "evidence": "cynder_not_good: range.line 11 (the /-- line), selectionRange.line 12. Lean/Data/DeclarationRange.lean: DeclarationRange {pos, charUtf16, endPos, endCharUtf16}.",
+   "confidence": "verified-locally",
+   "source": "r4-markup-lsp/lean-exp/extract_out.json; Lean/Data/DeclarationRange.lean"
+  },
+  {
+   "claim": "Lean 4.35 declaration grammar that the header heuristic must handle. declModifiers, in order: docComment, @[attrs], private|public, protected, meta|noncomputable, unsafe, partial|nonrec. Keywords: abbrev, def (now with optional given/requires/ensures contracts), theorem, opaque, instance (attrKind scoped|local, optional (priority := ...), optional name), axiom, example (no name), inductive, coinductive, class inductive, structure or class. `lemma` exists only in Mathlib/Batteries. Identifier characters follow isIdFirst/isIdRest, and 4.35's isLetterLike includes Latin-1 supplement and Latin Extended-A.",
+   "evidence": "Lean/Parser/Command.lean lines 68-345 (declModifiers, definition, theorem, opaque, instance, axiom, example, inductive, coinductive, classInductive, structure, declaration). Init/Meta/Defs.lean isLetterLike.",
+   "confidence": "verified-locally",
+   "source": "~/.elan/toolchains/leanprover--lean4---v4.35.0/src/lean/Lean/Parser/Command.lean; Init/Meta/Defs.lean"
+  },
+  {
+   "claim": "autoImplicit hazard. With core Lean defaults, an LLM typo in an assumption silently becomes a universally quantified, much stronger axiom. With leanOptions = { autoImplicit = false, relaxedAutoImplicit = false } in lakefile.toml, lake build reports the typo. leanOptions apply to both `lake serve` and compilation, but not to standalone `lake env lean File.lean`.",
+   "evidence": "order-exp/Typo.lean: `axiom cynder_dark_past : hasDarkPast cyndr` gives `@cynder_dark_past : ∀ {cyndr : Character}, hasDarkPast cyndr` with no error. With the leanOptions, lake build gives 'error: Ord/Typo.lean:6:37: Unknown identifier `cyndr`'. The Lake README in the toolchain, L205, says leanOptions are passed 'to both the Lean language server (i.e., lean --server) launched by lake serve and to lean while compiling'. A forward reference `theorem uses_later : later = 1 := rfl` was also auto-bound instead of erroring.",
+   "confidence": "verified-locally",
+   "source": "r4-markup-lsp/order-exp/; ~/.elan/toolchains/leanprover--lean4---v4.35.0/src/lean/lake/README.md"
+  },
+  {
+   "claim": "Import cycles are fatal in Lake ('build cycle detected'). Declarations cannot refer forward within a file except inside mutual blocks. Placement of new code must follow dependency order across the import DAG.",
+   "evidence": "order-exp: Ord/A imports Ord/B and B imports A gives 'error: build cycle detected:' and 'bad import'.",
+   "confidence": "verified-locally",
+   "source": "r4-markup-lsp/order-exp/"
+  },
+  {
+   "claim": "The canonical v1 examples compile with Lean 4.35.0 and pass the prototype validator with zero diagnostics. Namespace-qualified adjacency binding and explicit lean: binding both resolve against Lean facts. The examples cover a code-less ASSUMPTION with rationale, a formalized ASSUMPTION, a formalized unproved GOAL (sorry), a proved DERIVATION with a Markdown body, and LLM-created DEFINITIONs (a structure and a two-declaration opaque node).",
+   "evidence": "lake build Canonical succeeds (only expected 'declaration uses sorry' on fans_reject_cynder). proto/telelean_ref.py check canon-ws --facts lean-exp/canonical_facts.json gives 12 nodes, 28 edges, exit 0, no diagnostics. Statuses: lore-matters formal=False; cynder-not-good check=ok purity=pure; fans-reject-cynder check=sorry; game-vocabulary binding=explicit with decls Canonical.Game and Canonical.Game.isPG. Text of examples (1) and (4): (1) /-\\n@@ telelean v1\\nid: lore-matters\\nkind: ASSUMPTION\\nnatural_name: \\\"Lore consistency matters to long-time fans\\\"\\nrationale: \\\"Years of reading fan forums\\\"\\norigin: user\\n-/\\n(blank line). (4) /-\\n@@ telelean v1\\nid: cynder-not-good\\nkind: DERIVATION\\nnatural_name: \\\"Cynder would not be a good addition to the new Spyro game\\\"\\npremises: cynder-dark-past, new-spyro-pg, pg-no-dark-past\\norigin: user\\nsession: 2026-11-01T10-15-00Z-a1b2\\n---\\nClarified with the assistant: \\\"good addition\\\" means *fits the game's age rating*.\\n-/\\ntheorem cynder_not_good : ¬ goodAddition cynder newSpyro :=\\n  pg_no_dark_past newSpyro cynder new_spyro_pg cynder_dark_past. The remaining examples are in the files listed under source.",
+   "confidence": "verified-locally",
+   "source": "/tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r4-markup-lsp/lean-exp/Canonical/{Vocabulary,Assumptions,Goals}.lean"
+  },
+  {
+   "claim": "The proposed grammar is trivially parseable, and the reference prototype handles the tricky cases: comment markers inside strings, char literals ('\"'), raw strings (r#\"...\"#) and «...» identifiers; nested comments; CRLF; blocks inside docstrings; JSON escapes; raw values containing ':' '#' and 'NO'; list repetition and brackets; body dedent; the type: alias and lower-case kinds; newer-version tolerance; blank-line code-less detection; docstrings, attributes and modifiers between block and declaration; namespaces; structure, class inductive, named and anonymous instance, example; explicit lean:; duplicate ids, dangling premises, cycles and declarations bound twice; and semantic purity checks.",
+   "evidence": "python3 -I proto/test_telelean_ref.py: 'Ran 20 tests ... OK'. The prototype is about 600 lines of Python with no dependencies.",
+   "confidence": "verified-locally",
+   "source": "r4-markup-lsp/proto/telelean_ref.py, proto/test_telelean_ref.py"
+  },
+  {
+   "claim": "The markup layer scales linearly and fast enough for thousands of nodes even in CPython: 3,000 nodes / 27k lines take 0.20-0.33 s for the whole workspace including the semantic merge. A single 397 KiB / 26,960-line file takes about 145 ms (lex 81 ms, blocks and binding 65 ms). Checking whether an edit was markup-only by comparing non-comment token streams takes about 85 ms. 30,000 nodes / 270k lines (4.2 MB) take 2.6 s in total. Lean itself: 3,000 trivial nodes take 2.87 s as a single file and 4.59 s as a five-module chained lake build.",
+   "evidence": "proto/telelean_ref.py check scale/big3k and scale/big30k stats lines; scripts/bench_incremental.py; /usr/bin/time lake build and lake env lean Single.lean. A quadratic comment scan in binding was found and fixed with bisect before measuring.",
+   "confidence": "verified-locally",
+   "source": "r4-markup-lsp/scale/, scripts/bench_incremental.py"
+  },
+  {
+   "claim": "The prototype's JSON export conforms to the proposed JSON Schema 2020-12 for format 1.x, and an example graph-analysis script can work from the export alone.",
+   "evidence": "scripts/validate_graph.py using jsonschema 4.10.3 Draft202012Validator: 'errors: 0' for out/spyro_graph.json (22 nodes, 44 edges, 33 diagnostics) and out/canonical_graph.json (12 nodes, 28 edges). scripts/example_analysis.py prints each goal's transitive assumption base (e.g. cynder-not-good rests on cynder-dark-past, new-spyro-pg, pg-no-dark-past), unused assumptions, assumptions missing a rationale, and informal nodes.",
+   "confidence": "verified-locally",
+   "source": "r4-markup-lsp/proto/telelean-graph-1.0.schema.json, scripts/validate_graph.py, scripts/example_analysis.py"
+  },
+  {
+   "claim": "Precedents for the design choices. Go defines doc comments as comments 'immediately before top-level ... declarations with no intervening newlines' (precedent for adjacency binding). cargo metadata requires --format-version and treats new fields and new enum-like values as compatible (precedent for export versioning). git trailers are repeatable 'key: value' lines. RFC 6648 deprecates 'X-' prefixes in favor of meaningful or namespaced names. LSIF and SCIP exist because offline consumers want dumps rather than LSP.",
+   "evidence": "Quoted from the respective pages.",
+   "confidence": "documented",
+   "source": "https://go.dev/doc/comment ; https://doc.rust-lang.org/cargo/commands/cargo-metadata.html ; https://git-scm.com/docs/git-interpret-trailers ; https://www.rfc-editor.org/rfc/rfc6648 ; https://github.com/sourcegraph/scip"
+  },
+  {
+   "claim": "LSP 3.18 is the current specification and 3.19 is upcoming. Position encoding is negotiated through general.positionEncodings (utf-8, utf-16, utf-32) and defaults to utf-16.",
+   "evidence": "The spec page says 'This document describes the current 3.18.x version'; the PositionEncodingKind section.",
+   "confidence": "documented",
+   "source": "https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification/"
+  },
+  {
+   "claim": "Current package versions from the npm registry, for a possible future LSP and for tooling: vscode-languageclient 11.0.0 (2026-10-22, engines.vscode ^1.91.0; previous 10.1.2, 2026-09-25); vscode-languageserver 11.0.0; vscode-languageserver-protocol 3.18.5; @types/vscode 1.144.0 is the latest, but 1.140.0 (2026-10-01) matches the installed VS Code; TypeScript 7.0.2 (2026-07-08); esbuild 0.28.2; ajv 8.20.0; @vscode/vsce 4.1.0 (2026-10-28, only 4 days old); js-yaml 5.5.0 and yaml 2.9.1 (not needed).",
+   "evidence": "registry.npmjs.org JSON dist-tags and time fields.",
+   "confidence": "documented",
+   "source": "https://registry.npmjs.org/vscode-languageclient ; https://registry.npmjs.org/@types/vscode ; https://registry.npmjs.org/typescript"
+  },
+  {
+   "claim": "Node.js: v26 'Lithium' became Active LTS on 2026-10-28 (v26.13.0). v24 'Krypton' has been in maintenance LTS since 2026-10-20, supported until 2028-04-30 (v24.22.2, 2026-10-27). Node is not installed on this machine but is needed for the TypeScript core, the CLI and the extension build.",
+   "evidence": "nodejs/Release schedule.json and nodejs.org/dist/index.json.",
+   "confidence": "documented",
+   "source": "https://github.com/nodejs/Release ; https://nodejs.org/dist/index.json"
+  },
+  {
+   "claim": "doc.verso defaults to false in Lean 4.35. When enabled, docstring bodies are parsed as Verso markup, which is another reason never to put telelean markup inside docstrings.",
+   "evidence": "Lean/DocString/Extension.lean: register_builtin_option doc.verso : Bool := { defValue := false ... }. Lean/Parser/Term.lean docComment uses Doc.Parser.ifVerso versoCommentBody commentBody.",
+   "confidence": "verified-locally",
+   "source": "~/.elan/toolchains/leanprover--lean4---v4.35.0/src/lean/Lean/DocString/Extension.lean"
+  },
+  {
+   "claim": "An LSP would add little to the main telelean value for other editors, because the graph panel and LLM harness are VS Code webviews. Neovim and Emacs users would be better served by a CLI (`check --format gnu` for errorformat or compilation-mode) and a standalone browser graph viewer fed by the JSON export.",
+   "evidence": "Reasoning from the documented multi-editor facts and the spec's UI requirements (three-column webview, LLM diff overlay).",
+   "confidence": "inferred",
+   "source": "/home/zhengyew/telelean/verbatim_prompt_log/bundle_1/prompt1.md"
+  }
+ ],
+ "recommendations": [
+  {
+   "decision": "LSP or not",
+   "recommendation": "Option (d): core library plus CLI now, and a thin LSP adapter later only on demand. 1) @telelean/core in pure TypeScript with no vscode import: lexer, block parse and serialize, bind, graph, validate, facts merge, export, edits. 2) The VS Code extension uses it in-process and registers the hover, completion (triggers ':' ',' ' '), definition, references, rename (return undefined off-id), code lens 'Show in graph', code actions, workspace symbols and document links providers with selector {language:'lean4'}, plus a DiagnosticCollection named 'telelean'. 3) Never register semantic tokens or formatting providers for lean4. Use a TextMate injection (injectTo source.lean4, injectionSelector L:comment.block.lean4) or decorations for highlighting. 4) A Node CLI exposes export, check, schema, fmt, facts and migrate. 5) Revisit and add telelean-lsp (vscode-languageserver 10.1.2 or 11.0.0) only when one of these holds: a real Neovim or Emacs user needs in-buffer markup help; the markup becomes a real language; several live frontends need interactive features; or workspaces outgrow the extension host (a worker_thread also solves that).",
+   "rationale": "VS Code's provider-merge rules let in-process providers coexist with Lean's client with no LSP needed (verified in the 1.140 typings and source). An in-process core shares memory with the webview graph, whereas an LSP would duplicate graph state across processes and need custom requests. The multi-editor benefit of LSP is limited to markup editing help, since the graph UI is VS Code-only, and Eglot cannot even attach a second server without a multiplexer. Scripts are better served by a stable versioned snapshot, as with cargo metadata and LSIF/SCIP.",
+   "alternatives": "(a) A separate LSP server attached to lean4 now: more cost, no extra VS Code capability. (c) Lean-native attributes or commands: requires elaboration before nodes exist, forces sorry placeholders or custom commands for code-less nodes, and needs monthly toolchain tracking (LeanArchitect evidence). Possible later as an optional Lean linter add-on for live purity checks in every editor."
+  },
+  {
+   "decision": "Markup sub-syntax",
+   "recommendation": "A line-oriented header with schema-typed values (RFC 822 / git-trailer style, StrictYAML philosophy), not YAML, TOML or JSON. Grammar:\nblock = '/-' [ws] [NL] marker NL {header-line NL} [separator NL body] '-/'\nmarker = [ws] '@@' [ws] 'telelean' [ws 'v' digit{digit}] [ws]   (no version means v1, with a hint)\nheader-line = [ws] (field | '')\nfield = key [ws] ':' [ws] value\nkey = lcid {'.' lcid}   (dotted keys are tool extensions: kept, never warned)\nlcid = [a-z][a-z0-9_]*\nvalue = json-string | raw-text   (interpreted by the key's schema)\nraw-text = rest of line, trimmed; may contain ':' '#' and quotes; must not contain '-/' or '/-'\njson-string = an RFC 8259 string; the writer escapes '-/' as '-\\\\/' and '/-' as '\\\\u002f-'\nlist = ['['] item {',' item} [']']   (repeated list keys accumulate)\nseparator = [ws] '---' [ws]\nbody = Markdown up to the closing '-/', dedented, with '-/' and '/-' written as '-\\\\/' and '/\\\\-'\nBlock detection: a plain block comment whose first non-blank line matches ^@@\\\\s*telelean(\\\\s+v\\\\d+)?\\\\s*$.",
+   "rationale": "Looks exactly like the user's sketch in the common case, has no implicit typing (YAML problems verified), keeps one fact per line for diffs and merges, recovers from errors line by line (TOML and JSON are all-or-nothing), and can be implemented in about 150 lines with no dependency. Scripts never parse it because they read the JSON export, so only one implementation exists.",
+   "alternatives": "YAML subset (rejected: PyYAML and npm yaml diverge, and natural-language values trigger implicit typing). TOML v1.1.0 (runner-up: needs quotes everywhere, all-or-nothing parsing). JSON in comments (noisy, poor diffs)."
+  },
+  {
+   "decision": "Field set for v1",
+   "recommendation": "Required:\n- id: slug ^[a-z0-9]+([-_.][a-z0-9]+)*$, unique across the workspace, never changed automatically.\n- kind: ASSUMPTION|DERIVATION|GOAL|DEFINITION, case-insensitive on input, upper-case canonical; `type:` accepted as an alias with hint TL018.\n- natural_name: one line.\nOptional:\n- rationale: text; a warning (TL011) if missing on an ASSUMPTION; on a GOAL it means 'why I care'.\n- premises: id list; meaningful on DERIVATION and GOAL; means the premises jointly suffice (one argument).\n- lean: Lean-name list for explicit binding.\n- tags: token list.\n- origin: user|llm, default user.\n- session: token pointing to .telelean/sessions/<id>.jsonl (prompt, clarifying Q&A, model, diff).\n- <namespace>.<key>: extension fields.\n- Body after '---': Markdown description and notes, e.g. recorded pragmatics.\nCanonical order: id, kind, natural_name, rationale, premises, lean, tags, origin, session, then extension keys sorted, then the body. Not declared on purpose: formalization and proof status (derived) and layout (sidecar).",
+   "rationale": "Covers the spec's needs: kinds, natural-language-first display, why-annotations for assumptions, LLM provenance, the 'these assumptions suffice' button (premises), and LLM-created support nodes. Statuses are derived so they cannot drift. Namespaced extension keys allow growth without breaking older parsers (RFC 6648-style naming).",
+   "alternatives": "Keep the user's `type:` as canonical (ambiguous in a Lean context). A declared status: field (rejected: it drifts from Lean truth). Alternative premise sets per goal (deferred to an additive future version; the JSON evolution path is reserved)."
+  },
+  {
+   "decision": "Binding blocks to Lean declarations, and code-less nodes",
+   "recommendation": "Adjacency (Go-style): a block binds to the declaration whose syntax starts on the next non-blank line after '-/'. The declaration's docstring, @[attributes], modifiers (private/public, protected, meta/noncomputable, unsafe, partial/nonrec, scoped/local) and other non-telelean comments may come in between. A blank line, end of file or another telelean block makes the node code-less. Emit hint TL013 'attach?' when a declaration follows after a blank line. An explicit `lean: A, B.c` overrides adjacency, for multi-declaration or non-adjacent nodes. Names resolve relative to the namespace at the block, with _root_ honored and private names mapped via privateToUserName?. `example` cannot be bound (TL014); `mutual` needs lean:; an anonymous instance binds by position. The semantic pass checks bound names against Lean declaration ranges (TL101 if missing).",
+   "rationale": "Adjacency survives Lean renames (Lean's rename does not touch comments). The blank-line rule stops a code-less node from silently capturing an unrelated declaration. Explicit lean: covers the rare multi-declaration case. All behaviours were verified in the prototype tests and on the Canonical examples.",
+   "alternatives": "Always-explicit `lean:` names (robust to reordering but stale after renames, and redundant). Skipping blank lines (dangerous capture)."
+  },
+  {
+   "decision": "Node kinds",
+   "recommendation": "Add a fourth kind, DEFINITION, for vocabulary and support declarations (structure Character, opaque predicates, constants), shown as a collapsible 'Vocabulary' group in the assumptions column. Classify unbound axioms with isProp: Prop-valued axioms are hidden assumptions (TL104, warning); data axioms are postulated objects (TL108, info).",
+   "rationale": "The spec's LLM diff creates 'a structure Cynder and a Prop isCharacter'. These are neither claims nor proofs, need no rationale, and must not count in purity bookkeeping. Lean facts distinguish them (opaque and structure add no axioms; data axioms appear in collectAxioms; verified).",
+   "alternatives": "Treat vocabulary as ASSUMPTIONs (forces a meaningless rationale, clutters the belief base)."
+  },
+  {
+   "decision": "Natural language vs Lean docstrings",
+   "recommendation": "The telelean block is the single source of truth for natural language (natural_name plus body). The Lean docstring is optional and documents the encoding, owned by the LLM. In VS Code, a telelean HoverProvider adds the node's natural name and kind when hovering a bound Lean name (hovers merge). An opt-in 'sync docstring' mode could generate /-- natural_name -/ for Lean-native tools, with a drift warning.",
+   "rationale": "Code-less nodes cannot have docstrings (a docstring must precede a declaration; verified). Formalization status flips often, and keeping the text in the block avoids moving it on every flip. The ownership boundary is clean: the user owns belief text, the LLM owns the encoding explanation. A /-- telelean block would itself become the docstring (verified), and doc.verso mode would parse it as Verso.",
+   "alternatives": "Natural language in docstrings for formalized nodes and in comments for informal ones (text moves on every transition)."
+  },
+  {
+   "decision": "Edges: declared vs derived",
+   "recommendation": "Declared: premises (joint sufficiency; written by the 'assert these suffice' button or by the LLM). Draw multi-premise arguments through a junction dot, as learnharness does. Derived from Lean: lean_ref edges with where: statement|proof, from the type's and value?(allowOpaque := true)'s getUsedConstants (or .ilean usages). Transitive axioms are exported as a node attribute, not as edges. Consistency checks:\n- TL102: DERIVATION uses sorry (error).\n- TL103: DERIVATION uses non-ASSUMPTION axioms (error); allowed extras are propext, Classical.choice, Quot.sound.\n- TL105: GOAL proved purely (info).\n- TL106: ASSUMPTION formalized as a non-axiom (warning).\n- TL107: proof uses assumptions outside the declared premises' closure (warning).\n- TL109 (proposed): declared premise unused by the proof (info).",
+   "rationale": "Declared premises capture user intent before any code exists. Derived edges capture Lean truth. Comparing the two is how the extension enforces the spec's 'DERIVATION must follow purely from ASSUMPTIONS'. All checks except TL109 were verified on the Spyro model.",
+   "alternatives": "Derive everything from Lean only (loses intent for informal nodes). Declare everything (drifts from Lean)."
+  },
+  {
+   "decision": "Where layout and ordering live",
+   "recommendation": "A sidecar file .telelean/layout.json: {\"format\":\"telelean-layout\",\"format_version\":\"1.0\",\"columns\":{\"ASSUMPTION\":[ids...],\"DERIVATION\":[...],\"GOAL\":[...]},\"collapsed_groups\":[\"vocabulary\"]}, keyed by node id, one id per line. Unknown ids are garbage-collected; missing nodes are appended in topological then source order. Per-user transient UI state goes in VS Code workspaceState. Session logs go in .telelean/sessions/<id>.jsonl.",
+   "rationale": "Verified: every comment edit re-elaborates the rest of the file in the Lean server, and line-shifting edits cascade Lake rebuilds of downstream modules. Drags must never touch .lean files. Layout is presentation state, safe to lose, and should not cause Lean merge conflicts. learnharness uses the same sidecar pattern.",
+   "alternatives": "Positions inside markup (rejected: constant re-elaboration, rebuilds and merge conflicts)."
+  },
+  {
+   "decision": "File organisation and insertion",
+   "recommendation": "Free placement in any workspace .lean file (excluding .lake/, lake-packages/, .git/, node_modules/, plus configurable globs); files outside Lake library roots get syntactic nodes only. Kind is metadata, not location. Default layout for new projects: lakefile.toml with leanOptions autoImplicit=false and relaxedAutoImplicit=false and [[lean_lib]] Model; Model.lean; Model/Vocabulary.lean (DEFINITIONs, imported by all); Model/Main.lean (ASSUMPTION, DERIVATION and GOAL in dependency order). Split by topic, not by kind, once a file passes a few hundred nodes. Insertion: a new code-less node is appended to an inbox file. Formalization places the code right after its block if all dependencies are visible there. Otherwise the block and code move to the module that sees all dependencies; if none does, the extension adds an import only when it creates no cycle (adding import X to M is allowed iff M is not in transitiveImports(X)). New support declarations go before their first user, or into Vocabulary when users span modules. The proposed diff is always validated in a shadow copy (lake build, facts, validator) before the overlay is shown.",
+   "rationale": "Promotion and demotion keep the Lean name and statement, so downstream code never breaks and only the justification changes (axiom, proof, or sorry). Per-kind files also compile (verified with the Spyro layout) but force code motion that can break order (moving an axiom after its users is a forward reference). Lean forbids import cycles and forward references (verified).",
+   "alternatives": "Per-kind files (Vocabulary/Assumptions/Derivations/Goals chained by imports) as an optional policy with dependency-aware moves. One file per node (import explosion, slow)."
+  },
+  {
+   "decision": "Versioned JSON graph for scripts",
+   "recommendation": "`telelean export --format-version 1`.\nTop-level fields: format 'telelean-graph', format_version '1.0', generator, position_encoding 'utf-16', line_base 0, semantic {available, lean_version, stale, source}, nodes, edges, diagnostics, files [{path, sha256, node_count}].\nnodes[]: id, kind, natural_name, rationale, description, premises, origin, session, tags, extensions, source {file, range, markup_version}, lean {binding: none|adjacent|explicit, decls [{name, written, keyword, range, lean_kind, is_prop, uses_sorry, axioms, type}]}, status {formal, check: unknown|n/a|ok|sorry|error, purity: n/a|pure|impure}.\nedges[]: {type: premise|lean_ref, source, target, origin: declared|lean, where?: statement|proof}; source is a premise of, or referenced by, target.\ndiagnostics[]: {code TLnnn, severity, message, file, range, node_id, related}.\nThe schema is at proto/telelean-graph-1.0.schema.json, $id urn:telelean:schema:graph:1.0.\nEvolution: consumers ignore unknown fields and tolerate unknown enum values; additive changes are minor versions; breaking changes are major versions; the CLI emits the previous major for at least two releases. Planned additive change: node.arguments [{premises, origin}] for alternative premise sets, keeping premises as their union. Output order should be deterministic (nodes by id; edges by (type, source, target)).",
+   "rationale": "A stable snapshot is what graph-analysis scripts need (cargo metadata and LSIF/SCIP precedents). LSP-style positions match VS Code and Lean (DeclarationRange stores UTF-16 columns). The exports validated against the schema with 0 errors.",
+   "alternatives": "Expose the graph only over LSP custom requests (poor fit for scripts). Add SARIF output for diagnostics (`check --format sarif`) for CI."
+  },
+  {
+   "decision": "Robustness against bad edits and LLM mangling",
+   "recommendation": "The LLM returns structured node operations (create, update fields, set kind, add premise, attach Lean code) and the canonical serializer writes the blocks. When an agent edits .lean files directly: re-parse, diff node sets, build in a shadow copy, run facts and validation, show the semantic diff overlay, and block Accept on markup errors or new hidden axioms unless the user overrides. Parsing is error-tolerant per line and block: malformed lines are reported and preserved, unknown fields are kept, and edits are minimal (only touched lines change). Stale semantic facts are keyed by file hash and shown as check: unknown. When an edit is markup-only (identical non-comment token stream), facts are reused. Changes are applied with WorkspaceEdit, never by writing behind dirty buffers. Diagnostics are phrased as actionable feedback for the LLM agent loop.",
+   "rationale": "Comment delimiter mistakes break Lean badly (a stray /- swallows the rest of the file; verified). Hand-typed escapes are rewritten by Lean's input mode (verified). LLMs can sneak in axioms (verified detectable).",
+   "alternatives": "Free-form LLM markup edits with post-hoc fixing only."
+  },
+  {
+   "decision": "Semantic layer implementation",
+   "recommendation": "Ship a tiny Lean facts tool (FactsMain.lean, about 60 lines, using importModules with loadExts := false, collectAxioms, isProp, findDeclarationRanges? and getUsedConstants). Build it per toolchain into an extension cache and run it via `lake env <exe> <Root>` after `lake build` (about 1 s per 3,000 declarations). Fall back to the interpreted `lake env lean Extract.lean` (about 5 s, always with Json.compress), and for references-only to .ilean v5. Run CI against every new Lean release. If the tool breaks, degrade to syntactic-only mode.",
+   "rationale": "Measured speed, verified to work across projects, and it avoids importing all of Lean into the analysed environment. API drift is real (the value?/allowOpaque semantics are an example; LeanArchitect bumps monthly).",
+   "alternatives": "A metaprogram run inside the user's project via `import`, which adds a dependency to the user's model. `#print axioms` text scraping (fragile)."
+  },
+  {
+   "decision": "Project safety defaults",
+   "recommendation": "Every telelean-managed lakefile.toml sets leanOptions = { autoImplicit = false, relaxedAutoImplicit = false }, and the validator warns (proposed TL110) when they are missing. Prefer opaque or structure over data axioms. Offer a periodic consistency probe (ask the LLM to derive False from the assumptions and flag success).",
+   "rationale": "Verified: an LLM typo turns an assumption into a universally quantified, stronger axiom with no error. An inconsistent belief base makes purity checks vacuous, and an LLM may exploit the contradiction.",
+   "alternatives": "Per-file `set_option autoImplicit false` headers (easy to forget)."
+  },
+  {
+   "decision": "Markup versioning",
+   "recommendation": "A per-block version marker (@@ telelean v1). Additive keys stay v1; older tools warn TL002 and keep the field. Breaking changes become v2; older tools warn TL008, parse on a best-effort basis, and keep showing the node. `telelean migrate --to v2` codemods all blocks. Markup version and JSON format_version are independent.",
+   "rationale": "Blocks are machine-maintained, so mass migration is safe; per-block versioning allows mixed states during upgrades.",
+   "alternatives": "A workspace-level version file (cannot represent mixed states)."
+  }
+ ],
+ "risks": [
+  "Lean API churn: the facts tool depends on Lean internals (importModules, collectAxioms, ConstantInfo.value? semantics, .ilean v5 format). Lean ships about monthly, and LeanArchitect needs a bump per RC. Mitigate with a tiny tool, CI per Lean release, and graceful fallback to syntactic-only mode.",
+  "Every comment edit re-elaborates the rest of the Lean file in the server, and line-shifting edits cascade Lake rebuilds downstream (verified). Large single-file models become sluggish under frequent markup edits. Mitigate by splitting into topic modules, batching edits, and keeping layout out of Lean files.",
+  "The text heuristic for binding can disagree with Lean in edge cases: macros that generate declarations, `open ... in` prefixes, mutual blocks, unusual modifiers, anonymous instances. Cross-check against Lean declaration ranges and facts (TL101).",
+  "LLM integrity: the LLM may add hidden axioms (detected by TL103/TL104), prove goals from inconsistent assumptions (not detected by purity checks; needs a consistency probe), or write typos that autoImplicit turns into universally quantified axioms (prevented only if leanOptions are set).",
+  "Hand-typed escapes inside Lean files are rewritten by the lean4 Unicode input mode (\\\\/ becomes ⧸); users must type \\\\\\\\ for a literal backslash. Rare, but confusing.",
+  "Data axioms (axiom x : T) count as axioms and are inconsistent if T is empty. LLM-generated vocabulary should prefer opaque or structure.",
+  "Eglot users cannot attach a second LSP without the Rassumfrassum multiplexer, and its compatibility with Lean's custom $/lean/* methods is unknown.",
+  "The compiled facts binary is 231 MB per toolchain (static link). Cache management is needed, or an interpreted fallback at about 5 s per run.",
+  "@vscode/vsce 4.1.0 and Node 26.13.0 are only days old; pin conservative versions (Node 24 LTS, the previous vsce).",
+  "If anyone parses blocks with a YAML library anyway, Python and JS results diverge (verified PyYAML behaviour). Documentation must say 'not YAML; use the CLI JSON'.",
+  "The REPORT.md file requested by the workflow was not written: the harness blocks subagent report files. Downstream agents must use this structured output and the artefact files instead."
+ ],
+ "software_needed": [
+  {
+   "name": "Node.js LTS",
+   "purpose": "Run the TypeScript core library's CLI (telelean export/check/fmt/facts) and build the VS Code extension (TypeScript, esbuild, vsce). Not installed on this machine.",
+   "required": true,
+   "version": "24.22.x (maintenance LTS until 2028-04-30) or 26.x (Active LTS since 2026-10-28)",
+   "install_method": "Official nodejs.org tarball or a version manager (user decision; no system-wide install was done)"
+  },
+  {
+   "name": "typescript",
+   "purpose": "Implement @telelean/core, the CLI and the extension",
+   "required": true,
+   "version": "7.0.2 (published 2026-07-08)",
+   "install_method": "npm devDependency"
+  },
+  {
+   "name": "esbuild",
+   "purpose": "Bundle the extension and CLI",
+   "required": true,
+   "version": "0.28.2",
+   "install_method": "npm devDependency"
+  },
+  {
+   "name": "@types/vscode",
+   "purpose": "VS Code API typings matching the installed VS Code",
+   "required": true,
+   "version": "1.140.0 (do not use 1.144.0, which is newer than the installed VS Code 1.140.0)",
+   "install_method": "npm devDependency"
+  },
+  {
+   "name": "ajv",
+   "purpose": "Validate JSON exports against telelean-graph-1.x schema in tests",
+   "required": false,
+   "version": "8.20.0",
+   "install_method": "npm devDependency"
+  },
+  {
+   "name": "Lean 4 toolchain + Lake",
+   "purpose": "Semantic layer (facts tool: collectAxioms, ranges, references) and building user models",
+   "required": true,
+   "version": "Lean 4.35.0 / Lake 5.0.0 (already installed via elan)",
+   "install_method": "Already present"
+  },
+  {
+   "name": "vscode-languageserver / vscode-languageclient",
+   "purpose": "Only if a thin LSP adapter is added later for Neovim and Emacs",
+   "required": false,
+   "version": "10.1.2 (2026-09-25) or 11.0.0 (2026-10-22; client engines ^1.91.0)",
+   "install_method": "npm dependency (deferred)"
+  },
+  {
+   "name": "YAML/TOML parser libraries",
+   "purpose": "Not needed: the markup has its own tiny grammar, and scripts consume JSON",
+   "required": false,
+   "version": "n/a",
+   "install_method": "n/a"
+  }
+ ],
+ "design_decisions_for_user": [
+  {
+   "question": "Build an LSP now, or a core library with in-process VS Code providers and a CLI/JSON export (adding a thin LSP later only if needed)?",
+   "why_it_matters": "This decides architecture cost, multi-editor reach and how scripts consume the graph. An LSP doubles process and state complexity, and gives other editors only markup editing help, since the graph UI is VS Code-only.",
+   "recommended": "Core library + in-process providers + CLI/JSON now; thin LSP adapter later on demand.",
+   "options": "(a) separate LSP now; (b) no LSP ever; (c) Lean-native attributes or commands; (d) hybrid (recommended)"
+  },
+  {
+   "question": "Rename the user's proposed `type:` field to `kind:`?",
+   "why_it_matters": "In a Lean file, 'type' strongly suggests the Lean type of the declaration. Field names are hard to change once many files exist.",
+   "recommended": "Canonical `kind:`, with `type:` accepted as an alias (hint). Keep the user's `natural_name:`.",
+   "options": "kind (recommended) | type"
+  },
+  {
+   "question": "Add a fourth node kind, DEFINITION, for vocabulary and support declarations created by the LLM (structure Character, predicate isCharacter)?",
+   "why_it_matters": "The spec has three columns, but the LLM diff creates support nodes that are neither claims nor proofs. Their placement and rules affect purity checks and display clutter.",
+   "recommended": "Yes. Show them as a collapsible 'Vocabulary' group in the assumptions column; no rationale needed.",
+   "options": "DEFINITION kind (recommended) | treat as ASSUMPTION | hide from graph"
+  },
+  {
+   "question": "Where should a node's natural-language description live: in the telelean block, or in Lean docstrings?",
+   "why_it_matters": "Code-less nodes cannot have docstrings, and keeping text in docstrings means moving it whenever formalization status flips. Docstrings, however, are what Lean-native tools show.",
+   "recommended": "In the block (natural_name + Markdown body). The docstring is optional and documents the encoding. Optionally offer 'sync docstring' generation.",
+   "options": "block (recommended) | docstring for formalized nodes | both, kept in sync"
+  },
+  {
+   "question": "Organise Lean files by kind (Assumptions.lean / Derivations.lean / Goals.lean), or treat kind as metadata with topic/dependency-ordered modules?",
+   "why_it_matters": "Per-kind files make promotion and demotion move code, which can break declaration order and imports. Kind-as-metadata makes them a one-line change, but the belief base is spread out.",
+   "recommended": "Kind as metadata, with Model/Vocabulary.lean plus topic modules. Provide a generated 'belief base' view of all ASSUMPTIONs and their axioms.",
+   "options": "kind-as-metadata (recommended) | per-kind files with automated dependency-aware moves"
+  },
+  {
+   "question": "How should a formalized-but-unproved GOAL look in Lean?",
+   "why_it_matters": "It affects promotion mechanics and warnings. The user rejected sorry only for code-less nodes.",
+   "recommended": "theorem g : P := by sorry, so promotion to DERIVATION is just filling in the proof.",
+   "options": "theorem + sorry (recommended) | def g_stmt : Prop := P (no sorry warning, but the shape changes on promotion)"
+  },
+  {
+   "question": "Represent assumptions as global axioms, or as fields of an assumptions structure taken as a hypothesis?",
+   "why_it_matters": "Global axioms are simple and match 'the user supplies axioms', but an inconsistent set makes everything provable. Hypothesis bundles are safer but heavier for users and the LLM.",
+   "recommended": "Global `axiom` for v1, with autoImplicit disabled and a periodic consistency probe.",
+   "options": "axioms (recommended) | structure-of-hypotheses"
+  },
+  {
+   "question": "Should node ids be readable slugs or random/hybrid ids?",
+   "why_it_matters": "Ids appear in premises and the layout sidecar, are written by LLMs, and must survive merges.",
+   "recommended": "Readable slugs generated once from natural_name, never auto-renamed; rename only via an explicit command. Duplicates are flagged (TL006) with a quick fix.",
+   "options": "slug (recommended) | slug + short hash | random"
+  },
+  {
+   "question": "Commit .telelean/ (layout.json, sessions/) to git?",
+   "why_it_matters": "Layout is shared presentation. Session logs hold prompts and clarifying Q&A (pragmatics), which may be private.",
+   "recommended": "Commit layout.json; leave session logs to the user's choice (default: not committed).",
+   "options": "commit all | commit layout only (recommended) | commit nothing"
+  },
+  {
+   "question": "Should the LLM edit markup text directly, or return structured node operations that the extension serializes?",
+   "why_it_matters": "Comment-delimiter mistakes can swallow the rest of a Lean file, and LLMs drift from strict formats.",
+   "recommended": "Structured operations serialized by the canonical writer; validate any direct agent edits in a shadow build before showing the diff.",
+   "options": "structured ops (recommended) | direct edits + validation"
+  }
+ ],
+ "open_questions": [
+  "Should a GOAL support several alternative premise sets (arguments) in v1, or only one? The JSON shape for adding this additively is reserved.",
+  "Must every telelean workspace be a Lake project, or should loose .lean files be supported in syntactic-only mode?",
+  "Multi-root workspaces, and nodes spread over several Lake packages: are they in scope?",
+  "Will the user's models use Mathlib? That affects build times, the facts tool, and style linters such as long lines in comments.",
+  "Does the user actually plan to use Neovim or Emacs? This decides whether the LSP adapter is ever needed.",
+  "Should TL107 (proof uses assumptions outside the declared premises) be an error that blocks 'accept', or a warning?",
+  "Exact Emacs lean4-mode language id or activation function for registering an add-on lsp-mode server (uncertain)",
+  "Does the Rassumfrassum multiplexer forward Lean's custom $/lean/* notifications and RPC (needed for Eglot users)?",
+  "REPORT.md was blocked by the harness. Should the parent workflow persist this structured output as the report file itself?"
+ ],
+ "report_path": "NOT WRITTEN: the harness rejected the Write to /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r4-markup-lsp/REPORT.md (\"Subagents should return findings as text, not write report files\"), so the full report content is in this structured output. Supporting artefacts are in /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r4-markup-lsp/ (proto/telelean_ref.py, proto/test_telelean_ref.py, proto/telelean-graph-1.0.schema.json, lean-exp/Canonical/*.lean, lean-exp/Extract.lean, scale/big3k/FactsMain.lean, scripts/*.py, out/*.json)"
+}

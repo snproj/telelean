@@ -1,0 +1,584 @@
+{
+ "topic": "R3: Front-end/UI architecture for the telelean graph panel in a VS Code webview. Covers three independently scrolling ASSUMPTION | DERIVATION | GOAL columns with cross-column and in-column arrows, drag to re-classify and re-order, multi-select with a selection tray, expandable nodes with highlighted Lean, a 'blue aura' on formalized nodes, an LLM diff overlay, the A/D/G prompt switch, and VS Code theming.",
+ "summary": "NOTE ON THE REPORT FILE: REPORT.md was not written. The harness rejected the Write call ('Subagents should return findings as text, not write report files'). The full report is therefore in this structured output. Self-contained experiment artifacts are in /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r3-ui-graph/:\n- a vanilla-JS prototype of the recommended design: bench/prototype.html\n- screenshots: shots/*.png\n- benchmark and CSP test pages: bench/*.html\n- raw results and npm registry snapshots: data/*.jsonl, data/*.json, data/pkg_table.md\n- helper scripts: scripts/\n\n(1) GRAPH LIBRARIES. No graph library supports three independently scrolling viewports that share edges.\n- React Flow (@xyflow/react 12.12.0), Cytoscape.js 3.34.4, JointJS (@joint/core 4.3.4), Sigma.js 4.0.4 and GoJS 4.0.5 each render one pan/zoom canvas. Separate instances cannot share an edge.\n- The closest native match is GoJS's commercial ScrollingTable extension. It collapses off-screen rows to the table's top/bottom edge.\n- Recommendation: build the columns as ordinary scrollable DOM lists, with one absolutely positioned SVG overlay (two layers: under and over the opaque cards). A custom engine of roughly 200-300 lines draws the edges from cached node offsets.\n- Existing arrow helpers don't fit. react-xarrows uses one SVG per arrow and has no scroll/clamp logic; leader-line needs a manual position() call on every scroll; perfect-arrows and curved-arrows are geometry only.\n- I built and screenshot-tested this design in dark, light and high-contrast themes.\n\n(2) PERFORMANCE. Measured in headless Chrome 155; VS Code 1.140 embeds Chromium 150, Electron 43.7.3, Node 24.21.\n- JS to compute and write paths is cheap: about 1 µs per edge, about 9 ms for 10,000 edges.\n- The real cost is SVG repaint of changed paths. About 100 changed paths per frame stays at 60 fps; about 300 gives roughly 30 fps; 3,000 takes about 76 ms per frame.\n- A static overlay of 5,000 paths costs nothing while columns scroll.\n- getBoundingClientRect per endpoint costs about 13× more JS than cached offsets.\n- Canvas2D was not faster.\n- Plain DOM with 3,000 cards per column scrolls smoothly. content-visibility:auto made scrolling worse at 9,000 cards.\n- The resulting algorithm:\n  - Read three scrollTops per rAF; re-measure geometry only on ResizeObserver.\n  - Cull edges whose two endpoints are both off-screen.\n  - Draw a one-end-off-screen edge as a short stub hook pointing up or down, plus a per-column '▲ n linked / ▼ n linked' button that scrolls to the nearest hidden neighbour.\n  - Give hovered or selected nodes full curves.\n  - Budget about 250 drawn edges.\n  - Bypass React on scroll.\n- The prototype engine held about 17 ms per frame with 2,510 nodes and 2,262 edges.\n\n(3) STACK AND MECHANICS.\n- Framework: React 19.3.1 + zustand 5.0.16 + plain CSS on --vscode-* variables + @vscode/codicons.\n  - @vscode/webview-ui-toolkit is deprecated and archived (2025-01-06). Its successor is @vscode-elements/elements 2.5.1, optional.\n  - The Lean infoview is React (18.3.1 bundled locally) and depends on @vscode-elements/react-elements.\n- Drag and drop: @atlaskit/pragmatic-drag-and-drop 4.0.0 is primary. It uses native HTML5 drag, has documented virtualization and nested auto-scroll support, and never moves DOM or applies transforms, so the overlay geometry stays valid. @dnd-kit/react 0.5.3 is the alternative (0.x, pin it exactly). Avoid legacy @dnd-kit/core (last release 2024-12-05), react-beautiful-dnd (deprecated) and SortableJS. Keyboard re-classification uses native webview/context menus.\n- Code display: Shiki 4.5.0, which bundles a 'lean' grammar (alias lean4) taken from vscode-lean4's own TextMate grammar. Use the JavaScript regex engine, so no WASM or 'wasm-unsafe-eval' is needed. Render codeToTokens through React, not codeToHtml + innerHTML: inline style attributes are blocked by a nonce CSP (verified). Monaco has no Lean grammar and is about 102 MB unpacked.\n- Panel: a WebviewPanel in the editor area, with retainContextWhenHidden:true, setState for UI state, and a WebviewPanelSerializer (activation event onWebviewPanel:<viewType>).\n- CSP: nonce-based, behaviours verified in a local matrix.\n- Messaging: typed request/response messages with versioned snapshots and patches.\n- Raw Lean diff: the built-in vscode.changes multi-file diff command, verified present in 1.140.\n- Testing: Vite dev server + mocked acquireVsCodeApi + Playwright driving the already-installed Google Chrome.\n\n(4) DECISIONS FOR THE USER.\n- Where LLM-introduced vocabulary (structure Cynder, isCharacter) lives. Recommended: a DEFINITION kind shown as a 'Vocabulary' group at the top of the Assumptions column.\n- Click semantics. Recommended: click selects, the chevron expands.\n- Intended vs verified edge styling.\n- All-or-nothing acceptance of proposals.\n- Where clarifying questions appear.\n- Where manual column order is stored.\n\nMain risks:\n- SVG repaint if culling is skipped.\n- A one-frame overlay lag during fast compositor scrolling.\n- 0.x / import-path churn in the drag-and-drop libraries.\n- CSP pitfalls: 'unsafe-inline' is ignored when a nonce is present.\n- Conflicting documentation on messaging hidden retained webviews.",
+ "findings": [
+  {
+   "claim": "VS Code 1.140.0 runs Electron 43.7.3, Chromium 150.0.7871.250 and Node 24.21.0. This is the browser engine every webview runs in.",
+   "evidence": "ELECTRON_RUN_AS_NODE=1 /snap/code/current/usr/share/code/code -e 'console.log(process.versions)'; resources/app/product.json shows version 1.140.0, commit 07f806f9..., date 2026-09-30. Tests ran in system Google Chrome 155.0.8059.39 headless with HOME and profile redirected into the scratch dir.",
+   "confidence": "verified-locally",
+   "source": "/snap/code/current/usr/share/code/resources/app/product.json"
+  },
+  {
+   "claim": "No surveyed graph library supports three independently scrolling viewports with edges crossing between them.",
+   "evidence": "- React Flow has one d3-zoom viewport, and sub-flows don't scroll.\n- Cytoscape.js is a single canvas whose compound nodes neither clip nor scroll.\n- In JointJS a link belongs to one paper.\n- Sigma is WebGL and draws circles plus labels, not cards.\n- GoJS is a single canvas. Its ScrollingTable extension scrolls a table inside a node and lays out ports of rows above topIndex (or past the last visible row) zero-sized at the panel's top/bottom, so links converge there. GoJS needs a commercial domain license key.\n- A React Flow hybrid is possible: each column is one custom node with a 'nowheel' scroll list and one Handle per row, with useUpdateNodeInternals(columnId) on every scroll. But handles in scrolled-away rows sit at clipped positions without clamping, re-measuring costs O(rows) per frame, and virtualized rows lose their handles.",
+   "confidence": "inferred",
+   "source": "https://reactflow.dev/api-reference/hooks/use-update-node-internals ; https://gojs.net/latest/samples/ScrollingTable ; https://gojs.net/latest/download.html"
+  },
+  {
+   "claim": "Graph library status (npm latest tag, publish date, license, min+gz size from bundlephobia).",
+   "evidence": "- @xyflow/react 12.12.0, 2026-09-24, MIT, 58.5 KB including @xyflow/system, d3-zoom and zustand. Dist-tag next = 13.0.0-next.0 (2026-10-11).\n- reactflow 11.11.4, legacy, 2024-06-20.\n- cytoscape 3.34.4, 2026-10-15, MIT, 133.6 KB.\n- @joint/core 4.3.4, 2026-10-27, MPL-2.0, 136 KB. The old jointjs package is deprecated in favour of @joint/core.\n- sigma 4.0.4, 2026-10-27 (v4.0.0 released 2026-10-08), MIT, 94.5 KB, plus graphology 0.26.0 at 12.5 KB.\n- d3 7.9.0, 2024-03-12, ISC, 89.8 KB; d3-shape 3.2.0 is 5.5 KB.\n- elkjs: latest tag 0.12.1, but 0.13.0 was also published 2026-10-28 without the latest tag. License 'EPL-2.0 OR GPL-3.0-or-later', 437 KB.\n- @dagrejs/dagre 3.1.3, 2026-10-24, MIT, 15.5 KB.\n- gojs 4.0.5, 2026-10-02, 'SEE LICENSE IN license.html', 271 KB.",
+   "confidence": "documented",
+   "source": "https://registry.npmjs.org/<pkg> ; https://bundlephobia.com/api/size?package=<pkg>@<ver> (snapshot in data/pkg_table.md)"
+  },
+  {
+   "claim": "The VS Code webview host applies theming in four ways.\n- Body classes: vscode-light, vscode-dark, vscode-high-contrast, vscode-high-contrast-light (HC-light also gets vscode-high-contrast), plus vscode-reduce-motion and vscode-using-screen-reader.\n- Data attributes: data-vscode-theme-kind, data-vscode-theme-id, and the deprecated data-vscode-theme-name.\n- Every theme color as --vscode-<id with dots replaced by hyphens> on <html>.\n- Font variables: --vscode-font-family, --vscode-font-weight, --vscode-font-size (13px), --vscode-editor-font-family, --vscode-editor-font-weight, --vscode-editor-font-size, --vscode-editor-font-feature-settings.",
+   "evidence": "Read in the installed host page /snap/code/current/usr/share/code/resources/app/out/vs/workbench/contrib/webview/browser/pre/index.html, lines 488-530 (applyStyles). Font variable names grepped from out/vs/workbench/workbench.desktop.main.js.",
+   "confidence": "verified-locally",
+   "source": "https://code.visualstudio.com/api/extension-guides/webview#theming-webview-content"
+  },
+  {
+   "claim": "VS Code prepends a default stylesheet inside '@layer vscode-default'. It sets body padding 0 20px, transparent background, editor foreground color, scrollbar thumbs from --vscode-scrollbarSlider-*, focus outlines, code font var(--monaco-monospace-font), and ::highlight(find-highlight) for the find widget. Because it is a cascade layer, any unlayered author rule overrides it. A full-bleed board must set body{padding:0}.",
+   "evidence": "pre/index.html lines 100-200 (defaultStyles, id '_defaultStyles', prepended into the document head).",
+   "confidence": "verified-locally",
+   "source": "/snap/code/current/usr/share/code/resources/app/out/vs/workbench/contrib/webview/browser/pre/index.html"
+  },
+  {
+   "claim": "acquireVsCodeApi() can only be called once. A second call throws 'An instance of the VS Code API has already been acquired'. setState JSON-stringifies its argument (do-update-state). postMessage(message, transfer) supports transferables. If the page has no CSP meta tag, the host reports 'no-csp-found'.",
+   "evidence": "pre/index.html getVsCodeApiScript (lines 200-240) and the CSP check around line 885.",
+   "confidence": "verified-locally",
+   "source": "/snap/code/current/usr/share/code/resources/app/out/vs/workbench/contrib/webview/browser/pre/index.html"
+  },
+  {
+   "claim": "Drag-and-drop inside webviews: the host attaches dragenter, dragover, drag and drop listeners to the content window. It calls preventDefault() on every dragover, drag and drop. It forwards a drag to the workbench only when ALL dataTransfer.items are of kind 'file'. Internal HTML5 drags with custom string types stay inside the webview, so pragmatic-drag-and-drop's native-DnD approach is compatible.",
+   "evidence": "pre/index.html handleInnerDragStartEvent and handleInnerDragEvent (lines 782-822) and their registration (lines 913-916, 1219-1222).",
+   "confidence": "verified-locally",
+   "source": "/snap/code/current/usr/share/code/resources/app/out/vs/workbench/contrib/webview/browser/pre/index.html"
+  },
+  {
+   "claim": "Native VS Code context menus work inside webviews. On contextmenu, the host merges the JSON of every ancestor's data-vscode-context attribute (child values win) and posts 'did-context-menu'. Menus come from the 'webview/context' contribution, with when-clauses on webviewId and custom keys such as webviewSection. preventDefaultContextMenuItems hides the default copy and paste entries.",
+   "evidence": "pre/index.html lines ~1180-1215; the webview guide's context-menus section.",
+   "confidence": "verified-locally",
+   "source": "https://code.visualstudio.com/api/extension-guides/webview"
+  },
+  {
+   "claim": "These core theme colors exist in VS Code 1.140 and suit the diff overlay and aura: editorGutter.addedBackground, editorGutter.modifiedBackground, editorGutter.deletedBackground, diffEditor.insertedLineBackground, diffEditor.removedLineBackground, diffEditor.insertedTextBackground, diffEditor.removedTextBackground, charts.blue/green/red/yellow/orange/purple, focusBorder, contrastBorder, contrastActiveBorder, list.*, badge.*, textCodeBlock.background. The gitDecoration.* colors are contributed by the built-in git extension, so they may be absent and need a fallback.",
+   "evidence": "grep of workbench.desktop.main.js for each color id; extensions/git/package.json contributes.colors lists gitDecoration.*.",
+   "confidence": "verified-locally",
+   "source": "/snap/code/current/usr/share/code/resources/app/extensions/git/package.json"
+  },
+  {
+   "claim": "The installed Lean 4 extension (leanprover.lean4 0.0.240) shows several useful precedents.\n- Its infoview bundles React 18.3.1 (UMD).\n- It creates WebviewPanels (lean4_infoview and others) with retainContextWhenHidden:true.\n- Its loogle view uses CSP \"default-src ${cspSource} https://loogle.lean-lang.org; script-src ${cspSource} 'nonce-inline'; style-src ${cspSource} 'unsafe-inline'\".\n- It contributes theme colors lean4.infoView.* with light/dark/highContrast/highContrastLight defaults, and its CSS reads them as --vscode-lean4-infoView-*. Our extension can contribute its own colors the same way.\n- It ships syntaxes/lean4.json, a 7.7 KB TextMate grammar.",
+   "evidence": "grep of ~/.vscode/extensions/leanprover.lean4-0.0.240/dist/extension.js, dist/lean4-infoview/react.production.min.js (version string 18.3.1), index.css, and package.json.",
+   "confidence": "verified-locally",
+   "source": "~/.vscode/extensions/leanprover.lean4-0.0.240/"
+  },
+  {
+   "claim": "Overlay performance: JS to compute and write SVG path strings is cheap. Repainting changed paths dominates frame time.",
+   "evidence": "bench/edges_bench2.html, software raster, all edges rewritten every frame. Compute + write per frame, then mean frame interval:\n- 300 edges: 0.17 + 0.22 ms; about 19 ms.\n- 1,500 edges: about 0.75 + 0.8 ms; 39-49 ms.\n- 5,000 edges: about 2.5 + 2.2 ms; about 135 ms.\n- 10,000 edges: about 4.6 + 2.9 ms; about 213 ms.\nIn software mode the stall appeared at the next scrollTop write (20-180 ms). In GPU mode that write took about 0.1 ms. Raw data: data/bench2.jsonl.",
+   "confidence": "verified-locally",
+   "source": "bench/edges_bench2.html, data/bench2.jsonl"
+  },
+  {
+   "claim": "Reading cached node offsets (offsetTop/offsetHeight, re-measured on resize) plus three scrollTops per frame costs about 13× less JS than calling getBoundingClientRect on both endpoints of every edge.",
+   "evidence": "GPU-flag run, JS time only: 300 edges, 4.6 ms (gBCR) vs 0.7 ms (cached); 1,500 edges, 20.8 ms vs 1.6 ms. Raw data: data/bench3.jsonl.",
+   "confidence": "verified-locally",
+   "source": "bench/edges_bench2.html, data/bench3.jsonl"
+  },
+  {
+   "claim": "A static SVG overlay costs nothing during scrolling. Compositor scrolling does not repaint the unchanged layer.",
+   "evidence": "bench/scroll_micro.html: 5,000 static paths with the middle column scrolling gave a 16.7 ms frame interval. Without the overlay it was also 16.7 ms. Raw data: data/scroll_micro.jsonl.",
+   "confidence": "verified-locally",
+   "source": "bench/scroll_micro.html"
+  },
+  {
+   "claim": "Culling keeps frames smooth. Canvas2D is not a faster substitute.",
+   "evidence": "bench/cull_bench.html, software raster:\n- 3,000 edges, cull both-hidden (about 93 drawn): 16.7 ms frames.\n- 1,000 edges / 300 nodes per column, culled (about 106 drawn): 16.7 ms.\n- 10,000 edges culled (about 308 drawn): 34 ms.\n- The same in Canvas2D: 48 ms.\n- 3,000 edges drawn without culling: 76 ms.\n- Canvas2D drawing all 10,000 dashed edges: about 3.1 s per frame.\nRaw data: data/cull.jsonl.",
+   "confidence": "verified-locally",
+   "source": "bench/cull_bench.html, data/cull.jsonl"
+  },
+  {
+   "claim": "The prototype engine (culling + stubs + badges, with a naive full recompute each frame) holds about 60 fps at thousands of nodes.",
+   "evidence": "bench/prototype.html?perf=1 (frame() time; frame interval):\n- 70 nodes / 67 edges: 0.66 ms; 16.67 ms.\n- 760 / 688: 1.7 ms; 16.6 ms.\n- 2,510 / 2,262: 4.4 ms (p95 6.3); 17.4 ms (p95 19). About 48 paths drawn.\nRaw data: data/proto_perf.jsonl.",
+   "confidence": "verified-locally",
+   "source": "bench/prototype.html"
+  },
+  {
+   "claim": "Large DOM without virtualization is fine up to thousands of cards per column. content-visibility:auto hurts scrolling at large counts.",
+   "evidence": "3,000 cards per column (9,000 total): build + first layout took 250-380 ms and scrolling stayed at 16.7 ms. With content-visibility:auto plus contain-intrinsic-size:auto 60px, the build dropped to 85-170 ms but scrolling rose to a 28.6 ms mean (p95 50) at 9,000 such cards. With 3,000 such cards it was fine (16.7 ms mean).",
+   "confidence": "verified-locally",
+   "source": "bench/scroll_micro.html, bench/edges_bench.html"
+  },
+  {
+   "claim": "Headless Chrome on the real Intel GPU (ANGLE/Vulkan, Arrow Lake) was consistently slower than software rendering, so its absolute numbers are not representative of VS Code. The ranking of strategies held in both modes.",
+   "evidence": "--enable-gpu --use-angle=vulkan --enable-features=Vulkan: WebGL renderer reported 'Intel(R) Graphics (ARL)'. 300 updated paths gave 24.5 ms frames; 308 culled paths gave 50 ms. The likely cause is headless frame readback.",
+   "confidence": "uncertain",
+   "source": "data/gpu.jsonl, data/cull.jsonl, data/bench3.jsonl"
+  },
+  {
+   "claim": "Off-screen endpoint options compared visually in the prototype.\n- Full dashed curves to the clamped point at the column edge create long noisy diagonals.\n- Short 22 px stubs pointing up/down, plus per-column count buttons, plus full curves only for focused nodes, is clean. This was chosen.\n- Dimming non-focused cards with opacity lets the under-layer edges show through. Dim with color instead.",
+   "evidence": "Screenshots shots/dark_base.png (full curves), shots/dark_base_stubs.png (stubs), shots/light_diff.png and shots/hc_diff.png (diff overlay in light and high contrast).",
+   "confidence": "verified-locally",
+   "source": "bench/prototype.html, shots/"
+  },
+  {
+   "claim": "The arrow helper libraries don't fit scroll-clipped columns or large edge counts.\n- react-xarrows 2.2.1 (2026-10-11, revived after a 2021-2024 gap) renders one <svg> per arrow, measures with getBoundingClientRect, and has no scroll or clamp handling (no 'scroll' anywhere in src/).\n- leader-line 1.0.8 appends SVGs to body and needs line.position() called when 'a box that was scrolled'.\n- react-archer 5.1.0 is container-based, the same class of problem.\n- perfect-arrows 0.3.7 and curved-arrows 0.3.0 are pure geometry, e.g. getBoxToBoxArrow returning [sx,sy,c1x,c1y,c2x,c2y,ex,ey,ae,as].",
+   "evidence": "Read dl/react-xarrows@2.2.1/package/src (Xarrow.tsx line 202 renders <svg>; utils/index.ts calls getBoundingClientRect), the CHANGELOG, and the leader-line README lines 287-295.",
+   "confidence": "verified-locally",
+   "source": "https://github.com/Eliav2/react-xarrows ; https://github.com/anseki/leader-line"
+  },
+  {
+   "claim": "@tanstack/virtual-core 3.19.9 (used by @tanstack/react-virtual 3.14.24, MIT, 10 KB gz) exposes everything an edge engine needs to place off-screen nodes without DOM: measurementsCache (VirtualItem {key,index,start,end,size,lane}), getVirtualItems, getOffsetForIndex, scrollToIndex, measureElement, rangeExtractor (to keep dragged or focused items mounted), getTotalSize, takeSnapshot / initialMeasurementsCache, and options such as overscan, gap, scrollMargin, paddingStart, lanes and useScrollendEvent.",
+   "evidence": "Read dl/@tanstack__virtual-core@3.19.9/package/dist/esm/index.d.ts.",
+   "confidence": "verified-locally",
+   "source": "https://registry.npmjs.org/@tanstack/virtual-core"
+  },
+  {
+   "claim": "@atlaskit/pragmatic-drag-and-drop 4.0.0 (2026-09-24, Apache-2.0) suits multi-column re-classification with an edge overlay.\n- Native HTML5 DnD, framework-agnostic, 'Tiny: ~4.7kB core'.\n- Virtualization documented: the draggable may unmount mid-drag; listen on monitors; make the list container a drop target.\n- Auto-scroll documented: autoScrollForElements({element, canScroll, getAllowedAxis, getConfiguration:{maxScrollSpeed}}), any nesting depth, innermost container first.\n- Accessibility guidance favours menu-based 'move to' actions plus live regions over arrow-key dragging.\n- Import paths churned: 3.0.0 (2026-08-14) added new subpaths, 4.0.0 removed the shims, and hitbox 2.2.2/3.0.0 deprecated the root 'closest-edge' exports.\n- Working import paths in the tarballs: '@atlaskit/pragmatic-drag-and-drop/element/adapter' (draggable, dropTargetForElements, monitorForElements), '/combine', '-auto-scroll/element' (autoScrollForElements), '-hitbox/closest-edge/attach-closest-edge', '-hitbox/closest-edge/extract-closest-edge'.\n- The npm registry has no deprecation flag and releases are active. A 'Deprecated' label seen in the atlassian.design navigation could not be attributed to this library.",
+   "evidence": "Read the 4.0.0, auto-scroll 3.2.1 and hitbox 3.0.0 tarballs (package dirs, d.ts files, CHANGELOGs); fetched the GitHub README and atlassian.design pages.",
+   "confidence": "documented",
+   "source": "https://github.com/atlassian/pragmatic-drag-and-drop ; https://atlassian.design/components/pragmatic-drag-and-drop/optional-packages/auto-scroll/about ; https://atlassian.design/components/pragmatic-drag-and-drop/core-package/improving-performance/virtualization ; https://atlassian.design/components/pragmatic-drag-and-drop/accessibility-guidelines"
+  },
+  {
+   "claim": "The new dnd-kit line is active but 0.x.\n- @dnd-kit/react 0.5.3 (2026-10-31, MIT, about 32 KB gz with @dnd-kit/dom, abstract and state; peer react ^18||^19). Adapters @dnd-kit/svelte, solid and vue are also at 0.5.3.\n- Default preset: plugins [Accessibility, AutoScroller, Cursor, Feedback, PreventSelection]; sensors [PointerSensor, KeyboardSensor].\n- AutoScroller defaults: acceleration 25, threshold {x:0.2, y:0.2}.\n- StyleInjector injects <style> elements and accepts a {nonce} option, which matters under a strict CSP.\n- Sortable is useSortable({id, index, group, type, accept}) plus move(items, event) from @dnd-kit/helpers.\n- OptimisticSortingPlugin moves DOM elements during a drag.\n- Legacy @dnd-kit/core 6.3.1 and @dnd-kit/sortable 10.0.0 were last released 2024-12-04/05. dndkit.com labels that line 'Legacy'.",
+   "evidence": "Read dl/@dnd-kit__dom@0.5.3/package/index.js (defaultPreset, StyleInjector nonce) and index.d.ts (AutoScrollerOptions); registry timestamps; dndkit.com navigation and the concepts/sortable page.",
+   "confidence": "verified-locally",
+   "source": "https://github.com/clauderic/dnd-kit ; https://dndkit.com/concepts/sortable"
+  },
+  {
+   "claim": "The other DnD options each carry a drawback.\n- @hello-pangea/dnd 18.0.1 (2025-02-09, Apache-2.0, 28 KB gz, React 18/19) handles multiple lists, virtual lists, auto-scroll and strong keyboard/screen-reader support. A Droppable can be the scroll container only if it has no scrollable parent. The repo has 71 open issues and 73 open PRs, and no release in about 21 months.\n- react-beautiful-dnd 13.1.1 is deprecated (issue #2672).\n- sortablejs 1.15.7 (2026-02-11) mutates DOM directly, and react-sortablejs 6.1.4 dates from 2022.",
+   "evidence": "GitHub README fetch; npm registry 'deprecated' fields and timestamps.",
+   "confidence": "documented",
+   "source": "https://github.com/hello-pangea/dnd ; https://github.com/atlassian/react-beautiful-dnd/issues/2672"
+  },
+  {
+   "claim": "The VS Code UI kit landscape has changed.\n- @vscode/webview-ui-toolkit 1.4.0 is deprecated. The npm deprecation notice points to issue #561. The repo and npm package were archived on 2025-01-06 because FAST Foundation was deprecated. The issue recommends VS Code Elements and vscrui.\n- @vscode-elements/elements 2.5.1 (2026-02-21, MIT, Lit, 48.5 KB gz) ships vscode-badge, button, button-group (a split button, not a segmented control), checkbox, collapsible, context-menu, divider, form-*, icon, label, multi-select, option, progress-bar, progress-ring, radio, radio-group, scrollable, single-select, split-layout, tab-header/panel/tabs, table*, textarea, textfield, toolbar-button/container, tree/tree-item.\n- @vscode-elements/react-elements 2.4.0 wraps them for React; vscrui 1.1.0 is a native React kit.\n- @leanprover/infoview 0.14.0 depends on @vscode-elements/react-elements and @vscode/codicons.",
+   "evidence": "WebFetch of issue #561; listing of the extracted elements package dist/; registry dependency data.",
+   "confidence": "documented",
+   "source": "https://github.com/microsoft/vscode-webview-ui-toolkit/issues/561 ; https://vscode-elements.github.io ; https://registry.npmjs.org/@leanprover/infoview"
+  },
+  {
+   "claim": "Current framework and state library versions:\n- react / react-dom 19.3.1 (2026-10-14). The unminified production react-dom-client measured 625 KB raw / 110 KB gz.\n- preact 11.1.1, svelte 5.57.3, solid-js 1.9.18 (2.0.0-rc.20 in progress), lit 3.3.3.\n- zustand 5.0.16, jotai 3.0.1, valtio 2.3.2, immer 11.2.9, @reduxjs/toolkit 2.13.0.\n- babel-plugin-react-compiler 1.0.0 is an optional peer of @vitejs/plugin-react 6.1.2.\n- learnharness (the inspiration project) uses React 19 + @xyflow/react 12 + d3-force, i.e. a free-form canvas.",
+   "evidence": "npm registry JSON; local gzip measurement of the react-dom tarball; learnharness package.json.",
+   "confidence": "documented",
+   "source": "https://registry.npmjs.org/react ; https://raw.githubusercontent.com/amosblomqvist/learnharness/main/package.json"
+  },
+  {
+   "claim": "Shiki 4.5.0 (2026-10-01, MIT) can highlight Lean 4 accurately inside a webview.\n- @shikijs/langs ships 'lean' (displayName 'Lean 4', scopeName source.lean4, alias 'lean4'), 6.25 KB raw / 1.9 KB gz.\n- Its source is leanprover/vscode-lean4 syntaxes/lean4.json (Apache-2.0), the same grammar the installed Lean extension uses.\n- The JS regex engine supports lean: 'OK', 31 patterns, no mismatches, in a report generated 2026-09-11 for 4.4.3.\n- Exports: shiki/core (createHighlighterCore), shiki/engine/javascript (createJavaScriptRegexEngine), shiki/engine/oniguruma, shiki/wasm, @shikijs/langs/lean, @shikijs/themes/<id>; highlighter.codeToTokens / codeToHast; createCssVariablesTheme in @shikijs/core.\n- Bundled themes include dark-plus, light-plus, github-dark-high-contrast and github-light-high-contrast.\n- onig.wasm is 467 KB (148 KB gz).",
+   "evidence": "Read dl/@shikijs__langs@4.5.0 (dist/lean.mjs, lean4.mjs alias) and the shiki/core/engine package exports. tm-grammars README row: lean | lean4 | vscode-lean4 | Apache-2.0 | 5.37 kB.",
+   "confidence": "verified-locally",
+   "source": "https://shiki.style/references/engine-js-compat ; https://shiki.style/guide/bundles ; https://github.com/shikijs/textmate-grammars-themes"
+  },
+  {
+   "claim": "highlight.js 11.12.0 with highlightjs-lean 1.2.0 (2024-06-30, leanprover-community) is a Lean-3-era grammar: begin/end, assume, existsi, and a Lean 3 tactic list. It is inaccurate for Lean 4.",
+   "evidence": "Read dl/highlightjs-lean@1.2.0/package/src/languages/lean.js.",
+   "confidence": "verified-locally",
+   "source": "https://github.com/leanprover-community/highlightjs-lean"
+  },
+  {
+   "claim": "monaco-editor 0.57.0 (2026-09-24) is 101.7 MB unpacked across 1,918 files. It has no Lean language definition under esm/vs/languages/definitions/. Using it would need workers (worker-src) and a TextMate/Oniguruma bridge.",
+   "evidence": "jsDelivr flat file listing and esm/vs/basic-languages/monaco.contribution.js imports.",
+   "confidence": "documented",
+   "source": "https://data.jsdelivr.com/v1/packages/npm/monaco-editor@0.57.0?structure=flat"
+  },
+  {
+   "claim": "CSP behaviour matrix, measured in Chrome 155.\nUnder style-src 'self' 'nonce-X':\n- Blocked: inline style attributes in markup, innerHTML with style attributes, setAttribute('style', ...), and <style> without a nonce.\n- Allowed: el.style.prop = ... and el.style.cssText = ... (CSSOM), <style nonce>, constructable stylesheets (adoptedStyleSheets, used by Lit), SVG presentation attributes, and insertRule on an allowed sheet.\nOther results:\n- 'unsafe-inline' is IGNORED when a nonce is also present in style-src (identical blocking).\n- style-src 'self' 'unsafe-inline' with no nonce allows everything.\n- eval and new Function are blocked without 'unsafe-eval'.\n- WebAssembly.compile needs 'wasm-unsafe-eval'.\n- new Worker(blob:) needs worker-src blob:.\nConsequence: Shiki's codeToHtml injected through innerHTML loses its colors under a nonce CSP. Render tokens through React (CSSOM) or allow 'unsafe-inline' without a nonce.",
+   "evidence": "bench/csp_strict.html, bench/csp_relaxed_nonce_plus_unsafe.html and bench/csp_relaxed_unsafe_only.html, with securitypolicyviolation events recorded. Raw data: data/csp_results.jsonl.",
+   "confidence": "verified-locally",
+   "source": "bench/csp_*.html"
+  },
+  {
+   "claim": "Under script-src 'nonce-X' alone, a nonce'd <script type=module> can statically import and dynamically import() sibling modules. The nonce propagates to descendant module fetches, so code-split Vite chunks load under a nonce-only CSP.",
+   "evidence": "bench/esm/page_nonce-only.html returned {staticImport:true, dynamicImport:true}. The variants with 'self' and 'strict-dynamic' behaved the same. Raw data: data/esm_csp.jsonl.",
+   "confidence": "verified-locally",
+   "source": "bench/esm/"
+  },
+  {
+   "claim": "The built-in command vscode.changes(title, resourceList) exists in VS Code 1.140. It opens the multi-file 'changes editor'; each entry is [resource, original|undefined|null, modified|undefined|null]. Use it for the 'switch to raw Lean diff' view, with a TextDocumentContentProvider serving the proposed contents. vscode.diff(left, right, title?, options?) handles a single file. workspace.applyEdit with WorkspaceEditEntryMetadata{needsConfirmation:true, label} opens the refactor-preview UI.",
+   "evidence": "Argument-validation code for 'vscode.changes' and 'vscode.diff' in out/vs/workbench/api/node/extensionHostProcess.js; vscode-docs commands.md line 276; @types/vscode 1.140 WorkspaceEditEntryMetadata.",
+   "confidence": "verified-locally",
+   "source": "https://code.visualstudio.com/api/references/commands"
+  },
+  {
+   "claim": "Webview API facts from @types/vscode 1.140.0, whose typings match the installed VS Code. @types/vscode latest is 1.144.0.\n- createWebviewPanel(viewType, title, ViewColumn | {viewColumn, preserveFocus}, WebviewPanelOptions & WebviewOptions).\n- WebviewOptions: enableScripts, enableForms, enableCommandUris (boolean | string[]), localResourceRoots (default: workspace folders plus the extension dir), portMapping.\n- WebviewPanelOptions: enableFindWidget, retainContextWhenHidden ('high memory overhead').\n- Webview: html, onDidReceiveMessage, postMessage(): Thenable<boolean>, asWebviewUri, cspSource.\n- WebviewPanelSerializer.deserializeWebviewPanel(panel, state).\n- WebviewView: badge, onDidChangeVisibility, show.\n- registerWebviewViewProvider takes webviewOptions.retainContextWhenHidden.\n- The official sample declares the activation event 'onWebviewPanel:catCoding' for its serializer and uses CSP \"default-src 'none'; style-src ${webview.cspSource}; img-src ${webview.cspSource} https:; script-src 'nonce-${nonce}';\".",
+   "evidence": "Read dl/@types__vscode@1.140.0/vscode/index.d.ts lines 9890-10420 and 11540-11785; the samples' extension.ts and package.json.",
+   "confidence": "documented",
+   "source": "https://github.com/microsoft/vscode-extension-samples/tree/main/webview-sample ; https://code.visualstudio.com/api/extension-guides/webview"
+  },
+  {
+   "claim": "The typings contradict each other on whether hidden but retained webviews receive messages. WebviewPanelOptions.retainContextWhenHidden says 'You cannot send messages to a hidden webview, even with retainContextWhenHidden enabled'. Webview.postMessage says messages reach 'hidden webviews that set retainContextWhenHidden'.",
+   "evidence": "@types/vscode 1.140 index.d.ts around lines 10004 and 10075.",
+   "confidence": "uncertain",
+   "source": "dl/@types__vscode@1.140.0/vscode/index.d.ts"
+  },
+  {
+   "claim": "vscode-messenger 0.7.0 (TypeFox, MIT, 2026-09-04) provides typed RPC between extension and webview.\n- Extension side: Messenger with registerWebviewPanel and registerWebviewView, onRequest/onNotification, sendRequest/sendNotification.\n- Shared: RequestType<P,R> and NotificationType<P> from vscode-messenger-common.\n- Webview side: new Messenger() (it calls acquireVsCodeApi itself), and start() is required.\n- It supports cancellation.\n- Its README warns that React StrictMode double registration throws for request handlers.",
+   "evidence": "README fetched from the GitHub repo.",
+   "confidence": "documented",
+   "source": "https://github.com/TypeFox/vscode-messenger"
+  },
+  {
+   "claim": "vscode-extension-tester 8.28.1 can drive a real webview's DOM. Its WebView page object (WebviewMixin) exposes switchToFrame(timeout=5000), findWebElement, findWebElements and switchBack.",
+   "evidence": "Source file packages/page-objects/src/components/WebviewMixin.ts.",
+   "confidence": "documented",
+   "source": "https://github.com/redhat-developer/vscode-extension-tester/blob/main/packages/page-objects/src/components/WebviewMixin.ts"
+  },
+  {
+   "claim": "Vite 8.3.x uses build.rolldownOptions; build.rollupOptions is a deprecated alias. Other relevant options are build.cssCodeSplit, build.assetsInlineLimit (default 4 KiB) and build.modulePreload (default {polyfill:true}).",
+   "evidence": "The build-options page, documenting v8.3.4.",
+   "confidence": "documented",
+   "source": "https://vite.dev/config/build-options"
+  },
+  {
+   "claim": "Modern platform features available in Chrome 155: field-sizing:content (auto-growing textarea), CSS anchor positioning, color-mix(), light-dark(), content-visibility, the scrollend event, Popover, View Transitions, CSS Custom Highlight, scroll-driven animations, container queries, :has(), and context-stroke. All shipped before Chromium 150, which is what VS Code 1.140 uses.",
+   "evidence": "bench/features.html via CSS.supports and feature detection. Raw data: data/features.jsonl.",
+   "confidence": "verified-locally",
+   "source": "bench/features.html"
+  },
+  {
+   "claim": "Lean unicode abbreviation input (\\to becoming →) is available as @leanprover/unicode-input 0.1.13 and @leanprover/unicode-input-component 0.2.4, the latter exposing InputAbbreviationRewriter(config, contentEditableDiv). It supports single-line input only.",
+   "evidence": "Read dl/@leanprover__unicode-input-component@0.2.4 (README and dist/index.d.ts).",
+   "confidence": "verified-locally",
+   "source": "https://registry.npmjs.org/@leanprover/unicode-input-component"
+  },
+  {
+   "claim": "Toolchain status for software planning: Node.js 26.13.0 is LTS 'Lithium' (2026-10-28) and 24.22.2 is LTS 'Krypton'. Vite 8 needs Node ^20.19 || >=22.12. TypeScript latest is 7.0.2 (the native port); 6.0.3 and 5.9.3 remain for tools that need the JS compiler API. @playwright/test 1.64.1, vitest 5.0.5, esbuild 0.28.2, @vscode/test-electron 3.1.0, @vscode/test-cli 0.0.15, @vscode/vsce 4.1.0. System Google Chrome 155 is installed and can be driven by Playwright with channel 'chrome', so no browser download is needed.",
+   "evidence": "nodejs.org dist index.json; npm registry; /usr/bin/google-chrome --version.",
+   "confidence": "documented",
+   "source": "https://nodejs.org/dist/index.json ; https://registry.npmjs.org/<pkg>"
+  }
+ ],
+ "recommendations": [
+  {
+   "decision": "Rendering architecture for the three-column board",
+   "recommendation": "Build the board from three plain scrollable DOM columns plus a custom SVG edge overlay. Do not use a graph library.\n\nLayout:\n- .board is position:relative, a 3-column grid with a 56px column gap.\n- Children, bottom to top: <svg class=edges-under> (z0, pointer-events:none); three <section class=col> (z1), each a fixed header plus a .col-list with overflow-y:auto, position:relative and a transparent background; <svg class=edges-over> (z2, pointer-events:none); a div of HTML badge buttons (z3).\n- Cards have opaque backgrounds, so plain edges that skip a column (assumption to goal) run under the derivation cards.\n- Dim with color (color-mix), never with opacity.\n- Set body{padding:0} to override VS Code's layered default padding.",
+   "rationale": "Every surveyed graph library renders one canvas or viewport, and separate instances can't share edges. Native scroll containers keep native scrollbars, momentum, the webview find widget (enableFindWidget), accessibility and DnD auto-scroll. A prototype of this design was validated in dark, light and high-contrast themes.",
+   "alternatives": "- React Flow with each column as one custom node holding a 'nowheel' list and per-row Handles, calling useUpdateNodeInternals on every scroll: clipped handles, O(rows) re-measure, virtualization breaks it.\n- GoJS ScrollingTable: commercial, canvas-rendered.\n- Cytoscape, JointJS, Sigma: single canvas, no card UI."
+  },
+  {
+   "decision": "Edge overlay algorithm",
+   "recommendation": "Write a framework-agnostic EdgeEngine class; React renders the cards and the engine owns the <path> elements.\n\nTriggers:\n- Passive scroll listener on each column list calls schedule().\n- One ResizeObserver on the board, the lists and every card sets layoutDirty and calls schedule().\n- zustand store.subscribe on hover/selection/edgeMode/proposal calls schedule().\n- schedule() requests at most one requestAnimationFrame.\n\nframe():\n- READ: only if layoutDirty, read the column rects relative to the board and each card's {kind, offsetTop, offsetHeight}. A virtualizer's measurementsCache[i].{start,size} can stand in. Then read the three scrollTops.\n- COMPUTE (pure):\n  - Endpoint y = colTop + node.top - scrollTop + min(h/2, 16). Clamp it to [colTop+9, colBottom-9] and flag st = -1 (above), 0 (visible) or +1 (below).\n  - Endpoint x = the card side facing the other endpoint.\n  - Count clamped endpoints into hidden[kind][up|down] for the badges.\n  - Cull edges where both endpoints are clamped.\n  - An unfocused edge with one clamped endpoint becomes a stub: M v C v+16h,vy v+22h,vy v+22h,vy+20*st.\n  - Otherwise draw a cubic: M s C s+dx,sy t-dx,ty t, with dx = sign*clamp(0.45*|dx|, 30, 160). Same-column edges loop through the gutter with k = 18 + min(34, 0.12*|dy|).\n  - Layer: over if focused, diff, stub or adjacent columns; under if the edge skips a column.\n  - Budget about 250 drawn edges, prioritized focused, then diff, then both-ends-visible, then stubs.\n- WRITE: reconcile a Map<edgeId, SVGPathElement> pool, calling setAttribute('d'|'class') only when the value changed. Emit badge data to React.\n\nAlso:\n- Use one <marker> per visual class, with style='fill: var(--token)' and orient='auto-start-reverse'.\n- A full TypeScript sketch of EdgeEngine and DomGeometry is available.\n- The working vanilla-JS reference is at /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r3-ui-graph/bench/prototype.html.",
+   "rationale": "Measured costs: JS is about 1 µs per edge, but repainting changed SVG paths dominates. About 100 changed paths stays at 60 fps; about 300 gives roughly 30 fps; 3,000 takes about 76 ms. getBoundingClientRect per endpoint is about 13× slower than cached offsets. Static overlays cost nothing during scroll. The prototype engine held about 17 ms per frame with 2,510 nodes and 2,262 edges.",
+   "alternatives": "- Canvas2D base layer: measured slower, and hit-testing must be hand-written.\n- Drawing every edge every frame: 76-214 ms frames at 3k-10k edges.\n- react-xarrows, react-archer or leader-line: one SVG per arrow, no clamping.\n- perfect-arrows or curved-arrows: geometry only, could supply the curve math."
+  },
+  {
+   "decision": "Behaviour for endpoints scrolled out of view or virtualized away",
+   "recommendation": "- Edges with both ends hidden are not drawn; they only feed the counts.\n- An edge with one end hidden becomes a short 22px stub hook pointing up or down from the visible card's side.\n- Each column gets real <button> badges, '▲ n linked' at the top edge and '▼ n linked' at the bottom, counting distinct hidden neighbours. Clicking one scrolls that column to the nearest hidden neighbour (list.scrollTo({top, behavior:'smooth'}), or virtualizer.scrollToIndex(i, {align:'center'})).\n- A hovered or selected node shows full dashed curves to its clamped neighbours.\n- An optional later addition is a per-column overview ruler with tick marks for linked off-screen nodes.",
+   "rationale": "Full curves to clamped points produced noisy diagonals across the board in the prototype screenshot. Stubs plus badges stay legible, keep the off-screen information, and are keyboard reachable.",
+   "alternatives": "- Full dashed curves to the clamped column-edge point.\n- Hide such edges entirely: loses information.\n- Distance-based fading: costly, low value."
+  },
+  {
+   "decision": "Hover, highlight, ancestors and edge hit-testing",
+   "recommendation": "- Precompute inn/out adjacency once per graph version.\n- Hovering a node highlights incident edges and dims non-neighbours with color. An 'ancestors' toggle (or holding Alt) highlights the transitive premises by BFS over reverse edges; the opposite toggle shows consequences.\n- Keep the overlay pointer-events:none so the mouse wheel always scrolls the column underneath.\n- Edge hover is hit-tested in JS:\n  - Keep 12-16 sampled points per drawn curve.\n  - On a rAF-throttled board pointermove, cards win if elementFromPoint finds one.\n  - Otherwise take the nearest edge within 6px (about 4,000 segment checks at the 250 budget).\n  - Show an HTML tooltip.\n- Expanded cards list 'Depends on / Used by' as buttons that focus and scroll to the related card. The same text goes in aria-describedby, so the graph is navigable without seeing the arrows.",
+   "rationale": "pointer-events on SVG paths would swallow wheel events over edges, since the SVG sits outside the column scroll containers. With the edge budget, JS hit-testing is trivially cheap. The relation lists cover screen-reader users.",
+   "alternatives": "pointer-events:stroke hit paths with wheel events forwarded to the column under the pointer: loses native momentum scrolling."
+  },
+  {
+   "decision": "Virtualization policy",
+   "recommendation": "Ship v1 without virtualization, but keep a GeometrySource abstraction in the engine. Add @tanstack/react-virtual 3.14.24 (one virtualizer per column, measureElement, rangeExtractor that keeps the dragged/focused/expanded items mounted) only when columns exceed about 2-3k nodes or React commit time becomes noticeable. Don't use content-visibility:auto as a substitute at large counts.",
+   "rationale": "Plain DOM scrolls at 60 fps with 3,000 cards per column. Virtualization breaks VS Code's built-in find widget and complicates DnD and keyboard focus. content-visibility measured worse for scrolling at 9,000 elements.",
+   "alternatives": "react-virtuoso 4.18.20, react-window 2.5.2."
+  },
+  {
+   "decision": "Drag-and-drop library and integration",
+   "recommendation": "Primary: @atlaskit/pragmatic-drag-and-drop 4.0.0, @atlaskit/pragmatic-drag-and-drop-auto-scroll 3.2.1 and @atlaskit/pragmatic-drag-and-drop-hitbox 3.0.0. Pin exact versions and wrap them in one useBoardDnD hook.\n\nImports:\n- draggable, dropTargetForElements, monitorForElements from '@atlaskit/pragmatic-drag-and-drop/element/adapter'\n- combine from '@atlaskit/pragmatic-drag-and-drop/combine'\n- autoScrollForElements from '@atlaskit/pragmatic-drag-and-drop-auto-scroll/element'\n- attachClosestEdge and extractClosestEdge from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge/attach-closest-edge' and '/extract-closest-edge'\n\nWiring:\n- Each card: draggable plus a dropTargetForElements whose data comes from attachClosestEdge(..., {allowedEdges:['top','bottom']}).\n- Each column list: dropTargetForElements plus autoScrollForElements({element, getAllowedAxis: () => 'vertical'}).\n- Board: a monitorForElements onDrop that applies an optimistic move and sends the moveNode request {id, kind, before}. The host rewrites the @@ telelean type field and returns a versioned patch.\n\nDuring a drag:\n- Add a 'dragging' class that fades the base edges.\n- Draw only the dragged node's edges.\n- Render a 2px insertion line.\n\nKeyboard and accessibility parity:\n- webview/context menu items (Promote to Derivation, Mark as Goal, Move up/down) via data-vscode-context.\n- Ctrl+Shift+←/→ re-classifies; Alt+↑/↓ re-orders.\n- Announce changes in an aria-live region.",
+   "rationale": "It never moves DOM or applies transforms during a drag, so the overlay's cached geometry stays valid. Virtualization and nested auto-scroll are documented. It is framework-agnostic, Apache-2.0 and Atlassian-maintained, with a tiny core. Native HTML5 drags with string data stay inside the webview (verified). Its accessibility guidance (menus) matches the VS Code context-menu approach we need anyway.",
+   "alternatives": "- @dnd-kit/react 0.5.3: pointer events, animated sorting, KeyboardSensor and AutoScroller by default. It is 0.x, its optimistic sorting moves DOM, and its StyleInjector needs a nonce.\n- @hello-pangea/dnd 18.0.1: best keyboard/screen-reader support, but slow maintenance and transforms during drag.\n- Avoid: legacy @dnd-kit/core 6.3.1 (frozen since 2024-12), react-beautiful-dnd (deprecated), SortableJS (mutates React's DOM)."
+  },
+  {
+   "decision": "Framework and state management",
+   "recommendation": "React 19.3.1 + TypeScript + zustand 5.0.16, with immer optional.\n\nStore slices:\n- graph: version, nodes, order per kind, edges\n- adjacency (derived per version)\n- ui: selected, expanded, hover, edgeMode, ancestors, filter, draft {kind, text, why}\n- proposal: nodeDiff, edgeDiff, summary, showOverlay\n- llm: status, question\n- theme\n\nCards subscribe to their own slice through selectors. The EdgeEngine subscribes with store.subscribe, so scrolling and hovering never re-render React. Persist ui plus the column scrollTops through vscode.setState, debounced at 300ms. The host remains the source of truth for the graph.",
+   "rationale": "React has the largest ecosystem for every needed piece (DnD, virtualization, Shiki tokens, a future React Flow free-form view). It aligns with Lean's infoview, user widgets and ProofWidgets, which are React, so Lean goal views could be embedded later. It is also the most reliable choice for LLM-written code. Bundle size is irrelevant in a local webview.",
+   "alternatives": "- Svelte 5.57: smaller and simpler reactivity, with @dnd-kit/svelte and @tanstack/svelte-virtual; no Lean widget reuse.\n- Solid 1.9: 2.0 churn imminent.\n- Lit/vanilla: too much hand-rolled state."
+  },
+  {
+   "decision": "UI kit and theming",
+   "recommendation": "Use plain CSS (CSS modules or plain files) on --vscode-* tokens with fallbacks, plus @vscode/codicons.\n\nContribute extension theme colors in package.json contributes.colors, with light/dark/highContrast/highContrastLight defaults that may reference core colors:\n- telelean.node.formalizedAura (default charts.blue)\n- telelean.diff.added / modified / removed (defaults editorGutter.*Background)\n- telelean.kind.assumption / derivation / goal (defaults charts.purple / green / orange)\nUse them as var(--vscode-telelean-...), so users can override them with workbench.colorCustomizations.\n\nOptional: @vscode-elements/react-elements 2.4.0 for a few controls, e.g. vscode-split-layout between the board and the tray. Use native webview/context menus instead of vscode-context-menu. Don't use vscode-scrollable for the columns.\n\nIn high contrast (body.vscode-high-contrast): replace glows with outlines, add contrastBorder borders, and keep glyphs. Honour vscode-reduce-motion.",
+   "rationale": "@vscode/webview-ui-toolkit is deprecated and archived. The Lean extension uses exactly this contributed-color pattern (verified). Native scroll containers are required by the edge engine and auto-scroll.",
+   "alternatives": "@vscode-elements/elements 2.5.1 everywhere (Lit, 48.5 KB gz); vscrui 1.1.0 (React)."
+  },
+  {
+   "decision": "Lean code display in expanded nodes",
+   "recommendation": "Use Shiki 4.5.0 with a fine-grained bundle and the JavaScript regex engine:\n\nimport { createHighlighterCore } from 'shiki/core'; import { createJavaScriptRegexEngine } from 'shiki/engine/javascript'; import lean from '@shikijs/langs/lean'; import darkPlus from '@shikijs/themes/dark-plus'; import lightPlus from '@shikijs/themes/light-plus'; import hcDark from '@shikijs/themes/github-dark-high-contrast'; import hcLight from '@shikijs/themes/github-light-high-contrast';\nconst hl = await createHighlighterCore({ themes: [darkPlus, lightPlus, hcDark, hcLight], langs: [lean], engine: createJavaScriptRegexEngine() });\n\n- Pick the theme from body.dataset.vscodeThemeKind, tracked with a MutationObserver.\n- Render hl.codeToTokens(code, {lang:'lean', theme}).tokens as React <span style={{color}}>.\n- Never inject codeToHtml through innerHTML.\n- The <pre> background uses var(--vscode-textCodeBlock-background).\n- Import statically; the grammar is about 6 KB.\n- For editing, 'Open in editor' calls showTextDocument(uri, {viewColumn: ViewColumn.Beside, preserveFocus: true, selection: range}), which brings the full Lean LSP and infoview.\n- Optional exact theme fidelity: the host sends the active theme's tokenColors.",
+   "rationale": "The Shiki grammar is vscode-lean4's own TextMate grammar. The JS engine supports Lean with no mismatches and avoids WASM, which would need 'wasm-unsafe-eval'. Inline style attributes from codeToHtml are blocked by a nonce CSP, while React's CSSOM style updates are allowed (verified).",
+   "alternatives": "- highlight.js + highlightjs-lean: a Lean 3-era grammar.\n- Read-only Monaco: about 102 MB, workers, no Lean grammar.\n- Shiki's oniguruma engine: needs 'wasm-unsafe-eval'."
+  },
+  {
+   "decision": "Webview type, lifecycle and persistence",
+   "recommendation": "Use a WebviewPanel in the editor area:\n\ncreateWebviewPanel('telelean.board', 'telelean', {viewColumn: ViewColumn.Active}, {enableScripts: true, retainContextWhenHidden: true, enableFindWidget: true, localResourceRoots: [Uri.joinPath(extUri, 'dist', 'webview')]})\n\n- Use vscode.setState for UI state.\n- Call registerWebviewPanelSerializer('telelean.board', {deserializeWebviewPanel}) with activationEvents ['onWebviewPanel:telelean.board']. In it, re-apply webview.options, re-set html and re-wire messaging.\n- Buffer messages when postMessage resolves false. Resync with a patch or full snapshot from the webview's last acknowledged version on onDidChangeViewState and on 'ready'.\n- Optionally add a sidebar TreeView or WebviewView for goals or quick actions.",
+   "rationale": "Three columns need editor-area width; the spec asks for an 'extension tab'. The Lean infoview also uses retainContextWhenHidden. The typings conflict on message delivery to hidden webviews, so the protocol must tolerate drops.",
+   "alternatives": "- WebviewView in the sidebar: too narrow.\n- A custom editor bound to a file: the Lean files are the source of truth and there are many of them."
+  },
+  {
+   "decision": "HTML shell and CSP",
+   "recommendation": "Use a nonce CSP:\n\n<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; img-src ${cspSource} data:; font-src ${cspSource}; style-src ${cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';\">\n\n- Load the bundle with <script type=module nonce=...>; code-split chunks load fine.\n- Expose the nonce in a <meta name=csp-nonce> for libraries that inject <style> (e.g. dnd-kit's StyleInjector.configure({nonce})).\n- If a library needs inline style attributes, switch style-src to 'unsafe-inline' and remove the nonce from style-src, because 'unsafe-inline' is ignored when a nonce is present.\n- Keep script-src free of unsafe-eval.\n- Don't enable enableCommandUris.\n- Validate all inbound messages on the host with valibot or zod.",
+   "rationale": "Every behaviour here was verified in Chrome 155: CSSOM, constructable sheets and SVG attributes are allowed; markup, innerHTML and setAttribute styles are blocked; nonce-plus-unsafe-inline is ignored; module import propagation works. Webview content renders workspace text and LLM output, so treat it as untrusted.",
+   "alternatives": "style-src 'unsafe-inline' without a nonce: lower friction, slightly weaker."
+  },
+  {
+   "decision": "Message protocol",
+   "recommendation": "Keep one shared protocol.ts with discriminated unions.\n\nHost to webview:\n- snapshot{version, nodes, edges, order}\n- patch{from, to, ops} (the webview requests a snapshot when it detects a version gap)\n- proposal{proposal|null}\n- llm/status{state}\n- llm/question{id, text, choices?}\n- response{requestId, ok, result|error}\n\nWebview to host:\n- ready{lastVersion}\n- request{requestId, method, params}, where method is one of createNode{kind, text, rationale}, moveNode{id, kind, before}, proveGoal{premises, goal}, acceptProposal, rejectProposal, sendFeedback{proposalId, text, nodeComments}, answerQuestion, openInEditor, openRawDiff\n\nEdgeDTO carries kind 'verified' | 'intended'. Wrap acquireVsCodeApi once in host.ts (dev builds get a mock host). Use vscode-messenger 0.7.0 or a 60-line custom RPC.",
+   "rationale": "Versioned patches survive dropped messages to hidden or reloaded webviews. Typed requests give compile-time safety on both sides. acquireVsCodeApi can only be acquired once (verified).",
+   "alternatives": "Untyped postMessage with ad-hoc JSON."
+  },
+  {
+   "decision": "Raw Lean diff switch",
+   "recommendation": "- The banner's 'Raw Lean diff…' button sends the openRawDiff request.\n- The host serves proposed file contents through a TextDocumentContentProvider for scheme telelean-proposal:.\n- It calls executeCommand('vscode.changes', 'Proposal #N', [[fileUri, fileUri, proposalUri], ...]).\n- Single-file fallback: vscode.diff.\n- Optionally offer workspace.applyEdit with needsConfirmation metadata for VS Code's refactor-preview accept UI.",
+   "rationale": "The native multi-file diff editor gives real Lean highlighting and familiar navigation at zero webview cost. The command is verified present in 1.140 and documented.",
+   "alternatives": "An in-webview diff built with jsdiff (diff 9.0.0) plus Shiki."
+  },
+  {
+   "decision": "Graphical diff overlay conventions (not colour alone)",
+   "recommendation": "| Change | Card | Edge | Glyph and text |\n|---|---|---|---|\n| added | dashed border in --vscode-editorGutter-addedBackground | long-dash stroke, matching arrowhead | '+' badge 'new'; Lean lines prefixed '+' on diffEditor.insertedLineBackground; aria 'Proposed new node' |\n| modified | solid 1.5px border in the modified color | | '~' badge 'Lean added' / 'text changed'; expanded view shows before/after |\n| moved / re-classified (goal proved, becomes a derivation) | dotted ghost placeholder 'Moved here' in the target column | edges re-targeted | '→' badge 'Goal → Derivation (proved)' |\n| removed | dashed border in the deleted color, strikethrough title | dotted red stroke, round caps | '−' badge |\n| unchanged | faded by color (not opacity) | stroke-opacity .35 | |\n\nAlso:\n- A banner with counts ('4 new · 3 changed · 1 moved · 1 removed'), next/previous change keys (n/p), and Accept / Feedback… / Reject / Raw Lean diff… buttons, plus an aria-live announcement when a proposal arrives.\n- Outside diff mode, line pattern encodes epistemic status: solid = verified by Lean, long-dash = intended/asserted.\n- High contrast: outlines instead of glows, glyphs kept.",
+   "rationale": "This satisfies the 'not colour alone' requirement through pattern, glyph and text. It uses core VS Code diff colors familiar from the SCM gutter. It was validated in the prototype's light and high-contrast screenshots.",
+   "alternatives": "Per-node accept/reject toggles (see the design decision on partial acceptance)."
+  },
+  {
+   "decision": "Selection section and A/D/G switch",
+   "recommendation": "Selection:\n- Clicking a card body toggles selection. The chevron, Enter or → expands to show Lean. Double-click or Ctrl+Enter opens the source beside.\n- Shift+click selects a range within a column; Space toggles. A visible checkbox is on every card.\n- Columns are role=listbox aria-multiselectable; cards are role=option.\n- The tray below the board shows premise chips (assumptions or derivations, colored by kind), then '⊢', then the goal chip; each chip has ✕. Buttons: [Clear] and the primary 'These suffice to prove the goal ▶', enabled only with ≥1 premise and exactly 1 goal (otherwise a tooltip explains). It sends proveGoal.\n\nPrompt box:\n- A segmented role=radiogroup with three role=radio buttons and roving tabindex; ←/→ moves and Alt+1/2/3 switches from anywhere. Each segment has a kind color dot and label; the selected one gets a tint and an underline.\n- The placeholder changes per kind.\n- ASSUMPTION mode reveals a required 'Why do you believe this?' field.\n- Ctrl+Enter sends createNode, which writes a comment-only @@ telelean block with no Lean code and no sorry.\n- textarea uses field-sizing:content.\n- While an LLM question is pending, the box switches to Reply mode.",
+   "rationale": "This follows the spec's step 5 workflow (select three assumptions plus a goal, shown in a separate section below, then press a button), its rationale annotation for assumptions, and ARIA radiogroup and listbox patterns. It was validated in the prototype screenshots.",
+   "alternatives": "Click expands and a checkbox selects; a dropdown instead of a segmented switch."
+  },
+  {
+   "decision": "Component tree",
+   "recommendation": "<App> (store, HostBridge, ThemeWatcher)\n├─ <Toolbar>: search, edge mode Auto/Focus/All, ancestors toggle, proposal overlay switch\n├─ <ProposalBanner>\n├─ <Board>\n│  ├─ <EdgeLayer under/>\n│  ├─ <Column kind=A|D|G> ×3: <ColumnHeader/>, <ColumnList> (scroll container, drop target, auto-scroll)\n│  │   ├─ <VocabularyGroup/> (in the Assumptions column)\n│  │   └─ <NodeCard/> (memo): checkbox, title, 'because:', chips λ Lean / no Lean yet / diff glyph\n│  │        └─ when expanded: <LeanCode/>, <NodeRelations/>, Open in editor\n│  ├─ <EdgeLayer over/> with <defs> markers\n│  ├─ <EdgeBadges/>\n│  └─ <EdgeEngine/> (non-visual)\n├─ <SelectionTray/>\n├─ <LlmThread/>: question strip with quick replies and progress\n└─ <PromptBox>: <KindSwitch/>, textarea, why field, Add",
+   "rationale": "It separates React-rendered content from the imperative overlay and maps one-to-one onto the spec's elements.",
+   "alternatives": ""
+  },
+  {
+   "decision": "Testing strategy for the webview UI",
+   "recommendation": "- host.ts exports acquireVsCodeApi() if it is defined, otherwise createMockHost(). The mock answers requests from fixtures and can replay a scripted LLM proposal.\n- Dev loop: Vite dev server in a normal browser, with an index.dev.html that sets body.vscode-dark etc. and --vscode-* values. Capture those once from a real webview: run 'Developer: Open Webview Developer Tools' and copy every --vscode-* property for light, dark, HC-dark and HC-light.\n- Playwright 1.64.1 runs with channel:'chrome', reusing the installed Google Chrome 155. page.addInitScript injects a fake acquireVsCodeApi that records posted messages; page.evaluate(m => window.postMessage(m, '*')) simulates the host. Add toHaveScreenshot per theme.\n- Extension-host logic: @vscode/test-cli 0.0.15 + @vscode/test-electron 3.1.0.\n- Optional real-VS Code end-to-end: vscode-extension-tester 8.28.1, using WebView.switchToFrame / findWebElement / switchBack.",
+   "rationale": "This is fast and deterministic, needs no browser download, and covers all four theme kinds. Real webview DOM access needs ExTester.",
+   "alternatives": "@vscode/test-web; vitest with jsdom (no layout, so unsuitable for the edge engine)."
+  },
+  {
+   "decision": "Build configuration",
+   "recommendation": "- Webview: Vite 8.3.5 with @vitejs/plugin-react 6.1.2.\n  - Fixed output names (webview.js, webview.css) via build.rolldownOptions.output; rollupOptions is a deprecated alias in Vite 8.\n  - build.cssCodeSplit:false, build.modulePreload:false.\n  - build.assetsInlineLimit:0, or allow data: in img-src and font-src.\n  - Import Shiki grammars and themes statically.\n- Extension host: esbuild 0.28.2 (platform node, external vscode, cjs).\n- @types/vscode 1.140.0 to match engines.vscode ^1.140.0, or lower.\n- TypeScript: 7.0.2, or 6.0.3 if some tool needs the JS compiler API.",
+   "rationale": "Webview HTML is generated by the extension rather than Vite's index.html, so stable asset names are needed. Chunks load under the nonce CSP (verified), but a single chunk is simplest.",
+   "alternatives": "esbuild for both bundles."
+  }
+ ],
+ "risks": [
+  "SVG repaint cost dominates if many edges change per frame. Measured: about 300 changed paths gives roughly 30 fps; 3,000 gives about 76 ms frames. Culling, stubs and an edge budget of about 250 are mandatory. Real VS Code GPU performance was not measured: the headless GPU run was unrepresentative and slower than software.",
+  "Scroll-linked effects: Chromium scrolls on the compositor thread, so the overlay can lag the content by about one frame during fast flings. Short stubs hide most of it. Fixing it fully would mean main-thread scrolling and losing native momentum.",
+  "Drag-and-drop library churn. @dnd-kit/react is 0.x with daily betas. Pragmatic-drag-and-drop changed its import paths in 3.0.0 and 4.0.0, and the hitbox package deprecated its root closest-edge exports within weeks. Pin exact versions and isolate DnD behind one hook.",
+  "Transform- or DOM-moving DnD libraries make cached node offsets stale during a drag: dnd-kit sortable transforms, its OptimisticSortingPlugin, and hello-pangea transforms. Fade edges during drag and re-measure on dragover or drop.",
+  "CSP pitfalls. 'unsafe-inline' is silently ignored when style-src also has a nonce. Shiki codeToHtml injected through innerHTML loses its colors under a nonce CSP. dnd-kit's StyleInjector needs the nonce configured. Shiki's oniguruma WASM needs 'wasm-unsafe-eval'. Blob workers (Monaco, elkjs) need worker-src.",
+  "The typings conflict on whether hidden but retained webviews receive postMessage. The protocol must buffer, use versioned patches and snapshots, and resync on visibility or ready.",
+  "Virtualization, if adopted later, breaks the webview's built-in find (enableFindWidget), complicates DnD (source elements unmount) and keyboard focus, and makes off-screen geometry depend on estimateSize.",
+  "TextMate (Shiki) highlighting will differ from Lean's semantic highlighting in the editor. Theme colors only approximate the user's theme unless the host sends the theme's tokenColors.",
+  "Dimming or fading cards with opacity lets under-layer edges bleed through (seen in the prototype). Dim with color instead.",
+  "The gitDecoration.* theme colors exist only while the built-in git extension is active. Use core editorGutter.* and charts.* colors with CSS var() fallbacks.",
+  "Native HTML5 drag previews are static bitmaps and depend on Electron/Wayland behaviour. VS Code's own workbench uses HTML5 DnD on Linux, which suggests this works, but drag-preview polish inside webviews was not tested."
+ ],
+ "report_path": "NOT WRITTEN. The harness rejected writing /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r3-ui-graph/REPORT.md ('Subagents should return findings as text, not write report files'); the full report content is in this structured output. Supporting artifacts are in /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r3-ui-graph/:\n- bench/prototype.html: vanilla-JS prototype. Params: theme=dark|light|hc, diff=1, hover=<id>, ancestors=1, sel=A1,A2, expand=G1, scrollD=520, mode=A|D|G, filler=N, stubs=0, perf=1.\n- shots/dark_base.png, dark_base_stubs.png, light_diff.png, hc_diff.png\n- bench/edges_bench*.html, scroll_micro.html, cull_bench.html, csp_*.html, esm/, features.html\n- data/*.jsonl (benchmark results), data/*.json (npm registry snapshots), data/pkg_table.md\n- scripts/npminfo.py, fetchtar.py, serve.py, run_page.sh",
+ "software_needed": [
+  {
+   "name": "Node.js (with npm)",
+   "version": "26.13.0 LTS 'Lithium', or 24.22.x LTS 'Krypton'; npm 11",
+   "purpose": "Build toolchain for the webview and extension bundles and for running tests. Node is currently absent on the machine.",
+   "required": true,
+   "install_method": "User-level install (no sudo): the official nodejs.org tarball into ~/.local, or a version manager such as fnm or nvm."
+  },
+  {
+   "name": "react, react-dom",
+   "version": "19.3.1",
+   "purpose": "Webview UI framework",
+   "required": true,
+   "install_method": "npm install (project-local)"
+  },
+  {
+   "name": "zustand",
+   "version": "5.0.16",
+   "purpose": "Webview state store, with selector subscriptions and store.subscribe for the edge engine",
+   "required": true,
+   "install_method": "npm install"
+  },
+  {
+   "name": "@atlaskit/pragmatic-drag-and-drop, @atlaskit/pragmatic-drag-and-drop-auto-scroll, @atlaskit/pragmatic-drag-and-drop-hitbox",
+   "version": "4.0.0, 3.2.1, 3.0.0 (pin exact versions)",
+   "purpose": "Cross-column re-classification, in-column re-ordering, and auto-scroll while dragging",
+   "required": true,
+   "install_method": "npm install"
+  },
+  {
+   "name": "shiki",
+   "version": "4.5.0 (shiki/core, shiki/engine/javascript, @shikijs/langs/lean, @shikijs/themes/*)",
+   "purpose": "Lean 4 syntax highlighting in expanded nodes",
+   "required": true,
+   "install_method": "npm install"
+  },
+  {
+   "name": "@vscode/codicons",
+   "version": "0.0.46-x (latest tag 0.0.46-24)",
+   "purpose": "VS Code icon font for the webview",
+   "required": true,
+   "install_method": "npm install"
+  },
+  {
+   "name": "@types/vscode, @types/vscode-webview",
+   "version": "1.140.0 (match engines.vscode), 1.57.5",
+   "purpose": "Typings for the extension API and acquireVsCodeApi",
+   "required": true,
+   "install_method": "npm install -D"
+  },
+  {
+   "name": "typescript",
+   "version": "7.0.2 (or 6.0.3 if a tool needs the JS compiler API)",
+   "purpose": "Type checking",
+   "required": true,
+   "install_method": "npm install -D"
+  },
+  {
+   "name": "vite, @vitejs/plugin-react",
+   "version": "8.3.5, 6.1.2",
+   "purpose": "Webview bundle and dev server with a mock host",
+   "required": true,
+   "install_method": "npm install -D"
+  },
+  {
+   "name": "esbuild",
+   "version": "0.28.2",
+   "purpose": "Extension-host bundle",
+   "required": true,
+   "install_method": "npm install -D"
+  },
+  {
+   "name": "@types/react, @types/react-dom",
+   "version": "19.3.0",
+   "purpose": "React typings",
+   "required": true,
+   "install_method": "npm install -D"
+  },
+  {
+   "name": "@playwright/test",
+   "version": "1.64.1",
+   "purpose": "Webview UI tests against the Vite dev server, run on the already-installed Google Chrome 155 with channel 'chrome' (no browser download)",
+   "required": false,
+   "install_method": "npm install -D"
+  },
+  {
+   "name": "@vscode/test-cli, @vscode/test-electron",
+   "version": "0.0.15, 3.1.0",
+   "purpose": "Extension-host integration tests",
+   "required": false,
+   "install_method": "npm install -D"
+  },
+  {
+   "name": "vitest",
+   "version": "5.0.5",
+   "purpose": "Unit tests for pure modules: protocol, geometry functions, diff mapping",
+   "required": false,
+   "install_method": "npm install -D"
+  },
+  {
+   "name": "@vscode/vsce",
+   "version": "4.1.0",
+   "purpose": "Packaging the extension as a VSIX",
+   "required": false,
+   "install_method": "npm install -D"
+  },
+  {
+   "name": "vscode-messenger, vscode-messenger-webview, vscode-messenger-common",
+   "version": "0.7.0",
+   "purpose": "Optional typed RPC between extension and webview",
+   "required": false,
+   "install_method": "npm install"
+  },
+  {
+   "name": "valibot (or zod)",
+   "version": "1.5.0 (zod 4.6.7)",
+   "purpose": "Validating inbound webview messages at the host boundary",
+   "required": false,
+   "install_method": "npm install"
+  },
+  {
+   "name": "@vscode-elements/react-elements (@vscode-elements/elements)",
+   "version": "2.4.0 (2.5.1)",
+   "purpose": "Optional VS Code-styled controls, e.g. split layout",
+   "required": false,
+   "install_method": "npm install"
+  },
+  {
+   "name": "@tanstack/react-virtual",
+   "version": "3.14.24",
+   "purpose": "Only if columns exceed about 2-3k nodes",
+   "required": false,
+   "install_method": "npm install"
+  },
+  {
+   "name": "@dnd-kit/react (+ @dnd-kit/helpers)",
+   "version": "0.5.3 (pin exact)",
+   "purpose": "Alternative DnD library if animated sorting and keyboard dragging are preferred",
+   "required": false,
+   "install_method": "npm install"
+  },
+  {
+   "name": "vscode-extension-tester",
+   "version": "8.28.1",
+   "purpose": "Optional end-to-end tests that drive the real webview DOM inside VS Code",
+   "required": false,
+   "install_method": "npm install -D"
+  },
+  {
+   "name": "Google Chrome (already installed)",
+   "version": "155.0.8059.39 at /usr/bin/google-chrome",
+   "purpose": "Reuse for Playwright tests and headless screenshots; nothing to install",
+   "required": false,
+   "install_method": "already present"
+  }
+ ],
+ "design_decisions_for_user": [
+  {
+   "question": "Where do LLM-introduced support declarations live in the three-column UI? Examples: structure Cynder, structure Game, opaque isCharacter : Character → Prop. They are neither assumptions, derivations nor goals.",
+   "why_it_matters": "It determines the set of markup 'type:' values. It affects the invariant that derivations need no new assumptions: a def is a conservative extension, while opaque or axiom constants assume existence. It also decides where these nodes and their edges appear in the board and the diff overlay.",
+   "options": "(a) A 4th kind DEFINITION, shown as a collapsible 'Vocabulary' group at the top of the Assumptions column. (b) Classify them as ASSUMPTIONs. (c) A 4th column. (d) Hide them unless expanded.",
+   "recommended": "(a). This is what the prototype does: a 'Vocabulary (definitions)' group in the Assumptions column."
+  },
+  {
+   "question": "What does a single click on a card do: select it or expand it?",
+   "why_it_matters": "The spec uses clicks both for selecting premises and goal (step 5) and for expanding a node to see its Lean code. One gesture can't do both.",
+   "options": "(a) Click toggles selection; the chevron, Enter or → expands; double-click opens the Lean source. (b) Click expands; a checkbox selects.",
+   "recommended": "(a). Selection is the primary workflow, and the checkbox stays visible for discoverability."
+  },
+  {
+   "question": "Which edges are shown by default?",
+   "why_it_matters": "Dense graphs are unreadable, and repainting many SVG edges per frame is expensive (measured).",
+   "options": "(a) Auto: culled, stubs plus badges, a budget of about 250, full curves for hover and selection. (b) Focus-only: only the edges of hovered or selected nodes. (c) All.",
+   "recommended": "(a), with a toolbar toggle to (b) and (c)."
+  },
+  {
+   "question": "Should edges show epistemic status, and can users draw edges by hand?",
+   "why_it_matters": "Before formalization the only links are user intent, e.g. created by 'these suffice to prove the goal'. After proving, links can come from actual Lean dependencies. Mixing the two misleads users. Manual linking also needs port handles and a markup field.",
+   "options": "(a) Solid = verified by Lean, long-dash = intended/asserted, with optional drag-from-port to create intended edges. (b) A single edge style computed only from Lean. (c) User-declared edges only.",
+   "recommended": "(a). The final edge source and semantics need coordinating with the markup/LSP research (R4)."
+  },
+  {
+   "question": "How is the raw Lean file diff shown?",
+   "why_it_matters": "The spec requires switching from the graphical overlay to the raw Lean file diff.",
+   "options": "(a) VS Code's native multi-file diff editor via the built-in vscode.changes command, with a content provider for proposed files. (b) An in-webview diff using jsdiff plus Shiki. (c) The refactor preview via WorkspaceEdit with needsConfirmation.",
+   "recommended": "(a). It gives real Lean highlighting and familiar navigation at zero webview cost. (c) is an optional alternative acceptance UI."
+  },
+  {
+   "question": "Can users accept part of an LLM proposal?",
+   "why_it_matters": "A proof usually depends on every new definition and lemma in the proposal. Partial acceptance can leave Lean files that don't type-check.",
+   "options": "(a) All-or-nothing Accept / Reject, plus Feedback with optional per-node comments sent back to the LLM. (b) Per-node accept/reject, followed by a re-check.",
+   "recommended": "(a)"
+  },
+  {
+   "question": "Where do the LLM's clarifying questions appear?",
+   "why_it_matters": "The spec wants the LLM to ask about level of detail and pragmatics while it works. The UI must make answering easy without colliding with the A/D/G prompt box.",
+   "options": "(a) An inline thread strip above the prompt box with quick-reply chips; the box switches to Reply mode. (b) A modal dialog. (c) The VS Code chat view.",
+   "recommended": "(a)"
+  },
+  {
+   "question": "Where is the manual order of cards within a column stored?",
+   "why_it_matters": "If dragging a card re-orders the Lean source, every drag produces churn in the Lean files. If the order is UI-only, it must persist somewhere.",
+   "options": "(a) UI-only order in a small workspace file (e.g. .telelean/layout.json) or in workspaceState, plus an 'auto-arrange to reduce crossings' command. (b) Order derived from and written to the Lean source.",
+   "recommended": "(a)"
+  },
+  {
+   "question": "Where does the panel live?",
+   "why_it_matters": "Three side-by-side columns need width.",
+   "options": "(a) A WebviewPanel editor tab, optionally plus a sidebar tree of goals. (b) A sidebar WebviewView. (c) The bottom panel.",
+   "recommended": "(a)"
+  }
+ ],
+ "open_questions": [
+  "What scale should a model support (nodes and edges per workspace)? This decides whether virtualization is needed in v1. Recommended threshold: about 2-3k nodes per column.",
+  "Where do edges come from: Lean dependency extraction (constants used in a declaration's type or proof), user declarations in the markup, or both? R4 decides; the UI needs an edge 'kind' field.",
+  "Should expanded nodes eventually embed Lean goal states or interactive widgets? If so, React alignment with @leanprover/infoview matters, and an API or LSP proxy from the Lean extension is needed (R4/R5).",
+  "Should the board also work in VS Code for the Web (vscode.dev)? This mainly affects extension-host APIs, not the webview design.",
+  "How are nodes with Lean errors or sorry shown alongside the 'blue aura'? Proposed: status glyphs ✓ / ⚠ / ✕ driven by diagnostics on the node's range. This needs confirmation, and range mapping from R4.",
+  "Real-VS Code frame timing for the overlay on this laptop's GPU is unmeasured. The headless GPU numbers were unrepresentative. Do a quick check once a skeleton extension exists."
+ ]
+}

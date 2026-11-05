@@ -1,0 +1,10 @@
+namespace Spyro
+axiom Character : Type
+axiom Character.exists : Nonempty Character
+instance : Nonempty Character := Character.exists
+noncomputable opaque cynder : Character
+axiom HasDarkPast : Character → Prop
+abbrev cynder_dark_past : Prop := HasDarkPast cynder
+axiom cynder_dark_past.holds : cynder_dark_past
+theorem t.holds : cynder_dark_past := cynder_dark_past.holds
+end Spyro

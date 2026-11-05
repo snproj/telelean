@@ -1,0 +1,5 @@
+import Model.Defs
+namespace Telelean.Model
+-- the user-signed-off statement (frozen); proof left open
+theorem cynder_not_good : ¬ GoodAdditionTo cynder newSpyro := sorry
+end Telelean.Model

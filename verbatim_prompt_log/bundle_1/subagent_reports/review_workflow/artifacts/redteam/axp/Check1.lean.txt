@@ -1,0 +1,9 @@
+import Model
+#print axioms Telelean.Model.cynder_not_good
+#print axioms Telelean.Model.unproved_goal
+#print axioms Telelean.Model.classical_thing
+open Telelean.Model in
+#print axioms cynder_not_good
+set_option pp.fullNames true in
+open Telelean.Model in
+#print axioms cynder_not_good

@@ -1,0 +1,12 @@
+def s1 := "/- not a comment start"
+def s2 := "-/ also fine"
+def s3 := r#"raw "/-" string"#
+def c1 := '/'
+/- block comment containing "a string with -/ inside" ? -/
+def afterTricky := 1
+-- line comment with /- inside
+def afterLine := 2
+/- outer /- inner -/ -- still in outer -/
+def afterNested := 3
+def 𝔽x := 1
+theorem posTest : 𝔽x = 2 := rfl

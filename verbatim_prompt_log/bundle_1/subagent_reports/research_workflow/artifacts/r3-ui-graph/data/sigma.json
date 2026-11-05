@@ -1,0 +1,50 @@
+{
+ "name": "sigma",
+ "latest": "4.0.4",
+ "dist_tags": {
+  "alpha-rc": "2.0.0-alpha7-labelgrid",
+  "rc": "2.0.0-alpha10-rc2",
+  "legacy": "1.2.2",
+  "alpha": "4.0.0-alpha.7",
+  "beta": "4.0.0-beta.8",
+  "latest": "4.0.4"
+ },
+ "latest_published": "2026-10-27T14:46:06.938Z",
+ "modified": "2026-10-27T14:46:07.145Z",
+ "created": "2014-04-03T13:47:22.636Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 3408191,
+ "fileCount": 184,
+ "tarball": "https://registry.npmjs.org/sigma/-/sigma-4.0.4.tgz",
+ "dependencies": {
+  "events": "^3.3.0",
+  "graphology-utils": "^2.5.2"
+ },
+ "peerDependencies": {},
+ "repository": "git+ssh://git@github.com/jacomyal/sigma.js.git",
+ "recent_versions": [
+  [
+   "4.0.0",
+   "2026-10-08T11:09:02.805Z"
+  ],
+  [
+   "4.0.1",
+   "2026-10-13T14:12:59.651Z"
+  ],
+  [
+   "4.0.2",
+   "2026-10-14T14:19:13.700Z"
+  ],
+  [
+   "4.0.3",
+   "2026-10-15T13:51:09.448Z"
+  ],
+  [
+   "4.0.4",
+   "2026-10-27T14:46:06.938Z"
+  ]
+ ],
+ "homepage": "https://www.sigmajs.org",
+ "description": "A JavaScript library aimed at visualizing graphs of thousands of nodes and edges."
+}

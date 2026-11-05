@@ -1,0 +1,18 @@
+set_option autoImplicit false
+set_option relaxedAutoImplicit false
+namespace Spyro
+/-- characters -/            axiom Character : Type
+/-- games -/                 axiom Game : Type
+/-- has a dark past -/       axiom HasDarkPast : Character → Prop
+/-- would be a good addition to -/ axiom GoodAddition : Character → Game → Prop
+/-- there is at least one character -/ axiom Character.exists : Nonempty Character
+instance : Nonempty Character := Character.exists
+/-- Cynder -/                noncomputable opaque cynder : Character
+
+/-- Cynder is a character who has a dark past -/
+abbrev cynder_dark_past : Prop := HasDarkPast cynder
+axiom cynder_dark_past.holds : cynder_dark_past
+
+/-- Cynder would not be a good addition to the new Spyro game -/
+abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro
+end Spyro

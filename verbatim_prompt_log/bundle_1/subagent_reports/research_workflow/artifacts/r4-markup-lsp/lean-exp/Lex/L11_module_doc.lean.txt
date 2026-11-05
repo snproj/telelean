@@ -1,0 +1,10 @@
+import Lean
+def i := 1
+/-! @@ telelean v1
+id: codeless-in-moddoc
+-/
+def j := 2
+open Lean in
+#eval show MetaM Unit from do
+  let ds := getMainModuleDoc (← getEnv)
+  IO.println s!"moduledocs = {ds.toArray.map (·.doc)}"

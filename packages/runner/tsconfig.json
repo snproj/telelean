@@ -1,0 +1,13 @@
+{
+  // Type-check only (noEmit): the extension bundles runner sources with esbuild, and vitest runs them directly.
+  // `@telelean/core` resolves to the core sources (no build step, no workspace link needed).
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"],
+    "paths": {
+      "@telelean/core": ["../core/src/index.ts"]
+    }
+  },
+  "include": ["src"]
+}

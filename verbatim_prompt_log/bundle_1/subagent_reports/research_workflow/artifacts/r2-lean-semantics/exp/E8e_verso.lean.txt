@@ -1,0 +1,40 @@
+import Lean
+open Lean Elab Command
+set_option doc.verso true
+
+/--
+Cynder is a character who has a dark past.
+
+@@ telelean
+id: assumption.cynder_dark
+kind: ASSUMPTION
+natural_name: "Cynder is a character who has a dark past"
+why: "familiar with gaming lore: see *Legend of Spyro* (2006)"
+tags: [lore, characters]
+  indented: line with `code`, a {brace}, a colon: and a "quote"
+-/
+axiom cynder_dark : True
+
+/--
+Plain Verso docstring referencing {name}`cynder_dark` and `Nat.succ`.
+-/
+def ok := 1
+
+/--
+```
+@@ telelean
+id: x
+why: "anything {goes} here: `code` *stars*"
+```
+-/
+def fenced := 1
+
+elab "#show_doc " n:ident : command => do
+  let env ← getEnv
+  let d ← findDocString? env n.getId
+  let i ← findInternalDocString? env n.getId
+  let kind := match i with | some (.inl _) => "markdown" | some (.inr _) => "verso" | none => "none"
+  logInfo m!"[{kind}] findDocString? = {repr d}"
+#show_doc cynder_dark
+#show_doc ok
+#show_doc fenced

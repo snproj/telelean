@@ -1,0 +1,45 @@
+{
+ "name": "@atlaskit/pragmatic-drag-and-drop-auto-scroll",
+ "latest": "3.2.1",
+ "dist_tags": {
+  "latest": "3.2.1"
+ },
+ "latest_published": "2026-09-24T01:54:30.203Z",
+ "modified": "2026-09-24T01:54:30.361Z",
+ "created": "2023-08-16T01:11:38.732Z",
+ "license": "Apache-2.0",
+ "deprecated": null,
+ "unpackedSize": 533335,
+ "fileCount": 132,
+ "tarball": "https://registry.npmjs.org/@atlaskit/pragmatic-drag-and-drop-auto-scroll/-/pragmatic-drag-and-drop-auto-scroll-3.2.1.tgz",
+ "dependencies": {
+  "@babel/runtime": "^7.0.0",
+  "@atlaskit/pragmatic-drag-and-drop": "^4.0.0"
+ },
+ "peerDependencies": {},
+ "repository": "git+https://github.com/atlassian/pragmatic-drag-and-drop.git",
+ "recent_versions": [
+  [
+   "3.0.0",
+   "2026-06-16T05:42:25.886Z"
+  ],
+  [
+   "3.0.1",
+   "2026-08-14T13:35:41.903Z"
+  ],
+  [
+   "3.1.0",
+   "2026-08-19T08:16:39.991Z"
+  ],
+  [
+   "3.2.0",
+   "2026-08-29T19:34:18.923Z"
+  ],
+  [
+   "3.2.1",
+   "2026-09-24T01:54:30.203Z"
+  ]
+ ],
+ "homepage": "https://atlassian.design/components/pragmatic-drag-and-drop/",
+ "description": "An optional Pragmatic drag and drop package that enables automatic scrolling during a drag operation"
+}

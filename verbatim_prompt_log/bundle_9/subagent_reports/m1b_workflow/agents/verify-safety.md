@@ -1,0 +1,97 @@
+# verify:safety (agent a856ffad5d9e94910)
+
+## verdict
+needs-work
+
+## what_i_ran
+All probes ran from my scratch dir. I bundled each TypeScript probe with the repo's esbuild 0.28.2 into scratch/build/*.mjs and ran it with node 24, with GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM=1, GIT_CEILING_DIRECTORIES=<scratch>/runs and TMPDIR=<scratch>/tmp. The probes call the real runner and core code (ModelWorkspace, HistoryStore, refreshLeanFacts/runLean) on copies of mental_model.
+
+- probe1-git: a user repository with a detached HEAD, a staged change plus further unstaged edits to Model/Spyro/Main.lean (the file telelean edits), unstaged and untracked user files, marker hooks in both .git/hooks and a repo-local core.hooksPath, gc.auto=1 and commit.gpgsign=true. The probe ran add, edit, reorder, set-premises, create-subject, delete, undo x2, redo, revert to Initial state, undo of the revert, and prune 3. Result: "probe1: 29/30 checks passed". Unchanged: headFile, head, refs, index (sha256), config, staged diff, status outside the model, stash, packs. "no hook ran", "git fsck clean", "the user's staged Main.lean is unchanged in the index". The one failure was my own positive control: git commit-tree does not read commit.gpgsign at all, so that check was wrong, not the product.
+- probe1b-revert: 13/17 passed. The binary-file checks failed (issue 3). The stale-lock and git-missing checks passed.
+- probe2-lean (real Lean, under runLean):
+  - Sandbox, part A, a module whose `#eval` tries to write files: "PROBE DENIED Model/Spyro/pwned.txt: read-only file system", "PROBE WROTE .git/pwned.txt" (it landed in the tmpfs mask: nothing appeared in the real .git), "PROBE DENIED lakefile.toml", "EXISTS /home/zhengyew/.bashrc=false", "EXISTS /home/zhengyew/telelean/package.json=false".
+  - Size, part B, 400 cards: "refresh fresh in 3080 ms; build ok 1801 ms peak 228 MiB; check ok 676 ms peak 117 MiB"; graph.json 948 KiB; board message 851 KiB. "probe2: 8/8 checks passed".
+- probe3-scale (no Lean), buildProjectModel and the cost of one typing pause:
+  - n=200: 109 ms; n=400: 368 ms; n=800: 1512 ms; n=1600: 6223 ms.
+  - One edit action: 187, 714, 3064 and 12776 ms.
+  - A CPU profile at n=800 puts the time in blankComments (4607 ms self) and namespaceAt (2203 ms self).
+- probe4-savefail: 2/5 passed (issue 4).
+- probe5-revertlock: 0/3 passed (issue 1).
+- probe6-worktree: 0/1 passed (issue 9).
+- Existing tests: runner test/integration/*, test/workspace/history.test.ts and undo.test.ts, run with real Lean and git through vitest 5.0.5, using a scratch config with cacheDir in scratch and TELELEAN_TEST_TMP=<scratch>/tt. Result: "Test Files 4 passed (4) / Tests 35 passed (35)", exit 0.
+- After every run: `systemctl --user list-units 'telelean-*' --all` was empty, no process of mine was left, the scratch tmp was empty, and there were no /tmp/telelean-* dirs. The home folder's top level was unchanged against my baseline.
+- Code review: modelWorkspace, history, git, files, fsAdapters, undo, sidecars, initialize; runLean, sandboxProfile, refresh; extension editApplier, editor, textSource, registry, changeBatcher, host, boardSession, modelPaths, settings, initialize. I also read VS Code 1.140's bulk-edit code in the downloaded test build (read-only).
+
+Not run: the VS Code smoke and e2e suites and Playwright. Another agent's VS Code test instance (verify-ux, Xvfb :99) was running for more than 20 minutes the whole time, and the rules allow one heavy process at a time. I also could not test the user's snap VS Code.
+
+## issues
+- **severity:** major
+  - **package:** runner
+  - **description:** Revert goes ahead even when the snapshot of the current state ('Manual edits') cannot be written. Hand-made files are then deleted and hand edits overwritten, and they survive only in the in-memory undo stack (lost on window reload). A3 promises that 'Revert to this' first snapshots the current state. applyRecorded swallows the snapshotBase failure (it only sets TL202) and applies anyway.
+  - **evidence:** probe5: a stale lock `.git/refs/telelean/root/subjects/Spyro.lock`, then `ws.revert('Spyro', <Initial state>)` returns {"ok":true,"label":"Revert to: Initial state (2026-11-01 14:12)"}. The hand-made Model/Spyro/Handmade.lean is gone. After the lock is removed, the history lists only 'Add assumption: Something telelean wrote | Initial state' (no Manual edits). In the code, modelWorkspace.ts:818 calls `await this.snapshotBase(scope)` for each scope, snapshotBase catches every error (line 909, setHistoryError), and the apply follows at line 820.
+  - **suggested_fix:** Have snapshotBase report success. When history is ready but the pre-write snapshot failed, refuse the revert ('could not snapshot the current state first; nothing was changed'). Consider doing the same for other bulk or destructive writes.
+- **severity:** major
+  - **package:** core
+  - **description:** buildProjectModel is quadratic in the number of pinned blocks in a file. For every pinned block, namespaceAt re-blanks the comments in the whole text before it and re-scans every line. The model is rebuilt synchronously on the extension host after every typing pause (~200 ms debounce) and twice per board action, so large models freeze the whole extension host, the Lean extension's client included. Plan R12 assumed this rebuild is cheap ('27k lines in ~145 ms'). RAM is fine; the cost is CPU. The user's current walkthroughs (tens of cards) are far below where this bites: up to about 200 cards per file it stays under about 150 ms.
+  - **evidence:** probe3, buildProjectModel for one file with n pinned cards: n=200 109 ms, n=400 368 ms, n=800 1512 ms, n=1600 6223 ms (about x4 per doubling). One typing pause (invalidate + graph) costs about the same. An edit-node action: 187, 714, 3064 and 12776 ms. CPU profile at n=800: blankComments 4607 ms and namespaceAt 2203 ms self time. The call site is packages/core/src/project/build.ts:291 `namespaceAt(draft.file.text, draft.block.span.start)`, and project/text.ts:207 runs `blankComments(text.slice(0, offset))` each time. probe2 with 400 cards: process RSS 234 MiB, Lean build peak 228 MiB, check 117 MiB.
+  - **suggested_fix:** Compute the namespace stack once per file in a single pass (a sorted list of offset and namespaces), or reuse the namespaces the WP1 parser already tracks. Cache it by file hash together with the parse cache.
+- **severity:** minor
+  - **package:** runner
+  - **description:** Revert and undo corrupt non-UTF-8 files in a subject's sidecar folder. The subject snapshot scope takes every file under .telelean/subjects/<S>/ and reads it as UTF-8 text, so binary bytes become U+FFFD. Undo of the revert and 'Revert to Manual edits' then write the damaged bytes back. In VS Code the original goes to the OS trash on the revert's delete, so it can be recovered from there; with fsEditApplier it is gone. In VS Code, BOMs are also dropped, because the TextSource strips them. The trigger is narrow: a user rarely puts files in telelean's own sidecar folder.
+  - **evidence:** probe1b: the original .telelean/subjects/Spyro/diagram.png was 89504e470d0a1a0a00fffe8081c3280010. The Manual-edits snapshot blob is efbfbd504e470d0a1a0a00efbfbdefbfbdefbfbdefbfbdefbfbd280010, and after revert plus undo the file on disk has those same bytes ('undo of the revert restores every file byte-exactly' FAIL: [.telelean/subjects/Spyro/diagram.png]). In the code, files.ts:135 `walkFiles(root, subjectSidecarDir(subject))` accepts every file name.
+  - **suggested_fix:** Restrict the sidecar part of the scope to files telelean writes (layout.json, attic/*.lean, future known files), or snapshot and restore raw bytes for everything else. Skip files whose bytes do not survive a UTF-8 round trip.
+- **severity:** minor
+  - **package:** extension
+  - **description:** When the WorkspaceEdit is applied but TextDocument.save() fails, the change stays applied in the buffer but is never recorded. The message says 'save it yourself, then Undo if needed', but Undo then undoes the previous action instead. The board also stays stale: the workspace skips its re-read, and in VS Code the change event is filtered out as telelean's own echo. One way to hit it: an external tool changes the file on disk while VS Code has it open and dirty, so the save is refused.
+  - **evidence:** probe4 (an in-memory editor whose applier writes the buffers, then fails the save). Second edit: {"ok":false,"code":"internal","error":"... was applied, but Model/Spyro/Main.lean could not be saved: save it yourself, then Undo if needed."}. The buffer contains it, yet the Undo label is still 'Edit sentence: First edit (saved fine)'. The undo outcome is 'Undo: Edit sentence: First edit (saved fine)', the failed-save edit is still there, and the graph shows the old text. In the code, editApplier.ts:182 throws after port.apply, and modelWorkspace.ts:819-824 records undo only after apply resolves.
+  - **suggested_fix:** Report 'applied but not saved' as a partial success (its own error code or return value): record the undo entry, re-read, take the snapshot and show a warning. Otherwise, fix the message.
+- **severity:** minor
+  - **package:** extension
+  - **description:** VS Code's applyEdit is not atomic, and the before-check is not tied to the apply. If one part of the batch fails (for example a create with overwrite:false, or a version conflict in a text edit), the earlier parts stay applied while CheckedEditApplier says 'nothing was applied'. For files not open in an editor, the ext host sends no versionId, so a file changed on disk between the before-check and applyEdit gets edits computed against the old text.
+  - **evidence:** editApplier.ts:174-176 ('VS Code could not apply ...; nothing was applied.'). In VS Code 1.140's workbench.desktop.main.js, the bulk edit apply rethrows without rolling back, and versionId is checked only for loaded models ('has changed in the meantime').
+  - **suggested_fix:** Open the touched documents (openTextDocument) before the before-check, so VS Code's version check covers them. After a refused batch, re-read the files and report what actually changed.
+- **severity:** minor
+  - **package:** runner
+  - **description:** The memory guard runs once per refresh, before the build, and not before the check-file spawn, although plan scope item 3 says 'MemAvailable before each spawn'. The default threshold (2 GiB) is also lower than the default cap (4 GiB), so the guard does not ensure there is room for the cap.
+  - **evidence:** refresh.ts:322 is the guard, :348 the build's runLean, and :403 the check's runLean with no guard before it. The defaults are telelean.memory.capGiB 4 and minAvailableGiB 2.
+  - **suggested_fix:** Re-check MemAvailable before the check spawn. Consider requiring MemAvailable >= cap + margin, or lowering MemoryMax to MemAvailable - margin at spawn time.
+- **severity:** minor
+  - **package:** runner
+  - **description:** History snapshots write temporary copies of model files (blob-N) and a temporary index into os.tmpdir() (/tmp/telelean-snapshot-*). That is outside the model folder and extension storage, and a crash mid-snapshot leaves the copies behind. The integrator's report says all temp files now go into .telelean/.
+  - **evidence:** history.ts:340 `mkdtemp(path.join(tmpdir(), 'telelean-snapshot-'))`; the dir is removed in finally.
+  - **suggested_fix:** Put the temp dir in <gitDir>/telelean-tmp or .telelean/*.tmp, or avoid files entirely (`hash-object -w --stdin` per blob plus mktree).
+- **severity:** minor
+  - **package:** runner
+  - **description:** History error messages keep only the last 3 lines of git's stderr. For a stale lock, the board's TL202 therefore never names the lock file the user has to remove.
+  - **evidence:** probe1b and probe5 TL202 text: 'snapshot ... failed: git update-ref failed: are terminated then try again. If it still fails, a git process may have crashed in this repository earlier: remove the file manually to continue.' From git.ts:133 `stderr.trim().split('\n').slice(-3)`.
+  - **suggested_fix:** Include git's first fatal:/error: line, which holds the lock path, plus the last line.
+- **severity:** minor
+  - **package:** runner
+  - **description:** Linked git worktrees share one history chain. Refs are per repository, and rootKey is the model path relative to the worktree's top level, so two checkouts with the model at the same path write to the same refs. The History dropdown mixes both checkouts, 'Manual edits' snapshots flip between their states, and Revert can write the other checkout's content.
+  - **evidence:** probe6: the main worktree's dropdown shows 'Add goal: Only in the feature worktree | Manual edits | Add assumption: Only in the main worktree | Initial state'. Reverting to the foreign entry left the main worktree's Inbox.lean containing the feature worktree's card.
+  - **suggested_fix:** Use per-worktree refs (refs/worktree/telelean/...), or add a hash of the absolute worktree path or git-dir to rootKey.
+- **severity:** minor
+  - **package:** sample-or-docs
+  - **description:** Gaps in the user guide: (a) when a model folder is already inside a git repository, opening its board writes 'Initial state' commits and refs into that repository without asking; (b) 'To stop using telelean' does not mention that refs/telelean/* stay in the repository, or how to remove them; (c) 'Undo/Redo: the exact previous file contents' is not exact after hand edits (reverse patch) or for non-UTF-8 sidecar files; (d) files telelean deletes in VS Code go to the OS trash.
+  - **evidence:** docs/user-guide.md sections 2, 4 (table) and 9. modelWorkspace.load() calls startHistories, which writes 'Initial state'.
+  - **suggested_fix:** Add one sentence for each point, including a delete command such as `git for-each-ref --format='delete %(refname)' refs/telelean/ | git update-ref --stdin`.
+
+## strengths
+- Git plumbing held up in a deliberately awkward user repository: detached HEAD; a staged change plus further unstaged edits to the very file telelean edits; untracked files; marker hooks in .git/hooks and in a repo-local core.hooksPath; gc.auto=1. Index bytes, HEAD, refs, config, staged diff, status outside the model, stash and packs were all unchanged. No hook ran, telelean refs got no reflog, git fsck was clean, and the user's staged Main.lean was intact (probe1).
+- Undo, redo, revert and undo of revert are byte-exact for text files. Revert snapshots hand edits as 'Manual edits' first when git works. Without git, actions and undo still work and revert is refused cleanly with no-history. A stale ref lock still lets the action apply, shows TL202, and history recovers once the lock is removed.
+- The Lean refresh in place is properly sandboxed. A module's #eval could not write the sources or lakefile (read-only file system), its write to .git landed in a tmpfs mask, $HOME and the surrounding repository were invisible, and only .lake was writable (probe2 A).
+- Refresh RAM is small and capped: a 400-card model built and checked in 3.1 s with peaks of 228 MiB (build) and 117 MiB (check) under the 4G MemoryMax.
+- The EditApplier checks every file's 'before' first and refuses on conflict. Path checks are in place: resolveInsideRoot everywhere, plus realpath for 'Open in editor'. graph.json and fsEditApplier writes are atomic (temp file plus rename inside .telelean). VS Code sends deleted files to the OS trash, so they can be recovered.
+- Opt-in per folder is respected: no workspace or Lean run without .telelean/config.json, refresh on save only while the board is open, telelean.git.path is machine-scoped, and untrusted workspaces are unsupported.
+- The runner's integration, history and undo tests pass on real Lean and git (35/35 in my run). They, and all my probes, left no telelean-* units, processes or temp dirs behind.
+
+## effects_outside_repo
+- Scratch only for probes, copies and outputs: /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/verify-safety/ (about 15 MB): probes/, build/, runs/ (scratch git repos and model copies, one with .lake), tt/, tmp/, vitest/, prof/ (CPU profile), baseline/.
+- Inside the repo, against the 'do not edit' instruction: my single vitest run added 78 entries (about 1.96 MB, timestamps 14:08:00 to 14:08:22) to /home/zhengyew/telelean/node_modules/.vitest-cache. That is vitest 5's file-system module cache: I had redirected cacheDir but not fsModuleCachePath. I left the entries in place. I made no other change under /home/zhengyew/telelean; the later .vite-temp mtime changes (14:13 and 14:14) come from other agents' runs.
+- Lean: lake build and lake env lean ran under runLean, in transient systemd --user scopes (telelean-vsp<pid>a-*, telelean-vsp<pid>b400-*, and the integration tests' scopes), on scratch copies only. Afterwards `systemctl --user list-units 'telelean-*' --all` was empty. ~/.elan was only read and the elan proxies were never called.
+- git ran only in scratch repositories (init, add, commit, tag, checkout --detach, config, worktree add, stash list, telelean's private refs), always with GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM=1 and GIT_CEILING_DIRECTORIES pointing at scratch. Never in /home/zhengyew/telelean or mental_model.
+- TMPDIR was redirected to scratch for every probe and test run; nothing of mine appeared in /tmp.
+- Read-only actions: listed ~/.vscode/extensions and read extensions.json (telelean is linked to /home/zhengyew/telelean/packages/extension); grepped the downloaded VS Code test build's workbench JS; read /proc/meminfo, ps and systemctl listings.
+- Home check against my baseline: home top-level unchanged; ~/.cache, ~/.npm, ~/.local, ~/.elan, ~/.pki, ~/.copilot and ~/.vscode had no changes. Only ~/.config/Code's directory mtime changed, from the user's running VS Code; I never started a VS Code instance, a browser or Xvfb.
+- No network, downloads, npm install, sudo, global installs, pushes, messages or Claude CLI runs, and no credentials read.
+

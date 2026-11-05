@@ -1,0 +1,46 @@
+{
+ "name": "@dnd-kit/state",
+ "latest": "0.5.3",
+ "dist_tags": {
+  "latest": "0.5.3",
+  "beta": "0.5.3-beta-20261031140713"
+ },
+ "latest_published": "2026-10-31T14:10:37.582Z",
+ "modified": "2026-10-31T14:10:37.949Z",
+ "created": "2024-06-03T16:57:28.571Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 33588,
+ "fileCount": 7,
+ "tarball": "https://registry.npmjs.org/@dnd-kit/state/-/state-0.5.3.tgz",
+ "dependencies": {
+  "tslib": "^2.6.2",
+  "@preact/signals-core": "^1.10.0"
+ },
+ "peerDependencies": {},
+ "repository": "git+https://github.com/clauderic/dnd-kit.git",
+ "recent_versions": [
+  [
+   "0.5.2-beta-20261029020134",
+   "2026-10-29T02:02:49.112Z"
+  ],
+  [
+   "0.5.2-beta-20261030024109",
+   "2026-10-30T02:42:20.620Z"
+  ],
+  [
+   "0.5.2",
+   "2026-10-31T14:04:03.208Z"
+  ],
+  [
+   "0.5.3-beta-20261031140713",
+   "2026-10-31T14:08:17.000Z"
+  ],
+  [
+   "0.5.3",
+   "2026-10-31T14:10:37.582Z"
+  ]
+ ],
+ "homepage": "https://github.com/clauderic/dnd-kit#readme",
+ "description": "[![Stable release](https://img.shields.io/npm/v/@dnd-kit/state.svg)](https://npm.im/@dnd-kit/state)"
+}

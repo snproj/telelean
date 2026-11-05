@@ -1,0 +1,55 @@
+{
+ "name": "react-flow-renderer",
+ "latest": "10.3.17",
+ "dist_tags": {
+  "latest": "10.3.17",
+  "next": "10.3.12-next.0"
+ },
+ "latest_published": "2022-09-14T13:33:28.671Z",
+ "modified": "2022-11-15T10:37:36.687Z",
+ "created": "2020-05-04T15:21:16.851Z",
+ "license": "MIT",
+ "deprecated": "react-flow-renderer has been renamed to reactflow, please use this package from now on https://reactflow.dev/docs/guides/migrate-to-v11/",
+ "unpackedSize": 1602497,
+ "fileCount": 386,
+ "tarball": "https://registry.npmjs.org/react-flow-renderer/-/react-flow-renderer-10.3.17.tgz",
+ "dependencies": {
+  "@babel/runtime": "^7.18.9",
+  "classcat": "^5.0.3",
+  "d3-drag": "^3.0.0",
+  "d3-selection": "^3.0.0",
+  "d3-zoom": "^3.0.0",
+  "zustand": "^3.7.2",
+  "@types/d3": "^7.4.0",
+  "@types/resize-observer-browser": "^0.1.7"
+ },
+ "peerDependencies": {
+  "react": "16 || 17 || 18",
+  "react-dom": "16 || 17 || 18"
+ },
+ "repository": "git+https://github.com/wbkd/react-flow.git",
+ "recent_versions": [
+  [
+   "10.3.13",
+   "2022-08-05T16:13:26.085Z"
+  ],
+  [
+   "10.3.14",
+   "2022-08-05T17:21:46.854Z"
+  ],
+  [
+   "10.3.15",
+   "2022-08-16T12:09:33.184Z"
+  ],
+  [
+   "10.3.16",
+   "2022-08-16T22:18:01.952Z"
+  ],
+  [
+   "10.3.17",
+   "2022-09-14T13:33:28.671Z"
+  ]
+ ],
+ "homepage": "https://github.com/wbkd/react-flow#readme",
+ "description": "![readme-header-dark](https://user-images.githubusercontent.com/3797215/156384064-08a889d6-73c0-4cbf-8ff3-28dc601d1f5f.svg#gh-dark-mode-only) ![readme-header](https://user-images.githubusercontent.com/3797215/156259138-fb9f59f8-52f2-474a-b78c-6570867e4ead"
+}

@@ -1,0 +1,40 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-abc123' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; worker-src blob:; connect-src 'self'">
+<title>csp test</title></head>
+<body>
+<div id="t1" style="color: rgb(255, 0, 0)">t1 static style attr</div>
+<div id="host"></div>
+<svg width="10" height="10"><path id="t9" d="M0 0L10 10" stroke="rgb(255, 0, 0)"/></svg>
+<script nonce="abc123">
+(async () => {
+  const RED = 'rgb(255, 0, 0)';
+  const violations = [];
+  document.addEventListener('securitypolicyviolation', e => violations.push(e.violatedDirective + ' <- ' + (e.sample || e.blockedURI || '').slice(0, 40)));
+  const host = document.getElementById('host');
+  const r = {};
+  const red = el => getComputedStyle(el).color === RED;
+  r.staticStyleAttrInMarkup = red(document.getElementById('t1'));
+  host.innerHTML = '<span id="t2" style="color: rgb(255, 0, 0)">t2</span>';
+  r.innerHTMLStyleAttr = red(document.getElementById('t2'));
+  const mk = id => { const s = document.createElement('span'); s.id = id; s.textContent = id; host.appendChild(s); return s; };
+  const e3 = mk('t3'); e3.style.color = RED; r.cssomStyleProperty = red(e3);
+  const e4 = mk('t4'); e4.style.cssText = 'color: rgb(255, 0, 0)'; r.cssTextAssign = red(e4);
+  const e5 = mk('t5'); e5.setAttribute('style', 'color: rgb(255, 0, 0)'); r.setAttributeStyle = red(e5);
+  const e6 = mk('t6'); const st6 = document.createElement('style'); st6.textContent = '#t6{color:rgb(255, 0, 0)}'; document.head.appendChild(st6); r.styleElementNoNonce = red(e6);
+  const e7 = mk('t7'); const st7 = document.createElement('style'); st7.nonce = 'abc123'; st7.textContent = '#t7{color:rgb(255, 0, 0)}'; document.head.appendChild(st7); r.styleElementWithNonce = red(e7);
+  const e8 = mk('t8'); try { const s = new CSSStyleSheet(); s.replaceSync('#t8{color:rgb(255, 0, 0)}'); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; r.constructableStylesheet = red(e8); } catch (err) { r.constructableStylesheet = 'threw ' + err; }
+  r.svgPresentationAttr = getComputedStyle(document.getElementById('t9')).stroke === RED;
+  const e10 = mk('t10'); try { st7.sheet.insertRule('#t10{color:rgb(255, 0, 0)}'); r.insertRuleOnNoncedSheet = red(e10); } catch (err) { r.insertRuleOnNoncedSheet = 'threw ' + err; }
+  try { eval('1+1'); r.evalAllowed = true; } catch (err) { r.evalAllowed = false; }
+  try { new Function('return 1')(); r.newFunctionAllowed = true; } catch (err) { r.newFunctionAllowed = false; }
+  try { await WebAssembly.compile(new Uint8Array([0,97,115,109,1,0,0,0])); r.wasmCompileAllowed = true; } catch (err) { r.wasmCompileAllowed = false; }
+  r.blobWorkerAllowed = await new Promise(res => { try { const w = new Worker(URL.createObjectURL(new Blob(['postMessage(1)'], {type: 'text/javascript'}))); w.onmessage = () => res(true); w.onerror = () => res(false); setTimeout(() => res('timeout'), 1500); } catch (err) { res(false); } });
+  await new Promise(res => setTimeout(res, 100));
+  r.violations = violations;
+  r.csp = document.querySelector('meta[http-equiv]').content;
+  r.ua = navigator.userAgent;
+  await fetch('/result', {method: 'POST', body: JSON.stringify(r)});
+})();
+</script>
+</body></html>

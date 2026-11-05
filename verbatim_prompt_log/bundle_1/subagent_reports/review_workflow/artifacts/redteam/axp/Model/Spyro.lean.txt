@@ -1,0 +1,42 @@
+namespace Telelean.Model
+
+/-
+@@ telelean v1
+id: characters
+type: ASSUMPTION
+natural_name: There are characters and games
+-/
+axiom Character : Type
+axiom Game : Type
+axiom cynder : Character
+axiom newSpyro : Game
+axiom HasDarkPast : Character → Prop
+axiom IsPG : Game → Prop
+axiom CanAppearIn : Character → Game → Prop
+axiom GoodAddition : Character → Game → Prop
+
+/-
+@@ telelean v1
+id: cynder-dark-past
+type: ASSUMPTION
+natural_name: Cynder is a character who has a dark past
+rationale: familiar with gaming lore
+-/
+axiom cynder_dark_past : HasDarkPast cynder
+
+axiom new_spyro_pg : IsPG newSpyro
+axiom pg_no_dark_past : ∀ c g, IsPG g → HasDarkPast c → ¬ CanAppearIn c g
+axiom good_needs_appear : ∀ c g, GoodAddition c g → CanAppearIn c g
+axiom unrelated : ∀ g, IsPG g → IsPG g
+
+theorem cannot_appear : ¬ CanAppearIn cynder newSpyro :=
+  pg_no_dark_past _ _ new_spyro_pg cynder_dark_past
+
+theorem cynder_not_good : ¬ GoodAddition cynder newSpyro :=
+  fun h => cannot_appear (good_needs_appear _ _ h)
+
+theorem unproved_goal : GoodAddition cynder newSpyro := by sorry
+
+theorem classical_thing (p : Prop) : p ∨ ¬ p := Classical.em p
+
+end Telelean.Model

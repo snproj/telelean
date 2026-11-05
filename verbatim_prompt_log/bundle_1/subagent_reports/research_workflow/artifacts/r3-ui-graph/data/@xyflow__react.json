@@ -1,0 +1,52 @@
+{
+ "name": "@xyflow/react",
+ "latest": "12.12.0",
+ "dist_tags": {
+  "next": "13.0.0-next.0",
+  "latest": "12.12.0"
+ },
+ "latest_published": "2026-09-24T12:41:36.171Z",
+ "modified": "2026-10-11T19:23:57.115Z",
+ "created": "2024-01-03T15:49:03.812Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 1216196,
+ "fileCount": 516,
+ "tarball": "https://registry.npmjs.org/@xyflow/react/-/react-12.12.0.tgz",
+ "dependencies": {
+  "zustand": "^4.4.0",
+  "classcat": "^5.0.3",
+  "@xyflow/system": "0.0.83"
+ },
+ "peerDependencies": {
+  "react": ">=17",
+  "react-dom": ">=17",
+  "@types/react": ">=17",
+  "@types/react-dom": ">=17"
+ },
+ "repository": "git+https://github.com/xyflow/xyflow.git",
+ "recent_versions": [
+  [
+   "12.11.4",
+   "2026-08-25T15:29:23.369Z"
+  ],
+  [
+   "12.11.5",
+   "2026-08-25T19:40:26.325Z"
+  ],
+  [
+   "12.11.6",
+   "2026-09-01T12:07:53.778Z"
+  ],
+  [
+   "12.12.0",
+   "2026-09-24T12:41:36.171Z"
+  ],
+  [
+   "13.0.0-next.0",
+   "2026-10-11T19:23:56.919Z"
+  ]
+ ],
+ "homepage": "https://reactflow.dev",
+ "description": "React Flow - A highly customizable React library for building node-based editors and interactive flow charts."
+}

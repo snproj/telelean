@@ -1,0 +1,6 @@
+-- D-2(b) phase-A snapshot as frozen: statement abbrev only, no `.holds` (no sorry anywhere)
+namespace C
+axiom P : Prop
+axiom p : P
+abbrev goal : Prop := P
+end C

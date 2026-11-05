@@ -1,0 +1,44 @@
+{
+ "name": "@tanstack/virtual-core",
+ "latest": "3.19.9",
+ "dist_tags": {
+  "alpha": "3.0.0-alpha.2",
+  "beta": "3.0.0-beta.68",
+  "latest": "3.19.9"
+ },
+ "latest_published": "2026-10-29T10:55:26.576Z",
+ "modified": "2026-10-29T10:55:27.005Z",
+ "created": "2022-06-01T19:55:22.058Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 655541,
+ "fileCount": 37,
+ "tarball": "https://registry.npmjs.org/@tanstack/virtual-core/-/virtual-core-3.19.9.tgz",
+ "dependencies": {},
+ "peerDependencies": {},
+ "repository": "git+https://github.com/TanStack/virtual.git",
+ "recent_versions": [
+  [
+   "3.19.5",
+   "2026-10-15T13:55:11.624Z"
+  ],
+  [
+   "3.19.6",
+   "2026-10-16T11:21:53.583Z"
+  ],
+  [
+   "3.19.7",
+   "2026-10-22T12:05:01.046Z"
+  ],
+  [
+   "3.19.8",
+   "2026-10-26T12:52:48.977Z"
+  ],
+  [
+   "3.19.9",
+   "2026-10-29T10:55:26.576Z"
+  ]
+ ],
+ "homepage": "https://tanstack.com/virtual",
+ "description": "Headless UI for virtualizing scrollable elements in TS/JS + Frameworks"
+}

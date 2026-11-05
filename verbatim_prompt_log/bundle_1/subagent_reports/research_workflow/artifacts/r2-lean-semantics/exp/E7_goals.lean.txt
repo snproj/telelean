@@ -1,0 +1,40 @@
+/-! # E7: statement-only nodes (no sorry) and the status lattice -/
+axiom Character : Type
+axiom Game : Type
+axiom Cynder : Character
+axiom newSpyro : Game
+axiom HasDarkPast : Character → Prop
+axiom IsPG : Game → Prop
+axiom GoodAddition : Character → Game → Prop
+axiom cynder_dark : HasDarkPast Cynder
+axiom spyro_pg : IsPG newSpyro
+axiom pg_no_dark : ∀ g c, IsPG g → HasDarkPast c → ¬ GoodAddition c g
+
+/-! Goal as a Prop-valued definition (statement formalized, unproved, no sorry) -/
+def goal_cynder : Prop := ¬ GoodAddition Cynder newSpyro
+#print axioms goal_cynder
+/-! later: the proof is a separate theorem whose TYPE is the goal constant -/
+theorem goal_cynder.holds : goal_cynder := pg_no_dark _ _ spyro_pg cynder_dark
+#print axioms goal_cynder.holds
+
+/-! Friction test: `def` vs `abbrev` statements under common tactics -/
+def  stmtD : Prop := ∀ n : Nat, n + 0 = n
+abbrev stmtA : Prop := ∀ n : Nat, n + 0 = n
+theorem d1 : stmtD := fun n => rfl            -- term mode, defeq: ok?
+theorem d2 : stmtD := by intro n; rfl         -- intro through def?
+theorem a2 : stmtA := by intro n; rfl         -- intro through abbrev
+theorem d3 : stmtD := by unfold stmtD; intro n; simp
+def  eqD : Prop := (2:Nat) + 2 = 4
+abbrev eqA : Prop := (2:Nat) + 2 = 4
+axiom eqD.holds : eqD
+axiom eqA.holds : eqA
+example : (2:Nat) + 2 + 1 = 5 := by rw [eqD.holds]      -- rw through def?
+example : (2:Nat) + 2 + 1 = 5 := by rw [eqA.holds]      -- rw through abbrev?
+example : (2:Nat) + 2 + 1 = 5 := by simp only [eqA.holds]
+example (h : eqD) : (2:Nat) + 2 = 4 := h                -- exact by defeq
+example : eqD := by decide                              -- decide through def?
+example : eqA := by decide
+
+/-! A theorem with an elaboration error: is it still added (with synthetic sorry)? -/
+theorem broken : ¬ GoodAddition Cynder newSpyro := pg_no_dark _ _ cynder_dark spyro_pg
+#print axioms broken

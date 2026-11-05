@@ -1,0 +1,2 @@
+import Rb.Assumptions
+theorem g : A := a1l

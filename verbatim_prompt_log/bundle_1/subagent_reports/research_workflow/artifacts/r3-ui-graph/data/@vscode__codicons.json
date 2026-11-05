@@ -1,0 +1,43 @@
+{
+ "name": "@vscode/codicons",
+ "latest": "0.0.46-24",
+ "dist_tags": {
+  "latest": "0.0.46-24",
+  "next": "0.0.46-49"
+ },
+ "latest_published": "2026-07-23T15:47:58.539Z",
+ "modified": "2026-10-30T16:29:32.424Z",
+ "created": "2021-07-13T22:41:11.326Z",
+ "license": "CC-BY-4.0",
+ "deprecated": null,
+ "unpackedSize": 3587521,
+ "fileCount": 697,
+ "tarball": "https://registry.npmjs.org/@vscode/codicons/-/codicons-0.0.46-24.tgz",
+ "dependencies": {},
+ "peerDependencies": {},
+ "repository": "git+https://github.com/microsoft/vscode-codicons.git",
+ "recent_versions": [
+  [
+   "0.0.46-45",
+   "2026-10-14T09:46:45.675Z"
+  ],
+  [
+   "0.0.46-46",
+   "2026-10-19T20:47:33.246Z"
+  ],
+  [
+   "0.0.46-47",
+   "2026-10-20T17:20:06.920Z"
+  ],
+  [
+   "0.0.46-48",
+   "2026-10-20T17:52:21.845Z"
+  ],
+  [
+   "0.0.46-49",
+   "2026-10-30T16:29:32.271Z"
+  ]
+ ],
+ "homepage": "https://github.com/microsoft/vscode-codicons#readme",
+ "description": "The icon font for Visual Studio Code"
+}

@@ -1,0 +1,51 @@
+{
+ "name": "@vitejs/plugin-react",
+ "latest": "6.1.2",
+ "dist_tags": {
+  "alpha": "3.0.0-alpha.2",
+  "beta": "6.0.0-beta.0",
+  "latest": "6.1.2"
+ },
+ "latest_published": "2026-10-05T10:08:27.143Z",
+ "modified": "2026-10-05T10:08:27.439Z",
+ "created": "2021-09-20T12:33:58.715Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 46296,
+ "fileCount": 8,
+ "tarball": "https://registry.npmjs.org/@vitejs/plugin-react/-/plugin-react-6.1.2.tgz",
+ "dependencies": {
+  "@rolldown/pluginutils": "^1.0.1"
+ },
+ "peerDependencies": {
+  "vite": "^8.0.0",
+  "oxc-transform-react": "^0.152.0",
+  "@rolldown/plugin-babel": "^0.1.7 || ^0.2.0",
+  "babel-plugin-react-compiler": "^1.0.0"
+ },
+ "repository": "git+https://github.com/vitejs/vite-plugin-react.git",
+ "recent_versions": [
+  [
+   "6.0.4",
+   "2026-07-22T04:16:52.683Z"
+  ],
+  [
+   "6.0.5",
+   "2026-07-30T10:12:02.149Z"
+  ],
+  [
+   "6.1.0",
+   "2026-08-20T02:49:46.306Z"
+  ],
+  [
+   "6.1.1",
+   "2026-08-28T03:30:56.619Z"
+  ],
+  [
+   "6.1.2",
+   "2026-10-05T10:08:27.143Z"
+  ]
+ ],
+ "homepage": "https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#readme",
+ "description": "The default Vite plugin for React projects"
+}

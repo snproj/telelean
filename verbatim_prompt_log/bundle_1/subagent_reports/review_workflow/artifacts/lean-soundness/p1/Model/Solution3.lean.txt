@@ -1,0 +1,9 @@
+import Model.Defs
+namespace T
+-- phase B: agent adds a NEW vocabulary axiom (data, Prop-carrying) after the freeze
+structure DarkWitness : Type where
+  dark : HasDarkPast cynder
+axiom newVocab : DarkWitness
+theorem cynder_not_good : ¬ GoodAddition cynder newSpyro :=
+  pg_no_dark _ _ spyro_pg newVocab.dark
+end T

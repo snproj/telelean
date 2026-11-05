@@ -1,0 +1,60 @@
+/-! # E1: Encoding (i) — global axioms. Cynder example. -/
+
+-- Vocabulary (signature symbols)
+axiom Character : Type
+axiom Game : Type
+axiom Cynder : Character
+axiom newSpyro : Game
+axiom HasDarkPast : Character → Prop
+axiom IsPG : Game → Prop
+/-- `GoodAddition c g`: character `c` would be a good addition to game `g`. -/
+axiom GoodAddition : Character → Game → Prop
+
+/-- Cynder is a character who has a dark past.
+WHY: familiar with gaming lore -/
+axiom cynder_dark : HasDarkPast Cynder
+/-- The new Spyro game is PG. WHY: known from gaming news -/
+axiom spyro_pg : IsPG newSpyro
+/-- PG games cannot have characters with dark pasts. -/
+axiom pg_no_dark : ∀ (g : Game) (c : Character), IsPG g → HasDarkPast c → ¬ GoodAddition c g
+/-- An unused assumption, to show precise dependency tracking. -/
+axiom unused_assumption : ∀ g, IsPG g
+
+/-- GOAL: Cynder would not be a good addition to the new Spyro game. -/
+theorem cynder_not_good : ¬ GoodAddition Cynder newSpyro :=
+  pg_no_dark _ _ spyro_pg cynder_dark
+
+#print axioms cynder_not_good
+
+-- intermediate lemma: transitive tracking
+theorem lemma1 : ¬ GoodAddition Cynder newSpyro := cynder_not_good
+theorem uses_lemma : ¬ GoodAddition Cynder newSpyro ∧ IsPG newSpyro := ⟨lemma1, unused_assumption _⟩
+#print axioms uses_lemma
+
+-- standard axioms
+theorem em_ex (p : Prop) : p ∨ ¬ p := Classical.em p
+#print axioms em_ex
+theorem funext_ex (f g : Nat → Nat) (h : ∀ x, f x = g x) : f = g := funext h
+#print axioms funext_ex
+theorem propext_ex (p q : Prop) (h : p ↔ q) : p = q := propext h
+#print axioms propext_ex
+theorem decide_ex : 2 + 2 = 4 := by decide
+#print axioms decide_ex
+theorem rfl_ex : 2 + 2 = 4 := rfl
+#print axioms rfl_ex
+theorem simp_ex (xs : List Nat) : (xs ++ []).length = xs.length := by simp
+#print axioms simp_ex
+theorem omega_ex (n : Nat) (h : n > 3) : n ≠ 2 := by omega
+#print axioms omega_ex
+
+-- sorry / admit
+theorem sorry_ex : ¬ GoodAddition Cynder newSpyro := sorry
+#print axioms sorry_ex
+theorem admit_ex : ¬ GoodAddition Cynder newSpyro := by admit
+#print axioms admit_ex
+theorem uses_sorry_lemma : ¬ GoodAddition Cynder newSpyro := sorry_ex
+#print axioms uses_sorry_lemma
+
+-- native_decide
+theorem nd_ex : 2 + 2 = 4 := by native_decide
+#print axioms nd_ex

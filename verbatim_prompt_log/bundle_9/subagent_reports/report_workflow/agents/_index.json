@@ -1,0 +1,88 @@
+[
+ {
+  "label": "theory:write",
+  "agentId": "a8e3c88532bf81e6c",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "features:write",
+  "agentId": "af310d426ec9a7a6a",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "files:core",
+  "agentId": "ad079707193c65b91",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "files:runner-a",
+  "agentId": "a7b3bb29ec10a1287",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "files:runner-b",
+  "agentId": "a30c8344b2913ae2a",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "files:extension-repo",
+  "agentId": "a6b2e74445d528f31",
+  "toolsUsed": [
+   "Bash",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "files:webview",
+  "agentId": "a5f5ad3ede1cf1cdb",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "files:tests",
+  "agentId": "abfe24640d6d528a5",
+  "toolsUsed": [
+   "Bash",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "theory:check",
+  "agentId": "a602f9634f1675069",
+  "toolsUsed": [
+   "Bash",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "assemble",
+  "agentId": "a9e06b5383148a8e6",
+  "toolsUsed": [
+   "Bash",
+   "StructuredOutput"
+  ]
+ }
+]

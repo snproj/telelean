@@ -1,0 +1,181 @@
+{
+ "summary": "WP5 is built and tested. Typecheck is clean, all 80 unit tests pass, and the final isolated VS Code smoke run passes 30/30 (run 5).\n\nWhat the extension host now does:\n- **Opt-in and commands:** it activates on workspaceContains:**/.telelean/config.json and onWebviewPanel:telelean.board. It contributes Open Board, Initialize Model Here (also on the explorer folder context menu) and Refresh Lean Check, plus 6 settings and 6 colour ids. Every colour id has one dot and explicit hex defaults for all four theme kinds, with no charts.*. Untrusted and virtual workspaces are unsupported.\n- **Boards:** one BoardPanel per model root, titled \"telelean: <folder>\". A serializer restores the root and subject after a reload. The host cannot write the webview's state, so it keeps its own record of each board's title, root and subject in workspaceState, and also uses a {root, subject} state if the webview saves one.\n- **Workspaces:** one ModelWorkspace per root, created when its first board opens and kept until the window closes, so undo survives closing the board.\n- **EditApplier:** checks each file's current text (open buffer first, then disk) against `before`, applies one WorkspaceEdit with minimal line edits (the installed diff package) plus create/delete, then saves.\n- **Watchers:** typing is batched for 200 ms and only re-parses. A save re-parses and requests a refresh. File-system events re-read files, and lakefile/toolchain/manifest changes also refresh. `.lake`, `.telelean/graph.json` and the echoes of telelean's own writes are ignored. Lean refreshes are requested only while that root's board is open (D-28).\n- **Protocol dispatch:** messages are validated with core's parseWebviewToHost, mapped to BoardActions, and answered with actionResult and Undo-toast notices. Undo, redo, subject switching, createSubject, history list/preview/revert/prune and initGit (after a modal confirmation) are handled. The board switches to the first remaining subject when its subject disappears. copyText writes the clipboard and says \"Copied\". openInEditor refuses paths outside the root, including symbolic links that point outside. History previews open VS Code's multi-file diff over a read-only telelean-history: provider.\n- **Initialize:** inspect → validated subject name (default derived from the folder name) → planInitialize → EditApplier → modal git offer → open the board.\n- **Bundle:** the extension imports only the runner's workspace subpath. The build fails if llm/ enters the bundle, and a unit test builds the bundle and loads it with a vscode stub.\n- **Fallback:** a build without model workspaces shows the static sample with a warning.\n\nTesting:\n- The M0 sample path is kept as openBoard({ sample }), and the M0 smoke tests were updated to use it. The colour test now expects the 6 ids.\n- The smoke tests run in a fully isolated profile. The suite against the real WP1–WP4 workspace marks itself pending while they are stubs; WP2's planAction landed during my work, so it ran and passed in runs 3, 4 and 5.\n\nDuring testing my smoke script deleted npm's own debug logs in the real ~/.npm/_logs, during runs 1–4. Details are under effects; it is fixed in the script.",
+ "files": [
+  "/home/zhengyew/telelean/packages/extension/package.json",
+  "/home/zhengyew/telelean/packages/extension/tsconfig.json",
+  "/home/zhengyew/telelean/packages/extension/vitest.config.mts",
+  "/home/zhengyew/telelean/packages/extension/.vscode-test.mjs",
+  "/home/zhengyew/telelean/packages/extension/scripts/build.mjs",
+  "/home/zhengyew/telelean/packages/extension/scripts/esbuild-options.mjs",
+  "/home/zhengyew/telelean/packages/extension/scripts/smoke.mjs",
+  "/home/zhengyew/telelean/packages/extension/src/extension.ts",
+  "/home/zhengyew/telelean/packages/extension/src/api.ts",
+  "/home/zhengyew/telelean/packages/extension/src/board/BoardPanel.ts",
+  "/home/zhengyew/telelean/packages/extension/src/board/html.ts (unchanged)",
+  "/home/zhengyew/telelean/packages/extension/src/logic/actionMapping.ts",
+  "/home/zhengyew/telelean/packages/extension/src/logic/boardSession.ts",
+  "/home/zhengyew/telelean/packages/extension/src/logic/changeBatcher.ts",
+  "/home/zhengyew/telelean/packages/extension/src/logic/editApplier.ts",
+  "/home/zhengyew/telelean/packages/extension/src/logic/historyPreview.ts",
+  "/home/zhengyew/telelean/packages/extension/src/logic/initialize.ts",
+  "/home/zhengyew/telelean/packages/extension/src/logic/modelPaths.ts",
+  "/home/zhengyew/telelean/packages/extension/src/logic/restore.ts",
+  "/home/zhengyew/telelean/packages/extension/src/logic/roots.ts",
+  "/home/zhengyew/telelean/packages/extension/src/logic/settings.ts",
+  "/home/zhengyew/telelean/packages/extension/src/logic/textSource.ts",
+  "/home/zhengyew/telelean/packages/extension/src/vscode/editor.ts",
+  "/home/zhengyew/telelean/packages/extension/src/vscode/historyProvider.ts",
+  "/home/zhengyew/telelean/packages/extension/src/vscode/host.ts",
+  "/home/zhengyew/telelean/packages/extension/src/vscode/registry.ts",
+  "/home/zhengyew/telelean/packages/extension/src/vscode/runner.ts",
+  "/home/zhengyew/telelean/packages/extension/test/unit/fakes.ts",
+  "/home/zhengyew/telelean/packages/extension/test/unit/actionMapping.test.ts",
+  "/home/zhengyew/telelean/packages/extension/test/unit/boardSession.test.ts",
+  "/home/zhengyew/telelean/packages/extension/test/unit/bundle.test.ts",
+  "/home/zhengyew/telelean/packages/extension/test/unit/editApplier.test.ts",
+  "/home/zhengyew/telelean/packages/extension/test/unit/initialize.test.ts",
+  "/home/zhengyew/telelean/packages/extension/test/unit/modelPaths.test.ts",
+  "/home/zhengyew/telelean/packages/extension/test/unit/packageJson.test.ts",
+  "/home/zhengyew/telelean/packages/extension/test/unit/restore.test.ts",
+  "/home/zhengyew/telelean/packages/extension/test/unit/settings.test.ts",
+  "/home/zhengyew/telelean/packages/extension/test/unit/textSource.test.ts",
+  "/home/zhengyew/telelean/packages/extension/test/unit/watchers.test.ts",
+  "/home/zhengyew/telelean/packages/extension/test/unit/html.test.ts (unchanged, M0)",
+  "/home/zhengyew/telelean/packages/extension/test/suite/helpers.ts",
+  "/home/zhengyew/telelean/packages/extension/test/suite/fakeWorkspace.ts",
+  "/home/zhengyew/telelean/packages/extension/test/suite/activation.test.ts",
+  "/home/zhengyew/telelean/packages/extension/test/suite/board.test.ts (M0 suite, updated to the sample path + 6 colours)",
+  "/home/zhengyew/telelean/packages/extension/test/suite/boards.test.ts",
+  "/home/zhengyew/telelean/packages/extension/test/suite/model.test.ts",
+  "/home/zhengyew/telelean/packages/extension/dist/extension.js (rebuilt 12:40)",
+  "/home/zhengyew/telelean/packages/extension/dist/extension.js.map (rebuilt 12:40)",
+  "/home/zhengyew/telelean/packages/extension/out/test/suite/*.test.js(.map) (rebuilt) and out/.vite (vitest cache)"
+ ],
+ "how_to_run_tests": "cd /home/zhengyew/telelean/packages/extension\n../../node_modules/.bin/tsc -p tsconfig.json        # typecheck (same as npm run typecheck)\nnode scripts/build.mjs                               # same as npm run build: dist/extension.js + out/test/suite/*.test.js (extension only, never the webview)\nTELELEAN_TEST_TMP=/tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/wp5 ../../node_modules/.bin/vitest run    # unit tests (npm run test:unit)\nTELELEAN_TEST_TMP=/tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/wp5 node scripts/smoke.mjs              # isolated VS Code 1.140 smoke run (npm run test:smoke)\n\nAbout the smoke script:\n- It prepares $TELELEAN_TEST_TMP/vscode-<pid>/{home,xdg-*,user-data,extensions,ws}. Without TELELEAN_TEST_TMP it uses a mkdtemp under the OS temp dir, and it refuses any directory under $HOME.\n- It runs: sh -c 'ulimit -c 0; env -u ELECTRON_RUN_AS_NODE xvfb-run -a npx vscode-test'.\n- It then checks isolation and leftovers, and writes smoke-summary.json into the profile.\n- .vscode-test.mjs refuses to start without TELELEAN_SMOKE_DIR, so `npx vscode-test` on its own cannot launch VS Code with a real profile.\n- Avoid `npm test`: it also runs build:all, which rebuilds the webview (WP6's output).",
+ "test_output": "=== Typecheck and unit tests (last run, 12:43, after the final change) ===\ntypecheck: tsc -p tsconfig.json exited 0\n Test Files  12 passed (12)\n      Tests  80 passed (80)\n   Start at  12:43:43\n   Duration  2.81s (transform 52%, import 28%, tests 16%, worker 5%)\n\n=== VS Code smoke, final run (run 5: /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/wp5/smoke-run5.log) ===\n✔ Validated version: 1.140.0\n✔ Found existing install in /home/zhengyew/telelean/packages/extension/.vscode-test/vscode-linux-x64-1.140.0\n    ✔ the opted-in workspace activates the extension by itself (workspaceContains:**/.telelean/config.json)\n    ✔ VS Code sees the 3 commands, the settings with their defaults and the 6 colours\n    ✔ the instance runs in the isolated profile (HOME, XDG dirs, git config) set up by scripts/smoke.mjs\n    ✔ a folder without .telelean gets no board and no model workspace (so it never runs Lean)\n    ✔ with two model roots Open Board asks which one; the answer (a test argument) opens that board (158ms)\n    ✔ Open Board (two roots: asks) shows the 4 Spyro cards (222ms)\n    ✔ after a refresh: semantic fresh and 9 vocabulary items (1991ms)\n    ✔ addNode writes a block to Model/Spyro/Inbox.lean; undo removes it (382ms)\n    ✔ G->A on cynder-not-good adds the axiom; the refresh shows it assumed (2639ms)\n    ✔ copyText puts the code on the clipboard\n    ✔ initGit, historyList, historyPreview (diff editor) and historyRevert work, with private refs only (1205ms)\n    ✔ openInEditor opens Main.lean (185ms)\n    ✔ .telelean/graph.json exists\n    ✔ Initialize Model Here on a fresh empty folder (real planInitialize): refuses a bad name, scaffolds, git offer, board (AT5.3) (489ms)\n    ✔ one BoardPanel per model root; reopening reveals it; the webview renders the root board (167ms)\n    ✔ createSubject switches the board; the serializer restores root and subject; undo makes it vanish and the board switches back (312ms)\n    ✔ a state saved by the webview ({ root, subject }) also restores a board\n    ✔ addNode writes a block to Model/Spyro/Inbox.lean through the EditApplier (WorkspaceEdit + save); undo removes it (133ms)\n    ✔ unsaved typing in an open editor is what the TextSource reads; the applied edit keeps it and saves (435ms)\n    ✔ copyText puts the code on the clipboard and says \"Copied\"\n    ✔ openInEditor opens Model/Spyro/Main.lean at the range; a link out of the model root is refused (105ms)\n    ✔ initGit asks first; historyList, historyPreview (diff editor) and historyRevert (undoable) work (213ms)\n    ✔ typing only re-parses (batched); a save re-parses and requests a refresh; files changed on disk are re-read (1824ms)\n    ✔ the Refresh message runs refreshNow and republishes\n    ✔ Initialize Model Here on an empty folder validates the subject, writes the scaffold, offers git and opens the board (AT5.3) (148ms)\n    ✔ a model that cannot be loaded says why on its board; Open Board again retries (78ms)\n    ✔ openBoard({ sample }) opens the panel; the webview loads under the CSP, posts ready and renders the graph (1122ms)\n    ✔ running the command again reveals the same panel and sends the new graph to the live webview (42ms)\n    ✔ a graph sent while the webview is still loading is re-sent on \"ready\" (the latest graph wins) (158ms)\n      (pending WP6) the webview does not report the vocabulary/highlight colours yet\n    ✔ the colours the extension contributes reach the webview (workbench.colorCustomizations) (274ms)\n  30 passing (13s)\n[smoke] isolation checks:\n  ok    isolated user-data dir used: 121 entries (e.g. Backups/, Cache/, Cache/Cache_Data/, Cache/Cache_Data/5283edf90cf4ab50_0)\n  ok    isolated HOME afterwards: .vscode/, .vscode/argv.json, .vscode/cli/\n  ok    ~/.copilot: unchanged (56 entries)\n  ok    ~/.config/Code (top level): unchanged (67 entries)\n  ok    ~/.config/Code/logs: unchanged (13 entries)\n  ok    ~/.config/google-chrome (top level): unchanged (1 entries)\n  ok    ~/.config/google-chrome/Crash Reports: unchanged (9 entries)\n  ok    ~/.local/share/Trash/files: unchanged (35 entries)\n  ok    no process of this run is left\n[smoke] vscode-test exit code 0; 0 isolation failure(s); summary in /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/wp5/vscode-965209/smoke-summary.json\nexit 0\n\nLowest MemAvailable during runs 3–5 (logged every 5 s): 36,553,544 kB.\n\nEarlier runs:\n- Run 1: 5 failures. My test closed the board panels with workbench.action.closeAllEditors; replaced with a close-text-editors-only helper.\n- Run 2: 1 failure. A hard-coded line/character in the openInEditor test broke once WP4's mental_model added an import line; the test now computes the range from the file.\n- Runs 3 and 4: 29/29 and 30/30 passing.",
+ "acceptance": [
+  {
+   "test": "AT5.1 Activation and opt-in",
+   "status": "pass",
+   "evidence": "Smoke activation suite:\n- workspaceContains activated the extension by itself.\n- openBoard with two roots returned {root: second, asked: true} through the test answer `pick`; a non-matching answer gave the error 'no model root matches'.\n- openBoard({root: plain_folder}) refused ('not a telelean model'); workspaceFor(plain) and boardFor(plain) stay undefined.\n- The real-runner suite repeated the two-root case: {root: mental_model, asked: true}.\n- smoke.mjs found no leftover process or telelean-* unit."
+  },
+  {
+   "test": "AT5.2 package.json unit test",
+   "status": "pass",
+   "evidence": "test/unit/packageJson.test.ts (5 tests, passing) checks:\n- the 3 commands and the explorer/context menu;\n- activationEvents equal [workspaceContains:**/.telelean/config.json, onWebviewPanel:telelean.board];\n- untrustedWorkspaces.supported false, virtualWorkspaces false;\n- the 6 settings with defaults 4, 2, true, 750, true, 'git', matching SETTING_DEFAULTS;\n- 6 colour ids, each with exactly one dot, hex defaults for dark/light/highContrast/highContrastLight, no charts.*.\nThe smoke activation suite confirms the same as VS Code reads it."
+  },
+  {
+   "test": "AT5.3 Initialize on an empty scratch folder",
+   "status": "pass",
+   "evidence": "- Unit (initialize.test.ts): suggested name mental_model -> MentalModel, name validation, and the empty/lake-project/model/unsupported/cancel/failed-write flows.\n- Smoke with the fake runner: an invalid name writes nothing; 'Notes' writes the scaffold through the real EditApplier; the git offer (test answer) gives git 'initialized'; the board opens on Notes; a second run returns 'already-model'.\n- Smoke with the REAL WP4 planInitialize in a fresh scratch folder: bad name refused; scaffold files present; real git init in the scratch folder; board shows FreshModel."
+  },
+  {
+   "test": "AT5.4 One BoardPanel per root; serializer restores root and subject",
+   "status": "pass",
+   "evidence": "Smoke boards suite:\n- Reopening a root reveals the same panel; a second root gets its own panel.\n- After createSubject Bayonetta the record holds {root, title, subject: Bayonetta}.\n- After closing the board the workspace instance is kept; restoreBoard on a new panel titled 'telelean: mental_model' restores root and subject Bayonetta.\n- restoreBoard with webview state {root, subject} also works and retitles the panel.\nUnit restore.test.ts covers the matching rules."
+  },
+  {
+   "test": "AT5.5 VS Code smoke flow on the copied sample",
+   "status": "pass",
+   "evidence": "model.test.ts ran against the REAL runner and core code of WP1–WP4 as it stood at 12:40, before the integrator's integration. All passed in runs 3, 4 and 5:\n- 4 cards;\n- after refresh: semantic fresh and 9 vocabulary items (real lake build under runLean in the scratch copy);\n- addNode writes Model/Spyro/Inbox.lean, and undo restores it;\n- G->A on cynder-not-good writes `axiom cynder_not_good.holds`, and the refresh shows it assumed;\n- copyText reaches env.clipboard.readText;\n- initGit, historyList (storage > 0), historyPreview (diff tab) and historyRevert plus its undo all work; refs are refs/telelean/* only, with no HEAD commit and a clean index;\n- openInEditor opens Main.lean;\n- .telelean/graph.json exists with format telelean-graph.\nThe integrator should re-run it after integration."
+  },
+  {
+   "test": "AT5.6 Isolation",
+   "status": "pass",
+   "evidence": "After each run smoke.mjs reports:\n- the isolated user-data dir received 121 entries;\n- the real ~/.copilot, ~/.config/Code (top level and logs/), ~/.config/google-chrome (top level and Crash Reports) and ~/.local/share/Trash/files are unchanged;\n- no process containing the profile path is left, and no new telelean-* unit;\n- in-instance test: HOME, XDG_*, GIT_CONFIG_GLOBAL and the settings are isolated.\nVerified by hand as well: no VS Code sockets or xvfb dirs left from my runs, and ~/.elan/known-projects unchanged (mtime 09:09)."
+  },
+  {
+   "test": "AT5.7 Unit tests",
+   "status": "pass",
+   "evidence": "80/80 vitest tests:\n- every mutating protocol type mapped to a BoardAction (actionMapping.test.ts);\n- FileChange to minimal edits, incl. a 300-round random round-trip with CRLF, and positions (editApplier.test.ts);\n- the EditApplier refuses stale `before`, create-over-existing, outside-root and duplicate paths, an editor refusal and a failed save, and applies nothing;\n- TextSource prefers open documents, returns null for missing files, strips a BOM, refuses outside paths;\n- openInEditor refuses outside paths and outside-pointing links (modelPaths.test.ts);\n- actionResult/notice posting with and without requestId, needs-confirmation, not-yet, undo/redo, ordering;\n- a vanished subject switches the board (boardSession.test.ts);\n- the bundle loads with a vscode stub and contains no llm/ modules (bundle.test.ts)."
+  }
+ ],
+ "contract_changes": [
+  "None. No frozen file was edited (core/*, runner/src/index.ts, semantic/*, workspace/* are only imported)."
+ ],
+ "minor_decisions": [
+  {
+   "decision": "A successful undo or redo posts its notice with undoable: false. Other successes use the outcome's undoable flag, so revert keeps its Undo button.",
+   "rationale": "The toast's Undo posts `undo`, which would undo the next older action, not reverse the undo itself."
+  },
+  {
+   "decision": "A refusal posts actionResult (when there is a requestId) and also a warning notice, or an error notice for code 'internal'. The one exception is needs-confirmation with a requestId, which goes to actionResult only so the webview can ask.",
+   "rationale": "Nothing fails silently. If WP6 also shows actionResult errors, change BoardSession.finish."
+  },
+  {
+   "decision": "theseSuffice with no premises is answered by the host with not-yet (\"Self-evident?\" arrives in M2) and never reaches planAction.",
+   "rationale": "The frozen protocol says empty means not-yet. Passing set-premises with [] could be read as 'clear premises'."
+  },
+  {
+   "decision": "Restoring a board uses the host's own records in workspaceState (title, root, subject) plus the restored panel's title. A {root, subject} (or {telelean: {...}}) saved by the webview is honoured when present.",
+   "rationale": "The host cannot write webview state, and the M1 webview does not save root/subject."
+  },
+  {
+   "decision": "Initialize's git offer and the initGit message call ws.initGit(), not initGitRepository directly.",
+   "rationale": "ws.initGit runs git init and also starts the subjects' history chains, so the workspace's history state stays consistent."
+  },
+  {
+   "decision": "Initialize on an existing Lake project asks a modal 'Add telelean to the Lake project …?' before writing.",
+   "rationale": "It modifies an existing project; an empty folder needs only the subject name."
+  },
+  {
+   "decision": "Settings take effect after a window reload, and the setting descriptions say so.",
+   "rationale": "Model workspaces live until the window closes, so undo survives closing the board, and their options are fixed when they are created."
+  },
+  {
+   "decision": "'Open in editor' opens beside the board, as a normal (non-preview) tab.",
+   "rationale": "Opening in the same column would hide the board."
+  },
+  {
+   "decision": "The test hooks (api.testing) exist only in ExtensionMode.Test. In Test mode an unanswered modal counts as 'no', and quick picks and folder pickers are never shown.",
+   "rationale": "Nobody can click in xvfb, and the hooks must not exist in normal use."
+  },
+  {
+   "decision": "If the runner functions are still stubs (NotImplementedError), Open Board shows the static Spyro sample with a warning notice instead of failing. The sample board is titled 'telelean: sample'.",
+   "rationale": "Keeps M0 behaviour for the user's installed copy until integration."
+  },
+  {
+   "decision": "Echoes of telelean's own writes are ignored by the watchers. File-system events are skipped for files open in an editor, whose document events cover them. Typing is debounced 200 ms, file events 300 ms.",
+   "rationale": "Avoids redundant re-parses and refreshes. The first event with any other text forgets the echo record, so the user's own changes are never dropped."
+  },
+  {
+   "decision": "Files that telelean deletes (e.g. undoing an add that created a file) go through VS Code's WorkspaceEdit. With files.enableTrash on (VS Code's default) they go to the OS trash.",
+   "rationale": "WorkspaceEdit is what makes the batch atomic, and the trash makes deletions recoverable. The tests' deletions landed in the isolated profile's trash."
+  },
+  {
+   "decision": "Colour defaults:\n- kindAssumption #B180D7/#652D90/#D2A8FF/#5A1E8C;\n- kindDerivation #89D185/#388A34/#8FE38A/#1F6B1C;\n- kindGoal #D18616/#A85F00/#FFA94D/#8F4A00;\n- formalizedAura #3794FF/#1A85FF/#6FC3FF/#0F4A85;\n- vocabulary #4EC9B0/#16825D/#5EE3C6/#0B5E43;\n- highlight #E5C07B/#9A6700/#FFE066/#7A5200.\nOrder: dark/light/highContrast/highContrastLight.",
+   "rationale": "Explicit hex values for every theme kind, as the M0 lesson asks."
+  },
+  {
+   "decision": "telelean.git.path has scope 'machine'; the memory settings are 'machine-overridable'; the refresh and snapshot settings are 'resource' (read per root).",
+   "rationale": "An executable path should never come from workspace settings."
+  },
+  {
+   "decision": "Open Board on a board whose model failed to load creates the board again, i.e. retries.",
+   "rationale": "Lets a fixed folder load without a window reload."
+  },
+  {
+   "decision": "vitest's results cache was moved from node_modules/.vite to out/.vite.",
+   "rationale": "Keeps test writes inside WP5's assigned paths."
+  }
+ ],
+ "open_issues": [
+  "dist/extension.js was rebuilt at 12:40, so it bundles the then-current, not yet integrated WP1–WP4 code. The user's installed copy picks it up only after a window reload. The integrator should run `npm run build` in packages/extension after integration and re-run `npm run test:smoke`; the real-workspace suite passed against the 12:40 code.",
+  "WP6, optional: the colour smoke test also checks telelean.vocabulary and telelean.highlight once the webview's 'rendered' diagnostic data reports resolved `vocabulary` (or `vocab`) and `highlight` colours. Until then it logs '(pending WP6)'.",
+  "WP6/integrator: refusals also produce a warning notice (see minor decisions). If the webview shows actionResult errors itself, users would see the error twice; adjust BoardSession.finish or the webview.",
+  "Optional and additive, not needed: WorkspaceState could gain an optional `root` so the webview could save {root, subject} in its state. The host already restores boards without it.",
+  "Run 2 printed one VS Code-internal stack trace ('InstantiationService has been disposed') in the renderer while tabs closed after the multi-diff editor. It is log noise from VS Code; no test failed because of it."
+ ],
+ "integration_notes": "- **Runner imports:** the extension imports only `@telelean/runner/workspace/index.js` (createModelWorkspace, findModelRoots, inspectFolder, planInitialize, gathered in src/vscode/runner.ts). These resolve through new tsconfig paths and vitest aliases (`@telelean/runner` and `@telelean/runner/*`). scripts/build.mjs fails if any runner/src/llm/ module enters dist/extension.js. test/unit/bundle.test.ts builds the bundle with the same options and activates it with a vscode stub.\n- **ModelWorkspace calls:** load(); subjects/graph/workspaceState on publish; onDidChange (then workspace and graph are posted); invalidate(paths) from the watchers; requestRefresh('open' | 'save' | 'files'), only while that root's board is open; refreshNow from the Refresh message or command; perform, undo(subject), redo(subject), listHistory, historyDiff, revert, prune, initGit, historyStatus.\n- **EditApplier refusals:** `ActionError('conflict')` when a file's text no longer equals `before`, or when VS Code refuses the edit. `ActionError('internal')` for paths outside the root, duplicate paths, or a failed save. Create/delete go through WorkspaceEdit (createFile with contents, deleteFile); only files edited in place are saved.\n- **Test API** (`src/api.ts`):\n  - always: onDidReceiveBoardMessage (M0), onDidReceiveBoardEvent, onDidPostToBoard, boardPanel, boards(), boardFor(root), simulateBoardMessage(root, raw) (same validation and dispatch as the webview), workspaceFor(root), restoreBoard(panel, state), boardRecords();\n  - Test mode only: `testing.useRunner(overrides)`, `testing.answerPrompts({ initGit | initializeGit | initializeLakeProject })`, `testing.reset()`.\n- **Command arguments:**\n  - openBoard: `{ root?, subject?, pick?, sample?, offerInitialize? }`, returns `{ root?, asked, sample?, error? }`;\n  - initializeModel: a Uri from the explorer, or `{ folder, subject?, confirm?, gitInit?, openBoard? }`, returns an InitializeResult;\n  - refresh: returns `{ root?, state?, error? }`.\n- **Smoke suites:** activation (runs first) → model (gated on probes of the WP1–WP4 functions; marked pending while any is a stub) → boards (fake workspace, real VS Code adapters) → board (the M0 sample board, CSP and colours).\n- **Workspace prepared by smoke.mjs:** ws/mental_model and ws/second_model (copies of mental_model/, or the fixture plus a generated .telelean when it is missing); ws/plain_folder; ws/empty_folder; and a symbolic link second_model/escape.lean pointing outside its root.",
+ "effects_outside_repo": [
+  "Scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/wp5/ (allowed). It holds the run logs smoke-run1..5.log, mem-run3..5.log, summary-run1..4.json, run-smoke.sh and the last profile vscode-965209 (8.4 MB). That profile contains copies of the sample model with a .lake build and .git repositories made by the real workspace. The profiles of runs 1–4 were deleted. Unit tests created and removed temp folders there.",
+  "~/.npm/_logs, an UNINTENDED DELETION: smoke runs 1–4 (12:33–12:41) set npm_config_logs_max=0 for their `npx vscode-test`. npm then pruned every existing debug log in ~/.npm/_logs: npm's own throwaway logs of recent npm commands by me, other builders and possibly the user, at most about 10 at a time; not user data. Fixed: smoke.mjs now sets npm_config_logs_dir to the scratch profile. Run 5 verified it: its log landed in the profile, and the real folder was left alone apart from the normal keep-10 rotation caused by others' npm runs.",
+  "~/.npm/_logs, new files: my early npm/npx invocations (`npx tsc` twice, `npx vitest run` twice, `npm run build` once, `npm --version` once) wrote npm debug logs there, as npm always does, keeping the last 10. Later I called binaries directly (node_modules/.bin/tsc, node_modules/.bin/vitest, node scripts/build.mjs).",
+  "Inside the repo but outside my assigned paths: vitest updated packages/extension/node_modules/.vite/vitest/<hash>/results.json (a cache M0 created) until I moved the cache to out/.vite. Vite briefly writes a bundled config file into packages/extension/node_modules/.vite-temp/ during each vitest run and deletes it.",
+  "Short-lived, all gone afterwards (verified): xvfb-run temp dirs /tmp/xvfb-run.*; VS Code IPC sockets in /run/user/1002, none left from my runs (the remaining vscode-522f9df5-1.14-main.sock is from yesterday 22:50, not mine); the test VS Code processes; systemd --user transient scopes from runLean during the real Lean refreshes in runs 3–5.",
+  "Lean ran only inside the scratch copies (lake build under runLean). The toolchain in ~/.elan was only read; ~/.elan/known-projects is unchanged (mtime 09:09).",
+  "git ran only in scratch copies: git init and private refs under refs/telelean/* by the real workspace in ws/mental_model and ws/fresh_model, plus read-only for-each-ref, rev-parse and status calls from my test, all with GIT_CONFIG_GLOBAL=/dev/null. I never ran git in /home/zhengyew/telelean.",
+  "Test VS Code isolation: HOME/XDG pointed into the scratch profile. Its ~/.vscode/argv.json, ~/.vscode/cli, nssdb and Trash were written there. The real ~/.copilot, ~/.config/Code, ~/.config/google-chrome and ~/.local/share/Trash were unchanged, checked after every run.",
+  "Not touched by me: mental_model/ and test-fixtures/ (only copied from; their newer files are WP4's from 12:10 and WP3's), the user's VS Code settings and extensions, ~/.config, ~/.claude, ~/.elan, the npm config, global git config, packages/extension/.vscode-test (the 1.140.0 build was reused, no download). No network use, no installs, no pushes, nothing sent to anyone, no Claude CLI runs."
+ ]
+}

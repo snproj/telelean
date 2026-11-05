@@ -1,0 +1,8 @@
+import Model
+open Telelean.Model
+#print axioms cynder_not_good
+#print axioms cynder_not_in_new_spyro
+theorem bad : False := by
+  exact?
+example : 1 = 2 := by simp
+theorem withSorry : ¬ GoodAdditionTo cynder newSpyro := by sorry

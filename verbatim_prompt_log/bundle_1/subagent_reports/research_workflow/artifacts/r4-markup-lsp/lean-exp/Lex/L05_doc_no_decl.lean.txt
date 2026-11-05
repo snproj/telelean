@@ -1,0 +1,5 @@
+/-- A docstring with no declaration -/
+
+/- @@ telelean v1
+id: x
+-/

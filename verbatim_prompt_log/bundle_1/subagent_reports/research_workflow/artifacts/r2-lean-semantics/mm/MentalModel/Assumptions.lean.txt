@@ -1,0 +1,39 @@
+import MentalModel.Vocabulary
+namespace MM
+
+/- @@ telelean
+id: a.cynder_dark
+kind: ASSUMPTION
+natural_name: "Cynder is a character who has a dark past"
+why: "familiar with gaming lore"
+-/
+/-- Cynder is a character who has a dark past. -/
+axiom cynder_dark : HasDarkPast Cynder
+
+/- @@ telelean
+id: a.spyro_pg
+kind: ASSUMPTION
+natural_name: "The new Spyro game is PG"
+why: "known from gaming news"
+-/
+/-- The new Spyro game is PG. -/
+axiom spyro_pg : IsPG newSpyro
+
+/- @@ telelean
+id: a.pg_no_dark
+kind: ASSUMPTION
+natural_name: "PG games cannot have characters with dark pasts"
+why: "rating guidelines"
+-/
+/-- PG games cannot have characters with dark pasts. -/
+axiom pg_no_dark : ∀ (g : Game) (c : Character), IsPG g → HasDarkPast c → ¬ GoodAddition c g
+
+/- @@ telelean
+id: a.fans_like_dragons
+kind: ASSUMPTION
+natural_name: "Spyro fans like dragons"
+why: "personal experience"
+-/
+-- (natural-language only: no Lean code yet)
+
+end MM

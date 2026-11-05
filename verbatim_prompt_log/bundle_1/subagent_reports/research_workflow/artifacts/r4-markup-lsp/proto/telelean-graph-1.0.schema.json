@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:telelean:schema:graph:1.0",
+  "title": "telelean graph export, format 1.x",
+  "description": "Whole-workspace snapshot of the telelean mental-model graph. Consumers MUST ignore unknown properties and MUST tolerate unknown enum values in 'edge.type', 'diagnostic.code', 'status.check' (treat as 'unknown'). Breaking changes bump the major version of format_version.",
+  "type": "object",
+  "required": ["format", "format_version", "generator", "position_encoding", "line_base", "semantic", "nodes", "edges", "diagnostics", "files"],
+  "properties": {
+    "format": { "const": "telelean-graph" },
+    "format_version": { "type": "string", "pattern": "^1\\.[0-9]+$" },
+    "generator": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": { "name": { "type": "string" }, "version": { "type": "string" } }
+    },
+    "position_encoding": { "enum": ["utf-16", "utf-8", "utf-32"] },
+    "line_base": { "const": 0 },
+    "semantic": {
+      "type": "object",
+      "required": ["available"],
+      "properties": {
+        "available": { "type": "boolean" },
+        "lean_version": { "type": ["string", "null"] },
+        "stale": { "type": "boolean" },
+        "source": { "type": ["string", "null"] }
+      }
+    },
+    "nodes": { "type": "array", "items": { "$ref": "#/$defs/node" } },
+    "edges": { "type": "array", "items": { "$ref": "#/$defs/edge" } },
+    "diagnostics": { "type": "array", "items": { "$ref": "#/$defs/diagnostic" } },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "sha256", "node_count"],
+        "properties": {
+          "path": { "type": "string" },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "node_count": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "stats": { "type": "object" }
+  },
+  "$defs": {
+    "nodeId": { "type": "string", "pattern": "^[a-z0-9]+(?:[-_.][a-z0-9]+)*$" },
+    "position": {
+      "type": "object",
+      "required": ["line", "character"],
+      "properties": {
+        "line": { "type": "integer", "minimum": 0 },
+        "character": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "range": {
+      "type": "object",
+      "required": ["start", "end"],
+      "properties": { "start": { "$ref": "#/$defs/position" }, "end": { "$ref": "#/$defs/position" } }
+    },
+    "leanDecl": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": ["string", "null"], "description": "Fully-qualified Lean name as resolved from the markup side (namespace-aware); null for anonymous instances." },
+        "written": { "type": ["string", "null"] },
+        "keyword": { "type": ["string", "null"] },
+        "range": { "oneOf": [{ "$ref": "#/$defs/range" }, { "type": "null" }] },
+        "lean_kind": { "enum": ["axiom", "def", "theorem", "opaque", "quot", "inductive", "ctor", "recursor"] },
+        "is_prop": { "type": "boolean" },
+        "uses_sorry": { "type": "boolean" },
+        "axioms": { "type": "array", "items": { "type": "string" } },
+        "type": { "type": ["string", "null"] }
+      }
+    },
+    "node": {
+      "type": "object",
+      "required": ["id", "kind", "natural_name", "premises", "origin", "tags", "source", "lean", "status"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nodeId" },
+        "kind": { "enum": ["ASSUMPTION", "DERIVATION", "GOAL", "DEFINITION", null] },
+        "natural_name": { "type": ["string", "null"] },
+        "rationale": { "type": ["string", "null"] },
+        "description": { "type": ["string", "null"], "description": "Markdown body after the '---' separator." },
+        "premises": { "type": "array", "items": { "$ref": "#/$defs/nodeId" } },
+        "origin": { "enum": ["user", "llm"] },
+        "session": { "type": ["string", "null"] },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "extensions": { "type": "object", "additionalProperties": { "type": "array", "items": { "type": "string" } } },
+        "source": {
+          "type": "object",
+          "required": ["file", "range", "markup_version"],
+          "properties": {
+            "file": { "type": "string" },
+            "range": { "$ref": "#/$defs/range" },
+            "markup_version": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "lean": {
+          "type": "object",
+          "required": ["binding", "decls"],
+          "properties": {
+            "binding": { "enum": ["none", "adjacent", "explicit"] },
+            "decls": { "type": "array", "items": { "$ref": "#/$defs/leanDecl" } }
+          }
+        },
+        "status": {
+          "type": "object",
+          "required": ["formal", "check", "purity"],
+          "properties": {
+            "formal": { "type": "boolean", "description": "Has at least one bound Lean declaration (the 'blue aura')." },
+            "check": { "enum": ["unknown", "n/a", "ok", "sorry", "error"] },
+            "purity": { "enum": ["n/a", "pure", "impure"] }
+          }
+        }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "required": ["type", "source", "target", "origin"],
+      "properties": {
+        "type": { "type": "string", "description": "1.0 defines 'premise' (source is a declared premise of target) and 'lean_ref' (target's Lean code references source's declaration)." },
+        "source": { "$ref": "#/$defs/nodeId" },
+        "target": { "$ref": "#/$defs/nodeId" },
+        "origin": { "enum": ["declared", "lean"] },
+        "where": { "enum": ["statement", "proof"] }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "required": ["code", "severity", "message", "file"],
+      "properties": {
+        "code": { "type": "string", "pattern": "^TL[0-9]{3}$" },
+        "severity": { "enum": ["error", "warning", "info", "hint"] },
+        "message": { "type": "string" },
+        "file": { "type": "string" },
+        "range": { "oneOf": [{ "$ref": "#/$defs/range" }, { "type": "null" }] },
+        "node_id": { "$ref": "#/$defs/nodeId" },
+        "related": { "type": "array" }
+      }
+    }
+  }
+}

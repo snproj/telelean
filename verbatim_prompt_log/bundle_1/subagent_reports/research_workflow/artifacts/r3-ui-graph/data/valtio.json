@@ -1,0 +1,48 @@
+{
+ "name": "valtio",
+ "latest": "2.3.2",
+ "dist_tags": {
+  "next": "2.0.0-rc.2",
+  "latest": "2.3.2"
+ },
+ "latest_published": "2026-05-01T06:28:49.830Z",
+ "modified": "2026-05-01T06:28:50.148Z",
+ "created": "2020-11-16T22:30:20.723Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 101282,
+ "fileCount": 44,
+ "tarball": "https://registry.npmjs.org/valtio/-/valtio-2.3.2.tgz",
+ "dependencies": {
+  "proxy-compare": "^3.0.1"
+ },
+ "peerDependencies": {
+  "@types/react": ">=18.0.0",
+  "react": ">=18.0.0"
+ },
+ "repository": "git+https://github.com/pmndrs/valtio.git",
+ "recent_versions": [
+  [
+   "2.1.8",
+   "2025-09-25T14:26:13.265Z"
+  ],
+  [
+   "2.2.0",
+   "2025-11-03T02:47:07.948Z"
+  ],
+  [
+   "2.3.0",
+   "2026-01-01T09:41:45.325Z"
+  ],
+  [
+   "2.3.1",
+   "2026-03-03T05:53:01.448Z"
+  ],
+  [
+   "2.3.2",
+   "2026-05-01T06:28:49.830Z"
+  ]
+ ],
+ "homepage": "https://github.com/pmndrs/valtio",
+ "description": "\ud83e\uddd9 Valtio makes proxy-state simple for React and Vanilla"
+}

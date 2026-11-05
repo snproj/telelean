@@ -1,0 +1,33 @@
+/-
+telelean sandbox probe: look around the filesystem and the environment.
+
+INERT FIXTURE. Never open this file with a Lean server. The tests copy it into a sandboxed shadow
+as `Probe.lean` and elaborate it there with `lake env lean` under runLean.
+
+Expected inside the sandbox: $HOME is an empty tmpfs except the read-only `.elan` mount point;
+/run holds only the empty `user` directory (no D-Bus socket, no keyring); /tmp is empty; no session
+variables (D-Bus, XDG runtime dir, ssh-agent, display) are set.
+-/
+
+def probeList (label : String) (path : System.FilePath) : IO Unit := do
+  try
+    let entries ← path.readDir
+    IO.println s!"PROBE {label} COUNT {entries.size}"
+    for e in entries do
+      IO.println s!"PROBE {label} ENTRY {e.fileName}"
+  catch e =>
+    IO.println s!"PROBE {label} ERROR ({e})"
+
+def probeEnv (name : String) : IO Unit := do
+  match ← IO.getEnv name with
+  | some v => IO.println s!"PROBE env SET {name}={v}"
+  | none => IO.println s!"PROBE env UNSET {name}"
+
+#eval show IO Unit from do
+  let home := System.FilePath.mk ((← IO.getEnv "HOME").getD "/nonexistent-home")
+  probeList "home" home
+  probeList "run" "/run"
+  probeList "run-user" "/run/user"
+  probeList "tmp" "/tmp"
+  for name in ["DBUS_SESSION_BUS_ADDRESS", "XDG_RUNTIME_DIR", "SSH_AUTH_SOCK", "DISPLAY", "WAYLAND_DISPLAY"] do
+    probeEnv name

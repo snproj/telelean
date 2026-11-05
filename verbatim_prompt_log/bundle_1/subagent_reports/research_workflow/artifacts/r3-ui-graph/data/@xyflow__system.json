@@ -1,0 +1,53 @@
+{
+ "name": "@xyflow/system",
+ "latest": "0.0.83",
+ "dist_tags": {
+  "next": "1.0.0-next.4",
+  "latest": "0.0.83"
+ },
+ "latest_published": "2026-09-24T12:43:01.347Z",
+ "modified": "2026-10-11T19:20:40.530Z",
+ "created": "2023-06-13T14:58:30.250Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 694317,
+ "fileCount": 186,
+ "tarball": "https://registry.npmjs.org/@xyflow/system/-/system-0.0.83.tgz",
+ "dependencies": {
+  "d3-drag": "^3.0.0",
+  "d3-zoom": "^3.0.0",
+  "d3-selection": "^3.0.0",
+  "@types/d3-drag": "^3.0.7",
+  "@types/d3-zoom": "^3.0.8",
+  "d3-interpolate": "^3.0.1",
+  "@types/d3-selection": "^3.0.10",
+  "@types/d3-transition": "^3.0.8",
+  "@types/d3-interpolate": "^3.0.4"
+ },
+ "peerDependencies": {},
+ "repository": "git+https://github.com/xyflow/xyflow.git",
+ "recent_versions": [
+  [
+   "1.0.0-next.3",
+   "2026-08-19T13:26:16.598Z"
+  ],
+  [
+   "0.0.81",
+   "2026-08-25T19:42:27.530Z"
+  ],
+  [
+   "0.0.82",
+   "2026-09-01T12:05:00.350Z"
+  ],
+  [
+   "0.0.83",
+   "2026-09-24T12:43:01.347Z"
+  ],
+  [
+   "1.0.0-next.4",
+   "2026-10-11T19:20:40.374Z"
+  ]
+ ],
+ "homepage": "https://github.com/xyflow/xyflow#readme",
+ "description": "xyflow core system that powers React Flow and Svelte Flow."
+}

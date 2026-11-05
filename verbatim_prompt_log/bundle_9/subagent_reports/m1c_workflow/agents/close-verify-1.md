@@ -1,0 +1,185 @@
+# close-verify-1 (agent af0fd267f5802e42e)
+
+## verdict
+needs-work
+
+## what_i_ran
+I wrote nothing under /home/zhengyew/telelean: `find -newer START_MARKER` lists 0 files there at the end. The product fixes (items 1–5) all work. The verdict is needs-work only because the extension's e2e suite never passed in my unassisted runs (see issues).
+
+SETUP
+- I rsync-copied the repo to the scratch dir, without build outputs, caches, .vscode-test and verbatim_prompt_log. node_modules was copied in full. The copy's packages/extension/.vscode-test holds a symlink to the repo's VS Code 1.140 build, used read-only.
+- At the end, `diff -rq` showed the repo sources identical to my copy.
+- Environment: PATH without ~/.elan/bin, LEAN_NUM_THREADS=4, ulimit -c 0, GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM=1, TELELEAN_TEST_TMP in scratch. npm ran with offline=true and its logs and cache in scratch.
+- One heavy process at a time. My RAM watchdog's lowest MemAvailable reading was 36038 MB.
+
+FULL SEQUENCE, TWICE, FROM A CLEAN BUILD (no dist/ or out/ beforehand)
+- Root `npm run build`: exit 0.
+- core: typecheck ok; 32/32 files, 349/349 tests.
+- runner: typecheck ok; 29/29 files, 285/285 tests, real Lean, about 128 s.
+- webview: typecheck and vite build ok; unit 6/6 files, 89/89 tests; Playwright 49/49; home guard "unchanged".
+- extension: typecheck ok; unit 14/14 files, 97/97 tests; smoke 30 passing; e2e 9 passing, 4 failing in both rounds (cause in issue 1); 0 isolation failures.
+- The fresh bundles are byte-identical to the repo's packages/extension/dist (extension.js and .map, webview.js and .map, webview.css, boot.js, codicon.ttf). The copy you installed is therefore current.
+
+ITEMS 1 AND 2 (delete with dependents), REAL VS CODE
+I ran my own scenario in the isolated 1.140 build over loopback CDP (vs/harness/vc-drive.mjs): 44/44 checks passed. The model was a copy of mental_model plus:
+- cards d-cond and d-cond2: conditional proofs that use cynder_dark_past.holds;
+- card g-cond: passes arguments to d_cond.holds;
+- a new file Extra.lean with two lemmas without cards, helper_lemma and helper_cond.
+
+Deleting cynder-dark-past with its Lean:
+- The host refused with needs-confirmation and the dialog opened again: "Delete its Lean code too?", "These 5 declarations use its Lean code. They stop compiling if the code is deleted:".
+- It listed the 3 cards by sentence with their kind glyph, then Spyro.helper_lemma and Spyro.helper_cond in code font.
+- Buttons: [Delete anyway, Delete card only, keep Lean, Cancel], with the focus on Cancel. No error toast, and no file changed before an answer.
+- Cancel, and Enter on the focused Cancel, both deleted nothing.
+- Card only: the block went, the abbrev and axiom stayed, the goal lost the premise; Lean "up to date". Undo restored every file byte-exactly.
+- Delete anyway: Main.lean was exactly the expected removal (block, docstring, abbrev and axiom in one piece; the premise id dropped); Extra.lean was untouched; the badge then read "Lean: 4 errors". Undo restored every file byte-exactly and Lean was "up to date" again.
+- Host log: deleteNode r6 → refused (needs-confirmation) → deleteNode {"confirmed":true} r7 → applied → Undo.
+
+In the fixer's e2e delete test, all checks passed in 3 of my runs, Undo included. The actionMapping unit test and the store/Playwright tests pass.
+
+ITEM 3 (dependents dialog for D→A), REAL VS CODE
+- D→A on d-cond, where the board itself asks:
+  - title "Make Assumption: 1 dependent needs a rewrite", and core's own explanation ("…as an assumption it becomes axiom d_cond.holds : d_cond … rewrite them to use it directly…");
+  - "This passes it arguments:", g-cond listed by its sentence;
+  - buttons [Rewrite them to use it directly, Keep them, marked broken, Cancel]; none of the old "change to Goal" text.
+  - Rewrite gave `axiom d_cond.holds : d_cond` and `… := d_cond.holds.2`; Lean "up to date"; Undo restored every file byte-exactly, the attic entry removed too.
+- D→A on d-cond2, where only the host knows the lemma: after Skip in the why dialog, the host asked.
+  - Title worded from the host's list; the explanation is the host's own message; Spyro.helper_cond in code font.
+  - Rewrite changed Extra.lean; Lean "up to date"; Undo restored every file byte-exactly.
+
+ITEM 4 (smoke flake)
+- I ran the real SelfWrites class, old (pre-fix copy) against new, through esbuild:
+  - race: old false/false, new true/true;
+  - Undo in the editor back to an earlier telelean text: still not an echo in both;
+  - new also passes duplicate events, separate editor and disk streams, delete then recreate, and A→B→A; expiry after 5 s holds in both versions.
+- Model-boards suite (TELELEAN_SMOKE_GREP='model boards'): 6 of 6 consecutive runs green, 12 passing each, 0 isolation failures. It also passed inside all 6 full smoke runs: 12 of 12 in total. The previously flaky test ran every time.
+
+ITEM 5 (docs)
+- I read the user guide, decisions log §10–12, m1-plan §14 (12 new rows) and the EditApplier comment against the code and against the pre-round copies. Delete flow, chip label, badge, toast Undo, "Keep last N" text and disabled state, keyboard handling and refresh triggers all match. Residuals are in issue 5.
+
+E2E INVESTIGATION
+- A read-only CDP observer named the toast in all 4 of my full smoke runs after round 1, the diagnostic run included.
+- A diagnostic run that dismissed the toast: the first 12 tests passed, and the delete test failed on its layout read race.
+- An experiment without --disable-extensions, on my scratch copy only (file restored afterwards and checked identical to the repo's): 30 + 13 passing, exit 0.
+
+Screenshots: /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/closing-verifier-r1/shots/ (vc-delete-second-form.png, vc-card-only.png, vc-delete-anyway.png, vc-d-to-a-dialog.png, vc-d-to-a-host-only.png).
+Logs: /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/closing-verifier-r1/logs/
+
+## issues
+- **severity:** major
+  - **description:** The extension test suite (`npm test` in packages/extension) failed its e2e part in every unassisted run I made: 5 of 5 (both clean-build rounds plus 3 more full smoke runs).
+
+The cause is VS Code's own notification, "All installed extensions are temporarily disabled. [Reload and Enable Extensions]":
+- .vscode-test.mjs passes `--disable-extensions`, so VS Code raises it a few seconds after start;
+- it is sticky, so it never closes;
+- it sits over the board's bottom-right "Add assumption" button.
+
+So "the A|D|G box adds an Assumption" times out. "Undo restores the files byte-exactly…" and "History lists the snapshots…" then fail as a consequence, and in 2 of 5 runs the delete test fails too.
+
+The fixer's 3 runs passed only because their click came before the toast appeared. This is a test-harness race, not a product defect: telelean's own notices go to the board, not to VS Code. But it contradicts "every suite passes" and keeps the suite red here.
+  - **evidence:** - Playwright call log: "<div class=\"notification-toast …\"> from <div class=\"notifications-toasts bottom-right visible\"> subtree intercepts pointer events" at e2e.test.ts:182 (`getByRole('button', { name: 'Add assumption' }).click()`).
+- telelean.log: no addNode was ever sent during the 30 s wait.
+- My read-only CDP observer: `toasts [{"text":"Reload and Enable Extensions All installed extensions are temporarily disabled.","rect":[820,794,452,70]}]`, about 3.5 s after the instance started; it stayed until the instance closed.
+- VS Code 1.140's workbench code: `this.allUserExtensionsDisabled&&this.lifecycleService.when(4).then(()=>{this.notificationService.prompt(…extensionsDisabled…,{sticky:!0,priority:3})})`.
+- Runs: full-1 and full-2 ("9 passing, 4 failing"); smoke-full2, full3 and full4 ("10 passing, 3 failing").
+- Diagnostic run with the toast dismissed: the A|D|G, Undo and History tests pass.
+- Experiment on my scratch copy without '--disable-extensions' (.vscode-test.mjs:42): "30 passing", "13 passing", exit 0, "0 isolation failure(s)".
+- Logs: /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/closing-verifier-r1/logs/smoke-*.log, observer-*.log, full-*-extension.log.
+  - **suggested_fix:** Two options:
+- Remove '--disable-extensions' from the launchArgs in packages/extension/.vscode-test.mjs. The isolated, empty `--extensions-dir` already keeps out every user extension; in my experiment the isolation checks still passed.
+- Or, in e2e.test.ts, clear notifications before board clicks, with `vscode.commands.executeCommand('notifications.clearAll')` once the toast has appeared, or submit the A|D|G form with Enter.
+
+Then run the full extension suite at least 5 times in a row and report the count.
+- **severity:** minor
+  - **description:** The delete-confirmation e2e test added this round has a timing race and depends on earlier tests.
+
+(a) It waits only for Main.lean to match. It then reads layout.json at once, but the applier saves layout.json about 100 ms after Main.lean, so the deepEqual can see the old layout. The product is correct: the final layout.json lacks the card, and the delete's plan included the layout edit.
+
+(b) It asserts that layout.json lists cynder-dark-past before the delete. That holds only if the earlier Undo/Redo and History tests completed. When one of them fails, this test fails before reaching Delete anyway's file checks and Undo.
+  - **evidence:** e2e.test.ts:450-457: `await waitFiles({ main: expectedMain }, …); const after = snapshot(); … assert.ok(layoutBefore.columns.ASSUMPTION?.includes('cynder-dark-past'), …); … assert.deepEqual(JSON.parse(after.layout), expectedLayout);`
+
+(a) Diagnostic run:
+- the test failed with actual layout ASSUMPTION ['pg-no-dark-past', 'cynder-dark-past', …];
+- telelean.log: `applied "Delete: Cynder has a dark past": edit Model/Spyro/Main.lean, edit .telelean/subjects/Spyro/layout.json`;
+- file mtimes: Main.lean 17:05:44.012, layout.json 17:05:44.118;
+- the final layout.json lacks the card.
+
+(b) Rounds full-1 and full-2: `AssertionError … "ASSUMPTION": [] … -false +true` at that assert (compiled e2e.test.js:510).
+
+Overall the test passed in 3 of my 6 full runs.
+  - **suggested_fix:** - Wait for every expected file, e.g. `waitFor(() => isDeepStrictEqual(JSON.parse(read('layout')), expectedLayout))`, or wait for the actionResult and a quiet period, before taking `after`.
+- Make the test independent of earlier tests: build expectedLayout from layoutBefore whether or not it lists the card, or set up its own layout first.
+- **severity:** minor
+  - **description:** In the delete dialog, a dependent that is a card of another subject shows as its raw card id in code font, e.g. `other-goal`. That looks like a Lean name but is neither its sentence nor its Lean name. The task asked for node ids to be shown by their sentence.
+
+The fixer listed this as open: it needs the host to send labels. Decisions log §12 describes such dependents as shown "by its name", which is inaccurate for cards.
+  - **evidence:** - packages/webview/src/dialogs/Dialogs.tsx:25-33: `Dependent` renders `<code>{id}</code>` when `s.nodes[id]` is missing, and the store only holds the current subject's cards.
+- core/src/edit/planAction.ts:151-160 (`deleteDependents`) returns owner node ids for decls owned by any card, other subjects included.
+- The previous verifier's real-Lean list: ["other-goal","Spyro.helper_lemma"].
+- My real-VS-Code scenario used one subject only.
+  - **suggested_fix:** Let the host add a label map to the needs-confirmation outcome ({id: naturalName (subject)}), or map ids to their Lean statement names. Reword decisions-log §12 to match.
+- **severity:** minor
+  - **description:** The why dialog of a change to Assumption (and that button's tooltip) shows the board's preview text "… Nothing uses it.". It does so right before the host asks about a declaration that passes the proof arguments.
+
+The new dependents dialog then correctly uses the host's words, so the user sees two contradictory messages in a row. The board's preview is computed from its graph alone, so it cannot know about lemmas without a card.
+  - **evidence:** Real VS Code, scenario E (D→A on d-cond2, used only by the lemma helper_cond):
+- why dialog: "theorem d_cond2.holds (which takes a hypothesis) becomes axiom d_cond2.holds : d_cond2; the proof is kept in the attic. Nothing uses it.";
+- after Skip, the host: "d_cond2.holds takes a hypothesis, but … so 1 dependent that passes it arguments must change".
+
+The text comes from core/src/kindChange.ts:123.
+  - **suggested_fix:** Word the preview as what it knows: "No card on this board uses it" in kindChangeImpact. Or have the why dialog say the host still checks the Lean code.
+- **severity:** minor
+  - **description:** Some docs still lag the code:
+- m1-plan §2's list of refresh triggers still lacks "a Lean file written by another program"; only a §14 row notes it.
+- The user guide's Lean-badge list omits "Lean: check failed".
+- Core's delete refusal still says "breaks a declaration that uses it (…): they stop compiling" for one dependent. It is seen in the extension log and in the rare toast paths.
+  - **evidence:** - docs/m1-plan.md:566: "(Section 2's list itself is not updated.)"
+- docs/user-guide.md:79 badge list vs packages/webview/src/labels.ts:125 (`'Lean: check failed'`).
+- core/src/edit/planAction.ts:171-173.
+- My session's log: "breaks 5 declarations … they stop compiling". The e2e run with one dependent was correct in plural only because it had 2.
+  - **suggested_fix:** - Add the outside-write trigger to m1-plan §2.
+- Add "check failed" (the last Lean check did not complete) to user-guide §7.
+- Use "it stops compiling" for a single dependent in core's message.
+- **severity:** minor
+  - **description:** In the registry's echo check, a user-save echo can make telelean's own write look like an outside write.
+
+onFileEvent consults selfWrites before userSaves, and a mismatch in selfWrites forgets its pending disk texts. Suppose the user saves a file and a board action writes the same file before the save's watcher event is handled. That event matches userSaves, but the next event, from telelean's own write, is then treated as another program's write. The only effect is one redundant, debounced Lean refresh.
+  - **evidence:** packages/extension/src/vscode/registry.ts:199-203 together with changeBatcher.ts:101-111.
+
+Demo with the real SelfWrites class mirroring that loop (.../closing-verifier-r1/selfwrites/registry-demo.ts):
+- userSaves.record(U), then selfWrites.record(T1);
+- output: {"eventReadsU":"echo","eventReadsT1":"outside write (refresh)"}.
+  - **suggested_fix:** Match the text against both sources before either one forgets, e.g. add a non-mutating `matches()` and call `isEcho` only on the source that matched. Or forget in selfWrites only when no source matched.
+
+## effects_outside_repo
+- Scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/closing-verifier-r1/ (352 MB). It holds:
+- the repo copy with its own node_modules (208 MB), with packages/extension/.vscode-test containing only a symlink to the repo's VS Code build;
+- smoke/e2e profiles and model copies of 13 smoke runs under tt/ (114 MB), including Lean .lake outputs and the suites' scratch git repositories;
+- my real-VS-Code profile and workspace under vs/ (23 MB);
+- logs, screenshots, the SelfWrites demos, the CDP observer scripts, npm logs and cache, and the RAM watchdog log.
+- Repo: nothing written. `find /home/zhengyew/telelean -newer START_MARKER` lists 0 entries, node_modules and packages/*/node_modules included.
+
+The repo's VS Code 1.140 test build (packages/extension/.vscode-test) was used read-only through the symlink. Its tree listing (names, mtimes, sizes, depth 3) is unchanged. Your installed extension is unchanged (its dist is byte-identical to my fresh build).
+- /tmp:
+- each of my 2 Playwright runs created /tmp/tl-pw-chrome-XXXXXX (Chrome's isolated HOME/TMPDIR), and the harness deleted it at teardown;
+- xvfb-run made transient xvfb-run.* directories and X lock/socket files during the smoke runs and my VS Code session, and removed them;
+- the /tmp and /tmp/.X11-unix name listings are identical before and after.
+- /run/user/1002: transient IPC sockets of the VS Code test instances; the name listing is identical before and after.
+- systemd --user: transient telelean-* scopes from runLean (2 runner suites, 13 smoke/e2e runs, my VS Code session); none remain.
+- Lean: toolchain binaries in ~/.elan/toolchains/leanprover--lean4---v4.35.0 used read-only. ~/.elan/known-projects is unchanged (37 lines, same mtime and size).
+- Network: loopback only.
+- Playwright's static server on 127.0.0.1:41739.
+- DevTools ports on 127.0.0.1 for the e2e instances and my isolated VS Code instance. My read-only observer and my driver attached to those loopback ports.
+- npm ran with offline=true, logs and cache in scratch; the only npx was the one inside smoke.mjs.
+- No downloads, no npm install, no Claude CLI, no pushes or uploads, no messages.
+- Git ran only inside the suites' scratch repositories, under TELELEAN_TEST_TMP and my VS Code workspace copy, with GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM=1 and a ceiling dir in scratch. No git in the repo or in mental_model.
+- Real home: names and mtimes are unchanged for:
+- ~/.config/google-chrome (and Crash Reports), ~/.cache/google-chrome;
+- ~/.copilot, ~/.local/share/vitest, ~/.config/Code/logs;
+- Trash, ~/.cache/fontconfig, ~/.pki, ~/.local/share/pki;
+- ~/.npm (and _logs), ~/.cache/ms-playwright, ~/.config/dconf, ~/.vscode/extensions;
+- the home top level.
+
+The one exception: the mtimes of ~/.config/Code (the directory) and of its DIPS-wal, Network Persistent State and TransportSecurity changed. Your own running VS Code (snap) rewrites these. My instances used isolated user-data dirs, and every smoke isolation check reported ~/.config/Code unchanged.
+- Processes: none of mine remain (pgrep on my scratch path finds nothing). My RAM watchdog stopped by itself; lowest MemAvailable 36038 MB, it never had to act.
+

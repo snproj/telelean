@@ -1,0 +1,36 @@
+import Lean
+import Big
+open Lean Meta
+
+#eval show MetaM Unit from do
+  let env ← getEnv
+  let t0 ← IO.monoMsNow
+  let names := env.constants.toList.filterMap fun (n, _) =>
+    match env.getModuleIdxFor? n with
+    | some i => if (env.header.moduleNames[i.toNat]!).getRoot == `Big then some n else none
+    | none => none
+  let t1 ← IO.monoMsNow
+  IO.println s!"filter constants: {t1-t0} ms ({names.length} names of {env.constants.toList.length} total)"
+  let mut acc := 0
+  for n in names do
+    let axs ← collectAxioms n
+    acc := acc + axs.size
+  let t2 ← IO.monoMsNow
+  IO.println s!"collectAxioms: {t2-t1} ms"
+  for n in names do
+    let ci ← getConstInfo n
+    let b ← isProp ci.type
+    if b then acc := acc + 1
+  let t3 ← IO.monoMsNow
+  IO.println s!"isProp: {t3-t2} ms"
+  for n in names do
+    let _ ← findDeclarationRanges? n
+    let _ ← findDocString? env n
+  let t4 ← IO.monoMsNow
+  IO.println s!"ranges+docs: {t4-t3} ms"
+  for n in names do
+    let ci ← getConstInfo n
+    let s := toString (← ppExpr ci.type)
+    acc := acc + s.length
+  let t5 ← IO.monoMsNow
+  IO.println s!"ppExpr: {t5-t4} ms (acc {acc})"

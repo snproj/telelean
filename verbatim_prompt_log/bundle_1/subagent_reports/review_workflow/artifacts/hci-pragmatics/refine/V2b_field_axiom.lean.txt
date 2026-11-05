@@ -1,0 +1,18 @@
+-- Same refinement, but the belief stays an axiom about the field (inherits h1's rationale).
+structure Character where
+  past : String
+axiom Game : Type
+axiom cynder : Character
+axiom cynder_past : cynder.past = "dark"                      -- refined assumption (refines: h1)
+axiom newSpyro : Game
+def HasDarkPast (c : Character) : Prop := c.past = "dark"
+axiom IsPG : Game → Prop
+axiom CanAppearIn : Character → Game → Prop
+axiom GoodAddition : Character → Game → Prop
+theorem cynder_dark_past : HasDarkPast cynder := cynder_past  -- h1 derived from the refinement
+axiom new_spyro_pg : IsPG newSpyro
+axiom pg_no_dark_past : ∀ g c, IsPG g → HasDarkPast c → ¬ CanAppearIn c g
+axiom good_needs_appear : ∀ c g, GoodAddition c g → CanAppearIn c g
+theorem cynder_not_good : ¬ GoodAddition cynder newSpyro :=
+  fun h => pg_no_dark_past _ _ new_spyro_pg cynder_dark_past (good_needs_appear _ _ h)
+#print axioms cynder_not_good

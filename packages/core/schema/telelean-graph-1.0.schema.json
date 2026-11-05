@@ -1,0 +1,749 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "format": {
+      "type": "string",
+      "const": "telelean-graph"
+    },
+    "format_version": {
+      "type": "string",
+      "pattern": "^1\\.\\d+$"
+    },
+    "generator": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "const": "telelean"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "additionalProperties": {}
+    },
+    "position_encoding": {
+      "type": "string",
+      "const": "utf-16"
+    },
+    "line_base": {
+      "type": "number",
+      "const": 0
+    },
+    "generated_at": {
+      "type": "string",
+      "description": "ISO time"
+    },
+    "semantic": {
+      "type": "object",
+      "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "stale": {
+          "type": "boolean"
+        },
+        "toolchain": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "checked_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "available",
+        "stale",
+        "toolchain",
+        "checked_at",
+        "status"
+      ],
+      "additionalProperties": {}
+    },
+    "subjects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "node_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "name",
+          "files",
+          "node_count"
+        ],
+        "additionalProperties": {}
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "subject": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "ASSUMPTION",
+              "DERIVATION",
+              "GOAL"
+            ]
+          },
+          "natural_name": {
+            "type": "string"
+          },
+          "rationale": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "stance": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "asserted": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "premises": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Declared joint support (node ids)"
+          },
+          "worded_by": {
+            "type": "string",
+            "enum": [
+              "user",
+              "agent"
+            ]
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string"
+                  },
+                  "range": {
+                    "type": "object",
+                    "properties": {
+                      "start": {
+                        "type": "object",
+                        "properties": {
+                          "line": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991,
+                            "description": "0-based line"
+                          },
+                          "character": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991,
+                            "description": "0-based UTF-16 code unit"
+                          }
+                        },
+                        "required": [
+                          "line",
+                          "character"
+                        ],
+                        "additionalProperties": {}
+                      },
+                      "end": {
+                        "type": "object",
+                        "properties": {
+                          "line": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991,
+                            "description": "0-based line"
+                          },
+                          "character": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991,
+                            "description": "0-based UTF-16 code unit"
+                          }
+                        },
+                        "required": [
+                          "line",
+                          "character"
+                        ],
+                        "additionalProperties": {}
+                      }
+                    },
+                    "required": [
+                      "start",
+                      "end"
+                    ],
+                    "additionalProperties": {}
+                  },
+                  "markup_version": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "file",
+                  "range",
+                  "markup_version"
+                ],
+                "additionalProperties": {}
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where the markup block is"
+          },
+          "lean": {
+            "type": "object",
+            "properties": {
+              "binding": {
+                "type": "string",
+                "enum": [
+                  "none",
+                  "adjacent",
+                  "pinned"
+                ]
+              },
+              "statement": {
+                "description": "Fully-qualified statement `n`",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "justification": {
+                "description": "Fully-qualified `n.holds`, when it exists",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "justification_kind": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "axiom",
+                      "theorem",
+                      "other"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "uses": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Vocabulary the statement uses (its closure), from Lean"
+              },
+              "presupposes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Presupposition axioms in the statement footprint"
+              },
+              "axioms": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "`#print axioms` of the justification"
+              }
+            },
+            "required": [
+              "binding",
+              "statement",
+              "justification",
+              "justification_kind",
+              "uses",
+              "presupposes",
+              "axioms"
+            ],
+            "additionalProperties": {}
+          },
+          "status": {
+            "type": "object",
+            "properties": {
+              "formal": {
+                "type": "string",
+                "enum": [
+                  "informal",
+                  "formalized",
+                  "ill-formed"
+                ]
+              },
+              "proof": {
+                "type": "string",
+                "enum": [
+                  "none",
+                  "assumed",
+                  "pending-promotion",
+                  "conditional",
+                  "proved"
+                ]
+              },
+              "footprint": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Proved or conditional: what the proof rests on (node ids, `presup:<name>` and `axiom:<name>` entries); format 1.0 listed a conditional node's hypotheses here"
+              },
+              "conditional_on": {
+                "description": "Conditional: the node ids taken as hypotheses (format 1.1; empty otherwise)",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "flags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "formal",
+              "proof",
+              "footprint",
+              "flags"
+            ],
+            "additionalProperties": {}
+          },
+          "extensions": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "subject",
+          "type",
+          "natural_name",
+          "rationale",
+          "stance",
+          "source",
+          "asserted",
+          "premises",
+          "worded_by",
+          "location",
+          "lean",
+          "status",
+          "extensions"
+        ],
+        "additionalProperties": {}
+      }
+    },
+    "vocabulary": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "description": "sort, predicate, function, constant, presupposition, definition, lemma, unmarked-axiom, other"
+          },
+          "type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "gloss": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "used_by": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string"
+                  },
+                  "range": {
+                    "type": "object",
+                    "properties": {
+                      "start": {
+                        "type": "object",
+                        "properties": {
+                          "line": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991,
+                            "description": "0-based line"
+                          },
+                          "character": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991,
+                            "description": "0-based UTF-16 code unit"
+                          }
+                        },
+                        "required": [
+                          "line",
+                          "character"
+                        ],
+                        "additionalProperties": {}
+                      },
+                      "end": {
+                        "type": "object",
+                        "properties": {
+                          "line": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991,
+                            "description": "0-based line"
+                          },
+                          "character": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991,
+                            "description": "0-based UTF-16 code unit"
+                          }
+                        },
+                        "required": [
+                          "line",
+                          "character"
+                        ],
+                        "additionalProperties": {}
+                      }
+                    },
+                    "required": [
+                      "start",
+                      "end"
+                    ],
+                    "additionalProperties": {}
+                  }
+                },
+                "required": [
+                  "file",
+                  "range"
+                ],
+                "additionalProperties": {}
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "flags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "subject",
+          "kind",
+          "type",
+          "gloss",
+          "used_by",
+          "location",
+          "flags"
+        ],
+        "additionalProperties": {}
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "premise",
+              "verified",
+              "lean-ref"
+            ]
+          },
+          "source": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "declared",
+              "lean"
+            ]
+          },
+          "where": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "statement",
+                  "proof"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "conditional": {
+            "type": "boolean"
+          },
+          "mismatch": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "declared-unused",
+                  "used-undeclared"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "source",
+          "target",
+          "origin",
+          "where",
+          "conditional",
+          "mismatch"
+        ],
+        "additionalProperties": {}
+      }
+    },
+    "attempts": {
+      "type": "array",
+      "items": {}
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "error",
+              "warning",
+              "info",
+              "hint"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "file": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "range": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "start": {
+                    "type": "object",
+                    "properties": {
+                      "line": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991,
+                        "description": "0-based line"
+                      },
+                      "character": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991,
+                        "description": "0-based UTF-16 code unit"
+                      }
+                    },
+                    "required": [
+                      "line",
+                      "character"
+                    ],
+                    "additionalProperties": {}
+                  },
+                  "end": {
+                    "type": "object",
+                    "properties": {
+                      "line": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991,
+                        "description": "0-based line"
+                      },
+                      "character": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991,
+                        "description": "0-based UTF-16 code unit"
+                      }
+                    },
+                    "required": [
+                      "line",
+                      "character"
+                    ],
+                    "additionalProperties": {}
+                  }
+                },
+                "required": [
+                  "start",
+                  "end"
+                ],
+                "additionalProperties": {}
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "node_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "code",
+          "severity",
+          "message",
+          "file",
+          "range",
+          "node_id"
+        ],
+        "additionalProperties": {}
+      }
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "node_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "path",
+          "sha256",
+          "node_count"
+        ],
+        "additionalProperties": {}
+      }
+    }
+  },
+  "required": [
+    "format",
+    "format_version",
+    "generator",
+    "position_encoding",
+    "line_base",
+    "generated_at",
+    "semantic",
+    "subjects",
+    "nodes",
+    "vocabulary",
+    "edges",
+    "attempts",
+    "diagnostics",
+    "files"
+  ],
+  "additionalProperties": {},
+  "title": "telelean graph.json 1.x",
+  "description": "The whole telelean project (every subject) as written to .telelean/graph.json: nodes with derived statuses, vocabulary, edges and diagnostics. Positions are 0-based lines and UTF-16 characters. Unknown properties must be ignored (minor versions add optional fields)."
+}

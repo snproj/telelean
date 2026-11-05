@@ -1,0 +1,45 @@
+{
+ "name": "jotai",
+ "latest": "3.0.1",
+ "dist_tags": {
+  "latest": "3.0.1"
+ },
+ "latest_published": "2026-09-29T14:18:19.043Z",
+ "modified": "2026-09-29T14:18:19.389Z",
+ "created": "2020-08-11T22:29:21.284Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 112768,
+ "fileCount": 70,
+ "tarball": "https://registry.npmjs.org/jotai/-/jotai-3.0.1.tgz",
+ "dependencies": {},
+ "peerDependencies": {
+  "react": ">=18.0.0",
+  "@types/react": ">=18.0.0"
+ },
+ "repository": "git+https://github.com/pmndrs/jotai.git",
+ "recent_versions": [
+  [
+   "3.0.0-alpha.0",
+   "2026-07-20T12:27:09.376Z"
+  ],
+  [
+   "2.20.3",
+   "2026-08-24T07:26:18.202Z"
+  ],
+  [
+   "3.0.0-alpha.1",
+   "2026-08-24T08:35:45.262Z"
+  ],
+  [
+   "3.0.0",
+   "2026-09-08T13:51:57.446Z"
+  ],
+  [
+   "3.0.1",
+   "2026-09-29T14:18:19.043Z"
+  ]
+ ],
+ "homepage": "https://github.com/pmndrs/jotai",
+ "description": "\ud83d\udc7b Primitive and flexible state management for React"
+}

@@ -1,0 +1,51 @@
+import Telelean
+namespace MM
+
+@[telelean support] axiom Character : Type
+@[telelean support] axiom Game : Type
+@[telelean support] axiom Cynder : Character
+@[telelean support] axiom newSpyro : Game
+@[telelean support] axiom HasDarkPast : Character → Prop
+@[telelean support] axiom IsPG : Game → Prop
+@[telelean support] axiom GoodAddition : Character → Game → Prop
+
+/-- Cynder is a character who has a dark past. -/
+@[telelean assumption (why := "familiar with gaming lore")]
+axiom cynder_dark : HasDarkPast Cynder
+
+@[telelean assumption "The new Spyro game is PG" (why := "known from gaming news")]
+axiom spyro_pg : IsPG newSpyro
+
+@[telelean assumption "PG games cannot have characters with dark pasts" (why := "ratings")]
+axiom pg_no_dark : ∀ g c, IsPG g → HasDarkPast c → ¬ GoodAddition c g
+
+-- code-less node: natural language only
+telelean_node assumption a.fans_like_dragons "Spyro fans like dragons" (why := "personal experience")
+telelean_node goal g.sales "The new Spyro game will sell well"
+
+@[telelean goal "Cynder is not both dark and a good addition"]
+abbrev not_dark_and_good : Prop := ¬ (HasDarkPast Cynder ∧ GoodAddition Cynder newSpyro)
+
+@[telelean derivation "Cynder would not be a good addition to the new Spyro game"]
+theorem cynder_not_good : ¬ GoodAddition Cynder newSpyro := pg_no_dark _ _ spyro_pg cynder_dark
+
+axiom sneaky : GoodAddition Cynder newSpyro → False
+@[telelean derivation "uses an undeclared axiom"]
+theorem sneaky_use : ¬ GoodAddition Cynder newSpyro := sneaky
+
+#telelean_status
+
+#telelean_consistency_statement MM.Consistent for MM
+
+/-- A model: consistency certificate for the axioms in `MM`. -/
+theorem consistent : Consistent :=
+  ⟨Unit, Unit, (), (), fun _ => True, fun _ => True, fun _ _ => False,
+   trivial, trivial, fun _ _ _ _ h => h, fun h => h, trivial⟩
+#print axioms consistent
+
+-- cheating 'model' that just reuses the axioms themselves:
+theorem consistent_cheat : Consistent :=
+  ⟨Character, Game, Cynder, newSpyro, HasDarkPast, IsPG, GoodAddition,
+   cynder_dark, spyro_pg, pg_no_dark, sneaky, trivial⟩
+#print axioms consistent_cheat
+end MM

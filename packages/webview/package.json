@@ -1,0 +1,14 @@
+{
+  "name": "@telelean/webview",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The telelean board (React 19 + zustand + pragmatic-drag-and-drop), built by Vite into packages/extension/dist/webview",
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.node.json",
+    "test:unit": "vitest run",
+    "test:e2e": "sh -c 'ulimit -c 0; playwright test'",
+    "test": "npm run typecheck && npm run build && npm run test:unit && npm run test:e2e"
+  }
+}

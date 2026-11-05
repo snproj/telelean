@@ -1,0 +1,64 @@
+{
+ "name": "vscode-extension-tester",
+ "latest": "8.28.1",
+ "dist_tags": {
+  "latest": "8.28.1"
+ },
+ "latest_published": "2026-10-05T07:56:41.040Z",
+ "modified": "2026-10-05T07:56:41.240Z",
+ "created": "2019-03-07T10:15:51.380Z",
+ "license": "Apache-2.0",
+ "deprecated": null,
+ "unpackedSize": 360011,
+ "fileCount": 45,
+ "tarball": "https://registry.npmjs.org/vscode-extension-tester/-/vscode-extension-tester-8.28.1.tgz",
+ "dependencies": {
+  "c8": "^12.0.0",
+  "got": "^16.0.0",
+  "tar": "^7.5.22",
+  "glob": "^13.0.6",
+  "find-up": "8.0.0",
+  "hpagent": "^1.2.0",
+  "js-yaml": "^5.4.2",
+  "fs-extra": "^11.4.1",
+  "unzipper": "^0.12.5",
+  "commander": "^14.0.3",
+  "@vscode/vsce": "^4.0.0",
+  "jsonc-parser": "^3.2.0",
+  "compare-versions": "^6.1.1",
+  "sanitize-filename": "^1.6.4",
+  "selenium-webdriver": "^4.49.0",
+  "@types/selenium-webdriver": "^4.35.7",
+  "@redhat-developer/locators": "^1.25.1",
+  "@redhat-developer/page-objects": "^1.25.1"
+ },
+ "peerDependencies": {
+  "mocha": ">=5.2.0",
+  "typescript": ">=4.6.2"
+ },
+ "repository": "git+https://github.com/redhat-developer/vscode-extension-tester.git",
+ "recent_versions": [
+  [
+   "8.26.0",
+   "2026-09-07T08:53:45.346Z"
+  ],
+  [
+   "8.26.1",
+   "2026-09-09T09:42:24.534Z"
+  ],
+  [
+   "8.27.0",
+   "2026-09-14T13:27:17.429Z"
+  ],
+  [
+   "8.28.0",
+   "2026-10-02T09:54:35.652Z"
+  ],
+  [
+   "8.28.1",
+   "2026-10-05T07:56:41.040Z"
+  ]
+ ],
+ "homepage": "https://redhat-developer.github.io/vscode-extension-tester/",
+ "description": "ExTester is a package that is designed to help you run UI tests for your Visual Studio Code extensions using selenium-webdriver."
+}

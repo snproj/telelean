@@ -1,0 +1,46 @@
+{
+ "name": "monaco-editor",
+ "latest": "0.57.0",
+ "dist_tags": {
+  "latest": "0.57.0",
+  "next": "0.57.0-rc.2"
+ },
+ "latest_published": "2026-09-24T21:33:55.189Z",
+ "modified": "2026-09-24T21:33:55.441Z",
+ "created": "2016-05-31T10:44:28.012Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 101674083,
+ "fileCount": 1918,
+ "tarball": "https://registry.npmjs.org/monaco-editor/-/monaco-editor-0.57.0.tgz",
+ "dependencies": {
+  "marked": "14.0.0",
+  "dompurify": "3.4.15"
+ },
+ "peerDependencies": {},
+ "repository": "git+https://github.com/microsoft/monaco-editor.git",
+ "recent_versions": [
+  [
+   "0.56.0-dev-20260211",
+   "2026-02-11T07:30:49.951Z"
+  ],
+  [
+   "0.56.0-dev-20260625",
+   "2026-06-25T12:17:02.240Z"
+  ],
+  [
+   "0.56.0",
+   "2026-07-20T13:17:43.601Z"
+  ],
+  [
+   "0.57.0-rc.2",
+   "2026-09-24T19:35:04.581Z"
+  ],
+  [
+   "0.57.0",
+   "2026-09-24T21:33:55.189Z"
+  ]
+ ],
+ "homepage": "https://github.com/microsoft/monaco-editor",
+ "description": "A browser based code editor"
+}

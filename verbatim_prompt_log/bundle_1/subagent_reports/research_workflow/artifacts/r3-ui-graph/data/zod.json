@@ -1,0 +1,46 @@
+{
+ "name": "zod",
+ "latest": "4.6.7",
+ "dist_tags": {
+  "next": "3.25.0-beta.20250519T094321",
+  "alpha": "3.25.68-alpha.11",
+  "beta": "4.1.13-beta.0",
+  "canary": "4.5.0-canary.20260828T171753",
+  "latest": "4.6.7"
+ },
+ "latest_published": "2026-10-12T16:29:37.778Z",
+ "modified": "2026-10-12T16:29:38.042Z",
+ "created": "2020-03-07T21:19:15.387Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 6148944,
+ "fileCount": 840,
+ "tarball": "https://registry.npmjs.org/zod/-/zod-4.6.7.tgz",
+ "dependencies": {},
+ "peerDependencies": {},
+ "repository": "git+https://github.com/colinhacks/zod.git",
+ "recent_versions": [
+  [
+   "4.6.3",
+   "2026-09-12T22:23:48.121Z"
+  ],
+  [
+   "4.6.4",
+   "2026-09-13T00:12:11.332Z"
+  ],
+  [
+   "4.6.5",
+   "2026-09-13T23:25:14.644Z"
+  ],
+  [
+   "4.6.6",
+   "2026-10-11T16:18:23.878Z"
+  ],
+  [
+   "4.6.7",
+   "2026-10-12T16:29:37.778Z"
+  ]
+ ],
+ "homepage": "https://zod.dev",
+ "description": "TypeScript-first schema declaration and validation library with static type inference"
+}

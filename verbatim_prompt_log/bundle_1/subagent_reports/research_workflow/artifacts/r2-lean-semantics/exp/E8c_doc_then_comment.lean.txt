@@ -1,0 +1,9 @@
+/-- docstring, then a plain comment, then the declaration -/
+/- @@ telelean
+id: n1
+-/
+def y := 2
+open Lean in
+#eval show Lean.Elab.Command.CommandElabM Unit from do
+  let d ← Lean.findDocString? (← Lean.getEnv) `y
+  IO.println s!"{repr d}"

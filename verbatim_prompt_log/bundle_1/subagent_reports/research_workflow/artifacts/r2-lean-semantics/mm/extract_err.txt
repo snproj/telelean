@@ -1,0 +1,1 @@
+lean --run Extract.lean: 3.26 s wall, 2010592 KB maxrss

@@ -1,0 +1,58 @@
+/-! # E4: Encoding (ii) — assumptions bundled in a structure / class -/
+
+/-- The whole mental model as a single theory: signature + axioms as fields. -/
+structure World where
+  Character : Type
+  Game : Type
+  Cynder : Character
+  newSpyro : Game
+  HasDarkPast : Character → Prop
+  IsPG : Game → Prop
+  GoodAddition : Character → Game → Prop
+  /-- WHY: familiar with gaming lore -/
+  cynder_dark : HasDarkPast Cynder
+  /-- WHY: gaming news -/
+  spyro_pg : IsPG newSpyro
+  pg_no_dark : ∀ g c, IsPG g → HasDarkPast c → ¬ GoodAddition c g
+  unused_assumption : ∀ g, IsPG g
+
+theorem World.cynder_not_good (W : World) : ¬ W.GoodAddition W.Cynder W.newSpyro :=
+  W.pg_no_dark _ _ W.spyro_pg W.cynder_dark
+
+#print axioms World.cynder_not_good
+#print World.cynder_not_good
+
+/-- Consistency certificate = a model (an instance of the structure). -/
+def World.model : World where
+  Character := Unit
+  Game := Unit
+  Cynder := ()
+  newSpyro := ()
+  HasDarkPast _ := True
+  IsPG _ := True
+  GoodAddition _ _ := False
+  cynder_dark := trivial
+  spyro_pg := trivial
+  pg_no_dark _ _ _ _ h := h
+  unused_assumption _ := trivial
+#print axioms World.model
+
+/-! ## Variant: one Prop-structure per assumption over a fixed vocabulary (axioms for vocab) -/
+axiom Character : Type
+axiom Cynder : Character
+axiom HasDarkPast : Character → Prop
+/-- each assumption is a separate class (Prop) -/
+class CynderDark : Prop where
+  out : HasDarkPast Cynder
+theorem uses_cd [h : CynderDark] : HasDarkPast Cynder := h.out
+#print axioms uses_cd
+#check @uses_cd
+
+/-! ## Variant: section variables with a bundled class -/
+class Assumptions : Prop where
+  cd : HasDarkPast Cynder
+section
+variable [Assumptions]
+theorem t1 : HasDarkPast Cynder := Assumptions.cd
+#check @t1
+end

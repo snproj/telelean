@@ -1,0 +1,132 @@
+# fix-2:core+runner+docs (agent acdc41c098175d46c)
+
+## summary
+I fixed all three issues. Every check I ran passed.
+
+**Major: proofs carried by declarations that are not theorems.** The rules are in `/home/zhengyew/telelean/packages/core/src/gate/rules.ts`.
+
+**Footprint.** The `footprint` rule now judges every declaration added or changed in the run, of any kind or type: def, abbrev, instance, opaque, structure, class and inductive. Axioms stay with `new-axiom`.
+- Names that only Lean reports are judged too, such as a `where` declaration or a structure's field. They count as new when the declaration containing them is added or changed. When the reference has no Lean facts (a round start or Accept's base), the name counts as new only if its source text is new.
+- A structure or class also answers for what the constants written in its source rest on. Checked on the pinned Lean 4.35: a field's default value lives in a hidden `S.f._default` definition. Neither `#print axioms S` nor the `.ilean` index lists it, but the index does record that the structure mentions `.holds`.
+- A proof is held to the permitted set. Any other declaration is held to the permitted set plus the existence presuppositions. Without that, every new constant `noncomputable opaque c : T` would fail, since it rests on `T.exists` by design.
+- The "Lean reported nothing about it" refusal now covers every kind of declaration, a `private structure` included.
+- Claude gets a dedicated message for a non-theorem ("… is not a theorem but carries a proof resting on …").
+
+**Before the freeze.** A declaration that is not a proof but rests on more than Lean's standard axioms, the vocabulary and the presuppositions now counts as a proof written before the freeze (finding token `carrier`, with its own board sentence). This also applies when it rests on a selected premise, since D-19 forbids every proof before the freeze. The presupposition-instance pattern can no longer hide such a proof either.
+
+**Tests.**
+- New core test `/home/zhengyew/telelean/packages/core/test/gate/carriers.test.ts` (9 tests). It covers the PLift def, the Inhabited instance, a structure default and a `where` declaration, in not-proved and proved rounds, plus controls that must pass.
+- Two new end-to-end cheat scripts, `cheat-carrier-not-proved` and `cheat-carrier-proved`, run with real Lean. In both, the first finish fails with `footprint` for each of the three carriers and the retry passes. In the not-proved one, `check_lean` and the freeze also refuse the carriers first. After Accept, the user's file contains none of them.
+- Run against the old rules, 6 of the 8 core tests in the file at that time and both end-to-end cheat tests fail. Against the new rules they pass.
+
+**Minor: walkthrough script tripwire.** `/home/zhengyew/telelean/scripts/walkthrough-claude.mjs` now refuses `--live` at once for any value that arms the quota tripwire (`true` too), not only `1`. It uses the runner's own rule, kept in a new import-free helper `/home/zhengyew/telelean/scripts/quota-tripwire.mjs` so the script can decide before it bundles anything. A new runner test (`quotaTripwire.test.ts`) checks the helper against `realClaudeDisabled()` for 16 spellings without running the script. I also added the suggested `true` case to `walkthroughScript.test.ts`, but did not run it (see test runs).
+
+**Minor: docs.**
+- `docs/m2-plan.md`:
+  - section 14 now logs the webview fixer's two conventions (the `Not started:` prefix shown as an info toast, and the persisted `runSplit` key) and my round-2 changes;
+  - 15.1 #9 is marked superseded (pointing to 3.2 and decisions-log 27);
+  - #10 and #30 note the round-2 extension;
+  - 3.3, 10.3 and 10.4 are updated.
+- `docs/user-guide.md` 10.6 now says that a proof hidden in a definition, instance or structure field is checked too.
+- `docs/decisions-log.md` has a new section 28, with the raw-diff placement recorded as an open question for the user.
+
+I did not run the root `npm run build`. The other fixer's VS Code smoke test was running, and the root build deletes `packages/extension/dist/extension.js` and `out/`. Their rebuild of the extension bundle at 01:45:31 came after my last source change (01:44:37) and contains the new gate code (checked by grep). I rebuilt `packages/core/dist`; the runner build is typecheck-only and passes.
+
+## files_changed
+- /home/zhengyew/telelean/packages/core/src/gate/rules.ts
+- /home/zhengyew/telelean/packages/core/src/gate/describe.ts
+- /home/zhengyew/telelean/packages/core/src/gate/types.ts
+- /home/zhengyew/telelean/packages/core/src/gate/index.ts
+- /home/zhengyew/telelean/packages/core/test/gate/carriers.test.ts
+- /home/zhengyew/telelean/packages/core/dist/ (rebuilt by `npm run build` in packages/core, tsc output)
+- /home/zhengyew/telelean/packages/runner/test/run/quotaTripwire.test.ts
+- /home/zhengyew/telelean/packages/runner/test/run/walkthrough.e2e.test.ts
+- /home/zhengyew/telelean/packages/runner/test/run/walkthroughScript.test.ts
+- /home/zhengyew/telelean/scripts/quota-tripwire.mjs
+- /home/zhengyew/telelean/scripts/walkthrough-claude.mjs
+- /home/zhengyew/telelean/test-fixtures/walkthrough/cheat-carrier-not-proved.json
+- /home/zhengyew/telelean/test-fixtures/walkthrough/cheat-carrier-proved.json
+- /home/zhengyew/telelean/test-fixtures/walkthrough/README.md
+- /home/zhengyew/telelean/docs/m2-plan.md
+- /home/zhengyew/telelean/docs/user-guide.md
+- /home/zhengyew/telelean/docs/decisions-log.md
+
+## test_runs
+Logs are in /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2fix2-core-runner/logs.
+
+**Core**
+- `npm test` (tsc over src and tests, then vitest), final run at 02:00: 48 files, 495 tests passed.
+- New `test/gate/carriers.test.ts`: 9 passed.
+- Mutation checks:
+  - with the verifier's pre-fix `rules.ts` and `describe.ts` swapped in, 6 of the 8 tests the file had then failed (the 2 controls passed), then I restored the files;
+  - disabling the round-start fallback made its test fail, then I restored it.
+- `npm run build` (tsc emit) passed.
+
+**Runner**
+- Typecheck (`tsc -p tsconfig.test.json`) passed; runner `npm run build` (typecheck only) passed.
+- `npx vitest run --exclude test/run/walkthroughScript.test.ts --exclude test/run/smokeScript.test.ts`: 52 files, 520 passed, 1 skipped.
+  - I ran it twice: 01:40–01:50, then again 01:50–02:00 on the final code (my `rules.ts` had changed during the first run).
+  - Lowest available memory was 52.3 GB in the first run and 53.0 GB in the second.
+- The two new end-to-end cheat tests (real Lean, `-t carrier`): 2 passed in 33 s. Against the pre-fix `rules.ts` both failed ("expected 'Gate passed…' to match /^Gate failed/"), then I restored the file.
+- `test/run/quotaTripwire.test.ts`: 2 passed.
+
+**Walkthrough dry run**
+- `node scripts/walkthrough-claude.mjs --dry-run --reading both --work-dir <scratch>/walk`: exit 0 in 30 s.
+  - Normative: proved and accepted, PASSED.
+  - Literal: not proved, ghost-1 adopted, round 2 proved and accepted, PASSED.
+
+**Scratch probe of the new fixtures**
+- Results are in /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2fix2-core-runner/probes/out/carriers-result.json.
+  - `check_lean` and `freeze_statements` list `helper_plift`, `helper_inh` and `HelperS` as carried proofs.
+  - The gate reports `footprint` for all three.
+  - After the retry and Accept, the user's file contains no helper.
+
+**Not run by me**
+- `test/run/walkthroughScript.test.ts` (including the new `TELELEAN_NO_REAL_CLAUDE=true` case) and `test/run/smokeScript.test.ts`. They start the scripts without `--dry-run` and set `TELELEAN_WALKTHROUGH_LIVE` or `TELELEAN_SMOKE_LIVE` in child processes, which my safety rules forbid. They use a fake `--binary` and keep the tripwire armed.
+- The root `npm run build` (reason in the summary).
+
+**Static check**
+- `node --check` on both scripts passed.
+
+## resolved
+- MAJOR (core): the footprint rule now judges every declaration added or changed in the run, whatever its kind or type (def, abbrev, instance, opaque, structure, class, inductive), plus names only Lean reports inside one (`where` declarations, structure fields). A structure or class also answers for its source's `refs`, which catches field defaults hidden in `S.f._default`. Proofs are held to the permitted set; anything else to the permitted set plus the existence presuppositions. The no-facts refusal covers every kind. The verifier's FO-1, FO-2 and FO-4 (not-proved) and FO-7 (proved) cases now fail the gate with real Lean (cheat scripts `cheat-carrier-not-proved` and `cheat-carrier-proved`).
+- MAJOR (core, same issue): `proof-before-freeze` gains token `carrier`: a declaration that is not a proof but rests on more than standard axioms, signature and presuppositions is refused before the freeze. This covers `check_lean` and the freeze, and the presupposition-instance pattern can no longer hide a proof.
+- MAJOR (tests): new core test file `test/gate/carriers.test.ts` (9 tests) plus two end-to-end cheat scripts (PLift def, Inhabited instance, structure default) in a not-proved and a proved round. Both fail against the pre-fix code and pass now.
+- MINOR (scripts): `walkthrough-claude.mjs` refuses `--live` at once for any arming value of `TELELEAN_NO_REAL_CLAUDE` (any non-empty value except 0/false, case-insensitive). The rule is in `scripts/quota-tripwire.mjs`, kept equal to `realClaudeDisabled` by `test/run/quotaTripwire.test.ts`. The suggested `walkthroughScript.test.ts` case for `true` is added but was not run by me.
+- MINOR (docs): plan section 14 logs the webview fixer's `Not started:` consent-declined convention and the `runSplit` webview-state key (plus my round-2 rows). Plan 15.1 #9 is marked superseded with pointers to 3.2 and decisions-log 27. The raw-diff placement is recorded as an open question for the user in decisions-log section 28. User guide 10.6 and plan 3.3, 10.3 and 10.4 are updated.
+
+## open_issues
+- Main session: please run packages/runner `test/run/walkthroughScript.test.ts` (including the new `TELELEAN_NO_REAL_CLAUDE=true` case) and `test/run/smokeScript.test.ts`. They start the scripts with `--live` (no `--dry-run`) and set `TELELEAN_WALKTHROUGH_LIVE` or `TELELEAN_SMOKE_LIVE` in child processes, which my safety rules forbid. They use a fake `--binary`, keep the tripwire armed and are designed to refuse before anything starts.
+- Main session: run a final root `npm run build` once both fixers are done. I skipped it because the other fixer's VS Code smoke test was running, and the root build deletes `packages/extension/dist/extension.js` and `out/`. The current extension bundle (built by the other fixer at 01:45:31) already contains my final core/runner sources: no core/runner source changed after it, and grep finds the new strings.
+- For the user: where should "Raw Lean diff…" open? Either keep splitting the editor beside the board (the board shrinks to half width when it is the only group; the current behaviour), or open the diff as a tab in the board's own group. Recorded in docs/decisions-log.md section 28.
+- Optional follow-up: the static system prompt (plan 5.1; runner `systemPrompt.ts` plus its test fixture and `prompts.test.ts`) still says only "Every theorem you add, lemmas included, may rest only on the selected premises." The gate now enforces this for every declaration. I left the frozen prompt unchanged because the gate's failure message tells Claude exactly what to fix; a wording update must change all three places together.
+- Known limits, documented in decisions-log section 28 and not changed: an `example` written after the freeze is not judged (it has no name, so nothing can use it). A field default written as a tactic (`h : p := by exact p.holds`) is not a proof term and is invisible to Lean's index; any proof that builds such a structure shows the assumption in its own footprint.
+
+## minor_decisions
+- **decision:** Anything that is not a proof may also rest on the vocabulary's existence presuppositions (`T.exists`); proofs stay held to the permitted set exactly.
+  - **rationale:** A constant `noncomputable opaque c : T` and a presupposition instance rest on `T.exists` by design (D-3). Judging them strictly would fail every new constant of a sort the selected statements do not mention. A presupposition only says a sort is non-empty, and any proof using such a constant is still judged strictly.
+- **decision:** The source-references extension (also judging what the constants a declaration mentions rest on) applies to structures and classes only.
+  - **rationale:** Checked with the pinned Lean 4.35. Structure and class field defaults live in `S.f._default`, which neither `#print axioms S` nor `.ilean` lists, while `.ilean` attributes the usage to S. An inductive's constructor defaults are `optParam`s that `#print axioms` already follows. Using references for theorems would flag lemmas a proof mentions but never uses (e.g. in `simp [x]`).
+- **decision:** Names only Lean reports count as added when their containing declaration (found by range) is added or changed. Without one, the name must be new to the reference; if the reference has no facts (round start, Accept base), its source text must also be new.
+  - **rationale:** The engine builds the round-start model from text only, so `known` lacks such names. Without the text check, the user's own declarations could be flagged as carriers in a Feedback round.
+- **decision:** Before the freeze, a 'carrier' is any declaration that is not a proof and whose footprint goes beyond standard axioms, signature and presuppositions, including one resting on a selected premise's `.holds`.
+  - **rationale:** D-19 forbids every proof before the freeze. This criterion leaves vocabulary, definitions, presupposition instances and Lean's generated structure-field projections (theorems over vocabulary only) alone.
+- **decision:** `RuleReport.footprints` (shown to Claude in check results) still lists only proofs; findings for non-proofs use their own message ('… is not a theorem but carries a proof resting on …').
+  - **rationale:** Keeps Claude's check output and the report card focused on proofs; the finding tells Claude exactly what to remove.
+- **decision:** The tripwire rule for scripts lives in a new import-free `scripts/quota-tripwire.mjs`, and `smoke-claude.mjs` is not touched.
+  - **rationale:** The walkthrough script must decide before it bundles the TypeScript runner, so it cannot import `realClaudeDisabled`. The smoke script already follows the rule inline, and its test is one I may not run, so changing it would be unverified.
+- **decision:** Test the walkthrough refusal without running the script: a value-by-value comparison with `realClaudeDisabled` plus a check that the script imports the helper and refuses before esbuild, `mkdirSync(work` and `cpSync(`.
+  - **rationale:** My safety rules forbid running the script without `--dry-run`. The verifier's suggested spawn-based test case is added for the main session.
+- **decision:** Did not run the root `npm run build`; built only core (tsc emit) and runner (typecheck).
+  - **rationale:** The other fixer's VS Code smoke run uses `packages/extension/dist` and `out/`, which the root build deletes. The extension bundle already includes my final sources, verified by timestamps and grep.
+
+## effects_outside_repo
+- Files written only in my scratch dir, /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2fix2-core-runner (about 17 MB): logs, npm debug logs, Lean probe files, the vitest probe (with a symlink to the repo's node_modules), the walkthrough dry-run work dir, and backups of rules.ts and describe.ts used for the mutation checks.
+- Ran the pinned Lean toolchain binary directly (~/.elan/toolchains/leanprover--lean4---v4.35.0/bin/lean) on scratch probe files, plus the runner's sandboxed Lean jobs from the tests and the dry run. ~/.elan was used read-only. ~/.elan/known-projects is unchanged (mtime 2026-11-01 09:09:13; the dry-run summary counts 38 entries before and after).
+- The tests and the dry run started transient systemd --user scopes (`telelean-*`) through the runner's sandbox. None are left afterwards (`systemctl --user list-units 'telelean-*'` is empty), and none of my processes remain.
+- git ran only inside scratch test repositories created by the tests and the dry run, with isolated config. No git in the repo or in mental_model.
+- No network use, no installs or downloads, no pushes, no Claude CLI or LLM session. TELELEAN_NO_REAL_CLAUDE=1 was set throughout.
+- My npm debug logs went to my scratch npm-logs. All ~/.npm/_logs files written since my start have cwd packages/webview or packages/extension, so they come from the other fixer, not me.
+- Real home check (files newer than my start marker, app caches excluded): only those npm logs, Claude Code's own ~/.claude and ~/.claude.json, and ~/.local/state/wireplumber, none of them mine. VS Code settings, extensions, ~/.config, ~/telelean_scripts and git global config were not touched.
+- Inside the repo, vitest updated node_modules/.vitest-cache, and packages/core/dist was rebuilt.
+

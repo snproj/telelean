@@ -1,0 +1,11 @@
+{
+  "challenge_module": "Model.Challenge",
+  "solution_module": "Model.Solution",
+  "theorem_names": ["Telelean.Model.cynder_not_good"],
+  "permitted_axioms": ["propext", "Quot.sound", "Classical.choice",
+    "Telelean.Model.Character", "Telelean.Model.Game", "Telelean.Model.cynder",
+    "Telelean.Model.newSpyro", "Telelean.Model.HasDarkPast", "Telelean.Model.IsPG",
+    "Telelean.Model.AppearsIn", "Telelean.Model.GoodAdditionTo",
+    "Telelean.Model.cynder_dark_past", "Telelean.Model.newSpyro_pg",
+    "Telelean.Model.pg_no_dark", "Telelean.Model.good_needs_appear"]
+}

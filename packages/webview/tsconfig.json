@@ -1,0 +1,16 @@
+{
+  // Browser code only: DOM typings, no Node typings.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "types": ["vite/client", "vscode-webview"],
+    "noEmit": true,
+    "paths": {
+      "@telelean/core": ["../core/src/index.ts"]
+    }
+  },
+  "include": ["src"]
+}

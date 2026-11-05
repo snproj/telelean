@@ -1,0 +1,146 @@
+# close-fix-1 (agent a756f55e72563ff32)
+
+## summary
+I closed all five open items. Every suite passes on the final build, and `npm run build` at the root rebuilt packages/extension/dist, so the copy you installed has the fixes after "Developer: Reload Window".
+
+1. **Delete with Lean when other declarations use the card (webview).** When the host answers `needs-confirmation`, the delete dialog opens again and shows no error toast. The dialog:
+   - is titled "Delete its Lean code too?";
+   - lists the host's dependents: cards by their sentence, anything else by its Lean name in code font;
+   - says how many declarations use the code and that they stop compiling if it is deleted;
+   - offers **Delete anyway** (sends the delete again with `confirmed: true`), **Delete card only, keep Lean**, and **Cancel**, which has the focus.
+
+   A delete that was already confirmed is never asked again: if the host refuses it anyway, the reason shows as a toast instead of a loop of questions.
+
+2. **The `confirmed` flag (extension).** `actionMapping.ts` now passes it on: `{ kind: 'delete-node', id, keepLean, ...(confirmed ? { confirmed } : {}) }`, with a unit test. A new e2e test in the real VS Code instance, with real Lean and git, adds a derivation card and a lemma that both use cynder-dark-past (typed and saved in the editor), then:
+   - the dialog lists `["DCynder's dark past is on record", "Spyro.helper_lemma"]`;
+   - after Delete anyway, Main.lean is byte-for-byte what core plans (the block, docstring, abbrev and axiom removed in one piece; the goal's premises lose the id) and the layout loses the card;
+   - Undo restores every file byte-exactly, and Lean is fresh again.
+
+   The extension log shows the sequence: refused (needs-confirmation), then the resend with `confirmed: true`, applied, then Undo.
+
+3. **Dependents dialog for D→A / G→A (webview).** The dialog now shows core's own explanation, under the heading "This passes it arguments:", and the button **Rewrite them to use it directly**. The change to Goal keeps "Rewrite them to take it as a hypothesis" and also shows core's explanation. In the case the verifier hit (only the host asks, or it names other dependents than the board's arrows show), the title is built from the host's list and the explanation is the host's own message, so the dialog no longer says "stays valid".
+
+4. **Smoke-test flake (extension).** The code that recognises telelean's own file writes now remembers every text written to a file in the last 5 s, tracked separately for the editor and the disk. A late file event from the first of two quick writes is now recognised instead of triggering a Lean refresh. Going back to an earlier text with Undo in the editor still counts as your own change. Run against the old code, the verifier's scenario still fails (both events counted as outside writes); with the new code both are recognised. The model-boards suite passed 12 times in a row (two batches of 6, 12 tests each), plus once in each of 3 full smoke runs: 15 of 15.
+
+5. **Docs.**
+   - User guide: the blank-board workaround is gone; it now describes the delete flow as built, the current chip label "changed since last check", toast Undo, "Keep last N" asking first, the dialog button names, keyboard use, re-checks after another program writes a Lean file, and the narrow board.
+   - Decisions log: a new section 11 records the extension/webview fixer's decisions and the deferred junction dot; a new section 12 records this round's decisions; stale lines were fixed.
+   - m1-plan §14: 12 contract-change rows added.
+   - The `EditApplier` doc comment in runner types.ts now matches the extension's behaviour.
+
+Core needed no changes.
+
+## files_changed
+- /home/zhengyew/telelean/packages/webview/src/state/store.ts
+- /home/zhengyew/telelean/packages/webview/src/dialogs/Dialogs.tsx
+- /home/zhengyew/telelean/packages/webview/test/unit/store.test.ts
+- /home/zhengyew/telelean/packages/webview/test/e2e/m1-edits.spec.ts
+- /home/zhengyew/telelean/packages/webview/test/e2e/m1-drag.spec.ts
+- /home/zhengyew/telelean/packages/webview/test/shared/graphs.ts (new helper conditionalGraph)
+- /home/zhengyew/telelean/packages/extension/src/logic/actionMapping.ts
+- /home/zhengyew/telelean/packages/extension/src/logic/changeBatcher.ts
+- /home/zhengyew/telelean/packages/extension/src/vscode/registry.ts
+- /home/zhengyew/telelean/packages/extension/test/unit/actionMapping.test.ts
+- /home/zhengyew/telelean/packages/extension/test/unit/watchers.test.ts
+- /home/zhengyew/telelean/packages/extension/test/suite/e2e.test.ts
+- /home/zhengyew/telelean/packages/runner/src/workspace/types.ts (EditApplier doc comment only)
+- /home/zhengyew/telelean/docs/user-guide.md
+- /home/zhengyew/telelean/docs/decisions-log.md
+- /home/zhengyew/telelean/docs/m1-plan.md (section 14 rows only)
+- /home/zhengyew/telelean/packages/extension/dist/extension.js and .map (rebuilt 16:37:53 by root npm run build)
+- /home/zhengyew/telelean/packages/extension/dist/webview/* (rebuilt by vite, last at 16:40:45; same sources)
+- /home/zhengyew/telelean/packages/extension/out/** (suite bundles rebuilt)
+- /home/zhengyew/telelean/packages/core/dist/** (rewritten by the required root npm run build; core sources unchanged)
+- /home/zhengyew/telelean/packages/webview/test-results/*.png (Playwright screenshots, new: m1-delete-needs-confirmation.png, m1-dependents-to-assumption.png)
+
+## test_runs
+Final sequence, after the last source change. Each package was run directly through its local binaries, as its `npm test` does. Settings: PATH without ~/.elan/bin, LEAN_NUM_THREADS=4, ulimit -c 0, GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM=1, TELELEAN_TEST_TMP in scratch. Logs are in /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/closing-fixer-r1/logs/.
+
+- **Root `npm run build`:** exit 0 (core tsc, extension esbuild "Done", runner tsc, vite "built in 146ms").
+- **Core:** "core typecheck ok"; vitest "Test Files 32 passed (32) / Tests 349 passed (349)".
+- **Runner** (real Lean): "runner typecheck ok"; "Test Files 29 passed (29) / Tests 285 passed (285) / Duration 126.53s".
+- **Webview:**
+  - "WEBVIEW TYPECHECK OK" (both tsconfigs); vite "built in 177ms".
+  - Unit: "Test Files 6 passed (6) / Tests 89 passed (89)" (was 83; 6 new).
+  - Playwright: "49 passed (42.6s)" (was 47; 2 new). Home guard "unchanged"; no /tmp/tl-pw-chrome-* left.
+- **Extension:**
+  - "EXTENSION TYPECHECK OK"; unit "Test Files 14 passed (14) / Tests 97 passed (97)" (was 92; 5 new).
+  - smoke.mjs (xvfb, isolated profile): "30 passing (14s)", then e2e "13 passing (19s)" (was 12; new: the delete-confirmation test, 3219ms).
+  - "[smoke] vscode-test exit code 0; 0 isolation failure(s)".
+
+The same full sequence also passed once before a final webview-only tweak (the dependents-dialog title when the host's list differs): core 349, runner 285 (128.6s), webview 88 unit + 49 Playwright, extension 97 unit + 30 smoke + 13 e2e. One more full smoke run before that also passed (30 + 13, 0 isolation failures).
+
+**Model-boards suite** (TELELEAN_SMOKE_GREP='model boards'): two batches of 6 consecutive runs, each "12 passing", exit 0, "0 isolation failure(s)": 12 of 12. The suite also passed inside all 3 full smoke runs, so 15 of 15 in total. These loops used the 16:25 build, which already had the SelfWrites fix; the later change was webview-only.
+
+**Focused Playwright run** (m1-edits and m1-drag specs) during development: "14 passed".
+
+**Negative control:** an esbuild demo ran the verifier's race against the old and new SelfWrites:
+- old: lateDiskT1=false, nextDiskT0=false (the bug);
+- new: both true;
+- both keep "editor Undo back to T1 is an echo" = false.
+
+**Scratch experiment** with the real runner workspace (syntactic) on a copy of mental_model: an unconfirmed delete gives needs-confirmation ["dark-lemma","Spyro.helper_lemma"]; the confirmed delete removes exactly the block plus its declarations and the premise id; Undo restores the files.
+
+**Real VS Code log** (e2e run): deleteNode r14 → "refused (needs-confirmation): …" → deleteNode {"confirmed":true} r15 → "applied \"Delete: Cynder has a dark past\"" → "applied \"Undo: Delete: …\"".
+
+RAM watchdog (my own): lowest MemAvailable 36102 MB; it never had to kill anything.
+
+## resolved
+- 1 (major, webview): if the host answers needs-confirmation to deleting a card with its Lean, the delete dialog opens again. It lists outcome.dependents (cards by sentence, the rest as Lean names), says they stop compiling, and offers Delete anyway (resent with confirmed: true), Delete card only, keep Lean, and Cancel (focused). No error toast. A confirmed delete that is refused again shows a toast, never another question. Covered by 3 store unit tests, a Playwright test and the real-VS-Code e2e test.
+- 2 (major, extension): actionMapping.ts passes confirmed through to the delete-node action. Covered by a unit test and checked end to end in the real VS Code test instance: dependents listed, Delete anyway, Main.lean byte-exact to the core plan, layout without the card, Undo byte-exact, Lean fresh again.
+- 3 (minor, webview): the dependents dialog shows core's explanation. A change to Assumption uses 'This/These pass it arguments:' and 'Rewrite them to use it directly'; a change to Goal keeps 'Rewrite them to take it as a hypothesis'. When only the host asks (or its list differs), the title is built from its list and the explanation is its own message. Covered by 3 store unit tests and a Playwright test (incl. the verifier's G->A scenario).
+- 4 (minor, extension): SelfWrites remembers every text written to a file in the last 5 s, kept separately for the editor and the disk, so a late file event from the first of two quick writes is recognised. Covered by 4 new unit tests and an old-vs-new negative control. Model-boards suite: 12 of 12 consecutive runs, 15 of 15 in total.
+- 5 (minor, docs): user guide, decisions log (new sections 11 and 12, junction dot deferral, stale lines fixed), m1-plan section 14 (12 rows) and the runner EditApplier doc comment now match the code.
+- Final root npm run build done; packages/extension/dist (extension.js and webview bundle) is newer than every source file.
+
+## open_issues
+- docs/m1-plan.md section 2 (the list of refresh triggers) still does not mention 'a Lean file written by another program'. It is outside my assigned section, so I recorded it as a section 14 row instead; someone with access to section 2 should add it there.
+- Core's delete refusal message has a grammar slip for one dependent: 'breaks a declaration that uses it (…): they stop compiling'. The board no longer shows that message for this case (it shows the dialog instead), but it still appears in the extension log and in the rare toast paths. I did not change core because it was not strictly needed.
+- A card from another subject in the host's dependents list is shown by its card id in code font, because the board only knows its own subject's cards. Showing its sentence would need the host to send labels along with the dependents (a protocol addition).
+- Not addressed, outside this round's list (from the extension/webview fixer):
+- a dropdown stays open when its button scrolls out of view sideways on a narrow board;
+- a toast's Undo button appears a few milliseconds after the toast;
+- no automated test covers a real window reload.
+- Every run printed a VS Code console error 'InstantiationService has been disposed' twice (a workbench error while closing editor groups). The previous verifier's logs show the same, and no test fails because of it.
+
+## minor_decisions
+- **decision:** The existing delete dialog gained an optional dependents field (the host's list) and switches to a second form, rather than adding a new dialog kind.
+  - **rationale:** The task names the DeleteDialog. One dialog keeps the card-only note and the buttons consistent, and the dialog's key includes the form, so focus starts on Cancel again.
+- **decision:** Kept the existing button label 'Delete card only, keep Lean' in both forms of the dialog.
+  - **rationale:** I read the task's 'keep Delete card only (keep the Lean)' as keeping that button. The same label in the first and second form, and in the existing tests and user guide, avoids confusion.
+- **decision:** Only an unconfirmed delete with its Lean, of a card still on the board, re-opens the dialog. A refused confirmed delete, other refusals, or a card that disappeared meanwhile show the error toast.
+  - **rationale:** Prevents an endless loop of questions if a host ignores confirmed, and avoids a dialog that cannot render.
+- **decision:** The dependents dialog renders core's explanation for both directions and drops the hard-coded 'A goal is not taken as given' sentence.
+  - **rationale:** Core's text says what actually happens (removed vs. becomes an axiom, which hypothesis), in both directions.
+- **decision:** When the host asks for a kind-change confirmation that the board's own impact did not predict (or names other dependents), the title is built from the host's list and the explanation is the host's message.
+  - **rationale:** The board's text would contradict the question (the verifier's 'stays valid' case).
+- **decision:** SelfWrites keeps separate lists of recent texts for the editor and the disk, takes the oldest match, and forgets per stream on a mismatch, instead of the suggested 'match any recent text and never forget'.
+  - **rationale:** Never forgetting would treat Ctrl+Z in the editor back to an earlier telelean text as an echo and leave the model stale. Separate streams fix the late-event race and keep that protection.
+- **decision:** boards.test.ts was not changed (no waiting for events to drain before the typing test).
+  - **rationale:** The test should keep catching regressions in the echo bookkeeping; the bookkeeping fix alone made it pass 15 of 15 times.
+- **decision:** In the e2e test, the used card is created by an edit and save in VS Code (WorkspaceEdit + save) rather than by an outside file write.
+  - **rationale:** The e2e model sits outside the workspace folder, so relying on file watching there would be uncertain. Main.lean is compared byte-exactly against the expected removal; layout.json is compared as parsed JSON.
+- **decision:** I ran vitest with --no-cache and a module cache in my scratch dir, sent npm's logs to scratch, and called local binaries directly except for the required root npm run build and the npx inside smoke.mjs.
+  - **rationale:** Keeps cache and log writes out of paths not assigned to me (root node_modules/.vitest-cache, core/runner .vite, ~/.npm/_logs) without changing what the suites test.
+
+## effects_outside_repo
+- Scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/closing-fixer-r1/ (132 MB). It holds:
+- a backup tar of the files I could edit;
+- isolated VS Code profiles and model copies from 3 full smoke runs and 12 model-boards runs, including Lean .lake output and scratch git repos made by the suites;
+- runner test temp trees, the vitest module cache and npm logs;
+- logs, experiment and negative-control scripts, and the watchdog log.
+- /tmp: each of the 3 full Playwright runs created /tmp/tl-pw-chrome-XXXXXX as Chrome's isolated HOME/TMPDIR, and the harness deleted it at teardown. xvfb-run made transient /tmp/xvfb-run.* and X lock/socket files, which were removed. The /tmp name listing is the same as before.
+- /run/user/1002: transient IPC sockets of the VS Code test instances; the name listing is the same as before.
+- systemd --user: transient telelean-* scopes from runLean during the two runner suites and the e2e/model suites; none remain.
+- Lean: toolchain binaries in ~/.elan/toolchains/leanprover--lean4---v4.35.0 used read-only. ~/.elan/known-projects is unchanged (same size, mtime and line count).
+- Network: loopback only (Playwright's static server on 127.0.0.1:41739; the CDP port of the e2e test instance on 127.0.0.1). No downloads, no npm install, no Claude CLI, no pushes or uploads.
+- Real home: snapshots of ~/.config/google-chrome (and its Crash Reports), ~/.cache/google-chrome, ~/.copilot, ~/.local/share/vitest, ~/.config/Code (and its logs), the Trash, ~/.cache/fontconfig, ~/.pki, ~/.local/share/pki, ~/.npm/_logs, ~/.cache/ms-playwright, ~/.config/dconf and the home top level were unchanged in names and mtimes. The one exception: mtimes of DIPS-wal, Network Persistent State and TransportSecurity in ~/.config/Code (and of that directory). Your own running VS Code rewrites these periodically; my test instances used isolated user-data dirs, and their isolation checks report ~/.config/Code unchanged.
+- Inside the repo but outside my assigned paths:
+- packages/core/dist/** was rewritten twice by the required root npm run build (core sources unchanged);
+- the directory mtimes of packages/core/node_modules/.vite-temp and packages/runner/node_modules/.vite-temp changed (vitest writes and deletes its compiled config there; both are empty afterwards).
+
+No writes to mental_model/ or test-fixtures/, and no git in the repo.
+- Git ran only inside the suites' scratch repositories, with GIT_CONFIG_GLOBAL=/dev/null and GIT_CONFIG_NOSYSTEM=1.
+- Your installed extension (registered at packages/extension) now has the rebuilt dist; it takes effect after 'Developer: Reload Window'.
+- No processes of mine remain. I stopped my RAM watchdog at the end.
+

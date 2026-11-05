@@ -1,0 +1,10 @@
+axiom Game : Type
+axiom newSpyro : Game
+axiom IsPG : Game → Prop
+axiom spyro_pg : IsPG newSpyro
+-- typo: newSpryo instead of newSpyro
+theorem typo_stmt : IsPG newSpryo := sorry
+#check @typo_stmt
+#print axioms typo_stmt
+set_option autoImplicit false in
+theorem typo_stmt2 : IsPG newSpryo := sorry

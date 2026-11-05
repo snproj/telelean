@@ -1,0 +1,50 @@
+{
+ "name": "jointjs",
+ "latest": "3.7.7",
+ "dist_tags": {
+  "latest": "3.7.7",
+  "beta": "3.6.0-beta.2",
+  "alpha": "4.0.0-alpha.4"
+ },
+ "latest_published": "2023-11-07T09:54:27.759Z",
+ "modified": "2024-03-14T15:45:14.341Z",
+ "created": "2013-11-04T15:02:01.557Z",
+ "license": "MPL-2.0",
+ "deprecated": "This package has been deprecated in favor of '@joint/core'. The repository name has changed to improve organization and naming conventions. Please update your dependencies to use the new package name:\n\nnpm install @joint/core\n\nFor more information, visit the JointJS repository at: https://github.com/clientio/joint",
+ "unpackedSize": 8259667,
+ "fileCount": 157,
+ "tarball": "https://registry.npmjs.org/jointjs/-/jointjs-3.7.7.tgz",
+ "dependencies": {
+  "backbone": "~1.4.1",
+  "dagre": "~0.8.5",
+  "graphlib": "~2.1.8",
+  "jquery": "~3.7.1",
+  "lodash": "~4.17.21"
+ },
+ "peerDependencies": {},
+ "repository": "git+https://github.com/clientIO/joint.git",
+ "recent_versions": [
+  [
+   "3.7.7",
+   "2023-11-07T09:54:27.759Z"
+  ],
+  [
+   "4.0.0-alpha.1",
+   "2024-01-15T14:39:45.259Z"
+  ],
+  [
+   "4.0.0-alpha.2",
+   "2024-01-18T13:43:05.454Z"
+  ],
+  [
+   "4.0.0-alpha.3",
+   "2024-01-24T01:25:41.932Z"
+  ],
+  [
+   "4.0.0-alpha.4",
+   "2024-01-24T11:01:54.787Z"
+  ]
+ ],
+ "homepage": "http://jointjs.com",
+ "description": "JavaScript diagramming library"
+}

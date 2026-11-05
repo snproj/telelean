@@ -1,0 +1,66 @@
+/-
+@@ telelean v1
+id: character
+kind: DEFINITION
+natural_name: "A character that can appear in a game"
+origin: llm
+session: 2026-11-01T10-15-00Z-a1b2
+-/
+/-- A game character, modelled only by its name. -/
+structure Character where
+  name : String
+deriving Inhabited, Repr
+
+/-
+@@ telelean v1
+id: game
+kind: DEFINITION
+natural_name: "A video game"
+origin: llm
+-/
+opaque Game : Type
+
+/-
+@@ telelean v1
+id: has-dark-past
+kind: DEFINITION
+natural_name: "…has a dark past"
+origin: llm
+-/
+opaque hasDarkPast : Character → Prop
+
+/-
+@@ telelean v1
+id: is-pg
+kind: DEFINITION
+natural_name: "…is rated PG"
+origin: llm
+-/
+opaque isPG : Game → Prop
+
+/-
+@@ telelean v1
+id: good-addition
+kind: DEFINITION
+natural_name: "…would be a good addition to…"
+origin: llm
+-/
+opaque goodAddition : Character → Game → Prop
+
+/-
+@@ telelean v1
+id: cynder
+kind: DEFINITION
+natural_name: "Cynder (the dragon)"
+origin: llm
+-/
+def cynder : Character := ⟨"Cynder"⟩
+
+/-
+@@ telelean v1
+id: new-spyro
+kind: DEFINITION
+natural_name: "The new Spyro game"
+origin: llm
+-/
+axiom newSpyro : Game

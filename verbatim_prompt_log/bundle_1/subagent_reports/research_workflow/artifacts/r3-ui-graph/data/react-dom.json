@@ -1,0 +1,52 @@
+{
+ "name": "react-dom",
+ "latest": "19.3.1",
+ "dist_tags": {
+  "beta": "19.0.0-beta-26f2496093-20240514",
+  "rc": "19.0.0-rc.1",
+  "next": "19.3.0-canary-d5736f09-20260507",
+  "latest": "19.3.1",
+  "backport": "19.1.10",
+  "experimental": "0.0.0-experimental-e84e1492-20261031",
+  "canary": "19.3.0-canary-e84e1492-20261031"
+ },
+ "latest_published": "2026-10-14T16:49:10.081Z",
+ "modified": "2026-10-31T09:18:06.482Z",
+ "created": "2014-05-06T18:59:36.160Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 8067632,
+ "fileCount": 43,
+ "tarball": "https://registry.npmjs.org/react-dom/-/react-dom-19.3.1.tgz",
+ "dependencies": {
+  "scheduler": "^0.28.0"
+ },
+ "peerDependencies": {
+  "react": "^19.3.1"
+ },
+ "repository": "git+https://github.com/react/react.git",
+ "recent_versions": [
+  [
+   "0.0.0-experimental-c5ec5c6d-20261029",
+   "2026-10-29T16:26:11.824Z"
+  ],
+  [
+   "19.3.0-canary-a703ca64-20261030",
+   "2026-10-30T16:20:36.544Z"
+  ],
+  [
+   "0.0.0-experimental-a703ca64-20261030",
+   "2026-10-30T16:25:51.253Z"
+  ],
+  [
+   "19.3.0-canary-e84e1492-20261031",
+   "2026-10-31T09:16:09.998Z"
+  ],
+  [
+   "0.0.0-experimental-e84e1492-20261031",
+   "2026-10-31T09:18:06.184Z"
+  ]
+ ],
+ "homepage": "https://react.dev/",
+ "description": "React package for working with the DOM."
+}

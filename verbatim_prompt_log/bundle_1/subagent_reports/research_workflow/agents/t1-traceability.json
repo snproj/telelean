@@ -1,0 +1,1845 @@
+{
+ "sentences": [
+  {
+   "id": "S1",
+   "section": "Idea",
+   "text": "I would like to create a VS Code extension.",
+   "maps_to": [
+    "NFR-1"
+   ],
+   "note": "Headings ('# Idea', '# Implementation') and the '___' rule are structural and not counted as sentences."
+  },
+  {
+   "id": "S2",
+   "section": "Idea",
+   "text": "The goal of this extension would be to assist a user in creating an interactive map (at least clicking and dragging components) of the user's internal mental model about a subject, represented and supported by Lean code files that are in the directory that VSCode is currently in.",
+   "maps_to": [
+    "UI-1",
+    "DATA-1",
+    "IC-9",
+    "IC-15",
+    "IC-16"
+   ]
+  },
+  {
+   "id": "S3",
+   "section": "Idea",
+   "text": "The user would be able to modify the Lean model either directly by editing the files, or more commonly by prompting an AI.",
+   "maps_to": [
+    "DATA-8",
+    "UI-15",
+    "LLM-7",
+    "IC-7",
+    "IC-13"
+   ]
+  },
+  {
+   "id": "S4",
+   "section": "Idea",
+   "text": "The prompts would be in natural language, BUT should be able to be marked by the user using a UI switch (and read by the extension) as either creating an ASSUMPTION, a DERIVATION or a GOAL.",
+   "maps_to": [
+    "UI-6",
+    "UI-7",
+    "LLM-7",
+    "IC-6",
+    "IC-7"
+   ]
+  },
+  {
+   "id": "S5",
+   "section": "Idea",
+   "text": "An ASSUMPTION is an axiom that the user supplies based on what they feel is true about the world.",
+   "maps_to": [
+    "SEM-1",
+    "LEAN-2",
+    "IC-1",
+    "IC-2",
+    "IC-30"
+   ]
+  },
+  {
+   "id": "S6",
+   "section": "Idea",
+   "text": "An assumption should be annotated with a natural language description of why the user has that assumption.",
+   "maps_to": [
+    "DATA-5",
+    "IC-29"
+   ]
+  },
+  {
+   "id": "S7",
+   "section": "Idea",
+   "text": "A DERIVATION is something that can *purely* be derived from the ASSUMPTIONS -- it should never require new assumptions to be added to the model.",
+   "maps_to": [
+    "SEM-2",
+    "IC-1",
+    "IC-6",
+    "IC-10",
+    "IC-21"
+   ]
+  },
+  {
+   "id": "S8",
+   "section": "Idea",
+   "text": "A GOAL is something that the user eventually wants to prove, but has not yet found a way there via ASSUMPTIONS and DERIVATIONS.",
+   "maps_to": [
+    "SEM-3",
+    "IC-6",
+    "IC-31"
+   ]
+  },
+  {
+   "id": "S9",
+   "section": "Idea",
+   "text": "The extension will need to act as a harness where it can slot in an LLM (at least I must be able to slot in Claude using my current subscription because I want to use this).",
+   "maps_to": [
+    "LLM-1",
+    "LLM-2",
+    "PROC-7",
+    "IC-11",
+    "IC-12",
+    "IC-27",
+    "IC-32",
+    "IC-34"
+   ]
+  },
+  {
+   "id": "S10",
+   "section": "Idea",
+   "text": "The extension should also include a text input box.",
+   "maps_to": [
+    "UI-6",
+    "IC-7"
+   ]
+  },
+  {
+   "id": "S11",
+   "section": "Idea",
+   "text": "The extension tab itself should contain an interactive panel, which is visually split into three vertical sections, each containing a kind of node, and each being independently scrollable (because there might be many, many nodes):",
+   "maps_to": [
+    "UI-2",
+    "UI-3",
+    "NFR-2",
+    "IC-4",
+    "IC-17",
+    "IC-18"
+   ]
+  },
+  {
+   "id": "S12",
+   "section": "Idea",
+   "text": "1. A section listing all assumptions",
+   "maps_to": [
+    "UI-2"
+   ]
+  },
+  {
+   "id": "S13",
+   "section": "Idea",
+   "text": "2. A section listing all derivations",
+   "maps_to": [
+    "UI-2"
+   ]
+  },
+  {
+   "id": "S14",
+   "section": "Idea",
+   "text": "3. A section listing all goals",
+   "maps_to": [
+    "UI-2"
+   ]
+  },
+  {
+   "id": "S15",
+   "section": "Idea",
+   "text": "The extension must be able to draw arrows from any node in one section to a node in another section, so I think some kind of graph structure will emerge, and probably this will inform the choice of library to implement this part.",
+   "maps_to": [
+    "UI-4",
+    "UI-16",
+    "DATA-6",
+    "IC-5",
+    "IC-18"
+   ]
+  },
+  {
+   "id": "S16",
+   "section": "Idea",
+   "text": "Nodes should also be able to move from one section to another; for instance, an assumption should also be promotable to a derivation, or a derivation made into an assumption, or a goal moved to a derivation once it's proven, etc etc.",
+   "maps_to": [
+    "SEM-4",
+    "UI-5",
+    "LEAN-1",
+    "IC-6",
+    "IC-22"
+   ]
+  },
+  {
+   "id": "S17",
+   "section": "Idea",
+   "text": "An example use case of the harness might be something like:",
+   "maps_to": [
+    "IC-25",
+    "CONTEXT"
+   ],
+   "note": "Introduces the illustrative walkthrough S18-S33; 'might be something like' marks it as an example rather than an exhaustive specification. Carries no requirement by itself beyond making the walkthrough the de facto acceptance scenario (IC-25)."
+  },
+  {
+   "id": "S18",
+   "section": "Idea",
+   "text": "1. I want to prove that \"Cynder would not be a good addition to the new Spyro game\", so I add this as a GOAL.",
+   "maps_to": [
+    "SEM-3",
+    "UI-7",
+    "UI-8",
+    "IC-7"
+   ]
+  },
+  {
+   "id": "S19",
+   "section": "Idea",
+   "text": "The node is created, but no Lean code has been generated yet.",
+   "maps_to": [
+    "SEM-6",
+    "DATA-3",
+    "UI-8",
+    "IC-7"
+   ],
+   "note": "The identical sentence recurs as S21 and S23; each occurrence is counted separately."
+  },
+  {
+   "id": "S20",
+   "section": "Idea",
+   "text": "2. I know from being familiar with gaming lore that \"Cynder is a character who has a dark past\", so I add this as an ASSUMPTION, annotated with \"familiar with gaming lore\".",
+   "maps_to": [
+    "SEM-1",
+    "DATA-5",
+    "UI-7",
+    "UI-8",
+    "IC-30"
+   ]
+  },
+  {
+   "id": "S21",
+   "section": "Idea",
+   "text": "The node is created, but no Lean code has been generated yet.",
+   "maps_to": [
+    "SEM-6",
+    "DATA-3",
+    "UI-8",
+    "IC-7"
+   ]
+  },
+  {
+   "id": "S22",
+   "section": "Idea",
+   "text": "3. I know from gaming news that \"The new Spyro game is PG\", so I add this as an ASSUMPTION, annotated with \"known from gaming news\".",
+   "maps_to": [
+    "SEM-1",
+    "DATA-5",
+    "UI-7",
+    "UI-8"
+   ]
+  },
+  {
+   "id": "S23",
+   "section": "Idea",
+   "text": "The node is created, but no Lean code has been generated yet.",
+   "maps_to": [
+    "SEM-6",
+    "DATA-3",
+    "UI-8",
+    "IC-7"
+   ]
+  },
+  {
+   "id": "S24",
+   "section": "Idea",
+   "text": "4. Similarly, I add an ASSUMPTION that \"PG games cannot have characters with dark pasts\"",
+   "maps_to": [
+    "SEM-1",
+    "UI-7",
+    "UI-8",
+    "IC-30"
+   ],
+   "note": "No terminal period in the source. Unlike S20/S22, no rationale annotation is given (see tensions)."
+  },
+  {
+   "id": "S25",
+   "section": "Idea",
+   "text": "5. Finally, I select the three assumptions, and also click on the goal.",
+   "maps_to": [
+    "SEM-5",
+    "UI-9",
+    "IC-18",
+    "IC-31"
+   ]
+  },
+  {
+   "id": "S26",
+   "section": "Idea",
+   "text": "The options I select should be shown in a separate section below.",
+   "maps_to": [
+    "UI-9"
+   ]
+  },
+  {
+   "id": "S27",
+   "section": "Idea",
+   "text": "I click a button, and the LLM generates a Lean model representing what I have created.",
+   "maps_to": [
+    "UI-10",
+    "LLM-4",
+    "IC-7"
+   ]
+  },
+  {
+   "id": "S28",
+   "section": "Idea",
+   "text": "The essence of the button in this case is to say that \"I assert that the assumptions must be enough to prove the goal\".",
+   "maps_to": [
+    "SEM-5",
+    "UI-10",
+    "IC-1",
+    "IC-2",
+    "IC-10",
+    "IC-31"
+   ]
+  },
+  {
+   "id": "S29",
+   "section": "Idea",
+   "text": "The job of the LLM is to formulate the assumptions and the goal in Lean in some intuitive way, and generate signatures for the assumptions and goals, and prove the goal.",
+   "maps_to": [
+    "LLM-4",
+    "LEAN-1",
+    "LEAN-2",
+    "IC-3",
+    "IC-14",
+    "IC-21"
+   ]
+  },
+  {
+   "id": "S30",
+   "section": "Idea",
+   "text": "6. The LLM should ask questions to the user along the way; for instance, \"do you want to model characters\"? etc. which would help it understand the level of detail and the pragmatics (pragmatics in the sense it is used in linguistics; unspoken context) the user wants.",
+   "maps_to": [
+    "LLM-3",
+    "IC-3",
+    "IC-12",
+    "IC-28"
+   ],
+   "note": "Kept as one sentence: the '?' closes the quoted example question and 'etc. which would help ...' continues the same sentence."
+  },
+  {
+   "id": "S31",
+   "section": "Idea",
+   "text": "7. When the LLM is done, it will propose a diff (which must be overlayed graphically on the nodes, but also the user should be able to switch to seeing the diff to the Lean files themselves).",
+   "maps_to": [
+    "UI-11",
+    "LLM-5",
+    "IC-3",
+    "IC-13",
+    "IC-26"
+   ]
+  },
+  {
+   "id": "S32",
+   "section": "Idea",
+   "text": "This would cause several more nodes to be created in the extension window (added to the mental model); for instance, it might create a structure `Cynder` and a Prop `isCharacter`, or some other more fine-grained representation of the concept I am trying to bring across.",
+   "maps_to": [
+    "UI-11",
+    "LLM-6",
+    "IC-4",
+    "IC-23",
+    "IC-29"
+   ]
+  },
+  {
+   "id": "S33",
+   "section": "Idea",
+   "text": "The user can accept this, or else provide some feedback.",
+   "maps_to": [
+    "UI-12",
+    "LLM-5",
+    "IC-26",
+    "IC-28"
+   ]
+  },
+  {
+   "id": "S34",
+   "section": "Idea",
+   "text": "You should think about how to represent nodes not only in graphically in the extension, but also programatically.",
+   "maps_to": [
+    "DATA-6",
+    "PROC-4"
+   ],
+   "note": "Addressed to the implementer: a design task, not a runtime feature."
+  },
+  {
+   "id": "S35",
+   "section": "Idea",
+   "text": "Each node must correspond to something in a Lean file in the current directory -- therefore, I suggest a markup notation that will go in Lean comments.",
+   "maps_to": [
+    "DATA-1",
+    "DATA-2",
+    "IC-8",
+    "IC-19",
+    "IC-23"
+   ]
+  },
+  {
+   "id": "S36",
+   "section": "Idea",
+   "text": "Something like:",
+   "maps_to": [
+    "DATA-2"
+   ],
+   "note": "Introduces the code example S37 and signals that its syntax is only a suggestion."
+  },
+  {
+   "id": "S37",
+   "section": "Idea",
+   "text": "```\n/-\n@@ telelean\nnatural_name: \"Cynder would not be a good addition to the new Spyro game\"\ntype: GOAL\n-/\ndef cynder_not_ ...\n```",
+   "maps_to": [
+    "DATA-2",
+    "DATA-4",
+    "LEAN-2",
+    "IC-8",
+    "IC-24"
+   ],
+   "note": "Fenced code block counted as one unit."
+  },
+  {
+   "id": "S38",
+   "section": "Idea",
+   "text": "If the node does not yet have Lean code, then it should still be represented as a Lean comment with no accompanying Lean code.",
+   "maps_to": [
+    "SEM-6",
+    "DATA-3",
+    "IC-15",
+    "IC-19"
+   ]
+  },
+  {
+   "id": "S39",
+   "section": "Idea",
+   "text": "I don't think `sorry` would be the right thing to use for this, since that implies we do have a representation, but it's not inhabited yet.",
+   "maps_to": [
+    "SEM-6",
+    "DATA-3",
+    "IC-6",
+    "IC-24"
+   ]
+  },
+  {
+   "id": "S40",
+   "section": "Idea",
+   "text": "We want the user to first see natural language, and only dive into Lean code when necessary, so each assumption, derivation and goal should have a natural language description (maybe in the Lean file, this would correspond to a docstring), and the user should be able to click on the node and expand it to see the Lean definition.",
+   "maps_to": [
+    "DATA-4",
+    "UI-13",
+    "IC-3",
+    "IC-17",
+    "IC-19"
+   ]
+  },
+  {
+   "id": "S41",
+   "section": "Idea",
+   "text": "Nodes that DO have a Lean representation should be visually marked as such, perhaps with a blue aura.",
+   "maps_to": [
+    "UI-14",
+    "IC-6"
+   ]
+  },
+  {
+   "id": "S42",
+   "section": "Idea",
+   "text": "Of course, the user is also able to see and edit the Lean source code directly, but he is expected to mostly work in the extension window.",
+   "maps_to": [
+    "DATA-8",
+    "UI-15",
+    "IC-13",
+    "IC-17"
+   ]
+  },
+  {
+   "id": "S43",
+   "section": "Idea",
+   "text": "The project might be big and the markup language representing nodes might grow in the future (we might also write separate scripts doing graph analysis on the nodes linked to each other etc), so let me know if an LSP is the right design decision.",
+   "maps_to": [
+    "DATA-7",
+    "NFR-2",
+    "NFR-3",
+    "NFR-4",
+    "IC-5",
+    "IC-19",
+    "IC-20",
+    "IC-32"
+   ]
+  },
+  {
+   "id": "S44",
+   "section": "Idea",
+   "text": "For a similar idea, you can look at https://github.com/amosblomqvist/learnharness and https://learnharness.ai for inspiration, though the goals there (and probably the tech stack) are different from mine.",
+   "maps_to": [
+    "PROC-9"
+   ]
+  },
+  {
+   "id": "S45",
+   "section": "Implementation",
+   "text": "1. Read fully and understand the idea above.",
+   "maps_to": [
+    "PROC-1"
+   ]
+  },
+  {
+   "id": "S46",
+   "section": "Implementation",
+   "text": "It is written by me, who has a background in formal methods, and an interest in linguistics, cognition and human-computer interaction.",
+   "maps_to": [
+    "PROC-10"
+   ],
+   "note": "The author's background, which sets how deep and in what terms the analysis should be written; it adds no product feature."
+  },
+  {
+   "id": "S47",
+   "section": "Implementation",
+   "text": "However, it might be messy and parts may be out of order, so consolidate points from the idea while keeping track that every sentence is still accounted for.",
+   "maps_to": [
+    "PROC-2"
+   ]
+  },
+  {
+   "id": "S48",
+   "section": "Implementation",
+   "text": "2. Understand any unspoken constraints from the idea above and raise them if it involves a significant design decision.",
+   "maps_to": [
+    "PROC-3"
+   ]
+  },
+  {
+   "id": "S49",
+   "section": "Implementation",
+   "text": "3. Sketch out a software architecture that would allow the idea to be implemented.",
+   "maps_to": [
+    "PROC-4"
+   ]
+  },
+  {
+   "id": "S50",
+   "section": "Implementation",
+   "text": "Give me a list of software that you would want to install.",
+   "maps_to": [
+    "PROC-5"
+   ]
+  },
+  {
+   "id": "S51",
+   "section": "Implementation",
+   "text": "4. Once approved, implement the desired program in this directory.",
+   "maps_to": [
+    "PROC-6",
+    "IC-15"
+   ]
+  },
+  {
+   "id": "S52",
+   "section": "Implementation",
+   "text": "Test the basic functionality of the program and let me know when it is in a state that is good enough for me to start using it, giving me directions as to how to do so.",
+   "maps_to": [
+    "PROC-7",
+    "IC-25"
+   ]
+  },
+  {
+   "id": "S53",
+   "section": "Implementation",
+   "text": "5. In `verbatim_prompt_log`, you see `bundle_1` with `prompt1.md`.",
+   "maps_to": [
+    "PROC-8",
+    "IC-33"
+   ]
+  },
+  {
+   "id": "S54",
+   "section": "Implementation",
+   "text": "From now on, log every prompt that I give (even if it's asked mid-turn) in a new bundle, and your response + any user-requested documents.",
+   "maps_to": [
+    "PROC-8",
+    "IC-33"
+   ]
+  },
+  {
+   "id": "S55",
+   "section": "Implementation",
+   "text": "You can look at `https://github.com/zilinc/spectec/tree/lean-backend-proof/spectec/src/test-lean-claude/claude-logging/verbatim_dialogue_log` for an example of the structure.",
+   "maps_to": [
+    "PROC-8"
+   ]
+  }
+ ],
+ "requirements": [
+  {
+   "id": "SEM-1",
+   "group": "semantics",
+   "statement": "ASSUMPTION semantics: an ASSUMPTION is an axiom the user supplies, expressing what they feel is true about the world; it is accepted without proof and is the trusted base from which DERIVATIONS are obtained.",
+   "source_sentences": [
+    "S5",
+    "S20",
+    "S22",
+    "S24"
+   ],
+   "strength": "must",
+   "ambiguity": "'Axiom' may mean a literal Lean `axiom` or, more loosely, an unproved premise (hypothesis), see IC-1. Beliefs are often defeasible or graded (IC-30)."
+  },
+  {
+   "id": "SEM-2",
+   "group": "semantics",
+   "statement": "DERIVATION semantics: a DERIVATION can be derived purely from the ASSUMPTIONS and must never require new assumptions to be added to the model.",
+   "source_sentences": [
+    "S7"
+   ],
+   "strength": "must",
+   "ambiguity": "Whether a DERIVATION node may exist before its proof does (T5), and whether vocabulary declarations count as 'new assumptions' (IC-4)."
+  },
+  {
+   "id": "SEM-3",
+   "group": "semantics",
+   "statement": "GOAL semantics: a GOAL is a statement the user eventually wants to prove, for which no route via ASSUMPTIONS and DERIVATIONS has been found yet.",
+   "source_sentences": [
+    "S8",
+    "S18"
+   ],
+   "strength": "must",
+   "ambiguity": "What happens to a GOAL once a proof is found (T6)."
+  },
+  {
+   "id": "SEM-4",
+   "group": "semantics",
+   "statement": "Kind changes: nodes can change kind, e.g., an ASSUMPTION promoted to a DERIVATION, a DERIVATION made into an ASSUMPTION, a GOAL moved to DERIVATION once it is proven, and other transitions ('etc etc'). Each transition must leave the node consistent with SEM-1..SEM-3.",
+   "source_sentences": [
+    "S16"
+   ],
+   "strength": "should",
+   "ambiguity": "Which transitions need a proof or user confirmation, and whether GOAL to DERIVATION happens automatically on proof (IC-22, T6)."
+  },
+  {
+   "id": "SEM-5",
+   "group": "semantics",
+   "statement": "Sufficiency assertion: selecting assumptions and a goal and pressing the button means 'I assert that the assumptions must be enough to prove the goal'. The proof obligation is the goal from (only) the selected assumptions.",
+   "source_sentences": [
+    "S25",
+    "S28"
+   ],
+   "strength": "must",
+   "ambiguity": "Whether derivations may be selected as premises (T16), and how 'only the selected ones' is enforced when assumptions are global axioms (T7)."
+  },
+  {
+   "id": "SEM-6",
+   "group": "semantics",
+   "statement": "Unformalized vs. uninhabited: a node without Lean code is in a different state from a node whose Lean representation exists but is not yet proved (inhabited). `sorry` must not be used for the former.",
+   "source_sentences": [
+    "S19",
+    "S21",
+    "S23",
+    "S38",
+    "S39"
+   ],
+   "strength": "should",
+   "ambiguity": "Whether `sorry` is acceptable for formalized-but-unproven nodes (T11)."
+  },
+  {
+   "id": "DATA-1",
+   "group": "data-representation",
+   "statement": "The Lean files in the directory VS Code currently has open represent and support the mental model: every node must correspond to something in a Lean file in that directory.",
+   "source_sentences": [
+    "S2",
+    "S35"
+   ],
+   "strength": "must",
+   "ambiguity": "What 'current directory' means with no folder or several workspace folders open (IC-16); whether the folder must be a Lake project (IC-15); whether every Lean declaration must be a node (IC-23)."
+  },
+  {
+   "id": "DATA-2",
+   "group": "data-representation",
+   "statement": "Node metadata is written in a markup notation inside Lean comments: a block opened by a sentinel (`@@ telelean`) with key-value fields, at least `natural_name` and `type` (ASSUMPTION | DERIVATION | GOAL), placed with the Lean declaration it annotates. The exact syntax is open ('Something like').",
+   "source_sentences": [
+    "S35",
+    "S36",
+    "S37"
+   ],
+   "strength": "should",
+   "ambiguity": "Fields missing from the example (id, rationale, description, edges, binding to the declaration) and grammar details (T10, IC-8, IC-19)."
+  },
+  {
+   "id": "DATA-3",
+   "group": "data-representation",
+   "statement": "A node that has no Lean code yet is still stored in a Lean file, as a markup comment with no Lean declaration after it, not as `sorry`.",
+   "source_sentences": [
+    "S19",
+    "S21",
+    "S23",
+    "S38",
+    "S39"
+   ],
+   "strength": "should",
+   "ambiguity": "Which file receives new comment-only nodes (IC-15)."
+  },
+  {
+   "id": "DATA-4",
+   "group": "data-representation",
+   "statement": "Every assumption, derivation and goal has a natural-language description that is shown before any Lean; in the Lean file this may correspond to the declaration's docstring.",
+   "source_sentences": [
+    "S37",
+    "S40"
+   ],
+   "strength": "should",
+   "ambiguity": "How `natural_name`, a longer description, and a docstring relate; a docstring cannot exist without a declaration (IC-19, T10)."
+  },
+  {
+   "id": "DATA-5",
+   "group": "data-representation",
+   "statement": "Assumption nodes carry a natural-language rationale explaining why the user holds the assumption (e.g., 'familiar with gaming lore', 'known from gaming news'), captured when the assumption is added.",
+   "source_sentences": [
+    "S6",
+    "S20",
+    "S22"
+   ],
+   "strength": "should",
+   "ambiguity": "Optional or mandatory (T9); the example markup in S37 has no field for it."
+  },
+  {
+   "id": "DATA-6",
+   "group": "data-representation",
+   "statement": "Design a programmatic representation of nodes and of the graph the arrows form (node id, kind, NL text, rationale, Lean binding, status, edges), not only a graphical one.",
+   "source_sentences": [
+    "S15",
+    "S34"
+   ],
+   "strength": "should",
+   "ambiguity": "In-memory model vs. persisted schema, and what is stored vs. computed (IC-5, IC-6, IC-9)."
+  },
+  {
+   "id": "DATA-7",
+   "group": "data-representation",
+   "statement": "The graph of nodes and their links should be accessible to separate scripts (e.g., graph analysis) outside the extension UI.",
+   "source_sentences": [
+    "S43"
+   ],
+   "strength": "could",
+   "ambiguity": "Access through files, a CLI export, an LSP, or Lean metaprograms (IC-20)."
+  },
+  {
+   "id": "DATA-8",
+   "group": "data-representation",
+   "statement": "Two-way sync: the user can change the model by editing Lean files directly and can view and edit the source at any time. Such edits are reflected in the map, and changes made in the map or by the LLM are written back to the files.",
+   "source_sentences": [
+    "S3",
+    "S42"
+   ],
+   "strength": "must",
+   "ambiguity": "How conflicts are handled while an LLM run is in progress (IC-13)."
+  },
+  {
+   "id": "UI-1",
+   "group": "ui-interaction",
+   "statement": "Provide an interactive map of the user's internal mental model about a subject, supporting at least clicking and dragging components.",
+   "source_sentences": [
+    "S2"
+   ],
+   "strength": "must",
+   "ambiguity": "A free 2-D map vs. the column layout of UI-2 (T1)."
+  },
+  {
+   "id": "UI-2",
+   "group": "ui-interaction",
+   "statement": "The extension tab contains an interactive panel visually split into three vertical sections, each containing one kind of node: (1) all assumptions, (2) all derivations, (3) all goals.",
+   "source_sentences": [
+    "S11",
+    "S12",
+    "S13",
+    "S14"
+   ],
+   "strength": "should",
+   "ambiguity": "'Extension tab' could be an editor-area panel or a sidebar view (IC-17); where vocabulary nodes go (T8)."
+  },
+  {
+   "id": "UI-3",
+   "group": "ui-interaction",
+   "statement": "Each of the three sections scrolls independently, because there may be many, many nodes.",
+   "source_sentences": [
+    "S11"
+   ],
+   "strength": "should"
+  },
+  {
+   "id": "UI-4",
+   "group": "ui-interaction",
+   "statement": "The extension must be able to draw arrows from any node in one section to a node in another section.",
+   "source_sentences": [
+    "S15"
+   ],
+   "strength": "must",
+   "ambiguity": "User-drawn vs. computed arrows (T2); arrows within one section (T3); direction and meaning (IC-5)."
+  },
+  {
+   "id": "UI-5",
+   "group": "ui-interaction",
+   "statement": "Nodes can be moved from one section to another in the panel (promotion or demotion between kinds).",
+   "source_sentences": [
+    "S16"
+   ],
+   "strength": "should",
+   "ambiguity": "Gesture (drag or command) and validation (IC-22)."
+  },
+  {
+   "id": "UI-6",
+   "group": "ui-interaction",
+   "statement": "Include a text input box for natural-language prompts.",
+   "source_sentences": [
+    "S4",
+    "S10"
+   ],
+   "strength": "should",
+   "ambiguity": "Whether submitting creates a node, prompts the LLM, or both (T4)."
+  },
+  {
+   "id": "UI-7",
+   "group": "ui-interaction",
+   "statement": "Provide a UI switch with which the user marks a prompt as creating an ASSUMPTION, a DERIVATION or a GOAL. The extension reads this marking: the kind is declared by the user, not inferred.",
+   "source_sentences": [
+    "S4",
+    "S18",
+    "S20",
+    "S22",
+    "S24"
+   ],
+   "strength": "must"
+  },
+  {
+   "id": "UI-8",
+   "group": "ui-interaction",
+   "statement": "Adding a node through the input box creates it immediately in the matching section, without generating any Lean code. For assumptions, the user can attach the rationale when creating it.",
+   "source_sentences": [
+    "S18",
+    "S19",
+    "S20",
+    "S21",
+    "S22",
+    "S23",
+    "S24"
+   ],
+   "strength": "should",
+   "ambiguity": "How the rationale is entered (IC-7)."
+  },
+  {
+   "id": "UI-9",
+   "group": "ui-interaction",
+   "statement": "Nodes can be multi-selected across sections (e.g., three assumptions plus a goal), and the current selection is shown in a separate section below the columns.",
+   "source_sentences": [
+    "S25",
+    "S26"
+   ],
+   "strength": "should"
+  },
+  {
+   "id": "UI-10",
+   "group": "ui-interaction",
+   "statement": "A button sends the current selection to the LLM with the meaning 'these assumptions must be enough to prove the goal'.",
+   "source_sentences": [
+    "S27",
+    "S28"
+   ],
+   "strength": "should",
+   "ambiguity": "Behavior for other kinds of selection (IC-31)."
+  },
+  {
+   "id": "UI-11",
+   "group": "ui-interaction",
+   "statement": "The LLM's proposed diff must be overlaid graphically on the nodes (including newly created nodes), and the user must be able to switch to the diff of the Lean files themselves.",
+   "source_sentences": [
+    "S31",
+    "S32"
+   ],
+   "strength": "must",
+   "ambiguity": "Shown inside the panel or in VS Code's diff editor (T21); partial acceptance (IC-26)."
+  },
+  {
+   "id": "UI-12",
+   "group": "ui-interaction",
+   "statement": "The user can accept the proposed change or instead give feedback.",
+   "source_sentences": [
+    "S33"
+   ],
+   "strength": "should",
+   "ambiguity": "Accepting per node or per hunk is not stated (IC-26)."
+  },
+  {
+   "id": "UI-13",
+   "group": "ui-interaction",
+   "statement": "Natural language first: nodes show their NL description by default, and the user looks at Lean only when necessary, by clicking a node to expand it and see its Lean definition.",
+   "source_sentences": [
+    "S40"
+   ],
+   "strength": "should"
+  },
+  {
+   "id": "UI-14",
+   "group": "ui-interaction",
+   "statement": "Nodes that have a Lean representation are visually marked as such (e.g., with a blue aura).",
+   "source_sentences": [
+    "S41"
+   ],
+   "strength": "should",
+   "ambiguity": "A binary marker vs. the proof-status cues that are also needed (T15)."
+  },
+  {
+   "id": "UI-15",
+   "group": "ui-interaction",
+   "statement": "The extension window is the user's primary workspace; viewing and editing the Lean source directly remains possible.",
+   "source_sentences": [
+    "S3",
+    "S42"
+   ],
+   "strength": "should"
+  },
+  {
+   "id": "UI-16",
+   "group": "ui-interaction",
+   "statement": "Recommend the rendering/graph library for nodes and arrows, given that a graph structure emerges from the arrows.",
+   "source_sentences": [
+    "S15"
+   ],
+   "strength": "question-to-answer",
+   "ambiguity": "Constrained by the three independently scrolled columns (IC-18)."
+  },
+  {
+   "id": "LLM-1",
+   "group": "llm-harness",
+   "statement": "The extension acts as a harness into which an LLM can be slotted (the provider is pluggable).",
+   "source_sentences": [
+    "S9"
+   ],
+   "strength": "must",
+   "ambiguity": "Whether 'slotting in' happens at the level of a completion API or an agent runtime (T17, IC-11)."
+  },
+  {
+   "id": "LLM-2",
+   "group": "llm-harness",
+   "statement": "At minimum, Claude must be usable through the user's current Claude subscription, because the user intends to actually use the tool.",
+   "source_sentences": [
+    "S9"
+   ],
+   "strength": "must",
+   "ambiguity": "Which route to use and the policy limits on it (IC-11)."
+  },
+  {
+   "id": "LLM-3",
+   "group": "llm-harness",
+   "statement": "During a run, the LLM asks the user clarifying questions (e.g., 'do you want to model characters?') to learn the desired level of detail and pragmatics (unspoken context). The harness passes the questions to the UI and returns the answers.",
+   "source_sentences": [
+    "S30"
+   ],
+   "strength": "should",
+   "ambiguity": "How answers are entered in the UI and whether they are stored (T14, IC-28)."
+  },
+  {
+   "id": "LLM-4",
+   "group": "llm-harness",
+   "statement": "When the selection button is pressed, the LLM generates a Lean model of what the user created: it formulates the selected assumptions and goal in Lean in an intuitive way, generates their signatures, and proves the goal.",
+   "source_sentences": [
+    "S27",
+    "S29"
+   ],
+   "strength": "must",
+   "ambiguity": "What to do when the selected assumptions are not enough (IC-10)."
+  },
+  {
+   "id": "LLM-5",
+   "group": "llm-harness",
+   "statement": "LLM changes arrive as a proposed diff that takes effect only after the user accepts it; feedback continues the iteration.",
+   "source_sentences": [
+    "S31",
+    "S33"
+   ],
+   "strength": "must"
+  },
+  {
+   "id": "LLM-6",
+   "group": "llm-harness",
+   "statement": "The LLM may introduce finer-grained supporting declarations (e.g., a structure `Cynder`, a Prop `isCharacter`), which become additional nodes in the mental model.",
+   "source_sentences": [
+    "S32"
+   ],
+   "strength": "should",
+   "ambiguity": "Which section these nodes belong in (T8, IC-4)."
+  },
+  {
+   "id": "LLM-7",
+   "group": "llm-harness",
+   "statement": "Prompting the AI in natural language is the primary ('more common') way to change the Lean model; each prompt carries the user's A/D/G marking.",
+   "source_sentences": [
+    "S3",
+    "S4"
+   ],
+   "strength": "must"
+  },
+  {
+   "id": "LEAN-1",
+   "group": "lean-verification",
+   "statement": "Proofs are checked by Lean: a goal or derivation counts as proven only if the Lean code containing its proof elaborates with no errors and no `sorry`.",
+   "source_sentences": [
+    "S16",
+    "S29"
+   ],
+   "strength": "must",
+   "ambiguity": "Whether the axiom footprint must also be checked (IC-1, IC-21)."
+  },
+  {
+   "id": "LEAN-2",
+   "group": "lean-verification",
+   "statement": "Lean encoding suggested by the text: an ASSUMPTION is an axiom (a Lean `axiom`), a GOAL's statement is a Lean definition (the example uses `def cynder_not_ ...`), and the LLM generates signatures for assumptions and goals.",
+   "source_sentences": [
+    "S5",
+    "S29",
+    "S37"
+   ],
+   "strength": "could",
+   "ambiguity": "Axioms vs. hypotheses (IC-1); separating statement from proof (IC-24)."
+  },
+  {
+   "id": "PROC-1",
+   "group": "process-meta",
+   "statement": "Read the whole idea and understand it.",
+   "source_sentences": [
+    "S45"
+   ],
+   "strength": "must"
+  },
+  {
+   "id": "PROC-2",
+   "group": "process-meta",
+   "statement": "Consolidate the possibly messy, out-of-order idea into de-duplicated points while keeping track that every sentence is accounted for.",
+   "source_sentences": [
+    "S47"
+   ],
+   "strength": "must"
+  },
+  {
+   "id": "PROC-3",
+   "group": "process-meta",
+   "statement": "Identify unspoken constraints and raise those that involve a significant design decision.",
+   "source_sentences": [
+    "S48"
+   ],
+   "strength": "must"
+  },
+  {
+   "id": "PROC-4",
+   "group": "process-meta",
+   "statement": "Sketch a software architecture that would allow the idea to be implemented, including how nodes are represented in code as well as on screen.",
+   "source_sentences": [
+    "S34",
+    "S49"
+   ],
+   "strength": "must"
+  },
+  {
+   "id": "PROC-5",
+   "group": "process-meta",
+   "statement": "Give a list of software to install; installing waits for approval.",
+   "source_sentences": [
+    "S50"
+   ],
+   "strength": "must"
+  },
+  {
+   "id": "PROC-6",
+   "group": "process-meta",
+   "statement": "Implement the program in this directory (/home/zhengyew/telelean), but only after the design is approved.",
+   "source_sentences": [
+    "S51"
+   ],
+   "strength": "must"
+  },
+  {
+   "id": "PROC-7",
+   "group": "process-meta",
+   "statement": "Test the basic functionality, say when it is good enough for the user to start using (the user wants to actually use it), and give directions for doing so.",
+   "source_sentences": [
+    "S9",
+    "S52"
+   ],
+   "strength": "must"
+  },
+  {
+   "id": "PROC-8",
+   "group": "process-meta",
+   "statement": "From now on, log every user prompt verbatim (including prompts given mid-turn) in a new bundle under `verbatim_prompt_log/` (bundle_1/prompt1.md already exists), together with the assistant's response and any user-requested documents, following the structure of the referenced spectec `verbatim_dialogue_log` example.",
+   "source_sentences": [
+    "S53",
+    "S54",
+    "S55"
+   ],
+   "strength": "must",
+   "ambiguity": "Which bundle holds the response to prompt 1, and how mid-turn prompts are bundled (T20)."
+  },
+  {
+   "id": "PROC-9",
+   "group": "process-meta",
+   "statement": "Look at learnharness (GitHub repo and website) for inspiration, without adopting its goals or (probably) its tech stack.",
+   "source_sentences": [
+    "S44"
+   ],
+   "strength": "could"
+  },
+  {
+   "id": "PROC-10",
+   "group": "process-meta",
+   "statement": "Write the analysis and design rationale for an author with a formal-methods background and interests in linguistics, cognition and HCI: precise logical terminology and explicit attention to pragmatics and interaction design.",
+   "source_sentences": [
+    "S46"
+   ],
+   "strength": "should"
+  },
+  {
+   "id": "NFR-1",
+   "group": "non-functional",
+   "statement": "The product is a VS Code extension.",
+   "source_sentences": [
+    "S1"
+   ],
+   "strength": "must"
+  },
+  {
+   "id": "NFR-2",
+   "group": "non-functional",
+   "statement": "Scale to many, many nodes and to big projects: independently scrollable columns, and responsive parsing, rendering and checking.",
+   "source_sentences": [
+    "S11",
+    "S43"
+   ],
+   "strength": "should"
+  },
+  {
+   "id": "NFR-3",
+   "group": "non-functional",
+   "statement": "Advise whether an LSP (language server) is the right design decision, given a project that may be big, a node markup language that may grow, and separate graph-analysis scripts.",
+   "source_sentences": [
+    "S43"
+   ],
+   "strength": "question-to-answer",
+   "ambiguity": "Lean already provides a language server for `.lean` files (IC-20, T18)."
+  },
+  {
+   "id": "NFR-4",
+   "group": "non-functional",
+   "statement": "Design the node markup language to evolve (a versioned, extensible schema), since it might grow in the future.",
+   "source_sentences": [
+    "S43"
+   ],
+   "strength": "should"
+  }
+ ],
+ "implied_constraints": [
+  {
+   "id": "IC-1",
+   "constraint": "Decide how ASSUMPTIONS are encoded in Lean: as global `axiom`s (the user's word) or as hypotheses (section variables, explicit theorem binders, or a bundled structure of assumptions). Whichever is chosen, each theorem's dependency set (its axiom footprint) must be a first-class, machine-checked fact.",
+   "derived_from": [
+    "S5",
+    "S7",
+    "S28",
+    "SEM-1",
+    "SEM-2",
+    "SEM-5",
+    "LEAN-2"
+   ],
+   "significance": "high",
+   "why": "Global axioms are visible to every later declaration, so the type checker alone does not enforce S28's claim that the *selected* assumptions suffice, nor S7's 'purely from the ASSUMPTIONS': any axiom in scope may be used. With axioms the check has to happen after the fact via `#print axioms` / `Lean.collectAxioms`. Verified on the installed Lean 4.35.0: `#print axioms goalProof` printed `[Character, Cynder, a1, hasDarkPast]`, so the footprint is exact but mixes vocabulary constants with propositional assumptions (IC-4). With hypotheses, the theorem statement itself lists what it assumes: sufficiency is visible in the signature, deleting an assumption breaks only the theorems that cite it, and arrows can be read off the binders. The cost is verbosity and threading hypotheses through lemmas. A bundled `structure` of vocabulary plus assumptions also allows a consistency witness (an instance is a model). Suggested default: keep `axiom`, for fidelity to S5 and a simple node-to-declaration mapping, but compute footprints after every build to verify S7/S28 and to derive ground-truth arrows."
+  },
+  {
+   "id": "IC-2",
+   "constraint": "The assumption set may be inconsistent (real belief sets often are), and an inconsistent set makes every GOAL provable. Such proofs must not be presented as meaningful.",
+   "derived_from": [
+    "S5",
+    "S28",
+    "SEM-1",
+    "SEM-5",
+    "IC-1"
+   ],
+   "significance": "high",
+   "why": "Verified on Lean 4.35.0: adding `axiom bad1 : hasDarkPast Cynder -> False` let `theorem anything : (0 : Nat) = 1 := absurd a1 bad1` check, and the only output was an ordinary axiom list. An LLM asked to 'prove the goal' (S29) will take such a route, possibly without saying so, which makes S28's sufficiency assertion vacuous. Consistency is undecidable in general, so mitigations are heuristic: flag proofs whose terms go through `False.elim`/`absurd` on premises that are only assumptions; have the LLM act as a red team and try to derive `False` from the current assumptions, showing any contradiction as a finding in the map; for small subsets, have the LLM build a model (an instance of the bundled assumptions) as a witness of satisfiability; and scrutinize assumption formalizations that are logically too strong (e.g., universally quantified generalizations, IC-30)."
+  },
+  {
+   "id": "IC-3",
+   "constraint": "Lean certifies the Lean statement, not the user's natural-language statement. Whether a formalization is faithful (the gap between NL and Lean) can only be judged by the user, so reviewing formal statements must be a first-class part of accepting a diff.",
+   "derived_from": [
+    "S29",
+    "S30",
+    "S31",
+    "S40",
+    "LLM-4",
+    "UI-11",
+    "UI-13"
+   ],
+   "significance": "high",
+   "why": "S29 asks the LLM to formulate assumptions and goal 'in some intuitive way' and then prove the goal. The cheapest way to succeed is to weaken the goal or strengthen assumptions or definitions, e.g., by defining 'good addition' so that the goal follows trivially. The walkthrough already contains such a gap. 'PG games cannot have characters with dark pasts', 'Cynder is a character who has a dark past' and 'The new Spyro game is PG' together yield 'the new Spyro game cannot have Cynder'. The goal, however, says 'Cynder would not be a good addition', and getting there needs an extra premise or a definitional choice, which is exactly the pragmatics S30 wants the LLM to ask about. Consequences: the diff overlay (S31) should show each node's NL text next to its Lean statement, optionally with an LLM back-translation of the Lean into plain English. Changes to the statements of existing nodes, especially assumptions (the trusted base), must be highlighted separately from new proofs. Definitions that carry modeling content must be visible. The user's acceptance (S33) is the actual faithfulness check."
+  },
+  {
+   "id": "IC-4",
+   "constraint": "Supporting declarations created by the LLM (e.g., `structure Cynder`, Prop `isCharacter`) are neither assumptions, derivations nor goals. S32 says they become nodes, but the panel has only three columns, so where they live and how they count for purity has to be decided.",
+   "derived_from": [
+    "S11",
+    "S32",
+    "UI-2",
+    "LLM-6",
+    "SEM-2"
+   ],
+   "significance": "high",
+   "why": "Verified on Lean 4.35.0: vocabulary introduced with `axiom` (`axiom Character : Type`, `axiom Cynder : Character`, `axiom hasDarkPast : Character -> Prop`) appears in `#print axioms` exactly like a propositional assumption, whereas `opaque isCharacter : Nat -> Prop` and `structure` declarations add no axioms. How vocabulary is encoded therefore decides whether S7's 'no new assumptions' check passes, and ontological commitments ('Cynder exists and is a Character') are arguably assumptions themselves. Options: (a) put vocabulary in the ASSUMPTIONS column under a 'definition/vocabulary' sub-kind; (b) add a fourth, collapsible 'Vocabulary' strip, which departs from S11; (c) attach vocabulary as chips on the nodes that use it; (d) keep vocabulary out of the columns and show it only in expanded and diff views. Modeling an individual as a type (`structure Cynder`) rather than as a term (`Cynder : Character`) is itself a level-of-detail choice the LLM should ask about (S30). This needs a user decision. Suggested: (a) or (c), declaring vocabulary with `opaque`, `structure` or `inductive` where possible so that footprints stay meaningful. Also verified: a theorem over `inductive Character | cynder | spyro` with `opaque hasDarkPast` depends on no axioms. Caveat: definitional encodings are not neutral either. That `inductive` makes closed-world and unique-name facts (every character is Cynder or Spyro; Cynder is not Spyro) provable with no axioms at all, so footprint checks cannot see assumptions slipped in through definitions. Such definitions must be reviewed as part of the formalization gap (IC-3)."
+  },
+  {
+   "id": "IC-5",
+   "constraint": "Decide whether arrows are claims drawn by the user, dependencies computed from Lean, or both, and fix their direction and meaning.",
+   "derived_from": [
+    "S15",
+    "S43",
+    "UI-4",
+    "DATA-6",
+    "DATA-7",
+    "SEM-5"
+   ],
+   "significance": "high",
+   "why": "S15 says 'The extension must be able to draw arrows'. That can mean the user draws them, stating intent ('this assumption supports that goal'), which works even for informal nodes without Lean. Or it can mean the extension computes them from Lean, stating fact ('the proof of D uses axiom A'), which works only for formalized nodes and comes from proof terms or footprints. The two can disagree, and the disagreement is informative: a proof that ignores an intended premise, or uses one that was not intended. Suggested: two edge types drawn differently. 'Intended' edges are drawn by the user and stored with the node data or in a sidecar file. 'Actual' edges are recomputed after each build and never edited by hand. Mismatches are flagged. Arrows point from premise to conclusion, so they flow left to right with the column order A, D, G. Selecting premises and pressing the button (S25-S28) can create intended edges automatically. Graph-analysis scripts (S43) need to know which edge type they are reading."
+  },
+  {
+   "id": "IC-6",
+   "constraint": "Model a node's proof status separately from its kind (ASSUMPTION/DERIVATION/GOAL), and compute it from Lean rather than storing it by hand.",
+   "derived_from": [
+    "S4",
+    "S7",
+    "S8",
+    "S16",
+    "S39",
+    "S41",
+    "SEM-2",
+    "SEM-3",
+    "SEM-6",
+    "UI-14",
+    "LEAN-1"
+   ],
+   "significance": "high",
+   "why": "The user picks a node's kind before any Lean exists (S4, S18-S24). So a DERIVATION can exist without a proof, which contradicts S7's definition and makes it indistinguishable from a GOAL (S8). Proofs can also break later, when an assumption is reformulated or deleted or the user edits a file. A computed lifecycle solves this: informal (comment only), formalized (statement elaborates, no proof), proved (checked, no `sorry`, footprint within the allowed assumptions), broken (errors), and claimed (a DERIVATION not yet proved). It lets the UI show what is actually established. It also makes S16's 'a goal moved to a derivation once it's proven' a checked transition, and it flags mismatches between the markup `type` and the Lean declaration (e.g., a DERIVATION containing `sorry`, or an ASSUMPTION written as a `theorem`). S41's single blue aura ('has a Lean representation') covers one bit of this. Proof status needs its own redundant visual encoding, with an icon or shape and not color alone."
+  },
+  {
+   "id": "IC-7",
+   "constraint": "Define what submitting the input box does. In the walkthrough, the A/D/G switch creates informal nodes without invoking the LLM, while elsewhere the box is described as the way to prompt the AI.",
+   "derived_from": [
+    "S3",
+    "S4",
+    "S10",
+    "S18",
+    "S19",
+    "S21",
+    "S23",
+    "S27",
+    "UI-6",
+    "UI-7",
+    "UI-8",
+    "LLM-7",
+    "DATA-5"
+   ],
+   "significance": "high",
+   "why": "S18-S24 create four nodes 'but no Lean code has been generated yet', and the LLM is invoked only by the button in S27. Yet S3/S4 describe prompts to an AI marked with the switch, and S30/S33 need a channel for answers and feedback. So there are at least three input intents: add an informal node of kind K (no LLM); instruct the LLM (formalize, prove, refine); and answer a question or give feedback. The UI also needs a way to capture an assumption's rationale at creation (S20/S22: 'annotated with ...'), for example a second field that appears when the switch is on ASSUMPTION. Because S38 requires even nodes without code to live in Lean comments, creating a node writes to a Lean file immediately. That means a target file must be chosen (IC-15), and every such write triggers Lean re-elaboration (IC-9). One possible design: Enter creates an informal node; a separate 'Formalize & prove' action acts on the selection; a conversation strip carries questions and feedback; an optional setting auto-formalizes on create."
+  },
+  {
+   "id": "IC-8",
+   "constraint": "Nodes need a stable identifier, carried in the markup, that is independent of their NL text and their Lean name.",
+   "derived_from": [
+    "S35",
+    "S37",
+    "UI-4",
+    "UI-9",
+    "UI-11",
+    "DATA-2",
+    "DATA-7"
+   ],
+   "significance": "high",
+   "why": "The example markup (S37) has only `natural_name` and `type`. Arrows (S15), saved layout (S2), selection (S25), the node-level diff overlay that matches old and new nodes (S31), and external scripts (S43) all need a key that survives rewording the NL text, renaming or moving the Lean declaration, a change of kind, and LLM rewrites. Informal nodes have no Lean name at all. This calls for a mandatory `id:` field generated by the extension (a short slug or UUID, never reused); an explicit link to the Lean declaration (a `decl:` field, or a strict 'next declaration' rule checked by the parser); a deterministic scheme for deriving Lean identifiers from NL text; and a rule that the LLM keeps ids unchanged when editing."
+  },
+  {
+   "id": "IC-9",
+   "constraint": "Layout and other UI-only state need a home other than the Lean source: positions or order within columns, collapsed state, user-drawn arrows if not kept in the markup, selections, pending diffs, and LLM session ids.",
+   "derived_from": [
+    "S2",
+    "UI-1",
+    "UI-3",
+    "DATA-1",
+    "DATA-6"
+   ],
+   "significance": "high",
+   "why": "Click-and-drag (S2) implies an arrangement that must survive reloads, while S35 makes the Lean files the source of truth for nodes. Writing layout into Lean comments churns the source and costs rebuilds. Verified with Lake on Lean 4.35.0: a comment-only edit re-elaborated the edited module, while dependent modules were only 'Replayed' (not rebuilt). A comment edit that added a line, shifting declaration positions, rebuilt every downstream module. The Lean language server likewise re-elaborates the open file on every change. Suggested: a sidecar file in the model project for shareable state (e.g., `.telelean/layout.json` keyed by node id, which can go under version control), and VS Code workspace state for per-user, short-lived state. Observation: an empty directory `/home/zhengyew/telelean/mental_model/graph_representation/` already exists. Ask the user whether it is meant to hold the model's Lean files or the graph/layout sidecar."
+  },
+  {
+   "id": "IC-10",
+   "constraint": "Set hard limits on what the LLM may change by itself. It never silently adds propositional assumptions, changes a node's kind, rewrites the user's NL statements or rationales, or alters the formal statement of an accepted node. Any such change is a flagged proposal that needs explicit acceptance.",
+   "derived_from": [
+    "S7",
+    "S28",
+    "SEM-1",
+    "SEM-2",
+    "SEM-5",
+    "DATA-5",
+    "LLM-3",
+    "LLM-4",
+    "LLM-6",
+    "UI-7"
+   ],
+   "significance": "high",
+   "why": "S7 forbids derivations that need new assumptions, and S28 asserts that the selected assumptions suffice. Yet formalizing (S29, S32) requires new vocabulary, and the walkthrough goal does not follow from its three assumptions without a bridging premise (IC-3). When the selection is not enough, the LLM should (a) ask (S30); (b) report the gap, ideally with an explanation or a countermodel; or (c) propose candidate ASSUMPTION nodes clearly marked as suggested by the LLM. The rationale for such nodes (S6) must come from the user, because only the user knows why they believe something. The kind marking is declared by the user ('read by the extension', S4), so the LLM must not reclassify nodes on its own. These rules go in the harness's system prompt and are enforced by the independent verification in IC-21."
+  },
+  {
+   "id": "IC-11",
+   "constraint": "Using 'Claude ... using my current subscription' means driving the user's own locally installed, logged-in Claude Code, through the CLI's headless mode or the Agent SDK (which runs the Claude Code binary), rather than the metered Claude API. That route has specific constraints on authentication and usage.",
+   "derived_from": [
+    "S9",
+    "LLM-1",
+    "LLM-2"
+   ],
+   "significance": "high",
+   "why": "Checked against the current Claude Code docs on code.claude.com (fetched 2026-11-01). (1) Credential precedence: cloud-provider variables, `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_API_KEY`, `apiKeyHelper`, `CLAUDE_CODE_OAUTH_TOKEN` and profiles all rank above the subscription login, and 'In non-interactive mode (-p), the key is always used when present'. The extension must therefore spawn Claude Code with these variables removed, or usage silently moves to API billing. (2) `--bare` mode 'never reads OAuth credentials', and the docs say bare mode 'will become the default for -p in a future release'. A subscription-based harness must avoid bare mode explicitly and detect authentication failures, for example by pinning or checking the Claude Code version. (3) The Agent SDK docs say 'Unless previously approved, Anthropic does not allow third party developers to offer claude.ai login or rate limits for their products'. The extension must not implement its own claude.ai OAuth flow and should not be distributed with subscription login as a feature. Personal use of one's own Claude Code is the intended path; a published version would need API-key authentication. (4) Subscription usage limits apply. Rate-limit events (`system/api_retry` with `error: rate_limit`) must be shown in the UI, and prompts must stay lean (IC-32). (5) Without `--bare`, `-p` loads the user's global `~/.claude` hooks, skills, memory and MCP servers, which can change how the agent behaves inside the harness. For S9's 'slot in an LLM', the abstraction therefore has to be at the agent level (a task goes in; events, questions and a diff come out), with Claude Code as one adapter and API-key providers as others."
+  },
+  {
+   "id": "IC-12",
+   "constraint": "The harness must be an agent loop that can be interrupted and that talks in both directions, not a single completion call.",
+   "derived_from": [
+    "S9",
+    "S30",
+    "LLM-3",
+    "LLM-4",
+    "LLM-5"
+   ],
+   "significance": "high",
+   "why": "S30 needs the LLM to pause mid-run, ask the user, and continue. S29 needs an iterative proof search against Lean errors. S33 needs feedback to continue the same session. Checked in the Agent SDK docs: clarifying questions arrive as calls to the `AskUserQuestion` tool through the `canUseTool` callback, which 'can stay pending indefinitely'. Each call carries 1-4 questions with 2-4 options each; free text is possible through an 'Other' answer or the `response` field; and the tool is not available inside subagents. In `claude -p` Manual mode, a permission request is denied unless a `PermissionRequest` hook or a `--permission-prompt-tool` answers it, and `--permission-prompts none` removes `AskUserQuestion` entirely. So the extension must host the question channel itself (the Agent SDK in the extension host, or an MCP tool the extension serves). It must give the agent Lean tools (build or check a file, read diagnostics, report axiom footprints), stream progress to the webview, support cancel, and resume sessions (`--resume`/session ids) for feedback rounds."
+  },
+  {
+   "id": "IC-13",
+   "constraint": "User edits and LLM edits happen at the same time and must be coordinated.",
+   "derived_from": [
+    "S3",
+    "S31",
+    "S42",
+    "DATA-8",
+    "LLM-5"
+   ],
+   "significance": "high",
+   "why": "The user can edit Lean files directly (S3, S42) and keep working in the map while an LLM run takes minutes, and the LLM's proposal is a diff (S31) computed against some base version. What follows: run the agent in a shadow copy of the model project (a temporary copy or a git worktree), so its trial edits do not flash through the map, disturb the user's Lean server, or clutter diagnostics. Record the hashes of the base files, and on accept either apply cleanly, do a 3-way merge, or report a conflict. Run LLM jobs one at a time, or give each its own shadow copy. Re-parse whenever the file watcher fires, and tolerate half-typed or unparsable markup without dropping nodes from the map."
+  },
+  {
+   "id": "IC-14",
+   "constraint": "How long Lean takes to elaborate, and the resources it uses, shape both the proving loop and the status display. The dependency set (core Lean vs. Mathlib) and the checking mechanism must be chosen deliberately.",
+   "derived_from": [
+    "S29",
+    "LEAN-1",
+    "UI-14",
+    "NFR-2"
+   ],
+   "significance": "high",
+   "why": "Every status computation (IC-6) and every LLM proof attempt (S29) needs Lean to elaborate. Modules using only core Lean check in well under a second: the scratch Lake project built each module in about 0.3-0.4 s. Importing Mathlib means multi-GB caches and much slower cold builds, and the user's later request to watch RAM usage (bundle_2) adds weight to avoiding heavy dependencies. Commonsense models like the walkthrough need only core Lean, perhaps plus small tactic libraries. Decisions to make: how to check (per-module `lake build`, `lake env lean <file>`, a Lean REPL, or reusing the vscode-lean4 server's diagnostics); file granularity (one big file re-elaborates everything on any change, while many small modules need import management); and a non-blocking 'checking...' state in the UI."
+  },
+  {
+   "id": "IC-15",
+   "constraint": "'The directory that VSCode is currently in' must be, or be turned into, a Lake project with a defined file layout for nodes.",
+   "derived_from": [
+    "S2",
+    "S38",
+    "S51",
+    "DATA-1",
+    "DATA-3",
+    "PROC-6",
+    "SEM-4"
+   ],
+   "significance": "high",
+   "why": "Lean files that import one another need a `lean-toolchain` and a lakefile whose library contains the node modules. elan and Lean v4.35.0 are already installed on this machine. The extension must detect a missing project and offer to create one. It must also decide where nodes live: one module per kind (`Assumptions.lean`, `Derivations.lean`, `Goals.lean`), one module per node, or files the user chooses. It must decide where newly created comment-only nodes are written (S38). With one module per kind, a kind change (S16) becomes a move between files and risks import cycles (IC-22). Separately, 'this directory' in S51 (`/home/zhengyew/telelean`, where the extension's source goes) is not the user's model workspace. The implementation should ship a sample model project, e.g., the Spyro walkthrough, for testing."
+  },
+  {
+   "id": "IC-16",
+   "constraint": "Handle VS Code windows with no folder or with several workspace folders, nested Lake packages, and dependency sources.",
+   "derived_from": [
+    "S2",
+    "DATA-1",
+    "NFR-2"
+   ],
+   "significance": "medium",
+   "why": "With no folder open, or in a multi-root workspace, 'the directory that VSCode is currently in' (S2) is undefined. A rule is needed: one map per Lake project root, chosen as the folder containing the lakefile or the active editor's project, with a way to switch. For performance at scale (S11, S43), scanning for markup must skip `.lake/`, because dependency sources such as `.lake/packages/**` can hold thousands of `.lean` files. Also decide whether one folder can hold several independent 'subjects' (S2 says 'a subject')."
+  },
+  {
+   "id": "IC-17",
+   "constraint": "Because the user will mostly work in the extension window, the panel must be a full workspace in the editor area, with saved state, theming, accessibility, and its own view of Lean diagnostics.",
+   "derived_from": [
+    "S11",
+    "S40",
+    "S42",
+    "UI-2",
+    "UI-13",
+    "UI-14",
+    "UI-15"
+   ],
+   "significance": "high",
+   "why": "S42 makes the panel the primary workspace. 'The extension tab itself' (S11) and three wide columns argue for an editor-area webview panel (or custom editor) rather than a narrow sidebar view. The panel must restore after a reload (webview serializer), come back quickly when hidden and shown again, follow VS Code's light, dark and high-contrast themes, and work from the keyboard. It must show Lean errors and proof status per node, because the user may not have the Lean infoview open, and support navigating both ways between a node and its source (S40). The blue aura (S41) must not be the only cue: use a shape or icon as well, so the marking works for color-vision deficiencies."
+  },
+  {
+   "id": "IC-18",
+   "constraint": "Drawing arrows between nodes in three independently scrolled columns rules out a naive single-canvas graph library, and the gestures need deliberate design.",
+   "derived_from": [
+    "S11",
+    "S15",
+    "S25",
+    "UI-1",
+    "UI-3",
+    "UI-4",
+    "UI-5",
+    "UI-9",
+    "UI-13",
+    "UI-16",
+    "NFR-2"
+   ],
+   "significance": "high",
+   "why": "Generic graph libraries (React Flow, Cytoscape.js, JointJS, D3-force, ELK/dagre layouts) assume one shared pan-and-zoom canvas with free node positions, while S11 requires three independently scrollable lists. Arrow endpoints therefore have to be computed from DOM positions across separate scroll containers and re-routed on every scroll or resize. Endpoints scrolled out of view need to be clipped at the column edge, with an indicator or a 'jump to' control. With 'many, many nodes' (S11), drawing every edge clutters the view, so show edges only for the selected or hovered node (focus plus context) or bundle them, and virtualize long lists. Gestures also collide: clicking to select (S25), clicking to expand (S40), dragging to reorder or change kind (S2, S16), and dragging to draw an arrow (S15). Each needs its own affordance, e.g., modifier-click to select, a chevron to expand, the node body to drag, and a port or handle to draw. A likely answer to UI-16 is a custom three-column layout with an SVG overlay for arrows plus a drag-and-drop library, with an optional separate layered graph view if needed."
+  },
+  {
+   "id": "IC-19",
+   "constraint": "Plain `/- -/` comments are invisible to Lean itself, and docstrings cannot exist without a declaration. Where the markup is placed and how it is written therefore decide who can read node metadata.",
+   "derived_from": [
+    "S35",
+    "S38",
+    "S40",
+    "S43",
+    "DATA-2",
+    "DATA-3",
+    "DATA-4",
+    "NFR-3",
+    "NFR-4"
+   ],
+   "significance": "high",
+   "why": "Lean's parser discards ordinary comments. Node kinds and NL names inside `/- @@ telelean -/` blocks are therefore invisible to Lean metaprograms, `#print`, Lean's language server, and any analysis script written in Lean; only text-level parsers see them. Verified on Lean 4.35.0: a standalone `/-- ... -/` docstring with no declaration after it is a parse error, so S40's docstring idea cannot represent nodes without code (S38). A standalone `/-! ... -/` module-doc comment and nested `/- /- -/ -/` comments are both accepted. Alternatives: (1) keep text-level markup with a strict grammar: a YAML subset or 'key: value' lines, quoting and escaping rules, multi-line text, handling of Lean's nested block comments, and a version tag. (2) Make the metadata Lean-native through a small `Telelean` Lean library: an attribute such as `@[telelean ...]` plus a command for nodes without code, stored in an environment extension. That lets Lean compute ground-truth dependencies and expose them through Lean's own server or `lake exe` scripts, at the cost of a library dependency in every model project. This bears directly on the LSP question (NFR-3)."
+  },
+  {
+   "id": "IC-20",
+   "constraint": "The LSP question has to take into account that Lean already runs its own language server on these `.lean` files, and that graph-analysis scripts do not speak LSP.",
+   "derived_from": [
+    "S43",
+    "NFR-3",
+    "NFR-4",
+    "DATA-7"
+   ],
+   "significance": "high",
+   "why": "A second, custom language server attached to `.lean` files would duplicate parsing and compete with vscode-lean4 for hovers and diagnostics. What an LSP buys is reuse across editors and standard editing features for the markup: diagnostics for malformed blocks, completion and go-to-definition for node ids, rename. S43's other needs, scale and 'separate scripts doing graph analysis', are better met by a headless core library (parser, graph model, Lean bridge) exposed through a CLI that exports the graph as JSON in a documented, versioned schema. Likely recommendation: build the core library and CLI now and use them from the extension. Wrap them as an LSP later only if editing markup in text editors becomes common, or take the Lean-native route of IC-19 with Lean's own server RPC."
+  },
+  {
+   "id": "IC-21",
+   "constraint": "The extension must verify every LLM proposal independently instead of trusting the LLM's report of success.",
+   "derived_from": [
+    "S7",
+    "S29",
+    "LEAN-1",
+    "SEM-2",
+    "SEM-5",
+    "LLM-5"
+   ],
+   "significance": "high",
+   "why": "An LLM can leave `sorry` in place, add axioms, use `native_decide`, use `implemented_by`, `@[extern]` or `unsafe` code, define notation or macros that change meaning, or quietly edit the statement of an assumption or goal. Verified on Lean 4.35.0: `native_decide` adds an auxiliary axiom with a name like `nd._native.native_decide.ax_1_1`. Before a proposal is shown as successful, the harness should check that: the build succeeds; no footprint contains `sorryAx`; each goal proof's footprint is within {the selected assumption axioms, explicitly accepted vocabulary, `propext`, `Classical.choice`, `Quot.sound`} (S28); each DERIVATION's footprint contains only ASSUMPTION axioms (S7); statements of existing nodes are unchanged unless the diff flags them; and forbidden constructs are rejected. Footprints do not catch content hidden in definitions (IC-4), so new or changed definitions must also be listed for review. The results appear in the diff overlay (S31) before the user accepts (S33)."
+  },
+  {
+   "id": "IC-22",
+   "constraint": "Moving a node between sections is a semantic operation on Lean code, not just a UI relocation, and Lean's declaration order constrains it.",
+   "derived_from": [
+    "S16",
+    "SEM-1",
+    "SEM-2",
+    "SEM-3",
+    "SEM-4",
+    "UI-5",
+    "DATA-5",
+    "IC-15"
+   ],
+   "significance": "high",
+   "why": "ASSUMPTION to DERIVATION needs a proof from other assumptions, which is work for the LLM or Lean, and turns a trusted belief into a derived claim. DERIVATION to ASSUMPTION drops the proof and adds an axiom, which changes the footprints of dependent nodes. GOAL to DERIVATION is allowed only after a verified proof (S16: 'once it's proven'). A GOAL becoming an ASSUMPTION ('I just believe it') should ask for a rationale (S6). A DERIVATION whose proof breaks may need to fall back to GOAL or 'claimed'. If kinds map to different files (IC-15), moves relocate code and can violate Lean's declare-before-use order or create import cycles. Dropping a node into another column should therefore start a validated transition, possibly asking the LLM for a proof, rather than just rewriting `type:`."
+  },
+  {
+   "id": "IC-23",
+   "constraint": "In practice nodes and Lean declarations are not one-to-one, so the rules of the mapping must be spelled out.",
+   "derived_from": [
+    "S32",
+    "S35",
+    "DATA-1",
+    "DATA-8",
+    "LLM-6",
+    "UI-13"
+   ],
+   "significance": "medium",
+   "why": "A node may need several declarations: a goal's statement `def` plus its proof `theorem`, helper lemmas, and the vocabulary it uses. Many declarations are not user-facing nodes: imports, instances, helpers, and code the user writes directly without markup. S35 requires every node to correspond to something in a Lean file, not every declaration to be a node. To decide: which declaration is a node's primary one (the one the expand view in S40 shows); whether unmarked declarations are hidden, shown as 'untracked', or offered for annotation; and whether helper lemmas the LLM creates become DERIVATION nodes (S32 suggests new nodes appear) or stay hidden."
+  },
+  {
+   "id": "IC-24",
+   "constraint": "Separate a statement from its proof, as the `def` in the S37 example suggests. This gives every node kind a lifecycle without `sorry`.",
+   "derived_from": [
+    "S37",
+    "S39",
+    "LEAN-2",
+    "SEM-3",
+    "SEM-6"
+   ],
+   "significance": "medium",
+   "why": "The example represents a GOAL as `def cynder_not_ ...`: the proposition is a definition (`def goal : Prop := ...`), separate from any proof (`theorem goal_proof : goal := ...`). This matches S39: a formalized but unproven goal is a representation that exists but is not yet inhabited, and it needs no `sorry` at all. Applied uniformly (an assumption is a statement def plus `axiom a : stmt`; a derivation is a statement def plus a theorem), the pattern lets the UI show and diff statements separately from proofs (IC-3), gives docstrings a natural home, and makes a changed statement easy to detect. The cost is extra names and one more level of indirection."
+  },
+  {
+   "id": "IC-25",
+   "constraint": "The Cynder/Spyro walkthrough is the de facto acceptance scenario. It should be automated with a mock LLM, plus a manual smoke test against real Claude.",
+   "derived_from": [
+    "S17",
+    "S52",
+    "PROC-7",
+    "UI-7",
+    "UI-8",
+    "UI-9",
+    "UI-10",
+    "UI-11",
+    "UI-12",
+    "LLM-3",
+    "LLM-4"
+   ],
+   "significance": "medium",
+   "why": "S17-S33 is the one concrete end-to-end flow: four informal nodes (one GOAL and three ASSUMPTIONs, two of them with rationales), multi-selection, the selection tray, the button, questions, a diff overlay with new vocabulary nodes, and accept or feedback. S52 asks for tests of basic functionality and a judgment of when the tool is 'good enough ... to start using', so the walkthrough is the natural bar. LLM output is nondeterministic and uses up subscription quota, so automated tests need a scripted or replay adapter behind the harness interface, and a real Claude run serves as the manual smoke test. The hidden gap (IC-3) makes it a good honesty test: a correct run asks about the bridging premise or proposes it, rather than slipping it in."
+  },
+  {
+   "id": "IC-26",
+   "constraint": "Diffs must be computed and shown per node as well as per file, applied atomically, and be reversible.",
+   "derived_from": [
+    "S31",
+    "S33",
+    "UI-11",
+    "UI-12",
+    "LLM-5"
+   ],
+   "significance": "medium",
+   "why": "S31 needs a semantic diff. Parse the markup and Lean of both the base and the proposed version, match nodes by id (IC-8), and classify each node as added, removed, NL changed, statement changed, proof changed or kind changed, along with changes to edges. Then render this as an overlay of ghost nodes and badges. The file view can use VS Code's built-in diff editor on a virtual document. Accepting per node or per hunk is not stated, but 'accept this, or else provide some feedback' (S33) suggests it is likely wanted. Applying must be atomic across files (one workspace edit) and reversible. VS Code's undo across several files is weak, so a snapshot before applying, e.g., a git commit in the model project, is the robust option. Note that the current directory is not a git repository."
+  },
+  {
+   "id": "IC-27",
+   "constraint": "The agent must be sandboxed and briefed: its tools and scope restricted, and a fixed brief on the telelean conventions provided.",
+   "derived_from": [
+    "S9",
+    "LLM-1",
+    "LLM-4",
+    "LLM-5",
+    "IC-10",
+    "IC-11",
+    "IC-13",
+    "IC-21"
+   ],
+   "significance": "medium",
+   "why": "Claude Code, used as the agent runtime, has shell and file tools. It should be confined to the shadow workspace (IC-13) and limited to reading and writing model files and running Lean checks: no git push, no network access, no files outside the project. It should get a system prompt or skill describing the markup schema, ids, kinds, and the rules in IC-10 and IC-21. Without `--bare`, Claude Code also loads the user's global hooks, skills, memory and MCP servers (IC-11), which may need to be isolated through explicit settings or tool allow-lists. With the Agent SDK, the `canUseTool` callback, `PreToolUse` hooks and permission modes provide that control."
+  },
+  {
+   "id": "IC-28",
+   "constraint": "The user's answers to the LLM's questions, and their feedback, are pragmatic modeling decisions (shared common ground). They should be saved and reused.",
+   "derived_from": [
+    "S30",
+    "S33",
+    "LLM-3",
+    "LLM-5"
+   ],
+   "significance": "medium",
+   "why": "Answers to questions like 'do you want to model characters' (S30), and feedback (S33), fix the granularity and interpretation of the formal model. If they live only in a transient chat, later runs will ask again or contradict them, and the model will drift. Store them as project-level 'modeling decisions' or notes attached to nodes, feed them into every later run, and show them in the UI. This fits the user's linguistic framing: pragmatics is unspoken context, and this makes it explicit."
+  },
+  {
+   "id": "IC-29",
+   "constraint": "Record who wrote each piece of text. The user's NL statements are the specification and must not be overwritten, and descriptions written by the LLM must be marked as such.",
+   "derived_from": [
+    "S6",
+    "S32",
+    "DATA-4",
+    "DATA-5",
+    "LLM-6"
+   ],
+   "significance": "medium",
+   "why": "S40 requires an NL description for every node, including vocabulary nodes the LLM creates (S32), so the LLM will write NL text, and that text is itself a formalization-gap risk (IC-3). The user's own wording (e.g., S18: 'Cynder would not be a good addition to the new Spyro game') is the ground truth the Lean must be judged against, and an assumption's rationale (S6) can only come from the user. The markup should therefore record provenance (written by the user or by the LLM) and keep the user's original text verbatim."
+  },
+  {
+   "id": "IC-30",
+   "constraint": "Lean's logic is classical, monotonic and crisp, while the beliefs in a mental model are often defeasible, vague or graded. How such generalizations are encoded is a modeling decision the system must make visible.",
+   "derived_from": [
+    "S5",
+    "S20",
+    "S24",
+    "SEM-1",
+    "LLM-3"
+   ],
+   "significance": "medium",
+   "why": "'PG games cannot have characters with dark pasts' (S24) is a defeasible generalization. Encoded as a universally quantified axiom, it becomes absolute and invites contradiction as soon as exceptions are added (see IC-2). 'What they feel is true' (S5) also suggests degrees of belief, which classical Lean cannot express directly. The options (explicit exception predicates, 'typically' predicates, restricting the claim to the stated context) belong among the pragmatic questions the LLM asks (S30) and should not be chosen silently."
+  },
+  {
+   "id": "IC-31",
+   "constraint": "Define what each kind of selection means for the button, and which other actions the button may need.",
+   "derived_from": [
+    "S8",
+    "S25",
+    "S28",
+    "UI-9",
+    "UI-10",
+    "SEM-5"
+   ],
+   "significance": "medium",
+   "why": "The walkthrough selects assumptions plus one goal (S25). But S8 says goals are reached 'via ASSUMPTIONS and DERIVATIONS', so derivations should be selectable as lemmas; their footprints still contain only assumptions. Other selections need defined behavior or validation: several goals; no goal ('formalize these'); a goal alone ('find the assumptions it needs'); a mix of informal and formal nodes. The tray (S26) is a good place to show the inferred proof obligation, such as 'prove G from {A1, A2, A3}', before running."
+  },
+  {
+   "id": "IC-32",
+   "constraint": "Context and token budget: as the model grows, the LLM must reuse existing vocabulary while receiving only the relevant part of the project.",
+   "derived_from": [
+    "S9",
+    "S43",
+    "LLM-2",
+    "LLM-4",
+    "LLM-6",
+    "NFR-2",
+    "IC-11"
+   ],
+   "significance": "medium",
+   "why": "For the model to stay coherent, formalizations must build on existing declarations, e.g., reusing `Character` instead of inventing `Character2` (S29, S32). Yet the project 'might be big' (S43), and the subscription has usage limits (S9). The harness needs a strategy for selecting context: the selected nodes, their transitive Lean dependencies, an index of vocabulary, and the saved modeling decisions (IC-28), rather than whole files. Claude Code handles prompt caching itself."
+  },
+  {
+   "id": "IC-33",
+   "constraint": "The verbatim prompt log records the development conversation and is kept by the assistant; it is not a runtime feature of the extension. The main session must write it on every turn, including prompts that arrive mid-turn.",
+   "derived_from": [
+    "S53",
+    "S54",
+    "PROC-8"
+   ],
+   "significance": "medium",
+   "why": "S53-S55 concern the user's prompts to the implementing assistant, and the assistant's responses and requested documents. Subagents cannot see user messages sent mid-turn, so the top-level session has to do the logging. A convention is already in use: bundle_2 holds `prompt2.md`, `response2.md` and `response2_modelinfo.md` (prompt 2 arrived mid-turn). By that convention, the response to prompt 1 and its requested documents (consolidated requirements, unspoken constraints, architecture, software list) belong in bundle_1. Logging the extension's own LLM transcripts would be a separate, optional feature."
+  },
+  {
+   "id": "IC-34",
+   "constraint": "When Claude is used, the content of the user's mental model and Lean files leaves the machine.",
+   "derived_from": [
+    "S9",
+    "LLM-2",
+    "DATA-1"
+   ],
+   "significance": "low",
+   "why": "The harness sends the user's beliefs (assumptions with their rationales) and Lean code to Anthropic through Claude Code. That is acceptable for personal use, but the scope should be limited to the model project, with no unrelated files and no secrets, and the behavior should be documented. Low significance for a single-user tool."
+  }
+ ],
+ "tensions": [
+  {
+   "description": "S2 asks for an 'interactive map ... (at least clicking and dragging components)', which suggests free 2-D placement, but S11-S14 put nodes in three vertical lists by kind. It is unclear what dragging does and what the 'components' are.",
+   "sentences": [
+    "S2",
+    "S11",
+    "S12",
+    "S13",
+    "S14"
+   ],
+   "suggested_resolution": "Treat the columns as the layout. Dragging within a column reorders (the order is saved per IC-9); dragging across columns requests a kind change (S16, gated per IC-22); dragging from a node handle draws an arrow (S15). 'Components' means nodes. A free-form graph view for analysis can be added later."
+  },
+  {
+   "description": "Who draws the arrows? 'The extension must be able to draw arrows' (S15) can mean edges the user draws or edges the extension computes from Lean dependencies; S25-S29 suggest dependencies are established by the LLM's proof.",
+   "sentences": [
+    "S15",
+    "S25",
+    "S28",
+    "S29"
+   ],
+   "suggested_resolution": "Support both as distinct edge types, intended and actual (IC-5), and ask the user which one is primary."
+  },
+  {
+   "description": "S15 allows arrows only 'from any node in one section to a node in another section', but S8 says goals are reached via derivations (chains of derivations and lemmas), and vocabulary nodes (S32) relate to nodes in the same column. Dependencies computed from Lean will include edges within a column.",
+   "sentences": [
+    "S15",
+    "S8",
+    "S32"
+   ],
+   "suggested_resolution": "Allow edges within a column (drawn as arcs inside the column, or shown on hover), and ask whether the restriction was intended."
+  },
+  {
+   "description": "S3/S4 describe the text box as the way to prompt the AI, with the A/D/G switch, but S18-S24 create nodes from it with no LLM involved, and S27 invokes the LLM only through the button.",
+   "sentences": [
+    "S3",
+    "S4",
+    "S10",
+    "S18",
+    "S20",
+    "S22",
+    "S24",
+    "S27"
+   ],
+   "suggested_resolution": "The text box plus switch creates informal nodes without the LLM. The LLM runs only on explicit actions (the button on a selection, 'formalize' on a node) and through a conversation strip for answers and feedback. Offer an opt-in setting to formalize automatically on create."
+  },
+  {
+   "description": "S7 defines a DERIVATION as purely derivable from the assumptions, but the switch (S4) and moves (S16) let the user create a node in DERIVATIONS, or move one there, before any proof exists.",
+   "sentences": [
+    "S7",
+    "S4",
+    "S16"
+   ],
+   "suggested_resolution": "Keep the kind assigned by the user but compute the status (IC-6). An unproved DERIVATION is shown as 'claimed' and triggers or offers an LLM proof attempt; it becomes a full derivation only once verified."
+  },
+  {
+   "description": "When the button's proof succeeds (S28-S29) and is accepted (S33), does the goal stay in GOALS marked as proved, or move to DERIVATIONS? S8 defines a goal as not yet reached, and S16 says a goal moves to derivations 'once it's proven', but not whether this happens automatically.",
+   "sentences": [
+    "S8",
+    "S16",
+    "S28",
+    "S29",
+    "S33"
+   ],
+   "suggested_resolution": "When a verified proof is accepted, move the node to DERIVATIONS (or offer a one-click move) and keep a 'was a goal' badge as history. Never move a node without verification."
+  },
+  {
+   "description": "S5 calls assumptions axioms, which are global in Lean, but S25/S28 assert that a *selected subset* suffices. With global axioms, a proof may silently use assumptions that were not selected.",
+   "sentences": [
+    "S5",
+    "S25",
+    "S28"
+   ],
+   "suggested_resolution": "Check the axiom footprint against the selection (IC-1, IC-21), or encode assumptions as hypotheses in the signature of the goal theorem."
+  },
+  {
+   "description": "S32 has the LLM create vocabulary nodes (structure `Cynder`, Prop `isCharacter`), but the panel has exactly three columns, one per kind (S11). S7 forbids new assumptions while S29 requires signatures, and vocabulary declared with `axiom` counts as new axioms in Lean.",
+   "sentences": [
+    "S32",
+    "S11",
+    "S7",
+    "S29"
+   ],
+   "suggested_resolution": "Introduce a vocabulary/definition sub-kind, shown in the ASSUMPTIONS column or as chips or a collapsible strip. Prefer encodings that add no axioms (`structure`, `inductive`, `opaque`), and ask the user (IC-4)."
+  },
+  {
+   "description": "S6 says assumptions should be annotated with a rationale, but the fourth assumption in the walkthrough (S24) has none.",
+   "sentences": [
+    "S6",
+    "S24"
+   ],
+   "suggested_resolution": "Treat the rationale as strongly encouraged but optional: allow creating an assumption without one, show a 'no rationale' indicator, and ask for it later. Always ask for it on assumptions the LLM suggests."
+  },
+  {
+   "description": "The markup example (S37) has only `natural_name` and `type`, but other sentences call for a rationale (S6), an NL description that may be a docstring (S40), arrows (S15), a link to the Lean code (S35), and nodes without code (S38). A docstring cannot stand alone without a declaration, and the NL text would end up in two places.",
+   "sentences": [
+    "S37",
+    "S6",
+    "S15",
+    "S35",
+    "S38",
+    "S40"
+   ],
+   "suggested_resolution": "Define markup schema v1 with `id`, `type`, `natural_name` (the user's statement verbatim), `rationale` (for assumptions), an optional `description`, optional intended edges, a `decl` link, and provenance. Keep the markup as the single source of NL text, and optionally copy it into a generated docstring for formalized nodes."
+  },
+  {
+   "description": "S39 rejects `sorry` for nodes without code because it implies an uninhabited representation, which suggests `sorry` would be appropriate once a node is formalized but unproven. Yet S37 represents a GOAL with a `def`, a statement-as-definition that needs no `sorry` at all.",
+   "sentences": [
+    "S39",
+    "S37",
+    "S8",
+    "S29"
+   ],
+   "suggested_resolution": "Separate statement from proof (IC-24): informal means comment only; formalized means `def stmt : Prop`; proved means a theorem inhabiting it. Allow `sorry` only temporarily, and never count it as proved."
+  },
+  {
+   "description": "S35 says each node corresponds to something in a Lean file, but the map also has state with no natural place in Lean (the layout from S2, user-drawn arrows from S15), and Lean files will contain declarations that are not nodes (direct edits, S42).",
+   "sentences": [
+    "S35",
+    "S2",
+    "S15",
+    "S42"
+   ],
+   "suggested_resolution": "Every node gets a markup block, but not every Lean declaration is a node. Store the layout in a sidecar file keyed by node id; store intended edges in the markup or the sidecar (decide per IC-9); show unmarked declarations as 'untracked'."
+  },
+  {
+   "description": "Click and drag each do two jobs: click selects (S25) and expands (S40); drag moves nodes (S2, S16) and draws arrows (S15).",
+   "sentences": [
+    "S2",
+    "S15",
+    "S16",
+    "S25",
+    "S40"
+   ],
+   "suggested_resolution": "Give each action its own affordance: click or a checkbox to select (with a modifier for multi-select), a chevron or double-click to expand, drag the body to move, drag from a port to draw an arrow. Provide keyboard equivalents for all of them."
+  },
+  {
+   "description": "S30 has the LLM ask questions 'along the way', but the walkthrough reads as a single button-then-diff flow (S27, S31). The only input surface is the text box with the A/D/G switch (S4, S10), and the kind marking means nothing for an answer.",
+   "sentences": [
+    "S30",
+    "S27",
+    "S31",
+    "S4",
+    "S10"
+   ],
+   "suggested_resolution": "Add a conversation/question strip with multiple-choice cards and a free-text 'Other' option, backed by AskUserQuestion or a custom ask_user tool. While a question is pending, switch the input box to 'answer' mode and disable the A/D/G switch."
+  },
+  {
+   "description": "S41 marks only whether a node has a Lean representation (the blue aura), but S7, S8 and S16 depend on whether it is proved. A formalized but unproved goal and a proved derivation would look the same.",
+   "sentences": [
+    "S41",
+    "S7",
+    "S8",
+    "S16"
+   ],
+   "suggested_resolution": "Keep the blue aura for 'has a Lean representation' as requested, and add separate status badges or icons: proved, unproved, broken, claimed."
+  },
+  {
+   "description": "The walkthrough selects only assumptions plus a goal (S25; S28: 'the assumptions must be enough'), but S8 says goals are reached via ASSUMPTIONS and DERIVATIONS. Can derivations be selected as premises?",
+   "sentences": [
+    "S25",
+    "S28",
+    "S8"
+   ],
+   "suggested_resolution": "Allow derivations in the selection as lemmas. The sufficiency check then becomes: the footprint must lie within the selected assumptions together with the footprints of the selected derivations."
+  },
+  {
+   "description": "S9 asks for a pluggable LLM ('slot in an LLM'), but the required Claude route through the subscription means driving Claude Code, an agent runtime with its own tools, while other providers expose plain completion APIs. Anthropic's policy also bars third-party products from offering claude.ai login.",
+   "sentences": [
+    "S9"
+   ],
+   "suggested_resolution": "Define the harness interface at the agent level: a task goes in; events, questions and a diff come out. Expose the extension's tools via MCP so other agents can reuse them. Ship a Claude Code adapter for personal subscription use, and keep an API-key adapter path for anything distributed."
+  },
+  {
+   "description": "S43 asks whether an LSP is right, but the node markup lives inside `.lean` files (S35) that Lean's own language server already serves, and the direct editing in S42 happens in those same files.",
+   "sentences": [
+    "S43",
+    "S35",
+    "S42"
+   ],
+   "suggested_resolution": "Recommend a headless core library plus a CLI (graph export for scripts), used by the extension. Defer a markup LSP, or go Lean-native with attributes, commands and Lean server RPC (IC-19, IC-20)."
+  },
+  {
+   "description": "'The directory that VSCode is currently in' and 'the current directory' (S2, S35) are the user's model workspace, whereas 'this directory' in S51 is where the extension's code is implemented (/home/zhengyew/telelean).",
+   "sentences": [
+    "S2",
+    "S35",
+    "S51"
+   ],
+   "suggested_resolution": "Keep the extension source in /home/zhengyew/telelean. The model workspace is whatever folder VS Code has open when the extension runs. Ship a sample model project (the Spyro walkthrough) for testing and for the usage directions."
+  },
+  {
+   "description": "S54 says to log every prompt 'in a new bundle', yet S53 notes that bundle_1 already holds prompt1.md. Where do the response to prompt 1 and its requested documents go, and how are mid-turn prompts bundled?",
+   "sentences": [
+    "S53",
+    "S54",
+    "S55"
+   ],
+   "suggested_resolution": "Follow the convention already used in bundle_2 (promptN.md, responseN.md, and extra documents such as responseN_modelinfo.md). The response to prompt 1 and its documents go in bundle_1, and every later prompt, including mid-turn ones, gets its own bundle. Check this against the referenced spectec example."
+  },
+  {
+   "description": "The user is expected to 'mostly work in the extension window' (S42), yet expanding a node to see its Lean definition (S40) and switching to the diff of the Lean files (S31) both need Lean views. It is unclear whether these appear inside the panel or as regular VS Code editors.",
+   "sentences": [
+    "S42",
+    "S40",
+    "S31"
+   ],
+   "suggested_resolution": "Show Lean snippets inline in the panel (read-only, syntax-highlighted) when a node is expanded. For full-file views, open VS Code's native diff editor or editor in a side split, launched from the panel."
+  }
+ ]
+}

@@ -1,0 +1,90 @@
+[
+ {
+  "label": "plan:architect",
+  "agentId": "a0052a5923e92a38b",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Write",
+   "Edit",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "plan:review",
+  "agentId": "a034647318bd77191",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Edit",
+   "Write",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "build:WP1",
+  "agentId": "ac3e2258b8241571c",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Write",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "build:WP2",
+  "agentId": "a3e14d5b8ecad657e",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Write",
+   "Edit",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "build:WP3",
+  "agentId": "aedc62ae7e38564bd",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Write",
+   "Edit",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "build:WP4",
+  "agentId": "ad3cbb1ca46510ebc",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Edit",
+   "Write",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "build:WP5",
+  "agentId": "a244c0e657ee53698",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Write",
+   "Edit",
+   "ToolSearch",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "build:WP6",
+  "agentId": "abf5e0bc0d4ccf0b0",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Write",
+   "Edit",
+   "StructuredOutput"
+  ]
+ }
+]

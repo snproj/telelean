@@ -1,0 +1,401 @@
+{
+ "package_overview": "@telelean/core is the pure-TypeScript heart of telelean. The runner (Node), the extension host and the React webview all share it. tsconfig.json limits it to lib ES2023 with no DOM or Node typings, so it does no I/O: every function takes texts, parsed files or models and returns data. It holds no LLM code: the gate rules here are the non-LLM judge of Claude's work. Other packages do not use dist/; their tsconfig/vite/vitest configs alias `@telelean/core` to src/index.ts. The only runtime dependency, zod, is used solely by export/schema.ts. index.ts deliberately does not re-export that file, which keeps the webview bundle free of zod. The package has 48 vitest files under test/; this survey does not cover them.\n\nModule groups:\n- Contracts (marked FROZEN, additive changes only): model.ts (TlNode/TlEdge/TlGraph, D-15 derived statuses, vocabulary, Lean-check state); facts.ts (the LeanFacts the runner's sandboxed `lake build` plus check file produce); actions.ts (BoardAction -> EditPlan -> FileChange, ActionError, history/undo types); run.ts (M2 run, proposal and sidecar record types); protocol.ts (versioned host<->webview messages with hand-written validators); paths.ts and layout.ts (folder and sidecar conventions).\n- markup/: a lexer faithful to Lean 4.35, a declaration-header scanner, and the `@@ telelean v1` block parser. The parser reports TL0xx diagnostics and binds blocks (a pinned `lean:` beats adjacency). The group also has the serializer, byte-preserving field/block edits, and LeanOps (D-11 rewrites, D-9 docstring mirror).\n- project/: buildProjectModel merges parsed files, file hashes and LeanFacts (FactsIndex: fresh, stale-by-name, unchecked) into a ProjectModel. That covers ids, bindings, declaration ownership, D-3 vocabulary classification, statement closures, proof statuses with footprints, status flags, TL1xx diagnostics and D-13 edges. Verified edges come from `.ilean` references, not from footprints. subjectGraph cuts out one subject's TlGraph and adds foreign vocabulary and the M2 externalUsers.\n- edit/ plus kindChange.ts: planAction plans BoardActions through EditSession, which re-parses between steps, keeps other cards' bindings and yields whole-file changes plus layout/attic data. planKind applies the D-11 table using the facts (mark-broken, or a mechanical hypothesis rewrite, with confirmedDependents). kindChange.ts is the graph-only preview the webview shows during a drag.\n- export/: graph.json format 1.1, plus its zod schema and the JSON Schema generated from it.\n- gate/ (M2): the prototype gate's pure rules. These are the G0 token and file rules, the ghost single-term rule, the D-5 permitted set and freeze snapshot, and evaluateRules (G1 errors read from facts, G3, G5 and the stage/readiness rules over the B/A/S models). Also here: pre-gate normalisation, ghost adoption, lifecycle edits, and plain-language sentences for findings. The sandboxed build itself and G4 (the comparator) run in the runner.\n- proposal/ (M2): board diff, accepted-proposal label, codecs for attempts.jsonl and decisions.json.\n- samples/ and graph.ts: the frozen Spyro sample, a generated large graph, and M0 helpers that the webview still uses (slugId, createUserNode, columnOrder).\n\nData flow: the runner parses every model file (parseLeanFile) and builds the model with the latest facts. It publishes subjectGraph boards (attaching attempts itself) and writes toGraphJson output to .telelean/graph.json. The extension posts each board as a `graph` message, which the webview checks with parseHostToWebview. Webview messages go through parseWebviewToHost in the extension and become BoardActions. The runner plans them with planAction and applies them as FileChanges plus sidecars. In M2 the runner builds models of the user's base, the shadow and the adoption commits. At each gate it runs checkFileChanges, evaluateRules and the permitted-set code, phrases failures with attemptNotice, and builds ProposalViews with diffGraphs and the sidecar codecs.\n\nPlaces where code and docs disagree:\n- package.json's description still says the package holds only types, the protocol and samples.\n- add-node's `preferredId` is documented as used, but nothing reads it; ids are always derived from the sentence.\n- graph.json `attempts` is always []. Its comment says it is filled from M2 on, but neither core nor the runner fills it.\n- The schema file is named 1.0, but the format is 1.1; the schema accepts any 1.x.\n- The comments in gate/types.ts and gate/index.ts list fewer G0 tokens and ghost keywords than g0.ts checks. docs/m2-plan.md section 3.1 matches the code.\n- Some declared values are never produced: the flags unselected-used, broken, depends-on-removed and signoff-stale; the vocabulary flag `new`; Role values other than node; certificates other than none.\n- Nothing calls notImplemented() any more. sentenceLabel, nodesOfType and isFormalized are unused, and planKindChange/planDelete are not used outside core.",
+ "files": [
+  {
+   "path": "packages/core/package.json",
+   "purpose": "Manifest of the private ESM package @telelean/core. main/types point at dist/ (built by `tsc -p tsconfig.json`); scripts are build, typecheck (`tsc -p tsconfig.test.json`) and test (typecheck, then `vitest run`). The description is out of date: it names only graph types, the protocol and samples, while the package now also holds the markup parser, project model, edit planner, gate rules and proposal helpers.",
+   "key_exports": "name @telelean/core; exports '.' -> dist/index.js + dist/index.d.ts",
+   "depends_on": "zod 4.6.7, its only runtime dependency, used solely by src/export/schema.ts. typescript and vitest come from the root package.json. Other packages alias @telelean/core to src/index.ts and do not use dist/."
+  },
+  {
+   "path": "packages/core/schema/telelean-graph-1.0.schema.json",
+   "purpose": "Extra entry, beyond the requested set. Committed draft-2020-12 JSON Schema generated from src/export/schema.ts, titled 'telelean graph.json 1.x'. It accepts any format_version 1.x and includes the 1.1 field conditional_on as optional, despite its 1.0 file name. test/export/schema.test.ts keeps it equal to the generated schema; UPDATE_SCHEMA=1 regenerates it.",
+   "key_exports": "(data file)",
+   "depends_on": "generated from src/export/schema.ts"
+  },
+  {
+   "path": "packages/core/src/actions.ts",
+   "purpose": "Frozen M1 contract for board gestures and their results. Defines the BoardAction union (add-node, edit-node, delete-node, change-kind with M2 confirmedDependents, reorder, set-premises, create-subject), the EditPlan core produces, whole-file FileChange, attic ArchiveEntry, the ActionError refusal class and its codes, ActionOutcome, and the history, undo and workspace-state types; M2 adds the 'accept-proposal' history kind. add-node's `preferredId` is documented as used, but no package reads it.",
+   "key_exports": "BoardAction, BoardActionKind, EditableField, DependentsChoice, HistoryActionKind, AcceptProposalAction, ACCEPT_PROPOSAL_ACTION, FileChange, ArchiveEntry, EditPlan, ActionErrorCode, ActionError, DependentCard, ActionOutcome, HistoryEntry, StorageUsage, HistoryAvailability, HistoryListing, HistoryDiff, WorkspaceState",
+   "depends_on": "model.ts, layout.ts (types only)"
+  },
+  {
+   "path": "packages/core/src/edit/dependents.ts",
+   "purpose": "Finds the users of given declarations, for D-11 kind changes and D-18 deletes. It follows Lean facts refs transitively, and while some file is not freshly checked it adds a generous text scan (namespaces, opens, dotted suffixes). It also finds axiom users visible only through `#print axioms`, and locates declarations.",
+   "key_exports": "factUsers, textUsers, allFresh, usersOf, axiomListUsers, locateDecl, UsersOptions",
+   "depends_on": "project/text.ts (identifierTokens), project/textRefs.ts (candidatesOf, declBody, openedNamespaces), project/vocabulary.ts (resolveName), project/types.ts, markup/types.ts"
+  },
+  {
+   "path": "packages/core/src/edit/index.ts",
+   "purpose": "Frozen public entry of edit planning, with thin wrappers. planAction turns any BoardAction into an EditPlan or throws an ActionError refusal; planKindChange is the D-11 plan with facts; planDelete is the D-18 impact. It also re-exports the edit types and subjectScaffold. Only planAction is used outside core (by the runner).",
+   "key_exports": "planAction, planKindChange, planDelete, subjectScaffold, plus re-exported PlanContext, KindChangePlan, KindChangeRequest, DeletePlan, DeleteRequest",
+   "depends_on": "edit/planAction.ts, edit/planKind.ts, edit/planDelete.ts, edit/scaffold.ts, edit/types.ts, actions.ts, project/types.ts"
+  },
+  {
+   "path": "packages/core/src/edit/planAction.ts",
+   "purpose": "Implements planAction through an EditSession. add-node writes a block with a sentence-derived id into the subject's Inbox (creating Inbox.lean and its import if needed). edit-node sets a field and follows the docstring if it mirrored the old sentence. delete-node refuses with needs-confirmation unless confirmed, then removes the block, its statement and `.holds` (archiving proofs) and premise references. change-kind applies planKind; reorder changes only the layout; set-premises refuses an empty list (not-yet), cross-subject premises and cycles; create-subject writes the scaffold plus a library-root import. Every edited block gets its derived id written and, if the node is bound by adjacency, its binding pinned with `lean:`.",
+   "key_exports": "plan",
+   "depends_on": "edit/session.ts, edit/planKind.ts (planKind, NOUN), edit/planDelete.ts, edit/scaffold.ts, markup/api.ts (deriveId, escapeBodyText, renderBlock), layout.ts, paths.ts, project/text.ts (cutText), facts.ts, actions.ts, model.ts"
+  },
+  {
+   "path": "packages/core/src/edit/planDelete.ts",
+   "purpose": "D-18 delete impact, computed before asking the user. It lists the declarations removed (the statement abbrev and its `.holds`; none with keepLean), the cards whose premises lose the id, and the declarations that would stop compiling (users from usersOf, plus `#print axioms` users of an axiom `.holds`). It also reports whether keepLean leaves an unmarked axiom behind (TL104).",
+   "key_exports": "planDel",
+   "depends_on": "edit/dependents.ts, facts.ts (holdsName), actions.ts, project/types.ts"
+  },
+  {
+   "path": "packages/core/src/edit/planKind.ts",
+   "purpose": "D-11 kind changes with the Lean facts, following the table in its header. It computes the graph impact, the `type:` change and the Lean ops: add `axiom n.holds`; turn a theorem `.holds` into an axiom (dropping arguments where users apply a conditional proof); or remove `.holds` for A->G and D->G, either marking dependents broken or rewriting them (fresh facts and theorems only) to take a hypothesis `(h_S : S)` that is passed on between rewritten users. It refuses with needs-confirmation (when not every dependent is in confirmedDependents), facts-stale or unsafe.",
+   "key_exports": "planKind, modelSemantic, holdsArguments, referenceSpans, NOUN",
+   "depends_on": "kindChange.ts, project/index.ts (subjectGraph), edit/dependents.ts, project/text.ts (LineMap, hasToken, normalizeWhitespace, splitTopLevelArrows), project/vocabulary.ts (signatureText), markup/api.ts (relativeName), facts.ts, actions.ts"
+  },
+  {
+   "path": "packages/core/src/edit/scaffold.ts",
+   "purpose": "subjectScaffold returns the exact texts of a new subject's four files. `<lib>/<S>.lean` imports Vocabulary, Inbox and Main; Vocabulary.lean, Inbox.lean and Main.lean are each a `namespace S ... end S` with a one-line comment. create-subject and the runner's Initialize share it; it throws ActionError invalid for a bad subject or library name.",
+   "key_exports": "subjectScaffold",
+   "depends_on": "paths.ts, actions.ts"
+  },
+  {
+   "path": "packages/core/src/edit/session.ts",
+   "purpose": "EditSession, a pure multi-step editor over the model's files. It applies markup edits and Lean ops batch by batch, re-parsing in between, and finds original blocks again by mapping offsets through earlier edits. It refuses unsafe removals of repeated fields and Lean ops whose span disagrees with Lean's fresh range, and adds imports. changes() first protects other cards' bindings (a blank line after a code-less block that became adjacent; any other re-binding is refused), then returns sorted whole-file FileChanges. gate/normalise.ts uses it too.",
+   "key_exports": "EditSession, importEdit",
+   "depends_on": "markup/api.ts (applyLeanOps, applyTextEdits, findDecl, insertBlockEdits, parseLeanFile, removeBlockEdits, setBlockField), markup/values.ts (LIST_FIELD_KEYS), project/text.ts (LineMap), facts.ts, actions.ts"
+  },
+  {
+   "path": "packages/core/src/edit/types.ts",
+   "purpose": "Frozen types of edit planning: PlanContext (today, now, per-subject layouts), KindChangePlan and KindChangeRequest (with the M2 confirmedDependents), DeletePlan and DeleteRequest.",
+   "key_exports": "PlanContext, KindChangePlan, KindChangeRequest, DeletePlan, DeleteRequest",
+   "depends_on": "actions.ts, kindChange.ts, layout.ts, model.ts, markup/types.ts (types only)"
+  },
+  {
+   "path": "packages/core/src/export/graphJson.ts",
+   "purpose": "Frozen external format `.telelean/graph.json` (format telelean-graph, version 1.1, snake_case). toGraphJson serialises the whole project model deterministically: subjects, nodes, vocabulary, edges via edgesOf, diagnostics, file hashes, and whether facts are available or stale. `attempts` is always an empty array; the comment says it is filled from M2 on, but neither core nor the runner fills it.",
+   "key_exports": "toGraphJson, GRAPH_JSON_FORMAT, GRAPH_JSON_VERSION, GraphJson, GraphJsonNode, GraphJsonVocabItem, GraphJsonEdge, GraphJsonDiagnostic, GraphJsonRange, GraphJsonPosition, GraphJsonOptions",
+   "depends_on": "project/build.ts (edgesOf), project/types.ts, model.ts"
+  },
+  {
+   "path": "packages/core/src/export/index.ts",
+   "purpose": "Barrel of the export module. It re-exports graphJson.ts only; schema.ts is left out on purpose so zod stays out of the webview bundle.",
+   "key_exports": "everything from export/graphJson.ts",
+   "depends_on": "export/graphJson.ts"
+  },
+  {
+   "path": "packages/core/src/export/schema.ts",
+   "purpose": "zod schema of graph.json 1.x, built from loose objects so later minor versions may add fields, plus a draft-2020-12 JSON Schema generator. A compile-time check confirms the schema accepts every GraphJson the exporter can produce. It is not exported from the package root; core's tests and the runner's integration test import it by path.",
+   "key_exports": "graphJsonSchema, graphJsonJsonSchema, graphJsonAccepted",
+   "depends_on": "zod; export/graphJson.ts (type)"
+  },
+  {
+   "path": "packages/core/src/facts.ts",
+   "purpose": "Frozen M1 contract for the Lean facts that the runner's semantic layer produces from a sandboxed `lake build` plus a check file. It covers status, build and check-run results, per-module freshness and source hashes, and per-declaration kind, type, sort, value, axioms, sorry use, refs and docstring, with positions in LSP convention. It also has the `n.holds` naming helpers and the standard/sorry axiom names.",
+   "key_exports": "LeanFacts, DeclFacts, DeclRef, ModuleFacts, BuildFacts, CheckRunFacts, LeanMessageFact, FactsStatus, LeanDeclKind, LEAN_FACTS_FORMAT, LEAN_FACTS_VERSION, STANDARD_AXIOM_NAMES, SORRY_AXIOM, HOLDS_SUFFIX, holdsName, statementOfHolds",
+   "depends_on": "model.ts (Range type)"
+  },
+  {
+   "path": "packages/core/src/gate/adoption.ts",
+   "purpose": "D-6 ghost adoption ('I hold this'). It plans a new ASSUMPTION block worded by the agent, inserted before the target's block, with pinned `lean:` and origin/session/worded_by agent. The block is followed by `/-- sentence -/`, `abbrev <name> : Prop := <collapsed statement>` and `axiom <name>.holds`, and the new id is appended to the target's premises. It validates the text (single-term rule, G0 scan, name, date, session), re-parses the result, and refuses unless exactly the expected card appears with every other binding unchanged.",
+   "key_exports": "adoptionPlan",
+   "depends_on": "gate/g0.ts (collapseWhitespace, ghostProblems, scanForbiddenText), markup/decls.ts, markup/edits.ts, markup/ids.ts, markup/lexer.ts, markup/parser.ts, markup/serializer.ts, markup/text.ts, markup/values.ts, facts.ts, actions.ts"
+  },
+  {
+   "path": "packages/core/src/gate/decls.ts",
+   "purpose": "Declaration tables for the gate rules, cached per model (named declarations with their full source text, examples, known names, vocabulary names). It also has predicates: facts lookup (including anonymous instances), the `instance : Nonempty T` presupposition pattern, what counts as a proof (a Prop-valued declaration with a value), axiom detection and the list of all axioms.",
+   "key_exports": "declTables, factsOf, isPresuppositionInstance, isProof, isAxiom, axiomNames, DeclEntry, DeclTables",
+   "depends_on": "project/text.ts (normalizeWhitespace), project/vocabulary.ts (anonymousInstanceName, signatureText), facts.ts, markup/types.ts, project/types.ts"
+  },
+  {
+   "path": "packages/core/src/gate/describe.ts",
+   "purpose": "Turns gate findings into plain board sentences in telelean's words (A2 notices). Lean names are shortened to the subject namespace and cards appear by their sentence. It builds the attempt notice ('Attempt n didn't pass: ... Asking Claude to retry.') or the give-up-and-revert notice, dropping findings that follow from an already reported root cause or repeat earlier wording.",
+   "key_exports": "describe, notice",
+   "depends_on": "paths.ts (subjectOfPath), gate/types.ts"
+  },
+  {
+   "path": "packages/core/src/gate/g0.ts",
+   "purpose": "G0 text rules; nothing here runs Lean. The token denylist works on lexLean tokens: # commands other than #check/#print, metaprogramming, native code (including any bare `native` and the ofReduce*/reduce* constants), unsafe/partial, set_option, sorry/admit, and imports from outside the project. Lines that also occur in the base text are not judged (line-multiset comparison). It also has the file rules over a change set and the single-term rule for ghost texts.",
+   "key_exports": "scanForbiddenText, checkChangeSet, ghostProblems, collapseWhitespace, textLines, where, PROJECT_FILES, inSubjectScope, isSubjectModulePath",
+   "depends_on": "markup/decls.ts (scanDecls), markup/lexer.ts (lexLean, canonicalName), markup/names.ts, markup/text.ts, gate/types.ts"
+  },
+  {
+   "path": "packages/core/src/gate/index.ts",
+   "purpose": "Frozen public entry of the M2 prototype gate: documented wrappers around the implementation modules, plus all gate types. Its comment for ghostTextProblems lists fewer command keywords than g0.ts actually rejects (g0 also rejects coinductive, open, export, omit and include).",
+   "key_exports": "scanForbidden, ghostTextProblems, checkFileChanges, computePermittedAxioms, frozenSnapshot, evaluateRules, normalisationChanges, planGhostAdoption, lifecycleChanges, describeFinding, attemptNotice, plus re-exported gate types",
+   "depends_on": "gate/adoption.ts, gate/describe.ts, gate/g0.ts, gate/normalise.ts, gate/permitted.ts, gate/rules.ts, gate/types.ts"
+  },
+  {
+   "path": "packages/core/src/gate/normalise.ts",
+   "purpose": "telelean's deterministic normalisation before each gate: pin `lean:` for nodes bound by adjacency (or just write the derived id), and mirror the sentence into the statement docstring, for well-formed statements only. It also applies a proposal's confirmed lifecycle items, of which only G->D of a goal that is still proved is allowed; that changes just the `type:` line. Both go through EditSession.",
+   "key_exports": "normalisation, lifecycle",
+   "depends_on": "edit/session.ts, markup/edits.ts (setBlockFields), markup/values.ts (escapeBodyText), actions.ts, run.ts (LifecycleItem)"
+  },
+  {
+   "path": "packages/core/src/gate/permitted.ts",
+   "purpose": "D-5 permitted axioms, the union of five sets: the standard axioms; the signature (non-Prop vocabulary axioms of signature kinds, never bound to a card); the `.holds` of selected assumptions and ghosts; the presuppositions of the target and the selected statements; and the footprints of selected proved derivations (given B, only the user's own unchanged proofs; circular ones dropped). It lists unusable premises, and builds the FrozenSnapshot (permitted set, frozen declarations' kind/type/value, all axioms).",
+   "key_exports": "signatureAxioms, permittedAxioms, snapshotOf",
+   "depends_on": "gate/decls.ts, project/text.ts (compareLeanNames, normalizeWhitespace), facts.ts, actions.ts, model.ts"
+  },
+  {
+   "path": "packages/core/src/gate/rules.ts",
+   "purpose": "Implements evaluateRules over three models: B (the user's files), A (the shadow at its newest adoption) and S (the shadow now). Rules: G1 build errors and unbuilt changed files; G3 new-axiom, existing-changed (including meaning changes and edits to adopted ghosts), not-proved, status-mismatch, statement-changed, footprint (every added or changed declaration and names only Lean reports; no facts means a finding), sorry-axiom and vocabulary-shape; G5 markup policy; readiness and stage rules (not-formalised, missing-holds, proof-before-freeze including proof carriers, examples, not-frozen). It returns ordered findings, flagged definitions, footprints, the nodes formalised in the run and the declaration diff, and never throws.",
+   "key_exports": "evaluate",
+   "depends_on": "gate/decls.ts, gate/g0.ts (where), gate/permitted.ts, markup/names.ts, project/text.ts, facts.ts, model.ts, gate/types.ts"
+  },
+  {
+   "path": "packages/core/src/gate/types.ts",
+   "purpose": "Frozen M2 gate types: every GateFindingCode (G0, G1, G3, G4 comparator, G5 markup, readiness), GateFinding and its token conventions, G0Context, Selection, PermittedAxioms, FrozenSnapshot, RulePurpose/RuleInput/RuleReport, FlaggedDefinition, the ghost adoption request and plan, and DescribeContext. Its code comments list only some of the G0 tokens (run_tac, declare_simp_like_tactic and reduceBool are missing); g0.ts and docs/m2-plan.md 3.1 agree with each other.",
+   "key_exports": "GateFindingCode, GateFinding, G0Context, Selection, PermittedAxioms, FrozenSnapshot, RulePurpose, RuleInput, RuleReport, FlaggedDefinition, GhostAdoptionRequest, GhostAdoptionPlan, DescribeContext, LifecycleItem (re-export)",
+   "depends_on": "model.ts, actions.ts, project/types.ts, run.ts (types only)"
+  },
+  {
+   "path": "packages/core/src/graph.ts",
+   "purpose": "M0-era graph helpers still in the public surface. They include edge ids, declared edges, verified edges approximated from footprints, buildGraph (used by the samples), column order and validateGraph structural checks. slugId, createUserNode and columnOrder are still used by the webview store; the real M1 graph builder is project/subjectGraph. nodesOfType and isFormalized are unused.",
+   "key_exports": "PRESUPPOSITION_PREFIX, edgeId, declaredEdges, verifiedEdges, deriveEdges, buildGraph, nodesOfType, columnOrder, isFormalized, GraphProblem, validateGraph, slugId, createUserNode",
+   "depends_on": "model.ts"
+  },
+  {
+   "path": "packages/core/src/index.ts",
+   "purpose": "The package's public surface, marked FROZEN. It re-exports model, graph, protocol, facts, actions, paths, layout, kindChange, notImplemented, markup, project, edit, export (graphJson only), the Spyro and large samples, and the M2 modules run, gate and proposal. The webview bundles it, so nothing reachable from it may use Node or vscode APIs.",
+   "key_exports": "re-exports of the modules listed",
+   "depends_on": "model.ts, graph.ts, protocol.ts, facts.ts, actions.ts, paths.ts, layout.ts, kindChange.ts, notImplemented.ts, markup/index.ts, project/index.ts, edit/index.ts, export/index.ts, samples/*, run.ts, gate/index.ts, proposal/index.ts"
+  },
+  {
+   "path": "packages/core/src/kindChange.ts",
+   "purpose": "D-11 drop-zone preview computed from the published graph alone, so the webview can show it during a drag. For a card and a target column it gives the summary and detail text, the kind of Lean change (none, add-axiom, theorem-to-axiom, remove-holds, pending-promotion), and the proof dependents along verified edges. It also says whether a confirmation or a rationale is needed and whether a mechanical rewrite is possible (fresh facts). The host re-plans with the facts in edit/planKind.",
+   "key_exports": "kindChangeImpact, proofDependents, KindChangeImpact, KindLeanChange",
+   "depends_on": "actions.ts (ActionError), model.ts"
+  },
+  {
+   "path": "packages/core/src/layout.ts",
+   "purpose": "Frozen contract for `.telelean/subjects/<S>/layout.json` (card order per column, optional collapsed vocabulary). It parses leniently, serialises stably, orders nodes by layout and then file order, and updates layouts purely (move above a card, drop ids, append).",
+   "key_exports": "Layout, emptyLayout, parseLayout, serializeLayout, orderByLayout, moveInLayout, withoutIds, appendToLayout",
+   "depends_on": "model.ts"
+  },
+  {
+   "path": "packages/core/src/markup/api.ts",
+   "purpose": "The frozen list of public markup functions, re-exported from the implementation modules: the lexer, line index, parser, value escaping and formatting, block rendering, ids, block text edits, Lean ops and name helpers.",
+   "key_exports": "lexLean, lineIndex, parseLeanFile, escapeBodyText, escapeJsonValue, formatFieldValue, parseFieldValue, renderBlock, deriveId, ID_PATTERN, applyTextEdits, insertBlockEdits, removeBlockEdits, setBlockField, setBlockFields, BlockFieldChange, applyLeanOps, findDecl, relativeName",
+   "depends_on": "markup/lexer.ts, text.ts, parser.ts, values.ts, serializer.ts, ids.ts, edits.ts, leanOps.ts, names.ts"
+  },
+  {
+   "path": "packages/core/src/markup/chars.ts",
+   "purpose": "Lean 4.35 identifier character classes on Unicode code points (letter-like, subscript, first and later identifier characters), Lean's whitespace set, and code-point / UTF-16 width helpers for the lexer.",
+   "key_exports": "isLetterLike, isSubScriptAlnum, isIdFirst, isIdRest, isLeanWhitespace, codePointAt, cpWidth",
+   "depends_on": "none"
+  },
+  {
+   "path": "packages/core/src/markup/decls.ts",
+   "purpose": "Scans the declarations of one lexed file without Lean. It parses headers (docstring, @[...] attributes, modifiers, keyword, name), tracks namespace, section and mutual scopes, and computes each declaration's span (ending at the next command start, with column-0 comment handling). It also finds each declaration's value start and resolved full name, and reads the header's imports.",
+   "key_exports": "scanDecls, resolveName, DECL_KEYWORDS, MODIFIERS, isCommandWord, lowerBound, mergeItems, Item, ScopeEvent, DeclScan",
+   "depends_on": "markup/lexer.ts (canonicalName, nameComponents), markup/text.ts (Lines type), markup/types.ts"
+  },
+  {
+   "path": "packages/core/src/markup/edits.ts",
+   "purpose": "Byte-preserving edits on model files. It applies non-overlapping TextEdits, sets or removes block fields touching only their lines (new fields in FIELD_ORDER position, derived id written), and deletes or inserts whole blocks with tidy blank lines. Rendered blocks can go at the end of a namespace, the end of the file, or after another block and its bound declarations; the file's line breaks are kept.",
+   "key_exports": "applyTextEdits, setBlockField, setBlockFields, BlockFieldChange, deletionEdit, removeBlockEdits, insertionEdit, insertBlockEdits",
+   "depends_on": "markup/decls.ts (scanDecls), markup/lexer.ts, markup/text.ts, markup/values.ts, markup/types.ts, facts.ts (holdsName)"
+  },
+  {
+   "path": "packages/core/src/markup/ids.ts",
+   "purpose": "Node id rules: ID_PATTERN, a transliterated slug of at most 6 words, an `n-<6 hex>` fallback (FNV-1a over UTF-8) for text with no Latin letters or digits, and deriveId, which adds -2, -3 and so on until the id is free.",
+   "key_exports": "ID_PATTERN, slugOf, utf8Bytes, fnv1a32, fallbackId, deriveId",
+   "depends_on": "none"
+  },
+  {
+   "path": "packages/core/src/markup/index.ts",
+   "purpose": "Barrel for markup language v1 and Lean source text; re-exports types.ts and api.ts.",
+   "key_exports": "everything from markup/types.ts and markup/api.ts",
+   "depends_on": "markup/types.ts, markup/api.ts"
+  },
+  {
+   "path": "packages/core/src/markup/leanOps.ts",
+   "purpose": "applyLeanOps applies LeanOps to one parsed file, all or nothing. The ops: add a `.holds` axiom; turn a theorem into an axiom (archived); remove `.holds` or a declaration (archived, deletions merged); add-hypothesis and apply-hypothesis rewrites (including whole applications of a conditional `.holds`); drop-arguments; set-docstring. Any problem cancels every edit: a missing declaration, one that contains a telelean block or has an unclear end, an occurrence that is not an identifier, an application of the wrong shape, or overlapping edits.",
+   "key_exports": "applyLeanOps",
+   "depends_on": "markup/decls.ts (isCommandWord), markup/edits.ts (deletionEdit), markup/lexer.ts, markup/names.ts, markup/text.ts, markup/values.ts, facts.ts"
+  },
+  {
+   "path": "packages/core/src/markup/lexer.ts",
+   "purpose": "A lexer faithful to Lean 4.35. It reads comments (nested block, doc, module doc, line) and code tokens (strings including interpolated and raw strings, chars, numbers, dotted identifiers with «escaped» parts, one-code-point symbols) with UTF-16 spans, so comment delimiters inside literals never confuse block or declaration detection. It also has name helpers.",
+   "key_exports": "lexLean, isLeanName, nameComponents, canonicalName",
+   "depends_on": "markup/chars.ts, markup/types.ts"
+  },
+  {
+   "path": "packages/core/src/markup/names.ts",
+   "purpose": "Two name helpers moved out of api.ts: find a declaration in a parsed file by fully-qualified name, and write a full name relative to a namespace.",
+   "key_exports": "findDecl, relativeName",
+   "depends_on": "markup/types.ts"
+  },
+  {
+   "path": "packages/core/src/markup/parser.ts",
+   "purpose": "parseLeanFile reads every `@@ telelean` block inside a plain block comment: `key: value` fields (never YAML, `kind` an alias of `type`, unknown keys kept) and an optional `---` Markdown body. It reports markup diagnostics (TL001-TL005, TL008-TL011, TL013, TL014, TL019, TL112) and derives missing ids, unique within the file. It binds each block: a pinned `lean:` wins, otherwise the declaration directly below with no blank line. It never throws.",
+   "key_exports": "parseLeanFile, normaliseKey",
+   "depends_on": "markup/decls.ts, markup/ids.ts, markup/lexer.ts, markup/text.ts, markup/values.ts, markup/types.ts, model.ts (STANCES, EVIDENTIALS)"
+  },
+  {
+   "path": "packages/core/src/markup/serializer.ts",
+   "purpose": "renderBlock writes a complete `/- @@ telelean v1 ... -/` block: known fields in FIELD_ORDER, extra keys after them (a `kind` key is dropped), escaped values and an optional escaped `---` body. The output is always exactly one Lean block comment.",
+   "key_exports": "renderBlock",
+   "depends_on": "markup/types.ts, markup/values.ts"
+  },
+  {
+   "path": "packages/core/src/markup/text.ts",
+   "purpose": "Line utilities (line starts, line of an offset, line ends, blank and indent checks, EOL detection). Also the public lineIndex (offset <-> LSP position) and the internal Lines helper class that the parser and edits use.",
+   "key_exports": "lineStarts, lineOfOffset, lineContentEnd, lineFullEnd, isHorizontalSpace, isBlankLine, lineIndent, detectEol, endsWithNewline, lineIndex, Lines",
+   "depends_on": "model.ts, markup/types.ts"
+  },
+  {
+   "path": "packages/core/src/markup/types.ts",
+   "purpose": "Frozen M1 types of markup v1 and Lean source text: spans, lexer results, MarkupBlock (fields, extensions, body, lines, binding, namespace), DeclInfo, MarkupDiagnostic, ParsedFile, LineIndex, NewBlock, TextEdit, InsertWhere, and the LeanOp union with its result. Constants: MARKUP_VERSION, SUPPORTED_MARKUP_VERSIONS, FIELD_ORDER.",
+   "key_exports": "Span, CommentKind, LeanComment, TokenKind, LeanToken, LexResult, MARKUP_VERSION, SUPPORTED_MARKUP_VERSIONS, KnownFieldKey, FIELD_ORDER, BlockFields, FieldLine, BlockBinding, MarkupBlock, DeclKeyword, DeclInfo, MarkupDiagnostic, ParsedFile, LineIndex, NewBlock, TextEdit, InsertWhere, LeanOp, ArchivedDecl, LeanOpsResult",
+   "depends_on": "model.ts (types)"
+  },
+  {
+   "path": "packages/core/src/markup/values.ts",
+   "purpose": "Field value rules: parse raw or JSON-string values, escape JSON so it is safe inside a Lean comment, decide when quoting is needed, and format scalars and comma lists. Also escapes Markdown bodies and docstrings (`-/`, `/-`, a leading `--`), splits list values, and holds the TL011 message and the list-field keys. The doc comment meant for isKnownFieldKey sits above noRationaleMessage by mistake.",
+   "key_exports": "noRationaleMessage, LIST_FIELD_KEYS, isKnownFieldKey, parseFieldValue, escapeJsonValue, needsQuoting, formatListItem, formatFieldValue, escapeBodyText, splitList",
+   "depends_on": "markup/types.ts (FIELD_ORDER)"
+  },
+  {
+   "path": "packages/core/src/model.ts",
+   "purpose": "Frozen node representation shared by the board and graph.json: NodeType and column order, stance and evidential chips, provenance, positions, LeanBinding (code, uses, refs, presupposes, axioms, M2 externalUsers), DerivedStatus (formal state, proof status with footprint, certificates, flags), TlNode, TlEdge, BoardDiagnostic, vocabulary types, SemanticSummary, SubjectInfo and TlGraph (with M2 attempts). No package produces some declared values yet: Role values other than node, the flags unselected-used, broken, depends-on-removed and signoff-stale, the vocabulary flag new, and certificates other than none.",
+   "key_exports": "NodeType, NODE_TYPES, isNodeType, Role, Stance, STANCES, Evidential, EVIDENTIALS, Provenance, Position, Range, SourceLocation, FileRange, LeanRef, LeanBinding, ExternalUser, Cert, StatusFlag, ProofStatus, DerivedStatus, TlNode, EdgeType, TlEdge, Severity, BoardDiagnostic, VocabKind, VocabFlag, VocabItem, SemanticSummary, SubjectInfo, TlGraph",
+   "depends_on": "run.ts (AttemptSummary type)"
+  },
+  {
+   "path": "packages/core/src/notImplemented.ts",
+   "purpose": "Stub marker from the work-package phase: NotImplementedError, notImplemented() and isImplemented(probe). No core code calls notImplemented() any more; a few runner catch blocks still filter out NotImplementedError.",
+   "key_exports": "NotImplementedError, notImplemented, isImplemented",
+   "depends_on": "none"
+  },
+  {
+   "path": "packages/core/src/paths.ts",
+   "purpose": "Frozen path conventions of a model folder as pure string helpers: .telelean paths, the default library Model, the pinned toolchain name, the subject-name pattern, and parsing/serialising ProjectConfig. Also library and subject file paths, Inbox, sidecar paths (layout.json, attic, M2 attempts.jsonl and decisions.json), module <-> path conversion, subjectOfPath and history snapshot scopes. subjectSnapshotScope covers the whole sidecar folder; keeping attempts and decisions out of snapshots is done by the runner's own filter.",
+   "key_exports": "TELELEAN_DIR, CONFIG_PATH, GRAPH_JSON_PATH, DEFAULT_LIBRARY, PINNED_TOOLCHAIN_NAME, SUBJECT_MODULES, SubjectModule, SUBJECT_NAME_PATTERN, isSubjectName, ProjectConfig, defaultProjectConfig, parseProjectConfig, serializeProjectConfig, libraryRootFile, subjectDir, subjectRootFile, subjectModulePath, inboxPath, subjectSidecarDir, layoutPath, atticPath, attemptsPath, decisionsPath, moduleOfPath, pathOfModule, subjectOfPath, subjectSnapshotScope, projectSnapshotScope, inScope",
+   "depends_on": "none"
+  },
+  {
+   "path": "packages/core/src/project/build.ts",
+   "purpose": "buildProjectModel's implementation, pure and deterministic. It finds subjects, assigns ids unique across the workspace (TL006, TL120), resolves bindings and ownership (TL017), classifies vocabulary and attaches Lean messages. For each card it derives the formal state, code/codeLoc, the statement-closure `uses`, presupposes, refs and proof status with footprint (TL101-TL117 and flags). It then sets flags that depend on other cards, checks premises (TL007, TL121, TL015), computes edges, TL118 (unimported files) and TL110, and caches the edges per model.",
+   "key_exports": "buildProject, edgesOf, sentenceLabel (unused)",
+   "depends_on": "project/edges.ts, project/factsIndex.ts, project/text.ts, project/vocabulary.ts, project/lakefile.ts, markup/values.ts (noRationaleMessage), graph.ts (PRESUPPOSITION_PREFIX), paths.ts, facts.ts, model.ts"
+  },
+  {
+   "path": "packages/core/src/project/edges.ts",
+   "purpose": "D-13 edges: premise edges from `premises:`; verified edges from each proof's `.ilean` refs, followed through untracked declarations to the first card's `.holds`, plus conditional edges for hypotheses; and lean-ref edges between statements. Mismatches are judged at the assumption level, with TL109 (declared premise unused) and TL107 (used but undeclared).",
+   "key_exports": "computeEdges, directUses, EdgeInput, EdgeResult",
+   "depends_on": "graph.ts (edgeId), facts.ts, model.ts"
+  },
+  {
+   "path": "packages/core/src/project/factsIndex.ts",
+   "purpose": "Decides which Lean facts the board may use, per file. Fresh files (module fresh, hash matches) use their facts fully; stale files keep a declaration's facts by name only while the keyword still agrees with the facts' kind; unchecked files use none. It matches anonymous instances by start line and keeps the unmatched facts of fresh files.",
+   "key_exports": "FactsIndex, keywordKind, kindsAgree, FileFactsState, FileFactsInfo",
+   "depends_on": "facts.ts, markup/types.ts"
+  },
+  {
+   "path": "packages/core/src/project/index.ts",
+   "purpose": "Frozen public entry of the project model: buildProjectModel (bind blocks, merge facts, vocabulary, validation, statuses) and subjectGraph (one subject's board), plus the re-exported types.",
+   "key_exports": "buildProjectModel, subjectGraph, plus re-exported ProjectInput, ModelNode, ProjectModel, SubjectGraphOptions",
+   "depends_on": "project/build.ts, project/subjectGraph.ts, project/types.ts"
+  },
+  {
+   "path": "packages/core/src/project/lakefile.ts",
+   "purpose": "TL110 check: a small line-based reader of lakefile.toml or lakefile.lean that warns when autoImplicit is on (any `true`, or no `false` at all, which is Lean's default).",
+   "key_exports": "autoImplicitDiagnostic",
+   "depends_on": "model.ts"
+  },
+  {
+   "path": "packages/core/src/project/subjectGraph.ts",
+   "purpose": "Builds one subject's TlGraph from the model. Nodes come in layout-then-file order, as copies with M2 externalUsers attached; edges are those with both ends in the subject. Vocabulary is the subject's own plus read-only items from other subjects that its cards use; diagnostics are the subject's plus project-level ones; the semantic summary is passed through.",
+   "key_exports": "buildSubjectGraph",
+   "depends_on": "project/build.ts (edgesOf), project/users.ts, layout.ts, model.ts"
+  },
+  {
+   "path": "packages/core/src/project/textRefs.ts",
+   "purpose": "Generous reading, without Lean, of which names a declaration's text may refer to: the body with comments blanked, the namespaces opened before an offset, and the candidate full names of a token. Shared by edit/dependents and project/users.",
+   "key_exports": "declBody, openedNamespaces, candidatesOf",
+   "depends_on": "project/text.ts (blankComments), markup/types.ts"
+  },
+  {
+   "path": "packages/core/src/project/text.ts",
+   "purpose": "Pure text helpers for the model builder, the planner and the gate, independent of the markup lexer. They cover LineMap offset/position conversion, range containment, whitespace normalisation, comment and string blanking, top-level arrow splitting and binder parsing. Also identifier tokens, namespace tables, resolution candidates, cutText for labels and Lean name ordering.",
+   "key_exports": "LineMap, comparePositions, rangeContains, normalizeWhitespace, blankComments, splitTopLevelArrows, topLevelColon, Binder, parseBinders, identifierTokens, hasToken, namespaceAt, namespaceTable, resolutionCandidates, cutText, compareLeanNames",
+   "depends_on": "model.ts"
+  },
+  {
+   "path": "packages/core/src/project/types.ts",
+   "purpose": "Frozen M1 contract of the project model. ProjectInput holds parsed files, hashes, optional facts, the library and an optional lakefile. ProjectModel holds subjects, nodes, files, facts, freshFiles, vocabulary, diagnostics, declFacts and ownerOfDecl. Also ModelNode and SubjectGraphOptions.",
+   "key_exports": "ProjectInput, ModelNode, ProjectModel, SubjectGraphOptions",
+   "depends_on": "facts.ts, layout.ts, model.ts, markup/types.ts (types only)"
+  },
+  {
+   "path": "packages/core/src/project/users.ts",
+   "purpose": "M2 carry-over 1: a card's externalUsers, meaning declarations that use its statement or `.holds` but are not cards on its board (untracked lemmas, other subjects' cards). They are found from facts refs followed through untracked declarations, plus the text scan while files are stale, with one cached index per model.",
+   "key_exports": "externalUsersOf",
+   "depends_on": "project/textRefs.ts, project/text.ts, facts.ts, model.ts, project/types.ts"
+  },
+  {
+   "path": "packages/core/src/project/vocabulary.ts",
+   "purpose": "The computed Vocabulary group (D-3). Declaration shapes come from facts, or from the text in syntactic mode; each is classified as sort, predicate, function, constant, presupposition, definition, lemma, unmarked-axiom or other. It reports TL104 (hidden assumption) and TL111 (shape violation), hides presupposition instances, and orders items for display per subject. It also has name resolution, signature text and anonymous instance names.",
+   "key_exports": "buildVocabulary, shapeOf, resolveName, signatureText, qualifyText, anonymousInstanceName, VOCAB_KIND_ORDER, DeclShape, VocabCandidate, VocabularyResult",
+   "depends_on": "project/factsIndex.ts (keywordKind), project/text.ts, facts.ts, model.ts, markup/types.ts"
+  },
+  {
+   "path": "packages/core/src/proposal/diff.ts",
+   "purpose": "graphDiff compares the proposed board with the current one. For nodes it reports added, removed or changed, and what changed: sentence, type, statement name or text, proof, premises, status, binding, other fields. It re-parses card code to compare statement and `.holds` texts, and also reports vocabulary added/changed/removed, edge ids added/removed, and counts.",
+   "key_exports": "graphDiff",
+   "depends_on": "markup/parser.ts, facts.ts, model.ts, run.ts (types)"
+  },
+  {
+   "path": "packages/core/src/proposal/index.ts",
+   "purpose": "Frozen public entry of the M2 proposal helpers: diffGraphs, proposalLabel, and the codecs for attempts.jsonl and decisions.json (parse, serialise, summarise, add, decisions in force).",
+   "key_exports": "diffGraphs, proposalLabel, parseAttemptLines, serializeAttemptLine, summariseAttempts, parseDecisionsFile, serializeDecisionsFile, addDecisions, decisionsInForce",
+   "depends_on": "proposal/diff.ts, proposal/sidecars.ts, model.ts, run.ts"
+  },
+  {
+   "path": "packages/core/src/proposal/sidecars.ts",
+   "purpose": "The history label of a round ('These suffice -> proved: ...', or 'Self-evident? -> ...' with zero premises), with suffixes for lifecycle items and adopted ghosts. Lenient parsers and canonical serialisers for attempts.jsonl (records and resolutions, summarised newest first with the latest resolution) and decisions.json (validated records, replaced by id, decisions in force by subject or node scope).",
+   "key_exports": "label, parseAttempts, serializeAttempt, summarise, parseDecisions, serializeDecisions, add, inForce",
+   "depends_on": "project/text.ts (cutText), run.ts"
+  },
+  {
+   "path": "packages/core/src/protocol.ts",
+   "purpose": "Frozen, versioned host<->webview protocol, every message `{ v: 1, type, payload }`. Host to webview: graph, workspace, history, actionResult, notice, and M2 run and proposal. Webview to host: M1 board edits, history and toolbar actions, and M2 run controls. Validation is hand-written with no dependencies: parseWebviewToHost is strict and returns fresh objects; parseHostToWebview is a lighter check.",
+   "key_exports": "PROTOCOL_VERSION, Envelope, HostToWebviewMessage, WebviewToHostMessage, all *Message types, RUN_MESSAGE_TYPES, webviewMessage, hostMessage, ParseResult, LIMITS, RUN_ID_PATTERN, RUN_TOKEN_PATTERN, parseWebviewToHost, parseHostToWebview",
+   "depends_on": "actions.ts, model.ts, paths.ts (isSubjectName), run.ts"
+  },
+  {
+   "path": "packages/core/src/run.ts",
+   "purpose": "Frozen M2 contract for a Claude 'These suffice' run as the board sees it. It covers questions and answers (D-20 phenomena and scopes), run states, stages and verdicts, and caps (defaults: 80 turns, 25 checks, 20 min agent time, 120 s per Lean job, 3 gate attempts). Also counters, usage, notices, activity, ghosts, the permitted summary and RunView; the proposal types (GraphDiff, review items, definition questions, lifecycle items, gate attempts, report card, ProposalView); and the attempts.jsonl/decisions.json record formats.",
+   "key_exports": "PHENOMENA, Phenomenon, QuestionView, QuestionSetView, AnswerChoiceView, DecisionScope, DECISION_SCOPES, QuestionAnswer, AnsweredQuestionView, RunState, TERMINAL_RUN_STATES, isTerminalRunState, RunStage, RunVerdict, RunCaps, DEFAULT_RUN_CAPS, RunCounters, RunUsage, RunNotice, RunActivity, GhostView, PermittedSummary, RunView, ProposalFile, NodeDiff, GraphDiff, StatementReview, VocabularyReview, DefinitionQuestion, LifecycleItem, GateStepId, GateAttemptView, ReportCard, ProposalView, ATTEMPT_FORMAT, ATTEMPT_RESOLUTION_FORMAT, DECISIONS_FORMAT, AttemptRecord, AttemptResolution, AttemptLine, AttemptSummary, DecisionRecord, DecisionsFile",
+   "depends_on": "model.ts (types)"
+  },
+  {
+   "path": "packages/core/src/samples/large.ts",
+   "purpose": "A deterministic generated graph: subject Franchise, 25 cards per column by default, mulberry32 PRNG with seed 7. It mixes code-less and formalised cards, declared and footprint-verified arrows, A->G and D->D arrows, and sentences of varied length. Used for scrolling and edge-overlay tests and as the extension's 'large' sample board.",
+   "key_exports": "largeGraph, LargeGraphOptions, LARGE_SUBJECT",
+   "depends_on": "graph.ts (buildGraph), model.ts"
+  },
+  {
+   "path": "packages/core/src/samples/spyro.ts",
+   "purpose": "Frozen Spyro walkthrough sample, as the board sees it after a real Lean 4.35 check. It has four cards (a code-less rule, two formalised assumptions, the goal), the Vocabulary group, the Lean snippets and a fresh semantic summary. A second graph shows the state after the normative run, where the goal is proved from the three assumptions plus two presuppositions. Used by webview tests and the extension's sample boards.",
+   "key_exports": "SPYRO_SUBJECT, SPYRO_LEAN, SPYRO_SEMANTIC, spyroVocabulary, spyroGraph, spyroProvedGraph",
+   "depends_on": "graph.ts (buildGraph, PRESUPPOSITION_PREFIX), model.ts"
+  },
+  {
+   "path": "packages/core/tsconfig.json",
+   "purpose": "Build config. It extends ../../tsconfig.base.json (ES2023, NodeNext, strict, noUncheckedIndexedAccess, isolatedModules) and compiles src/ to dist/ with declarations. It sets lib ['ES2023'] and types [] so any DOM or Node API use fails to compile, which keeps core pure for the webview.",
+   "key_exports": "n/a",
+   "depends_on": "../../tsconfig.base.json"
+  },
+  {
+   "path": "packages/core/tsconfig.test.json",
+   "purpose": "Type-check-only config (noEmit, rootDir '.') covering src, test and vitest.config.ts. Used by `npm run typecheck` and as the first step of `npm test`.",
+   "key_exports": "n/a",
+   "depends_on": "tsconfig.json"
+  },
+  {
+   "path": "packages/core/vitest.config.ts",
+   "purpose": "Vitest config: runs test/**/*.test.ts (48 files) with fileParallelism off, so test files run one at a time.",
+   "key_exports": "default vitest config",
+   "depends_on": "vitest (root devDependency)"
+  }
+ ]
+}

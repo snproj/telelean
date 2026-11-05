@@ -1,0 +1,204 @@
+{
+  "name": "literal",
+  "description": "Reading B of the walkthrough (docs/m2-plan.md section 10.2): the literal reading does not prove the goal; Claude suggests the missing premise, the person adopts it, and round 2 proves the goal.",
+  "answer": {
+    "phenomenon": "modality",
+    "option": 1
+  },
+  "premises": [
+    "cynder-dark-past",
+    "new-spyro-pg",
+    "pg-no-dark-past"
+  ],
+  "adopt": {
+    "ghost": "ghost-1",
+    "rationale": "it seems obvious to me"
+  },
+  "expect": {
+    "round1": "not-proved",
+    "round2": "proved",
+    "ghostNode": "a-character-who-cannot-be-in"
+  },
+  "turns": [
+    {
+      "match": "Run: \"These suffice\"",
+      "steps": [
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 41,
+            "outputTokens": 130,
+            "cacheReadInputTokens": 9500,
+            "cacheCreationInputTokens": 3500
+          }
+        },
+        {
+          "kind": "read",
+          "path": "Model/Spyro/Main.lean"
+        },
+        {
+          "kind": "callTool",
+          "tool": "ask_user",
+          "args": {
+            "questions": [
+              {
+                "phenomenon": "modality",
+                "question": "Does \"cannot have\" state a rule about what PG games should not include (normative), or that a PG game is unable to contain such a character (literal)?",
+                "options": [
+                  {
+                    "label": "A rule (normative)",
+                    "consequence": "A PG game with such a character breaks the rule; it says nothing about what the game contains."
+                  },
+                  {
+                    "label": "Impossible (literal)",
+                    "consequence": "No PG game contains a character with a dark past at all."
+                  }
+                ],
+                "claudesGuess": {
+                  "option": 0
+                },
+                "affectedNodes": [
+                  "pg-no-dark-past"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 42,
+            "outputTokens": 140,
+            "cacheReadInputTokens": 10000,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Spyro/Vocabulary.lean",
+          "oldString": "/-- Cynder -/",
+          "newString": "/-- is in -/\naxiom InGame : Character → Game → Prop\n/-- Cynder -/"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Spyro/Main.lean",
+          "oldString": "stance: rule\nasserted: 2026-11-01\n-/\n\n",
+          "newString": "stance: rule\nasserted: 2026-11-01\n-/\n/-- PG games cannot have characters with dark pasts -/\nabbrev pg_no_dark_past : Prop := ∀ (g : Game) (c : Character), IsPG g → HasDarkPast c → ¬ InGame c g\naxiom pg_no_dark_past.holds : pg_no_dark_past\n\n"
+        },
+        {
+          "kind": "callTool",
+          "tool": "check_lean",
+          "args": {}
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 43,
+            "outputTokens": 150,
+            "cacheReadInputTokens": 10500,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "callTool",
+          "tool": "freeze_statements",
+          "args": {
+            "targets": [
+              "cynder-not-good"
+            ]
+          }
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 44,
+            "outputTokens": 160,
+            "cacheReadInputTokens": 11000,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "callTool",
+          "tool": "propose_assumption",
+          "args": {
+            "natural_name": "A character who cannot be in a game would not be a good addition to it",
+            "lean_statement": "∀ (c : Character) (g : Game), ¬ InGame c g → ¬ GoodAddition c g",
+            "why_needed": "The literal reading only says Cynder cannot be in the game; nothing links being in a game to being a good addition to it.",
+            "proof": "fun h => h cynder newSpyro (pg_no_dark_past.holds newSpyro cynder new_spyro_pg.holds cynder_dark_past.holds)",
+            "lean_name": "not_in_game_not_good"
+          }
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 45,
+            "outputTokens": 170,
+            "cacheReadInputTokens": 11500,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "callTool",
+          "tool": "finish",
+          "args": {
+            "status": "not_proved",
+            "summary": "Under the literal reading the goal does not follow.",
+            "gap": "Nothing connects being unable to appear in a game with being a good addition to it.",
+            "assumed_without_asking": []
+          }
+        },
+        {
+          "kind": "result",
+          "costEstimateUsd": 0.02
+        }
+      ]
+    },
+    {
+      "match": "The person adopted your suggestion",
+      "steps": [
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 46,
+            "outputTokens": 180,
+            "cacheReadInputTokens": 12000,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Spyro/Main.lean",
+          "oldString": "abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro\n",
+          "newString": "abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro\ntheorem cynder_not_good.holds : cynder_not_good :=\n  not_in_game_not_good.holds cynder newSpyro (pg_no_dark_past.holds newSpyro cynder new_spyro_pg.holds cynder_dark_past.holds)\n"
+        },
+        {
+          "kind": "callTool",
+          "tool": "check_lean",
+          "args": {}
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 47,
+            "outputTokens": 190,
+            "cacheReadInputTokens": 12500,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "callTool",
+          "tool": "finish",
+          "args": {
+            "status": "proved",
+            "summary": "Proved with the adopted premise.",
+            "assumed_without_asking": []
+          }
+        },
+        {
+          "kind": "result",
+          "costEstimateUsd": 0.03
+        }
+      ]
+    }
+  ]
+}

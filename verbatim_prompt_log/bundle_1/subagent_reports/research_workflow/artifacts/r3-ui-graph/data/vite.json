@@ -1,0 +1,64 @@
+{
+ "name": "vite",
+ "latest": "8.3.5",
+ "dist_tags": {
+  "alpha": "6.0.0-alpha.24",
+  "beta": "8.3.0-beta.1",
+  "latest": "8.3.5",
+  "previous": "6.4.5"
+ },
+ "latest_published": "2026-10-21T06:38:54.907Z",
+ "modified": "2026-10-21T06:38:55.491Z",
+ "created": "2020-04-21T05:05:15.476Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 2383283,
+ "fileCount": 37,
+ "tarball": "https://registry.npmjs.org/vite/-/vite-8.3.5.tgz",
+ "dependencies": {
+  "postcss": "^8.5.30",
+  "rolldown": "~1.2.14",
+  "picomatch": "^4.0.7",
+  "tinyglobby": "^0.2.17",
+  "lightningcss": "^1.33.0"
+ },
+ "peerDependencies": {
+  "tsx": "^4.8.1",
+  "jiti": ">=1.21.0",
+  "less": "^4.0.0",
+  "sass": "^1.70.0",
+  "yaml": "^2.4.2",
+  "stylus": ">=0.54.8",
+  "terser": "^5.16.0",
+  "esbuild": "^0.27.0 || ^0.28.0",
+  "sugarss": "^5.0.0",
+  "@types/node": "^20.19.0 || >=22.12.0",
+  "sass-embedded": "^1.70.0",
+  "@vitejs/devtools": "^0.7.1 || ^0.8.0"
+ },
+ "repository": "git+https://github.com/vitejs/vite.git",
+ "recent_versions": [
+  [
+   "7.3.7",
+   "2026-10-06T05:11:19.017Z"
+  ],
+  [
+   "6.4.4",
+   "2026-10-06T05:49:07.089Z"
+  ],
+  [
+   "8.3.4",
+   "2026-10-08T12:07:04.441Z"
+  ],
+  [
+   "6.4.5",
+   "2026-10-21T05:35:48.976Z"
+  ],
+  [
+   "8.3.5",
+   "2026-10-21T06:38:54.907Z"
+  ]
+ ],
+ "homepage": "https://vite.dev",
+ "description": "Native-ESM powered web dev build tool"
+}

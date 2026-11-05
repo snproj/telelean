@@ -1,0 +1,153 @@
+/-
+telelean extractor prototype (Lean 4.35.0).
+Usage:  lake env lean --run Extract.lean <RootModule> [<modulePrefix>]
+   or:  lake exe telelean-extract <RootModule> [<modulePrefix>]
+Emits one JSON object: { modules: [...], decls: [...] }.
+-/
+import Lean
+open Lean Meta
+
+/-- Standard axioms that a DERIVATION is allowed to use. -/
+def standardAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]
+
+def kindOf (env : Environment) (ci : ConstantInfo) : String :=
+  match ci with
+  | .axiomInfo _  => "axiom"
+  | .defnInfo _   =>
+    if getReducibilityStatusCore env ci.name matches ReducibilityStatus.reducible then "abbrev" else "def"
+  | .thmInfo _    => "theorem"
+  | .opaqueInfo _ => "opaque"
+  | .quotInfo _   => "quot"
+  | .inductInfo _ =>
+    if isClass env ci.name then "class"
+    else if isStructure env ci.name then "structure" else "inductive"
+  | .ctorInfo _   => "constructor"
+  | .recInfo _    => "recursor"
+
+/-- Skip compiler/elaborator-generated auxiliary declarations. -/
+def isNoise (env : Environment) (n : Name) : Bool :=
+  n.isInternalDetail || isAuxRecursor env n || isNoConfusion env n || isRecCore env n
+    || isMatcherCore env n
+    || (match n with | .str _ s => s == "sizeOf_spec" || s == "injEq" || s == "inj" ||
+                                   s == "ctorIdx" || s.startsWith "eq_" || s == "eq_def" ||
+                                   s == "mk.injEq"
+                     | _ => false)
+
+/-- Classify an axiom by the shape of its type (see report §3). -/
+def classifyAxiom (ty : Expr) (userTypeFormers : NameSet) : MetaM String := do
+  if ← isProp ty then return "proposition"            -- substantive assumption
+  forallTelescopeReducing ty fun _ cod => do
+    let cod ← whnfR cod
+    if cod.isSort then return "type-former"            -- Character : Type, IsPG : Game → Prop
+    match cod.getAppFn.constName? with
+    | some c =>
+      if userTypeFormers.contains c then return "constant-of-uninterpreted-type" -- Cynder : Character
+      else pure ()
+    | none => pure ()
+    -- data axiom of a concrete type: harmless iff the type is known to be inhabited
+    let inst? ← try
+        let u ← getLevel cod
+        some <$> synthInstance (mkApp (mkConst ``Nonempty [u]) cod)
+      catch _ => pure none
+    return if inst?.isSome then "constant-of-inhabited-type" else "data-suspicious"
+
+def rangeJson (r : DeclarationRange) : Json :=
+  Json.mkObj [("line", r.pos.line), ("column", r.pos.column),
+              ("endLine", r.endPos.line), ("endColumn", r.endPos.column)]
+
+def ppStr (e : Expr) : MetaM String := do
+  return toString (← ppExpr e)
+
+def extractDecl (env : Environment) (projectConsts : NameSet) (userTypeFormers : NameSet)
+    (modName : Name) (ci : ConstantInfo) : MetaM Json := do
+  let n := ci.name
+  let axioms ← collectAxioms n
+  let userAxioms := axioms.filter (fun a => !(standardAxioms.contains a) && a != ``sorryAx)
+  let nonStd := axioms.filter (fun a => !(standardAxioms.contains a))
+  let used := (ci.type.getUsedConstants ++ (ci.value? (allowOpaque := true)).elim #[] (·.getUsedConstants))
+  let directDeps := (used.filter projectConsts.contains).toList.eraseDups.filter (· != n)
+  let doc ← findDocString? env n
+  let ranges ← findDeclarationRanges? n
+  let typeIsProp ← isProp ci.type
+  let isStatement := ci.type == mkSort Level.zero && (ci matches .defnInfo _)
+  let axClass ← if ci matches .axiomInfo _ then (some <$> classifyAxiom ci.type userTypeFormers)
+                else pure none
+  let typeAll ← withOptions (fun o => o.setBool `pp.all true) (ppStr ci.type)
+  let valueAll? ← match ci with
+    | .defnInfo v => some <$> withOptions (fun o => o.setBool `pp.all true) (ppStr v.value)
+    | _ => pure none
+  let value? := ci.value? (allowOpaque := true)
+  return Json.mkObj [
+    ("name", toString n),
+    ("module", toString modName),
+    ("kind", kindOf env ci),
+    ("type", ← ppStr ci.type),
+    ("typeHash", toString ci.type.hash),
+    ("typePpAllHash", toString (hash typeAll)),
+    ("valuePpAllHash", match valueAll? with | some s => toJson (toString (hash s)) | none => Json.null),
+    ("typeIsProp", typeIsProp),
+    ("isStatementDef", isStatement),
+    ("axiomClass", toJson axClass),
+    ("doc", toJson doc),
+    ("range", match ranges with | some r => rangeJson r.range | none => Json.null),
+    ("selectionRange", match ranges with | some r => rangeJson r.selectionRange | none => Json.null),
+    ("directDeps", toJson (directDeps.map toString)),
+    ("axioms", toJson (axioms.toList.map toString)),
+    ("userAxioms", toJson (userAxioms.toList.map toString)),
+    ("usesSorry", axioms.contains ``sorryAx),
+    ("syntheticSorry", value?.any (·.hasSyntheticSorry)),
+    ("nonStandardAxioms", toJson (nonStd.toList.map toString)),
+    ("isUnsafe", ci.isUnsafe),
+    ("isPartial", ci.isPartial),
+    ("implementedBy", toJson ((Compiler.getImplementedBy? env n).map toString)),
+    ("extern", isExtern env n),
+    ("isInstance", ← isInstance n)
+  ]
+
+unsafe def main (args : List String) : IO UInt32 := do
+  let root := (args.getD 0 "MentalModel").toName
+  let pfx := (args.getD 1 (toString root)).toName
+  initSearchPath (← findSysroot)
+  enableInitializersExecution
+  let t0 ← IO.monoMsNow
+  let env ← importModules #[{ module := root }] {} (loadExts := true)
+  let t1 ← IO.monoMsNow
+  let projMods : Array (Name × ModuleIdx) := Id.run do
+    let mut acc := #[]
+    for h : i in [0:env.header.moduleNames.size] do
+      let m := env.header.moduleNames[i]
+      if pfx.isPrefixOf m then acc := acc.push (m, (i : ModuleIdx))
+    return acc
+  let isProjMod (idx : ModuleIdx) := projMods.any (·.2 == idx)
+  -- collect project constants
+  let mut projectConsts : NameSet := {}
+  for (n, _) in env.constants.map₁.toList do
+    if let some idx := env.getModuleIdxFor? n then
+      if isProjMod idx then projectConsts := projectConsts.insert n
+  -- user type formers: project axioms/opaques whose type ends in a Sort
+  let ctx : Core.Context := { fileName := "<telelean-extract>", fileMap := default,
+                              options := {}, maxHeartbeats := 0 }
+  let st : Core.State := { env }
+  let (decls, _) ← (MetaM.run' do
+      let mut tfs : NameSet := {}
+      for n in projectConsts.toList do
+        let ci ← getConstInfo n
+        if ci matches .axiomInfo _ || ci matches .opaqueInfo _ then
+          let isTF ← forallTelescopeReducing ci.type fun _ cod => return (← whnfR cod).isSort
+          if isTF then tfs := tfs.insert n
+      let mut out := #[]
+      for n in projectConsts.toList do
+        if isNoise env n then continue
+        let ci ← getConstInfo n
+        let some idx := env.getModuleIdxFor? n | continue
+        let modName := env.header.moduleNames[idx.toNat]!
+        out := out.push (← extractDecl env projectConsts tfs modName ci)
+      return out).toIO ctx st
+  let t2 ← IO.monoMsNow
+  let mods := projMods.map fun (m, _) =>
+    Json.mkObj [("name", toString m),
+                ("moduleDocs", toJson (((getModuleDoc? env m).getD #[]).map (fun (d : ModuleDoc) => d.doc)))]
+  let out := Json.mkObj [("modules", toJson mods), ("decls", toJson decls),
+                         ("timingMs", Json.mkObj [("import", t1 - t0), ("extract", t2 - t1)])]
+  IO.println out.pretty
+  return 0

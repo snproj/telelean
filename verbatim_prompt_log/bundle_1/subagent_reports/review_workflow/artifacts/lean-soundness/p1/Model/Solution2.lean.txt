@@ -1,0 +1,6 @@
+import Model.Defs
+namespace T
+-- honest control: uses the UNSELECTED assumption A1 directly
+theorem cynder_not_good : ¬ GoodAddition cynder newSpyro :=
+  pg_no_dark _ _ spyro_pg cynder_dark
+end T

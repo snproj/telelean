@@ -1,0 +1,11 @@
+name = "mm3"
+version = "0.1.0"
+defaultTargets = ["ModModel"]
+
+[[lean_lib]]
+name = "ModModel"
+
+[[lean_exe]]
+name = "telelean-extract"
+root = "Extract"
+supportInterpreter = true

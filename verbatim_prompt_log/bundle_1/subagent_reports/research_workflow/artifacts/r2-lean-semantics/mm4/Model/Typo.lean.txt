@@ -1,0 +1,3 @@
+axiom Game : Type
+axiom IsPG : Game → Prop
+theorem typo_stmt : IsPG newSpryo := sorry

@@ -1,0 +1,30 @@
+/-
+telelean sandbox probe: try the network and the desktop session's sockets.
+
+INERT FIXTURE. Never open this file with a Lean server. The tests copy it into a sandboxed shadow
+as `Probe.lean` and elaborate it there with `lake env lean` under runLean.
+
+Each check runs `python3 -I -c …` from the elaborator (as build-time code could) and prints one line.
+Expected inside the sandbox: only the loopback interface exists; DNS, an outbound TCP connection,
+the D-Bus session socket and the abstract X11 socket are all BLOCKED.
+-/
+
+def probePython (label : String) (code : String) : IO Unit := do
+  try
+    let out ← IO.Process.output { cmd := "python3", args := #["-I", "-c", code] }
+    IO.print s!"PROBE {label} {out.stdout}"
+    IO.println s!"PROBE {label} EXIT {out.exitCode}"
+  catch e =>
+    IO.println s!"PROBE {label} SPAWN-ERROR ({e})"
+
+#eval show IO Unit from do
+  probePython "interfaces"
+    "print(' '.join(sorted(l.split(':')[0].strip() for l in open('/proc/net/dev').read().splitlines()[2:])))"
+  probePython "dns"
+    "import socket\ntry:\n    r = socket.getaddrinfo('example.com', 443)\n    print('RESOLVED', r[0][4])\nexcept OSError as e:\n    print('BLOCKED', type(e).__name__, e)"
+  probePython "tcp"
+    "import socket\ntry:\n    socket.create_connection(('1.1.1.1', 53), 3).close()\n    print('CONNECTED')\nexcept OSError as e:\n    print('BLOCKED', type(e).__name__, e)"
+  probePython "dbus"
+    "import os, socket\np = '/run/user/%d/bus' % os.getuid()\ns = socket.socket(socket.AF_UNIX)\ntry:\n    s.connect(p)\n    print('CONNECTED', p)\nexcept OSError as e:\n    print('BLOCKED', p, type(e).__name__, e)"
+  probePython "abstract-x11"
+    "import socket\ns = socket.socket(socket.AF_UNIX)\ntry:\n    s.connect('\\0/tmp/.X11-unix/X0')\n    print('CONNECTED')\nexcept OSError as e:\n    print('BLOCKED', type(e).__name__, e)"

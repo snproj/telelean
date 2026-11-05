@@ -1,0 +1,159 @@
+# integrate (agent a993dd1ed72a047e9)
+
+## summary
+I integrated M2. Every suite passes in its final run, and the walkthrough dry run passes both readings.
+
+**Wiring.** Pressing "These suffice" on the board now runs the real run controller end to end: shadow, gate, check loop, review, proposal and Accept. The real path uses ClaudeCliBackend after consent. Every test uses the FakeBackend with TELELEAN_NO_REAL_CLAUDE=1. I checked the quota tripwires by grep: every test hit is a fake binary, M0's node double or a refusal assertion, and the walkthrough builds the real backend only under --live.
+
+**Fixes and plan steps:**
+- Merged AcceptProposalAction into HistoryActionKind and made the ModelWorkspace M2 members required (plan 11 step 2).
+- Removed every builder gate in the runner, the extension and the webview (including CORE_SINGULAR_TEXTS).
+- Fixed WP3's dispose race: dispose() now writes run.json at once, drops queued older writes, and writes the final state last, returning a promise. This makes WP5's AT5.9 pass; I ran it 3 times.
+- Gave the 5 M1 integration tests their confirmedDependents.
+- Fixed two bugs in WP5's VS Code run suite. It waited for a reply to dismissRun, which never gets one, and its AT5.9 test only worked if an earlier test had reloaded the window.
+- Appended the missing section 14 rows for WP2–WP6 and my own changes.
+- Added the run-directory files (base-facts.json, proposal-facts.json) to the layout comment.
+- Checked that RunView.updatedAt is already stamped at the same moment as the agent time, so no change was needed.
+
+**New tests:**
+- packages/runner/test/integration/m2flow.test.ts (plan 11.4), 5/5. It covers normative Accept, Undo, Redo and a History revert; literal adoption and Accept; Accept after drift (a merge, and an overlap refused as a conflict); a start that declares premises and a start refused by preflight; recovery with a pending question. It also checks the user's HEAD, index, refs, config, hooks and status stay untouched.
+- packages/extension/test/suite/e2e-runs.test.ts, run in the e2e VS Code instance through the real board over CDP, 7/7:
+  - normative: question answered on the board, overlay, explicit toggle, raw diff, G→D pre-ticked, Accept changes Main.lean, one history entry, Undo byte-exact;
+  - literal: not proved, ghost card, "I hold this", re-freeze, proved, Accept;
+  - cheat: notice and retry, then Feedback in the same session, then Discard;
+  - give-up: reverts after 3 attempts;
+  - cancel;
+  - reload with a pending question: answered on the restored board, the session resumes and the run finishes.
+
+**Docs.** docs/user-guide.md has the M1 passages M2 changed updated and a new section 10 for M2. docs/decisions-log.md has a grouped M2 part (sections 14–26). I did not write docs/m2-report.md: plan 11.7 lists it, but the task did not ask for it.
+
+**Walkthrough dry run** (`node scripts/walkthrough-claude.mjs --dry-run --work-dir <scratch>/walk-dry`, exit 0):
+- normative PASSED: proved; accepted as "These suffice → proved: Cynder would not be a good addition to the new Spyro game (+ Make Derivation)"; final cynder-not-good is a DERIVATION, proved, with footprint = the 3 cards + presup:Spyro.Character.exists + presup:Spyro.Game.exists.
+- literal PASSED: round 1 not-proved with ghost-1 (closes the gap, not alone-entailing); adopted as a-character-who-cannot-be-in; round 2 proved; accepted "… (+ Make Derivation) (+ 1 adopted assumption)"; the adopted card is worded by agent.
+- ~/.elan/known-projects unchanged. Summary at /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2-integrator/walk-dry/summary.json. I did not run --binary-check or --live.
+
+packages/extension/dist is rebuilt from the final sources. The user's VS Code, which loads the extension from packages/extension, will run M2 after a window reload. Nothing contacts Claude until they press These suffice and allow it.
+
+## files_changed
+- /home/zhengyew/telelean/packages/core/src/actions.ts
+- /home/zhengyew/telelean/packages/runner/src/run/persist.ts
+- /home/zhengyew/telelean/packages/runner/src/run/manager.ts
+- /home/zhengyew/telelean/packages/runner/src/run/types.ts
+- /home/zhengyew/telelean/packages/runner/src/workspace/types.ts
+- /home/zhengyew/telelean/packages/runner/src/workspace/history.ts
+- /home/zhengyew/telelean/packages/runner/src/workspace/modelWorkspace.ts
+- /home/zhengyew/telelean/packages/runner/src/shadow/types.ts
+- /home/zhengyew/telelean/packages/runner/test/integration/m2flow.test.ts (new)
+- /home/zhengyew/telelean/packages/runner/test/integration/fixes.test.ts
+- /home/zhengyew/telelean/packages/runner/test/integration/session.test.ts
+- /home/zhengyew/telelean/packages/runner/test/run/walkthrough.e2e.test.ts
+- /home/zhengyew/telelean/packages/runner/test/run/manager.gate.test.ts
+- /home/zhengyew/telelean/packages/runner/test/gate/rules.test.ts
+- /home/zhengyew/telelean/packages/runner/test/gate/helpers.ts
+- /home/zhengyew/telelean/packages/runner/test/proposal/sidecars.test.ts
+- /home/zhengyew/telelean/packages/runner/test/proposal/build.test.ts
+- /home/zhengyew/telelean/packages/runner/test/proposal/apply.test.ts
+- /home/zhengyew/telelean/packages/runner/test/workspace/m2members.test.ts
+- /home/zhengyew/telelean/packages/webview/src/labels.ts
+- /home/zhengyew/telelean/packages/webview/test/unit/store.test.ts
+- /home/zhengyew/telelean/packages/webview/test/e2e/m1-drag.spec.ts
+- /home/zhengyew/telelean/packages/webview/test/shared/gates.ts (deleted)
+- /home/zhengyew/telelean/packages/extension/test/suite/e2e-runs.test.ts (new)
+- /home/zhengyew/telelean/packages/extension/test/suite/runs.test.ts
+- /home/zhengyew/telelean/packages/extension/test/unit/realRuns.test.ts
+- /home/zhengyew/telelean/packages/extension/.vscode-test.mjs
+- /home/zhengyew/telelean/packages/extension/scripts/smoke.mjs
+- /home/zhengyew/telelean/docs/m2-plan.md (section 14 rows only)
+- /home/zhengyew/telelean/docs/user-guide.md
+- /home/zhengyew/telelean/docs/decisions-log.md
+- /home/zhengyew/telelean/packages/extension/dist/extension.js, extension.js.map, dist/bin/telelean-path-guard.mjs, dist/webview/** (rebuilt)
+- /home/zhengyew/telelean/packages/extension/out/test/suite/** (rebuilt)
+- /home/zhengyew/telelean/packages/core/dist/** (re-emitted by the root build)
+
+## test_runs
+Logs are in /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2-integrator/logs/.
+
+FINAL RUNS, one at a time, after the last source change:
+1. Root build, `npm_config_logs_dir=<scratch>/npm-logs npm run build`: exit 0. The bundle includes runner gate, lean, llm, proposal, run, semantic, shadow and workspace. The guard was copied to dist/bin and is byte-identical (cmp); the bundle loads; vite build ok.
+2. core, `tsc -p tsconfig.test.json && vitest run`: 46 files, 474/474.
+3. runner, `tsc -p tsconfig.test.json` (clean) then full `vitest run` with real Lean (TELELEAN_TEST_TMP=scratch, LEAN_NUM_THREADS=4, ulimit -c 0): 52 files, 509/509, 495.6 s. This includes the new m2flow (5), walkthrough.e2e (both readings plus the 13 cheat scripts) and the formerly gated rules/proposal/workspace tests. After removing unused imports from 5 test files I re-ran those 5 files: 37/37.
+4. webview: tsc (both configs) clean; vitest 8 files, 121/121; Playwright (isolated HOME, 1 worker) 70/70, home guard "unchanged".
+5. extension: tsc clean; vitest 19 files, 166/166, including AT5.9 against the real RunManager (also 3/3 on 3 repeats earlier).
+6. VS Code, `node scripts/smoke.mjs` (isolated profile under scratch, xvfb, ulimit -c 0, TELELEAN_NO_REAL_CLAUDE=1): smoke instance 36 passing (activation, board, boards, model, WP5's runs suite 6/6); e2e instance 20 passing (M1 e2e 13 + new M2 e2e 7); vscode-test exit 0; 0 isolation failures; "no process of this run is left".
+7. `node scripts/walkthrough-claude.mjs --dry-run --work-dir <scratch>/walk-dry`: exit 0, normative PASSED and literal PASSED (details in the summary).
+
+EARLIER RUNS THAT FAILED, each fixed and re-run:
+- First full runner run: 502/504. Two failures in fixes.test.ts: I had confirmed ['d1'] where the planner lists ['d1','g1']. After the fix the integration folder passed 16/16.
+- First full smoke:
+  - smoke instance 34 passing, 2 failing: WP5's dismissRun wait, plus its AT5.9 as a knock-on;
+  - e2e instance 14 passing, 6 failing: my pretty-form regex expected an unqualified name, then 5 failures cascaded from it.
+- Grep re-run: run suites 6/6; M2 e2e 6/7 (the marker text has a leading space).
+- Grep re-run: M2 e2e 7/7.
+
+## resolved
+- WP3 dispose() race (sync run.json write overtaken by queued async writes): RunFiles.close(finalText) plus dispose() returning a promise. WP5's AT5.9 passes in vitest and in VS Code.
+- Carry-over 3: the 5 M1 integration tests (fixes.test.ts 3, session.test.ts 2) now send the confirmedDependents the planner lists.
+- AcceptProposalAction is merged into HistoryActionKind (core actions.ts); the runner history set and the webview HISTORY_ACTION_LABEL (with 'accept-proposal': 'accept') are typed HistoryActionKind.
+- The ModelWorkspace M2 members are required (plan 11.2); all fakes already compiled.
+- All isImplemented / [gated] gates are removed: runner rules/proposal/workspace/walkthrough/manager.gate, extension realRuns.test.ts and runs.test.ts, webview CORE_SINGULAR_TEXTS (test/shared/gates.ts deleted; store.test.ts and m1-drag.spec.ts assert the frozen singular texts unconditionally).
+- The tray now posts startRun (not theseSuffice): checked; the extension's run tests use startRun, and the remaining theseSuffice tests cover M1 message mapping only.
+- RunView.updatedAt: checked that touch() stamps updatedAt and counters.agentMs at the same moment, so the board's clock interpolation is correct; no change needed.
+- Plan section 14: rows added for WP2, WP3, WP4, WP5, WP6 and the integrator (contracts, the dispose promise, test infrastructure).
+- WP4 note: proposal-facts.json and base-facts.json are added to the run-directory layout comment in runner shadow/types.ts.
+- WP5's AT5.8 VS Code smoke now runs and passes, after fixing two test bugs: dismissRun has no request id, so the test waits for the run to leave the board; AT5.9 relied on an earlier test's reload, so it now uses a switching backend.
+- WP2/WP4 'run the gated suites once WP1 is final': done in the final full runner run (509/509).
+- Plan 11.3 'check WP1's hand facts against real facts': covered by WP1's realFacts.test.ts on recorded Lean 4.35 facts and by WP2's real-Lean rules suite, both passing.
+- Plan 11.4 integrator test (m2flow.test.ts) written and passing.
+- VS Code FakeBackend end-to-end coverage the task asked for, through the real board UI: normative (question on the board, overlay, explicit toggle, raw diff, G->D proposed, Accept writes Main.lean, history entry, Undo byte-exact), literal (ghost card, I hold this, re-freeze, proved), cheat (notice and retry), give-up (revert after 3 attempts), Feedback continuing the same session, Discard, Cancel, reload with a pending question.
+- Root build done; packages/extension/dist is current. Walkthrough dry run run and passing. user-guide.md M2 section and decisions-log.md M2 section written.
+
+## open_issues
+- The live walkthrough (plan section 12) and `--dry-run --binary-check` are for the main session; I ran neither. docs/m2-report.md (plan 11.7) is not written: the task did not ask for it.
+- Minor, seen once: the final smoke's test instance left an empty transient scope (telelean-tlws1500614_2_1-23.scope: 0 tasks, peak memory 0 B). Probably a Lean refresh cancelled between scope creation and process start (M1 runLean). smoke.mjs cannot attribute an empty scope to its run (it looks for processes). I stopped it; it may deserve a look in runLean.
+- 27 directories left in /tmp by WP3's earlier runs (/tmp/telelean-run-tests-* and /tmp/telelean-llm-sys3XS) are still there. They are outside my writable paths; the user can remove them.
+- WP2: the freeze copy cannot remove an `example` that uses the target's .holds (it has no name). Accept's re-check then refuses as an environment problem. Rare.
+- WP2: diagnostic columns are UTF-16 code units, which differ from Lean's code-point columns after astral-plane characters.
+- WP3: if creating the shadow fails after the premises were declared, the declaration (an undoable M1 action) stays while the start is refused.
+- WP3: a refused re-freeze after an adoption leaves its `adopt` commit in the shadow history. By analysis this is harmless (the rules consult it only for adopted ghosts, whose text it holds unchanged); left as is.
+- WP4: .telelean/graph.json still exports `attempts: []`. decisions.json writes from two windows at the same instant can lose one update (atomic replace, no cross-process lock). jsdiff could re-anchor a hunk in a file with large repeated identical regions (same property as M1's undo).
+- WP5 suggestion, not implemented: a VS Code notification with 'Open Board' when a run waits for an answer or reaches review while its board is closed.
+- WP6 UX choices for the user to review: the run panel sits beside the board; the board switches to Proposed by itself; the proof result is hidden in the overlay until the review reveals it. Also, the board's 'rendered' diagnostic counts the proposal's cards while the Proposed view is shown.
+- Risk R13 is still not covered by automated tests: the production shadow lives under $HOME (~/.config/Code/User/globalStorage/telelean.telelean/runs), and all tests use scratch dirs under /tmp. The first real run exercises it.
+
+## minor_decisions
+- **decision:** RunManager.dispose() returns a promise (contract RunManager.dispose(): void | Promise<void>) backed by a new RunFiles.close(finalText). It writes synchronously, drops queued run.json snapshots that have not started, and writes the final state again after the write in flight. Transcript lines already queued are still appended.
+  - **rationale:** Fixes the race WP5 found without losing the immediate write if the host dies. The extension's deactivate already waited up to 4 s for a returned promise.
+- **decision:** The new VS Code end-to-end suite (e2e-runs.test.ts) runs in the existing e2e instance after M1's e2e suite, on a fourth pristine copy (runs-e2e/runs_e2e_model, env TELELEAN_RUNS_E2E_ROOT). The smoke instance's file pattern became !(e2e*).test.js.
+  - **rationale:** Only trusted CDP clicks in the real webview prove the question card, overlay, review, ghost card and Accept work end to end. The CDP port exists only in the e2e instance.
+- **decision:** Both VS Code run suites install a single switching backend through testing.useRunBackend and swap the FakeBackend script (or the hanging backend) per test.
+  - **rationale:** The RunManager caches the backend its factory returned, so swapping the factory has no effect. WP5's AT5.9 only worked when an earlier test had reloaded the window.
+- **decision:** The e2e run suite has a teardown that ends any run a failed test left (Discard or Cancel, then Dismiss) and restores the copy's files.
+  - **rationale:** The first full run showed that one failed assertion left the board in review and failed all later tests.
+- **decision:** The reload and recovery scripts are derived from normative.json, split at the ask_user call. Turn 2 matches 'Here are the answers to it', the text of M0's renderAnswersAsUserTurn.
+  - **rationale:** A resumed session gets the answers as its next user turn, so the scripted run continues and finishes instead of ending without finish.
+- **decision:** The Feedback test appends a scripted round-2 turn (check_lean, freeze_statements, finish proved) to cheat-added-axiom.json in the test, rather than adding a new fixture file.
+  - **rationale:** Keeps the shared fixtures unchanged, and exercises the plan's rule that a Feedback round must freeze again before claiming proved.
+- **decision:** The plan 11.4 test puts the model inside a user's git repository (a commit, a staged change and an untracked file) and compares HEAD, index hash, non-telelean refs, config, hooks and status outside the model before and after every flow.
+  - **rationale:** Same isolation guarantees M1 and WP4 asserted, now across whole runs including Accept, Undo, Redo and History revert.
+- **decision:** The confirmedDependents in the M1 integration tests are exactly the planner's list: for A→G 'rewrite' that is both d1 and g1, since g1's proof is rewritten too.
+  - **rationale:** Carry-over 3 refuses any choice that does not cover every dependent the planner finds.
+- **decision:** The root build's npm debug logs go to my scratch dir via npm_config_logs_dir; I never used logs-max=0. Elsewhere I called node_modules binaries directly.
+  - **rationale:** Keeps the real ~/.npm/_logs unchanged (11 files before and after) without the setting the user forbade.
+- **decision:** RunView.updatedAt and the refused-re-freeze adopt commit are left unchanged, after analysis.
+  - **rationale:** touch() already stamps updatedAt with the agent time. The stale adopt commit is consulted only for adopted ghosts, whose text it holds unchanged.
+- **decision:** After the final smoke I stopped one empty telelean-tlws* scope with systemctl --user stop. Its name carried the test instance's extension-host pid; it had 0 tasks and peak memory 0 B.
+  - **rationale:** It was my test run's own unit, and the rules say to leave none behind. I report it as a minor runLean finding.
+- **decision:** The user guide keeps the M1 sections, updates the passages M2 changed (the declare-support row, the limits), and adds section 10 for M2 with subsections 10.1–10.15. The decisions log gets an M2 part, sections 14–26, with sources (plan, WP1–WP6, int).
+  - **rationale:** One guide and one log for the user, consistent with the M1 format the user already knows.
+
+## effects_outside_repo
+- Scratch writes only under /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2-integrator/ (about 90 MB, kept): logs, test tmp dirs, four isolated VS Code profiles, walkthrough work dir and summary, npm debug logs, home-folder baseline files.
+- Transient systemd --user scopes telelean-* from sandboxed Lean (runner suites, VS Code test instances, walkthrough dry run). All ended. One empty scope (telelean-tlws1500614_2_1-23.scope) created by the final smoke's test instance remained; I stopped it. 0 telelean-* units are left.
+- Xvfb (:99), two isolated VS Code 1.140 test instances (user-data, extensions, HOME and XDG under scratch) and a DevTools endpoint on a free 127.0.0.1 port in the e2e instance ran during the smoke runs. The smoke isolation checks reported ~/.config/Code, ~/.config/Code/logs, ~/.copilot, ~/.config/google-chrome and ~/.local/share/Trash/files unchanged.
+- Playwright ran headless Chrome with isolated HOME/XDG in /tmp/tl-pw-chrome-* (deleted by its teardown; none left) and a static server on 127.0.0.1. The home guard reported the real home unchanged.
+- My own home-folder check matches the start: ~/.elan/known-projects 37 lines (mtime 09:09, untouched), ~/.npm/_logs 11 files, ~/.config/google-chrome, ~/.cache/fontconfig, ~/.pki, ~/.config/Code, ~/.vscode/extensions and ~/.copilot entry counts the same, /tmp/telelean-* 27 (WP3's old leftovers).
+- Lean ran only through the pinned toolchain binaries under runLean's sandbox. git ran only in scratch test repositories (GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM=1, hooks off) and the shadows' private git dirs, never in /home/zhengyew/telelean or mental_model/.
+- No network, no Claude CLI (not even --version), no downloads or installs, nothing pushed, published or sent. No credentials read; ~/.claude and ~/.config were not touched.
+- Inside the repo but outside the sources: vitest caches (node_modules/.vite*, packages/extension/out/.vite), Playwright output in packages/webview/test-results, and build outputs packages/core/dist, packages/extension/dist and packages/extension/out.
+- The user's installed telelean extension is registered from packages/extension, so it will load the rebuilt M2 dist after their next window reload. Nothing contacts Claude until they press These suffice and allow it.
+

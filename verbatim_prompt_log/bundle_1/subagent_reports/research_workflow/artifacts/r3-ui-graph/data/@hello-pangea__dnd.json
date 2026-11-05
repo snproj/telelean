@@ -1,0 +1,52 @@
+{
+ "name": "@hello-pangea/dnd",
+ "latest": "18.0.1",
+ "dist_tags": {
+  "beta": "18.0.0-beta.0",
+  "latest": "18.0.1"
+ },
+ "latest_published": "2025-02-09T18:51:28.649Z",
+ "modified": "2025-02-09T18:51:28.888Z",
+ "created": "2022-08-12T10:32:40.910Z",
+ "license": "Apache-2.0",
+ "deprecated": null,
+ "unpackedSize": 1263171,
+ "fileCount": 245,
+ "tarball": "https://registry.npmjs.org/@hello-pangea/dnd/-/dnd-18.0.1.tgz",
+ "dependencies": {
+  "@babel/runtime": "^7.26.7",
+  "css-box-model": "^1.2.1",
+  "raf-schd": "^4.0.3",
+  "react-redux": "^9.2.0",
+  "redux": "^5.0.1"
+ },
+ "peerDependencies": {
+  "react": "^18.0.0 || ^19.0.0",
+  "react-dom": "^18.0.0 || ^19.0.0"
+ },
+ "repository": "git+https://github.com/hello-pangea/dnd.git",
+ "recent_versions": [
+  [
+   "16.6.0",
+   "2024-03-24T04:20:14.369Z"
+  ],
+  [
+   "17.0.0",
+   "2024-09-14T19:26:14.435Z"
+  ],
+  [
+   "18.0.0-beta.0",
+   "2025-01-22T20:42:24.969Z"
+  ],
+  [
+   "18.0.0",
+   "2025-02-09T17:46:56.742Z"
+  ],
+  [
+   "18.0.1",
+   "2025-02-09T18:51:28.649Z"
+  ]
+ ],
+ "homepage": "https://github.com/hello-pangea/dnd#readme",
+ "description": "Beautiful and accessible drag and drop for lists with React"
+}

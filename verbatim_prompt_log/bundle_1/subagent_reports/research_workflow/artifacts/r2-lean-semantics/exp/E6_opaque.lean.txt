@@ -1,0 +1,35 @@
+/-! # E6: Encoding (iv) — `opaque` constants for uninterpreted vocabulary -/
+opaque Character : Type
+#print Character
+#print axioms Character
+opaque HasDarkPast : Character → Prop
+#print axioms HasDarkPast
+-- needs Inhabited/Nonempty:
+opaque Cynder : Character
+
+-- NonemptyType pattern (as used in Lean core for opaque types)
+opaque GamePointed : NonemptyType
+def Game : Type := GamePointed.type
+instance : Nonempty Game := GamePointed.property
+opaque newSpyro : Game
+#print axioms newSpyro
+
+-- Single explicit existence axiom, then opaque constants
+axiom Character.nonempty : Nonempty Character
+attribute [instance] Character.nonempty
+opaque Cynder' : Character
+#print axioms Cynder'
+
+-- opaque is not unfoldable: cannot prove anything about its value
+opaque five : Nat := 5
+example : five = 5 := rfl   -- should fail
+example : five = 5 := by decide -- should fail
+-- opaque with a Prop type: can't be used to sneak in a proof of False
+opaque cheat : False   -- needs Inhabited False: fails
+-- `theorem` vs `opaque` for a Prop: opaque requires a proof (value) anyway
+opaque pf : 1 = 1 := rfl
+#print axioms pf
+-- axiom of an empty type is inconsistent:
+axiom bad : Empty
+theorem f : False := nomatch bad
+#print axioms f

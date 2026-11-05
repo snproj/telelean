@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "declaration": true,
+    // Pure TypeScript on purpose: no DOM and no Node typings, so a stray `window` or `fs` fails to compile.
+    "lib": ["ES2023"],
+    "types": []
+  },
+  "include": ["src"]
+}

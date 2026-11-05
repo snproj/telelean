@@ -1,0 +1,8 @@
+<!doctype html><html><body><script>
+(async () => {
+  const c = document.createElement('canvas'); const gl = c.getContext('webgl');
+  let info = 'no webgl';
+  if (gl) { const ext = gl.getExtension('WEBGL_debug_renderer_info'); info = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) + ' / ' + gl.getParameter(ext.UNMASKED_VENDOR_WEBGL) : gl.getParameter(gl.RENDERER); }
+  await fetch('/result', {method: 'POST', body: JSON.stringify({label: new URLSearchParams(location.search).get('label'), info})});
+})();
+</script></body></html>

@@ -1,0 +1,49 @@
+{
+ "name": "@vscode-elements/react-elements",
+ "latest": "2.4.0",
+ "dist_tags": {
+  "next": "0.8.1-0",
+  "latest": "2.4.0"
+ },
+ "latest_published": "2025-12-26T14:56:40.179Z",
+ "modified": "2025-12-26T14:56:40.745Z",
+ "created": "2024-10-12T21:40:44.475Z",
+ "license": "ISC",
+ "deprecated": null,
+ "unpackedSize": 33674,
+ "fileCount": 81,
+ "tarball": "https://registry.npmjs.org/@vscode-elements/react-elements/-/react-elements-2.4.0.tgz",
+ "dependencies": {
+  "@lit/react": "^1.0.7",
+  "@vscode-elements/elements": "^2.4.0"
+ },
+ "peerDependencies": {
+  "react": "17 || 18 || 19",
+  "react-dom": "17 || 18 || 19"
+ },
+ "repository": "git+https://github.com/vscode-elements/react-elements.git",
+ "recent_versions": [
+  [
+   "1.15.1",
+   "2025-05-07T20:29:09.254Z"
+  ],
+  [
+   "2.0.0",
+   "2025-08-09T19:55:07.130Z"
+  ],
+  [
+   "2.3.0",
+   "2025-08-26T18:30:51.059Z"
+  ],
+  [
+   "2.3.1",
+   "2025-08-30T15:54:50.747Z"
+  ],
+  [
+   "2.4.0",
+   "2025-12-26T14:56:40.179Z"
+  ]
+ ],
+ "homepage": "https://github.com/vscode-elements/react-elements#readme",
+ "description": "React wrapper components for [VSCode Elements](https://vscode-elements.github.io)."
+}

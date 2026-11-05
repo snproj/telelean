@@ -1,0 +1,19 @@
+import Lean
+open Lean Meta
+
+def show1 (env : Environment) (n : Name) : IO Unit := do
+  let some ci := env.find? n | IO.println s!"{n}: not found"
+  let ctx : Core.Context := { fileName := "<ext>", fileMap := default }
+  let (fmt, _) ← (MetaM.run' (ppExpr ci.type)).toIO ctx { env }
+  let doc ← findDocString? env n
+  IO.println s!"{n} : {fmt}"
+  IO.println s!"  doc = {doc}"
+
+unsafe def main (args : List String) : IO Unit := do
+  initSearchPath (← findSysroot)
+  let loadExts := args.contains "--loadExts"
+  if loadExts then enableInitializersExecution
+  let env ← importModules #[{ module := `T }] {} (loadExts := loadExts)
+  IO.println s!"loadExts := {loadExts}"
+  for n in [`goal_normative, `conj_example, `independence_literal, `W.pg_no_dark_appear] do
+    show1 env n

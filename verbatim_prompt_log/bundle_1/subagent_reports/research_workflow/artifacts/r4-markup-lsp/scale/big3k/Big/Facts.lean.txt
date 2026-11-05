@@ -1,0 +1,1803 @@
+import Big.Defs
+
+/-
+@@ telelean v1
+id: fact-0
+kind: ASSUMPTION
+natural_name: "P0 holds!!"
+rationale: "observed 0"
+-/
+axiom f0 : P0
+
+/-
+@@ telelean v1
+id: fact-1
+kind: ASSUMPTION
+natural_name: "P1 holds"
+tags: extra
+rationale: "observed 1"
+-/
+axiom f1 : P1
+
+/-
+@@ telelean v1
+id: fact-2
+kind: ASSUMPTION
+natural_name: "P2 holds"
+rationale: "observed 2"
+-/
+axiom f2 : P2
+
+/-
+@@ telelean v1
+id: fact-3
+kind: ASSUMPTION
+natural_name: "P3 holds"
+rationale: "observed 3"
+-/
+axiom f3 : P3
+
+/-
+@@ telelean v1
+id: fact-4
+kind: ASSUMPTION
+natural_name: "P4 holds"
+rationale: "observed 4"
+-/
+axiom f4 : P4
+
+/-
+@@ telelean v1
+id: fact-5
+kind: ASSUMPTION
+natural_name: "P5 holds"
+rationale: "observed 5"
+-/
+axiom f5 : P5
+
+/-
+@@ telelean v1
+id: fact-6
+kind: ASSUMPTION
+natural_name: "P6 holds"
+rationale: "observed 6"
+-/
+axiom f6 : P6
+
+/-
+@@ telelean v1
+id: fact-7
+kind: ASSUMPTION
+natural_name: "P7 holds"
+rationale: "observed 7"
+-/
+axiom f7 : P7
+
+/-
+@@ telelean v1
+id: fact-8
+kind: ASSUMPTION
+natural_name: "P8 holds"
+rationale: "observed 8"
+-/
+axiom f8 : P8
+
+/-
+@@ telelean v1
+id: fact-9
+kind: ASSUMPTION
+natural_name: "P9 holds"
+rationale: "observed 9"
+-/
+axiom f9 : P9
+
+/-
+@@ telelean v1
+id: fact-10
+kind: ASSUMPTION
+natural_name: "P10 holds"
+rationale: "observed 10"
+-/
+axiom f10 : P10
+
+/-
+@@ telelean v1
+id: fact-11
+kind: ASSUMPTION
+natural_name: "P11 holds"
+rationale: "observed 11"
+-/
+axiom f11 : P11
+
+/-
+@@ telelean v1
+id: fact-12
+kind: ASSUMPTION
+natural_name: "P12 holds"
+rationale: "observed 12"
+-/
+axiom f12 : P12
+
+/-
+@@ telelean v1
+id: fact-13
+kind: ASSUMPTION
+natural_name: "P13 holds"
+rationale: "observed 13"
+-/
+axiom f13 : P13
+
+/-
+@@ telelean v1
+id: fact-14
+kind: ASSUMPTION
+natural_name: "P14 holds"
+rationale: "observed 14"
+-/
+axiom f14 : P14
+
+/-
+@@ telelean v1
+id: fact-15
+kind: ASSUMPTION
+natural_name: "P15 holds"
+rationale: "observed 15"
+-/
+axiom f15 : P15
+
+/-
+@@ telelean v1
+id: fact-16
+kind: ASSUMPTION
+natural_name: "P16 holds"
+rationale: "observed 16"
+-/
+axiom f16 : P16
+
+/-
+@@ telelean v1
+id: fact-17
+kind: ASSUMPTION
+natural_name: "P17 holds"
+rationale: "observed 17"
+-/
+axiom f17 : P17
+
+/-
+@@ telelean v1
+id: fact-18
+kind: ASSUMPTION
+natural_name: "P18 holds"
+rationale: "observed 18"
+-/
+axiom f18 : P18
+
+/-
+@@ telelean v1
+id: fact-19
+kind: ASSUMPTION
+natural_name: "P19 holds"
+rationale: "observed 19"
+-/
+axiom f19 : P19
+
+/-
+@@ telelean v1
+id: fact-20
+kind: ASSUMPTION
+natural_name: "P20 holds"
+rationale: "observed 20"
+-/
+axiom f20 : P20
+
+/-
+@@ telelean v1
+id: fact-21
+kind: ASSUMPTION
+natural_name: "P21 holds"
+rationale: "observed 21"
+-/
+axiom f21 : P21
+
+/-
+@@ telelean v1
+id: fact-22
+kind: ASSUMPTION
+natural_name: "P22 holds"
+rationale: "observed 22"
+-/
+axiom f22 : P22
+
+/-
+@@ telelean v1
+id: fact-23
+kind: ASSUMPTION
+natural_name: "P23 holds"
+rationale: "observed 23"
+-/
+axiom f23 : P23
+
+/-
+@@ telelean v1
+id: fact-24
+kind: ASSUMPTION
+natural_name: "P24 holds"
+rationale: "observed 24"
+-/
+axiom f24 : P24
+
+/-
+@@ telelean v1
+id: fact-25
+kind: ASSUMPTION
+natural_name: "P25 holds"
+rationale: "observed 25"
+-/
+axiom f25 : P25
+
+/-
+@@ telelean v1
+id: fact-26
+kind: ASSUMPTION
+natural_name: "P26 holds"
+rationale: "observed 26"
+-/
+axiom f26 : P26
+
+/-
+@@ telelean v1
+id: fact-27
+kind: ASSUMPTION
+natural_name: "P27 holds"
+rationale: "observed 27"
+-/
+axiom f27 : P27
+
+/-
+@@ telelean v1
+id: fact-28
+kind: ASSUMPTION
+natural_name: "P28 holds"
+rationale: "observed 28"
+-/
+axiom f28 : P28
+
+/-
+@@ telelean v1
+id: fact-29
+kind: ASSUMPTION
+natural_name: "P29 holds"
+rationale: "observed 29"
+-/
+axiom f29 : P29
+
+/-
+@@ telelean v1
+id: fact-30
+kind: ASSUMPTION
+natural_name: "P30 holds"
+rationale: "observed 30"
+-/
+axiom f30 : P30
+
+/-
+@@ telelean v1
+id: fact-31
+kind: ASSUMPTION
+natural_name: "P31 holds"
+rationale: "observed 31"
+-/
+axiom f31 : P31
+
+/-
+@@ telelean v1
+id: fact-32
+kind: ASSUMPTION
+natural_name: "P32 holds"
+rationale: "observed 32"
+-/
+axiom f32 : P32
+
+/-
+@@ telelean v1
+id: fact-33
+kind: ASSUMPTION
+natural_name: "P33 holds"
+rationale: "observed 33"
+-/
+axiom f33 : P33
+
+/-
+@@ telelean v1
+id: fact-34
+kind: ASSUMPTION
+natural_name: "P34 holds"
+rationale: "observed 34"
+-/
+axiom f34 : P34
+
+/-
+@@ telelean v1
+id: fact-35
+kind: ASSUMPTION
+natural_name: "P35 holds"
+rationale: "observed 35"
+-/
+axiom f35 : P35
+
+/-
+@@ telelean v1
+id: fact-36
+kind: ASSUMPTION
+natural_name: "P36 holds"
+rationale: "observed 36"
+-/
+axiom f36 : P36
+
+/-
+@@ telelean v1
+id: fact-37
+kind: ASSUMPTION
+natural_name: "P37 holds"
+rationale: "observed 37"
+-/
+axiom f37 : P37
+
+/-
+@@ telelean v1
+id: fact-38
+kind: ASSUMPTION
+natural_name: "P38 holds"
+rationale: "observed 38"
+-/
+axiom f38 : P38
+
+/-
+@@ telelean v1
+id: fact-39
+kind: ASSUMPTION
+natural_name: "P39 holds"
+rationale: "observed 39"
+-/
+axiom f39 : P39
+
+/-
+@@ telelean v1
+id: fact-40
+kind: ASSUMPTION
+natural_name: "P40 holds"
+rationale: "observed 40"
+-/
+axiom f40 : P40
+
+/-
+@@ telelean v1
+id: fact-41
+kind: ASSUMPTION
+natural_name: "P41 holds"
+rationale: "observed 41"
+-/
+axiom f41 : P41
+
+/-
+@@ telelean v1
+id: fact-42
+kind: ASSUMPTION
+natural_name: "P42 holds"
+rationale: "observed 42"
+-/
+axiom f42 : P42
+
+/-
+@@ telelean v1
+id: fact-43
+kind: ASSUMPTION
+natural_name: "P43 holds"
+rationale: "observed 43"
+-/
+axiom f43 : P43
+
+/-
+@@ telelean v1
+id: fact-44
+kind: ASSUMPTION
+natural_name: "P44 holds"
+rationale: "observed 44"
+-/
+axiom f44 : P44
+
+/-
+@@ telelean v1
+id: fact-45
+kind: ASSUMPTION
+natural_name: "P45 holds"
+rationale: "observed 45"
+-/
+axiom f45 : P45
+
+/-
+@@ telelean v1
+id: fact-46
+kind: ASSUMPTION
+natural_name: "P46 holds"
+rationale: "observed 46"
+-/
+axiom f46 : P46
+
+/-
+@@ telelean v1
+id: fact-47
+kind: ASSUMPTION
+natural_name: "P47 holds"
+rationale: "observed 47"
+-/
+axiom f47 : P47
+
+/-
+@@ telelean v1
+id: fact-48
+kind: ASSUMPTION
+natural_name: "P48 holds"
+rationale: "observed 48"
+-/
+axiom f48 : P48
+
+/-
+@@ telelean v1
+id: fact-49
+kind: ASSUMPTION
+natural_name: "P49 holds"
+rationale: "observed 49"
+-/
+axiom f49 : P49
+
+/-
+@@ telelean v1
+id: fact-50
+kind: ASSUMPTION
+natural_name: "P50 holds"
+rationale: "observed 50"
+-/
+axiom f50 : P50
+
+/-
+@@ telelean v1
+id: fact-51
+kind: ASSUMPTION
+natural_name: "P51 holds"
+rationale: "observed 51"
+-/
+axiom f51 : P51
+
+/-
+@@ telelean v1
+id: fact-52
+kind: ASSUMPTION
+natural_name: "P52 holds"
+rationale: "observed 52"
+-/
+axiom f52 : P52
+
+/-
+@@ telelean v1
+id: fact-53
+kind: ASSUMPTION
+natural_name: "P53 holds"
+rationale: "observed 53"
+-/
+axiom f53 : P53
+
+/-
+@@ telelean v1
+id: fact-54
+kind: ASSUMPTION
+natural_name: "P54 holds"
+rationale: "observed 54"
+-/
+axiom f54 : P54
+
+/-
+@@ telelean v1
+id: fact-55
+kind: ASSUMPTION
+natural_name: "P55 holds"
+rationale: "observed 55"
+-/
+axiom f55 : P55
+
+/-
+@@ telelean v1
+id: fact-56
+kind: ASSUMPTION
+natural_name: "P56 holds"
+rationale: "observed 56"
+-/
+axiom f56 : P56
+
+/-
+@@ telelean v1
+id: fact-57
+kind: ASSUMPTION
+natural_name: "P57 holds"
+rationale: "observed 57"
+-/
+axiom f57 : P57
+
+/-
+@@ telelean v1
+id: fact-58
+kind: ASSUMPTION
+natural_name: "P58 holds"
+rationale: "observed 58"
+-/
+axiom f58 : P58
+
+/-
+@@ telelean v1
+id: fact-59
+kind: ASSUMPTION
+natural_name: "P59 holds"
+rationale: "observed 59"
+-/
+axiom f59 : P59
+
+/-
+@@ telelean v1
+id: fact-60
+kind: ASSUMPTION
+natural_name: "P60 holds"
+rationale: "observed 60"
+-/
+axiom f60 : P60
+
+/-
+@@ telelean v1
+id: fact-61
+kind: ASSUMPTION
+natural_name: "P61 holds"
+rationale: "observed 61"
+-/
+axiom f61 : P61
+
+/-
+@@ telelean v1
+id: fact-62
+kind: ASSUMPTION
+natural_name: "P62 holds"
+rationale: "observed 62"
+-/
+axiom f62 : P62
+
+/-
+@@ telelean v1
+id: fact-63
+kind: ASSUMPTION
+natural_name: "P63 holds"
+rationale: "observed 63"
+-/
+axiom f63 : P63
+
+/-
+@@ telelean v1
+id: fact-64
+kind: ASSUMPTION
+natural_name: "P64 holds"
+rationale: "observed 64"
+-/
+axiom f64 : P64
+
+/-
+@@ telelean v1
+id: fact-65
+kind: ASSUMPTION
+natural_name: "P65 holds"
+rationale: "observed 65"
+-/
+axiom f65 : P65
+
+/-
+@@ telelean v1
+id: fact-66
+kind: ASSUMPTION
+natural_name: "P66 holds"
+rationale: "observed 66"
+-/
+axiom f66 : P66
+
+/-
+@@ telelean v1
+id: fact-67
+kind: ASSUMPTION
+natural_name: "P67 holds"
+rationale: "observed 67"
+-/
+axiom f67 : P67
+
+/-
+@@ telelean v1
+id: fact-68
+kind: ASSUMPTION
+natural_name: "P68 holds"
+rationale: "observed 68"
+-/
+axiom f68 : P68
+
+/-
+@@ telelean v1
+id: fact-69
+kind: ASSUMPTION
+natural_name: "P69 holds"
+rationale: "observed 69"
+-/
+axiom f69 : P69
+
+/-
+@@ telelean v1
+id: fact-70
+kind: ASSUMPTION
+natural_name: "P70 holds"
+rationale: "observed 70"
+-/
+axiom f70 : P70
+
+/-
+@@ telelean v1
+id: fact-71
+kind: ASSUMPTION
+natural_name: "P71 holds"
+rationale: "observed 71"
+-/
+axiom f71 : P71
+
+/-
+@@ telelean v1
+id: fact-72
+kind: ASSUMPTION
+natural_name: "P72 holds"
+rationale: "observed 72"
+-/
+axiom f72 : P72
+
+/-
+@@ telelean v1
+id: fact-73
+kind: ASSUMPTION
+natural_name: "P73 holds"
+rationale: "observed 73"
+-/
+axiom f73 : P73
+
+/-
+@@ telelean v1
+id: fact-74
+kind: ASSUMPTION
+natural_name: "P74 holds"
+rationale: "observed 74"
+-/
+axiom f74 : P74
+
+/-
+@@ telelean v1
+id: fact-75
+kind: ASSUMPTION
+natural_name: "P75 holds"
+rationale: "observed 75"
+-/
+axiom f75 : P75
+
+/-
+@@ telelean v1
+id: fact-76
+kind: ASSUMPTION
+natural_name: "P76 holds"
+rationale: "observed 76"
+-/
+axiom f76 : P76
+
+/-
+@@ telelean v1
+id: fact-77
+kind: ASSUMPTION
+natural_name: "P77 holds"
+rationale: "observed 77"
+-/
+axiom f77 : P77
+
+/-
+@@ telelean v1
+id: fact-78
+kind: ASSUMPTION
+natural_name: "P78 holds"
+rationale: "observed 78"
+-/
+axiom f78 : P78
+
+/-
+@@ telelean v1
+id: fact-79
+kind: ASSUMPTION
+natural_name: "P79 holds"
+rationale: "observed 79"
+-/
+axiom f79 : P79
+
+/-
+@@ telelean v1
+id: fact-80
+kind: ASSUMPTION
+natural_name: "P80 holds"
+rationale: "observed 80"
+-/
+axiom f80 : P80
+
+/-
+@@ telelean v1
+id: fact-81
+kind: ASSUMPTION
+natural_name: "P81 holds"
+rationale: "observed 81"
+-/
+axiom f81 : P81
+
+/-
+@@ telelean v1
+id: fact-82
+kind: ASSUMPTION
+natural_name: "P82 holds"
+rationale: "observed 82"
+-/
+axiom f82 : P82
+
+/-
+@@ telelean v1
+id: fact-83
+kind: ASSUMPTION
+natural_name: "P83 holds"
+rationale: "observed 83"
+-/
+axiom f83 : P83
+
+/-
+@@ telelean v1
+id: fact-84
+kind: ASSUMPTION
+natural_name: "P84 holds"
+rationale: "observed 84"
+-/
+axiom f84 : P84
+
+/-
+@@ telelean v1
+id: fact-85
+kind: ASSUMPTION
+natural_name: "P85 holds"
+rationale: "observed 85"
+-/
+axiom f85 : P85
+
+/-
+@@ telelean v1
+id: fact-86
+kind: ASSUMPTION
+natural_name: "P86 holds"
+rationale: "observed 86"
+-/
+axiom f86 : P86
+
+/-
+@@ telelean v1
+id: fact-87
+kind: ASSUMPTION
+natural_name: "P87 holds"
+rationale: "observed 87"
+-/
+axiom f87 : P87
+
+/-
+@@ telelean v1
+id: fact-88
+kind: ASSUMPTION
+natural_name: "P88 holds"
+rationale: "observed 88"
+-/
+axiom f88 : P88
+
+/-
+@@ telelean v1
+id: fact-89
+kind: ASSUMPTION
+natural_name: "P89 holds"
+rationale: "observed 89"
+-/
+axiom f89 : P89
+
+/-
+@@ telelean v1
+id: fact-90
+kind: ASSUMPTION
+natural_name: "P90 holds"
+rationale: "observed 90"
+-/
+axiom f90 : P90
+
+/-
+@@ telelean v1
+id: fact-91
+kind: ASSUMPTION
+natural_name: "P91 holds"
+rationale: "observed 91"
+-/
+axiom f91 : P91
+
+/-
+@@ telelean v1
+id: fact-92
+kind: ASSUMPTION
+natural_name: "P92 holds"
+rationale: "observed 92"
+-/
+axiom f92 : P92
+
+/-
+@@ telelean v1
+id: fact-93
+kind: ASSUMPTION
+natural_name: "P93 holds"
+rationale: "observed 93"
+-/
+axiom f93 : P93
+
+/-
+@@ telelean v1
+id: fact-94
+kind: ASSUMPTION
+natural_name: "P94 holds"
+rationale: "observed 94"
+-/
+axiom f94 : P94
+
+/-
+@@ telelean v1
+id: fact-95
+kind: ASSUMPTION
+natural_name: "P95 holds"
+rationale: "observed 95"
+-/
+axiom f95 : P95
+
+/-
+@@ telelean v1
+id: fact-96
+kind: ASSUMPTION
+natural_name: "P96 holds"
+rationale: "observed 96"
+-/
+axiom f96 : P96
+
+/-
+@@ telelean v1
+id: fact-97
+kind: ASSUMPTION
+natural_name: "P97 holds"
+rationale: "observed 97"
+-/
+axiom f97 : P97
+
+/-
+@@ telelean v1
+id: fact-98
+kind: ASSUMPTION
+natural_name: "P98 holds"
+rationale: "observed 98"
+-/
+axiom f98 : P98
+
+/-
+@@ telelean v1
+id: fact-99
+kind: ASSUMPTION
+natural_name: "P99 holds"
+rationale: "observed 99"
+-/
+axiom f99 : P99
+
+/-
+@@ telelean v1
+id: fact-100
+kind: ASSUMPTION
+natural_name: "P100 holds"
+rationale: "observed 100"
+-/
+axiom f100 : P100
+
+/-
+@@ telelean v1
+id: fact-101
+kind: ASSUMPTION
+natural_name: "P101 holds"
+rationale: "observed 101"
+-/
+axiom f101 : P101
+
+/-
+@@ telelean v1
+id: fact-102
+kind: ASSUMPTION
+natural_name: "P102 holds"
+rationale: "observed 102"
+-/
+axiom f102 : P102
+
+/-
+@@ telelean v1
+id: fact-103
+kind: ASSUMPTION
+natural_name: "P103 holds"
+rationale: "observed 103"
+-/
+axiom f103 : P103
+
+/-
+@@ telelean v1
+id: fact-104
+kind: ASSUMPTION
+natural_name: "P104 holds"
+rationale: "observed 104"
+-/
+axiom f104 : P104
+
+/-
+@@ telelean v1
+id: fact-105
+kind: ASSUMPTION
+natural_name: "P105 holds"
+rationale: "observed 105"
+-/
+axiom f105 : P105
+
+/-
+@@ telelean v1
+id: fact-106
+kind: ASSUMPTION
+natural_name: "P106 holds"
+rationale: "observed 106"
+-/
+axiom f106 : P106
+
+/-
+@@ telelean v1
+id: fact-107
+kind: ASSUMPTION
+natural_name: "P107 holds"
+rationale: "observed 107"
+-/
+axiom f107 : P107
+
+/-
+@@ telelean v1
+id: fact-108
+kind: ASSUMPTION
+natural_name: "P108 holds"
+rationale: "observed 108"
+-/
+axiom f108 : P108
+
+/-
+@@ telelean v1
+id: fact-109
+kind: ASSUMPTION
+natural_name: "P109 holds"
+rationale: "observed 109"
+-/
+axiom f109 : P109
+
+/-
+@@ telelean v1
+id: fact-110
+kind: ASSUMPTION
+natural_name: "P110 holds"
+rationale: "observed 110"
+-/
+axiom f110 : P110
+
+/-
+@@ telelean v1
+id: fact-111
+kind: ASSUMPTION
+natural_name: "P111 holds"
+rationale: "observed 111"
+-/
+axiom f111 : P111
+
+/-
+@@ telelean v1
+id: fact-112
+kind: ASSUMPTION
+natural_name: "P112 holds"
+rationale: "observed 112"
+-/
+axiom f112 : P112
+
+/-
+@@ telelean v1
+id: fact-113
+kind: ASSUMPTION
+natural_name: "P113 holds"
+rationale: "observed 113"
+-/
+axiom f113 : P113
+
+/-
+@@ telelean v1
+id: fact-114
+kind: ASSUMPTION
+natural_name: "P114 holds"
+rationale: "observed 114"
+-/
+axiom f114 : P114
+
+/-
+@@ telelean v1
+id: fact-115
+kind: ASSUMPTION
+natural_name: "P115 holds"
+rationale: "observed 115"
+-/
+axiom f115 : P115
+
+/-
+@@ telelean v1
+id: fact-116
+kind: ASSUMPTION
+natural_name: "P116 holds"
+rationale: "observed 116"
+-/
+axiom f116 : P116
+
+/-
+@@ telelean v1
+id: fact-117
+kind: ASSUMPTION
+natural_name: "P117 holds"
+rationale: "observed 117"
+-/
+axiom f117 : P117
+
+/-
+@@ telelean v1
+id: fact-118
+kind: ASSUMPTION
+natural_name: "P118 holds"
+rationale: "observed 118"
+-/
+axiom f118 : P118
+
+/-
+@@ telelean v1
+id: fact-119
+kind: ASSUMPTION
+natural_name: "P119 holds"
+rationale: "observed 119"
+-/
+axiom f119 : P119
+
+/-
+@@ telelean v1
+id: fact-120
+kind: ASSUMPTION
+natural_name: "P120 holds"
+rationale: "observed 120"
+-/
+axiom f120 : P120
+
+/-
+@@ telelean v1
+id: fact-121
+kind: ASSUMPTION
+natural_name: "P121 holds"
+rationale: "observed 121"
+-/
+axiom f121 : P121
+
+/-
+@@ telelean v1
+id: fact-122
+kind: ASSUMPTION
+natural_name: "P122 holds"
+rationale: "observed 122"
+-/
+axiom f122 : P122
+
+/-
+@@ telelean v1
+id: fact-123
+kind: ASSUMPTION
+natural_name: "P123 holds"
+rationale: "observed 123"
+-/
+axiom f123 : P123
+
+/-
+@@ telelean v1
+id: fact-124
+kind: ASSUMPTION
+natural_name: "P124 holds"
+rationale: "observed 124"
+-/
+axiom f124 : P124
+
+/-
+@@ telelean v1
+id: fact-125
+kind: ASSUMPTION
+natural_name: "P125 holds"
+rationale: "observed 125"
+-/
+axiom f125 : P125
+
+/-
+@@ telelean v1
+id: fact-126
+kind: ASSUMPTION
+natural_name: "P126 holds"
+rationale: "observed 126"
+-/
+axiom f126 : P126
+
+/-
+@@ telelean v1
+id: fact-127
+kind: ASSUMPTION
+natural_name: "P127 holds"
+rationale: "observed 127"
+-/
+axiom f127 : P127
+
+/-
+@@ telelean v1
+id: fact-128
+kind: ASSUMPTION
+natural_name: "P128 holds"
+rationale: "observed 128"
+-/
+axiom f128 : P128
+
+/-
+@@ telelean v1
+id: fact-129
+kind: ASSUMPTION
+natural_name: "P129 holds"
+rationale: "observed 129"
+-/
+axiom f129 : P129
+
+/-
+@@ telelean v1
+id: fact-130
+kind: ASSUMPTION
+natural_name: "P130 holds"
+rationale: "observed 130"
+-/
+axiom f130 : P130
+
+/-
+@@ telelean v1
+id: fact-131
+kind: ASSUMPTION
+natural_name: "P131 holds"
+rationale: "observed 131"
+-/
+axiom f131 : P131
+
+/-
+@@ telelean v1
+id: fact-132
+kind: ASSUMPTION
+natural_name: "P132 holds"
+rationale: "observed 132"
+-/
+axiom f132 : P132
+
+/-
+@@ telelean v1
+id: fact-133
+kind: ASSUMPTION
+natural_name: "P133 holds"
+rationale: "observed 133"
+-/
+axiom f133 : P133
+
+/-
+@@ telelean v1
+id: fact-134
+kind: ASSUMPTION
+natural_name: "P134 holds"
+rationale: "observed 134"
+-/
+axiom f134 : P134
+
+/-
+@@ telelean v1
+id: fact-135
+kind: ASSUMPTION
+natural_name: "P135 holds"
+rationale: "observed 135"
+-/
+axiom f135 : P135
+
+/-
+@@ telelean v1
+id: fact-136
+kind: ASSUMPTION
+natural_name: "P136 holds"
+rationale: "observed 136"
+-/
+axiom f136 : P136
+
+/-
+@@ telelean v1
+id: fact-137
+kind: ASSUMPTION
+natural_name: "P137 holds"
+rationale: "observed 137"
+-/
+axiom f137 : P137
+
+/-
+@@ telelean v1
+id: fact-138
+kind: ASSUMPTION
+natural_name: "P138 holds"
+rationale: "observed 138"
+-/
+axiom f138 : P138
+
+/-
+@@ telelean v1
+id: fact-139
+kind: ASSUMPTION
+natural_name: "P139 holds"
+rationale: "observed 139"
+-/
+axiom f139 : P139
+
+/-
+@@ telelean v1
+id: fact-140
+kind: ASSUMPTION
+natural_name: "P140 holds"
+rationale: "observed 140"
+-/
+axiom f140 : P140
+
+/-
+@@ telelean v1
+id: fact-141
+kind: ASSUMPTION
+natural_name: "P141 holds"
+rationale: "observed 141"
+-/
+axiom f141 : P141
+
+/-
+@@ telelean v1
+id: fact-142
+kind: ASSUMPTION
+natural_name: "P142 holds"
+rationale: "observed 142"
+-/
+axiom f142 : P142
+
+/-
+@@ telelean v1
+id: fact-143
+kind: ASSUMPTION
+natural_name: "P143 holds"
+rationale: "observed 143"
+-/
+axiom f143 : P143
+
+/-
+@@ telelean v1
+id: fact-144
+kind: ASSUMPTION
+natural_name: "P144 holds"
+rationale: "observed 144"
+-/
+axiom f144 : P144
+
+/-
+@@ telelean v1
+id: fact-145
+kind: ASSUMPTION
+natural_name: "P145 holds"
+rationale: "observed 145"
+-/
+axiom f145 : P145
+
+/-
+@@ telelean v1
+id: fact-146
+kind: ASSUMPTION
+natural_name: "P146 holds"
+rationale: "observed 146"
+-/
+axiom f146 : P146
+
+/-
+@@ telelean v1
+id: fact-147
+kind: ASSUMPTION
+natural_name: "P147 holds"
+rationale: "observed 147"
+-/
+axiom f147 : P147
+
+/-
+@@ telelean v1
+id: fact-148
+kind: ASSUMPTION
+natural_name: "P148 holds"
+rationale: "observed 148"
+-/
+axiom f148 : P148
+
+/-
+@@ telelean v1
+id: fact-149
+kind: ASSUMPTION
+natural_name: "P149 holds"
+rationale: "observed 149"
+-/
+axiom f149 : P149
+
+/-
+@@ telelean v1
+id: fact-150
+kind: ASSUMPTION
+natural_name: "P150 holds"
+rationale: "observed 150"
+-/
+axiom f150 : P150
+
+/-
+@@ telelean v1
+id: fact-151
+kind: ASSUMPTION
+natural_name: "P151 holds"
+rationale: "observed 151"
+-/
+axiom f151 : P151
+
+/-
+@@ telelean v1
+id: fact-152
+kind: ASSUMPTION
+natural_name: "P152 holds"
+rationale: "observed 152"
+-/
+axiom f152 : P152
+
+/-
+@@ telelean v1
+id: fact-153
+kind: ASSUMPTION
+natural_name: "P153 holds"
+rationale: "observed 153"
+-/
+axiom f153 : P153
+
+/-
+@@ telelean v1
+id: fact-154
+kind: ASSUMPTION
+natural_name: "P154 holds"
+rationale: "observed 154"
+-/
+axiom f154 : P154
+
+/-
+@@ telelean v1
+id: fact-155
+kind: ASSUMPTION
+natural_name: "P155 holds"
+rationale: "observed 155"
+-/
+axiom f155 : P155
+
+/-
+@@ telelean v1
+id: fact-156
+kind: ASSUMPTION
+natural_name: "P156 holds"
+rationale: "observed 156"
+-/
+axiom f156 : P156
+
+/-
+@@ telelean v1
+id: fact-157
+kind: ASSUMPTION
+natural_name: "P157 holds"
+rationale: "observed 157"
+-/
+axiom f157 : P157
+
+/-
+@@ telelean v1
+id: fact-158
+kind: ASSUMPTION
+natural_name: "P158 holds"
+rationale: "observed 158"
+-/
+axiom f158 : P158
+
+/-
+@@ telelean v1
+id: fact-159
+kind: ASSUMPTION
+natural_name: "P159 holds"
+rationale: "observed 159"
+-/
+axiom f159 : P159
+
+/-
+@@ telelean v1
+id: fact-160
+kind: ASSUMPTION
+natural_name: "P160 holds"
+rationale: "observed 160"
+-/
+axiom f160 : P160
+
+/-
+@@ telelean v1
+id: fact-161
+kind: ASSUMPTION
+natural_name: "P161 holds"
+rationale: "observed 161"
+-/
+axiom f161 : P161
+
+/-
+@@ telelean v1
+id: fact-162
+kind: ASSUMPTION
+natural_name: "P162 holds"
+rationale: "observed 162"
+-/
+axiom f162 : P162
+
+/-
+@@ telelean v1
+id: fact-163
+kind: ASSUMPTION
+natural_name: "P163 holds"
+rationale: "observed 163"
+-/
+axiom f163 : P163
+
+/-
+@@ telelean v1
+id: fact-164
+kind: ASSUMPTION
+natural_name: "P164 holds"
+rationale: "observed 164"
+-/
+axiom f164 : P164
+
+/-
+@@ telelean v1
+id: fact-165
+kind: ASSUMPTION
+natural_name: "P165 holds"
+rationale: "observed 165"
+-/
+axiom f165 : P165
+
+/-
+@@ telelean v1
+id: fact-166
+kind: ASSUMPTION
+natural_name: "P166 holds"
+rationale: "observed 166"
+-/
+axiom f166 : P166
+
+/-
+@@ telelean v1
+id: fact-167
+kind: ASSUMPTION
+natural_name: "P167 holds"
+rationale: "observed 167"
+-/
+axiom f167 : P167
+
+/-
+@@ telelean v1
+id: fact-168
+kind: ASSUMPTION
+natural_name: "P168 holds"
+rationale: "observed 168"
+-/
+axiom f168 : P168
+
+/-
+@@ telelean v1
+id: fact-169
+kind: ASSUMPTION
+natural_name: "P169 holds"
+rationale: "observed 169"
+-/
+axiom f169 : P169
+
+/-
+@@ telelean v1
+id: fact-170
+kind: ASSUMPTION
+natural_name: "P170 holds"
+rationale: "observed 170"
+-/
+axiom f170 : P170
+
+/-
+@@ telelean v1
+id: fact-171
+kind: ASSUMPTION
+natural_name: "P171 holds"
+rationale: "observed 171"
+-/
+axiom f171 : P171
+
+/-
+@@ telelean v1
+id: fact-172
+kind: ASSUMPTION
+natural_name: "P172 holds"
+rationale: "observed 172"
+-/
+axiom f172 : P172
+
+/-
+@@ telelean v1
+id: fact-173
+kind: ASSUMPTION
+natural_name: "P173 holds"
+rationale: "observed 173"
+-/
+axiom f173 : P173
+
+/-
+@@ telelean v1
+id: fact-174
+kind: ASSUMPTION
+natural_name: "P174 holds"
+rationale: "observed 174"
+-/
+axiom f174 : P174
+
+/-
+@@ telelean v1
+id: fact-175
+kind: ASSUMPTION
+natural_name: "P175 holds"
+rationale: "observed 175"
+-/
+axiom f175 : P175
+
+/-
+@@ telelean v1
+id: fact-176
+kind: ASSUMPTION
+natural_name: "P176 holds"
+rationale: "observed 176"
+-/
+axiom f176 : P176
+
+/-
+@@ telelean v1
+id: fact-177
+kind: ASSUMPTION
+natural_name: "P177 holds"
+rationale: "observed 177"
+-/
+axiom f177 : P177
+
+/-
+@@ telelean v1
+id: fact-178
+kind: ASSUMPTION
+natural_name: "P178 holds"
+rationale: "observed 178"
+-/
+axiom f178 : P178
+
+/-
+@@ telelean v1
+id: fact-179
+kind: ASSUMPTION
+natural_name: "P179 holds"
+rationale: "observed 179"
+-/
+axiom f179 : P179
+
+/-
+@@ telelean v1
+id: fact-180
+kind: ASSUMPTION
+natural_name: "P180 holds"
+rationale: "observed 180"
+-/
+axiom f180 : P180
+
+/-
+@@ telelean v1
+id: fact-181
+kind: ASSUMPTION
+natural_name: "P181 holds"
+rationale: "observed 181"
+-/
+axiom f181 : P181
+
+/-
+@@ telelean v1
+id: fact-182
+kind: ASSUMPTION
+natural_name: "P182 holds"
+rationale: "observed 182"
+-/
+axiom f182 : P182
+
+/-
+@@ telelean v1
+id: fact-183
+kind: ASSUMPTION
+natural_name: "P183 holds"
+rationale: "observed 183"
+-/
+axiom f183 : P183
+
+/-
+@@ telelean v1
+id: fact-184
+kind: ASSUMPTION
+natural_name: "P184 holds"
+rationale: "observed 184"
+-/
+axiom f184 : P184
+
+/-
+@@ telelean v1
+id: fact-185
+kind: ASSUMPTION
+natural_name: "P185 holds"
+rationale: "observed 185"
+-/
+axiom f185 : P185
+
+/-
+@@ telelean v1
+id: fact-186
+kind: ASSUMPTION
+natural_name: "P186 holds"
+rationale: "observed 186"
+-/
+axiom f186 : P186
+
+/-
+@@ telelean v1
+id: fact-187
+kind: ASSUMPTION
+natural_name: "P187 holds"
+rationale: "observed 187"
+-/
+axiom f187 : P187
+
+/-
+@@ telelean v1
+id: fact-188
+kind: ASSUMPTION
+natural_name: "P188 holds"
+rationale: "observed 188"
+-/
+axiom f188 : P188
+
+/-
+@@ telelean v1
+id: fact-189
+kind: ASSUMPTION
+natural_name: "P189 holds"
+rationale: "observed 189"
+-/
+axiom f189 : P189
+
+/-
+@@ telelean v1
+id: fact-190
+kind: ASSUMPTION
+natural_name: "P190 holds"
+rationale: "observed 190"
+-/
+axiom f190 : P190
+
+/-
+@@ telelean v1
+id: fact-191
+kind: ASSUMPTION
+natural_name: "P191 holds"
+rationale: "observed 191"
+-/
+axiom f191 : P191
+
+/-
+@@ telelean v1
+id: fact-192
+kind: ASSUMPTION
+natural_name: "P192 holds"
+rationale: "observed 192"
+-/
+axiom f192 : P192
+
+/-
+@@ telelean v1
+id: fact-193
+kind: ASSUMPTION
+natural_name: "P193 holds"
+rationale: "observed 193"
+-/
+axiom f193 : P193
+
+/-
+@@ telelean v1
+id: fact-194
+kind: ASSUMPTION
+natural_name: "P194 holds"
+rationale: "observed 194"
+-/
+axiom f194 : P194
+
+/-
+@@ telelean v1
+id: fact-195
+kind: ASSUMPTION
+natural_name: "P195 holds"
+rationale: "observed 195"
+-/
+axiom f195 : P195
+
+/-
+@@ telelean v1
+id: fact-196
+kind: ASSUMPTION
+natural_name: "P196 holds"
+rationale: "observed 196"
+-/
+axiom f196 : P196
+
+/-
+@@ telelean v1
+id: fact-197
+kind: ASSUMPTION
+natural_name: "P197 holds"
+rationale: "observed 197"
+-/
+axiom f197 : P197
+
+/-
+@@ telelean v1
+id: fact-198
+kind: ASSUMPTION
+natural_name: "P198 holds"
+rationale: "observed 198"
+-/
+axiom f198 : P198
+
+/-
+@@ telelean v1
+id: fact-199
+kind: ASSUMPTION
+natural_name: "P199 holds"
+rationale: "observed 199"
+-/
+axiom f199 : P199
+

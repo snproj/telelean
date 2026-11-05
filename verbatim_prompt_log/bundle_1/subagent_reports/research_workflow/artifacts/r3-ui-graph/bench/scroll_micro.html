@@ -1,0 +1,49 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>scroll micro</title>
+<style>
+  html, body { margin: 0; height: 100%; font: 13px system-ui, sans-serif; background: #1e1e1e; color: #ddd; }
+  #wrap { position: relative; width: 1500px; height: 900px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 60px; padding: 0 30px; box-sizing: border-box; }
+  .col { position: relative; overflow-y: auto; height: 900px; z-index: 1; }
+  .card { margin: 8px 6px; padding: 8px 10px; background: #2b2b2b; border: 1px solid #444; border-radius: 6px; }
+  .cv .card { content-visibility: auto; contain-intrinsic-size: auto 60px; }
+  svg#edges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
+  svg#edges path { fill: none; stroke: #4aa3ff; stroke-width: 1.5; }
+</style></head>
+<body>
+<div id="wrap"></div>
+<script>
+let seed = 7; const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+const W = 'cynder spyro game character dark past rated pg lore news assumption derivation goal proof lemma axiom'.split(' ');
+const sentence = () => { const n = 4 + Math.floor(rnd() * 18); let s = []; for (let i = 0; i < n; i++) s.push(W[Math.floor(rnd() * W.length)]); return s.join(' '); };
+const raf = () => new Promise(r => requestAnimationFrame(r));
+function stats(arr) { const a = [...arr].sort((x, y) => x - y); const sum = a.reduce((s, x) => s + x, 0); return { mean: +(sum / a.length).toFixed(2), p95: +a[Math.floor(a.length * .95)].toFixed(2) }; }
+function build(N, E, overlay, cv) {
+  const wrap = document.getElementById('wrap'); wrap.innerHTML = ''; wrap.className = cv ? 'cv' : '';
+  const cols = [];
+  for (let c = 0; c < 3; c++) { const col = document.createElement('div'); col.className = 'col'; for (let i = 0; i < N; i++) { const el = document.createElement('div'); el.className = 'card'; el.textContent = sentence(); col.appendChild(el); } wrap.appendChild(col); cols.push(col); }
+  if (overlay !== 'none') {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.id = 'edges';
+    if (overlay === 'hidden') svg.style.display = 'none';
+    for (let k = 0; k < E; k++) { const p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); const x1 = 30 + rnd() * 400, y1 = rnd() * 900, x2 = 1000 + rnd() * 400, y2 = rnd() * 900; p.setAttribute('d', `M${x1},${y1}C${x1 + 200},${y1} ${x2 - 200},${y2} ${x2},${y2}`); svg.appendChild(p); }
+    wrap.appendChild(svg);
+  }
+  void wrap.offsetHeight; return cols;
+}
+async function run(N, E, overlay, how, cv) {
+  const cols = build(N, E, overlay, cv); await raf(); await raf();
+  const col = cols[1]; const tRead = [], tWrite = [], frame = []; let last = performance.now(); let pos = 0;
+  for (let f = 0; f < 60; f++) {
+    await raf(); const now = performance.now(); frame.push(now - last); last = now;
+    const t0 = performance.now(); const cur = col.scrollTop; const t1 = performance.now();
+    pos += 7;
+    if (how === 'scrollTop') col.scrollTop = pos; else if (how === 'scrollTo') col.scrollTo({ top: pos, behavior: 'instant' }); else if (how === 'none') {}
+    const t2 = performance.now(); tRead.push(t1 - t0); tWrite.push(t2 - t1);
+  }
+  return { N, E, overlay, how, cv: !!cv, read: stats(tRead), write: stats(tWrite), raf: stats(frame.slice(5)) };
+}
+(async () => {
+  const out = [];
+  for (const args of [[1000, 5000, 'none', 'scrollTop'], [1000, 5000, 'hidden', 'scrollTop'], [1000, 5000, 'visible', 'scrollTop'], [1000, 5000, 'visible', 'scrollTo'], [1000, 5000, 'visible', 'none'], [1000, 0, 'none', 'scrollTop', 1], [3000, 0, 'none', 'scrollTop'], [3000, 0, 'none', 'scrollTop', 1], [3000, 10000, 'visible', 'none']]) out.push(await run(...args));
+  await fetch('/result', { method: 'POST', body: JSON.stringify({ ua: navigator.userAgent, out }) });
+})();
+</script></body></html>

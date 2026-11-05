@@ -1,0 +1,30 @@
+import Canonical.Assumptions
+namespace Canonical
+
+/-
+@@ telelean v1
+id: cynder-not-good
+kind: DERIVATION
+natural_name: "Cynder would not be a good addition to the new Spyro game"
+premises: cynder-dark-past, new-spyro-pg, pg-no-dark-past
+origin: user
+session: 2026-11-01T10-15-00Z-a1b2
+---
+Clarified with the assistant: "good addition" means *fits the game's
+age rating*, not gameplay quality. A literal `-\/` is escaped Markdown-style.
+-/
+theorem cynder_not_good : ¬ goodAddition cynder newSpyro :=
+  pg_no_dark_past newSpyro cynder new_spyro_pg cynder_dark_past
+
+/-
+@@ telelean v1
+id: fans-reject-cynder
+kind: GOAL
+natural_name: "Long-time fans would reject Cynder in the new game"
+premises: lore-matters, cynder-dark-past
+origin: user
+-/
+theorem fans_reject_cynder : ¬ goodAddition cynder newSpyro ∧ True := by
+  sorry
+
+end Canonical

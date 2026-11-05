@@ -1,0 +1,211 @@
+# build:runlean (agent aeb59448f26242b28)
+
+## summary
+The sandboxed Lean spike works end to end on this machine. runLean, the shadow copy, footprints and `lake comparator` under runLean are all implemented as typed seed code. In the final run all 43 tests passed (4 files, 23.1 s), and `tsc --noEmit` exits 0.
+
+- **Build:** a sandboxed `lake build` of the spyro fixture takes about 0.9 s with a peak of 95 MiB. Building a second shadow that carries over the copied `.lake/build` rebuilt 0 modules (216 ms).
+- **Footprint:** `Spyro.cynder_not_good.holds` has exactly the 11 expected axioms.
+- **Probes:** writing to the real $HOME, listing $HOME and using the network all fail inside the sandbox, as designed.
+- **Memory cap:** a 600 MB allocation under a 256M cap comes back as `oom`. Two independent signals agree: cgroup `oom_kill=1` and systemd `Result=oom-kill`.
+- **Timeout, cancel and host crash:** each one kills the whole scope, and no process survives.
+- **Comparator:** (a) the honest proof is accepted (about 1.8 s); (b) a weakened goal is rejected; (c) an unselected assumption is rejected; a smuggled axiom is also rejected. When comparator's own sandbox cannot start, the result is `could-not-start`, never `rejected`.
+- **Leftovers:** `~/.elan/known-projects` had 36 lines before and after. No `telelean-*` scopes or stray bwrap processes remain, and the test temp directories were removed.
+
+Four things I learned that change the design:
+1. bwrap's `child-pid` record does not mean the command started. Only the `exit-code` record proves that.
+2. A small keeper process (`setpriv --pdeathsig KILL` + `sh`) is needed inside the scope. Without setpriv, the sandbox outlives a crashed host (I ran this as a negative control).
+3. A weakened goal abbrev is caught by Lake's closure check ("Const does not match between challenge and target"), not by the statement check.
+4. PATH inside the sandbox must put the toolchain's `bin/` first, instead of elan's `~/.elan/bin`, so the elan proxies are never used.
+
+## files
+- /home/zhengyew/telelean/packages/runner/src/lean/runLean.ts
+- /home/zhengyew/telelean/packages/runner/src/lean/sandboxProfile.ts
+- /home/zhengyew/telelean/packages/runner/src/lean/systemd.ts
+- /home/zhengyew/telelean/packages/runner/src/lean/toolchain.ts
+- /home/zhengyew/telelean/packages/runner/src/lean/shadow.ts
+- /home/zhengyew/telelean/packages/runner/src/lean/leanNames.ts
+- /home/zhengyew/telelean/packages/runner/src/lean/footprint.ts
+- /home/zhengyew/telelean/packages/runner/src/lean/comparator.ts
+- /home/zhengyew/telelean/packages/runner/src/lean/index.ts
+- /home/zhengyew/telelean/packages/runner/test/lean/helpers.ts
+- /home/zhengyew/telelean/packages/runner/test/lean/profile-shadow.test.ts
+- /home/zhengyew/telelean/packages/runner/test/lean/sandbox.test.ts
+- /home/zhengyew/telelean/packages/runner/test/lean/footprint.test.ts
+- /home/zhengyew/telelean/packages/runner/test/lean/comparator.test.ts
+- /home/zhengyew/telelean/packages/runner/test/lean/support/hostCrashChild.ts
+- /home/zhengyew/telelean/test-fixtures/runner-lean/README.md
+- /home/zhengyew/telelean/test-fixtures/runner-lean/probes/WriteHome.lean.txt
+- /home/zhengyew/telelean/test-fixtures/runner-lean/probes/ListHome.lean.txt
+- /home/zhengyew/telelean/test-fixtures/runner-lean/probes/Network.lean.txt
+- /home/zhengyew/telelean/test-fixtures/runner-lean/overlays/formalised/Model/Spyro/Main.lean
+- /home/zhengyew/telelean/test-fixtures/runner-lean/overlays/proved/Model/Spyro/Main.lean
+- /home/zhengyew/telelean/test-fixtures/runner-lean/overlays/weakened/Model/Spyro/Main.lean
+- /home/zhengyew/telelean/test-fixtures/runner-lean/overlays/weakened-type/Model/Spyro/Main.lean
+- /home/zhengyew/telelean/test-fixtures/runner-lean/overlays/smuggled/Model/Spyro/Main.lean
+
+## how_to_run_tests
+Typecheck: cd /home/zhengyew/telelean && npx tsc -p packages/runner/tsconfig.json --noEmit
+Tests: cd /home/zhengyew/telelean/packages/runner && npx vitest run test/lean
+Optional:
+- add --silent=false --reporter=verbose to see timings and probe output;
+- TELELEAN_TEST_TMP=<dir> sets where the test shadows go (default: the OS temp dir). I used /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn2/lean-sandbox/vitest;
+- TELELEAN_KEEP_TMP=1 keeps the shadows after the run.
+The tests run one Lean process at a time (vitest fileParallelism is off).
+Checking the tests themselves needs a scratch tsconfig, because the package tsconfig only includes src: npx tsc -p /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn2/lean-sandbox/tsconfig.tests.json (exit 0).
+
+## test_output
+$ cd packages/runner && npx vitest run test/lean --reporter=verbose --silent=false   (filtered to test lines and key log lines)
+ ✓ comparator.test.ts > comparator: pure parts > generates the challenge module with sorry only for the targets
+ ✓ comparator.test.ts > comparator: pure parts > exports exactly the targets Lake 5.0.0 compares
+ ✓ comparator.test.ts > comparator: pure parts > classifies outcomes, keeping start-up failures apart from rejections
+[freeze] challenge build 1198 ms, leanexport 674 ms, 18569 NDJSON lines
+[comparator honest] {"verdict":"accepted"} (ok, exit 0, 1809 ms)
+ ✓ ... > (a) accepts the honest normative proof 1837ms
+[comparator weakened] {"verdict":"rejected","reason":"definition-mismatch","names":["Spyro.cynder_not_good"],...} (failed, exit 1, 1736 ms)
+ ✓ ... > (b) rejects a weakened goal: the statement abbrev changed under the same name 1763ms
+[comparator weakened-type] {"verdict":"rejected","reason":"statement-mismatch","names":["Spyro.cynder_not_good.holds"],...} (failed, exit 1, 1799 ms)
+ ✓ ... > (b') rejects a weakened goal: the theorem stated as `cynder_not_good ∨ True` 1820ms
+[comparator unselected] {"verdict":"rejected","reason":"illegal-axiom","names":["Spyro.new_spyro_pg.holds"],...} (failed, exit 1, 1833 ms)
+ ✓ ... > (c) rejects a proof that uses an unselected assumption 1865ms
+[comparator smuggled] {"verdict":"rejected","reason":"illegal-axiom","names":["Spyro.shortcut"],...} (failed, exit 1, 1762 ms)
+ ✓ ... > rejects a smuggled axiom 1796ms
+[comparator no-nested-dirs] {"verdict":"could-not-start","message":"comparator's own sandbox could not start: bwrap: Can't mkdir /root: Read-only file system"} (failed, exit 1, 112 ms)
+ ✓ ... > reports a nested sandbox that cannot start as could-not-start, not rejected (FV-2) 139ms
+ ✓ ... > reports a missing bwrap inside the sandbox (lake exit 2) as could-not-start 167ms
+ ✓ ... > left ~/.elan/known-projects untouched
+ ✓ sandbox.test.ts > runLean > passes the preflight on this machine
+[sandboxed lake build] status=ok 919 ms, peak 95.0 MiB
+[build from a copied .lake/build] status=ok 216 ms, 24 build files copied, modules rebuilt: 0
+ ✓ ... > builds the fixture in the sandbox 1222ms
+ ✓ ... > reports a failing command as failed, with its exit code
+ ✓ ... > applies the extra binds: read-only, writable, masked (.git) and the packages bind
+ ✓ ... > inert probes > cannot write into the real $HOME, ~/.elan or the shadow sources; only .lake is writable
+ ✓ ... > inert probes > sees only the empty tmpfs for $HOME, an empty /run, and no session variables
+ ✓ ... > inert probes > has no network: loopback only, DNS, TCP, D-Bus and abstract sockets all blocked
+ ✓ ... > enforces the memory cap: allocating ~600 MB under a 256M cap is reported as oom
+ ✓ ... > kills the whole scope on timeout and leaves no processes behind 2600ms
+ ✓ ... > cancels via AbortSignal and via cancelRun(runId), killing every scope of the run
+ ✓ ... > takes the sandbox down when the host process dies (extension-host crash)
+ ✓ ... > fails closed > without bwrap / without a reachable systemd user manager / without systemd-run or setpriv / when bwrap cannot set up the sandbox
+ ✓ ... > left ~/.elan/known-projects untouched
+ ✓ footprint.test.ts > (3 parsing tests) + gives the normative proof exactly its eleven axioms 1643ms + reports a module that was never built as a header error + known-projects
+ ✓ profile-shadow.test.ts > (10 tests: profile order/flags, names, createShadow)
+ Test Files  4 passed (4)
+      Tests  43 passed (43)
+   Duration  23.08s (tests 99%)
+known-projects: 36
+(no telelean-* scopes left)
+
+From the previous full run (same 43/43), the verbose log lines:
+[footprints] status=lean-error lean run 391 ms, peak 81.0 MiB
+  Spyro.cynder_not_good.holds: [Classical.choice, Spyro.Character, Spyro.Game, Spyro.GoodAddition, Spyro.HasDarkPast, Spyro.IsPG, Spyro.Character.exists, Spyro.Game.exists, Spyro.cynder_dark_past.holds, Spyro.new_spyro_pg.holds, Spyro.pg_no_dark_past.holds]
+  Nat.add: []
+  Spyro.nonexistent: ERROR Unknown constant `Spyro.nonexistent`
+[oom] status=oom exit=137 172 ms peak=256.0 MiB detail=memory cap 256M exceeded (cgroup oom_kill=1, systemd Result=oom-kill)
+[timeout] status=timeout 2510 ms; sleeps during=2 after=0
+[cancel] abort=cancelled 852 ms; cancelRun=telelean-t827407c-11:cancelled, telelean-t827407c-12:cancelled
+[host crash] sleeps before kill=1, processes mentioning the marker afterwards: 0; telelean-t827407h-1: {"Result":"success","LoadState":"not-found","ActiveState":"inactive"}
+PROBE home COUNT 1 / PROBE home ENTRY .elan / PROBE run ENTRY user / PROBE run-user COUNT 0 / PROBE env UNSET DBUS_SESSION_BUS_ADDRESS ... (5 UNSET)
+PROBE interfaces lo
+PROBE dns BLOCKED gaierror [Errno -3] Temporary failure in name resolution
+PROBE tcp BLOCKED OSError [Errno 101] Network is unreachable
+PROBE dbus BLOCKED /run/user/1002/bus FileNotFoundError [Errno 2] No such file or directory
+PROBE abstract-x11 BLOCKED ConnectionRefusedError [Errno 111] Connection refused
+PROBE home WROTE /home/zhengyew/telelean-sandbox-probe-escape.txt   (into the tmpfs; test asserts the real file does not exist)
+PROBE elan BLOCKED ... (read-only file system (error code: 30) ...
+PROBE shadow-source BLOCKED ... (read-only file system (error code: 30) ...
+PROBE shadow-lake WROTE .../probe-write/.lake/telelean-sandbox-probe-lake.txt
+[bwrap setup failure] could-not-start: bwrap could not set up the sandbox: bwrap: Can't mkdir .../setup-fail/no-such-dir: Read-only file system
+[no user manager] no usable systemd user manager (systemctl --user is-system-running: Failed to connect to bus: No medium found)
+
+## claims
+- **claim:** A sandboxed `lake build` of the spyro fixture shadow succeeds under the exact 03 §8.4 mount allowlist inside a systemd user scope. It takes about 0.9 s.
+  - **evidence:** "[sandboxed lake build] status=ok 919 ms, peak 95.0 MiB" with "Build completed successfully (5 jobs).". The test also asserts that .lake/build/lib/lean/Model.olean exists in the shadow.
+- **claim:** Copying `.lake/build` into a shadow at a different path keeps builds incremental.
+  - **evidence:** "[build from a copied .lake/build] status=ok 216 ms, 24 build files copied, modules rebuilt: 0".
+- **claim:** The footprint of Spyro.cynder_not_good.holds is exactly the 11 required axioms (checked as a set, and the count is 11).
+  - **evidence:** "Spyro.cynder_not_good.holds: [Classical.choice, Spyro.Character, Spyro.Game, Spyro.GoodAddition, Spyro.HasDarkPast, Spyro.IsPG, Spyro.Character.exists, Spyro.Game.exists, Spyro.cynder_dark_past.holds, Spyro.new_spyro_pg.holds, Spyro.pg_no_dark_past.holds]". Also "Nat.add: []" (the 'does not depend on any axioms' case) and an error for an unknown constant.
+- **claim:** Inert probes run inside a shadow cannot write into the real $HOME, ~/.elan or the shadow sources. Only <shadow>/.lake is writable.
+  - **evidence:** PROBE home WROTE (into the tmpfs; the test asserts ~/telelean-sandbox-probe-escape.txt does not exist afterwards). elan and shadow-source both 'BLOCKED ... read-only file system (error code: 30)'. shadow-lake WROTE, and the file is found on the host.
+- **claim:** Inside the sandbox, $HOME holds only the `.elan` mount point, /run/user is empty and no session variables are set.
+  - **evidence:** "PROBE home COUNT 1" / "PROBE home ENTRY .elan" / "PROBE run ENTRY user" / "PROBE run-user COUNT 0" / 5x "PROBE env UNSET ..." (DBUS_SESSION_BUS_ADDRESS, XDG_RUNTIME_DIR, SSH_AUTH_SOCK, DISPLAY, WAYLAND_DISPLAY).
+- **claim:** There is no network inside the sandbox: only the loopback interface exists, and DNS, TCP, the D-Bus socket and the abstract X11 socket are all blocked.
+  - **evidence:** "PROBE interfaces lo", "PROBE dns BLOCKED gaierror [Errno -3]", "PROBE tcp BLOCKED OSError [Errno 101] Network is unreachable", "PROBE dbus BLOCKED /run/user/1002/bus FileNotFoundError", "PROBE abstract-x11 BLOCKED ConnectionRefusedError".
+- **claim:** The memory cap is enforced, and OOM is detected through two independent signals.
+  - **evidence:** "[oom] status=oom exit=137 172 ms peak=256.0 MiB detail=memory cap 256M exceeded (cgroup oom_kill=1, systemd Result=oom-kill)". In an earlier run, systemd's stop won the race and exit was null, but the status was still oom. Manually, the failed unit stays loaded with Result=oom-kill until reset-failed, and runLean resets it.
+- **claim:** A timeout kills the whole scope and leaves no processes behind.
+  - **evidence:** "[timeout] status=timeout 2510 ms; sleeps during=2 after=0". After the run, nothing whose command line mentions the marker is alive (sleeps, sh, bwrap, keeper), and the unit is gone.
+- **claim:** Cancelling through an AbortSignal, or through cancelRun(runId) with the glob `telelean-<run>-*`, kills every scope of the run.
+  - **evidence:** "[cancel] abort=cancelled 852 ms; cancelRun=telelean-t827407c-11:cancelled, telelean-t827407c-12:cancelled". Afterwards no processes match the marker.
+- **claim:** If the host process dies (SIGKILL), the sandbox dies with it. This depends on `setpriv --pdeathsig`.
+  - **evidence:** Test: "[host crash] sleeps before kill=1, processes mentioning the marker afterwards: 0; ... LoadState not-found". Manual negative control (/tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn2/lean-sandbox/nosetpriv.cjs) after SIGKILLing the parent: without setpriv, "826062 sleep 5432.5" survived (I killed it myself afterwards); with setpriv there were no survivors.
+- **claim:** runLean fails closed: without bwrap, systemd-run, setpriv or a reachable user manager, it returns could-not-start. A bwrap mount-setup failure is also could-not-start, not 'failed'.
+  - **evidence:** "[no user manager] no usable systemd user manager (... Failed to connect to bus: No medium found)"; "[bwrap setup failure] could-not-start: bwrap could not set up the sandbox: bwrap: Can't mkdir ...: Read-only file system".
+- **claim:** `lake comparator` runs under runLean against a frozen challenge: the snapshot plus a generated `theorem Spyro.cynder_not_good.holds : Spyro.cynder_not_good := sorry`, exported with leanexport inside the sandbox. It accepts the honest normative proof.
+  - **evidence:** "[freeze] challenge build 1198 ms, leanexport 674 ms, 18569 NDJSON lines"; "[comparator honest] {\"verdict\":\"accepted\"} (ok, exit 0, 1809 ms)". The stdout ends "Lean default kernel accepts the solution / Your solution is okay!".
+- **claim:** (b) A weakened goal is rejected, whether the goal abbrev is weakened under its own name or the theorem's type is weakened directly.
+  - **evidence:** stderr "error: Const does not match between challenge and target 'Spyro.cynder_not_good'" gives verdict rejected/definition-mismatch. stderr "error: Challenge and solution theorem statement do not match: 'Spyro.cynder_not_good.holds'" gives rejected/statement-mismatch.
+- **claim:** (c) A proof that uses an unselected assumption is rejected, and so is a smuggled new axiom.
+  - **evidence:** "error: Illegal axiom detected: 'Spyro.new_spyro_pg.holds'" (frozen with new-spyro-pg unselected) and "error: Illegal axiom detected: 'Spyro.shortcut'". Both classify as rejected/illegal-axiom.
+- **claim:** When comparator's own sandbox cannot start, the result is `could-not-start`, never `rejected`, even though lake exits 1 in that case.
+  - **evidence:** With allowNestedSandbox=false: stderr "bwrap: Can't mkdir /root: Read-only file system" / "error: Child exited with 1", exit 1, verdict could-not-start. With COMPARATOR_BWRAP=/nonexistent/bwrap: exit 2, verdict could-not-start.
+- **claim:** ~/.elan/known-projects still has 36 lines, and the user manager has no leftover telelean scopes.
+  - **evidence:** "known-projects before: 36" ... "known-projects after: 36"; `systemctl --user list-units --all 'telelean-*'` printed nothing; `pgrep -af 'telelean-keeper|bwrap'` printed nothing.
+- **claim:** The code typechecks under the strict base config: both the package and the test files.
+  - **evidence:** `npx tsc -p packages/runner/tsconfig.json --noEmit` gives tsc exit=0. The scratch tsconfig covering src/lean plus test/lean also gives tsc(tests) exit=0.
+
+## deviations_from_design
+- PATH inside the sandbox is `<toolchain>/bin:/usr/bin:/bin`, not `~/.elan/bin:/usr/bin:/bin`. This applies the task's rule to call toolchain binaries directly: nothing, including Lake's own child processes, goes through an elan proxy, and known-projects stays at 36.
+- The scope command adds three things to the design. (1) A keeper, `setpriv --pdeathsig KILL -- sh -c <keeper> telelean-keeper`, placed between systemd-run and bwrap. It holds the scope open until memory.events and memory.peak have been read, and it ties the sandbox's lifetime to the host's. (2) `-p OOMPolicy=stop` and `--expand-environment=no`, both explicit. (3) bwrap `--json-status-fd 3`.
+- RunLean adds a `cancelled` status, plus `unit`, `detail` and output-truncation fields. A run's own timeout or abort kills its exact unit, while `cancelRun(runId)` uses the designed glob `telelean-<run>-*`. Run ids are limited to [A-Za-z0-9_] so that a glob cannot match another run.
+- The comparator verdict has a fourth value, `incomplete` (timeout, OOM or cancelled), next to accepted, rejected and could-not-start. The rejection reasons are illegal-axiom, statement-mismatch, definition-mismatch, kind-mismatch, missing-declaration, kernel-rejected, build-failed and export-failed. A comparator failure that is not recognised, or that happens while resolving the workspace, is classed as could-not-start, so the solution is never blamed for it.
+- Footprints feed the generated check file to `lake env lean --stdin --json`, so no check file is written into the shadow. Messages are matched to declarations by line number.
+- The shadow copier refuses any symlink anywhere in the walked tree, and also inside .lake/build, not only symlinked model files. It checks everything before copying anything. It skips dot-directories and node_modules. It does not yet do git init or a base commit (out of scope).
+- LEAN_NUM_THREADS=4 is the default environment inside every sandbox (the RAM rule).
+- Comparator tests use a fixture overlay of Model/Spyro/Main.lean that puts the normative formalisation and proof inside the `Model` library. They do not import the fixture's Check/Normative.lean, which is not in any Lake library and so cannot be imported. The proof text is identical.
+- Fixture extras beyond what was asked: a smuggled-axiom case, a variant that weakens the theorem's type directly, an extra-binds test, a host-crash test, and a nested-sandbox could-not-start regression test (FV-2). The test-only switch `allowNestedSandbox=false` exists only for that last test.
+
+## open_issues
+- Not tested: a shadow under $HOME, which is the production layout (~/.config/Code/User/globalStorage/<ext>/runs/<id>/ws). Every test shadow lived under /tmp/claude-1002/..., because temp files had to stay there. Comparator's nested bwrap does `--tmpfs /home` and then binds the project back, so it should work, but M1 should run the test suite once with TELELEAN_TEST_TMP pointing under ~/.config.
+- Not tested: a project with real Lake dependencies. The read-only `.lake/packages` bind does work (the binds test shows it read-only at <shadow>/.lake/packages). But comparator resolves the workspace inside runLean's empty network namespace, so dependencies must already be in `.lake/packages`; git fetches cannot work.
+- G1's per-declaration budgets (10 s and 1.5 GB RSS per declaration) are not implemented. runLean caps only the whole scope (MemoryMax, wall clock).
+- peakMemoryBytes is the cgroup's memory.peak, which counts RSS plus page cache, so it overstates RSS.
+- Unit names are unique within one process (a counter). Run ids must be unique across extension-host processes, for example by including a timestamp, or cancelRun's glob could reach another host's run.
+- OOM classification relies on a 256M-cap test and the systemd Result. A real Lean OOM, where Lake's child is killed, was not exercised. With OOMPolicy=stop the whole scope is torn down, so it should still report `oom`.
+- The M0 spike does not wire runLean into the extension, a gate loop or retry caps. Those are M1/M2.
+
+## design_feedback
+- 03 §8.4 / D-24: bwrap's `--json-status-fd` writes `child-pid` right after clone(), before mount setup, which can still fail. `exit-code` is written only once setup has finished and the command was exec'd (bwrap 0.9.0 report_child_exit_status). So 'could not start' versus 'ran and failed' must be decided by whether `exit-code` arrived, not by `child-pid`. My first implementation got this wrong, and a test caught it.
+- 03 §8.4: `systemd-run --user --scope` exec's the command in place (systemd 255), so the scope's cgroup disappears as soon as bwrap exits. That can lose memory.events and memory.peak before they are read. Recommendation: add the keeper (sh holding the scope until the runner closes fd 4) and `setpriv --pdeathsig KILL`. Without setpriv, a crashed extension host leaves sandboxed processes running (negative control: 'sleep 5432.5' survived).
+- 03 §8.4: set `-p OOMPolicy=stop` explicitly (it is DefaultOOMPolicy=stop here). With it, systemd marks the scope failed with Result=oom-kill and keeps it loaded until `systemctl --user reset-failed`. runLean must therefore reset failed units, or they pile up. Also pass `--expand-environment=no`: the man page says expansion will become the default for --scope in a future release.
+- 03 §8.4: write PATH inside the sandbox as `<toolchain>/bin:/usr/bin:/bin`, not `~/.elan/bin:...`, so Lake's own children (lean, leanexport, the nested comparator lake) never go through elan.
+- 03 §8.5 G4 / D-26: Lake 5.0.0's compareAt first compares each target's (theorems' and permitted axioms') own type expression, which gives 'theorem statement do not match'. It then walks the closure of constants and compares full definitions, which gives 'Const does not match between challenge and target <X>'. So a goal abbrev weakened under its own name, or a same-name altered assumption abbrev, is reported against the abbrev's name, not the theorem's. G4's messages to the user and the LLM should say 'a definition the frozen statements depend on changed'.
+- 03 §8.5 G4: the frozen export must contain exactly comparator's export targets: Quot, Quot.mk, Quot.lift and Quot.ind when Quot.sound is permitted, then the theorems, the permitted axioms, Lake's 26 primitive targets and the definition names. The challenge module must belong to the project's library (e.g. Model.TeleleanChallenge) so that `lake build <module>` can build it. Run leanexport with LEAN_ABORT_ON_PANIC=1.
+- 03 §8.4: `lake comparator` under runLean takes about 1.7–1.9 s per verdict here, and the freeze (challenge build plus leanexport) about 1.9 s. Both are faster than the 3.25 s recorded earlier.
+- 03 §8.4: with the shadow under /tmp, the sandbox's /tmp contains only the mount-point path down to the shadow. In the production layout, $HOME inside the sandbox will also show the `.config/...` directory chain down to the shadow (directories only, no contents). The ListHome probe's expected value already accounts for this.
+- D-24: G0's denylist is not the only protection against build-time code. The probes show that `#eval` code running during elaboration under runLean is contained: no network, no host sockets, $HOME masked, sources read-only.
+
+## extra
+Measured on this machine: Lean 4.35.0, Lake 5.0.0, bwrap 0.9.0, systemd 255, util-linux 2.39.3 setpriv, kernel 6.17.
+
+| Step | Wall time | Peak memory |
+|---|---|---|
+| Sandboxed `lake build`, cold | 919 ms | 95 MiB |
+| Same, from a copied .lake/build | 216 ms (0 rebuilt) | |
+| `#print axioms` footprint run | ~390 ms | 81 MiB |
+| Freeze: challenge build | 1.2 s | |
+| Freeze: leanexport | 0.67 s | (18,569 NDJSON lines) |
+| `lake comparator` verdict | 1.7–1.9 s | |
+| Comparator startup failures | 0.11–0.14 s | |
+| OOM test | 172 ms | 256.0 MiB |
+| Timeout test (2.5 s budget) | 2,510 ms | |
+
+The full runLean command line:
+`systemd-run --user --scope --quiet --expand-environment=no --unit=telelean-<run>-<n> --description=... -p MemoryMax=<cap> -p MemorySwapMax=0 -p OOMPolicy=stop -- /usr/bin/setpriv --pdeathsig KILL -- /bin/sh -c '"$@" 4<&-; s=$?; printf '{ "keeper-bwrap-exit": %d }\n' "$s" >&3; read -r _ <&4 || true; exit "$s"' telelean-keeper /usr/bin/bwrap --ro-bind /usr /usr --ro-bind /etc /etc --symlink usr/lib /lib --symlink usr/lib64 /lib64 --symlink usr/bin /bin --proc /proc --dev /dev --tmpfs /tmp --tmpfs /run --tmpfs $HOME --dir /root --dir /run/user --dir /var --ro-bind ~/.elan ~/.elan [--ro-bind X X]... --ro-bind $SHADOW $SHADOW --bind $SHADOW/.lake $SHADOW/.lake [--ro-bind <real>/.lake/packages $SHADOW/.lake/packages] [--bind Y Y]... [--tmpfs <mask>]... --chdir $SHADOW --unshare-all --die-with-parent --new-session --clearenv --setenv HOME $HOME --setenv PATH <toolchain>/bin:/usr/bin:/bin --setenv LEAN_NUM_THREADS 4 [--setenv K V]... --json-status-fd 3 -- <argv>`
+
+The comparator invocation is `<toolchain>/bin/lake comparator --config=<workDir>/comparator.json --challenge-from-export=<frozen.ndjson>`, with workDir and the export's directory bound read-only. The config holds challenge_module Model.TeleleanChallenge, solution_module Model, theorem_names [Spyro.cynder_not_good.holds] and permitted_axioms = the 3 standard axioms, 5 signature axioms, 2 presuppositions and the selected .holds axioms.
+
+Scratch files from this spike are in /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn2/lean-sandbox/: exp1-shadow and exp2 (manual experiments), nosetpriv.cjs (the negative control), tsconfig.tests.json and an empty vitest/ directory.
+
+Nothing was installed, the Claude CLI was never run, and I ran no git commands. The test-fixtures/spyro fixture was not modified.
+

@@ -1,0 +1,47 @@
+{
+ "name": "babel-plugin-react-compiler",
+ "latest": "1.0.0",
+ "dist_tags": {
+  "beta": "19.0.0-beta-af1b7da-20250417",
+  "rc": "19.1.0-rc.3",
+  "latest": "1.0.0",
+  "experimental": "0.0.0-experimental-a1856f3-20260507"
+ },
+ "latest_published": "2025-10-07T19:19:01.781Z",
+ "modified": "2026-05-08T16:42:39.653Z",
+ "created": "2024-03-20T21:55:58.586Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 3880402,
+ "fileCount": 4,
+ "tarball": "https://registry.npmjs.org/babel-plugin-react-compiler/-/babel-plugin-react-compiler-1.0.0.tgz",
+ "dependencies": {
+  "@babel/types": "^7.26.0"
+ },
+ "peerDependencies": {},
+ "repository": "git+https://github.com/facebook/react.git",
+ "recent_versions": [
+  [
+   "0.0.0-experimental-a1856f3-20260427",
+   "2026-04-28T16:47:46.905Z"
+  ],
+  [
+   "0.0.0-experimental-a1856f3-20260429",
+   "2026-04-30T16:43:07.388Z"
+  ],
+  [
+   "0.0.0-experimental-a1856f3-20260502",
+   "2026-05-04T16:46:21.050Z"
+  ],
+  [
+   "0.0.0-experimental-a1856f3-20260506",
+   "2026-05-07T16:47:23.240Z"
+  ],
+  [
+   "0.0.0-experimental-a1856f3-20260507",
+   "2026-05-08T16:42:39.527Z"
+  ]
+ ],
+ "homepage": "https://github.com/facebook/react#readme",
+ "description": "Babel plugin for React Compiler."
+}

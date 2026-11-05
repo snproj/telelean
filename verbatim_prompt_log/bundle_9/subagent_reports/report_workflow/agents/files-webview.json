@@ -1,0 +1,341 @@
+{
+ "package_overview": "@telelean/webview is the board UI: React 19, a single zustand 5 store and @atlaskit/pragmatic-drag-and-drop, bundled by Vite 8 (entry src/main.tsx) into packages/extension/dist/webview. The output is webview.js, webview.css, assets/codicon.ttf, and public/boot.js copied verbatim. There is no packages/webview/index.html, by design: the extension writes the real HTML itself (packages/extension/src/board/html.ts, strict nonce CSP), and test/harness/index.html copies it for Playwright. The package declares no dependencies of its own (they are all devDependencies of the root package.json) and imports @telelean/core straight from its TypeScript source through an alias in vite, vitest and the tsconfigs.\n\nThe host (extension plus runner) is the source of truth, and the board never computes Lean results. It shows what the host sends and turns the user's gestures into typed protocol messages.\n\nModule groups:\n- Startup and host link: public/boot.js records CSP violations from the moment the page starts loading. host/bridge.ts is the only caller of acquireVsCodeApi; it checks every incoming message with core's parseHostToWebview and forwards CSP violations as diagnostics. main.tsx connects the bridge, the store and React, adds undo/redo shortcuts, posts `ready`, and after each graph posts a `rendered` diagnostic once the edge engine has measured it.\n- State: state/store.ts holds the graph data, host data, UI state and M2 run state. state/context.tsx exposes it to React through useBoard and useBoardActions.\n- Pure model code, unit-tested in Node: model/format.ts, model/cardData.ts, model/run.ts and labels.ts.\n- The board: Board, Column, NodeCard, CardDetails, LeanCode, UsesLine, VocabularyGroup and GhostCards. Drag and drop is in dnd.ts and dragGuard.ts. Arrows are drawn outside React by EdgeEngine.ts on top of the pure geometry.ts, with edges.ts supplying the edges.\n- Around the board: header/, tray/, prompt/, dialogs/, toasts/, and the common/ widgets (Popover, Modal, InlineEdit, AgentText/UserText for marking who wrote a text, InlineCode, ExternalUser, useNow).\n- M2 run UI: run/ (RunPanel, Questions, Review, ReportCard, GhostSuggestion, ProposalBanner, RunBadge).\n\nData flow: a checked `graph` message goes to applyGraph. That function drops older versions, keeps unconfirmed adds as provisional cards and matches them to the host's cards, carries the selection over, and rebuilds the proposal overlay. Every other message (workspace, history, actionResult, notice, run, proposal) goes to receive. Store actions update the board optimistically (moves, re-orders, adds and edits, but never deletes) and post a message with request id r<n>; the counter is kept in the persisted webview state. The host's actionResult either confirms the change, rolls it back with an error toast (unless a newer graph has arrived), or reopens the dependents or delete dialog when the answer is needs-confirmation. The run and the proposal never go through applyGraph. The proposed view is a read-only overlay with diff marks, and proof results stay hidden until the review reveals them (D-19). Run actions (startRun, answerQuestions, feedback, acceptProposal, discardProposal, adoptGhost/rejectGhost, cancel/resume/stop/dismiss) are tracked through runBusy. The webview does not depend on which LLM backend runs; according to the project status, M2 has only been verified with the fake backend.\n\nCSP rules: no style attributes anywhere (positions and the run-panel size are set through the CSSOM), and colours come only from --vscode-* variables. test/unit/theme.test.ts checks those variables against the extension manifest.\n\nTests (not listed file by file here): Vitest in test/unit covers the store and the pure modules. Playwright in test/e2e drives the built bundle in test/harness with a mock acquireVsCodeApi.\n\nWhere the code differs from the docs or from what you might expect:\n- packages/webview/index.html does not exist (by design, as above).\n- `ready.lastVersion` is always null, because the store is brand new when `ready` is posted.\n- PersistedState.subject is written but the webview never reads it back (the host's panel serializer may).\n- EdgeEngine.onFrame has no callers.\n- ReportCard repeats COST_TITLE's text instead of importing the constant.\n- subjectNameProblem, pruneCount, dependentsTexts, revokeVocabularyText, askInsteadText and staleChip are exported but only used in their own files.\n- The 25/80/3 figures in RunPanel's comment match core's DEFAULT_RUN_CAPS, but the UI reads the caps from RunView rather than using those numbers.",
+ "files": [
+  {
+   "path": "packages/webview/package.json",
+   "purpose": "Workspace manifest of the private ESM package @telelean/webview. Its scripts are build (vite build), typecheck (tsc on tsconfig.json and tsconfig.node.json), test:unit (vitest run), test:e2e (playwright test under `ulimit -c 0`), and test (all four in order). It declares no dependencies: React 19.3, zustand 5, pragmatic-dnd 4, Vite 8, Vitest 5, Playwright 1.64, codicons and so on are devDependencies of the root package.json.",
+   "key_exports": "npm scripts: build, typecheck, test:unit, test:e2e, test",
+   "depends_on": "root package.json (hoisted devDependencies); ../core source via aliases"
+  },
+  {
+   "path": "packages/webview/playwright.config.ts",
+   "purpose": "Playwright config that tests the BUILT bundle (packages/extension/dist/webview) in a static harness page. It uses one worker, the installed headless Google Chrome (channel 'chrome', never downloads a browser), a 1280x800 viewport, a 30 s timeout, and no traces, screenshots or video. Its web server is `node test/harness/serve.mjs 41739`. Chrome's HOME, TMPDIR and XDG folders point into a temp directory per run, with home-guard.ts as global setup and chrome-tmp.ts as global teardown, so nothing is written to the real home folder.",
+   "key_exports": "default defineConfig({...})",
+   "depends_on": "test/harness/chrome-tmp.ts, test/harness/home-guard.ts, test/harness/serve.mjs, test/e2e/*.spec.ts"
+  },
+  {
+   "path": "packages/webview/public/boot.js",
+   "purpose": "Plain (non-module) script that the webview HTML loads with the CSP nonce in <head>, before the stylesheet and the bundle. It listens for `securitypolicyviolation` events from the start, holds up to 50 of them, and exposes a frozen `window.__teleleanBoot.drain(sink)`; once drained, every later violation goes straight to the sink. There is no build step: Vite copies it verbatim to dist/webview/boot.js.",
+   "key_exports": "window.__teleleanBoot = { drain(sink) }",
+   "depends_on": "none (consumed by src/host/bridge.ts reportCspViolations)"
+  },
+  {
+   "path": "packages/webview/src/App.tsx",
+   "purpose": "Root layout of the board. It stacks Header, LeanBanner, RunElsewhere and ProposalBanner, then a tl-workspace that holds the board area (Board + Toasts) beside the RunPanel, then SelectionTray, PromptBox and Dialogs. It only composes components and has no state of its own.",
+   "key_exports": "App",
+   "depends_on": "board/Board, dialogs/Dialogs, header/Header, header/LeanStatus (LeanBanner), prompt/PromptBox, run/ProposalBanner, run/RunBadge (RunElsewhere), run/RunPanel, toasts/Toasts, tray/SelectionTray"
+  },
+  {
+   "path": "packages/webview/src/board/Board.tsx",
+   "purpose": "The three-column board. It renders the columns between two SVG arrow layers ('under' and 'over', each with one <marker> per MARKER_VARIANTS and a clip rect), creates the imperative EdgeEngine in a layout effect, and feeds it display edges and focus through a direct store subscription; the edges come from the current graph, or from the proposal overlay in the proposed view. It also installs the board-level pragmatic-dnd monitor (startDrag / setDropKind / dropCard; a drop outside the columns cancels) and horizontal auto-scroll, and sets the data-graph-seq, data-view and data-dragging attributes.",
+   "key_exports": "Board",
+   "depends_on": "Column, EdgeEngine (EdgeEngine, MARKER_VARIANTS), edges (toDisplayEdges, hasFocusEdges), dnd (columnOf, dropPlacement, isCardDragData), diagnostics (setCurrentEngine), state/context, state/store (boardView, proposedOverlay), @atlaskit/pragmatic-drag-and-drop(+auto-scroll), @telelean/core NODE_TYPES"
+  },
+  {
+   "path": "packages/webview/src/board/CardDetails.tsx",
+   "purpose": "The expanded part of a card. It shows LeanCode (or a 'comment-only block' note with Open in editor), the node's diagnostics, the proof footprint ('Rests on', 'Taken as hypotheses', presupposition chips, Lean's axiom list; hidden while the overlay hides the result), the 'Depends on' / 'Used by' lists (including LeanBinding.externalUsers), and the Attempts history (D-18; 5 shown, then 'Show all'). It ends with the stance and source toggle chips and the Make <kind> / Edit / Add why / Delete buttons, which the proposed view replaces with a read-only note.",
+   "key_exports": "CardDetails",
+   "depends_on": "LeanCode, common/AgentText, common/ExternalUser, common/InlineCode, labels, model/cardData (dependsOn, usedBy, footprintEntries, presuppositionLabel, RELATION_TEXT), model/format, model/run (VERDICT_LABEL), state/context, state/store (boardView, impactOf, proposedOverlay), @telelean/core (EVIDENTIALS, STANCES, NODE_TYPES)"
+  },
+  {
+   "path": "packages/webview/src/board/Column.tsx",
+   "purpose": "One column. The header shows the kind glyph, title, card count, 'Drop to make <Kind>' during a drag, and the engine-owned '▲ n linked' slot. The scrolling list is a drop target with vertical auto-scroll; it holds GhostCards and the VocabularyGroup (Assumptions column only), then NodeCards in boardView order, or an opaque empty placeholder (data-edge-obstacle) with a first-step hint. A DropZone overlay shows core's kindChangeImpact summary for cross-column drags, and the footer holds the '▼ n linked' slot.",
+   "key_exports": "Column, ColumnRefs (type)",
+   "depends_on": "NodeCard, GhostCards, VocabularyGroup, dnd (columnTargetData, isCardDragData), labels, model/format (plainText), state/context, state/store (boardView, impactOf), @atlaskit/pragmatic-drag-and-drop (+combine, auto-scroll)"
+  },
+  {
+   "path": "packages/webview/src/board/diagnostics.ts",
+   "purpose": "Keeps a module-level handle on the live EdgeEngine and provides DOM probes for main.tsx's 'rendered' diagnostic. These are a snapshot of the engine's stats, the theme colours resolved through a hidden probe element (aura, the three kind colours, vocabulary, highlight, and a formalised card's box-shadow or outline), and whether webview.css was applied (three lists with overflow-y:auto and equal heights).",
+   "key_exports": "setCurrentEngine, currentEngineStats, resolveColor, themeColors, stylesApplied",
+   "depends_on": "EdgeEngine (types only)"
+  },
+  {
+   "path": "packages/webview/src/board/dnd.ts",
+   "purpose": "Typed drag data for pragmatic-drag-and-drop: card source, card target and column target, each tagged by a `tl` field. It also works out drops as pure functions: which column is under the pointer, and which card a drop lands before. Dropping on the lower half of a card inserts after it, and dropping a card on itself keeps its place.",
+   "key_exports": "CardDragData, CardTargetData, ColumnTargetData, cardDragData, cardTargetData, columnTargetData, isCardDragData, isCardTargetData, isColumnTargetData, DropTargetRecord, columnOf, dropPlacement",
+   "depends_on": "@atlaskit/pragmatic-drag-and-drop-hitbox (extractClosestEdge), @telelean/core (isNodeType)"
+  },
+  {
+   "path": "packages/webview/src/board/dragGuard.ts",
+   "purpose": "Stops a press inside a card's text or controls from dragging the card. The no-drag zones (NO_DRAG_SELECTOR) are .tl-lean, inputs, buttons, links, contenteditable and [data-nodrag]. On pointerdown in such a zone it sets the card's draggable='false' until pointerup, pointercancel or window blur, and reports blocked() so NodeCard's canDrag refuses too; both mechanisms are kept on purpose.",
+   "key_exports": "NO_DRAG_SELECTOR, CardDragGuard, guardCardDrag",
+   "depends_on": "none (DOM only)"
+  },
+  {
+   "path": "packages/webview/src/board/EdgeEngine.ts",
+   "purpose": "Imperative SVG arrow overlay for three independently scrolling columns, so that scrolling and hovering never re-render React. For each change it runs at most one animation frame: it measures card boxes and column viewports only when the layout changed (ResizeObservers, plus MutationObservers on the lists and on the board's data-graph-seq), computes the frame with geometry.computeFrame, and updates a pool of <path> elements, touching only changed attributes (class, marker, data-*, <title>, layer). It also owns the per-column '▲/▼ n linked' buttons, which scroll to the nearest hidden linked card, and keeps counters in `stats`; onFrame has no callers.",
+   "key_exports": "EdgeEngine (setEdges, setFocus, invalidateLayout, onFrame, schedule, dispose, stats), EdgeEngineElements, EdgeEngineStats, markerVariant, MARKER_VARIANTS, GRAPH_SEQ_ATTRIBUTE",
+   "depends_on": "geometry (computeFrame, DEFAULT_GEOMETRY, types), @telelean/core NODE_TYPES"
+  },
+  {
+   "path": "packages/webview/src/board/edges.ts",
+   "purpose": "Merges the graph's TlEdges into the arrows the overlay draws, one per (source, target) pair: solid 'verified' once Lean verified it, dashed 'declared' while it is only declared. Pairs carry a conditional flag (taken as a hypothesis) and a declared/verified mismatch flag, each with a tooltip. lean-ref edges become thin 'reference' arrows, drawn only while one end has focus and no other arrow joins the pair.",
+   "key_exports": "DisplayEdge, toDisplayEdges, hasFocusEdges",
+   "depends_on": "geometry (EdgeSpec type), @telelean/core TlEdge type"
+  },
+  {
+   "path": "packages/webview/src/board/geometry.ts",
+   "purpose": "Pure, DOM-free arrow geometry in board coordinates. It covers where an arrow attaches (on the card's title line, clamped to the visible part of the column), which sides it leaves and enters (same-column arrows loop in the gutter), Bézier curves, paths routed through gaps in the Derivations column for focused arrows that skip it (gutterY), and short stubs pointing at scrolled-away ends. It also applies a per-frame budget of 250 paths (focused first, then full arrows, then stubs), counts culled and missing edges, and builds the 'n linked' badge lists.",
+   "key_exports": "EdgePattern, EdgeSpec, COLUMN_INDEX, ColumnGeom, CardGeom, GeometryOptions, DEFAULT_GEOMETRY, Side, Visibility, Endpoint, endpoint, sidesFor, curvePath, ROUTE_CLEARANCE, Block, gutterY, routedPath, loopPath, stubPath, FrameInput, PathSpec, BadgeDir, BadgeSpec, FrameOutput, computeFrame",
+   "depends_on": "@telelean/core (NodeType, NODE_TYPES)"
+  },
+  {
+   "path": "packages/webview/src/board/GhostCards.tsx",
+   "purpose": "In the proposed view only, renders Claude's still-'suggested' ghost premises (from the live run or else the proposal) as translucent GhostSuggestion cards at the top of the Assumptions column. They have no data-node-id, so arrows never attach to them.",
+   "key_exports": "GhostCards",
+   "depends_on": "run/GhostSuggestion, model/run (suggestedGhosts), state/context, state/store (proposedOverlay)"
+  },
+  {
+   "path": "packages/webview/src/board/LeanCode.tsx",
+   "purpose": "A card's expanded Lean code in a <pre>. Identifiers Lean resolved (lean.refs, split out by codeSegments) are spans: hovering shows a Popover tooltip with the node's sentence or the vocabulary item's gloss, kind and type (Claude-worded text marked), and a plain click reveals the node or highlights the vocabulary item. Ctrl/Cmd+click is reserved and a text selection never counts as a click; the bar has 'Copy' (posts copyText) and 'Open in editor' (lean.codeLoc or node.loc).",
+   "key_exports": "LeanCode",
+   "depends_on": "common/Popover, labels (VOCAB_KIND_NOUN), model/cardData (codeSegments, displayName), state/context, state/store (boardView)"
+  },
+  {
+   "path": "packages/webview/src/board/NodeCard.tsx",
+   "purpose": "The memoised card. Through pragmatic-dnd it is draggable and a drop target (nearest top or bottom edge), guarded by dragGuard, and refuses to drag provisional cards or anything in the read-only proposed view. It shows the sentence (inline edit; a '(Claude's wording)' marker when Claude worded it), selection check, kind glyph, expand chevron, 'because:' line, the status chips from cardChips (result chips swapped for 'result after the review' while the result is hidden), a needs-attention diagnostics badge, a 'saving…' chip, the proposal's diff badge, UsesLine, and CardDetails when expanded. It handles click and Ctrl-click selection, Enter/Space/F2/Delete/Alt+Up/Down keys, hover, and scrolling into view when flashed.",
+   "key_exports": "NodeCard, DiffBadge",
+   "depends_on": "CardDetails, UsesLine, dnd, dragGuard, reveal, common/OneLineInput (InlineEdit), labels, model/cardData (cardChips, attentionDiagnostics), model/format, model/run (DIFF_GLYPH, DIFF_WORD, diffTitle, RESULT_CHIP_KEYS), state/context, state/store (boardView, flashTarget, proposedOverlay), @atlaskit/pragmatic-drag-and-drop(+hitbox)"
+  },
+  {
+   "path": "packages/webview/src/board/reveal.ts",
+   "purpose": "Scroll helpers that move only the column list containing an element, never using scrollIntoView, which could also scroll the page or the other columns. revealCardSoon waits one frame for React to render the new card first.",
+   "key_exports": "revealInColumn, revealCardSoon",
+   "depends_on": "none (DOM)"
+  },
+  {
+   "path": "packages/webview/src/board/UsesLine.tsx",
+   "purpose": "The 'uses:' line of a formalised card: the first two names from lean.uses ('A, B, …') and a '▾ N' button. The button opens a menu Popover listing every used item with its kind and gloss; choosing one highlights it in the Vocabulary group, and items outside this subject's vocabulary are disabled.",
+   "key_exports": "UsesLine",
+   "depends_on": "common/Popover, labels (VOCAB_KIND_NOUN), model/cardData (displayName, usesInline), state/context, state/store (boardView)"
+  },
+  {
+   "path": "packages/webview/src/board/VocabularyGroup.tsx",
+   "purpose": "The collapsible Vocabulary group computed from Lean, at the top of the Assumptions column. Items are grouped by kind (VOCAB_SECTIONS) as boxes with type, gloss, flags (hidden assumption, shape, definitional choice, stale, new) and an expandable code / Used by / Open in editor part; presuppositions show as chips, and the header shows the count and 'N hidden assumptions'. In the proposed view it shows the overlay's vocabulary with diff marks and '+N new'; highlighted items flash and scroll into view.",
+   "key_exports": "VocabularyGroup",
+   "depends_on": "reveal, labels (KIND_GLYPH, VOCAB_SECTIONS), model/cardData (presuppositionLabel), model/run (DIFF_GLYPH, DIFF_WORD, newVocabularyCount), state/context, state/store (boardView, flashTarget, proposedOverlay, vocabularyCollapsed)"
+  },
+  {
+   "path": "packages/webview/src/common/AgentText.tsx",
+   "purpose": "Marks who wrote a text (D-15). AgentText renders Claude-written text in italics with data-provenance='agent' and a marker: 'prefix' ('Claude'), 'suffix' ('(Claude's words)'), or 'none' when an enclosing data-agent-scope container already shows it. UserText renders the user's own words plain with data-provenance='user'.",
+   "key_exports": "AgentText, AgentTextProps, UserText",
+   "depends_on": "none (React)"
+  },
+  {
+   "path": "packages/webview/src/common/ExternalUser.tsx",
+   "purpose": "Renders something that uses a card's Lean but is not a card on this board (LeanBinding.externalUsers): another subject's card by its sentence plus '(subject …)', or a declaration without a card by its Lean name in code font. It adds how it uses the card ('uses it in a proof' / 'mentions it in its statement'), and is used by CardDetails' 'Used by' and the delete dialog.",
+   "key_exports": "ExternalUserItem, EXTERNAL_USE_TEXT",
+   "depends_on": "@telelean/core ExternalUser type"
+  },
+  {
+   "path": "packages/webview/src/common/InlineCode.tsx",
+   "purpose": "Renders a message from core or the host whose Markdown-style backtick spans become <code> elements (via codeSpans), never literal backticks. All text goes through React's escaping.",
+   "key_exports": "InlineCode",
+   "depends_on": "model/format (codeSpans)"
+  },
+  {
+   "path": "packages/webview/src/common/Modal.tsx",
+   "purpose": "Modal dialog on the native <dialog> element, mounted only while open: showModal() on mount and close() on unmount. It focuses the [data-autofocus] element and turns Escape (the cancel event) into the parent's onCancel.",
+   "key_exports": "Modal, ModalProps",
+   "depends_on": "none (React)"
+  },
+  {
+   "path": "packages/webview/src/common/OneLineInput.tsx",
+   "purpose": "One-line inputs for the user's verbatim wording (D-16). pasteOneLine turns pasted line breaks into spaces instead of letting the <input> delete them. InlineEdit is an in-place editor: it focuses and selects its text on mount, Enter or blur commits and Escape cancels (each fires once), with an optional returnFocus.",
+   "key_exports": "pasteOneLine, InlineEdit, InlineEditProps",
+   "depends_on": "model/format (pastedLine)"
+  },
+  {
+   "path": "packages/webview/src/common/Popover.tsx",
+   "purpose": "Dropdowns and tooltips rendered into document.body through a portal, so column scroll boxes never clip them and the EdgeEngine's observers never see them; they are positioned below or above the anchor with style.setProperty, because the CSP forbids style attributes. Dropdowns close on Escape, a press outside, or when the anchor scrolls out of view. They move the focus inside (to the checked or first menu item), support Up/Down/Home/End and Tab-out as if they sat right after the anchor, give the focus back to the anchor when they close, and stop clicks from reaching the card underneath.",
+   "key_exports": "Popover, PopoverProps",
+   "depends_on": "react-dom (createPortal)"
+  },
+  {
+   "path": "packages/webview/src/common/useNow.ts",
+   "purpose": "Hook returning Date.now(), refreshed every intervalMs (default 1 s) while active. The run panel uses it for the agent clock between host updates.",
+   "key_exports": "useNow",
+   "depends_on": "React"
+  },
+  {
+   "path": "packages/webview/src/dialogs/Dialogs.tsx",
+   "purpose": "Renders the store's single `dialog` as a Modal. DependentsDialog handles a kind change that breaks other proofs (rewrite / keep marked broken / cancel, singular or plural wording, a 'found more' note when the host re-listed); RationaleDialog asks the optional 'Why do you hold it?' (Make / Skip / Cancel). DeleteDialog first lists who declares, proves with or mentions the card plus users outside the board, with card-only versus card-and-Lean buttons; after a needs-confirmation answer it lists the declarations that would stop compiling and offers 'Delete anyway'. RevertDialog confirms a history revert, and dependents are shown by sentence (board cards, or the host's dependentCards with their subject) or by Lean name.",
+   "key_exports": "Dialogs, dependentsTexts",
+   "depends_on": "common/Modal, common/InlineCode, common/ExternalUser, common/OneLineInput (pasteOneLine), labels, model/cardData (deleteDependents), model/format (formatTime), state/context, state/store (DialogState type)"
+  },
+  {
+   "path": "packages/webview/src/header/Header.tsx",
+   "purpose": "The toolbar: the 'telelean' title, the model folder name, SubjectPicker, HistoryMenu, Undo/Redo buttons (enabled and labelled from WorkspaceState.undo/redo), LeanBadge, ProblemsMenu, RunBadge, and the arrow Legend (declared / verified by Lean / conditional / mismatch / formalised aura) drawn with small inline SVGs.",
+   "key_exports": "Header, Legend",
+   "depends_on": "SubjectPicker, HistoryMenu, LeanStatus (LeanBadge, ProblemsMenu), run/RunBadge, state/context"
+  },
+  {
+   "path": "packages/webview/src/header/HistoryMenu.tsx",
+   "purpose": "The History dropdown (D-33). While open it requests the subject's listing (on opening, on a subject change and on undo/redo changes; pages of 50) and shows 'time · action · label' entries with Preview (posts historyPreview against the parent) and 'Revert to this' (opens the revert dialog). It also shows the snapshot storage counter and 'Keep last N' with an inline confirmation that the drop cannot be undone, and explains the unavailable states (no repo → 'Initialize git', git missing, disabled, error).",
+   "key_exports": "HistoryMenu, pruneCount",
+   "depends_on": "common/Popover, labels (HISTORY_ACTION_LABEL), model/format (formatBytes, formatTime), state/context"
+  },
+  {
+   "path": "packages/webview/src/header/LeanStatus.tsx",
+   "purpose": "The Lean side of the header. LeanBadge takes its text, tone and tooltip from semanticBadge for each SemanticSummary state, and a click posts refresh. ProblemsMenu is a Popover listing every board diagnostic with 'Show card' and file:line Open buttons, and LeanBanner is a status line under the header for syntactic mode (unsupported toolchain) and for switched-off checking.",
+   "key_exports": "LeanBadge, ProblemsMenu, LeanBanner",
+   "depends_on": "common/InlineCode, common/Popover, labels (semanticBadge), state/context"
+  },
+  {
+   "path": "packages/webview/src/header/SubjectPicker.tsx",
+   "purpose": "The 'subject: [X ▾]' menu (D-10). It lists the workspace's subjects with card counts (choosing one posts selectSubject) and 'New subject…' with an inline name field checked by core's isSubjectName and a not-taken test; createSubject's actionResult closes the menu or shows the error. Without workspace state it only shows the subject name.",
+   "key_exports": "SubjectPicker, subjectNameProblem",
+   "depends_on": "common/Popover, state/context, @telelean/core (isSubjectName, ActionOutcome)"
+  },
+  {
+   "path": "packages/webview/src/host/bridge.ts",
+   "purpose": "The only place that calls acquireVsCodeApi (once); outside VS Code and the harness, a detached fallback logs posts and keeps state in memory. Incoming window messages are checked with core's parseHostToWebview before handlers see them, and invalid ones are posted back as a 'bad-host-message' diagnostic; readState/updateState wrap getState/setState with a merge. reportCspViolations drains the violations boot.js recorded and forwards each as an error diagnostic, or warns 'no-boot-script' and listens by itself.",
+   "key_exports": "HostBridge, connectHost, CspViolation, reportCspViolations (plus the global Window.__teleleanBoot type)",
+   "depends_on": "@telelean/core (parseHostToWebview, webviewMessage, message types); public/boot.js at runtime"
+  },
+  {
+   "path": "packages/webview/src/labels.ts",
+   "purpose": "All user-facing wording in one place: column titles, kind nouns and A/D/G glyphs, prompt placeholders, stance and source chip labels, the stance-dependent 'why' placeholder, Vocabulary sections and kind nouns, history action labels (including accept-proposal), plain-word phenomenon tags for Claude's questions, and run-notice icons. It also has semanticBadge, which gives the Lean badge's text, tooltip and tone for each SemanticSummary state.",
+   "key_exports": "COLUMN_TITLE, KIND_NOUN, KIND_GLYPH, PROMPT_PLACEHOLDER, STANCE_LABEL, SOURCE_LABEL, whyPlaceholder, VOCAB_SECTIONS, VOCAB_KIND_NOUN, HISTORY_ACTION_LABEL, PHENOMENON_LABEL, NOTICE_ICON, BadgeTone, semanticBadge",
+   "depends_on": "model/format (plainText, sentences), @telelean/core types"
+  },
+  {
+   "path": "packages/webview/src/main.tsx",
+   "purpose": "Bundle entry. It imports the codicon CSS and board.css, connects the host bridge, starts CSP-violation reporting, creates the store from the persisted webview state (requestCounter, vocabCollapsed, runSplit; subject is read but the store never uses it), and installs the Ctrl/Cmd+Z, Shift+Z and Y undo/redo shortcuts, which are ignored in text fields and open dialogs. It sends 'graph' messages to applyGraph and every other host message to receive, renders <App/> in StrictMode, and posts 'ready' (its lastVersion is always null, because the store is brand new). After each applied graph, reportRendered waits up to about 120 frames for the EdgeEngine to measure that graph with a real layout, then posts a 'rendered' info diagnostic with card and arrow counts, column heights, whether the styles applied, theme colours and engine stats.",
+   "key_exports": "none (side-effecting entry point)",
+   "depends_on": "App, host/bridge, state/store (createBoardStore, readSplit), state/context, board/diagnostics, model/format (shortcutFor, isTextEntry), @telelean/core (webviewMessage), @vscode/codicons CSS, styles/board.css"
+  },
+  {
+   "path": "packages/webview/src/model/cardData.ts",
+   "purpose": "Pure helpers that turn graph data into what a card shows: the vocabulary index and display names (short names for this subject's vocabulary), the shortened 'uses:' text, presupposition chip labels ('assumes characters exist'), and Lean code split into lines of identifier segments from LSP-style refs. They also build the card-face status chips with tones and click actions (Lean status, proof result, stale / not checked, sorry, .holds mismatch, provable assumption, broken, no reason yet, the D-13 hint) and the attention diagnostics. Finally they compute footprint entries, the 'Depends on' / 'Used by' / delete-dialog relations (with core's proofDependents), and the presuppositions of a selection.",
+   "key_exports": "VocabIndex, vocabIndex, displayName, USES_INLINE, usesInline, presuppositionLabel, CodeSegment, codeSegments, ChipTone, Chip, staleChip, cardChips, attentionDiagnostics, FootprintEntry, footprintEntries, RelationReason, Relation, RELATION_TEXT, RelationContext, dependsOn, usedBy, deleteDependents, presuppositionsOf",
+   "depends_on": "@telelean/core (PRESUPPOSITION_PREFIX, proofDependents, types)"
+  },
+  {
+   "path": "packages/webview/src/model/format.ts",
+   "purpose": "Small pure formatters and input helpers: history times ('14:03' / 'Oct 31 14:03'), byte sizes, backtick code spans and the plain text a tooltip needs, sentence joining for tooltips, and the one-line rule for the user's sentences (line breaks become spaces, then trim). It also has the paste fix, undo/redo shortcut detection, and a test for whether the focus is in a text field.",
+   "key_exports": "formatTime, formatBytes, TextSpan, codeSpans, plainText, sentences, oneLine, pastedLine, ShortcutEvent, shortcutFor, isTextEntry",
+   "depends_on": "none"
+  },
+  {
+   "path": "packages/webview/src/model/run.ts",
+   "purpose": "Pure helpers for the M2 run UI that only put into words what the host sent; they never compute verdicts. They cover active-run checks and the tray's 'a run is going' reasons, formatting of durations, tokens, cost and clock times, rate-limit wording, the agent clock between host updates, status-line parts, verdict and outcome texts (gave up / limit / no finish are said before the review), state and badge labels, the ended-run wording ('recorded' when Accept changed no file, preferring RunView.accepted), Accept tooltips, where notices go (upfront or folded), check-step names, and stripping Lean #print headers. They also turn answer drafts into answerQuestions answers, build the review steps and reveal rule, check definition approval and the Accept selection, count diffs and suggested ghosts, and build the overlay: the proposal's graph plus the current cards and vocabulary it removes, with the target and proof-changed cards, and their verified arrows, hidden until the result is revealed.",
+   "key_exports": "isActiveRun, trayRunBlock, formatDuration, formatTokens, formatCost, COST_TITLE, formatClock, Tone, rateLimitView, clockRuns, agentMsNow, StatusPart, runStatusParts, VERDICT_LABEL, isRunOutcomeVerdict, runOutcomeText, runStateLabel, runBadgeText, runNeedsUser, EndedOutcome, ENDED_TEXT, acceptChangedFiles, endedOutcome, acceptChangesFiles, acceptTitle, NoticePlaces, placeNotices, CHECK_STEP, statementBody, AnswerDraft, emptyDraft, draftProblem, draftAnswers, answerChoiceText, SCOPE_LABEL, ReviewStep, reviewSteps, pastStatements, STEP_TITLE, definitionsApproved, acceptSelection, initialLifecycle, diffCountsText, newVocabularyCount, suggestedGhosts, DIFF_GLYPH, DIFF_WORD, diffTitle, BoardViewData, Overlay, buildOverlay, RESULT_CHIP_KEYS",
+   "depends_on": "model/format (formatTime), @telelean/core (columnOrder, isTerminalRunState, LIMITS, run/proposal/question types)"
+  },
+  {
+   "path": "packages/webview/src/prompt/PromptBox.tsx",
+   "purpose": "The A|D|G box (D-16): a kind switch (a radiogroup; arrow keys cycle), a one-line text field, and an Add button that calls addNode, which optimistically adds a comment-only card with the user's verbatim sentence (no LLM, no Lean) and then scrolls to it. An optional second row (D-14) has stance chips for Assumptions, a 'why' field whose placeholder follows the kind and stance, and source chips (not for Goals). That row folds away (data-folded) while this subject's run panel is shown and the box is empty.",
+   "key_exports": "PromptBox",
+   "depends_on": "board/reveal (revealCardSoon), common/OneLineInput (pasteOneLine), labels, state/context, @telelean/core (EVIDENTIALS, NODE_TYPES, STANCES)"
+  },
+  {
+   "path": "packages/webview/src/run/GhostSuggestion.tsx",
+   "purpose": "A premise Claude suggests (D-6 ghost), shown as a board card (variant 'board', which arrows route around via data-edge-obstacle) or inside the report card ('panel'). It shows a 'Claude suggests' marker, Claude's sentence and why it is needed (AgentText), the Lean statement, and chips 'closes the gap (checked)', 'gives the goal on its own' and the Lean name. 'I hold this' asks for an optional one-line reason, then posts adoptGhost; 'No' posts rejectGhost; both work only while the run is in review and no request is in flight.",
+   "key_exports": "GhostSuggestion",
+   "depends_on": "common/AgentText, common/OneLineInput (pasteOneLine), state/context, @telelean/core GhostView type"
+  },
+  {
+   "path": "packages/webview/src/run/ProposalBanner.tsx",
+   "purpose": "Banner for this subject's proposal in review. It shows the diff counts ('1 new · 2 changed · +1 vocabulary'), the Current | Proposed toggle, and the buttons Review… (opens the panel and the proposed view), Accept, Feedback…, Discard and Raw Lean diff…. Accept is enabled only once every definition question is answered yes (tooltip from acceptTitle) and becomes secondary when the round gave up, hit a limit or didn't finish; that outcome gets its own line, but the proof result is never named here (D-19).",
+   "key_exports": "ProposalBanner",
+   "depends_on": "model/run (acceptTitle, definitionsApproved, diffCountsText, isRunOutcomeVerdict, runOutcomeText), state/context, state/store (proposedOverlay)"
+  },
+  {
+   "path": "packages/webview/src/run/Questions.tsx",
+   "purpose": "Claude's clarifying questions (ask_user, D-20), answered inside the run panel. QuestionSet shows each question with its phenomenon tag, Claude's options and consequences, the affected cards, the board's own choices (In my own words, Leave it open, Decide for me) with nothing pre-selected, and an answer scope (this run / these cards / the whole subject); one Send posts answerQuestions once every draft is valid. AnsweredQuestions lists answered batches, newest first with older ones folded, and reveals Claude's guess only after the answer.",
+   "key_exports": "QuestionSet, AnsweredQuestions",
+   "depends_on": "common/AgentText (AgentText, UserText), labels (PHENOMENON_LABEL), model/format (formatTime), model/run (answerChoiceText, draftAnswers, draftProblem, emptyDraft, SCOPE_LABEL), run/reveal, state/context, @telelean/core (DECISION_SCOPES, LIMITS)"
+  },
+  {
+   "path": "packages/webview/src/run/ReportCard.tsx",
+   "purpose": "A round's report card, shown once the review reveals the result (D-19). It shows the verdict for the target, a revert note, 'Rests on' (when proved), the self-evident and unused-premises flags, a 'Consistency unchecked' note (until M3), Claude's summary, gap and reported conflict, and the 'Assumed without asking' items, each with 'Ask me instead' (prefilled Feedback). It also lists Claude's suggested premises, the check attempts with failures in plain words (the G-ids only in tooltips), the files Accept would change with per-file diff buttons, and usage and durations; it repeats COST_TITLE's text inline instead of importing it.",
+   "key_exports": "ReportCard, askInsteadText",
+   "depends_on": "GhostSuggestion, common/AgentText, common/InlineCode, labels (KIND_GLYPH), model/cardData (footprintEntries, presuppositionLabel, vocabIndex), model/run (CHECK_STEP, formatCost, formatDuration, formatTokens, suggestedGhosts, VERDICT_LABEL), state/context, @telelean/core (PRESUPPOSITION_PREFIX)"
+  },
+  {
+   "path": "packages/webview/src/run/reveal.ts",
+   "purpose": "revealInPanel scrolls only the run panel's body (.tl-run__body), so that an element's top comes into view when it sits above the visible part or starts below 60% of it. It is used when a new question set or a review step appears.",
+   "key_exports": "revealInPanel",
+   "depends_on": "none (DOM)"
+  },
+  {
+   "path": "packages/webview/src/run/Review.tsx",
+   "purpose": "The end-of-round review stepper in the run panel (D-19). Its steps are: one per new or changed statement (the sentence above its Lean proposition with the #print header stripped, a 'Fully explicit' toggle, the vocabulary it uses, Show on the board); new vocabulary (approved automatically, 'Revoke…' prefills Feedback); definition questions (a no prefills Feedback); the result (hidden until the statements are done or 'Show result', then ReportCard); and lifecycle items, i.e. card changes such as Goal → Derivation that happen only when ticked. It adds step navigation, notes for a changed base and an empty round, and ReviewActions (Accept / Feedback… / Discard / Raw Lean diff… plus the Feedback textarea; Ctrl+Enter sends).",
+   "key_exports": "Review, ReviewActions, revokeVocabularyText",
+   "depends_on": "ReportCard, run/reveal, common/AgentText, labels, model/run (acceptTitle, definitionsApproved, isRunOutcomeVerdict, reviewSteps, statementBody, STEP_TITLE), state/context, state/store (ReviewUi type), @telelean/core (LIMITS, types)"
+  },
+  {
+   "path": "packages/webview/src/run/RunBadge.tsx",
+   "purpose": "RunBadge is the header button for the current run ('Claude: working on Spyro · 3/25 checks', with a bell icon and attention style when it needs the user). It opens or hides the run panel, or switches the board to the run's subject when that is another one. RunElsewhere is a compact banner for another subject's run, with a 'Show' button.",
+   "key_exports": "RunBadge, RunElsewhere",
+   "depends_on": "model/run (runBadgeText, runNeedsUser, runStateLabel), state/context"
+  },
+  {
+   "path": "packages/webview/src/run/RunPanel.tsx",
+   "purpose": "The panel for the board's own subject's run: beside the board, or below it under 1000 px (NARROW_QUERY via useSyncExternalStore). Top to bottom: a header with the state label (the proof verdict only once revealed) and Cancel/Hide; the status line (round, checks, turns, agent clock via useNow, check attempts, tokens, cost estimate, rate limit; the caps come from RunView); the target; the outcome block (progress while starting or checking, Resume/Stop when interrupted, the ended text with Dismiss); the pending questions; notices (upfront or folded); the Review or 'Preparing the proposal…'; the answered questions; the activity feed (follows new lines unless scrolled up; folded in review and once ended); and the model/backend line. RunSplitter is a resize handle (drag, or arrow keys/Home/End; Enter or double-click resets) that stores the size per layout with setRunSplit and applies it through a CSS custom property set via the CSSOM.",
+   "key_exports": "RunPanel, NARROW_QUERY",
+   "depends_on": "Questions (QuestionSet, AnsweredQuestions), Review, common/AgentText, common/InlineCode, common/useNow, labels (NOTICE_ICON), model/run (clockRuns, endedOutcome, ENDED_TEXT, formatClock, placeNotices, runStateLabel, runStatusParts), state/context, state/store (clampSplit, RunPanelLayout)"
+  },
+  {
+   "path": "packages/webview/src/state/context.tsx",
+   "purpose": "React context around the zustand vanilla store: BoardStoreProvider, useBoardStore (throws outside the provider), useBoard(selector) built on zustand's useStore (selectors must return stable values), and useBoardActions, which returns the state object, whose action functions never change identity, without subscribing.",
+   "key_exports": "BoardStoreProvider, useBoardStore, useBoard, useBoardActions",
+   "depends_on": "state/store (types), zustand"
+  },
+  {
+   "path": "packages/webview/src/state/store.ts",
+   "purpose": "The board's single zustand vanilla store, created with an injected `post` so it can be unit-tested without React or a DOM. It holds the graph data (nodes, order, edges, vocabulary, diagnostics, semantic summary, attempts, provisional cards), host data (workspace, history, toasts), UI state (selection, target, expanded, hover, drag, prompt kind, vocabulary collapsed, flash, dialog, inline edit) and M2 state (run, proposal, derived overlay, proposed view, panel open and split, review stepper, answer drafts, runBusy, accepted). It applies host messages (graphs with a version check and provisional-card matching; each actionResult by request kind, with optimistic rollback, needs-confirmation dialogs and an info toast for declined consent), turns gestures into protocol messages with request ids r<n> (counter persisted), and exports pure selectors.",
+   "key_exports": "createBoardStore, BoardStore, BoardState, BoardActions, BoardData, HostData, BoardUi, RunUi, ReviewUi, AcceptedUi, RunBusy, RunAction, DialogState, EditingState, DragState, Flash, flashTarget, FLASH_MS, Toast, toastCanUndo, MAX_TOASTS, PersistedState, StoreOptions, Post, AddExtras, TrayModel, trayModel, ASSUMPTION_TARGET_BLOCK, TARGET_CHOICE_BLOCK, CONSENT_DECLINED_PREFIX, RunPanelLayout, RunSplit, RUN_SPLIT_LIMITS, clampSplit, readSplit, proposedOverlay, boardView, vocabularyCollapsed, impactGraph, impactOf, moveInOrder",
+   "depends_on": "model/cardData (vocabIndex), model/format (oneLine), model/run (buildOverlay, reviewSteps, pastStatements, draftAnswers, acceptSelection, acceptChangesFiles, definitionsApproved, initialLifecycle, newVocabularyCount, trayRunBlock, emptyDraft), @telelean/core (webviewMessage, columnOrder, createUserNode, kindChangeImpact, slugId, LIMITS, NODE_TYPES, isTerminalRunState, types), zustand/vanilla"
+  },
+  {
+   "path": "packages/webview/src/styles/board.css",
+   "purpose": "All board styling (about 1600 lines). Colours come only from VS Code theme variables (including the extension's telelean.* colours, with fallbacks for the Chrome harness), and there are no inline styles because the CSP forbids them. Sections: design tokens; toolbar and legend; the workspace and three-column grid (it scrolls sideways once columns would get narrower than --tl-col-min); columns, drop zones and badge slots; cards (aura, selection, chips, highlight flash, inline edits, uses line); the expanded card; the Vocabulary group; arrows (dashed = declared, solid = verified, thin reference, hollow conditional head, warning-coloured mismatch); tray, buttons, popovers, dialogs, toasts and the prompt box; then the M2 parts (Claude's text, run panel with resize handle, beside or below at ≤1000 px, notices, activity, questions, review, report card, proposal banner, diff marks, ghosts, run badge, attempts); and finally high-contrast and reduced-motion overrides.",
+   "key_exports": "tl-* CSS classes and data-attribute selectors",
+   "depends_on": "VS Code --vscode-* theme variables; checked by test/unit/theme.test.ts against packages/extension/package.json contributes.colors"
+  },
+  {
+   "path": "packages/webview/src/toasts/Toasts.tsx",
+   "purpose": "The toast stack at the bottom of the board area (at most three, from store.toasts): a level icon, the message with code spans, and a Dismiss button. Undo appears only on the newest undoable toast, and only while the host's Undo label still matches that toast's action (toastCanUndo).",
+   "key_exports": "Toasts",
+   "depends_on": "common/InlineCode, state/context, state/store (toastCanUndo)"
+  },
+  {
+   "path": "packages/webview/src/tray/SelectionTray.tsx",
+   "purpose": "The selection tray. It shows premise chips ⊢ the target chip (from trayModel; ⊢ makes a premise the explicit target, × deselects), the presupposition chips of the selection, Clear, and the M2 run buttons: 'These suffice ▶' (startRun replace) or 'Self-evident?' (a target with no premises), plus 'Add to its premises ▶' when the run would drop the target's declared premises. The buttons are disabled with a reason (selection problem, an assumption as target, or an active run via trayRunBlock); during a run the tray folds to one summary line, which can be unfolded for that run, and with nothing selected it shows a hint (a first-step hint on an empty board).",
+   "key_exports": "SelectionTray",
+   "depends_on": "labels, model/cardData (presuppositionLabel, presuppositionsOf), model/run (trayRunBlock), state/context, state/store (trayModel, TrayModel)"
+  },
+  {
+   "path": "packages/webview/test/harness/index.html",
+   "purpose": "Listed in place of the requested packages/webview/index.html, which does not exist: the Vite build uses a JS entry (src/main.tsx), and the extension generates the real webview HTML (packages/extension/src/board/html.ts, with CSP and nonce). This harness page is the only index.html in the package and copies the real CSP and load order: nonce'd /dist/boot.js before /dist/webview.css, harness.js (theme variables and a mock acquireVsCodeApi), #root, then the module /dist/webview.js, all served by serve.mjs for Playwright. A sibling, blocked-style.html, is a negative test whose CSP refuses the stylesheet.",
+   "key_exports": "n/a",
+   "depends_on": "built bundle in packages/extension/dist/webview, test/harness/harness.js, test/harness/serve.mjs"
+  },
+  {
+   "path": "packages/webview/tsconfig.json",
+   "purpose": "Type-check config for the browser code only (include: src). It extends ../../tsconfig.base.json (ES2023, strict, noUncheckedIndexedAccess, isolatedModules) and sets module ESNext with Bundler resolution, DOM libs, react-jsx, and the types vite/client and vscode-webview (which declares acquireVsCodeApi). It does not emit, and maps @telelean/core to ../core/src/index.ts.",
+   "key_exports": "n/a",
+   "depends_on": "../../tsconfig.base.json, ../core/src/index.ts"
+  },
+  {
+   "path": "packages/webview/tsconfig.node.json",
+   "purpose": "Type-check config for vite.config.ts, vitest.config.ts, playwright.config.ts and all test/**/*.ts. It uses Node types plus the DOM libs (the Playwright tests evaluate DOM code in the page), with the same base, Bundler resolution, no emit, and the @telelean/core path mapping.",
+   "key_exports": "n/a",
+   "depends_on": "../../tsconfig.base.json, ../core/src/index.ts"
+  },
+  {
+   "path": "packages/webview/vite.config.ts",
+   "purpose": "Vite 8 (rolldown) build: the root is the package, with the React plugin and @telelean/core aliased to core's TypeScript source. There is no index.html; the input is src/main.tsx, because the extension generates the HTML. Output goes with fixed names into ../extension/dist/webview (emptied first): webview.js (ES module), a single webview.css (cssCodeSplit off), chunks/[name].js and assets/[name][ext] (e.g. codicon.ttf; assetsInlineLimit 0), with sourcemaps, target chrome130 and no module-preload polyfill; public/boot.js is copied verbatim.",
+   "key_exports": "default defineConfig({...})",
+   "depends_on": "@vitejs/plugin-react, src/main.tsx, public/boot.js, ../core/src/index.ts"
+  },
+  {
+   "path": "packages/webview/vitest.config.ts",
+   "purpose": "Vitest config for the DOM-free unit tests (test/unit/**/*.test.ts, default Node environment, no jsdom), run one file at a time (fileParallelism false), with @telelean/core aliased to core's source. Layout-dependent behaviour is left to Playwright.",
+   "key_exports": "default defineConfig({...})",
+   "depends_on": "test/unit/*.test.ts, ../core/src/index.ts"
+  }
+ ]
+}

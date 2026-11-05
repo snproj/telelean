@@ -1,0 +1,62 @@
+import Lean
+
+open Lean Meta
+
+/-- r2's classifier, copied verbatim from r2-lean-semantics/mm/Extract.lean
+    (the one 03 §5 adopts for telelean-extract). -/
+def classifyAxiomR2 (ty : Expr) (userTypeFormers : NameSet) : MetaM String := do
+  if ← isProp ty then return "proposition"
+  forallTelescopeReducing ty fun _ cod => do
+    let cod ← whnfR cod
+    if cod.isSort then return "type-former"
+    match cod.getAppFn.constName? with
+    | some c =>
+      if userTypeFormers.contains c then return "constant-of-uninterpreted-type"
+      else pure ()
+    | none => pure ()
+    let inst? ← try
+        let u ← getLevel cod
+        some <$> synthInstance (mkApp (mkConst ``Nonempty [u]) cod)
+      catch _ => pure none
+    return if inst?.isSome then "constant-of-inhabited-type" else "data-suspicious"
+
+/-- r5's classifier (Audit.lean), with its trusted Init-only Nonempty check approximated
+    by "every constant of the type comes from an Init.* module". -/
+def classifyAxiomR5 (type : Expr) (formers : NameSet) : MetaM String := do
+  let env ← getEnv
+  let fromInit (c : Name) : Bool := match env.getModuleIdxFor? c with
+    | some i => (`Init).isPrefixOf env.header.moduleNames[i.toNat]!
+    | none => false
+  if ← isProp type then return "prop"
+  forallTelescopeReducing type fun _ body => do
+    let body ← whnf body
+    if body.isSort then return "sort-former"
+    match body.getAppFn with
+    | .const c _ =>
+      if formers.contains c then return "symbol"
+      if !body.hasFVar && body.getUsedConstants.all fromInit then
+        let u ← getLevel body
+        if (← synthInstance? (mkApp (.const ``Nonempty [u]) body)).isSome then return "symbol-std"
+      return "nonsignature"
+    | _ => return "nonsignature"
+
+namespace W
+axiom Character : Type
+axiom cynder : Character
+axiom HasDarkPast : Character → Prop
+axiom instInh : Inhabited Character
+axiom instDecEq : DecidableEq Character
+axiom instDec : Decidable (HasDarkPast cynder)
+axiom instSub : Subsingleton Character
+axiom pick : (c : Character) → HasDarkPast c → Character
+end W
+#eval show MetaM Unit from do
+  let names := [``W.Character, ``W.HasDarkPast, ``W.instInh, ``W.instDecEq, ``W.instDec, ``W.instSub, ``W.pick]
+  let mut formers : NameSet := {}
+  for n in names do
+    let ci ← getConstInfo n
+    if ← forallTelescopeReducing ci.type fun _ c => return (← whnfR c).isSort then
+      formers := formers.insert n
+  for n in [``W.instInh, ``W.instDecEq, ``W.instDec, ``W.instSub, ``W.pick] do
+    let ci ← getConstInfo n
+    IO.println s!"{n} : {← ppExpr ci.type}   r2={← classifyAxiomR2 ci.type formers}   r5={← classifyAxiomR5 ci.type formers}"

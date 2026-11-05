@@ -1,0 +1,24 @@
+import Lean
+open Lean Elab Command Meta
+axiom Game : Type
+axiom Character : Type
+axiom IsPG : Game → Prop
+axiom HasDarkPast : Character → Prop
+axiom GoodAddition : Character → Game → Prop
+abbrev s1 : Prop := ∀ (g : Game) (c : Character), IsPG g → HasDarkPast c → ¬ GoodAddition c g
+abbrev s2 : Prop := ∀ (x : Game) (y : Character), IsPG x → HasDarkPast y → ¬ GoodAddition y x
+abbrev s3 : Prop := ∀ (g : Game) (c : Character), IsPG g → HasDarkPast c → GoodAddition c g → False
+-- notation trick: a local notation that makes `¬` mean something else in this section
+section
+local notation:max "¬" p:40 => (p → True)
+abbrev s4 : Prop := ∀ (g : Game) (c : Character), IsPG g → HasDarkPast c → ¬ GoodAddition c g
+end
+elab "#cmp " a:ident b:ident : command => liftTermElabM do
+  let ta := (← getConstInfo a.getId).value!
+  let tb := (← getConstInfo b.getId).value!
+  let ppa ← withOptions (fun o => o.setBool `pp.all true) (ppExpr ta)
+  let ppb ← withOptions (fun o => o.setBool `pp.all true) (ppExpr tb)
+  logInfo m!"{a.getId} vs {b.getId}: hash {ta.hash} vs {tb.hash}; BEq={ta == tb}; eqv={ta.eqv tb}; equal(strict)={ta.equal tb}; ppAll same={toString ppa == toString ppb}; defeq={← isDefEq ta tb}\n  pp: {ta}\n  pp: {tb}"
+#cmp s1 s2
+#cmp s1 s3
+#cmp s1 s4

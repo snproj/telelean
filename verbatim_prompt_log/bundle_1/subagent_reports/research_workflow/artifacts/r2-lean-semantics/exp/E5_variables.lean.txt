@@ -1,0 +1,27 @@
+/-! # E5: Encoding (iii) — section `variable`s as assumptions -/
+section Model
+variable (Character Game : Type) (Cynder : Character) (newSpyro : Game)
+variable (HasDarkPast : Character → Prop) (IsPG : Game → Prop)
+variable (GoodAddition : Character → Game → Prop)
+variable (cynder_dark : HasDarkPast Cynder) (spyro_pg : IsPG newSpyro)
+variable (pg_no_dark : ∀ g c, IsPG g → HasDarkPast c → ¬ GoodAddition c g)
+
+-- (a) hypotheses used only in the proof body, not in the statement:
+theorem goal_a : ¬ GoodAddition Cynder newSpyro :=
+  pg_no_dark _ _ spyro_pg cynder_dark
+
+-- (b) with `include`:
+include cynder_dark spyro_pg pg_no_dark in
+theorem goal_b : ¬ GoodAddition Cynder newSpyro :=
+  pg_no_dark _ _ spyro_pg cynder_dark
+#check @goal_b
+
+-- (c) a def: are body-only variables included for definitions?
+def defBody : Prop := HasDarkPast Cynder ∧ IsPG newSpyro
+#check @defBody
+
+-- (d) an included-but-unused variable (linter?)
+include spyro_pg in
+theorem goal_d : HasDarkPast Cynder → HasDarkPast Cynder := id
+#check @goal_d
+end Model

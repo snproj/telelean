@@ -1,0 +1,45 @@
+{
+ "name": "vscode-messenger",
+ "latest": "0.7.0",
+ "dist_tags": {
+  "latest": "0.7.0",
+  "next": "0.7.0-next.ab54f39"
+ },
+ "latest_published": "2026-09-04T11:16:44.465Z",
+ "modified": "2026-09-04T11:16:44.796Z",
+ "created": "2022-04-22T08:15:55.512Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 97789,
+ "fileCount": 18,
+ "tarball": "https://registry.npmjs.org/vscode-messenger/-/vscode-messenger-0.7.0.tgz",
+ "dependencies": {
+  "vscode-messenger-common": "^0.7"
+ },
+ "peerDependencies": {},
+ "repository": "git+https://github.com/TypeFox/vscode-messenger.git",
+ "recent_versions": [
+  [
+   "0.6.0-next.aea0a84",
+   "2026-01-15T15:04:46.160Z"
+  ],
+  [
+   "0.6.0",
+   "2026-01-15T15:10:10.353Z"
+  ],
+  [
+   "0.6.1",
+   "2026-05-22T07:51:51.225Z"
+  ],
+  [
+   "0.7.0-next.ab54f39",
+   "2026-09-04T08:38:13.052Z"
+  ],
+  [
+   "0.7.0",
+   "2026-09-04T11:16:44.465Z"
+  ]
+ ],
+ "homepage": "https://github.com/TypeFox/vscode-messenger#readme",
+ "description": "VS Code Messenger: extension integration"
+}

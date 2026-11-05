@@ -1,0 +1,14 @@
+{"version": "1.3.0",
+ "packagesDir": ".lake/packages",
+ "packages":
+ [{"type": "path",
+   "scope": "",
+   "name": "telelean",
+   "manifestFile": "lake-manifest.json",
+   "inherited": false,
+   "dir": "../telelean-lean",
+   "copy": false,
+   "configFile": "lakefile.toml"}],
+ "name": "mm2",
+ "lakeDir": ".lake",
+ "fixedToolchain": false}

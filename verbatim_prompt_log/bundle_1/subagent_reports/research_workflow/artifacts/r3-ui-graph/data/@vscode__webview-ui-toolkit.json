@@ -1,0 +1,49 @@
+{
+ "name": "@vscode/webview-ui-toolkit",
+ "latest": "1.4.0",
+ "dist_tags": {
+  "latest": "1.4.0"
+ },
+ "latest_published": "2023-12-06T23:50:48.690Z",
+ "modified": "2026-06-26T12:50:27.749Z",
+ "created": "2021-10-04T17:42:31.908Z",
+ "license": "MIT",
+ "deprecated": "This package has been deprecated, https://github.com/microsoft/vscode-webview-ui-toolkit/issues/561",
+ "unpackedSize": 774261,
+ "fileCount": 93,
+ "tarball": "https://registry.npmjs.org/@vscode/webview-ui-toolkit/-/webview-ui-toolkit-1.4.0.tgz",
+ "dependencies": {
+  "tslib": "^2.6.2",
+  "@microsoft/fast-element": "^1.12.0",
+  "@microsoft/fast-foundation": "^2.49.4",
+  "@microsoft/fast-react-wrapper": "^0.3.22"
+ },
+ "peerDependencies": {
+  "react": ">=16.9.0"
+ },
+ "repository": "git+https://github.com/microsoft/vscode-webview-ui-toolkit.git",
+ "recent_versions": [
+  [
+   "1.2.1",
+   "2022-12-22T23:49:11.210Z"
+  ],
+  [
+   "1.2.2",
+   "2023-02-24T22:42:40.987Z"
+  ],
+  [
+   "1.3.0",
+   "2023-11-13T23:43:07.573Z"
+  ],
+  [
+   "1.3.1",
+   "2023-11-14T00:03:13.449Z"
+  ],
+  [
+   "1.4.0",
+   "2023-12-06T23:50:48.690Z"
+  ]
+ ],
+ "homepage": "https://github.com/microsoft/vscode-webview-ui-toolkit#readme",
+ "description": "A component library for building webview-based extensions in Visual Studio Code."
+}

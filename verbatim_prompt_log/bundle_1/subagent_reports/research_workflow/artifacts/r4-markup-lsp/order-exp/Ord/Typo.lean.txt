@@ -1,0 +1,7 @@
+structure Character where
+  name : String
+opaque hasDarkPast : Character → Prop
+def cynder : Character := ⟨"Cynder"⟩
+-- LLM typo: `cyndr` instead of `cynder`
+axiom cynder_dark_past : hasDarkPast cyndr
+#check @cynder_dark_past

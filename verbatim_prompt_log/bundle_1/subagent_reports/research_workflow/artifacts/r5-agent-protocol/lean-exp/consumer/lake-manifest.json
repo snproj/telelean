@@ -1,0 +1,17 @@
+{"version": "1.3.0",
+ "packagesDir": ".lake/packages",
+ "packages":
+ [{"url":
+   "/tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r5-agent-protocol/lean-exp/depgit",
+   "type": "git",
+   "subDir": null,
+   "scope": "",
+   "rev": "ad7399d2c2319dfb88addfda4110b76e73425359",
+   "name": "dep",
+   "manifestFile": "lake-manifest.json",
+   "inputRev": "main",
+   "inherited": false,
+   "configFile": "lakefile.toml"}],
+ "name": "consumer",
+ "lakeDir": ".lake",
+ "fixedToolchain": false}

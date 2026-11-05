@@ -1,0 +1,2956 @@
+{
+  "format": "telelean-lean-facts",
+  "version": 1,
+  "toolchain": "leanprover/lean4:v4.35.0",
+  "library": "Model",
+  "startedAt": "1970-01-01T00:00:00.000Z",
+  "finishedAt": "1970-01-01T00:00:00.000Z",
+  "status": "ok",
+  "build": {
+    "status": "ok",
+    "durationMs": 0,
+    "messages": [
+      {
+        "severity": "warning",
+        "file": "Model/Spyro/Main.lean",
+        "module": "Model.Spyro.Main",
+        "range": {
+          "start": {
+            "line": 86,
+            "character": 8
+          },
+          "end": {
+            "line": 86,
+            "character": 8
+          }
+        },
+        "text": "declaration uses `sorry`"
+      }
+    ],
+    "failedModules": []
+  },
+  "check": {
+    "status": "ok",
+    "durationMs": 0,
+    "probed": 42
+  },
+  "modules": [
+    {
+      "name": "Model.Spyro.Vocabulary",
+      "file": "Model/Spyro/Vocabulary.lean",
+      "sourceSha256": "eda88b854a1a2fcaaae6e30a53a51f424fca6731afe95c8b56174d0fac32a694",
+      "state": "fresh",
+      "imports": []
+    },
+    {
+      "name": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "sourceSha256": "4f6811a9ed8fe3f1c6d0919fc49c8b5576e0a53fd9a7adf0fba78e82bbe3c6ac",
+      "state": "fresh",
+      "imports": [
+        "Model.Spyro.Vocabulary"
+      ]
+    },
+    {
+      "name": "Model",
+      "file": "Model.lean",
+      "sourceSha256": "3fc1b46806d11808a928e8290c5ba7759c87f7c21a49731d81424a268927c841",
+      "state": "fresh",
+      "imports": [
+        "Model.Spyro.Main"
+      ]
+    },
+    {
+      "name": "Model.Spyro.Orphan",
+      "file": "Model/Spyro/Orphan.lean",
+      "sourceSha256": "9f0ade4912ff59ff83ddd1f7451e1db08c8f824ed24e298da3c214906631c182",
+      "state": "not-built",
+      "imports": [
+        "Model.Spyro.Vocabulary"
+      ]
+    }
+  ],
+  "decls": [
+    {
+      "name": "Spyro.Character",
+      "module": "Model.Spyro.Vocabulary",
+      "file": "Model/Spyro/Vocabulary.lean",
+      "range": {
+        "start": {
+          "line": 2,
+          "character": 0
+        },
+        "end": {
+          "line": 3,
+          "character": 22
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 3,
+          "character": 6
+        },
+        "end": {
+          "line": 3,
+          "character": 15
+        }
+      },
+      "kind": "axiom",
+      "type": "Type",
+      "typeSort": "Type 1",
+      "axioms": [
+        "Spyro.Character"
+      ],
+      "usesSorry": false,
+      "docstring": "characters",
+      "refs": []
+    },
+    {
+      "name": "Spyro.Game",
+      "module": "Model.Spyro.Vocabulary",
+      "file": "Model/Spyro/Vocabulary.lean",
+      "range": {
+        "start": {
+          "line": 4,
+          "character": 0
+        },
+        "end": {
+          "line": 5,
+          "character": 17
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 5,
+          "character": 6
+        },
+        "end": {
+          "line": 5,
+          "character": 10
+        }
+      },
+      "kind": "axiom",
+      "type": "Type",
+      "typeSort": "Type 1",
+      "axioms": [
+        "Spyro.Game"
+      ],
+      "usesSorry": false,
+      "docstring": "games",
+      "refs": []
+    },
+    {
+      "name": "Spyro.Character.exists",
+      "module": "Model.Spyro.Vocabulary",
+      "file": "Model/Spyro/Vocabulary.lean",
+      "range": {
+        "start": {
+          "line": 6,
+          "character": 0
+        },
+        "end": {
+          "line": 7,
+          "character": 43
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 7,
+          "character": 6
+        },
+        "end": {
+          "line": 7,
+          "character": 22
+        }
+      },
+      "kind": "axiom",
+      "type": "Nonempty Spyro.Character",
+      "typeSort": "Prop",
+      "axioms": [
+        "Spyro.Character",
+        "Spyro.Character.exists"
+      ],
+      "usesSorry": false,
+      "docstring": "there is at least one character",
+      "refs": [
+        {
+          "name": "Nonempty",
+          "module": "Init.Prelude",
+          "range": {
+            "start": {
+              "line": 7,
+              "character": 25
+            },
+            "end": {
+              "line": 7,
+              "character": 33
+            }
+          }
+        },
+        {
+          "name": "Spyro.Character",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 7,
+              "character": 34
+            },
+            "end": {
+              "line": 7,
+              "character": 43
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.instNonemptyCharacter",
+      "module": "Model.Spyro.Vocabulary",
+      "file": "Model/Spyro/Vocabulary.lean",
+      "range": {
+        "start": {
+          "line": 8,
+          "character": 0
+        },
+        "end": {
+          "line": 8,
+          "character": 49
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 8,
+          "character": 0
+        },
+        "end": {
+          "line": 8,
+          "character": 8
+        }
+      },
+      "kind": "instance",
+      "type": "Nonempty Spyro.Character",
+      "typeSort": "Prop",
+      "value": "Spyro.Character.exists",
+      "axioms": [
+        "Spyro.Character",
+        "Spyro.Character.exists"
+      ],
+      "usesSorry": false,
+      "refs": [
+        {
+          "name": "Nonempty",
+          "module": "Init.Prelude",
+          "range": {
+            "start": {
+              "line": 8,
+              "character": 11
+            },
+            "end": {
+              "line": 8,
+              "character": 19
+            }
+          }
+        },
+        {
+          "name": "Spyro.Character",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 8,
+              "character": 20
+            },
+            "end": {
+              "line": 8,
+              "character": 29
+            }
+          }
+        },
+        {
+          "name": "Spyro.Character.exists",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 8,
+              "character": 33
+            },
+            "end": {
+              "line": 8,
+              "character": 49
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.Game.exists",
+      "module": "Model.Spyro.Vocabulary",
+      "file": "Model/Spyro/Vocabulary.lean",
+      "range": {
+        "start": {
+          "line": 9,
+          "character": 0
+        },
+        "end": {
+          "line": 10,
+          "character": 33
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 10,
+          "character": 6
+        },
+        "end": {
+          "line": 10,
+          "character": 17
+        }
+      },
+      "kind": "axiom",
+      "type": "Nonempty Spyro.Game",
+      "typeSort": "Prop",
+      "axioms": [
+        "Spyro.Game",
+        "Spyro.Game.exists"
+      ],
+      "usesSorry": false,
+      "docstring": "there is at least one game",
+      "refs": [
+        {
+          "name": "Nonempty",
+          "module": "Init.Prelude",
+          "range": {
+            "start": {
+              "line": 10,
+              "character": 20
+            },
+            "end": {
+              "line": 10,
+              "character": 28
+            }
+          }
+        },
+        {
+          "name": "Spyro.Game",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 10,
+              "character": 29
+            },
+            "end": {
+              "line": 10,
+              "character": 33
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.instNonemptyGame",
+      "module": "Model.Spyro.Vocabulary",
+      "file": "Model/Spyro/Vocabulary.lean",
+      "range": {
+        "start": {
+          "line": 11,
+          "character": 0
+        },
+        "end": {
+          "line": 11,
+          "character": 39
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 11,
+          "character": 0
+        },
+        "end": {
+          "line": 11,
+          "character": 8
+        }
+      },
+      "kind": "instance",
+      "type": "Nonempty Spyro.Game",
+      "typeSort": "Prop",
+      "value": "Spyro.Game.exists",
+      "axioms": [
+        "Spyro.Game",
+        "Spyro.Game.exists"
+      ],
+      "usesSorry": false,
+      "refs": [
+        {
+          "name": "Nonempty",
+          "module": "Init.Prelude",
+          "range": {
+            "start": {
+              "line": 11,
+              "character": 11
+            },
+            "end": {
+              "line": 11,
+              "character": 19
+            }
+          }
+        },
+        {
+          "name": "Spyro.Game",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 11,
+              "character": 20
+            },
+            "end": {
+              "line": 11,
+              "character": 24
+            }
+          }
+        },
+        {
+          "name": "Spyro.Game.exists",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 11,
+              "character": 28
+            },
+            "end": {
+              "line": 11,
+              "character": 39
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.HasDarkPast",
+      "module": "Model.Spyro.Vocabulary",
+      "file": "Model/Spyro/Vocabulary.lean",
+      "range": {
+        "start": {
+          "line": 12,
+          "character": 0
+        },
+        "end": {
+          "line": 13,
+          "character": 36
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 13,
+          "character": 6
+        },
+        "end": {
+          "line": 13,
+          "character": 17
+        }
+      },
+      "kind": "axiom",
+      "type": "Spyro.Character → Prop",
+      "typeSort": "Type",
+      "axioms": [
+        "Spyro.Character",
+        "Spyro.HasDarkPast"
+      ],
+      "usesSorry": false,
+      "docstring": "has a dark past",
+      "refs": [
+        {
+          "name": "Spyro.Character",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 13,
+              "character": 20
+            },
+            "end": {
+              "line": 13,
+              "character": 29
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.IsPG",
+      "module": "Model.Spyro.Vocabulary",
+      "file": "Model/Spyro/Vocabulary.lean",
+      "range": {
+        "start": {
+          "line": 14,
+          "character": 0
+        },
+        "end": {
+          "line": 15,
+          "character": 24
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 15,
+          "character": 6
+        },
+        "end": {
+          "line": 15,
+          "character": 10
+        }
+      },
+      "kind": "axiom",
+      "type": "Spyro.Game → Prop",
+      "typeSort": "Type",
+      "axioms": [
+        "Spyro.Game",
+        "Spyro.IsPG"
+      ],
+      "usesSorry": false,
+      "docstring": "is rated PG",
+      "refs": [
+        {
+          "name": "Spyro.Game",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 15,
+              "character": 13
+            },
+            "end": {
+              "line": 15,
+              "character": 17
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.GoodAddition",
+      "module": "Model.Spyro.Vocabulary",
+      "file": "Model/Spyro/Vocabulary.lean",
+      "range": {
+        "start": {
+          "line": 16,
+          "character": 0
+        },
+        "end": {
+          "line": 17,
+          "character": 44
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 17,
+          "character": 6
+        },
+        "end": {
+          "line": 17,
+          "character": 18
+        }
+      },
+      "kind": "axiom",
+      "type": "Spyro.Character → Spyro.Game → Prop",
+      "typeSort": "Type",
+      "axioms": [
+        "Spyro.Character",
+        "Spyro.Game",
+        "Spyro.GoodAddition"
+      ],
+      "usesSorry": false,
+      "docstring": "would be a good addition to",
+      "refs": [
+        {
+          "name": "Spyro.Character",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 17,
+              "character": 21
+            },
+            "end": {
+              "line": 17,
+              "character": 30
+            }
+          }
+        },
+        {
+          "name": "Spyro.Game",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 17,
+              "character": 33
+            },
+            "end": {
+              "line": 17,
+              "character": 37
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.cynder",
+      "module": "Model.Spyro.Vocabulary",
+      "file": "Model/Spyro/Vocabulary.lean",
+      "range": {
+        "start": {
+          "line": 18,
+          "character": 0
+        },
+        "end": {
+          "line": 19,
+          "character": 39
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 19,
+          "character": 21
+        },
+        "end": {
+          "line": 19,
+          "character": 27
+        }
+      },
+      "kind": "opaque",
+      "type": "Spyro.Character",
+      "typeSort": "Type",
+      "axioms": [
+        "Classical.choice",
+        "Spyro.Character",
+        "Spyro.Character.exists"
+      ],
+      "usesSorry": false,
+      "docstring": "Cynder",
+      "refs": [
+        {
+          "name": "Spyro.Character",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 19,
+              "character": 30
+            },
+            "end": {
+              "line": 19,
+              "character": 39
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.newSpyro",
+      "module": "Model.Spyro.Vocabulary",
+      "file": "Model/Spyro/Vocabulary.lean",
+      "range": {
+        "start": {
+          "line": 20,
+          "character": 0
+        },
+        "end": {
+          "line": 21,
+          "character": 36
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 21,
+          "character": 21
+        },
+        "end": {
+          "line": 21,
+          "character": 29
+        }
+      },
+      "kind": "opaque",
+      "type": "Spyro.Game",
+      "typeSort": "Type",
+      "axioms": [
+        "Classical.choice",
+        "Spyro.Game",
+        "Spyro.Game.exists"
+      ],
+      "usesSorry": false,
+      "docstring": "the new Spyro game",
+      "refs": [
+        {
+          "name": "Spyro.Game",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 21,
+              "character": 32
+            },
+            "end": {
+              "line": 21,
+              "character": 36
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.pg_no_dark_past",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 13,
+          "character": 0
+        },
+        "end": {
+          "line": 14,
+          "character": 106
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 14,
+          "character": 7
+        },
+        "end": {
+          "line": 14,
+          "character": 22
+        }
+      },
+      "kind": "def",
+      "attributes": [
+        "reducible"
+      ],
+      "type": "Prop",
+      "typeSort": "Type",
+      "value": "∀ (g : Spyro.Game) (c : Spyro.Character), Spyro.IsPG g → Spyro.HasDarkPast c → ¬Spyro.GoodAddition c g",
+      "axioms": [
+        "Spyro.Character",
+        "Spyro.Game",
+        "Spyro.GoodAddition",
+        "Spyro.HasDarkPast",
+        "Spyro.IsPG"
+      ],
+      "usesSorry": false,
+      "docstring": "PG games cannot have characters with dark pasts (normative reading)",
+      "refs": [
+        {
+          "name": "Spyro.Game",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 14,
+              "character": 40
+            },
+            "end": {
+              "line": 14,
+              "character": 44
+            }
+          }
+        },
+        {
+          "name": "Spyro.Character",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 14,
+              "character": 51
+            },
+            "end": {
+              "line": 14,
+              "character": 60
+            }
+          }
+        },
+        {
+          "name": "Spyro.IsPG",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 14,
+              "character": 63
+            },
+            "end": {
+              "line": 14,
+              "character": 67
+            }
+          }
+        },
+        {
+          "name": "Spyro.HasDarkPast",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 14,
+              "character": 72
+            },
+            "end": {
+              "line": 14,
+              "character": 83
+            }
+          }
+        },
+        {
+          "name": "Spyro.GoodAddition",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 14,
+              "character": 90
+            },
+            "end": {
+              "line": 14,
+              "character": 102
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.pg_no_dark_past.holds",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 15,
+          "character": 0
+        },
+        "end": {
+          "line": 15,
+          "character": 45
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 15,
+          "character": 6
+        },
+        "end": {
+          "line": 15,
+          "character": 27
+        }
+      },
+      "kind": "axiom",
+      "type": "Spyro.pg_no_dark_past",
+      "typeSort": "Prop",
+      "axioms": [
+        "Spyro.Character",
+        "Spyro.Game",
+        "Spyro.GoodAddition",
+        "Spyro.HasDarkPast",
+        "Spyro.IsPG",
+        "Spyro.pg_no_dark_past.holds"
+      ],
+      "usesSorry": false,
+      "refs": [
+        {
+          "name": "Spyro.pg_no_dark_past",
+          "module": "Model.Spyro.Main",
+          "range": {
+            "start": {
+              "line": 15,
+              "character": 30
+            },
+            "end": {
+              "line": 15,
+              "character": 45
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.cynder_dark_past",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 27,
+          "character": 0
+        },
+        "end": {
+          "line": 28,
+          "character": 52
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 28,
+          "character": 7
+        },
+        "end": {
+          "line": 28,
+          "character": 23
+        }
+      },
+      "kind": "def",
+      "attributes": [
+        "reducible"
+      ],
+      "type": "Prop",
+      "typeSort": "Type",
+      "value": "Spyro.HasDarkPast Spyro.cynder",
+      "axioms": [
+        "Classical.choice",
+        "Spyro.Character",
+        "Spyro.HasDarkPast",
+        "Spyro.Character.exists"
+      ],
+      "usesSorry": false,
+      "docstring": "Cynder is a character who has a dark past",
+      "refs": [
+        {
+          "name": "Spyro.HasDarkPast",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 28,
+              "character": 34
+            },
+            "end": {
+              "line": 28,
+              "character": 45
+            }
+          }
+        },
+        {
+          "name": "Spyro.cynder",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 28,
+              "character": 46
+            },
+            "end": {
+              "line": 28,
+              "character": 52
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.cynder_dark_past.holds",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 29,
+          "character": 0
+        },
+        "end": {
+          "line": 29,
+          "character": 47
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 29,
+          "character": 6
+        },
+        "end": {
+          "line": 29,
+          "character": 28
+        }
+      },
+      "kind": "axiom",
+      "type": "Spyro.cynder_dark_past",
+      "typeSort": "Prop",
+      "axioms": [
+        "Classical.choice",
+        "Spyro.Character",
+        "Spyro.HasDarkPast",
+        "Spyro.Character.exists",
+        "Spyro.cynder_dark_past.holds"
+      ],
+      "usesSorry": false,
+      "refs": [
+        {
+          "name": "Spyro.cynder_dark_past",
+          "module": "Model.Spyro.Main",
+          "range": {
+            "start": {
+              "line": 29,
+              "character": 31
+            },
+            "end": {
+              "line": 29,
+              "character": 47
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.new_spyro_pg",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 41,
+          "character": 0
+        },
+        "end": {
+          "line": 42,
+          "character": 43
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 42,
+          "character": 7
+        },
+        "end": {
+          "line": 42,
+          "character": 19
+        }
+      },
+      "kind": "def",
+      "attributes": [
+        "reducible"
+      ],
+      "type": "Prop",
+      "typeSort": "Type",
+      "value": "Spyro.IsPG Spyro.newSpyro",
+      "axioms": [
+        "Classical.choice",
+        "Spyro.Game",
+        "Spyro.IsPG",
+        "Spyro.Game.exists"
+      ],
+      "usesSorry": false,
+      "docstring": "The new Spyro game is PG",
+      "refs": [
+        {
+          "name": "Spyro.IsPG",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 42,
+              "character": 30
+            },
+            "end": {
+              "line": 42,
+              "character": 34
+            }
+          }
+        },
+        {
+          "name": "Spyro.newSpyro",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 42,
+              "character": 35
+            },
+            "end": {
+              "line": 42,
+              "character": 43
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.new_spyro_pg.holds",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 43,
+          "character": 0
+        },
+        "end": {
+          "line": 43,
+          "character": 39
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 43,
+          "character": 6
+        },
+        "end": {
+          "line": 43,
+          "character": 24
+        }
+      },
+      "kind": "axiom",
+      "type": "Spyro.new_spyro_pg",
+      "typeSort": "Prop",
+      "axioms": [
+        "Classical.choice",
+        "Spyro.Game",
+        "Spyro.IsPG",
+        "Spyro.Game.exists",
+        "Spyro.new_spyro_pg.holds"
+      ],
+      "usesSorry": false,
+      "refs": [
+        {
+          "name": "Spyro.new_spyro_pg",
+          "module": "Model.Spyro.Main",
+          "range": {
+            "start": {
+              "line": 43,
+              "character": 27
+            },
+            "end": {
+              "line": 43,
+              "character": 39
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.cynder_not_good",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 54,
+          "character": 0
+        },
+        "end": {
+          "line": 55,
+          "character": 63
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 55,
+          "character": 7
+        },
+        "end": {
+          "line": 55,
+          "character": 22
+        }
+      },
+      "kind": "def",
+      "attributes": [
+        "reducible"
+      ],
+      "type": "Prop",
+      "typeSort": "Type",
+      "value": "¬Spyro.GoodAddition Spyro.cynder Spyro.newSpyro",
+      "axioms": [
+        "Classical.choice",
+        "Spyro.Character",
+        "Spyro.Game",
+        "Spyro.GoodAddition",
+        "Spyro.Character.exists",
+        "Spyro.Game.exists"
+      ],
+      "usesSorry": false,
+      "docstring": "Cynder would not be a good addition to the new Spyro game",
+      "refs": [
+        {
+          "name": "Spyro.GoodAddition",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 55,
+              "character": 35
+            },
+            "end": {
+              "line": 55,
+              "character": 47
+            }
+          }
+        },
+        {
+          "name": "Spyro.cynder",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 55,
+              "character": 48
+            },
+            "end": {
+              "line": 55,
+              "character": 54
+            }
+          }
+        },
+        {
+          "name": "Spyro.newSpyro",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 55,
+              "character": 55
+            },
+            "end": {
+              "line": 55,
+              "character": 63
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.cynder_not_good.holds",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 56,
+          "character": 0
+        },
+        "end": {
+          "line": 57,
+          "character": 81
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 56,
+          "character": 8
+        },
+        "end": {
+          "line": 56,
+          "character": 29
+        }
+      },
+      "kind": "theorem",
+      "type": "Spyro.cynder_not_good",
+      "typeSort": "Prop",
+      "axioms": [
+        "Classical.choice",
+        "Spyro.Character",
+        "Spyro.Game",
+        "Spyro.GoodAddition",
+        "Spyro.HasDarkPast",
+        "Spyro.IsPG",
+        "Spyro.Character.exists",
+        "Spyro.Game.exists",
+        "Spyro.cynder_dark_past.holds",
+        "Spyro.new_spyro_pg.holds",
+        "Spyro.pg_no_dark_past.holds"
+      ],
+      "usesSorry": false,
+      "refs": [
+        {
+          "name": "Spyro.cynder_not_good",
+          "module": "Model.Spyro.Main",
+          "range": {
+            "start": {
+              "line": 56,
+              "character": 32
+            },
+            "end": {
+              "line": 56,
+              "character": 47
+            }
+          }
+        },
+        {
+          "name": "Spyro.pg_no_dark_past.holds",
+          "module": "Model.Spyro.Main",
+          "range": {
+            "start": {
+              "line": 57,
+              "character": 2
+            },
+            "end": {
+              "line": 57,
+              "character": 23
+            }
+          }
+        },
+        {
+          "name": "Spyro.newSpyro",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 57,
+              "character": 24
+            },
+            "end": {
+              "line": 57,
+              "character": 32
+            }
+          }
+        },
+        {
+          "name": "Spyro.cynder",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 57,
+              "character": 33
+            },
+            "end": {
+              "line": 57,
+              "character": 39
+            }
+          }
+        },
+        {
+          "name": "Spyro.new_spyro_pg.holds",
+          "module": "Model.Spyro.Main",
+          "range": {
+            "start": {
+              "line": 57,
+              "character": 40
+            },
+            "end": {
+              "line": 57,
+              "character": 58
+            }
+          }
+        },
+        {
+          "name": "Spyro.cynder_dark_past.holds",
+          "module": "Model.Spyro.Main",
+          "range": {
+            "start": {
+              "line": 57,
+              "character": 59
+            },
+            "end": {
+              "line": 57,
+              "character": 81
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.d1",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 61,
+          "character": 0
+        },
+        "end": {
+          "line": 62,
+          "character": 58
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 62,
+          "character": 7
+        },
+        "end": {
+          "line": 62,
+          "character": 9
+        }
+      },
+      "kind": "def",
+      "attributes": [
+        "reducible"
+      ],
+      "type": "Prop",
+      "typeSort": "Type",
+      "value": "¬Spyro.GoodAddition Spyro.cynder Spyro.newSpyro ∨ False",
+      "axioms": [
+        "Classical.choice",
+        "Spyro.Character",
+        "Spyro.Game",
+        "Spyro.GoodAddition",
+        "Spyro.Character.exists",
+        "Spyro.Game.exists"
+      ],
+      "usesSorry": false,
+      "docstring": "Cynder would not be a good addition, or something false",
+      "refs": [
+        {
+          "name": "Spyro.GoodAddition",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 62,
+              "character": 22
+            },
+            "end": {
+              "line": 62,
+              "character": 34
+            }
+          }
+        },
+        {
+          "name": "Spyro.cynder",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 62,
+              "character": 35
+            },
+            "end": {
+              "line": 62,
+              "character": 41
+            }
+          }
+        },
+        {
+          "name": "Spyro.newSpyro",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 62,
+              "character": 42
+            },
+            "end": {
+              "line": 62,
+              "character": 50
+            }
+          }
+        },
+        {
+          "name": "False",
+          "module": "Init.Prelude",
+          "range": {
+            "start": {
+              "line": 62,
+              "character": 53
+            },
+            "end": {
+              "line": 62,
+              "character": 58
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.d1.holds",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 63,
+          "character": 0
+        },
+        "end": {
+          "line": 64,
+          "character": 55
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 64,
+          "character": 8
+        },
+        "end": {
+          "line": 64,
+          "character": 16
+        }
+      },
+      "kind": "theorem",
+      "type": "Spyro.cynder_not_good → Spyro.d1",
+      "typeSort": "Prop",
+      "axioms": [
+        "Classical.choice",
+        "Spyro.Character",
+        "Spyro.Game",
+        "Spyro.GoodAddition",
+        "Spyro.Character.exists",
+        "Spyro.Game.exists"
+      ],
+      "usesSorry": false,
+      "docstring": "d1 holds if the goal does: a conditional proof",
+      "refs": [
+        {
+          "name": "Spyro.cynder_not_good",
+          "module": "Model.Spyro.Main",
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 22
+            },
+            "end": {
+              "line": 64,
+              "character": 37
+            }
+          }
+        },
+        {
+          "name": "Spyro.d1",
+          "module": "Model.Spyro.Main",
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 41
+            },
+            "end": {
+              "line": 64,
+              "character": 43
+            }
+          }
+        },
+        {
+          "name": "Or.inl",
+          "module": "Init.Prelude",
+          "range": {
+            "start": {
+              "line": 64,
+              "character": 47
+            },
+            "end": {
+              "line": 64,
+              "character": 53
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.a_statement_with_a_rather_long_name_so_that_types_wrap",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 66,
+          "character": 0
+        },
+        "end": {
+          "line": 66,
+          "character": 90
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 66,
+          "character": 7
+        },
+        "end": {
+          "line": 66,
+          "character": 61
+        }
+      },
+      "kind": "def",
+      "attributes": [
+        "reducible"
+      ],
+      "type": "Prop",
+      "typeSort": "Type",
+      "value": "Spyro.HasDarkPast Spyro.cynder",
+      "axioms": [
+        "Classical.choice",
+        "Spyro.Character",
+        "Spyro.HasDarkPast",
+        "Spyro.Character.exists"
+      ],
+      "usesSorry": false,
+      "refs": [
+        {
+          "name": "Spyro.HasDarkPast",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 66,
+              "character": 72
+            },
+            "end": {
+              "line": 66,
+              "character": 83
+            }
+          }
+        },
+        {
+          "name": "Spyro.cynder",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 66,
+              "character": 84
+            },
+            "end": {
+              "line": 66,
+              "character": 90
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.another_statement_with_a_long_name_so_types_wrap_too",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 67,
+          "character": 0
+        },
+        "end": {
+          "line": 67,
+          "character": 83
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 67,
+          "character": 7
+        },
+        "end": {
+          "line": 67,
+          "character": 59
+        }
+      },
+      "kind": "def",
+      "attributes": [
+        "reducible"
+      ],
+      "type": "Prop",
+      "typeSort": "Type",
+      "value": "Spyro.IsPG Spyro.newSpyro",
+      "axioms": [
+        "Classical.choice",
+        "Spyro.Game",
+        "Spyro.IsPG",
+        "Spyro.Game.exists"
+      ],
+      "usesSorry": false,
+      "refs": [
+        {
+          "name": "Spyro.IsPG",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 67,
+              "character": 70
+            },
+            "end": {
+              "line": 67,
+              "character": 74
+            }
+          }
+        },
+        {
+          "name": "Spyro.newSpyro",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 67,
+              "character": 75
+            },
+            "end": {
+              "line": 67,
+              "character": 83
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.d3",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 68,
+          "character": 0
+        },
+        "end": {
+          "line": 69,
+          "character": 54
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 69,
+          "character": 7
+        },
+        "end": {
+          "line": 69,
+          "character": 9
+        }
+      },
+      "kind": "def",
+      "attributes": [
+        "reducible"
+      ],
+      "type": "Prop",
+      "typeSort": "Type",
+      "value": "Spyro.HasDarkPast Spyro.cynder ∧ Spyro.IsPG Spyro.newSpyro",
+      "axioms": [
+        "Classical.choice",
+        "Spyro.Character",
+        "Spyro.Game",
+        "Spyro.HasDarkPast",
+        "Spyro.IsPG",
+        "Spyro.Character.exists",
+        "Spyro.Game.exists"
+      ],
+      "usesSorry": false,
+      "docstring": "Both long-named statements",
+      "refs": [
+        {
+          "name": "Spyro.HasDarkPast",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 69,
+              "character": 20
+            },
+            "end": {
+              "line": 69,
+              "character": 31
+            }
+          }
+        },
+        {
+          "name": "Spyro.cynder",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 69,
+              "character": 32
+            },
+            "end": {
+              "line": 69,
+              "character": 38
+            }
+          }
+        },
+        {
+          "name": "Spyro.IsPG",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 69,
+              "character": 41
+            },
+            "end": {
+              "line": 69,
+              "character": 45
+            }
+          }
+        },
+        {
+          "name": "Spyro.newSpyro",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 69,
+              "character": 46
+            },
+            "end": {
+              "line": 69,
+              "character": 54
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.d3.holds",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 70,
+          "character": 0
+        },
+        "end": {
+          "line": 72,
+          "character": 10
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 70,
+          "character": 8
+        },
+        "end": {
+          "line": 70,
+          "character": 16
+        }
+      },
+      "kind": "theorem",
+      "type": "Spyro.a_statement_with_a_rather_long_name_so_that_types_wrap → Spyro.another_statement_with_a_long_name_so_types_wrap_too → Spyro.d3",
+      "typeSort": "Prop",
+      "axioms": [
+        "Classical.choice",
+        "Spyro.Character",
+        "Spyro.Game",
+        "Spyro.HasDarkPast",
+        "Spyro.IsPG",
+        "Spyro.Character.exists",
+        "Spyro.Game.exists"
+      ],
+      "usesSorry": false,
+      "refs": [
+        {
+          "name": "Spyro.a_statement_with_a_rather_long_name_so_that_types_wrap",
+          "module": "Model.Spyro.Main",
+          "range": {
+            "start": {
+              "line": 70,
+              "character": 23
+            },
+            "end": {
+              "line": 70,
+              "character": 77
+            }
+          }
+        },
+        {
+          "name": "Spyro.another_statement_with_a_long_name_so_types_wrap_too",
+          "module": "Model.Spyro.Main",
+          "range": {
+            "start": {
+              "line": 71,
+              "character": 10
+            },
+            "end": {
+              "line": 71,
+              "character": 62
+            }
+          }
+        },
+        {
+          "name": "Spyro.d3",
+          "module": "Model.Spyro.Main",
+          "range": {
+            "start": {
+              "line": 71,
+              "character": 66
+            },
+            "end": {
+              "line": 71,
+              "character": 68
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.d0",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 74,
+          "character": 0
+        },
+        "end": {
+          "line": 75,
+          "character": 51
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 75,
+          "character": 7
+        },
+        "end": {
+          "line": 75,
+          "character": 9
+        }
+      },
+      "kind": "def",
+      "attributes": [
+        "reducible"
+      ],
+      "type": "Prop",
+      "typeSort": "Type",
+      "value": "Spyro.cynder_dark_past ∧ Spyro.new_spyro_pg",
+      "axioms": [
+        "Classical.choice",
+        "Spyro.Character",
+        "Spyro.Game",
+        "Spyro.HasDarkPast",
+        "Spyro.IsPG",
+        "Spyro.Character.exists",
+        "Spyro.Game.exists"
+      ],
+      "usesSorry": false,
+      "docstring": "Cynder has a dark past and the new Spyro game is PG",
+      "refs": [
+        {
+          "name": "Spyro.cynder_dark_past",
+          "module": "Model.Spyro.Main",
+          "range": {
+            "start": {
+              "line": 75,
+              "character": 20
+            },
+            "end": {
+              "line": 75,
+              "character": 36
+            }
+          }
+        },
+        {
+          "name": "Spyro.new_spyro_pg",
+          "module": "Model.Spyro.Main",
+          "range": {
+            "start": {
+              "line": 75,
+              "character": 39
+            },
+            "end": {
+              "line": 75,
+              "character": 51
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.d0.holds",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 76,
+          "character": 0
+        },
+        "end": {
+          "line": 76,
+          "character": 69
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 76,
+          "character": 8
+        },
+        "end": {
+          "line": 76,
+          "character": 16
+        }
+      },
+      "kind": "theorem",
+      "type": "Spyro.d0",
+      "typeSort": "Prop",
+      "axioms": [
+        "Classical.choice",
+        "Spyro.Character",
+        "Spyro.Game",
+        "Spyro.HasDarkPast",
+        "Spyro.IsPG",
+        "Spyro.Character.exists",
+        "Spyro.Game.exists",
+        "Spyro.cynder_dark_past.holds",
+        "Spyro.new_spyro_pg.holds"
+      ],
+      "usesSorry": false,
+      "refs": [
+        {
+          "name": "Spyro.d0",
+          "module": "Model.Spyro.Main",
+          "range": {
+            "start": {
+              "line": 76,
+              "character": 19
+            },
+            "end": {
+              "line": 76,
+              "character": 21
+            }
+          }
+        },
+        {
+          "name": "Spyro.cynder_dark_past.holds",
+          "module": "Model.Spyro.Main",
+          "range": {
+            "start": {
+              "line": 76,
+              "character": 26
+            },
+            "end": {
+              "line": 76,
+              "character": 48
+            }
+          }
+        },
+        {
+          "name": "Spyro.new_spyro_pg.holds",
+          "module": "Model.Spyro.Main",
+          "range": {
+            "start": {
+              "line": 76,
+              "character": 50
+            },
+            "end": {
+              "line": 76,
+              "character": 68
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.g2",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 77,
+          "character": 0
+        },
+        "end": {
+          "line": 78,
+          "character": 32
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 78,
+          "character": 7
+        },
+        "end": {
+          "line": 78,
+          "character": 9
+        }
+      },
+      "kind": "def",
+      "attributes": [
+        "reducible"
+      ],
+      "type": "Prop",
+      "typeSort": "Type",
+      "value": "Spyro.new_spyro_pg",
+      "axioms": [
+        "Classical.choice",
+        "Spyro.Game",
+        "Spyro.IsPG",
+        "Spyro.Game.exists"
+      ],
+      "usesSorry": false,
+      "docstring": "The new Spyro game is PG, by way of d0",
+      "refs": [
+        {
+          "name": "Spyro.new_spyro_pg",
+          "module": "Model.Spyro.Main",
+          "range": {
+            "start": {
+              "line": 78,
+              "character": 20
+            },
+            "end": {
+              "line": 78,
+              "character": 32
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.g2.holds",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 79,
+          "character": 0
+        },
+        "end": {
+          "line": 79,
+          "character": 35
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 79,
+          "character": 8
+        },
+        "end": {
+          "line": 79,
+          "character": 16
+        }
+      },
+      "kind": "theorem",
+      "type": "Spyro.g2",
+      "typeSort": "Prop",
+      "axioms": [
+        "Classical.choice",
+        "Spyro.Character",
+        "Spyro.Game",
+        "Spyro.HasDarkPast",
+        "Spyro.IsPG",
+        "Spyro.Character.exists",
+        "Spyro.Game.exists",
+        "Spyro.cynder_dark_past.holds",
+        "Spyro.new_spyro_pg.holds"
+      ],
+      "usesSorry": false,
+      "refs": [
+        {
+          "name": "Spyro.g2",
+          "module": "Model.Spyro.Main",
+          "range": {
+            "start": {
+              "line": 79,
+              "character": 19
+            },
+            "end": {
+              "line": 79,
+              "character": 21
+            }
+          }
+        },
+        {
+          "name": "Spyro.d0.holds",
+          "module": "Model.Spyro.Main",
+          "range": {
+            "start": {
+              "line": 79,
+              "character": 25
+            },
+            "end": {
+              "line": 79,
+              "character": 33
+            }
+          }
+        },
+        {
+          "name": "And.right",
+          "module": "Init.Prelude",
+          "range": {
+            "start": {
+              "line": 79,
+              "character": 34
+            },
+            "end": {
+              "line": 79,
+              "character": 35
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.helper_lemma",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 81,
+          "character": 0
+        },
+        "end": {
+          "line": 82,
+          "character": 67
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 82,
+          "character": 8
+        },
+        "end": {
+          "line": 82,
+          "character": 20
+        }
+      },
+      "kind": "theorem",
+      "type": "Spyro.HasDarkPast Spyro.cynder",
+      "typeSort": "Prop",
+      "axioms": [
+        "Classical.choice",
+        "Spyro.Character",
+        "Spyro.HasDarkPast",
+        "Spyro.Character.exists",
+        "Spyro.cynder_dark_past.holds"
+      ],
+      "usesSorry": false,
+      "docstring": "An untracked lemma",
+      "refs": [
+        {
+          "name": "Spyro.HasDarkPast",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 82,
+              "character": 23
+            },
+            "end": {
+              "line": 82,
+              "character": 34
+            }
+          }
+        },
+        {
+          "name": "Spyro.cynder",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 82,
+              "character": 35
+            },
+            "end": {
+              "line": 82,
+              "character": 41
+            }
+          }
+        },
+        {
+          "name": "Spyro.cynder_dark_past.holds",
+          "module": "Model.Spyro.Main",
+          "range": {
+            "start": {
+              "line": 82,
+              "character": 45
+            },
+            "end": {
+              "line": 82,
+              "character": 67
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.g3",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 83,
+          "character": 0
+        },
+        "end": {
+          "line": 83,
+          "character": 38
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 83,
+          "character": 7
+        },
+        "end": {
+          "line": 83,
+          "character": 9
+        }
+      },
+      "kind": "def",
+      "attributes": [
+        "reducible"
+      ],
+      "type": "Prop",
+      "typeSort": "Type",
+      "value": "Spyro.HasDarkPast Spyro.cynder",
+      "axioms": [
+        "Classical.choice",
+        "Spyro.Character",
+        "Spyro.HasDarkPast",
+        "Spyro.Character.exists"
+      ],
+      "usesSorry": false,
+      "refs": [
+        {
+          "name": "Spyro.HasDarkPast",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 83,
+              "character": 20
+            },
+            "end": {
+              "line": 83,
+              "character": 31
+            }
+          }
+        },
+        {
+          "name": "Spyro.cynder",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 83,
+              "character": 32
+            },
+            "end": {
+              "line": 83,
+              "character": 38
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.g3.holds",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 84,
+          "character": 0
+        },
+        "end": {
+          "line": 84,
+          "character": 37
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 84,
+          "character": 8
+        },
+        "end": {
+          "line": 84,
+          "character": 16
+        }
+      },
+      "kind": "theorem",
+      "type": "Spyro.g3",
+      "typeSort": "Prop",
+      "axioms": [
+        "Classical.choice",
+        "Spyro.Character",
+        "Spyro.HasDarkPast",
+        "Spyro.Character.exists",
+        "Spyro.cynder_dark_past.holds"
+      ],
+      "usesSorry": false,
+      "refs": [
+        {
+          "name": "Spyro.g3",
+          "module": "Model.Spyro.Main",
+          "range": {
+            "start": {
+              "line": 84,
+              "character": 19
+            },
+            "end": {
+              "line": 84,
+              "character": 21
+            }
+          }
+        },
+        {
+          "name": "Spyro.helper_lemma",
+          "module": "Model.Spyro.Main",
+          "range": {
+            "start": {
+              "line": 84,
+              "character": 25
+            },
+            "end": {
+              "line": 84,
+              "character": 37
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.withSorry",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 86,
+          "character": 0
+        },
+        "end": {
+          "line": 86,
+          "character": 57
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 86,
+          "character": 8
+        },
+        "end": {
+          "line": 86,
+          "character": 17
+        }
+      },
+      "kind": "theorem",
+      "type": "Spyro.GoodAddition Spyro.cynder Spyro.newSpyro",
+      "typeSort": "Prop",
+      "axioms": [
+        "sorryAx",
+        "Classical.choice",
+        "Spyro.Character",
+        "Spyro.Game",
+        "Spyro.GoodAddition",
+        "Spyro.Character.exists",
+        "Spyro.Game.exists"
+      ],
+      "usesSorry": true,
+      "refs": [
+        {
+          "name": "Spyro.GoodAddition",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 86,
+              "character": 20
+            },
+            "end": {
+              "line": 86,
+              "character": 32
+            }
+          }
+        },
+        {
+          "name": "Spyro.cynder",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 86,
+              "character": 33
+            },
+            "end": {
+              "line": 86,
+              "character": 39
+            }
+          }
+        },
+        {
+          "name": "Spyro.newSpyro",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 86,
+              "character": 40
+            },
+            "end": {
+              "line": 86,
+              "character": 48
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.hidden",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 88,
+          "character": 0
+        },
+        "end": {
+          "line": 89,
+          "character": 45
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 89,
+          "character": 6
+        },
+        "end": {
+          "line": 89,
+          "character": 12
+        }
+      },
+      "kind": "axiom",
+      "type": "∀ (c : Spyro.Character), Spyro.HasDarkPast c",
+      "typeSort": "Prop",
+      "axioms": [
+        "Spyro.Character",
+        "Spyro.HasDarkPast",
+        "Spyro.hidden"
+      ],
+      "usesSorry": false,
+      "docstring": "A hidden assumption",
+      "refs": [
+        {
+          "name": "Spyro.Character",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 89,
+              "character": 21
+            },
+            "end": {
+              "line": 89,
+              "character": 30
+            }
+          }
+        },
+        {
+          "name": "Spyro.HasDarkPast",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 89,
+              "character": 32
+            },
+            "end": {
+              "line": 89,
+              "character": 43
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.c2",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 90,
+          "character": 0
+        },
+        "end": {
+          "line": 90,
+          "character": 20
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 90,
+          "character": 6
+        },
+        "end": {
+          "line": 90,
+          "character": 8
+        }
+      },
+      "kind": "axiom",
+      "type": "Spyro.Character",
+      "typeSort": "Type",
+      "axioms": [
+        "Spyro.Character",
+        "Spyro.c2"
+      ],
+      "usesSorry": false,
+      "refs": [
+        {
+          "name": "Spyro.Character",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 90,
+              "character": 11
+            },
+            "end": {
+              "line": 90,
+              "character": 20
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.P0",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 91,
+          "character": 0
+        },
+        "end": {
+          "line": 91,
+          "character": 15
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 91,
+          "character": 6
+        },
+        "end": {
+          "line": 91,
+          "character": 8
+        }
+      },
+      "kind": "axiom",
+      "type": "Prop",
+      "typeSort": "Type",
+      "axioms": [
+        "Spyro.P0"
+      ],
+      "usesSorry": false,
+      "refs": []
+    },
+    {
+      "name": "Spyro.f",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 92,
+          "character": 0
+        },
+        "end": {
+          "line": 92,
+          "character": 26
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 92,
+          "character": 6
+        },
+        "end": {
+          "line": 92,
+          "character": 7
+        }
+      },
+      "kind": "axiom",
+      "type": "Spyro.Character → Spyro.Game",
+      "typeSort": "Type",
+      "axioms": [
+        "Spyro.Character",
+        "Spyro.Game",
+        "Spyro.f"
+      ],
+      "usesSorry": false,
+      "refs": [
+        {
+          "name": "Spyro.Character",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 92,
+              "character": 10
+            },
+            "end": {
+              "line": 92,
+              "character": 19
+            }
+          }
+        },
+        {
+          "name": "Spyro.Game",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 92,
+              "character": 22
+            },
+            "end": {
+              "line": 92,
+              "character": 26
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.darkAndPG",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 94,
+          "character": 0
+        },
+        "end": {
+          "line": 95,
+          "character": 73
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 95,
+          "character": 4
+        },
+        "end": {
+          "line": 95,
+          "character": 13
+        }
+      },
+      "kind": "def",
+      "type": "Spyro.Character → Spyro.Game → Prop",
+      "typeSort": "Type",
+      "value": "fun c g => Spyro.HasDarkPast c ∧ Spyro.IsPG g",
+      "axioms": [
+        "Spyro.Character",
+        "Spyro.Game",
+        "Spyro.HasDarkPast",
+        "Spyro.IsPG"
+      ],
+      "usesSorry": false,
+      "docstring": "dark past and PG",
+      "refs": [
+        {
+          "name": "Spyro.Character",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 95,
+              "character": 19
+            },
+            "end": {
+              "line": 95,
+              "character": 28
+            }
+          }
+        },
+        {
+          "name": "Spyro.Game",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 95,
+              "character": 35
+            },
+            "end": {
+              "line": 95,
+              "character": 39
+            }
+          }
+        },
+        {
+          "name": "Spyro.HasDarkPast",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 95,
+              "character": 51
+            },
+            "end": {
+              "line": 95,
+              "character": 62
+            }
+          }
+        },
+        {
+          "name": "Spyro.IsPG",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 95,
+              "character": 67
+            },
+            "end": {
+              "line": 95,
+              "character": 71
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.uses_def",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 96,
+          "character": 0
+        },
+        "end": {
+          "line": 96,
+          "character": 51
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 96,
+          "character": 7
+        },
+        "end": {
+          "line": 96,
+          "character": 15
+        }
+      },
+      "kind": "def",
+      "attributes": [
+        "reducible"
+      ],
+      "type": "Prop",
+      "typeSort": "Type",
+      "value": "Spyro.darkAndPG Spyro.cynder Spyro.newSpyro",
+      "axioms": [
+        "Classical.choice",
+        "Spyro.Character",
+        "Spyro.Game",
+        "Spyro.HasDarkPast",
+        "Spyro.IsPG",
+        "Spyro.Character.exists",
+        "Spyro.Game.exists"
+      ],
+      "usesSorry": false,
+      "refs": [
+        {
+          "name": "Spyro.darkAndPG",
+          "module": "Model.Spyro.Main",
+          "range": {
+            "start": {
+              "line": 96,
+              "character": 26
+            },
+            "end": {
+              "line": 96,
+              "character": 35
+            }
+          }
+        },
+        {
+          "name": "Spyro.cynder",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 96,
+              "character": 36
+            },
+            "end": {
+              "line": 96,
+              "character": 42
+            }
+          }
+        },
+        {
+          "name": "Spyro.newSpyro",
+          "module": "Model.Spyro.Vocabulary",
+          "range": {
+            "start": {
+              "line": 96,
+              "character": 43
+            },
+            "end": {
+              "line": 96,
+              "character": 51
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spyro.Rec",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 98,
+          "character": 0
+        },
+        "end": {
+          "line": 101,
+          "character": 13
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 99,
+          "character": 10
+        },
+        "end": {
+          "line": 99,
+          "character": 13
+        }
+      },
+      "kind": "structure",
+      "type": "Type",
+      "typeSort": "Type 1",
+      "axioms": [],
+      "usesSorry": false,
+      "docstring": "A record with one field",
+      "refs": []
+    },
+    {
+      "name": "Spyro.Rec.past",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 100,
+          "character": 2
+        },
+        "end": {
+          "line": 101,
+          "character": 6
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 101,
+          "character": 2
+        },
+        "end": {
+          "line": 101,
+          "character": 6
+        }
+      },
+      "kind": "def",
+      "attributes": [
+        "reducible"
+      ],
+      "type": "Spyro.Rec → Prop",
+      "typeSort": "Type",
+      "value": "fun self => self.1",
+      "axioms": [],
+      "usesSorry": false,
+      "docstring": "the past",
+      "refs": [],
+      "parent": "Spyro.Rec"
+    },
+    {
+      "name": "Spyro.instInhabitedRec",
+      "module": "Model.Spyro.Main",
+      "file": "Model/Spyro/Main.lean",
+      "range": {
+        "start": {
+          "line": 103,
+          "character": 0
+        },
+        "end": {
+          "line": 104,
+          "character": 53
+        }
+      },
+      "selectionRange": {
+        "start": {
+          "line": 104,
+          "character": 9
+        },
+        "end": {
+          "line": 104,
+          "character": 25
+        }
+      },
+      "kind": "instance",
+      "attributes": [
+        "instance_reducible"
+      ],
+      "type": "Inhabited Spyro.Rec",
+      "typeSort": "Type",
+      "value": "{ default := { past := True } }",
+      "axioms": [],
+      "usesSorry": false,
+      "docstring": "A data instance",
+      "refs": [
+        {
+          "name": "Inhabited",
+          "module": "Init.Prelude",
+          "range": {
+            "start": {
+              "line": 104,
+              "character": 28
+            },
+            "end": {
+              "line": 104,
+              "character": 37
+            }
+          }
+        },
+        {
+          "name": "Spyro.Rec",
+          "module": "Model.Spyro.Main",
+          "range": {
+            "start": {
+              "line": 104,
+              "character": 38
+            },
+            "end": {
+              "line": 104,
+              "character": 41
+            }
+          }
+        },
+        {
+          "name": "True",
+          "module": "Init.Prelude",
+          "range": {
+            "start": {
+              "line": 104,
+              "character": 47
+            },
+            "end": {
+              "line": 104,
+              "character": 51
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

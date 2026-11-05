@@ -1,0 +1,11 @@
+✔ [2/5] Built Model.Spyro.Vocabulary (276ms)
+✖ [3/5] Building Model.Spyro.Main (268ms)
+trace: .> LEAN_PATH=/work/model/.lake/build/lib/lean /home/user/.elan/toolchains/leanprover--lean4---v4.35.0/bin/lean /work/model/Model/Spyro/Main.lean -o /work/model/.lake/build/lib/lean/Model/Spyro/Main.olean -i /work/model/.lake/build/lib/lean/Model/Spyro/Main.ilean -c /work/model/.lake/build/ir/Model/Spyro/Main.c --setup /work/model/.lake/build/ir/Model/Spyro/Main.setup.json --json
+error: Model/Spyro/Main.lean:58:51: Type mismatch
+  cynder_dark_past.holds
+has type
+  cynder_dark_past
+but is expected to have type
+  cynder_not_good
+Some required targets logged failures:
+- Model.Spyro.Main

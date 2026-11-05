@@ -1,0 +1,38 @@
+import Lean
+open Lean Meta
+
+def ciKind : ConstantInfo → String
+  | .axiomInfo _ => "axiom" | .defnInfo _ => "def" | .thmInfo _ => "theorem"
+  | .opaqueInfo _ => "opaque" | .quotInfo _ => "quot" | .inductInfo _ => "inductive"
+  | .ctorInfo _ => "ctor" | .recInfo _ => "recursor"
+
+/-- Usage: facts <RootModule>  (run via `lake exe facts Big` so LEAN_PATH includes the build dir) -/
+def main (args : List String) : IO UInt32 := do
+  let root := (args.headD "Big").toName
+  initSearchPath (← findSysroot)
+  let t0 ← IO.monoMsNow
+  let env ← importModules #[{ module := root }] {} (loadExts := false)
+  let t1 ← IO.monoMsNow
+  -- iterate only constants of modules under `root` (avoid scanning the whole environment)
+  let mut names : Array Name := #[]
+  for h : i in [0:env.header.moduleNames.size] do
+    let m := env.header.moduleNames[i]
+    if m.getRoot == root then
+      names := names ++ env.header.moduleData[i]!.constNames
+  let act : MetaM (Array Json) := names.filterMapM fun n => do
+    let userName := (privateToUserName? n).getD n
+    if userName.isInternalDetail then return none
+    let env ← getEnv
+    if isAuxRecursor env n || isNoConfusion env n then return none
+    let ci ← getConstInfo n
+    let axs ← collectAxioms n
+    let ranges? ← findDeclarationRanges? n
+    return some <| Json.mkObj [("name", toString userName), ("leanKind", ciKind ci),
+      ("isProp", ← isProp ci.type), ("axioms", toJson (axs.map toString)),
+      ("usesSorry", axs.contains ``sorryAx),
+      ("line", match ranges? with | some r => toJson r.range.pos.line | none => Json.null)]
+  let (decls, _, _) ← act.toIO { fileName := "<facts>", fileMap := default } { env := env }
+  let t2 ← IO.monoMsNow
+  IO.println (Json.mkObj [("decls", Json.arr decls)]).compress
+  IO.eprintln s!"import: {t1-t0} ms, analyse+{decls.size} decls: {t2-t1} ms"
+  return 0

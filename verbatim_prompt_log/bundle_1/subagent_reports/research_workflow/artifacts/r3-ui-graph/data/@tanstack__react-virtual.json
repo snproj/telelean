@@ -1,0 +1,49 @@
+{
+ "name": "@tanstack/react-virtual",
+ "latest": "3.14.24",
+ "dist_tags": {
+  "alpha": "3.0.0-alpha.2",
+  "beta": "3.0.0-beta.68",
+  "latest": "3.14.24"
+ },
+ "latest_published": "2026-10-29T10:55:29.470Z",
+ "modified": "2026-10-29T10:55:29.948Z",
+ "created": "2022-02-07T15:02:24.630Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 63728,
+ "fileCount": 9,
+ "tarball": "https://registry.npmjs.org/@tanstack/react-virtual/-/react-virtual-3.14.24.tgz",
+ "dependencies": {
+  "@tanstack/virtual-core": "3.19.9"
+ },
+ "peerDependencies": {
+  "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0",
+  "react-dom": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0"
+ },
+ "repository": "git+https://github.com/TanStack/virtual.git",
+ "recent_versions": [
+  [
+   "3.14.20",
+   "2026-10-15T13:54:14.594Z"
+  ],
+  [
+   "3.14.21",
+   "2026-10-16T11:19:18.479Z"
+  ],
+  [
+   "3.14.22",
+   "2026-10-22T12:04:59.206Z"
+  ],
+  [
+   "3.14.23",
+   "2026-10-26T12:52:22.725Z"
+  ],
+  [
+   "3.14.24",
+   "2026-10-29T10:55:29.470Z"
+  ]
+ ],
+ "homepage": "https://tanstack.com/virtual",
+ "description": "Headless UI for virtualizing scrollable elements in React"
+}

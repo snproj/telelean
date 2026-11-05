@@ -1,0 +1,9 @@
+/-! Deterministic finite countermodel for the walkthrough (r5's formalisation), checked by `decide` (kernel) -/
+theorem independence_fin :
+    ∃ (Character Game : Type) (cynder : Character) (newSpyro : Game)
+      (HasDarkPast : Character → Prop) (IsPG : Game → Prop)
+      (AppearsIn GoodAdditionTo : Character → Game → Prop),
+      HasDarkPast cynder ∧ IsPG newSpyro ∧
+      (∀ g c, IsPG g → HasDarkPast c → ¬ AppearsIn c g) ∧ ¬¬ GoodAdditionTo cynder newSpyro :=
+  ⟨Fin 2, Fin 2, 0, 0, fun c => c = 0, fun g => g = 0, fun _ _ => False, fun _ _ => True, by decide⟩
+#print axioms independence_fin

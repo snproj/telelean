@@ -1,0 +1,27 @@
+import Lean
+open Lean Elab Meta
+/-- Elaborate a source file in-process (works even if it has errors) and list its declarations. -/
+unsafe def main (args : List String) : IO UInt32 := do
+  let file := args[0]!
+  let input ← IO.FS.readFile file
+  initSearchPath (← findSysroot)
+  enableInitializersExecution
+  let t0 ← IO.monoMsNow
+  let inputCtx := Parser.mkInputContext input file
+  let (header, parserState, messages) ← Parser.parseHeader inputCtx
+  let (env, messages) ← processHeader header {} messages inputCtx
+  let s ← IO.processCommands inputCtx parserState (Command.mkState env messages {})
+  let env := s.commandState.env
+  let t1 ← IO.monoMsNow
+  let ctx : Core.Context := { fileName := file, fileMap := inputCtx.fileMap }
+  let (_, _) ← (do
+      for (n, ci) in env.constants.map₂.toList do
+        if n.isInternalDetail then continue
+        let axs ← collectAxioms n
+        let syn := (ci.value? (allowOpaque := true)).any (·.hasSyntheticSorry)
+        IO.println s!"{n}: sorryAx={axs.contains ``sorryAx} syntheticSorry={syn} type={← Meta.MetaM.run' (ppExpr ci.type)}"
+      : CoreM Unit).toIO ctx { env }
+  for m in s.commandState.messages.toList do
+    IO.println s!"MSG {m.severity} {m.pos.line}:{m.pos.column} {(← m.data.toString).take 80}"
+  IO.println s!"elaboration of {file}: {t1 - t0} ms"
+  return 0

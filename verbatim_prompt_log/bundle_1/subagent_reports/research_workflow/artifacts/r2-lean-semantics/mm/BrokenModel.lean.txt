@@ -1,0 +1,7 @@
+import MentalModel.Assumptions
+namespace MM
+theorem before_error : IsPG newSpyro := spyro_pg
+theorem broken : ¬ GoodAddition Cynder newSpyro := pg_no_dark _ _ cynder_dark spyro_pg
+theorem after_error : HasDarkPast Cynder := cynder_dark
+theorem refs_broken : ¬ GoodAddition Cynder newSpyro := broken
+end MM

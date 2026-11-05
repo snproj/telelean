@@ -1,0 +1,368 @@
+{
+  "mode": "live",
+  "binary": {
+    "path": "/home/zhengyew/.vscode/extensions/anthropic.claude-code-2.1.314-linux-x64/resources/native-binary/claude",
+    "source": "vscode-extension",
+    "version": "2.1.314"
+  },
+  "model": "claude-haiku-5-5",
+  "workDir": "/tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn2/smoke-live",
+  "startedAt": "2026-11-01T00:21:33.079Z",
+  "scenarios": {
+    "a": {
+      "pass": true,
+      "failedChecks": [],
+      "wallMs": 80901,
+      "checks": {
+        "subscriptionAuthBeforePrompt": true,
+        "guardListedBeforePrompt": true,
+        "initReportsNoApiKey": true,
+        "teleleanToolsLoaded": true,
+        "noShellTool": true,
+        "askUserCalled": true,
+        "waitedForAnswer": true,
+        "answerReachedBlockedCall": true,
+        "askResultAfterAnswer": true,
+        "finishCalledWithAnswer": true,
+        "resultSuccess": true,
+        "noTimeout": true
+      },
+      "init": {
+        "sessionId": "5f34b8c6-323e-47ad-8c1f-8f3904d03dfc",
+        "model": "claude-haiku-5-5",
+        "apiKeySource": "none",
+        "version": "2.1.314",
+        "permissionMode": "dontAsk",
+        "mcpServers": [
+          {
+            "name": "telelean",
+            "status": "connected"
+          }
+        ],
+        "tools": [
+          "Edit",
+          "Glob",
+          "Grep",
+          "Read",
+          "Write",
+          "mcp__telelean__ask_user",
+          "mcp__telelean__check_lean",
+          "mcp__telelean__finish",
+          "mcp__telelean__freeze_statements",
+          "mcp__telelean__propose_assumption"
+        ],
+        "capabilities": [
+          "interrupt_receipt_v1",
+          "interrupt_cancel_queued_v1",
+          "interrupt_send_now_v1",
+          "interrupt_requeue_taken_v1",
+          "msg_lifecycle_v1",
+          "request_marker_lists_v1",
+          "ask_user_question_unanswered_v1",
+          "lifecycle_wakeup_source_v1",
+          "sdk_mcp_tools_list_changed",
+          "sdk_mcp_manifests",
+          "mcp_read_resource_v1",
+          "mcp_tool_ui_meta_v1",
+          "ui_surface_v1",
+          "mcp_call_result_not_for_model_v1"
+        ]
+      },
+      "auth": {
+        "verdict": "subscription",
+        "apiProvider": "firstParty",
+        "subscriptionType": "Claude Ultra",
+        "hasEmail": true,
+        "cliVersion": "2.1.314",
+        "guardSelfTestOk": true,
+        "hooksOk": true
+      },
+      "waitMs": 75001,
+      "toolProgressHeartbeats": 2,
+      "toolCalls": [
+        "ask_user",
+        "finish"
+      ],
+      "apiRequests": 3,
+      "tokensFromAssistantMessages": {
+        "inputTokens": 6,
+        "outputTokens": 53,
+        "cacheCreationInputTokens": 6367,
+        "cacheReadInputTokens": 12137
+      },
+      "tokensFromResults": {
+        "inputTokens": 6,
+        "outputTokens": 244,
+        "cacheCreationInputTokens": 6367,
+        "cacheReadInputTokens": 12137
+      },
+      "costEstimateUsdFromResults": 0.001517,
+      "modelUsage": {
+        "claude-haiku-5-5": {
+          "inputTokens": 6,
+          "outputTokens": 244,
+          "cacheReadInputTokens": 12137,
+          "cacheCreationInputTokens": 6367,
+          "costEstimateUsd": 0.00151737
+        }
+      }
+    },
+    "b": {
+      "pass": true,
+      "failedChecks": [],
+      "wallMs": 6276,
+      "checks": {
+        "guardSelfTestPassed": true,
+        "guardListedBeforePrompt": true,
+        "modelFileAllowedByGuard": true,
+        "etcHostnameDeniedByGuard": true,
+        "secondOutsideFileDeniedByGuard": true,
+        "rootGrepDeniedByGuard": true,
+        "rootGlobDeniedByGuard": true,
+        "modelFileContentReturned": true,
+        "deniedReadsReturnedErrors": true,
+        "deniedSearchesReturnedErrors": true,
+        "hostnameNotLeaked": true,
+        "canaryNotLeaked": true,
+        "hiddenCanaryNotLeaked": true,
+        "hiddenFileNotListed": true,
+        "finishCalled": true,
+        "noTimeout": true
+      },
+      "cliFences": false,
+      "outsideTargets": [
+        "/etc/hostname",
+        "/tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn2/smoke-live/outside/canary.txt"
+      ],
+      "hiddenCanary": ".telelean/smoke-pkqz7llf.json",
+      "guardDecisions": [
+        {
+          "tool": "Read",
+          "decision": "pass",
+          "paths": [
+            "/tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn2/smoke-live/ws-b/Model.lean"
+          ],
+          "reason": "inside the workspace copy"
+        },
+        {
+          "tool": "Read",
+          "decision": "deny",
+          "paths": [],
+          "reason": "telelean confinement: Read \"file_path\" '/etc/hostname' resolves outside the workspace copy (to /etc/hostname)"
+        },
+        {
+          "tool": "Read",
+          "decision": "deny",
+          "paths": [],
+          "reason": "telelean confinement: Read \"file_path\" '/tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn2/smoke-live/outside/canary.txt' resolves outside the workspace copy (to /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn2/smoke-live/outside/canary.txt)"
+        },
+        {
+          "tool": "Grep",
+          "decision": "deny",
+          "paths": [
+            "/tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn2/smoke-live/ws-b"
+          ],
+          "pattern": "telelean-hidden-canary-x8olhfys",
+          "reason": "telelean confinement: Grep would search '.', which contains the hidden entry '.telelean'. Grep also searches hidden files, so it may only search folders without hidden entries; give a \"path\" to a folder without hidden entries, such as 'Check' or 'Model'"
+        },
+        {
+          "tool": "Glob",
+          "decision": "deny",
+          "paths": [
+            "/tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn2/smoke-live/ws-b"
+          ],
+          "pattern": "**/*",
+          "reason": "telelean confinement: Glob would search '.', which contains the hidden entry '.telelean'. Glob also searches hidden files, so it may only search folders without hidden entries; give a \"path\" to a folder without hidden entries, such as 'Check' or 'Model'"
+        },
+        {
+          "tool": "mcp__telelean__finish",
+          "decision": "pass",
+          "paths": [],
+          "reason": "telelean tool (mcp__telelean__*)"
+        }
+      ],
+      "permissionDenials": [
+        {
+          "toolName": "Read",
+          "toolUseId": "toolu_01YAnRazPyNpctRPmh6EaZLc"
+        },
+        {
+          "toolName": "Read",
+          "toolUseId": "toolu_016rBmTVFz7G7T47eYohD1YQ"
+        },
+        {
+          "toolName": "Grep",
+          "toolUseId": "toolu_0183J6Pqe7mVXRAHPjEMYKHm"
+        },
+        {
+          "toolName": "Glob",
+          "toolUseId": "toolu_018T6Yh1SJ99gKzQSBoE2nsq"
+        }
+      ],
+      "hookEvents": 12,
+      "finishSummary": "(1) Read Model.lean in ws-b: succeeded (content: \"import Model.Spyro.Main\"). (2) Read /etc/hostname: refused by the telelean confinement hook (outside workspace). (3) Read outside/canary.txt: refused by the confinement hook (outside workspace). (4) Grep for \"telelean-hidden-canary-x8olhfys\" with no path: refused by the confinement hook (would search '.', which contains the hidden '.telelean' entry). (5) Glob \"**/*\" with no path: refused by the same hidden-entry confinement check.",
+      "endTurnMetaHonored": true,
+      "apiRequests": 2,
+      "tokensFromAssistantMessages": {
+        "inputTokens": 4,
+        "outputTokens": 21,
+        "cacheCreationInputTokens": 2266,
+        "cacheReadInputTokens": 11220
+      },
+      "tokensFromResults": {
+        "inputTokens": 4,
+        "outputTokens": 754,
+        "cacheCreationInputTokens": 2266,
+        "cacheReadInputTokens": 11220
+      },
+      "costEstimateUsdFromResults": 0.000943,
+      "modelUsage": {
+        "claude-haiku-5-5": {
+          "inputTokens": 4,
+          "outputTokens": 754,
+          "cacheReadInputTokens": 11220,
+          "cacheCreationInputTokens": 2266,
+          "costEstimateUsd": 0.0009428
+        }
+      }
+    },
+    "c": {
+      "pass": true,
+      "failedChecks": [],
+      "wallMs": 8635,
+      "checks": {
+        "askUserBeforeReload": true,
+        "firstCliEnded": true,
+        "questionOrphanedByReload": true,
+        "resumedWithResumeFlag": true,
+        "resumedSameSessionId": true,
+        "finishCalledWithAnswer": true,
+        "resultSuccess": true,
+        "noTimeout": true
+      },
+      "sessionId": "19bc8ad1-3e17-4bcb-b129-a922bde6f832",
+      "firstExit": {
+        "code": 143,
+        "signal": null
+      },
+      "reaskedAfterResume": false,
+      "initBeforeReload": {
+        "sessionId": "19bc8ad1-3e17-4bcb-b129-a922bde6f832",
+        "model": "claude-haiku-5-5",
+        "apiKeySource": "none",
+        "version": "2.1.314",
+        "permissionMode": "dontAsk",
+        "mcpServers": [
+          {
+            "name": "telelean",
+            "status": "connected"
+          }
+        ],
+        "tools": [
+          "Edit",
+          "Glob",
+          "Grep",
+          "Read",
+          "Write",
+          "mcp__telelean__ask_user",
+          "mcp__telelean__check_lean",
+          "mcp__telelean__finish",
+          "mcp__telelean__freeze_statements",
+          "mcp__telelean__propose_assumption"
+        ],
+        "capabilities": [
+          "interrupt_receipt_v1",
+          "interrupt_cancel_queued_v1",
+          "interrupt_send_now_v1",
+          "interrupt_requeue_taken_v1",
+          "msg_lifecycle_v1",
+          "request_marker_lists_v1",
+          "ask_user_question_unanswered_v1",
+          "lifecycle_wakeup_source_v1",
+          "sdk_mcp_tools_list_changed",
+          "sdk_mcp_manifests",
+          "mcp_read_resource_v1",
+          "mcp_tool_ui_meta_v1",
+          "ui_surface_v1",
+          "mcp_call_result_not_for_model_v1"
+        ]
+      },
+      "initAfterReload": {
+        "sessionId": "19bc8ad1-3e17-4bcb-b129-a922bde6f832",
+        "model": "claude-haiku-5-5",
+        "apiKeySource": "none",
+        "version": "2.1.314",
+        "permissionMode": "dontAsk",
+        "mcpServers": [
+          {
+            "name": "telelean",
+            "status": "connected"
+          }
+        ],
+        "tools": [
+          "Edit",
+          "Glob",
+          "Grep",
+          "Read",
+          "Write",
+          "mcp__telelean__ask_user",
+          "mcp__telelean__check_lean",
+          "mcp__telelean__finish",
+          "mcp__telelean__freeze_statements",
+          "mcp__telelean__propose_assumption"
+        ],
+        "capabilities": [
+          "interrupt_receipt_v1",
+          "interrupt_cancel_queued_v1",
+          "interrupt_send_now_v1",
+          "interrupt_requeue_taken_v1",
+          "msg_lifecycle_v1",
+          "request_marker_lists_v1",
+          "ask_user_question_unanswered_v1",
+          "lifecycle_wakeup_source_v1",
+          "sdk_mcp_tools_list_changed",
+          "sdk_mcp_manifests",
+          "mcp_read_resource_v1",
+          "mcp_tool_ui_meta_v1",
+          "ui_surface_v1",
+          "mcp_call_result_not_for_model_v1"
+        ]
+      },
+      "resumeTurn": "The session was interrupted while your ask_user call was waiting. Here are the answers to it:\nThe user answered:\n1. Which colour should the report use?\n   -> option 1: Blue [scope: run]\nContinue the run from where you were.",
+      "note": "Result cost estimates after --resume are cumulative for the conversation (CLI docs).",
+      "apiRequests": 3,
+      "tokensFromAssistantMessages": {
+        "inputTokens": 6,
+        "outputTokens": 52,
+        "cacheCreationInputTokens": 1388,
+        "cacheReadInputTokens": 17381
+      },
+      "tokensFromResults": {
+        "inputTokens": 4,
+        "outputTokens": 115,
+        "cacheCreationInputTokens": 547,
+        "cacheReadInputTokens": 12270
+      },
+      "costEstimateUsdFromResults": 0.000575,
+      "modelUsage": {
+        "claude-haiku-5-5": {
+          "inputTokens": 6,
+          "outputTokens": 246,
+          "cacheReadInputTokens": 17381,
+          "cacheCreationInputTokens": 1388,
+          "costEstimateUsd": 0.00057501
+        }
+      }
+    }
+  },
+  "totals": {
+    "pass": true,
+    "apiRequests": 8,
+    "inputTokens": 14,
+    "outputTokens": 1113,
+    "cacheCreationInputTokens": 9180,
+    "cacheReadInputTokens": 35627,
+    "costEstimateUsd": 0.003035,
+    "wallMs": 95814
+  }
+}

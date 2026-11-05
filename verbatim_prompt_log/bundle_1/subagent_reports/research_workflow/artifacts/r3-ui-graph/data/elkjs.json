@@ -1,0 +1,42 @@
+{
+ "name": "elkjs",
+ "latest": "0.12.1",
+ "dist_tags": {
+  "latest": "0.12.1"
+ },
+ "latest_published": "2026-10-28T12:25:32.360Z",
+ "modified": "2026-10-28T13:35:43.772Z",
+ "created": "2017-07-18T08:27:43.143Z",
+ "license": "EPL-2.0 OR GPL-3.0-or-later",
+ "deprecated": null,
+ "unpackedSize": 8230510,
+ "fileCount": 12,
+ "tarball": "https://registry.npmjs.org/elkjs/-/elkjs-0.12.1.tgz",
+ "dependencies": {},
+ "peerDependencies": {},
+ "repository": "git+https://github.com/kieler/elkjs.git",
+ "recent_versions": [
+  [
+   "0.11.0",
+   "2025-09-15T08:10:37.947Z"
+  ],
+  [
+   "0.11.1",
+   "2026-03-03T12:21:48.463Z"
+  ],
+  [
+   "0.12.0",
+   "2026-07-17T08:07:54.693Z"
+  ],
+  [
+   "0.13.0",
+   "2026-10-28T12:15:31.592Z"
+  ],
+  [
+   "0.12.1",
+   "2026-10-28T12:25:32.360Z"
+  ]
+ ],
+ "homepage": "https://github.com/kieler/elkjs#readme",
+ "description": "Automatic graph layout based on Sugiyama's algorithm. Specialized for data flow diagrams and ports."
+}

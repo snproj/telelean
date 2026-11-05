@@ -1,0 +1,77 @@
+{
+ "verdict": "pass",
+ "reran_tests": "Starting state: known-projects had 36 lines, there were no telelean-* scopes, and MemAvailable was about 34 GB. Each run went through my wrapper /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn2/verify-runlean/run_tests.sh, which watches RAM and sets TELELEAN_TEST_TMP=<scratch>/vitest-tmp.\n\n(1) `cd /home/zhengyew/telelean && npx tsc -p packages/runner/tsconfig.json --noEmit` gave `tsc exit=0`. `--listFiles` confirms that all 9 src/lean files were checked. With my own scratch tsconfig covering src/lean and test/lean: `tsc(tests) exit=0`.\n\n(2) `cd packages/runner && npx vitest run test/lean --reporter=verbose --silent=false`, run 1 tail:\n```\n Test Files  4 passed (4)\n      Tests  43 passed (43)\n   Duration  22.63s (tests 99%, import 1%)\nvitest exit=0\nmin MemAvailable during run: 32527 MiB\nknown-projects after: 36\nscopes left: 0\ntmp entries left: 0\n```\nKey lines:\n- `[sandboxed lake build] status=ok 899 ms, peak 94.2 MiB`\n- `[build from a copied .lake/build] status=ok 201 ms, 24 build files copied, modules rebuilt: 0`\n- `Spyro.cynder_not_good.holds: [Classical.choice, Spyro.Character, Spyro.Game, Spyro.GoodAddition, Spyro.HasDarkPast, Spyro.IsPG, Spyro.Character.exists, Spyro.Game.exists, Spyro.cynder_dark_past.holds, Spyro.new_spyro_pg.holds, Spyro.pg_no_dark_past.holds]`\n- `[comparator honest] {\"verdict\":\"accepted\"} (ok, exit 0, 1815 ms)`\n- weakened: `definition-mismatch ... Spyro.cynder_not_good`; weakened-type: `statement-mismatch`; unselected: `illegal-axiom ... Spyro.new_spyro_pg.holds`; smuggled: `illegal-axiom ... Spyro.shortcut`\n- no-nested-dirs: `could-not-start ... bwrap: Can't mkdir /root: Read-only file system`\n- `[oom] status=oom exit=null 201 ms peak=1.1 MiB detail=memory cap 256M exceeded (cgroup oom_kill=0, systemd Result=oom-kill)`\n- `[timeout] status=timeout 2511 ms; sleeps during=2 after=0`\n- `PROBE tcp BLOCKED OSError [Errno 101] Network is unreachable`\n\nRun 2 tail:\n```\n Test Files  4 passed (4)\n      Tests  43 passed (43)\n   Duration  22.52s\nvitest exit=0\nknown-projects after: 36\nscopes left: 0\n```\nRun 2 also printed `[oom] status=oom exit=null 196 ms peak=256.0 MiB detail=... (cgroup oom_kill=1, systemd Result=oom-kill)`.",
+ "probes": [
+  {
+   "probe": "Can the sandboxed command see the real $HOME, get capabilities, reach the user manager, or inherit runLean's bwrap status fd 3 and forge a result? Ran runLean with `sh -c` doing these checks, then `printf '{\"exit-code\": 0}\\n{\"x\":' >&3; exit 7`, then `lake env sh -c 'ls -l /proc/self/fd'`.",
+   "result": "Contained; claims hold.\n- The command has only fds 0, 1 and 2. The fd 3 listed by `ls` is its own opendir of /proc/self/fd.\n- Every home entry is hidden (HIDDEN .ssh, .claude, .claude.json, .config, .vscode, .gitconfig, telelean, webring) except `VISIBLE .elan`.\n- No /sys. `CapEff: 0000000000000000`, `NoNewPrivs: 1`.\n- The environment holds only HOME, LEAN_NUM_THREADS=4, PATH=<toolchain>/bin:/usr/bin:/bin and PWD. `systemctl --user is-system-running` prints `offline`.\n- The mounts match the 03 §8.4 allowlist.\n- Forging fails: `stderr=\"/bin/sh: 1: 3: Bad file descriptor\"`, `status=failed exit=7`. A sandboxed process cannot fake its exit status.\n- A child started through `lake env` also has only fds 0–2."
+  },
+  {
+   "probe": "OOM reliability: 6 runs allocating 600 MB directly under a 256M cap; 6 runs where the memory hog is a grandchild and its parent survives the kill and exits 0; 1 control run allocating 120 MB under 256M.",
+   "result": "OOM is detected every time: tally `{\"direct\":{\"oom\":6},\"grandchild\":{\"oom\":6},\"under-cap\":{\"ok\":1}}`.\n- One grandchild run printed `exit=0 ... stdout=\"parent-survived rc=137\\n\"` and was still reported as `oom`, so a recovered parent cannot hide an OOM.\n- The control run gave `status=ok ... peak=125.5MiB`.\n- The two OOM signals do not always agree, though. In `[oom/direct 2]` the run hit the cap but was reported as `peak=1.6MiB ... cgroup oom_kill=0, systemd Result=oom-kill`, and `[oom/direct 4]` also had oom_kill=0. In those runs only systemd's Result caught the OOM."
+  },
+  {
+   "probe": "Stray processes: (a) the command exits 0 at once but leaves a `setsid sleep` daemon behind; (b) setsid'd grandchildren that ignore TERM, HUP and INT, under a 1.5 s timeout.",
+   "result": "No survivors in either case.\n- (a) `status=ok exit=0 54ms ... survivors=[]`: tearing down the PID namespace killed the daemon.\n- (b) `status=timeout exit=null 1512ms ... sleeps-during=2 survivors=[]`.\n- `scopes left: \"\"` afterwards."
+  },
+  {
+   "probe": "More ways a solution could cheat the comparator, using the real G4 flow (freezeChallenge on the formalised overlay with all assumptions selected, then runComparator). Overlays stored inert as .lean.txt in my scratch dir: a same-name assumption changed to say the goal; vocabulary axiom GoodAddition turned into `def ... := False`; proof by `sorry`; a permitted axiom re-typed as the goal; the target theorem missing; a proof with a type error.",
+   "result": "Every case was rejected, for the right reason. No false accept and no could-not-start.\n- assumption-altered: `rejected definition-mismatch [Spyro.pg_no_dark_past]` (\"Const does not match between challenge and target 'Spyro.pg_no_dark_past'\")\n- vocab-def: `rejected kind-mismatch [Spyro.GoodAddition]`\n- sorry: `rejected illegal-axiom [sorryAx]`\n- axiom-retyped: `rejected statement-mismatch [Spyro.new_spyro_pg.holds]`\n- goal-missing: `rejected missing-declaration` (leanexport PANIC \"Constant Spyro.cynder_not_good.holds not found\")\n- build-error: `rejected build-failed` (\"Model/Spyro/Main.lean:59:63: Type mismatch\")\n\nEach verdict took about 1.6–1.95 s, with a peak of about 348 MiB."
+  },
+  {
+   "probe": "Cancelling before the scope exists: (1) `const p = runLean({argv:['sleep','2.5'], signal}); ac.abort();` (2) `const p = runLean({argv:['sleep','2.5'], runId:'vprobeB'}); await cancelRun('vprobeB');`",
+   "result": "Both cancels are lost.\n- `[abort-during-preflight] status=ok exit=0 2604ms`\n- `[cancelRun-during-preflight] signalled=0 status=ok exit=0 2566ms`\n\nThe sleep ran to completion and was reported as ok, not `cancelled`."
+  },
+  {
+   "probe": "Are MemorySwapMax=0 and the cap really applied to a live scope? Read `systemctl --user show` and the cgroup files during a run with memoryMax 512M.",
+   "result": "Yes: `OOMPolicy=stop ... MemoryMax=536870912 MemorySwapMax=0 | memory.max=536870912 memory.swap.max=0`."
+  },
+  {
+   "probe": "How runLean classifies a command that bwrap cannot exec (/nonexistent/lake, and a non-executable /etc/hostname).",
+   "result": "Both come back as `status=could-not-start` (\"bwrap: execvp /nonexistent/lake: No such file or directory\" and \"...: Permission denied\"). This fits the claim that only bwrap's `exit-code` record proves the command started."
+  },
+  {
+   "probe": "Leftover check after all tests and probes.",
+   "result": "All clean: `known-projects: 36`, `telelean scopes: 0`, no stray keeper/bwrap/probe processes, the probe and vitest temp dirs are empty, and no escape file exists in the real $HOME."
+  }
+ ],
+ "issues": [
+  {
+   "severity": "major",
+   "where": "packages/runner/src/lean/runLean.ts:245-248, 353-358 (runLean); 184-195 (cancelRun)",
+   "description": "A cancel issued before the scope exists is silently lost. runLean checks `signal.aborted` only once, before `await checkSandboxSupport(...)`. The abort listener is attached later (line 358) without checking again, and `addEventListener('abort')` on a signal that is already aborted never fires. Likewise, cancelRun only signals runs that are already in `activeRuns` (added at line 354), and its `telelean-<run>-*` kill finds no unit yet. Reproduced: an abort right after the call gave `status=ok exit=0 2604ms`, and cancelRun right after the call gave `signalled=0 status=ok`. The window is narrow: the first preflight in a process (about 10–30 ms while `systemctl --user is-system-running` runs), or an abort in the same tick as the call. A cancel during a running job works. Still, this breaks the documented contract (\"the status is then `cancelled`\"), and the M2 gate loop's cancel and revert would inherit it.",
+   "suggested_fix": "After attaching the listener, add `if (options.signal?.aborted) onAbort();`, and check again right after the preflight returns. Register the run (or a per-runId cancelled set, kept for a short time) before the first await, so that a later spawn returns `cancelled` straight away. Add a test that aborts or calls cancelRun right after calling runLean."
+  },
+  {
+   "severity": "minor",
+   "where": "packages/runner/src/lean/runLean.ts:334-339, 422, 462-465; packages/runner/test/lean/sandbox.test.ts:186",
+   "description": "In OOM runs, peakMemoryBytes can be stale and the cgroup OOM signal is often missed. With OOMPolicy=stop, systemd tears the scope down (keeper included) before the final sample, so I saw `peak=1.1 MiB` and `peak=1.6 MiB` reported for runs that hit the 256 MiB cap. Across 14 OOM runs, 3 had `cgroup oom_kill=0`. The builder's claim that \"two independent signals agree\" is therefore not reliably true: in those runs detection rested on systemd's `Result=oom-kill` alone. The status was still correct every time (14/14). The test's `if (peak !== undefined) expect(peak) <= 256 MiB` accepts a stale 1.1 MiB.",
+   "suggested_fix": "When the status is oom and the final sample failed, either omit peakMemoryBytes or report the cap and mark it as a lower bound. Fix the wording in the report. If M1 uses the peak for G1 budgets, also assert in the test that the peak is near the cap or undefined."
+  },
+  {
+   "severity": "minor",
+   "where": "packages/runner/test/lean/sandbox.test.ts:65-71",
+   "description": "The claim that a build from a copied .lake/build rebuilds 0 modules is only logged, never asserted. `rebuilt` is computed and printed, and the test checks only `copiedBuild` and `status === 'ok'`. A copy that forced a full rebuild would still pass. My runs did show `modules rebuilt: 0`.",
+   "suggested_fix": "Add `expect(rebuilt).toBe(0)`."
+  },
+  {
+   "severity": "minor",
+   "where": "packages/runner/src/lean/comparator.ts:267-269",
+   "description": "classifyComparatorRun checks `/^bwrap: .*$/m` against stdout and stderr together, before it looks for the judgement messages (illegal axiom, mismatch, and so on). A solution whose build output contains a line starting with \"bwrap: \" (for example, inside a multi-line Lean message) would be reported as could-not-start instead of rejected. This is never a false accept, so integrity holds. But the gate loop would treat a bad solution as an infrastructure failure and would not re-prompt the LLM with the real error.",
+   "suggested_fix": "Treat bwrap lines as could-not-start only when they appear on stderr and before comparator reaches the 'Building' phase. Alternatively, check the judgement messages first."
+  },
+  {
+   "severity": "minor",
+   "where": "packages/runner/src/lean/comparator.ts:139-145 (freezeChallenge)",
+   "description": "freezeChallenge writes the generated `Model/TeleleanChallenge.lean`, which contains `sorry`, into the snapshot directory. If M1 freezes the agent's live shadow, the agent can see that file and it will show up in the proposal diff and in G3's no-sorry scan. The test avoids this by freezing a separate shadow.",
+   "suggested_fix": "Document that the freeze must run in a dedicated copy of the phase-A shadow, or have freezeChallenge copy the snapshot itself. Exclude the challenge path from proposals."
+  },
+  {
+   "severity": "minor",
+   "where": "packages/runner/test/lean/sandbox.test.ts:199-206, 220-221, 232-233",
+   "description": "The timeout and cancel tests sleep for a fixed 800–1200 ms and then expect an exact number of `sleep` processes. Under load, the sandbox may not have started yet, so the tests could flake. The host-crash test already polls instead.",
+   "suggested_fix": "Poll until the expected processes appear, with a deadline, before asserting."
+  }
+ ],
+ "notes": "The spike's main claims hold on this machine. I re-ran the typecheck and the full suite twice (43/43 both times, about 22.6 s), read every file in src/lean and test/lean, and ran my own probes trying to break the sandbox, the memory cap, the timeout and the comparator. Nothing escaped.\n- **Sandbox:** the mount allowlist matches 03 §8.4, with the documented changes to PATH and the keeper.\n- **Containment:** $HOME shows only .elan, there is no network, no D-Bus or user manager, no capabilities, and the status fd does not leak into the sandbox.\n- **Memory cap:** OOM was detected 14/14 times, including when the parent survives a killed child.\n- **Cleanup:** no stray processes survived timeouts, daemons or signal-ignoring grandchildren.\n- **Comparator:** G4 rejected every extra cheat I tried, each with the correct reason.\n- **Rules:** known-projects stayed at 36, and no scopes or temp files were left behind.\n- **Tests:** they are meaningful, with positive controls such as the writable .lake probe and the 120 MB control run. The one exception is the incremental-build check, which is logged but not asserted.\n\nThe one real defect is the cancellation race (marked major because the cancel contract is wrong, even though the timing window is small). The rest is minor polish.\n\nNot checked by anyone, as the builder also says:\n- a shadow under $HOME (the production layout). I could not test it, because writing into $HOME is outside my allowed paths;\n- a project with real Lake dependencies through the .lake/packages bind;\n- G1's per-declaration budgets;\n- the builder's no-setpriv negative control (I judged it plausible from the process tree and did not re-run it).\n\nI edited no files in the assigned paths. My probe sources are /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn2/verify-runlean/probe/probe.ts, /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn2/verify-runlean/probe/probe2.ts and /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn2/verify-runlean/probe/probe3.ts, bundled with esbuild and run with node. The inert cheat overlays are under /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn2/verify-runlean/probe/overlays/ (*.lean.txt). The logs are in /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn2/verify-runlean/: run1.log, run2.log, probe-fds.log, probe-oom.log, probe-strays.log, probe-comparator.log, probe2.log and probe3.log.\n\nI did not run the Claude CLI, install anything, or run any git commands. I ran only one heavy process at a time, and MemAvailable never fell below about 32 GB."
+}

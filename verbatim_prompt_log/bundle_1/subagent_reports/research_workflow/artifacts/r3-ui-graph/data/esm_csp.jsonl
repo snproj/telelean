@@ -1,0 +1,3 @@
+{"label":"nonce-only","staticImport":true,"dynamicImport":true}
+{"label":"nonce+self","staticImport":true,"dynamicImport":true}
+{"label":"nonce+strict-dynamic","staticImport":true,"dynamicImport":true}

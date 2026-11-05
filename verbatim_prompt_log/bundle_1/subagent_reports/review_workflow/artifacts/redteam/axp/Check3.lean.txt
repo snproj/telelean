@@ -1,0 +1,5 @@
+import Model
+set_option pp.all true
+set_option pp.fullNames true
+#check @Telelean.Model.cynder_not_good
+#check @Telelean.Model.pg_no_dark_past

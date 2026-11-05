@@ -1,0 +1,6 @@
+name = "ord"
+defaultTargets = ["Ord"]
+leanOptions = { autoImplicit = false, relaxedAutoImplicit = false }
+
+[[lean_lib]]
+name = "Ord"

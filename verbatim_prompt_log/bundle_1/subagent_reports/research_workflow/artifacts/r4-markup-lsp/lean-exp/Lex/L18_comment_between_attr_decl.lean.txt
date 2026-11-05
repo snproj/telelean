@@ -1,0 +1,3 @@
+@[simp]
+/- comment between attribute and theorem -/
+theorem n : 1 = 1 := rfl

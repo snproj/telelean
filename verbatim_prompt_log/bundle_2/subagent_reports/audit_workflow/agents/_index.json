@@ -1,0 +1,27 @@
+[
+ {
+  "label": "inventory:transcripts",
+  "agentId": "ab2bc1951b31d3b7b",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "inventory:disk",
+  "agentId": "a80baf6acb2dbf39a",
+  "toolsUsed": [
+   "Bash",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "reconcile",
+  "agentId": "aafb06b757f95fabe",
+  "toolsUsed": [
+   "Bash",
+   "StructuredOutput"
+  ]
+ }
+]

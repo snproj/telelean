@@ -1,0 +1,87 @@
+/-
+Experiment: the spec's Cynder walkthrough, as an agent might formalize it.
+Markup blocks are plain Lean comments (`/- @@ telelean ... -/`).
+-/
+namespace Telelean.Model
+
+/-
+@@ telelean
+id: voc-character
+kind: VOCABULARY
+natural_name: "characters"
+origin: agent
+-/
+axiom Character : Type
+
+/-
+@@ telelean
+id: voc-game
+kind: VOCABULARY
+natural_name: "games"
+origin: agent
+-/
+axiom Game : Type
+
+axiom cynder : Character
+axiom newSpyro : Game
+axiom HasDarkPast : Character → Prop
+axiom IsPG : Game → Prop
+axiom AppearsIn : Character → Game → Prop
+axiom GoodAdditionTo : Character → Game → Prop
+
+/-
+@@ telelean
+id: n-0002
+type: ASSUMPTION
+natural_name: "Cynder is a character who has a dark past"
+rationale: "familiar with gaming lore"
+-/
+axiom cynder_dark_past : HasDarkPast cynder
+
+/-
+@@ telelean
+id: n-0003
+type: ASSUMPTION
+natural_name: "The new Spyro game is PG"
+rationale: "known from gaming news"
+-/
+axiom newSpyro_pg : IsPG newSpyro
+
+/-
+@@ telelean
+id: n-0004
+type: ASSUMPTION
+natural_name: "PG games cannot have characters with dark pasts"
+-/
+axiom pg_no_dark : ∀ (g : Game) (c : Character), IsPG g → HasDarkPast c → ¬ AppearsIn c g
+
+/-
+@@ telelean
+id: n-0005
+type: ASSUMPTION
+status: proposed          -- hidden premise surfaced by the agent; needs user approval + rationale
+natural_name: "A character that cannot appear in a game would not be a good addition to it"
+-/
+axiom good_needs_appear : ∀ (c : Character) (g : Game), GoodAdditionTo c g → AppearsIn c g
+
+/-
+@@ telelean
+id: n-0001
+type: GOAL
+natural_name: "Cynder would not be a good addition to the new Spyro game"
+-/
+theorem cynder_not_good : ¬ GoodAdditionTo cynder newSpyro := by
+  intro h
+  exact pg_no_dark newSpyro cynder newSpyro_pg cynder_dark_past (good_needs_appear _ _ h)
+
+/-- A derivation that does NOT need the hidden premise. -/
+theorem cynder_not_in_new_spyro : ¬ AppearsIn cynder newSpyro :=
+  pg_no_dark newSpyro cynder newSpyro_pg cynder_dark_past
+
+end Telelean.Model
+
+theorem extra : True := trivial
+
+theorem broken : ¬ Telelean.Model.GoodAdditionTo Telelean.Model.cynder Telelean.Model.newSpyro := by
+  intro h
+  exact Telelean.Model.pg_no_dark _ _ Telelean.Model.newSpyro_pg h

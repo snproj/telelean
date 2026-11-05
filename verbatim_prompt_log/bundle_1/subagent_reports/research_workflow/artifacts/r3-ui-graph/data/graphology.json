@@ -1,0 +1,48 @@
+{
+ "name": "graphology",
+ "latest": "0.26.0",
+ "dist_tags": {
+  "alpha": "0.26.0-alpha1",
+  "latest": "0.26.0",
+  "rc": "0.26.0-rc1"
+ },
+ "latest_published": "2025-01-26T10:25:05.589Z",
+ "modified": "2025-01-26T10:25:05.762Z",
+ "created": "2016-08-24T17:40:52.126Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 2729833,
+ "fileCount": 30,
+ "tarball": "https://registry.npmjs.org/graphology/-/graphology-0.26.0.tgz",
+ "dependencies": {
+  "events": "^3.3.0"
+ },
+ "peerDependencies": {
+  "graphology-types": ">=0.24.0"
+ },
+ "repository": "git+https://github.com/graphology/graphology.git",
+ "recent_versions": [
+  [
+   "0.25.2",
+   "2023-07-27T08:31:17.307Z"
+  ],
+  [
+   "0.25.3",
+   "2023-07-27T15:48:54.784Z"
+  ],
+  [
+   "0.25.4",
+   "2023-08-01T11:04:03.012Z"
+  ],
+  [
+   "0.26.0-rc1",
+   "2025-01-08T12:29:02.171Z"
+  ],
+  [
+   "0.26.0",
+   "2025-01-26T10:25:05.589Z"
+  ]
+ ],
+ "homepage": "https://github.com/graphology/graphology#readme",
+ "description": "A robust and multipurpose Graph object for JavaScript."
+}

@@ -1,0 +1,8 @@
+import Telelean
+open Lean
+unsafe def main : IO Unit := do
+  initSearchPath (← findSysroot)
+  enableInitializersExecution
+  let env ← importModules #[{ module := `Model }] {} (loadExts := true)
+  for n in Telelean.allNodes env do
+    IO.println (toJson n).compress

@@ -1,0 +1,6 @@
+name = "telelean"
+version = "0.1.0"
+defaultTargets = ["Telelean"]
+
+[[lean_lib]]
+name = "Telelean"

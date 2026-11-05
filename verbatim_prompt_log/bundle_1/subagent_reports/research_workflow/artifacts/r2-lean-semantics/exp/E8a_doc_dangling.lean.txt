@@ -1,0 +1,5 @@
+/- a plain block comment can stand alone -/
+/-! a module doc can stand alone, anywhere -/
+/- nested /- block -/ comments are fine -/
+/-- a dangling doc comment followed by a command that is not a declaration -/
+#check Nat

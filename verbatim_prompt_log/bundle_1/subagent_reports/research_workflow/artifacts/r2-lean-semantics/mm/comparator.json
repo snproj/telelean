@@ -1,0 +1,8 @@
+{
+  "challenge_module": "Challenge",
+  "solution_module": "Solution",
+  "theorem_names": ["MM.cynder_goal"],
+  "permitted_axioms": ["propext", "Quot.sound", "Classical.choice",
+     "MM.Character", "MM.Game", "MM.Cynder", "MM.newSpyro", "MM.HasDarkPast", "MM.GoodAddition",
+     "MM.cynder_dark", "MM.spyro_pg", "MM.pg_no_dark"]
+}

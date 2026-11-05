@@ -1,0 +1,9 @@
+{
+  "challenge_module": "Model.Challenge",
+  "solution_module": "Model.Solution",
+  "theorem_names": ["T.cynder_not_good"],
+  "permitted_axioms": ["propext", "Quot.sound", "Classical.choice",
+    "T.Character", "T.Game", "T.cynder", "T.newSpyro", "T.HasDarkPast", "T.IsPG", "T.GoodAddition",
+    "T.cynderProfile", "T.Reported", "T.reportedPG",
+    "T.spyro_pg", "T.pg_no_dark"]
+}

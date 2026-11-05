@@ -1,0 +1,10 @@
+module
+public import ModModel.B
+public section
+namespace MM
+theorem uses_b : HasDarkPast Cynder := dark_again.1
+theorem pD : stmtD := cynder_dark
+theorem pA : stmtA := cynder_dark
+theorem pE : stmtE := cynder_dark
+theorem pD' : stmtD := by unfold stmtD; exact cynder_dark
+end MM

@@ -1,0 +1,41 @@
+/-
+@@ telelean
+id: goal-cynder-not-good
+natural_name: "Cynder would not be a good addition to the new Spyro game"
+type: GOAL
+-/
+-- (no Lean code yet: a node may exist as a bare comment)
+
+/-
+@@ telelean
+id: asm-dark-past
+natural_name: "Cynder is a character who has a dark past"
+type: ASSUMPTION
+why: "familiar with gaming lore"
+-/
+/-- Cynder is a character who has a dark past. -/
+axiom Character : Type
+axiom cynder : Character
+axiom hasDarkPast : Character → Prop
+axiom cynder_dark : hasDarkPast cynder
+
+axiom Game : Type
+axiom newSpyro : Game
+axiom isPG : Game → Prop
+axiom newSpyro_pg : isPG newSpyro
+axiom goodAddition : Character → Game → Prop
+axiom pg_no_dark : ∀ g c, isPG g → hasDarkPast c → ¬ goodAddition c g
+
+/-
+@@ telelean
+id: drv-cynder
+natural_name: "Cynder would not be a good addition"
+type: DERIVATION
+-/
+theorem cynder_not_good : ¬ goodAddition cynder newSpyro :=
+  pg_no_dark newSpyro cynder newSpyro_pg cynder_dark
+
+theorem broken : 1 = 2 := by
+  sorry
+
+#print axioms cynder_not_good

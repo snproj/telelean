@@ -1,0 +1,55 @@
+{
+ "name": "react-beautiful-dnd",
+ "latest": "13.1.1",
+ "dist_tags": {
+  "alpha": "12.2.0-alpha.1",
+  "beta": "13.0.0-beta.1",
+  "latest": "13.1.1"
+ },
+ "latest_published": "2022-08-30T04:15:39.512Z",
+ "modified": "2024-10-14T23:57:57.355Z",
+ "created": "2017-08-10T07:15:47.946Z",
+ "license": "Apache-2.0",
+ "deprecated": "react-beautiful-dnd is now deprecated. Context and options: https://github.com/atlassian/react-beautiful-dnd/issues/2672",
+ "unpackedSize": 1390113,
+ "fileCount": 239,
+ "tarball": "https://registry.npmjs.org/react-beautiful-dnd/-/react-beautiful-dnd-13.1.1.tgz",
+ "dependencies": {
+  "redux": "^4.0.4",
+  "raf-schd": "^4.0.2",
+  "memoize-one": "^5.1.1",
+  "react-redux": "^7.2.0",
+  "use-memo-one": "^1.1.1",
+  "css-box-model": "^1.2.0",
+  "@babel/runtime": "^7.9.2"
+ },
+ "peerDependencies": {
+  "react": "^16.8.5 || ^17.0.0 || ^18.0.0",
+  "react-dom": "^16.8.5 || ^17.0.0 || ^18.0.0"
+ },
+ "repository": "git+https://github.com/atlassian/react-beautiful-dnd.git",
+ "recent_versions": [
+  [
+   "12.2.0",
+   "2019-12-05T03:40:53.894Z"
+  ],
+  [
+   "13.0.0-beta.1",
+   "2020-02-20T08:52:24.703Z"
+  ],
+  [
+   "13.0.0",
+   "2020-02-24T21:36:15.736Z"
+  ],
+  [
+   "13.1.0",
+   "2021-03-21T23:24:40.308Z"
+  ],
+  [
+   "13.1.1",
+   "2022-08-30T04:15:39.512Z"
+  ]
+ ],
+ "homepage": "https://github.com/atlassian/react-beautiful-dnd#readme",
+ "description": "Beautiful and accessible drag and drop for lists with React"
+}

@@ -1,0 +1,52 @@
+{
+ "name": "@leanprover/infoview",
+ "latest": "0.14.0",
+ "dist_tags": {
+  "develop": "0.4.1-alpha.2",
+  "latest": "0.14.0"
+ },
+ "latest_published": "2026-10-27T15:25:25.992Z",
+ "modified": "2026-10-27T15:25:26.551Z",
+ "created": "2022-07-26T21:23:13.830Z",
+ "license": "Apache-2.0",
+ "deprecated": null,
+ "unpackedSize": 2870246,
+ "fileCount": 33,
+ "tarball": "https://registry.npmjs.org/@leanprover/infoview/-/infoview-0.14.0.tgz",
+ "dependencies": {
+  "tachyons": "^4.12.0",
+  "es-module-lexer": "^1.5.4",
+  "es-module-shims": "^2.8.0",
+  "@vscode/codicons": "^0.0.40",
+  "react-fast-compare": "^3.2.2",
+  "@leanprover/infoview-api": "~0.13.0",
+  "vscode-languageserver-protocol": "^3.17.3",
+  "@vscode-elements/react-elements": "^0.5.0"
+ },
+ "peerDependencies": {},
+ "repository": "git+https://github.com/leanprover/vscode-lean4.git",
+ "recent_versions": [
+  [
+   "0.11.0",
+   "2026-02-26T23:47:27.297Z"
+  ],
+  [
+   "0.11.1",
+   "2026-03-07T00:38:34.494Z"
+  ],
+  [
+   "0.12.0",
+   "2026-03-13T23:41:22.172Z"
+  ],
+  [
+   "0.13.0",
+   "2026-04-13T12:37:17.195Z"
+  ],
+  [
+   "0.14.0",
+   "2026-10-27T15:25:25.992Z"
+  ]
+ ],
+ "homepage": "https://github.com/leanprover/vscode-lean4#readme",
+ "description": "An interactive display for the Lean 4 theorem prover."
+}

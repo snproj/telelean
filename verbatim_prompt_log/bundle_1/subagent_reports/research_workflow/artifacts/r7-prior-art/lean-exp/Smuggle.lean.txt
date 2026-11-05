@@ -1,0 +1,17 @@
+inductive Character where | cynder | spyro
+inductive Game where | newSpyro
+opaque hasDarkPast : Character → Prop
+opaque isPG : Game → Prop
+axiom cynder_dark_past : hasDarkPast .cynder
+axiom spyro_pg : isPG .newSpyro
+-- "Definitional smuggling": the user's warrant (PG games cannot have characters with dark pasts)
+-- is turned into the *definition* of goodAddition instead of an explicit assumption.
+def goodAddition (c : Character) (g : Game) : Prop := ¬ (isPG g ∧ hasDarkPast c)
+theorem cynder_not_good : ¬ goodAddition .cynder .newSpyro :=
+  fun h => h ⟨spyro_pg, cynder_dark_past⟩
+#print axioms cynder_not_good
+-- Inconsistent assumptions make every goal provable ("explosion"):
+axiom a1 : isPG .newSpyro
+axiom a2 : ¬ isPG .newSpyro
+theorem anything (P : Prop) : P := absurd a1 a2
+#print axioms anything

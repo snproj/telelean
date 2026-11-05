@@ -1,0 +1,2 @@
+abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro
+#eval 1

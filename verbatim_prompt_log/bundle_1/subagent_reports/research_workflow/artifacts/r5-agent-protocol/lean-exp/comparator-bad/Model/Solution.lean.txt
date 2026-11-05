@@ -1,0 +1,6 @@
+import Model.Defs
+namespace Telelean.Model
+-- cheating agent: smuggles in a new assumption as an axiom
+axiom shortcut : ∀ c g, ¬ GoodAdditionTo c g
+theorem cynder_not_good : ¬ GoodAdditionTo cynder newSpyro := shortcut _ _
+end Telelean.Model

@@ -1,0 +1,5 @@
+import MentalModel.Assumptions
+namespace MM
+/-- frozen, user-approved goal statement (proof irrelevant here) -/
+theorem cynder_goal : ¬ GoodAddition Cynder newSpyro := sorry
+end MM

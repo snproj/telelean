@@ -1,0 +1,8 @@
+/- @@ telelean
+id: a1
+layout: {x: 10, y: 20}
+type: ASSUMPTION  # layout x=10
+-/
+axiom A : Prop
+axiom a1 : A ∧ True
+theorem a1l : A := a1.1

@@ -1,0 +1,47 @@
+{
+ "name": "zustand",
+ "latest": "5.0.16",
+ "dist_tags": {
+  "latest": "5.0.16"
+ },
+ "latest_published": "2026-10-22T04:32:02.337Z",
+ "modified": "2026-10-22T04:32:02.721Z",
+ "created": "2019-04-09T13:47:37.089Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 95961,
+ "fileCount": 52,
+ "tarball": "https://registry.npmjs.org/zustand/-/zustand-5.0.16.tgz",
+ "dependencies": {},
+ "peerDependencies": {
+  "immer": ">=9.0.6",
+  "react": ">=18.0.0",
+  "@types/react": ">=18.0.0",
+  "use-sync-external-store": ">=1.2.0"
+ },
+ "repository": "git+https://github.com/pmndrs/zustand.git",
+ "recent_versions": [
+  [
+   "5.0.12",
+   "2026-03-16T02:43:50.373Z"
+  ],
+  [
+   "5.0.13",
+   "2026-05-05T00:04:17.510Z"
+  ],
+  [
+   "5.0.14",
+   "2026-05-28T10:17:58.249Z"
+  ],
+  [
+   "5.0.15",
+   "2026-08-13T00:39:55.466Z"
+  ],
+  [
+   "5.0.16",
+   "2026-10-22T04:32:02.337Z"
+  ]
+ ],
+ "homepage": "https://github.com/pmndrs/zustand",
+ "description": "\ud83d\udc3b Bear necessities for state management in React"
+}

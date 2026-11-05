@@ -1,0 +1,9 @@
+import Fixture.Spyro
+/-
+@@ telelean
+id: drv-bad
+natural_name: "A broken derivation"
+type: DERIVATION
+-/
+theorem bad : ¬ goodAddition cynder newSpyro := by
+  exact cynder_dark

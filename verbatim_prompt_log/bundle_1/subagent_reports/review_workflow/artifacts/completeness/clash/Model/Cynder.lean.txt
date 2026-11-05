@@ -1,0 +1,7 @@
+/-
+@@ telelean v1
+id: characters
+kind: DEFINITION
+natural_name: Characters
+-/
+axiom Character : Type

@@ -1,0 +1,44 @@
+{
+ "name": "@shikijs/themes",
+ "latest": "4.5.0",
+ "dist_tags": {
+  "latest": "4.5.0"
+ },
+ "latest_published": "2026-10-01T06:46:15.148Z",
+ "modified": "2026-10-01T06:46:15.761Z",
+ "created": "2025-01-02T04:45:45.828Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 1484289,
+ "fileCount": 135,
+ "tarball": "https://registry.npmjs.org/@shikijs/themes/-/themes-4.5.0.tgz",
+ "dependencies": {
+  "@shikijs/types": "4.5.0"
+ },
+ "peerDependencies": {},
+ "repository": "git+https://github.com/shikijs/shiki.git",
+ "recent_versions": [
+  [
+   "4.4.0",
+   "2026-07-31T09:57:08.133Z"
+  ],
+  [
+   "4.4.1",
+   "2026-07-31T09:58:55.855Z"
+  ],
+  [
+   "4.4.2",
+   "2026-08-05T00:38:56.325Z"
+  ],
+  [
+   "4.4.3",
+   "2026-08-10T04:58:25.691Z"
+  ],
+  [
+   "4.5.0",
+   "2026-10-01T06:46:15.148Z"
+  ]
+ ],
+ "homepage": "https://github.com/shikijs/shiki#readme",
+ "description": "TextMate themes for Shiki in ESM"
+}

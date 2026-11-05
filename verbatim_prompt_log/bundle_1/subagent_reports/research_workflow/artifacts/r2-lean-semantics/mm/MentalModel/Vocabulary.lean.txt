@@ -1,0 +1,40 @@
+/-!
+# Vocabulary
+Support nodes: uninterpreted symbols that the mental model talks about.
+-/
+namespace MM
+
+/- @@ telelean
+id: v.character
+kind: SUPPORT
+-/
+/-- A video game character. -/
+axiom Character : Type
+
+/-- A video game. -/
+axiom Game : Type
+
+/-- Cynder, a character from the Spyro series. -/
+axiom Cynder : Character
+
+/-- The upcoming Spyro game. -/
+axiom newSpyro : Game
+
+/-- `HasDarkPast c`: character `c` has a dark past. -/
+axiom HasDarkPast : Character → Prop
+
+/-- `IsPG g`: game `g` is rated PG. -/
+opaque IsPG : Game → Prop
+
+/-- `GoodAddition c g`: `c` would be a good addition to `g`. -/
+axiom GoodAddition : Character → Game → Prop
+
+/-- A conservative (defined) notion. -/
+def DarkAndGood (g : Game) (c : Character) : Prop := HasDarkPast c ∧ GoodAddition c g
+
+/-- A concrete structure (support node with real content). -/
+structure Rating where
+  minAge : Nat
+deriving Repr
+
+end MM

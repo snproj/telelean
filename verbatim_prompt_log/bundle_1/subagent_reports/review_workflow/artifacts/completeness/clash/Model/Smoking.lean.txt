@@ -1,0 +1,7 @@
+/-
+@@ telelean v1
+id: characters-smoking
+kind: DEFINITION
+natural_name: Characters in the smoking story
+-/
+axiom Character : Type

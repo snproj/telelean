@@ -1,0 +1,2 @@
+import Fixture.Spyro
+import Fixture.Bad

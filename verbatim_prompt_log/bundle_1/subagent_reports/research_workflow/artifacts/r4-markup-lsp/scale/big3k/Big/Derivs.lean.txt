@@ -1,0 +1,8002 @@
+import Big.Rules
+
+/-
+@@ telelean v1
+id: deriv-0
+kind: DERIVATION
+natural_name: "Q0 follows"
+premises: rule-0, fact-34, fact-145
+-/
+theorem d0 : Q0 := by
+  exact r0 f34 f145
+
+/-
+@@ telelean v1
+id: deriv-1
+kind: DERIVATION
+natural_name: "Q1 follows"
+premises: rule-1, fact-195, fact-16
+-/
+theorem d1 : Q1 := by
+  exact r1 f195 f16
+
+/-
+@@ telelean v1
+id: deriv-2
+kind: DERIVATION
+natural_name: "Q2 follows"
+premises: rule-2, fact-65, fact-30
+-/
+theorem d2 : Q2 := by
+  exact r2 f65 f30
+
+/-
+@@ telelean v1
+id: deriv-3
+kind: DERIVATION
+natural_name: "Q3 follows"
+premises: rule-3, fact-126, fact-194
+-/
+theorem d3 : Q3 := by
+  exact r3 f126 f194
+
+/-
+@@ telelean v1
+id: deriv-4
+kind: DERIVATION
+natural_name: "Q4 follows"
+premises: rule-4, fact-115, fact-120
+-/
+theorem d4 : Q4 := by
+  exact r4 f115 f120
+
+/-
+@@ telelean v1
+id: deriv-5
+kind: DERIVATION
+natural_name: "Q5 follows"
+premises: rule-5, fact-166, fact-97
+-/
+theorem d5 : Q5 := by
+  exact r5 f166 f97
+
+/-
+@@ telelean v1
+id: deriv-6
+kind: DERIVATION
+natural_name: "Q6 follows"
+premises: rule-6, fact-53, fact-24
+-/
+theorem d6 : Q6 := by
+  exact r6 f53 f24
+
+/-
+@@ telelean v1
+id: deriv-7
+kind: DERIVATION
+natural_name: "Q7 follows"
+premises: rule-7, fact-124, fact-7
+-/
+theorem d7 : Q7 := by
+  exact r7 f124 f7
+
+/-
+@@ telelean v1
+id: deriv-8
+kind: DERIVATION
+natural_name: "Q8 follows"
+premises: rule-8, fact-99, fact-110
+-/
+theorem d8 : Q8 := by
+  exact r8 f99 f110
+
+/-
+@@ telelean v1
+id: deriv-9
+kind: DERIVATION
+natural_name: "Q9 follows"
+premises: rule-9, fact-155, fact-195
+-/
+theorem d9 : Q9 := by
+  exact r9 f155 f195
+
+/-
+@@ telelean v1
+id: deriv-10
+kind: DERIVATION
+natural_name: "Q10 follows"
+premises: rule-10, fact-196, fact-0
+-/
+theorem d10 : Q10 := by
+  exact r10 f196 f0
+
+/-
+@@ telelean v1
+id: deriv-11
+kind: DERIVATION
+natural_name: "Q11 follows"
+premises: rule-11, fact-178, fact-114
+-/
+theorem d11 : Q11 := by
+  exact r11 f178 f114
+
+/-
+@@ telelean v1
+id: deriv-12
+kind: DERIVATION
+natural_name: "Q12 follows"
+premises: rule-12, fact-68, fact-184
+-/
+theorem d12 : Q12 := by
+  exact r12 f68 f184
+
+/-
+@@ telelean v1
+id: deriv-13
+kind: DERIVATION
+natural_name: "Q13 follows"
+premises: rule-13, fact-58, fact-151
+-/
+theorem d13 : Q13 := by
+  exact r13 f58 f151
+
+/-
+@@ telelean v1
+id: deriv-14
+kind: DERIVATION
+natural_name: "Q14 follows"
+premises: rule-14, fact-26, fact-81
+-/
+theorem d14 : Q14 := by
+  exact r14 f26 f81
+
+/-
+@@ telelean v1
+id: deriv-15
+kind: DERIVATION
+natural_name: "Q15 follows"
+premises: rule-15, fact-7, fact-5
+-/
+theorem d15 : Q15 := by
+  exact r15 f7 f5
+
+/-
+@@ telelean v1
+id: deriv-16
+kind: DERIVATION
+natural_name: "Q16 follows"
+premises: rule-16, fact-6, fact-166
+-/
+theorem d16 : Q16 := by
+  exact r16 f6 f166
+
+/-
+@@ telelean v1
+id: deriv-17
+kind: DERIVATION
+natural_name: "Q17 follows"
+premises: rule-17, fact-138, fact-2
+-/
+theorem d17 : Q17 := by
+  exact r17 f138 f2
+
+/-
+@@ telelean v1
+id: deriv-18
+kind: DERIVATION
+natural_name: "Q18 follows"
+premises: rule-18, fact-97, fact-175
+-/
+theorem d18 : Q18 := by
+  exact r18 f97 f175
+
+/-
+@@ telelean v1
+id: deriv-19
+kind: DERIVATION
+natural_name: "Q19 follows"
+premises: rule-19, fact-55, fact-108
+-/
+theorem d19 : Q19 := by
+  exact r19 f55 f108
+
+/-
+@@ telelean v1
+id: deriv-20
+kind: DERIVATION
+natural_name: "Q20 follows"
+premises: rule-20, fact-185, fact-7
+-/
+theorem d20 : Q20 := by
+  exact r20 f185 f7
+
+/-
+@@ telelean v1
+id: deriv-21
+kind: DERIVATION
+natural_name: "Q21 follows"
+premises: rule-21, fact-135, fact-56
+-/
+theorem d21 : Q21 := by
+  exact r21 f135 f56
+
+/-
+@@ telelean v1
+id: deriv-22
+kind: DERIVATION
+natural_name: "Q22 follows"
+premises: rule-22, fact-195, fact-112
+-/
+theorem d22 : Q22 := by
+  exact r22 f195 f112
+
+/-
+@@ telelean v1
+id: deriv-23
+kind: DERIVATION
+natural_name: "Q23 follows"
+premises: rule-23, fact-126, fact-141
+-/
+theorem d23 : Q23 := by
+  exact r23 f126 f141
+
+/-
+@@ telelean v1
+id: deriv-24
+kind: DERIVATION
+natural_name: "Q24 follows"
+premises: rule-24, fact-59, fact-88
+-/
+theorem d24 : Q24 := by
+  exact r24 f59 f88
+
+/-
+@@ telelean v1
+id: deriv-25
+kind: DERIVATION
+natural_name: "Q25 follows"
+premises: rule-25, fact-59, fact-173
+-/
+theorem d25 : Q25 := by
+  exact r25 f59 f173
+
+/-
+@@ telelean v1
+id: deriv-26
+kind: DERIVATION
+natural_name: "Q26 follows"
+premises: rule-26, fact-56, fact-194
+-/
+theorem d26 : Q26 := by
+  exact r26 f56 f194
+
+/-
+@@ telelean v1
+id: deriv-27
+kind: DERIVATION
+natural_name: "Q27 follows"
+premises: rule-27, fact-117, fact-74
+-/
+theorem d27 : Q27 := by
+  exact r27 f117 f74
+
+/-
+@@ telelean v1
+id: deriv-28
+kind: DERIVATION
+natural_name: "Q28 follows"
+premises: rule-28, fact-5, fact-106
+-/
+theorem d28 : Q28 := by
+  exact r28 f5 f106
+
+/-
+@@ telelean v1
+id: deriv-29
+kind: DERIVATION
+natural_name: "Q29 follows"
+premises: rule-29, fact-142, fact-164
+-/
+theorem d29 : Q29 := by
+  exact r29 f142 f164
+
+/-
+@@ telelean v1
+id: deriv-30
+kind: DERIVATION
+natural_name: "Q30 follows"
+premises: rule-30, fact-25, fact-47
+-/
+theorem d30 : Q30 := by
+  exact r30 f25 f47
+
+/-
+@@ telelean v1
+id: deriv-31
+kind: DERIVATION
+natural_name: "Q31 follows"
+premises: rule-31, fact-161, fact-185
+-/
+theorem d31 : Q31 := by
+  exact r31 f161 f185
+
+/-
+@@ telelean v1
+id: deriv-32
+kind: DERIVATION
+natural_name: "Q32 follows"
+premises: rule-32, fact-75, fact-30
+-/
+theorem d32 : Q32 := by
+  exact r32 f75 f30
+
+/-
+@@ telelean v1
+id: deriv-33
+kind: DERIVATION
+natural_name: "Q33 follows"
+premises: rule-33, fact-190, fact-85
+-/
+theorem d33 : Q33 := by
+  exact r33 f190 f85
+
+/-
+@@ telelean v1
+id: deriv-34
+kind: DERIVATION
+natural_name: "Q34 follows"
+premises: rule-34, fact-184, fact-182
+-/
+theorem d34 : Q34 := by
+  exact r34 f184 f182
+
+/-
+@@ telelean v1
+id: deriv-35
+kind: DERIVATION
+natural_name: "Q35 follows"
+premises: rule-35, fact-128, fact-108
+-/
+theorem d35 : Q35 := by
+  exact r35 f128 f108
+
+/-
+@@ telelean v1
+id: deriv-36
+kind: DERIVATION
+natural_name: "Q36 follows"
+premises: rule-36, fact-129, fact-171
+-/
+theorem d36 : Q36 := by
+  exact r36 f129 f171
+
+/-
+@@ telelean v1
+id: deriv-37
+kind: DERIVATION
+natural_name: "Q37 follows"
+premises: rule-37, fact-48, fact-77
+-/
+theorem d37 : Q37 := by
+  exact r37 f48 f77
+
+/-
+@@ telelean v1
+id: deriv-38
+kind: DERIVATION
+natural_name: "Q38 follows"
+premises: rule-38, fact-72, fact-150
+-/
+theorem d38 : Q38 := by
+  exact r38 f72 f150
+
+/-
+@@ telelean v1
+id: deriv-39
+kind: DERIVATION
+natural_name: "Q39 follows"
+premises: rule-39, fact-127, fact-129
+-/
+theorem d39 : Q39 := by
+  exact r39 f127 f129
+
+/-
+@@ telelean v1
+id: deriv-40
+kind: DERIVATION
+natural_name: "Q40 follows"
+premises: rule-40, fact-100, fact-150
+-/
+theorem d40 : Q40 := by
+  exact r40 f100 f150
+
+/-
+@@ telelean v1
+id: deriv-41
+kind: DERIVATION
+natural_name: "Q41 follows"
+premises: rule-41, fact-8, fact-122
+-/
+theorem d41 : Q41 := by
+  exact r41 f8 f122
+
+/-
+@@ telelean v1
+id: deriv-42
+kind: DERIVATION
+natural_name: "Q42 follows"
+premises: rule-42, fact-62, fact-190
+-/
+theorem d42 : Q42 := by
+  exact r42 f62 f190
+
+/-
+@@ telelean v1
+id: deriv-43
+kind: DERIVATION
+natural_name: "Q43 follows"
+premises: rule-43, fact-103, fact-106
+-/
+theorem d43 : Q43 := by
+  exact r43 f103 f106
+
+/-
+@@ telelean v1
+id: deriv-44
+kind: DERIVATION
+natural_name: "Q44 follows"
+premises: rule-44, fact-170, fact-44
+-/
+theorem d44 : Q44 := by
+  exact r44 f170 f44
+
+/-
+@@ telelean v1
+id: deriv-45
+kind: DERIVATION
+natural_name: "Q45 follows"
+premises: rule-45, fact-93, fact-140
+-/
+theorem d45 : Q45 := by
+  exact r45 f93 f140
+
+/-
+@@ telelean v1
+id: deriv-46
+kind: DERIVATION
+natural_name: "Q46 follows"
+premises: rule-46, fact-179, fact-198
+-/
+theorem d46 : Q46 := by
+  exact r46 f179 f198
+
+/-
+@@ telelean v1
+id: deriv-47
+kind: DERIVATION
+natural_name: "Q47 follows"
+premises: rule-47, fact-172, fact-188
+-/
+theorem d47 : Q47 := by
+  exact r47 f172 f188
+
+/-
+@@ telelean v1
+id: deriv-48
+kind: DERIVATION
+natural_name: "Q48 follows"
+premises: rule-48, fact-95, fact-22
+-/
+theorem d48 : Q48 := by
+  exact r48 f95 f22
+
+/-
+@@ telelean v1
+id: deriv-49
+kind: DERIVATION
+natural_name: "Q49 follows"
+premises: rule-49, fact-112, fact-169
+-/
+theorem d49 : Q49 := by
+  exact r49 f112 f169
+
+/-
+@@ telelean v1
+id: deriv-50
+kind: DERIVATION
+natural_name: "Q50 follows"
+premises: rule-50, fact-130, fact-27
+-/
+theorem d50 : Q50 := by
+  exact r50 f130 f27
+
+/-
+@@ telelean v1
+id: deriv-51
+kind: DERIVATION
+natural_name: "Q51 follows"
+premises: rule-51, fact-199, fact-41
+-/
+theorem d51 : Q51 := by
+  exact r51 f199 f41
+
+/-
+@@ telelean v1
+id: deriv-52
+kind: DERIVATION
+natural_name: "Q52 follows"
+premises: rule-52, fact-133, fact-100
+-/
+theorem d52 : Q52 := by
+  exact r52 f133 f100
+
+/-
+@@ telelean v1
+id: deriv-53
+kind: DERIVATION
+natural_name: "Q53 follows"
+premises: rule-53, fact-94, fact-125
+-/
+theorem d53 : Q53 := by
+  exact r53 f94 f125
+
+/-
+@@ telelean v1
+id: deriv-54
+kind: DERIVATION
+natural_name: "Q54 follows"
+premises: rule-54, fact-187, fact-7
+-/
+theorem d54 : Q54 := by
+  exact r54 f187 f7
+
+/-
+@@ telelean v1
+id: deriv-55
+kind: DERIVATION
+natural_name: "Q55 follows"
+premises: rule-55, fact-120, fact-11
+-/
+theorem d55 : Q55 := by
+  exact r55 f120 f11
+
+/-
+@@ telelean v1
+id: deriv-56
+kind: DERIVATION
+natural_name: "Q56 follows"
+premises: rule-56, fact-78, fact-180
+-/
+theorem d56 : Q56 := by
+  exact r56 f78 f180
+
+/-
+@@ telelean v1
+id: deriv-57
+kind: DERIVATION
+natural_name: "Q57 follows"
+premises: rule-57, fact-157, fact-151
+-/
+theorem d57 : Q57 := by
+  exact r57 f157 f151
+
+/-
+@@ telelean v1
+id: deriv-58
+kind: DERIVATION
+natural_name: "Q58 follows"
+premises: rule-58, fact-148, fact-100
+-/
+theorem d58 : Q58 := by
+  exact r58 f148 f100
+
+/-
+@@ telelean v1
+id: deriv-59
+kind: DERIVATION
+natural_name: "Q59 follows"
+premises: rule-59, fact-165, fact-43
+-/
+theorem d59 : Q59 := by
+  exact r59 f165 f43
+
+/-
+@@ telelean v1
+id: deriv-60
+kind: DERIVATION
+natural_name: "Q60 follows"
+premises: rule-60, fact-43, fact-128
+-/
+theorem d60 : Q60 := by
+  exact r60 f43 f128
+
+/-
+@@ telelean v1
+id: deriv-61
+kind: DERIVATION
+natural_name: "Q61 follows"
+premises: rule-61, fact-58, fact-3
+-/
+theorem d61 : Q61 := by
+  exact r61 f58 f3
+
+/-
+@@ telelean v1
+id: deriv-62
+kind: DERIVATION
+natural_name: "Q62 follows"
+premises: rule-62, fact-197, fact-51
+-/
+theorem d62 : Q62 := by
+  exact r62 f197 f51
+
+/-
+@@ telelean v1
+id: deriv-63
+kind: DERIVATION
+natural_name: "Q63 follows"
+premises: rule-63, fact-138, fact-140
+-/
+theorem d63 : Q63 := by
+  exact r63 f138 f140
+
+/-
+@@ telelean v1
+id: deriv-64
+kind: DERIVATION
+natural_name: "Q64 follows"
+premises: rule-64, fact-59, fact-103
+-/
+theorem d64 : Q64 := by
+  exact r64 f59 f103
+
+/-
+@@ telelean v1
+id: deriv-65
+kind: DERIVATION
+natural_name: "Q65 follows"
+premises: rule-65, fact-131, fact-88
+-/
+theorem d65 : Q65 := by
+  exact r65 f131 f88
+
+/-
+@@ telelean v1
+id: deriv-66
+kind: DERIVATION
+natural_name: "Q66 follows"
+premises: rule-66, fact-147, fact-90
+-/
+theorem d66 : Q66 := by
+  exact r66 f147 f90
+
+/-
+@@ telelean v1
+id: deriv-67
+kind: DERIVATION
+natural_name: "Q67 follows"
+premises: rule-67, fact-117, fact-68
+-/
+theorem d67 : Q67 := by
+  exact r67 f117 f68
+
+/-
+@@ telelean v1
+id: deriv-68
+kind: DERIVATION
+natural_name: "Q68 follows"
+premises: rule-68, fact-168, fact-140
+-/
+theorem d68 : Q68 := by
+  exact r68 f168 f140
+
+/-
+@@ telelean v1
+id: deriv-69
+kind: DERIVATION
+natural_name: "Q69 follows"
+premises: rule-69, fact-155, fact-186
+-/
+theorem d69 : Q69 := by
+  exact r69 f155 f186
+
+/-
+@@ telelean v1
+id: deriv-70
+kind: DERIVATION
+natural_name: "Q70 follows"
+premises: rule-70, fact-1, fact-98
+-/
+theorem d70 : Q70 := by
+  exact r70 f1 f98
+
+/-
+@@ telelean v1
+id: deriv-71
+kind: DERIVATION
+natural_name: "Q71 follows"
+premises: rule-71, fact-189, fact-131
+-/
+theorem d71 : Q71 := by
+  exact r71 f189 f131
+
+/-
+@@ telelean v1
+id: deriv-72
+kind: DERIVATION
+natural_name: "Q72 follows"
+premises: rule-72, fact-33, fact-132
+-/
+theorem d72 : Q72 := by
+  exact r72 f33 f132
+
+/-
+@@ telelean v1
+id: deriv-73
+kind: DERIVATION
+natural_name: "Q73 follows"
+premises: rule-73, fact-199, fact-143
+-/
+theorem d73 : Q73 := by
+  exact r73 f199 f143
+
+/-
+@@ telelean v1
+id: deriv-74
+kind: DERIVATION
+natural_name: "Q74 follows"
+premises: rule-74, fact-52, fact-109
+-/
+theorem d74 : Q74 := by
+  exact r74 f52 f109
+
+/-
+@@ telelean v1
+id: deriv-75
+kind: DERIVATION
+natural_name: "Q75 follows"
+premises: rule-75, fact-14, fact-123
+-/
+theorem d75 : Q75 := by
+  exact r75 f14 f123
+
+/-
+@@ telelean v1
+id: deriv-76
+kind: DERIVATION
+natural_name: "Q76 follows"
+premises: rule-76, fact-93, fact-145
+-/
+theorem d76 : Q76 := by
+  exact r76 f93 f145
+
+/-
+@@ telelean v1
+id: deriv-77
+kind: DERIVATION
+natural_name: "Q77 follows"
+premises: rule-77, fact-141, fact-51
+-/
+theorem d77 : Q77 := by
+  exact r77 f141 f51
+
+/-
+@@ telelean v1
+id: deriv-78
+kind: DERIVATION
+natural_name: "Q78 follows"
+premises: rule-78, fact-129, fact-105
+-/
+theorem d78 : Q78 := by
+  exact r78 f129 f105
+
+/-
+@@ telelean v1
+id: deriv-79
+kind: DERIVATION
+natural_name: "Q79 follows"
+premises: rule-79, fact-124, fact-91
+-/
+theorem d79 : Q79 := by
+  exact r79 f124 f91
+
+/-
+@@ telelean v1
+id: deriv-80
+kind: DERIVATION
+natural_name: "Q80 follows"
+premises: rule-80, fact-106, fact-88
+-/
+theorem d80 : Q80 := by
+  exact r80 f106 f88
+
+/-
+@@ telelean v1
+id: deriv-81
+kind: DERIVATION
+natural_name: "Q81 follows"
+premises: rule-81, fact-0, fact-137
+-/
+theorem d81 : Q81 := by
+  exact r81 f0 f137
+
+/-
+@@ telelean v1
+id: deriv-82
+kind: DERIVATION
+natural_name: "Q82 follows"
+premises: rule-82, fact-138, fact-159
+-/
+theorem d82 : Q82 := by
+  exact r82 f138 f159
+
+/-
+@@ telelean v1
+id: deriv-83
+kind: DERIVATION
+natural_name: "Q83 follows"
+premises: rule-83, fact-156, fact-84
+-/
+theorem d83 : Q83 := by
+  exact r83 f156 f84
+
+/-
+@@ telelean v1
+id: deriv-84
+kind: DERIVATION
+natural_name: "Q84 follows"
+premises: rule-84, fact-117, fact-153
+-/
+theorem d84 : Q84 := by
+  exact r84 f117 f153
+
+/-
+@@ telelean v1
+id: deriv-85
+kind: DERIVATION
+natural_name: "Q85 follows"
+premises: rule-85, fact-7, fact-58
+-/
+theorem d85 : Q85 := by
+  exact r85 f7 f58
+
+/-
+@@ telelean v1
+id: deriv-86
+kind: DERIVATION
+natural_name: "Q86 follows"
+premises: rule-86, fact-162, fact-45
+-/
+theorem d86 : Q86 := by
+  exact r86 f162 f45
+
+/-
+@@ telelean v1
+id: deriv-87
+kind: DERIVATION
+natural_name: "Q87 follows"
+premises: rule-87, fact-140, fact-149
+-/
+theorem d87 : Q87 := by
+  exact r87 f140 f149
+
+/-
+@@ telelean v1
+id: deriv-88
+kind: DERIVATION
+natural_name: "Q88 follows"
+premises: rule-88, fact-46, fact-23
+-/
+theorem d88 : Q88 := by
+  exact r88 f46 f23
+
+/-
+@@ telelean v1
+id: deriv-89
+kind: DERIVATION
+natural_name: "Q89 follows"
+premises: rule-89, fact-141, fact-65
+-/
+theorem d89 : Q89 := by
+  exact r89 f141 f65
+
+/-
+@@ telelean v1
+id: deriv-90
+kind: DERIVATION
+natural_name: "Q90 follows"
+premises: rule-90, fact-8, fact-172
+-/
+theorem d90 : Q90 := by
+  exact r90 f8 f172
+
+/-
+@@ telelean v1
+id: deriv-91
+kind: DERIVATION
+natural_name: "Q91 follows"
+premises: rule-91, fact-18, fact-21
+-/
+theorem d91 : Q91 := by
+  exact r91 f18 f21
+
+/-
+@@ telelean v1
+id: deriv-92
+kind: DERIVATION
+natural_name: "Q92 follows"
+premises: rule-92, fact-4, fact-115
+-/
+theorem d92 : Q92 := by
+  exact r92 f4 f115
+
+/-
+@@ telelean v1
+id: deriv-93
+kind: DERIVATION
+natural_name: "Q93 follows"
+premises: rule-93, fact-3, fact-193
+-/
+theorem d93 : Q93 := by
+  exact r93 f3 f193
+
+/-
+@@ telelean v1
+id: deriv-94
+kind: DERIVATION
+natural_name: "Q94 follows"
+premises: rule-94, fact-193, fact-71
+-/
+theorem d94 : Q94 := by
+  exact r94 f193 f71
+
+/-
+@@ telelean v1
+id: deriv-95
+kind: DERIVATION
+natural_name: "Q95 follows"
+premises: rule-95, fact-63, fact-68
+-/
+theorem d95 : Q95 := by
+  exact r95 f63 f68
+
+/-
+@@ telelean v1
+id: deriv-96
+kind: DERIVATION
+natural_name: "Q96 follows"
+premises: rule-96, fact-28, fact-159
+-/
+theorem d96 : Q96 := by
+  exact r96 f28 f159
+
+/-
+@@ telelean v1
+id: deriv-97
+kind: DERIVATION
+natural_name: "Q97 follows"
+premises: rule-97, fact-47, fact-88
+-/
+theorem d97 : Q97 := by
+  exact r97 f47 f88
+
+/-
+@@ telelean v1
+id: deriv-98
+kind: DERIVATION
+natural_name: "Q98 follows"
+premises: rule-98, fact-74, fact-17
+-/
+theorem d98 : Q98 := by
+  exact r98 f74 f17
+
+/-
+@@ telelean v1
+id: deriv-99
+kind: DERIVATION
+natural_name: "Q99 follows"
+premises: rule-99, fact-42, fact-40
+-/
+theorem d99 : Q99 := by
+  exact r99 f42 f40
+
+/-
+@@ telelean v1
+id: deriv-100
+kind: DERIVATION
+natural_name: "Q100 follows"
+premises: rule-100, fact-65, fact-135
+-/
+theorem d100 : Q100 := by
+  exact r100 f65 f135
+
+/-
+@@ telelean v1
+id: deriv-101
+kind: DERIVATION
+natural_name: "Q101 follows"
+premises: rule-101, fact-43, fact-168
+-/
+theorem d101 : Q101 := by
+  exact r101 f43 f168
+
+/-
+@@ telelean v1
+id: deriv-102
+kind: DERIVATION
+natural_name: "Q102 follows"
+premises: rule-102, fact-69, fact-165
+-/
+theorem d102 : Q102 := by
+  exact r102 f69 f165
+
+/-
+@@ telelean v1
+id: deriv-103
+kind: DERIVATION
+natural_name: "Q103 follows"
+premises: rule-103, fact-182, fact-75
+-/
+theorem d103 : Q103 := by
+  exact r103 f182 f75
+
+/-
+@@ telelean v1
+id: deriv-104
+kind: DERIVATION
+natural_name: "Q104 follows"
+premises: rule-104, fact-116, fact-179
+-/
+theorem d104 : Q104 := by
+  exact r104 f116 f179
+
+/-
+@@ telelean v1
+id: deriv-105
+kind: DERIVATION
+natural_name: "Q105 follows"
+premises: rule-105, fact-82, fact-127
+-/
+theorem d105 : Q105 := by
+  exact r105 f82 f127
+
+/-
+@@ telelean v1
+id: deriv-106
+kind: DERIVATION
+natural_name: "Q106 follows"
+premises: rule-106, fact-121, fact-29
+-/
+theorem d106 : Q106 := by
+  exact r106 f121 f29
+
+/-
+@@ telelean v1
+id: deriv-107
+kind: DERIVATION
+natural_name: "Q107 follows"
+premises: rule-107, fact-6, fact-79
+-/
+theorem d107 : Q107 := by
+  exact r107 f6 f79
+
+/-
+@@ telelean v1
+id: deriv-108
+kind: DERIVATION
+natural_name: "Q108 follows"
+premises: rule-108, fact-98, fact-87
+-/
+theorem d108 : Q108 := by
+  exact r108 f98 f87
+
+/-
+@@ telelean v1
+id: deriv-109
+kind: DERIVATION
+natural_name: "Q109 follows"
+premises: rule-109, fact-107, fact-48
+-/
+theorem d109 : Q109 := by
+  exact r109 f107 f48
+
+/-
+@@ telelean v1
+id: deriv-110
+kind: DERIVATION
+natural_name: "Q110 follows"
+premises: rule-110, fact-66, fact-27
+-/
+theorem d110 : Q110 := by
+  exact r110 f66 f27
+
+/-
+@@ telelean v1
+id: deriv-111
+kind: DERIVATION
+natural_name: "Q111 follows"
+premises: rule-111, fact-64, fact-186
+-/
+theorem d111 : Q111 := by
+  exact r111 f64 f186
+
+/-
+@@ telelean v1
+id: deriv-112
+kind: DERIVATION
+natural_name: "Q112 follows"
+premises: rule-112, fact-130, fact-53
+-/
+theorem d112 : Q112 := by
+  exact r112 f130 f53
+
+/-
+@@ telelean v1
+id: deriv-113
+kind: DERIVATION
+natural_name: "Q113 follows"
+premises: rule-113, fact-155, fact-110
+-/
+theorem d113 : Q113 := by
+  exact r113 f155 f110
+
+/-
+@@ telelean v1
+id: deriv-114
+kind: DERIVATION
+natural_name: "Q114 follows"
+premises: rule-114, fact-5, fact-57
+-/
+theorem d114 : Q114 := by
+  exact r114 f5 f57
+
+/-
+@@ telelean v1
+id: deriv-115
+kind: DERIVATION
+natural_name: "Q115 follows"
+premises: rule-115, fact-4, fact-101
+-/
+theorem d115 : Q115 := by
+  exact r115 f4 f101
+
+/-
+@@ telelean v1
+id: deriv-116
+kind: DERIVATION
+natural_name: "Q116 follows"
+premises: rule-116, fact-37, fact-9
+-/
+theorem d116 : Q116 := by
+  exact r116 f37 f9
+
+/-
+@@ telelean v1
+id: deriv-117
+kind: DERIVATION
+natural_name: "Q117 follows"
+premises: rule-117, fact-184, fact-41
+-/
+theorem d117 : Q117 := by
+  exact r117 f184 f41
+
+/-
+@@ telelean v1
+id: deriv-118
+kind: DERIVATION
+natural_name: "Q118 follows"
+premises: rule-118, fact-114, fact-180
+-/
+theorem d118 : Q118 := by
+  exact r118 f114 f180
+
+/-
+@@ telelean v1
+id: deriv-119
+kind: DERIVATION
+natural_name: "Q119 follows"
+premises: rule-119, fact-129, fact-173
+-/
+theorem d119 : Q119 := by
+  exact r119 f129 f173
+
+/-
+@@ telelean v1
+id: deriv-120
+kind: DERIVATION
+natural_name: "Q120 follows"
+premises: rule-120, fact-109, fact-139
+-/
+theorem d120 : Q120 := by
+  exact r120 f109 f139
+
+/-
+@@ telelean v1
+id: deriv-121
+kind: DERIVATION
+natural_name: "Q121 follows"
+premises: rule-121, fact-56, fact-161
+-/
+theorem d121 : Q121 := by
+  exact r121 f56 f161
+
+/-
+@@ telelean v1
+id: deriv-122
+kind: DERIVATION
+natural_name: "Q122 follows"
+premises: rule-122, fact-177, fact-132
+-/
+theorem d122 : Q122 := by
+  exact r122 f177 f132
+
+/-
+@@ telelean v1
+id: deriv-123
+kind: DERIVATION
+natural_name: "Q123 follows"
+premises: rule-123, fact-115, fact-57
+-/
+theorem d123 : Q123 := by
+  exact r123 f115 f57
+
+/-
+@@ telelean v1
+id: deriv-124
+kind: DERIVATION
+natural_name: "Q124 follows"
+premises: rule-124, fact-134, fact-166
+-/
+theorem d124 : Q124 := by
+  exact r124 f134 f166
+
+/-
+@@ telelean v1
+id: deriv-125
+kind: DERIVATION
+natural_name: "Q125 follows"
+premises: rule-125, fact-7, fact-101
+-/
+theorem d125 : Q125 := by
+  exact r125 f7 f101
+
+/-
+@@ telelean v1
+id: deriv-126
+kind: DERIVATION
+natural_name: "Q126 follows"
+premises: rule-126, fact-172, fact-147
+-/
+theorem d126 : Q126 := by
+  exact r126 f172 f147
+
+/-
+@@ telelean v1
+id: deriv-127
+kind: DERIVATION
+natural_name: "Q127 follows"
+premises: rule-127, fact-82, fact-168
+-/
+theorem d127 : Q127 := by
+  exact r127 f82 f168
+
+/-
+@@ telelean v1
+id: deriv-128
+kind: DERIVATION
+natural_name: "Q128 follows"
+premises: rule-128, fact-161, fact-109
+-/
+theorem d128 : Q128 := by
+  exact r128 f161 f109
+
+/-
+@@ telelean v1
+id: deriv-129
+kind: DERIVATION
+natural_name: "Q129 follows"
+premises: rule-129, fact-15, fact-188
+-/
+theorem d129 : Q129 := by
+  exact r129 f15 f188
+
+/-
+@@ telelean v1
+id: deriv-130
+kind: DERIVATION
+natural_name: "Q130 follows"
+premises: rule-130, fact-76, fact-32
+-/
+theorem d130 : Q130 := by
+  exact r130 f76 f32
+
+/-
+@@ telelean v1
+id: deriv-131
+kind: DERIVATION
+natural_name: "Q131 follows"
+premises: rule-131, fact-54, fact-12
+-/
+theorem d131 : Q131 := by
+  exact r131 f54 f12
+
+/-
+@@ telelean v1
+id: deriv-132
+kind: DERIVATION
+natural_name: "Q132 follows"
+premises: rule-132, fact-78, fact-18
+-/
+theorem d132 : Q132 := by
+  exact r132 f78 f18
+
+/-
+@@ telelean v1
+id: deriv-133
+kind: DERIVATION
+natural_name: "Q133 follows"
+premises: rule-133, fact-19, fact-79
+-/
+theorem d133 : Q133 := by
+  exact r133 f19 f79
+
+/-
+@@ telelean v1
+id: deriv-134
+kind: DERIVATION
+natural_name: "Q134 follows"
+premises: rule-134, fact-76, fact-190
+-/
+theorem d134 : Q134 := by
+  exact r134 f76 f190
+
+/-
+@@ telelean v1
+id: deriv-135
+kind: DERIVATION
+natural_name: "Q135 follows"
+premises: rule-135, fact-40, fact-106
+-/
+theorem d135 : Q135 := by
+  exact r135 f40 f106
+
+/-
+@@ telelean v1
+id: deriv-136
+kind: DERIVATION
+natural_name: "Q136 follows"
+premises: rule-136, fact-144, fact-64
+-/
+theorem d136 : Q136 := by
+  exact r136 f144 f64
+
+/-
+@@ telelean v1
+id: deriv-137
+kind: DERIVATION
+natural_name: "Q137 follows"
+premises: rule-137, fact-33, fact-2
+-/
+theorem d137 : Q137 := by
+  exact r137 f33 f2
+
+/-
+@@ telelean v1
+id: deriv-138
+kind: DERIVATION
+natural_name: "Q138 follows"
+premises: rule-138, fact-143, fact-9
+-/
+theorem d138 : Q138 := by
+  exact r138 f143 f9
+
+/-
+@@ telelean v1
+id: deriv-139
+kind: DERIVATION
+natural_name: "Q139 follows"
+premises: rule-139, fact-151, fact-55
+-/
+theorem d139 : Q139 := by
+  exact r139 f151 f55
+
+/-
+@@ telelean v1
+id: deriv-140
+kind: DERIVATION
+natural_name: "Q140 follows"
+premises: rule-140, fact-145, fact-117
+-/
+theorem d140 : Q140 := by
+  exact r140 f145 f117
+
+/-
+@@ telelean v1
+id: deriv-141
+kind: DERIVATION
+natural_name: "Q141 follows"
+premises: rule-141, fact-43, fact-199
+-/
+theorem d141 : Q141 := by
+  exact r141 f43 f199
+
+/-
+@@ telelean v1
+id: deriv-142
+kind: DERIVATION
+natural_name: "Q142 follows"
+premises: rule-142, fact-180, fact-159
+-/
+theorem d142 : Q142 := by
+  exact r142 f180 f159
+
+/-
+@@ telelean v1
+id: deriv-143
+kind: DERIVATION
+natural_name: "Q143 follows"
+premises: rule-143, fact-130, fact-9
+-/
+theorem d143 : Q143 := by
+  exact r143 f130 f9
+
+/-
+@@ telelean v1
+id: deriv-144
+kind: DERIVATION
+natural_name: "Q144 follows"
+premises: rule-144, fact-96, fact-51
+-/
+theorem d144 : Q144 := by
+  exact r144 f96 f51
+
+/-
+@@ telelean v1
+id: deriv-145
+kind: DERIVATION
+natural_name: "Q145 follows"
+premises: rule-145, fact-88, fact-25
+-/
+theorem d145 : Q145 := by
+  exact r145 f88 f25
+
+/-
+@@ telelean v1
+id: deriv-146
+kind: DERIVATION
+natural_name: "Q146 follows"
+premises: rule-146, fact-52, fact-146
+-/
+theorem d146 : Q146 := by
+  exact r146 f52 f146
+
+/-
+@@ telelean v1
+id: deriv-147
+kind: DERIVATION
+natural_name: "Q147 follows"
+premises: rule-147, fact-172, fact-110
+-/
+theorem d147 : Q147 := by
+  exact r147 f172 f110
+
+/-
+@@ telelean v1
+id: deriv-148
+kind: DERIVATION
+natural_name: "Q148 follows"
+premises: rule-148, fact-151, fact-49
+-/
+theorem d148 : Q148 := by
+  exact r148 f151 f49
+
+/-
+@@ telelean v1
+id: deriv-149
+kind: DERIVATION
+natural_name: "Q149 follows"
+premises: rule-149, fact-126, fact-26
+-/
+theorem d149 : Q149 := by
+  exact r149 f126 f26
+
+/-
+@@ telelean v1
+id: deriv-150
+kind: DERIVATION
+natural_name: "Q150 follows"
+premises: rule-150, fact-170, fact-99
+-/
+theorem d150 : Q150 := by
+  exact r150 f170 f99
+
+/-
+@@ telelean v1
+id: deriv-151
+kind: DERIVATION
+natural_name: "Q151 follows"
+premises: rule-151, fact-75, fact-129
+-/
+theorem d151 : Q151 := by
+  exact r151 f75 f129
+
+/-
+@@ telelean v1
+id: deriv-152
+kind: DERIVATION
+natural_name: "Q152 follows"
+premises: rule-152, fact-127, fact-4
+-/
+theorem d152 : Q152 := by
+  exact r152 f127 f4
+
+/-
+@@ telelean v1
+id: deriv-153
+kind: DERIVATION
+natural_name: "Q153 follows"
+premises: rule-153, fact-83, fact-156
+-/
+theorem d153 : Q153 := by
+  exact r153 f83 f156
+
+/-
+@@ telelean v1
+id: deriv-154
+kind: DERIVATION
+natural_name: "Q154 follows"
+premises: rule-154, fact-102, fact-72
+-/
+theorem d154 : Q154 := by
+  exact r154 f102 f72
+
+/-
+@@ telelean v1
+id: deriv-155
+kind: DERIVATION
+natural_name: "Q155 follows"
+premises: rule-155, fact-4, fact-40
+-/
+theorem d155 : Q155 := by
+  exact r155 f4 f40
+
+/-
+@@ telelean v1
+id: deriv-156
+kind: DERIVATION
+natural_name: "Q156 follows"
+premises: rule-156, fact-51, fact-83
+-/
+theorem d156 : Q156 := by
+  exact r156 f51 f83
+
+/-
+@@ telelean v1
+id: deriv-157
+kind: DERIVATION
+natural_name: "Q157 follows"
+premises: rule-157, fact-144, fact-34
+-/
+theorem d157 : Q157 := by
+  exact r157 f144 f34
+
+/-
+@@ telelean v1
+id: deriv-158
+kind: DERIVATION
+natural_name: "Q158 follows"
+premises: rule-158, fact-86, fact-109
+-/
+theorem d158 : Q158 := by
+  exact r158 f86 f109
+
+/-
+@@ telelean v1
+id: deriv-159
+kind: DERIVATION
+natural_name: "Q159 follows"
+premises: rule-159, fact-54, fact-68
+-/
+theorem d159 : Q159 := by
+  exact r159 f54 f68
+
+/-
+@@ telelean v1
+id: deriv-160
+kind: DERIVATION
+natural_name: "Q160 follows"
+premises: rule-160, fact-172, fact-24
+-/
+theorem d160 : Q160 := by
+  exact r160 f172 f24
+
+/-
+@@ telelean v1
+id: deriv-161
+kind: DERIVATION
+natural_name: "Q161 follows"
+premises: rule-161, fact-97, fact-140
+-/
+theorem d161 : Q161 := by
+  exact r161 f97 f140
+
+/-
+@@ telelean v1
+id: deriv-162
+kind: DERIVATION
+natural_name: "Q162 follows"
+premises: rule-162, fact-88, fact-175
+-/
+theorem d162 : Q162 := by
+  exact r162 f88 f175
+
+/-
+@@ telelean v1
+id: deriv-163
+kind: DERIVATION
+natural_name: "Q163 follows"
+premises: rule-163, fact-136, fact-124
+-/
+theorem d163 : Q163 := by
+  exact r163 f136 f124
+
+/-
+@@ telelean v1
+id: deriv-164
+kind: DERIVATION
+natural_name: "Q164 follows"
+premises: rule-164, fact-196, fact-136
+-/
+theorem d164 : Q164 := by
+  exact r164 f196 f136
+
+/-
+@@ telelean v1
+id: deriv-165
+kind: DERIVATION
+natural_name: "Q165 follows"
+premises: rule-165, fact-60, fact-16
+-/
+theorem d165 : Q165 := by
+  exact r165 f60 f16
+
+/-
+@@ telelean v1
+id: deriv-166
+kind: DERIVATION
+natural_name: "Q166 follows"
+premises: rule-166, fact-185, fact-10
+-/
+theorem d166 : Q166 := by
+  exact r166 f185 f10
+
+/-
+@@ telelean v1
+id: deriv-167
+kind: DERIVATION
+natural_name: "Q167 follows"
+premises: rule-167, fact-21, fact-34
+-/
+theorem d167 : Q167 := by
+  exact r167 f21 f34
+
+/-
+@@ telelean v1
+id: deriv-168
+kind: DERIVATION
+natural_name: "Q168 follows"
+premises: rule-168, fact-43, fact-42
+-/
+theorem d168 : Q168 := by
+  exact r168 f43 f42
+
+/-
+@@ telelean v1
+id: deriv-169
+kind: DERIVATION
+natural_name: "Q169 follows"
+premises: rule-169, fact-137, fact-54
+-/
+theorem d169 : Q169 := by
+  exact r169 f137 f54
+
+/-
+@@ telelean v1
+id: deriv-170
+kind: DERIVATION
+natural_name: "Q170 follows"
+premises: rule-170, fact-68, fact-194
+-/
+theorem d170 : Q170 := by
+  exact r170 f68 f194
+
+/-
+@@ telelean v1
+id: deriv-171
+kind: DERIVATION
+natural_name: "Q171 follows"
+premises: rule-171, fact-85, fact-153
+-/
+theorem d171 : Q171 := by
+  exact r171 f85 f153
+
+/-
+@@ telelean v1
+id: deriv-172
+kind: DERIVATION
+natural_name: "Q172 follows"
+premises: rule-172, fact-129, fact-65
+-/
+theorem d172 : Q172 := by
+  exact r172 f129 f65
+
+/-
+@@ telelean v1
+id: deriv-173
+kind: DERIVATION
+natural_name: "Q173 follows"
+premises: rule-173, fact-94, fact-86
+-/
+theorem d173 : Q173 := by
+  exact r173 f94 f86
+
+/-
+@@ telelean v1
+id: deriv-174
+kind: DERIVATION
+natural_name: "Q174 follows"
+premises: rule-174, fact-87, fact-29
+-/
+theorem d174 : Q174 := by
+  exact r174 f87 f29
+
+/-
+@@ telelean v1
+id: deriv-175
+kind: DERIVATION
+natural_name: "Q175 follows"
+premises: rule-175, fact-74, fact-60
+-/
+theorem d175 : Q175 := by
+  exact r175 f74 f60
+
+/-
+@@ telelean v1
+id: deriv-176
+kind: DERIVATION
+natural_name: "Q176 follows"
+premises: rule-176, fact-154, fact-199
+-/
+theorem d176 : Q176 := by
+  exact r176 f154 f199
+
+/-
+@@ telelean v1
+id: deriv-177
+kind: DERIVATION
+natural_name: "Q177 follows"
+premises: rule-177, fact-183, fact-125
+-/
+theorem d177 : Q177 := by
+  exact r177 f183 f125
+
+/-
+@@ telelean v1
+id: deriv-178
+kind: DERIVATION
+natural_name: "Q178 follows"
+premises: rule-178, fact-34, fact-148
+-/
+theorem d178 : Q178 := by
+  exact r178 f34 f148
+
+/-
+@@ telelean v1
+id: deriv-179
+kind: DERIVATION
+natural_name: "Q179 follows"
+premises: rule-179, fact-141, fact-197
+-/
+theorem d179 : Q179 := by
+  exact r179 f141 f197
+
+/-
+@@ telelean v1
+id: deriv-180
+kind: DERIVATION
+natural_name: "Q180 follows"
+premises: rule-180, fact-26, fact-82
+-/
+theorem d180 : Q180 := by
+  exact r180 f26 f82
+
+/-
+@@ telelean v1
+id: deriv-181
+kind: DERIVATION
+natural_name: "Q181 follows"
+premises: rule-181, fact-10, fact-104
+-/
+theorem d181 : Q181 := by
+  exact r181 f10 f104
+
+/-
+@@ telelean v1
+id: deriv-182
+kind: DERIVATION
+natural_name: "Q182 follows"
+premises: rule-182, fact-18, fact-97
+-/
+theorem d182 : Q182 := by
+  exact r182 f18 f97
+
+/-
+@@ telelean v1
+id: deriv-183
+kind: DERIVATION
+natural_name: "Q183 follows"
+premises: rule-183, fact-37, fact-32
+-/
+theorem d183 : Q183 := by
+  exact r183 f37 f32
+
+/-
+@@ telelean v1
+id: deriv-184
+kind: DERIVATION
+natural_name: "Q184 follows"
+premises: rule-184, fact-87, fact-29
+-/
+theorem d184 : Q184 := by
+  exact r184 f87 f29
+
+/-
+@@ telelean v1
+id: deriv-185
+kind: DERIVATION
+natural_name: "Q185 follows"
+premises: rule-185, fact-157, fact-150
+-/
+theorem d185 : Q185 := by
+  exact r185 f157 f150
+
+/-
+@@ telelean v1
+id: deriv-186
+kind: DERIVATION
+natural_name: "Q186 follows"
+premises: rule-186, fact-96, fact-19
+-/
+theorem d186 : Q186 := by
+  exact r186 f96 f19
+
+/-
+@@ telelean v1
+id: deriv-187
+kind: DERIVATION
+natural_name: "Q187 follows"
+premises: rule-187, fact-146, fact-140
+-/
+theorem d187 : Q187 := by
+  exact r187 f146 f140
+
+/-
+@@ telelean v1
+id: deriv-188
+kind: DERIVATION
+natural_name: "Q188 follows"
+premises: rule-188, fact-57, fact-144
+-/
+theorem d188 : Q188 := by
+  exact r188 f57 f144
+
+/-
+@@ telelean v1
+id: deriv-189
+kind: DERIVATION
+natural_name: "Q189 follows"
+premises: rule-189, fact-20, fact-68
+-/
+theorem d189 : Q189 := by
+  exact r189 f20 f68
+
+/-
+@@ telelean v1
+id: deriv-190
+kind: DERIVATION
+natural_name: "Q190 follows"
+premises: rule-190, fact-93, fact-75
+-/
+theorem d190 : Q190 := by
+  exact r190 f93 f75
+
+/-
+@@ telelean v1
+id: deriv-191
+kind: DERIVATION
+natural_name: "Q191 follows"
+premises: rule-191, fact-144, fact-136
+-/
+theorem d191 : Q191 := by
+  exact r191 f144 f136
+
+/-
+@@ telelean v1
+id: deriv-192
+kind: DERIVATION
+natural_name: "Q192 follows"
+premises: rule-192, fact-29, fact-117
+-/
+theorem d192 : Q192 := by
+  exact r192 f29 f117
+
+/-
+@@ telelean v1
+id: deriv-193
+kind: DERIVATION
+natural_name: "Q193 follows"
+premises: rule-193, fact-70, fact-27
+-/
+theorem d193 : Q193 := by
+  exact r193 f70 f27
+
+/-
+@@ telelean v1
+id: deriv-194
+kind: DERIVATION
+natural_name: "Q194 follows"
+premises: rule-194, fact-11, fact-75
+-/
+theorem d194 : Q194 := by
+  exact r194 f11 f75
+
+/-
+@@ telelean v1
+id: deriv-195
+kind: DERIVATION
+natural_name: "Q195 follows"
+premises: rule-195, fact-3, fact-157
+-/
+theorem d195 : Q195 := by
+  exact r195 f3 f157
+
+/-
+@@ telelean v1
+id: deriv-196
+kind: DERIVATION
+natural_name: "Q196 follows"
+premises: rule-196, fact-171, fact-3
+-/
+theorem d196 : Q196 := by
+  exact r196 f171 f3
+
+/-
+@@ telelean v1
+id: deriv-197
+kind: DERIVATION
+natural_name: "Q197 follows"
+premises: rule-197, fact-23, fact-105
+-/
+theorem d197 : Q197 := by
+  exact r197 f23 f105
+
+/-
+@@ telelean v1
+id: deriv-198
+kind: DERIVATION
+natural_name: "Q198 follows"
+premises: rule-198, fact-29, fact-10
+-/
+theorem d198 : Q198 := by
+  exact r198 f29 f10
+
+/-
+@@ telelean v1
+id: deriv-199
+kind: DERIVATION
+natural_name: "Q199 follows"
+premises: rule-199, fact-48, fact-61
+-/
+theorem d199 : Q199 := by
+  exact r199 f48 f61
+
+/-
+@@ telelean v1
+id: deriv-200
+kind: DERIVATION
+natural_name: "Q200 follows"
+premises: rule-200, fact-150, fact-107
+-/
+theorem d200 : Q200 := by
+  exact r200 f150 f107
+
+/-
+@@ telelean v1
+id: deriv-201
+kind: DERIVATION
+natural_name: "Q201 follows"
+premises: rule-201, fact-41, fact-29
+-/
+theorem d201 : Q201 := by
+  exact r201 f41 f29
+
+/-
+@@ telelean v1
+id: deriv-202
+kind: DERIVATION
+natural_name: "Q202 follows"
+premises: rule-202, fact-115, fact-42
+-/
+theorem d202 : Q202 := by
+  exact r202 f115 f42
+
+/-
+@@ telelean v1
+id: deriv-203
+kind: DERIVATION
+natural_name: "Q203 follows"
+premises: rule-203, fact-174, fact-61
+-/
+theorem d203 : Q203 := by
+  exact r203 f174 f61
+
+/-
+@@ telelean v1
+id: deriv-204
+kind: DERIVATION
+natural_name: "Q204 follows"
+premises: rule-204, fact-40, fact-190
+-/
+theorem d204 : Q204 := by
+  exact r204 f40 f190
+
+/-
+@@ telelean v1
+id: deriv-205
+kind: DERIVATION
+natural_name: "Q205 follows"
+premises: rule-205, fact-26, fact-111
+-/
+theorem d205 : Q205 := by
+  exact r205 f26 f111
+
+/-
+@@ telelean v1
+id: deriv-206
+kind: DERIVATION
+natural_name: "Q206 follows"
+premises: rule-206, fact-96, fact-138
+-/
+theorem d206 : Q206 := by
+  exact r206 f96 f138
+
+/-
+@@ telelean v1
+id: deriv-207
+kind: DERIVATION
+natural_name: "Q207 follows"
+premises: rule-207, fact-75, fact-140
+-/
+theorem d207 : Q207 := by
+  exact r207 f75 f140
+
+/-
+@@ telelean v1
+id: deriv-208
+kind: DERIVATION
+natural_name: "Q208 follows"
+premises: rule-208, fact-64, fact-182
+-/
+theorem d208 : Q208 := by
+  exact r208 f64 f182
+
+/-
+@@ telelean v1
+id: deriv-209
+kind: DERIVATION
+natural_name: "Q209 follows"
+premises: rule-209, fact-122, fact-80
+-/
+theorem d209 : Q209 := by
+  exact r209 f122 f80
+
+/-
+@@ telelean v1
+id: deriv-210
+kind: DERIVATION
+natural_name: "Q210 follows"
+premises: rule-210, fact-25, fact-53
+-/
+theorem d210 : Q210 := by
+  exact r210 f25 f53
+
+/-
+@@ telelean v1
+id: deriv-211
+kind: DERIVATION
+natural_name: "Q211 follows"
+premises: rule-211, fact-166, fact-81
+-/
+theorem d211 : Q211 := by
+  exact r211 f166 f81
+
+/-
+@@ telelean v1
+id: deriv-212
+kind: DERIVATION
+natural_name: "Q212 follows"
+premises: rule-212, fact-10, fact-6
+-/
+theorem d212 : Q212 := by
+  exact r212 f10 f6
+
+/-
+@@ telelean v1
+id: deriv-213
+kind: DERIVATION
+natural_name: "Q213 follows"
+premises: rule-213, fact-2, fact-75
+-/
+theorem d213 : Q213 := by
+  exact r213 f2 f75
+
+/-
+@@ telelean v1
+id: deriv-214
+kind: DERIVATION
+natural_name: "Q214 follows"
+premises: rule-214, fact-185, fact-152
+-/
+theorem d214 : Q214 := by
+  exact r214 f185 f152
+
+/-
+@@ telelean v1
+id: deriv-215
+kind: DERIVATION
+natural_name: "Q215 follows"
+premises: rule-215, fact-81, fact-115
+-/
+theorem d215 : Q215 := by
+  exact r215 f81 f115
+
+/-
+@@ telelean v1
+id: deriv-216
+kind: DERIVATION
+natural_name: "Q216 follows"
+premises: rule-216, fact-100, fact-80
+-/
+theorem d216 : Q216 := by
+  exact r216 f100 f80
+
+/-
+@@ telelean v1
+id: deriv-217
+kind: DERIVATION
+natural_name: "Q217 follows"
+premises: rule-217, fact-102, fact-16
+-/
+theorem d217 : Q217 := by
+  exact r217 f102 f16
+
+/-
+@@ telelean v1
+id: deriv-218
+kind: DERIVATION
+natural_name: "Q218 follows"
+premises: rule-218, fact-16, fact-81
+-/
+theorem d218 : Q218 := by
+  exact r218 f16 f81
+
+/-
+@@ telelean v1
+id: deriv-219
+kind: DERIVATION
+natural_name: "Q219 follows"
+premises: rule-219, fact-153, fact-116
+-/
+theorem d219 : Q219 := by
+  exact r219 f153 f116
+
+/-
+@@ telelean v1
+id: deriv-220
+kind: DERIVATION
+natural_name: "Q220 follows"
+premises: rule-220, fact-28, fact-64
+-/
+theorem d220 : Q220 := by
+  exact r220 f28 f64
+
+/-
+@@ telelean v1
+id: deriv-221
+kind: DERIVATION
+natural_name: "Q221 follows"
+premises: rule-221, fact-55, fact-158
+-/
+theorem d221 : Q221 := by
+  exact r221 f55 f158
+
+/-
+@@ telelean v1
+id: deriv-222
+kind: DERIVATION
+natural_name: "Q222 follows"
+premises: rule-222, fact-199, fact-138
+-/
+theorem d222 : Q222 := by
+  exact r222 f199 f138
+
+/-
+@@ telelean v1
+id: deriv-223
+kind: DERIVATION
+natural_name: "Q223 follows"
+premises: rule-223, fact-176, fact-120
+-/
+theorem d223 : Q223 := by
+  exact r223 f176 f120
+
+/-
+@@ telelean v1
+id: deriv-224
+kind: DERIVATION
+natural_name: "Q224 follows"
+premises: rule-224, fact-169, fact-91
+-/
+theorem d224 : Q224 := by
+  exact r224 f169 f91
+
+/-
+@@ telelean v1
+id: deriv-225
+kind: DERIVATION
+natural_name: "Q225 follows"
+premises: rule-225, fact-66, fact-46
+-/
+theorem d225 : Q225 := by
+  exact r225 f66 f46
+
+/-
+@@ telelean v1
+id: deriv-226
+kind: DERIVATION
+natural_name: "Q226 follows"
+premises: rule-226, fact-138, fact-53
+-/
+theorem d226 : Q226 := by
+  exact r226 f138 f53
+
+/-
+@@ telelean v1
+id: deriv-227
+kind: DERIVATION
+natural_name: "Q227 follows"
+premises: rule-227, fact-78, fact-50
+-/
+theorem d227 : Q227 := by
+  exact r227 f78 f50
+
+/-
+@@ telelean v1
+id: deriv-228
+kind: DERIVATION
+natural_name: "Q228 follows"
+premises: rule-228, fact-63, fact-92
+-/
+theorem d228 : Q228 := by
+  exact r228 f63 f92
+
+/-
+@@ telelean v1
+id: deriv-229
+kind: DERIVATION
+natural_name: "Q229 follows"
+premises: rule-229, fact-20, fact-71
+-/
+theorem d229 : Q229 := by
+  exact r229 f20 f71
+
+/-
+@@ telelean v1
+id: deriv-230
+kind: DERIVATION
+natural_name: "Q230 follows"
+premises: rule-230, fact-22, fact-192
+-/
+theorem d230 : Q230 := by
+  exact r230 f22 f192
+
+/-
+@@ telelean v1
+id: deriv-231
+kind: DERIVATION
+natural_name: "Q231 follows"
+premises: rule-231, fact-114, fact-23
+-/
+theorem d231 : Q231 := by
+  exact r231 f114 f23
+
+/-
+@@ telelean v1
+id: deriv-232
+kind: DERIVATION
+natural_name: "Q232 follows"
+premises: rule-232, fact-166, fact-147
+-/
+theorem d232 : Q232 := by
+  exact r232 f166 f147
+
+/-
+@@ telelean v1
+id: deriv-233
+kind: DERIVATION
+natural_name: "Q233 follows"
+premises: rule-233, fact-164, fact-86
+-/
+theorem d233 : Q233 := by
+  exact r233 f164 f86
+
+/-
+@@ telelean v1
+id: deriv-234
+kind: DERIVATION
+natural_name: "Q234 follows"
+premises: rule-234, fact-58, fact-99
+-/
+theorem d234 : Q234 := by
+  exact r234 f58 f99
+
+/-
+@@ telelean v1
+id: deriv-235
+kind: DERIVATION
+natural_name: "Q235 follows"
+premises: rule-235, fact-78, fact-10
+-/
+theorem d235 : Q235 := by
+  exact r235 f78 f10
+
+/-
+@@ telelean v1
+id: deriv-236
+kind: DERIVATION
+natural_name: "Q236 follows"
+premises: rule-236, fact-83, fact-47
+-/
+theorem d236 : Q236 := by
+  exact r236 f83 f47
+
+/-
+@@ telelean v1
+id: deriv-237
+kind: DERIVATION
+natural_name: "Q237 follows"
+premises: rule-237, fact-81, fact-148
+-/
+theorem d237 : Q237 := by
+  exact r237 f81 f148
+
+/-
+@@ telelean v1
+id: deriv-238
+kind: DERIVATION
+natural_name: "Q238 follows"
+premises: rule-238, fact-77, fact-62
+-/
+theorem d238 : Q238 := by
+  exact r238 f77 f62
+
+/-
+@@ telelean v1
+id: deriv-239
+kind: DERIVATION
+natural_name: "Q239 follows"
+premises: rule-239, fact-85, fact-25
+-/
+theorem d239 : Q239 := by
+  exact r239 f85 f25
+
+/-
+@@ telelean v1
+id: deriv-240
+kind: DERIVATION
+natural_name: "Q240 follows"
+premises: rule-240, fact-139, fact-156
+-/
+theorem d240 : Q240 := by
+  exact r240 f139 f156
+
+/-
+@@ telelean v1
+id: deriv-241
+kind: DERIVATION
+natural_name: "Q241 follows"
+premises: rule-241, fact-148, fact-152
+-/
+theorem d241 : Q241 := by
+  exact r241 f148 f152
+
+/-
+@@ telelean v1
+id: deriv-242
+kind: DERIVATION
+natural_name: "Q242 follows"
+premises: rule-242, fact-23, fact-62
+-/
+theorem d242 : Q242 := by
+  exact r242 f23 f62
+
+/-
+@@ telelean v1
+id: deriv-243
+kind: DERIVATION
+natural_name: "Q243 follows"
+premises: rule-243, fact-56, fact-5
+-/
+theorem d243 : Q243 := by
+  exact r243 f56 f5
+
+/-
+@@ telelean v1
+id: deriv-244
+kind: DERIVATION
+natural_name: "Q244 follows"
+premises: rule-244, fact-62, fact-102
+-/
+theorem d244 : Q244 := by
+  exact r244 f62 f102
+
+/-
+@@ telelean v1
+id: deriv-245
+kind: DERIVATION
+natural_name: "Q245 follows"
+premises: rule-245, fact-18, fact-68
+-/
+theorem d245 : Q245 := by
+  exact r245 f18 f68
+
+/-
+@@ telelean v1
+id: deriv-246
+kind: DERIVATION
+natural_name: "Q246 follows"
+premises: rule-246, fact-141, fact-18
+-/
+theorem d246 : Q246 := by
+  exact r246 f141 f18
+
+/-
+@@ telelean v1
+id: deriv-247
+kind: DERIVATION
+natural_name: "Q247 follows"
+premises: rule-247, fact-186, fact-19
+-/
+theorem d247 : Q247 := by
+  exact r247 f186 f19
+
+/-
+@@ telelean v1
+id: deriv-248
+kind: DERIVATION
+natural_name: "Q248 follows"
+premises: rule-248, fact-5, fact-162
+-/
+theorem d248 : Q248 := by
+  exact r248 f5 f162
+
+/-
+@@ telelean v1
+id: deriv-249
+kind: DERIVATION
+natural_name: "Q249 follows"
+premises: rule-249, fact-2, fact-74
+-/
+theorem d249 : Q249 := by
+  exact r249 f2 f74
+
+/-
+@@ telelean v1
+id: deriv-250
+kind: DERIVATION
+natural_name: "Q250 follows"
+premises: rule-250, fact-192, fact-91
+-/
+theorem d250 : Q250 := by
+  exact r250 f192 f91
+
+/-
+@@ telelean v1
+id: deriv-251
+kind: DERIVATION
+natural_name: "Q251 follows"
+premises: rule-251, fact-126, fact-120
+-/
+theorem d251 : Q251 := by
+  exact r251 f126 f120
+
+/-
+@@ telelean v1
+id: deriv-252
+kind: DERIVATION
+natural_name: "Q252 follows"
+premises: rule-252, fact-39, fact-25
+-/
+theorem d252 : Q252 := by
+  exact r252 f39 f25
+
+/-
+@@ telelean v1
+id: deriv-253
+kind: DERIVATION
+natural_name: "Q253 follows"
+premises: rule-253, fact-128, fact-199
+-/
+theorem d253 : Q253 := by
+  exact r253 f128 f199
+
+/-
+@@ telelean v1
+id: deriv-254
+kind: DERIVATION
+natural_name: "Q254 follows"
+premises: rule-254, fact-83, fact-19
+-/
+theorem d254 : Q254 := by
+  exact r254 f83 f19
+
+/-
+@@ telelean v1
+id: deriv-255
+kind: DERIVATION
+natural_name: "Q255 follows"
+premises: rule-255, fact-130, fact-170
+-/
+theorem d255 : Q255 := by
+  exact r255 f130 f170
+
+/-
+@@ telelean v1
+id: deriv-256
+kind: DERIVATION
+natural_name: "Q256 follows"
+premises: rule-256, fact-44, fact-45
+-/
+theorem d256 : Q256 := by
+  exact r256 f44 f45
+
+/-
+@@ telelean v1
+id: deriv-257
+kind: DERIVATION
+natural_name: "Q257 follows"
+premises: rule-257, fact-198, fact-38
+-/
+theorem d257 : Q257 := by
+  exact r257 f198 f38
+
+/-
+@@ telelean v1
+id: deriv-258
+kind: DERIVATION
+natural_name: "Q258 follows"
+premises: rule-258, fact-36, fact-81
+-/
+theorem d258 : Q258 := by
+  exact r258 f36 f81
+
+/-
+@@ telelean v1
+id: deriv-259
+kind: DERIVATION
+natural_name: "Q259 follows"
+premises: rule-259, fact-78, fact-27
+-/
+theorem d259 : Q259 := by
+  exact r259 f78 f27
+
+/-
+@@ telelean v1
+id: deriv-260
+kind: DERIVATION
+natural_name: "Q260 follows"
+premises: rule-260, fact-181, fact-131
+-/
+theorem d260 : Q260 := by
+  exact r260 f181 f131
+
+/-
+@@ telelean v1
+id: deriv-261
+kind: DERIVATION
+natural_name: "Q261 follows"
+premises: rule-261, fact-154, fact-75
+-/
+theorem d261 : Q261 := by
+  exact r261 f154 f75
+
+/-
+@@ telelean v1
+id: deriv-262
+kind: DERIVATION
+natural_name: "Q262 follows"
+premises: rule-262, fact-32, fact-52
+-/
+theorem d262 : Q262 := by
+  exact r262 f32 f52
+
+/-
+@@ telelean v1
+id: deriv-263
+kind: DERIVATION
+natural_name: "Q263 follows"
+premises: rule-263, fact-36, fact-139
+-/
+theorem d263 : Q263 := by
+  exact r263 f36 f139
+
+/-
+@@ telelean v1
+id: deriv-264
+kind: DERIVATION
+natural_name: "Q264 follows"
+premises: rule-264, fact-184, fact-8
+-/
+theorem d264 : Q264 := by
+  exact r264 f184 f8
+
+/-
+@@ telelean v1
+id: deriv-265
+kind: DERIVATION
+natural_name: "Q265 follows"
+premises: rule-265, fact-199, fact-80
+-/
+theorem d265 : Q265 := by
+  exact r265 f199 f80
+
+/-
+@@ telelean v1
+id: deriv-266
+kind: DERIVATION
+natural_name: "Q266 follows"
+premises: rule-266, fact-159, fact-172
+-/
+theorem d266 : Q266 := by
+  exact r266 f159 f172
+
+/-
+@@ telelean v1
+id: deriv-267
+kind: DERIVATION
+natural_name: "Q267 follows"
+premises: rule-267, fact-141, fact-191
+-/
+theorem d267 : Q267 := by
+  exact r267 f141 f191
+
+/-
+@@ telelean v1
+id: deriv-268
+kind: DERIVATION
+natural_name: "Q268 follows"
+premises: rule-268, fact-176, fact-52
+-/
+theorem d268 : Q268 := by
+  exact r268 f176 f52
+
+/-
+@@ telelean v1
+id: deriv-269
+kind: DERIVATION
+natural_name: "Q269 follows"
+premises: rule-269, fact-45, fact-76
+-/
+theorem d269 : Q269 := by
+  exact r269 f45 f76
+
+/-
+@@ telelean v1
+id: deriv-270
+kind: DERIVATION
+natural_name: "Q270 follows"
+premises: rule-270, fact-110, fact-137
+-/
+theorem d270 : Q270 := by
+  exact r270 f110 f137
+
+/-
+@@ telelean v1
+id: deriv-271
+kind: DERIVATION
+natural_name: "Q271 follows"
+premises: rule-271, fact-40, fact-12
+-/
+theorem d271 : Q271 := by
+  exact r271 f40 f12
+
+/-
+@@ telelean v1
+id: deriv-272
+kind: DERIVATION
+natural_name: "Q272 follows"
+premises: rule-272, fact-182, fact-170
+-/
+theorem d272 : Q272 := by
+  exact r272 f182 f170
+
+/-
+@@ telelean v1
+id: deriv-273
+kind: DERIVATION
+natural_name: "Q273 follows"
+premises: rule-273, fact-63, fact-64
+-/
+theorem d273 : Q273 := by
+  exact r273 f63 f64
+
+/-
+@@ telelean v1
+id: deriv-274
+kind: DERIVATION
+natural_name: "Q274 follows"
+premises: rule-274, fact-199, fact-16
+-/
+theorem d274 : Q274 := by
+  exact r274 f199 f16
+
+/-
+@@ telelean v1
+id: deriv-275
+kind: DERIVATION
+natural_name: "Q275 follows"
+premises: rule-275, fact-174, fact-114
+-/
+theorem d275 : Q275 := by
+  exact r275 f174 f114
+
+/-
+@@ telelean v1
+id: deriv-276
+kind: DERIVATION
+natural_name: "Q276 follows"
+premises: rule-276, fact-110, fact-140
+-/
+theorem d276 : Q276 := by
+  exact r276 f110 f140
+
+/-
+@@ telelean v1
+id: deriv-277
+kind: DERIVATION
+natural_name: "Q277 follows"
+premises: rule-277, fact-64, fact-138
+-/
+theorem d277 : Q277 := by
+  exact r277 f64 f138
+
+/-
+@@ telelean v1
+id: deriv-278
+kind: DERIVATION
+natural_name: "Q278 follows"
+premises: rule-278, fact-112, fact-137
+-/
+theorem d278 : Q278 := by
+  exact r278 f112 f137
+
+/-
+@@ telelean v1
+id: deriv-279
+kind: DERIVATION
+natural_name: "Q279 follows"
+premises: rule-279, fact-116, fact-2
+-/
+theorem d279 : Q279 := by
+  exact r279 f116 f2
+
+/-
+@@ telelean v1
+id: deriv-280
+kind: DERIVATION
+natural_name: "Q280 follows"
+premises: rule-280, fact-101, fact-86
+-/
+theorem d280 : Q280 := by
+  exact r280 f101 f86
+
+/-
+@@ telelean v1
+id: deriv-281
+kind: DERIVATION
+natural_name: "Q281 follows"
+premises: rule-281, fact-43, fact-66
+-/
+theorem d281 : Q281 := by
+  exact r281 f43 f66
+
+/-
+@@ telelean v1
+id: deriv-282
+kind: DERIVATION
+natural_name: "Q282 follows"
+premises: rule-282, fact-124, fact-6
+-/
+theorem d282 : Q282 := by
+  exact r282 f124 f6
+
+/-
+@@ telelean v1
+id: deriv-283
+kind: DERIVATION
+natural_name: "Q283 follows"
+premises: rule-283, fact-165, fact-106
+-/
+theorem d283 : Q283 := by
+  exact r283 f165 f106
+
+/-
+@@ telelean v1
+id: deriv-284
+kind: DERIVATION
+natural_name: "Q284 follows"
+premises: rule-284, fact-146, fact-4
+-/
+theorem d284 : Q284 := by
+  exact r284 f146 f4
+
+/-
+@@ telelean v1
+id: deriv-285
+kind: DERIVATION
+natural_name: "Q285 follows"
+premises: rule-285, fact-15, fact-177
+-/
+theorem d285 : Q285 := by
+  exact r285 f15 f177
+
+/-
+@@ telelean v1
+id: deriv-286
+kind: DERIVATION
+natural_name: "Q286 follows"
+premises: rule-286, fact-90, fact-148
+-/
+theorem d286 : Q286 := by
+  exact r286 f90 f148
+
+/-
+@@ telelean v1
+id: deriv-287
+kind: DERIVATION
+natural_name: "Q287 follows"
+premises: rule-287, fact-35, fact-151
+-/
+theorem d287 : Q287 := by
+  exact r287 f35 f151
+
+/-
+@@ telelean v1
+id: deriv-288
+kind: DERIVATION
+natural_name: "Q288 follows"
+premises: rule-288, fact-32, fact-35
+-/
+theorem d288 : Q288 := by
+  exact r288 f32 f35
+
+/-
+@@ telelean v1
+id: deriv-289
+kind: DERIVATION
+natural_name: "Q289 follows"
+premises: rule-289, fact-66, fact-70
+-/
+theorem d289 : Q289 := by
+  exact r289 f66 f70
+
+/-
+@@ telelean v1
+id: deriv-290
+kind: DERIVATION
+natural_name: "Q290 follows"
+premises: rule-290, fact-101, fact-144
+-/
+theorem d290 : Q290 := by
+  exact r290 f101 f144
+
+/-
+@@ telelean v1
+id: deriv-291
+kind: DERIVATION
+natural_name: "Q291 follows"
+premises: rule-291, fact-102, fact-44
+-/
+theorem d291 : Q291 := by
+  exact r291 f102 f44
+
+/-
+@@ telelean v1
+id: deriv-292
+kind: DERIVATION
+natural_name: "Q292 follows"
+premises: rule-292, fact-156, fact-22
+-/
+theorem d292 : Q292 := by
+  exact r292 f156 f22
+
+/-
+@@ telelean v1
+id: deriv-293
+kind: DERIVATION
+natural_name: "Q293 follows"
+premises: rule-293, fact-59, fact-124
+-/
+theorem d293 : Q293 := by
+  exact r293 f59 f124
+
+/-
+@@ telelean v1
+id: deriv-294
+kind: DERIVATION
+natural_name: "Q294 follows"
+premises: rule-294, fact-1, fact-45
+-/
+theorem d294 : Q294 := by
+  exact r294 f1 f45
+
+/-
+@@ telelean v1
+id: deriv-295
+kind: DERIVATION
+natural_name: "Q295 follows"
+premises: rule-295, fact-135, fact-81
+-/
+theorem d295 : Q295 := by
+  exact r295 f135 f81
+
+/-
+@@ telelean v1
+id: deriv-296
+kind: DERIVATION
+natural_name: "Q296 follows"
+premises: rule-296, fact-128, fact-166
+-/
+theorem d296 : Q296 := by
+  exact r296 f128 f166
+
+/-
+@@ telelean v1
+id: deriv-297
+kind: DERIVATION
+natural_name: "Q297 follows"
+premises: rule-297, fact-112, fact-175
+-/
+theorem d297 : Q297 := by
+  exact r297 f112 f175
+
+/-
+@@ telelean v1
+id: deriv-298
+kind: DERIVATION
+natural_name: "Q298 follows"
+premises: rule-298, fact-163, fact-187
+-/
+theorem d298 : Q298 := by
+  exact r298 f163 f187
+
+/-
+@@ telelean v1
+id: deriv-299
+kind: DERIVATION
+natural_name: "Q299 follows"
+premises: rule-299, fact-57, fact-61
+-/
+theorem d299 : Q299 := by
+  exact r299 f57 f61
+
+/-
+@@ telelean v1
+id: deriv-300
+kind: DERIVATION
+natural_name: "Q300 follows"
+premises: rule-300, fact-80, fact-126
+-/
+theorem d300 : Q300 := by
+  exact r300 f80 f126
+
+/-
+@@ telelean v1
+id: deriv-301
+kind: DERIVATION
+natural_name: "Q301 follows"
+premises: rule-301, fact-175, fact-122
+-/
+theorem d301 : Q301 := by
+  exact r301 f175 f122
+
+/-
+@@ telelean v1
+id: deriv-302
+kind: DERIVATION
+natural_name: "Q302 follows"
+premises: rule-302, fact-57, fact-182
+-/
+theorem d302 : Q302 := by
+  exact r302 f57 f182
+
+/-
+@@ telelean v1
+id: deriv-303
+kind: DERIVATION
+natural_name: "Q303 follows"
+premises: rule-303, fact-105, fact-86
+-/
+theorem d303 : Q303 := by
+  exact r303 f105 f86
+
+/-
+@@ telelean v1
+id: deriv-304
+kind: DERIVATION
+natural_name: "Q304 follows"
+premises: rule-304, fact-143, fact-156
+-/
+theorem d304 : Q304 := by
+  exact r304 f143 f156
+
+/-
+@@ telelean v1
+id: deriv-305
+kind: DERIVATION
+natural_name: "Q305 follows"
+premises: rule-305, fact-186, fact-167
+-/
+theorem d305 : Q305 := by
+  exact r305 f186 f167
+
+/-
+@@ telelean v1
+id: deriv-306
+kind: DERIVATION
+natural_name: "Q306 follows"
+premises: rule-306, fact-70, fact-165
+-/
+theorem d306 : Q306 := by
+  exact r306 f70 f165
+
+/-
+@@ telelean v1
+id: deriv-307
+kind: DERIVATION
+natural_name: "Q307 follows"
+premises: rule-307, fact-56, fact-12
+-/
+theorem d307 : Q307 := by
+  exact r307 f56 f12
+
+/-
+@@ telelean v1
+id: deriv-308
+kind: DERIVATION
+natural_name: "Q308 follows"
+premises: rule-308, fact-18, fact-195
+-/
+theorem d308 : Q308 := by
+  exact r308 f18 f195
+
+/-
+@@ telelean v1
+id: deriv-309
+kind: DERIVATION
+natural_name: "Q309 follows"
+premises: rule-309, fact-130, fact-165
+-/
+theorem d309 : Q309 := by
+  exact r309 f130 f165
+
+/-
+@@ telelean v1
+id: deriv-310
+kind: DERIVATION
+natural_name: "Q310 follows"
+premises: rule-310, fact-94, fact-40
+-/
+theorem d310 : Q310 := by
+  exact r310 f94 f40
+
+/-
+@@ telelean v1
+id: deriv-311
+kind: DERIVATION
+natural_name: "Q311 follows"
+premises: rule-311, fact-130, fact-196
+-/
+theorem d311 : Q311 := by
+  exact r311 f130 f196
+
+/-
+@@ telelean v1
+id: deriv-312
+kind: DERIVATION
+natural_name: "Q312 follows"
+premises: rule-312, fact-52, fact-79
+-/
+theorem d312 : Q312 := by
+  exact r312 f52 f79
+
+/-
+@@ telelean v1
+id: deriv-313
+kind: DERIVATION
+natural_name: "Q313 follows"
+premises: rule-313, fact-76, fact-177
+-/
+theorem d313 : Q313 := by
+  exact r313 f76 f177
+
+/-
+@@ telelean v1
+id: deriv-314
+kind: DERIVATION
+natural_name: "Q314 follows"
+premises: rule-314, fact-76, fact-141
+-/
+theorem d314 : Q314 := by
+  exact r314 f76 f141
+
+/-
+@@ telelean v1
+id: deriv-315
+kind: DERIVATION
+natural_name: "Q315 follows"
+premises: rule-315, fact-95, fact-42
+-/
+theorem d315 : Q315 := by
+  exact r315 f95 f42
+
+/-
+@@ telelean v1
+id: deriv-316
+kind: DERIVATION
+natural_name: "Q316 follows"
+premises: rule-316, fact-179, fact-179
+-/
+theorem d316 : Q316 := by
+  exact r316 f179 f179
+
+/-
+@@ telelean v1
+id: deriv-317
+kind: DERIVATION
+natural_name: "Q317 follows"
+premises: rule-317, fact-188, fact-118
+-/
+theorem d317 : Q317 := by
+  exact r317 f188 f118
+
+/-
+@@ telelean v1
+id: deriv-318
+kind: DERIVATION
+natural_name: "Q318 follows"
+premises: rule-318, fact-152, fact-21
+-/
+theorem d318 : Q318 := by
+  exact r318 f152 f21
+
+/-
+@@ telelean v1
+id: deriv-319
+kind: DERIVATION
+natural_name: "Q319 follows"
+premises: rule-319, fact-31, fact-155
+-/
+theorem d319 : Q319 := by
+  exact r319 f31 f155
+
+/-
+@@ telelean v1
+id: deriv-320
+kind: DERIVATION
+natural_name: "Q320 follows"
+premises: rule-320, fact-131, fact-146
+-/
+theorem d320 : Q320 := by
+  exact r320 f131 f146
+
+/-
+@@ telelean v1
+id: deriv-321
+kind: DERIVATION
+natural_name: "Q321 follows"
+premises: rule-321, fact-96, fact-45
+-/
+theorem d321 : Q321 := by
+  exact r321 f96 f45
+
+/-
+@@ telelean v1
+id: deriv-322
+kind: DERIVATION
+natural_name: "Q322 follows"
+premises: rule-322, fact-39, fact-64
+-/
+theorem d322 : Q322 := by
+  exact r322 f39 f64
+
+/-
+@@ telelean v1
+id: deriv-323
+kind: DERIVATION
+natural_name: "Q323 follows"
+premises: rule-323, fact-109, fact-55
+-/
+theorem d323 : Q323 := by
+  exact r323 f109 f55
+
+/-
+@@ telelean v1
+id: deriv-324
+kind: DERIVATION
+natural_name: "Q324 follows"
+premises: rule-324, fact-145, fact-184
+-/
+theorem d324 : Q324 := by
+  exact r324 f145 f184
+
+/-
+@@ telelean v1
+id: deriv-325
+kind: DERIVATION
+natural_name: "Q325 follows"
+premises: rule-325, fact-193, fact-13
+-/
+theorem d325 : Q325 := by
+  exact r325 f193 f13
+
+/-
+@@ telelean v1
+id: deriv-326
+kind: DERIVATION
+natural_name: "Q326 follows"
+premises: rule-326, fact-126, fact-174
+-/
+theorem d326 : Q326 := by
+  exact r326 f126 f174
+
+/-
+@@ telelean v1
+id: deriv-327
+kind: DERIVATION
+natural_name: "Q327 follows"
+premises: rule-327, fact-100, fact-183
+-/
+theorem d327 : Q327 := by
+  exact r327 f100 f183
+
+/-
+@@ telelean v1
+id: deriv-328
+kind: DERIVATION
+natural_name: "Q328 follows"
+premises: rule-328, fact-163, fact-89
+-/
+theorem d328 : Q328 := by
+  exact r328 f163 f89
+
+/-
+@@ telelean v1
+id: deriv-329
+kind: DERIVATION
+natural_name: "Q329 follows"
+premises: rule-329, fact-98, fact-131
+-/
+theorem d329 : Q329 := by
+  exact r329 f98 f131
+
+/-
+@@ telelean v1
+id: deriv-330
+kind: DERIVATION
+natural_name: "Q330 follows"
+premises: rule-330, fact-42, fact-139
+-/
+theorem d330 : Q330 := by
+  exact r330 f42 f139
+
+/-
+@@ telelean v1
+id: deriv-331
+kind: DERIVATION
+natural_name: "Q331 follows"
+premises: rule-331, fact-186, fact-10
+-/
+theorem d331 : Q331 := by
+  exact r331 f186 f10
+
+/-
+@@ telelean v1
+id: deriv-332
+kind: DERIVATION
+natural_name: "Q332 follows"
+premises: rule-332, fact-134, fact-23
+-/
+theorem d332 : Q332 := by
+  exact r332 f134 f23
+
+/-
+@@ telelean v1
+id: deriv-333
+kind: DERIVATION
+natural_name: "Q333 follows"
+premises: rule-333, fact-65, fact-160
+-/
+theorem d333 : Q333 := by
+  exact r333 f65 f160
+
+/-
+@@ telelean v1
+id: deriv-334
+kind: DERIVATION
+natural_name: "Q334 follows"
+premises: rule-334, fact-25, fact-68
+-/
+theorem d334 : Q334 := by
+  exact r334 f25 f68
+
+/-
+@@ telelean v1
+id: deriv-335
+kind: DERIVATION
+natural_name: "Q335 follows"
+premises: rule-335, fact-188, fact-21
+-/
+theorem d335 : Q335 := by
+  exact r335 f188 f21
+
+/-
+@@ telelean v1
+id: deriv-336
+kind: DERIVATION
+natural_name: "Q336 follows"
+premises: rule-336, fact-35, fact-198
+-/
+theorem d336 : Q336 := by
+  exact r336 f35 f198
+
+/-
+@@ telelean v1
+id: deriv-337
+kind: DERIVATION
+natural_name: "Q337 follows"
+premises: rule-337, fact-157, fact-168
+-/
+theorem d337 : Q337 := by
+  exact r337 f157 f168
+
+/-
+@@ telelean v1
+id: deriv-338
+kind: DERIVATION
+natural_name: "Q338 follows"
+premises: rule-338, fact-175, fact-179
+-/
+theorem d338 : Q338 := by
+  exact r338 f175 f179
+
+/-
+@@ telelean v1
+id: deriv-339
+kind: DERIVATION
+natural_name: "Q339 follows"
+premises: rule-339, fact-20, fact-113
+-/
+theorem d339 : Q339 := by
+  exact r339 f20 f113
+
+/-
+@@ telelean v1
+id: deriv-340
+kind: DERIVATION
+natural_name: "Q340 follows"
+premises: rule-340, fact-61, fact-97
+-/
+theorem d340 : Q340 := by
+  exact r340 f61 f97
+
+/-
+@@ telelean v1
+id: deriv-341
+kind: DERIVATION
+natural_name: "Q341 follows"
+premises: rule-341, fact-110, fact-101
+-/
+theorem d341 : Q341 := by
+  exact r341 f110 f101
+
+/-
+@@ telelean v1
+id: deriv-342
+kind: DERIVATION
+natural_name: "Q342 follows"
+premises: rule-342, fact-42, fact-83
+-/
+theorem d342 : Q342 := by
+  exact r342 f42 f83
+
+/-
+@@ telelean v1
+id: deriv-343
+kind: DERIVATION
+natural_name: "Q343 follows"
+premises: rule-343, fact-112, fact-32
+-/
+theorem d343 : Q343 := by
+  exact r343 f112 f32
+
+/-
+@@ telelean v1
+id: deriv-344
+kind: DERIVATION
+natural_name: "Q344 follows"
+premises: rule-344, fact-159, fact-124
+-/
+theorem d344 : Q344 := by
+  exact r344 f159 f124
+
+/-
+@@ telelean v1
+id: deriv-345
+kind: DERIVATION
+natural_name: "Q345 follows"
+premises: rule-345, fact-54, fact-30
+-/
+theorem d345 : Q345 := by
+  exact r345 f54 f30
+
+/-
+@@ telelean v1
+id: deriv-346
+kind: DERIVATION
+natural_name: "Q346 follows"
+premises: rule-346, fact-110, fact-153
+-/
+theorem d346 : Q346 := by
+  exact r346 f110 f153
+
+/-
+@@ telelean v1
+id: deriv-347
+kind: DERIVATION
+natural_name: "Q347 follows"
+premises: rule-347, fact-136, fact-104
+-/
+theorem d347 : Q347 := by
+  exact r347 f136 f104
+
+/-
+@@ telelean v1
+id: deriv-348
+kind: DERIVATION
+natural_name: "Q348 follows"
+premises: rule-348, fact-30, fact-169
+-/
+theorem d348 : Q348 := by
+  exact r348 f30 f169
+
+/-
+@@ telelean v1
+id: deriv-349
+kind: DERIVATION
+natural_name: "Q349 follows"
+premises: rule-349, fact-75, fact-71
+-/
+theorem d349 : Q349 := by
+  exact r349 f75 f71
+
+/-
+@@ telelean v1
+id: deriv-350
+kind: DERIVATION
+natural_name: "Q350 follows"
+premises: rule-350, fact-63, fact-96
+-/
+theorem d350 : Q350 := by
+  exact r350 f63 f96
+
+/-
+@@ telelean v1
+id: deriv-351
+kind: DERIVATION
+natural_name: "Q351 follows"
+premises: rule-351, fact-191, fact-143
+-/
+theorem d351 : Q351 := by
+  exact r351 f191 f143
+
+/-
+@@ telelean v1
+id: deriv-352
+kind: DERIVATION
+natural_name: "Q352 follows"
+premises: rule-352, fact-1, fact-48
+-/
+theorem d352 : Q352 := by
+  exact r352 f1 f48
+
+/-
+@@ telelean v1
+id: deriv-353
+kind: DERIVATION
+natural_name: "Q353 follows"
+premises: rule-353, fact-135, fact-112
+-/
+theorem d353 : Q353 := by
+  exact r353 f135 f112
+
+/-
+@@ telelean v1
+id: deriv-354
+kind: DERIVATION
+natural_name: "Q354 follows"
+premises: rule-354, fact-148, fact-5
+-/
+theorem d354 : Q354 := by
+  exact r354 f148 f5
+
+/-
+@@ telelean v1
+id: deriv-355
+kind: DERIVATION
+natural_name: "Q355 follows"
+premises: rule-355, fact-7, fact-160
+-/
+theorem d355 : Q355 := by
+  exact r355 f7 f160
+
+/-
+@@ telelean v1
+id: deriv-356
+kind: DERIVATION
+natural_name: "Q356 follows"
+premises: rule-356, fact-155, fact-62
+-/
+theorem d356 : Q356 := by
+  exact r356 f155 f62
+
+/-
+@@ telelean v1
+id: deriv-357
+kind: DERIVATION
+natural_name: "Q357 follows"
+premises: rule-357, fact-66, fact-52
+-/
+theorem d357 : Q357 := by
+  exact r357 f66 f52
+
+/-
+@@ telelean v1
+id: deriv-358
+kind: DERIVATION
+natural_name: "Q358 follows"
+premises: rule-358, fact-44, fact-72
+-/
+theorem d358 : Q358 := by
+  exact r358 f44 f72
+
+/-
+@@ telelean v1
+id: deriv-359
+kind: DERIVATION
+natural_name: "Q359 follows"
+premises: rule-359, fact-37, fact-138
+-/
+theorem d359 : Q359 := by
+  exact r359 f37 f138
+
+/-
+@@ telelean v1
+id: deriv-360
+kind: DERIVATION
+natural_name: "Q360 follows"
+premises: rule-360, fact-51, fact-69
+-/
+theorem d360 : Q360 := by
+  exact r360 f51 f69
+
+/-
+@@ telelean v1
+id: deriv-361
+kind: DERIVATION
+natural_name: "Q361 follows"
+premises: rule-361, fact-79, fact-149
+-/
+theorem d361 : Q361 := by
+  exact r361 f79 f149
+
+/-
+@@ telelean v1
+id: deriv-362
+kind: DERIVATION
+natural_name: "Q362 follows"
+premises: rule-362, fact-193, fact-64
+-/
+theorem d362 : Q362 := by
+  exact r362 f193 f64
+
+/-
+@@ telelean v1
+id: deriv-363
+kind: DERIVATION
+natural_name: "Q363 follows"
+premises: rule-363, fact-174, fact-114
+-/
+theorem d363 : Q363 := by
+  exact r363 f174 f114
+
+/-
+@@ telelean v1
+id: deriv-364
+kind: DERIVATION
+natural_name: "Q364 follows"
+premises: rule-364, fact-43, fact-139
+-/
+theorem d364 : Q364 := by
+  exact r364 f43 f139
+
+/-
+@@ telelean v1
+id: deriv-365
+kind: DERIVATION
+natural_name: "Q365 follows"
+premises: rule-365, fact-91, fact-125
+-/
+theorem d365 : Q365 := by
+  exact r365 f91 f125
+
+/-
+@@ telelean v1
+id: deriv-366
+kind: DERIVATION
+natural_name: "Q366 follows"
+premises: rule-366, fact-107, fact-31
+-/
+theorem d366 : Q366 := by
+  exact r366 f107 f31
+
+/-
+@@ telelean v1
+id: deriv-367
+kind: DERIVATION
+natural_name: "Q367 follows"
+premises: rule-367, fact-196, fact-53
+-/
+theorem d367 : Q367 := by
+  exact r367 f196 f53
+
+/-
+@@ telelean v1
+id: deriv-368
+kind: DERIVATION
+natural_name: "Q368 follows"
+premises: rule-368, fact-146, fact-98
+-/
+theorem d368 : Q368 := by
+  exact r368 f146 f98
+
+/-
+@@ telelean v1
+id: deriv-369
+kind: DERIVATION
+natural_name: "Q369 follows"
+premises: rule-369, fact-52, fact-72
+-/
+theorem d369 : Q369 := by
+  exact r369 f52 f72
+
+/-
+@@ telelean v1
+id: deriv-370
+kind: DERIVATION
+natural_name: "Q370 follows"
+premises: rule-370, fact-27, fact-6
+-/
+theorem d370 : Q370 := by
+  exact r370 f27 f6
+
+/-
+@@ telelean v1
+id: deriv-371
+kind: DERIVATION
+natural_name: "Q371 follows"
+premises: rule-371, fact-30, fact-145
+-/
+theorem d371 : Q371 := by
+  exact r371 f30 f145
+
+/-
+@@ telelean v1
+id: deriv-372
+kind: DERIVATION
+natural_name: "Q372 follows"
+premises: rule-372, fact-191, fact-3
+-/
+theorem d372 : Q372 := by
+  exact r372 f191 f3
+
+/-
+@@ telelean v1
+id: deriv-373
+kind: DERIVATION
+natural_name: "Q373 follows"
+premises: rule-373, fact-139, fact-75
+-/
+theorem d373 : Q373 := by
+  exact r373 f139 f75
+
+/-
+@@ telelean v1
+id: deriv-374
+kind: DERIVATION
+natural_name: "Q374 follows"
+premises: rule-374, fact-172, fact-194
+-/
+theorem d374 : Q374 := by
+  exact r374 f172 f194
+
+/-
+@@ telelean v1
+id: deriv-375
+kind: DERIVATION
+natural_name: "Q375 follows"
+premises: rule-375, fact-185, fact-166
+-/
+theorem d375 : Q375 := by
+  exact r375 f185 f166
+
+/-
+@@ telelean v1
+id: deriv-376
+kind: DERIVATION
+natural_name: "Q376 follows"
+premises: rule-376, fact-34, fact-19
+-/
+theorem d376 : Q376 := by
+  exact r376 f34 f19
+
+/-
+@@ telelean v1
+id: deriv-377
+kind: DERIVATION
+natural_name: "Q377 follows"
+premises: rule-377, fact-128, fact-95
+-/
+theorem d377 : Q377 := by
+  exact r377 f128 f95
+
+/-
+@@ telelean v1
+id: deriv-378
+kind: DERIVATION
+natural_name: "Q378 follows"
+premises: rule-378, fact-146, fact-79
+-/
+theorem d378 : Q378 := by
+  exact r378 f146 f79
+
+/-
+@@ telelean v1
+id: deriv-379
+kind: DERIVATION
+natural_name: "Q379 follows"
+premises: rule-379, fact-111, fact-128
+-/
+theorem d379 : Q379 := by
+  exact r379 f111 f128
+
+/-
+@@ telelean v1
+id: deriv-380
+kind: DERIVATION
+natural_name: "Q380 follows"
+premises: rule-380, fact-173, fact-91
+-/
+theorem d380 : Q380 := by
+  exact r380 f173 f91
+
+/-
+@@ telelean v1
+id: deriv-381
+kind: DERIVATION
+natural_name: "Q381 follows"
+premises: rule-381, fact-194, fact-135
+-/
+theorem d381 : Q381 := by
+  exact r381 f194 f135
+
+/-
+@@ telelean v1
+id: deriv-382
+kind: DERIVATION
+natural_name: "Q382 follows"
+premises: rule-382, fact-82, fact-0
+-/
+theorem d382 : Q382 := by
+  exact r382 f82 f0
+
+/-
+@@ telelean v1
+id: deriv-383
+kind: DERIVATION
+natural_name: "Q383 follows"
+premises: rule-383, fact-31, fact-113
+-/
+theorem d383 : Q383 := by
+  exact r383 f31 f113
+
+/-
+@@ telelean v1
+id: deriv-384
+kind: DERIVATION
+natural_name: "Q384 follows"
+premises: rule-384, fact-183, fact-115
+-/
+theorem d384 : Q384 := by
+  exact r384 f183 f115
+
+/-
+@@ telelean v1
+id: deriv-385
+kind: DERIVATION
+natural_name: "Q385 follows"
+premises: rule-385, fact-89, fact-78
+-/
+theorem d385 : Q385 := by
+  exact r385 f89 f78
+
+/-
+@@ telelean v1
+id: deriv-386
+kind: DERIVATION
+natural_name: "Q386 follows"
+premises: rule-386, fact-138, fact-102
+-/
+theorem d386 : Q386 := by
+  exact r386 f138 f102
+
+/-
+@@ telelean v1
+id: deriv-387
+kind: DERIVATION
+natural_name: "Q387 follows"
+premises: rule-387, fact-86, fact-187
+-/
+theorem d387 : Q387 := by
+  exact r387 f86 f187
+
+/-
+@@ telelean v1
+id: deriv-388
+kind: DERIVATION
+natural_name: "Q388 follows"
+premises: rule-388, fact-174, fact-146
+-/
+theorem d388 : Q388 := by
+  exact r388 f174 f146
+
+/-
+@@ telelean v1
+id: deriv-389
+kind: DERIVATION
+natural_name: "Q389 follows"
+premises: rule-389, fact-126, fact-28
+-/
+theorem d389 : Q389 := by
+  exact r389 f126 f28
+
+/-
+@@ telelean v1
+id: deriv-390
+kind: DERIVATION
+natural_name: "Q390 follows"
+premises: rule-390, fact-165, fact-96
+-/
+theorem d390 : Q390 := by
+  exact r390 f165 f96
+
+/-
+@@ telelean v1
+id: deriv-391
+kind: DERIVATION
+natural_name: "Q391 follows"
+premises: rule-391, fact-97, fact-52
+-/
+theorem d391 : Q391 := by
+  exact r391 f97 f52
+
+/-
+@@ telelean v1
+id: deriv-392
+kind: DERIVATION
+natural_name: "Q392 follows"
+premises: rule-392, fact-142, fact-0
+-/
+theorem d392 : Q392 := by
+  exact r392 f142 f0
+
+/-
+@@ telelean v1
+id: deriv-393
+kind: DERIVATION
+natural_name: "Q393 follows"
+premises: rule-393, fact-71, fact-162
+-/
+theorem d393 : Q393 := by
+  exact r393 f71 f162
+
+/-
+@@ telelean v1
+id: deriv-394
+kind: DERIVATION
+natural_name: "Q394 follows"
+premises: rule-394, fact-153, fact-184
+-/
+theorem d394 : Q394 := by
+  exact r394 f153 f184
+
+/-
+@@ telelean v1
+id: deriv-395
+kind: DERIVATION
+natural_name: "Q395 follows"
+premises: rule-395, fact-189, fact-186
+-/
+theorem d395 : Q395 := by
+  exact r395 f189 f186
+
+/-
+@@ telelean v1
+id: deriv-396
+kind: DERIVATION
+natural_name: "Q396 follows"
+premises: rule-396, fact-130, fact-50
+-/
+theorem d396 : Q396 := by
+  exact r396 f130 f50
+
+/-
+@@ telelean v1
+id: deriv-397
+kind: DERIVATION
+natural_name: "Q397 follows"
+premises: rule-397, fact-118, fact-153
+-/
+theorem d397 : Q397 := by
+  exact r397 f118 f153
+
+/-
+@@ telelean v1
+id: deriv-398
+kind: DERIVATION
+natural_name: "Q398 follows"
+premises: rule-398, fact-132, fact-104
+-/
+theorem d398 : Q398 := by
+  exact r398 f132 f104
+
+/-
+@@ telelean v1
+id: deriv-399
+kind: DERIVATION
+natural_name: "Q399 follows"
+premises: rule-399, fact-190, fact-182
+-/
+theorem d399 : Q399 := by
+  exact r399 f190 f182
+
+/-
+@@ telelean v1
+id: deriv-400
+kind: DERIVATION
+natural_name: "Q400 follows"
+premises: rule-400, fact-78, fact-179
+-/
+theorem d400 : Q400 := by
+  exact r400 f78 f179
+
+/-
+@@ telelean v1
+id: deriv-401
+kind: DERIVATION
+natural_name: "Q401 follows"
+premises: rule-401, fact-43, fact-115
+-/
+theorem d401 : Q401 := by
+  exact r401 f43 f115
+
+/-
+@@ telelean v1
+id: deriv-402
+kind: DERIVATION
+natural_name: "Q402 follows"
+premises: rule-402, fact-158, fact-171
+-/
+theorem d402 : Q402 := by
+  exact r402 f158 f171
+
+/-
+@@ telelean v1
+id: deriv-403
+kind: DERIVATION
+natural_name: "Q403 follows"
+premises: rule-403, fact-135, fact-50
+-/
+theorem d403 : Q403 := by
+  exact r403 f135 f50
+
+/-
+@@ telelean v1
+id: deriv-404
+kind: DERIVATION
+natural_name: "Q404 follows"
+premises: rule-404, fact-92, fact-134
+-/
+theorem d404 : Q404 := by
+  exact r404 f92 f134
+
+/-
+@@ telelean v1
+id: deriv-405
+kind: DERIVATION
+natural_name: "Q405 follows"
+premises: rule-405, fact-0, fact-173
+-/
+theorem d405 : Q405 := by
+  exact r405 f0 f173
+
+/-
+@@ telelean v1
+id: deriv-406
+kind: DERIVATION
+natural_name: "Q406 follows"
+premises: rule-406, fact-99, fact-148
+-/
+theorem d406 : Q406 := by
+  exact r406 f99 f148
+
+/-
+@@ telelean v1
+id: deriv-407
+kind: DERIVATION
+natural_name: "Q407 follows"
+premises: rule-407, fact-109, fact-103
+-/
+theorem d407 : Q407 := by
+  exact r407 f109 f103
+
+/-
+@@ telelean v1
+id: deriv-408
+kind: DERIVATION
+natural_name: "Q408 follows"
+premises: rule-408, fact-86, fact-159
+-/
+theorem d408 : Q408 := by
+  exact r408 f86 f159
+
+/-
+@@ telelean v1
+id: deriv-409
+kind: DERIVATION
+natural_name: "Q409 follows"
+premises: rule-409, fact-149, fact-187
+-/
+theorem d409 : Q409 := by
+  exact r409 f149 f187
+
+/-
+@@ telelean v1
+id: deriv-410
+kind: DERIVATION
+natural_name: "Q410 follows"
+premises: rule-410, fact-179, fact-191
+-/
+theorem d410 : Q410 := by
+  exact r410 f179 f191
+
+/-
+@@ telelean v1
+id: deriv-411
+kind: DERIVATION
+natural_name: "Q411 follows"
+premises: rule-411, fact-17, fact-126
+-/
+theorem d411 : Q411 := by
+  exact r411 f17 f126
+
+/-
+@@ telelean v1
+id: deriv-412
+kind: DERIVATION
+natural_name: "Q412 follows"
+premises: rule-412, fact-190, fact-63
+-/
+theorem d412 : Q412 := by
+  exact r412 f190 f63
+
+/-
+@@ telelean v1
+id: deriv-413
+kind: DERIVATION
+natural_name: "Q413 follows"
+premises: rule-413, fact-163, fact-166
+-/
+theorem d413 : Q413 := by
+  exact r413 f163 f166
+
+/-
+@@ telelean v1
+id: deriv-414
+kind: DERIVATION
+natural_name: "Q414 follows"
+premises: rule-414, fact-74, fact-161
+-/
+theorem d414 : Q414 := by
+  exact r414 f74 f161
+
+/-
+@@ telelean v1
+id: deriv-415
+kind: DERIVATION
+natural_name: "Q415 follows"
+premises: rule-415, fact-5, fact-104
+-/
+theorem d415 : Q415 := by
+  exact r415 f5 f104
+
+/-
+@@ telelean v1
+id: deriv-416
+kind: DERIVATION
+natural_name: "Q416 follows"
+premises: rule-416, fact-184, fact-161
+-/
+theorem d416 : Q416 := by
+  exact r416 f184 f161
+
+/-
+@@ telelean v1
+id: deriv-417
+kind: DERIVATION
+natural_name: "Q417 follows"
+premises: rule-417, fact-39, fact-162
+-/
+theorem d417 : Q417 := by
+  exact r417 f39 f162
+
+/-
+@@ telelean v1
+id: deriv-418
+kind: DERIVATION
+natural_name: "Q418 follows"
+premises: rule-418, fact-199, fact-101
+-/
+theorem d418 : Q418 := by
+  exact r418 f199 f101
+
+/-
+@@ telelean v1
+id: deriv-419
+kind: DERIVATION
+natural_name: "Q419 follows"
+premises: rule-419, fact-69, fact-45
+-/
+theorem d419 : Q419 := by
+  exact r419 f69 f45
+
+/-
+@@ telelean v1
+id: deriv-420
+kind: DERIVATION
+natural_name: "Q420 follows"
+premises: rule-420, fact-196, fact-18
+-/
+theorem d420 : Q420 := by
+  exact r420 f196 f18
+
+/-
+@@ telelean v1
+id: deriv-421
+kind: DERIVATION
+natural_name: "Q421 follows"
+premises: rule-421, fact-198, fact-154
+-/
+theorem d421 : Q421 := by
+  exact r421 f198 f154
+
+/-
+@@ telelean v1
+id: deriv-422
+kind: DERIVATION
+natural_name: "Q422 follows"
+premises: rule-422, fact-2, fact-89
+-/
+theorem d422 : Q422 := by
+  exact r422 f2 f89
+
+/-
+@@ telelean v1
+id: deriv-423
+kind: DERIVATION
+natural_name: "Q423 follows"
+premises: rule-423, fact-67, fact-181
+-/
+theorem d423 : Q423 := by
+  exact r423 f67 f181
+
+/-
+@@ telelean v1
+id: deriv-424
+kind: DERIVATION
+natural_name: "Q424 follows"
+premises: rule-424, fact-105, fact-175
+-/
+theorem d424 : Q424 := by
+  exact r424 f105 f175
+
+/-
+@@ telelean v1
+id: deriv-425
+kind: DERIVATION
+natural_name: "Q425 follows"
+premises: rule-425, fact-139, fact-77
+-/
+theorem d425 : Q425 := by
+  exact r425 f139 f77
+
+/-
+@@ telelean v1
+id: deriv-426
+kind: DERIVATION
+natural_name: "Q426 follows"
+premises: rule-426, fact-38, fact-118
+-/
+theorem d426 : Q426 := by
+  exact r426 f38 f118
+
+/-
+@@ telelean v1
+id: deriv-427
+kind: DERIVATION
+natural_name: "Q427 follows"
+premises: rule-427, fact-66, fact-124
+-/
+theorem d427 : Q427 := by
+  exact r427 f66 f124
+
+/-
+@@ telelean v1
+id: deriv-428
+kind: DERIVATION
+natural_name: "Q428 follows"
+premises: rule-428, fact-43, fact-119
+-/
+theorem d428 : Q428 := by
+  exact r428 f43 f119
+
+/-
+@@ telelean v1
+id: deriv-429
+kind: DERIVATION
+natural_name: "Q429 follows"
+premises: rule-429, fact-130, fact-11
+-/
+theorem d429 : Q429 := by
+  exact r429 f130 f11
+
+/-
+@@ telelean v1
+id: deriv-430
+kind: DERIVATION
+natural_name: "Q430 follows"
+premises: rule-430, fact-69, fact-130
+-/
+theorem d430 : Q430 := by
+  exact r430 f69 f130
+
+/-
+@@ telelean v1
+id: deriv-431
+kind: DERIVATION
+natural_name: "Q431 follows"
+premises: rule-431, fact-25, fact-190
+-/
+theorem d431 : Q431 := by
+  exact r431 f25 f190
+
+/-
+@@ telelean v1
+id: deriv-432
+kind: DERIVATION
+natural_name: "Q432 follows"
+premises: rule-432, fact-151, fact-108
+-/
+theorem d432 : Q432 := by
+  exact r432 f151 f108
+
+/-
+@@ telelean v1
+id: deriv-433
+kind: DERIVATION
+natural_name: "Q433 follows"
+premises: rule-433, fact-17, fact-90
+-/
+theorem d433 : Q433 := by
+  exact r433 f17 f90
+
+/-
+@@ telelean v1
+id: deriv-434
+kind: DERIVATION
+natural_name: "Q434 follows"
+premises: rule-434, fact-17, fact-168
+-/
+theorem d434 : Q434 := by
+  exact r434 f17 f168
+
+/-
+@@ telelean v1
+id: deriv-435
+kind: DERIVATION
+natural_name: "Q435 follows"
+premises: rule-435, fact-113, fact-5
+-/
+theorem d435 : Q435 := by
+  exact r435 f113 f5
+
+/-
+@@ telelean v1
+id: deriv-436
+kind: DERIVATION
+natural_name: "Q436 follows"
+premises: rule-436, fact-42, fact-129
+-/
+theorem d436 : Q436 := by
+  exact r436 f42 f129
+
+/-
+@@ telelean v1
+id: deriv-437
+kind: DERIVATION
+natural_name: "Q437 follows"
+premises: rule-437, fact-181, fact-41
+-/
+theorem d437 : Q437 := by
+  exact r437 f181 f41
+
+/-
+@@ telelean v1
+id: deriv-438
+kind: DERIVATION
+natural_name: "Q438 follows"
+premises: rule-438, fact-176, fact-23
+-/
+theorem d438 : Q438 := by
+  exact r438 f176 f23
+
+/-
+@@ telelean v1
+id: deriv-439
+kind: DERIVATION
+natural_name: "Q439 follows"
+premises: rule-439, fact-102, fact-162
+-/
+theorem d439 : Q439 := by
+  exact r439 f102 f162
+
+/-
+@@ telelean v1
+id: deriv-440
+kind: DERIVATION
+natural_name: "Q440 follows"
+premises: rule-440, fact-176, fact-70
+-/
+theorem d440 : Q440 := by
+  exact r440 f176 f70
+
+/-
+@@ telelean v1
+id: deriv-441
+kind: DERIVATION
+natural_name: "Q441 follows"
+premises: rule-441, fact-154, fact-77
+-/
+theorem d441 : Q441 := by
+  exact r441 f154 f77
+
+/-
+@@ telelean v1
+id: deriv-442
+kind: DERIVATION
+natural_name: "Q442 follows"
+premises: rule-442, fact-53, fact-135
+-/
+theorem d442 : Q442 := by
+  exact r442 f53 f135
+
+/-
+@@ telelean v1
+id: deriv-443
+kind: DERIVATION
+natural_name: "Q443 follows"
+premises: rule-443, fact-53, fact-60
+-/
+theorem d443 : Q443 := by
+  exact r443 f53 f60
+
+/-
+@@ telelean v1
+id: deriv-444
+kind: DERIVATION
+natural_name: "Q444 follows"
+premises: rule-444, fact-85, fact-68
+-/
+theorem d444 : Q444 := by
+  exact r444 f85 f68
+
+/-
+@@ telelean v1
+id: deriv-445
+kind: DERIVATION
+natural_name: "Q445 follows"
+premises: rule-445, fact-17, fact-19
+-/
+theorem d445 : Q445 := by
+  exact r445 f17 f19
+
+/-
+@@ telelean v1
+id: deriv-446
+kind: DERIVATION
+natural_name: "Q446 follows"
+premises: rule-446, fact-178, fact-133
+-/
+theorem d446 : Q446 := by
+  exact r446 f178 f133
+
+/-
+@@ telelean v1
+id: deriv-447
+kind: DERIVATION
+natural_name: "Q447 follows"
+premises: rule-447, fact-168, fact-94
+-/
+theorem d447 : Q447 := by
+  exact r447 f168 f94
+
+/-
+@@ telelean v1
+id: deriv-448
+kind: DERIVATION
+natural_name: "Q448 follows"
+premises: rule-448, fact-119, fact-130
+-/
+theorem d448 : Q448 := by
+  exact r448 f119 f130
+
+/-
+@@ telelean v1
+id: deriv-449
+kind: DERIVATION
+natural_name: "Q449 follows"
+premises: rule-449, fact-142, fact-188
+-/
+theorem d449 : Q449 := by
+  exact r449 f142 f188
+
+/-
+@@ telelean v1
+id: deriv-450
+kind: DERIVATION
+natural_name: "Q450 follows"
+premises: rule-450, fact-12, fact-43
+-/
+theorem d450 : Q450 := by
+  exact r450 f12 f43
+
+/-
+@@ telelean v1
+id: deriv-451
+kind: DERIVATION
+natural_name: "Q451 follows"
+premises: rule-451, fact-76, fact-167
+-/
+theorem d451 : Q451 := by
+  exact r451 f76 f167
+
+/-
+@@ telelean v1
+id: deriv-452
+kind: DERIVATION
+natural_name: "Q452 follows"
+premises: rule-452, fact-188, fact-182
+-/
+theorem d452 : Q452 := by
+  exact r452 f188 f182
+
+/-
+@@ telelean v1
+id: deriv-453
+kind: DERIVATION
+natural_name: "Q453 follows"
+premises: rule-453, fact-142, fact-69
+-/
+theorem d453 : Q453 := by
+  exact r453 f142 f69
+
+/-
+@@ telelean v1
+id: deriv-454
+kind: DERIVATION
+natural_name: "Q454 follows"
+premises: rule-454, fact-91, fact-156
+-/
+theorem d454 : Q454 := by
+  exact r454 f91 f156
+
+/-
+@@ telelean v1
+id: deriv-455
+kind: DERIVATION
+natural_name: "Q455 follows"
+premises: rule-455, fact-189, fact-59
+-/
+theorem d455 : Q455 := by
+  exact r455 f189 f59
+
+/-
+@@ telelean v1
+id: deriv-456
+kind: DERIVATION
+natural_name: "Q456 follows"
+premises: rule-456, fact-100, fact-143
+-/
+theorem d456 : Q456 := by
+  exact r456 f100 f143
+
+/-
+@@ telelean v1
+id: deriv-457
+kind: DERIVATION
+natural_name: "Q457 follows"
+premises: rule-457, fact-102, fact-44
+-/
+theorem d457 : Q457 := by
+  exact r457 f102 f44
+
+/-
+@@ telelean v1
+id: deriv-458
+kind: DERIVATION
+natural_name: "Q458 follows"
+premises: rule-458, fact-123, fact-66
+-/
+theorem d458 : Q458 := by
+  exact r458 f123 f66
+
+/-
+@@ telelean v1
+id: deriv-459
+kind: DERIVATION
+natural_name: "Q459 follows"
+premises: rule-459, fact-156, fact-84
+-/
+theorem d459 : Q459 := by
+  exact r459 f156 f84
+
+/-
+@@ telelean v1
+id: deriv-460
+kind: DERIVATION
+natural_name: "Q460 follows"
+premises: rule-460, fact-183, fact-56
+-/
+theorem d460 : Q460 := by
+  exact r460 f183 f56
+
+/-
+@@ telelean v1
+id: deriv-461
+kind: DERIVATION
+natural_name: "Q461 follows"
+premises: rule-461, fact-66, fact-156
+-/
+theorem d461 : Q461 := by
+  exact r461 f66 f156
+
+/-
+@@ telelean v1
+id: deriv-462
+kind: DERIVATION
+natural_name: "Q462 follows"
+premises: rule-462, fact-180, fact-62
+-/
+theorem d462 : Q462 := by
+  exact r462 f180 f62
+
+/-
+@@ telelean v1
+id: deriv-463
+kind: DERIVATION
+natural_name: "Q463 follows"
+premises: rule-463, fact-169, fact-7
+-/
+theorem d463 : Q463 := by
+  exact r463 f169 f7
+
+/-
+@@ telelean v1
+id: deriv-464
+kind: DERIVATION
+natural_name: "Q464 follows"
+premises: rule-464, fact-159, fact-103
+-/
+theorem d464 : Q464 := by
+  exact r464 f159 f103
+
+/-
+@@ telelean v1
+id: deriv-465
+kind: DERIVATION
+natural_name: "Q465 follows"
+premises: rule-465, fact-81, fact-110
+-/
+theorem d465 : Q465 := by
+  exact r465 f81 f110
+
+/-
+@@ telelean v1
+id: deriv-466
+kind: DERIVATION
+natural_name: "Q466 follows"
+premises: rule-466, fact-194, fact-63
+-/
+theorem d466 : Q466 := by
+  exact r466 f194 f63
+
+/-
+@@ telelean v1
+id: deriv-467
+kind: DERIVATION
+natural_name: "Q467 follows"
+premises: rule-467, fact-68, fact-48
+-/
+theorem d467 : Q467 := by
+  exact r467 f68 f48
+
+/-
+@@ telelean v1
+id: deriv-468
+kind: DERIVATION
+natural_name: "Q468 follows"
+premises: rule-468, fact-18, fact-160
+-/
+theorem d468 : Q468 := by
+  exact r468 f18 f160
+
+/-
+@@ telelean v1
+id: deriv-469
+kind: DERIVATION
+natural_name: "Q469 follows"
+premises: rule-469, fact-187, fact-42
+-/
+theorem d469 : Q469 := by
+  exact r469 f187 f42
+
+/-
+@@ telelean v1
+id: deriv-470
+kind: DERIVATION
+natural_name: "Q470 follows"
+premises: rule-470, fact-148, fact-113
+-/
+theorem d470 : Q470 := by
+  exact r470 f148 f113
+
+/-
+@@ telelean v1
+id: deriv-471
+kind: DERIVATION
+natural_name: "Q471 follows"
+premises: rule-471, fact-148, fact-186
+-/
+theorem d471 : Q471 := by
+  exact r471 f148 f186
+
+/-
+@@ telelean v1
+id: deriv-472
+kind: DERIVATION
+natural_name: "Q472 follows"
+premises: rule-472, fact-37, fact-155
+-/
+theorem d472 : Q472 := by
+  exact r472 f37 f155
+
+/-
+@@ telelean v1
+id: deriv-473
+kind: DERIVATION
+natural_name: "Q473 follows"
+premises: rule-473, fact-67, fact-117
+-/
+theorem d473 : Q473 := by
+  exact r473 f67 f117
+
+/-
+@@ telelean v1
+id: deriv-474
+kind: DERIVATION
+natural_name: "Q474 follows"
+premises: rule-474, fact-134, fact-41
+-/
+theorem d474 : Q474 := by
+  exact r474 f134 f41
+
+/-
+@@ telelean v1
+id: deriv-475
+kind: DERIVATION
+natural_name: "Q475 follows"
+premises: rule-475, fact-35, fact-199
+-/
+theorem d475 : Q475 := by
+  exact r475 f35 f199
+
+/-
+@@ telelean v1
+id: deriv-476
+kind: DERIVATION
+natural_name: "Q476 follows"
+premises: rule-476, fact-35, fact-183
+-/
+theorem d476 : Q476 := by
+  exact r476 f35 f183
+
+/-
+@@ telelean v1
+id: deriv-477
+kind: DERIVATION
+natural_name: "Q477 follows"
+premises: rule-477, fact-112, fact-92
+-/
+theorem d477 : Q477 := by
+  exact r477 f112 f92
+
+/-
+@@ telelean v1
+id: deriv-478
+kind: DERIVATION
+natural_name: "Q478 follows"
+premises: rule-478, fact-79, fact-192
+-/
+theorem d478 : Q478 := by
+  exact r478 f79 f192
+
+/-
+@@ telelean v1
+id: deriv-479
+kind: DERIVATION
+natural_name: "Q479 follows"
+premises: rule-479, fact-102, fact-61
+-/
+theorem d479 : Q479 := by
+  exact r479 f102 f61
+
+/-
+@@ telelean v1
+id: deriv-480
+kind: DERIVATION
+natural_name: "Q480 follows"
+premises: rule-480, fact-29, fact-183
+-/
+theorem d480 : Q480 := by
+  exact r480 f29 f183
+
+/-
+@@ telelean v1
+id: deriv-481
+kind: DERIVATION
+natural_name: "Q481 follows"
+premises: rule-481, fact-52, fact-183
+-/
+theorem d481 : Q481 := by
+  exact r481 f52 f183
+
+/-
+@@ telelean v1
+id: deriv-482
+kind: DERIVATION
+natural_name: "Q482 follows"
+premises: rule-482, fact-174, fact-78
+-/
+theorem d482 : Q482 := by
+  exact r482 f174 f78
+
+/-
+@@ telelean v1
+id: deriv-483
+kind: DERIVATION
+natural_name: "Q483 follows"
+premises: rule-483, fact-17, fact-27
+-/
+theorem d483 : Q483 := by
+  exact r483 f17 f27
+
+/-
+@@ telelean v1
+id: deriv-484
+kind: DERIVATION
+natural_name: "Q484 follows"
+premises: rule-484, fact-58, fact-101
+-/
+theorem d484 : Q484 := by
+  exact r484 f58 f101
+
+/-
+@@ telelean v1
+id: deriv-485
+kind: DERIVATION
+natural_name: "Q485 follows"
+premises: rule-485, fact-82, fact-126
+-/
+theorem d485 : Q485 := by
+  exact r485 f82 f126
+
+/-
+@@ telelean v1
+id: deriv-486
+kind: DERIVATION
+natural_name: "Q486 follows"
+premises: rule-486, fact-25, fact-47
+-/
+theorem d486 : Q486 := by
+  exact r486 f25 f47
+
+/-
+@@ telelean v1
+id: deriv-487
+kind: DERIVATION
+natural_name: "Q487 follows"
+premises: rule-487, fact-11, fact-14
+-/
+theorem d487 : Q487 := by
+  exact r487 f11 f14
+
+/-
+@@ telelean v1
+id: deriv-488
+kind: DERIVATION
+natural_name: "Q488 follows"
+premises: rule-488, fact-152, fact-5
+-/
+theorem d488 : Q488 := by
+  exact r488 f152 f5
+
+/-
+@@ telelean v1
+id: deriv-489
+kind: DERIVATION
+natural_name: "Q489 follows"
+premises: rule-489, fact-192, fact-55
+-/
+theorem d489 : Q489 := by
+  exact r489 f192 f55
+
+/-
+@@ telelean v1
+id: deriv-490
+kind: DERIVATION
+natural_name: "Q490 follows"
+premises: rule-490, fact-174, fact-8
+-/
+theorem d490 : Q490 := by
+  exact r490 f174 f8
+
+/-
+@@ telelean v1
+id: deriv-491
+kind: DERIVATION
+natural_name: "Q491 follows"
+premises: rule-491, fact-126, fact-180
+-/
+theorem d491 : Q491 := by
+  exact r491 f126 f180
+
+/-
+@@ telelean v1
+id: deriv-492
+kind: DERIVATION
+natural_name: "Q492 follows"
+premises: rule-492, fact-135, fact-185
+-/
+theorem d492 : Q492 := by
+  exact r492 f135 f185
+
+/-
+@@ telelean v1
+id: deriv-493
+kind: DERIVATION
+natural_name: "Q493 follows"
+premises: rule-493, fact-156, fact-113
+-/
+theorem d493 : Q493 := by
+  exact r493 f156 f113
+
+/-
+@@ telelean v1
+id: deriv-494
+kind: DERIVATION
+natural_name: "Q494 follows"
+premises: rule-494, fact-87, fact-169
+-/
+theorem d494 : Q494 := by
+  exact r494 f87 f169
+
+/-
+@@ telelean v1
+id: deriv-495
+kind: DERIVATION
+natural_name: "Q495 follows"
+premises: rule-495, fact-70, fact-30
+-/
+theorem d495 : Q495 := by
+  exact r495 f70 f30
+
+/-
+@@ telelean v1
+id: deriv-496
+kind: DERIVATION
+natural_name: "Q496 follows"
+premises: rule-496, fact-156, fact-177
+-/
+theorem d496 : Q496 := by
+  exact r496 f156 f177
+
+/-
+@@ telelean v1
+id: deriv-497
+kind: DERIVATION
+natural_name: "Q497 follows"
+premises: rule-497, fact-44, fact-24
+-/
+theorem d497 : Q497 := by
+  exact r497 f44 f24
+
+/-
+@@ telelean v1
+id: deriv-498
+kind: DERIVATION
+natural_name: "Q498 follows"
+premises: rule-498, fact-56, fact-102
+-/
+theorem d498 : Q498 := by
+  exact r498 f56 f102
+
+/-
+@@ telelean v1
+id: deriv-499
+kind: DERIVATION
+natural_name: "Q499 follows"
+premises: rule-499, fact-59, fact-126
+-/
+theorem d499 : Q499 := by
+  exact r499 f59 f126
+
+/-
+@@ telelean v1
+id: deriv-500
+kind: DERIVATION
+natural_name: "Q500 follows"
+premises: rule-500, fact-115, fact-96
+-/
+theorem d500 : Q500 := by
+  exact r500 f115 f96
+
+/-
+@@ telelean v1
+id: deriv-501
+kind: DERIVATION
+natural_name: "Q501 follows"
+premises: rule-501, fact-192, fact-43
+-/
+theorem d501 : Q501 := by
+  exact r501 f192 f43
+
+/-
+@@ telelean v1
+id: deriv-502
+kind: DERIVATION
+natural_name: "Q502 follows"
+premises: rule-502, fact-59, fact-60
+-/
+theorem d502 : Q502 := by
+  exact r502 f59 f60
+
+/-
+@@ telelean v1
+id: deriv-503
+kind: DERIVATION
+natural_name: "Q503 follows"
+premises: rule-503, fact-72, fact-118
+-/
+theorem d503 : Q503 := by
+  exact r503 f72 f118
+
+/-
+@@ telelean v1
+id: deriv-504
+kind: DERIVATION
+natural_name: "Q504 follows"
+premises: rule-504, fact-140, fact-148
+-/
+theorem d504 : Q504 := by
+  exact r504 f140 f148
+
+/-
+@@ telelean v1
+id: deriv-505
+kind: DERIVATION
+natural_name: "Q505 follows"
+premises: rule-505, fact-99, fact-54
+-/
+theorem d505 : Q505 := by
+  exact r505 f99 f54
+
+/-
+@@ telelean v1
+id: deriv-506
+kind: DERIVATION
+natural_name: "Q506 follows"
+premises: rule-506, fact-115, fact-183
+-/
+theorem d506 : Q506 := by
+  exact r506 f115 f183
+
+/-
+@@ telelean v1
+id: deriv-507
+kind: DERIVATION
+natural_name: "Q507 follows"
+premises: rule-507, fact-66, fact-84
+-/
+theorem d507 : Q507 := by
+  exact r507 f66 f84
+
+/-
+@@ telelean v1
+id: deriv-508
+kind: DERIVATION
+natural_name: "Q508 follows"
+premises: rule-508, fact-127, fact-151
+-/
+theorem d508 : Q508 := by
+  exact r508 f127 f151
+
+/-
+@@ telelean v1
+id: deriv-509
+kind: DERIVATION
+natural_name: "Q509 follows"
+premises: rule-509, fact-28, fact-54
+-/
+theorem d509 : Q509 := by
+  exact r509 f28 f54
+
+/-
+@@ telelean v1
+id: deriv-510
+kind: DERIVATION
+natural_name: "Q510 follows"
+premises: rule-510, fact-20, fact-11
+-/
+theorem d510 : Q510 := by
+  exact r510 f20 f11
+
+/-
+@@ telelean v1
+id: deriv-511
+kind: DERIVATION
+natural_name: "Q511 follows"
+premises: rule-511, fact-3, fact-1
+-/
+theorem d511 : Q511 := by
+  exact r511 f3 f1
+
+/-
+@@ telelean v1
+id: deriv-512
+kind: DERIVATION
+natural_name: "Q512 follows"
+premises: rule-512, fact-122, fact-81
+-/
+theorem d512 : Q512 := by
+  exact r512 f122 f81
+
+/-
+@@ telelean v1
+id: deriv-513
+kind: DERIVATION
+natural_name: "Q513 follows"
+premises: rule-513, fact-98, fact-148
+-/
+theorem d513 : Q513 := by
+  exact r513 f98 f148
+
+/-
+@@ telelean v1
+id: deriv-514
+kind: DERIVATION
+natural_name: "Q514 follows"
+premises: rule-514, fact-73, fact-50
+-/
+theorem d514 : Q514 := by
+  exact r514 f73 f50
+
+/-
+@@ telelean v1
+id: deriv-515
+kind: DERIVATION
+natural_name: "Q515 follows"
+premises: rule-515, fact-102, fact-40
+-/
+theorem d515 : Q515 := by
+  exact r515 f102 f40
+
+/-
+@@ telelean v1
+id: deriv-516
+kind: DERIVATION
+natural_name: "Q516 follows"
+premises: rule-516, fact-194, fact-165
+-/
+theorem d516 : Q516 := by
+  exact r516 f194 f165
+
+/-
+@@ telelean v1
+id: deriv-517
+kind: DERIVATION
+natural_name: "Q517 follows"
+premises: rule-517, fact-38, fact-7
+-/
+theorem d517 : Q517 := by
+  exact r517 f38 f7
+
+/-
+@@ telelean v1
+id: deriv-518
+kind: DERIVATION
+natural_name: "Q518 follows"
+premises: rule-518, fact-3, fact-99
+-/
+theorem d518 : Q518 := by
+  exact r518 f3 f99
+
+/-
+@@ telelean v1
+id: deriv-519
+kind: DERIVATION
+natural_name: "Q519 follows"
+premises: rule-519, fact-37, fact-170
+-/
+theorem d519 : Q519 := by
+  exact r519 f37 f170
+
+/-
+@@ telelean v1
+id: deriv-520
+kind: DERIVATION
+natural_name: "Q520 follows"
+premises: rule-520, fact-138, fact-14
+-/
+theorem d520 : Q520 := by
+  exact r520 f138 f14
+
+/-
+@@ telelean v1
+id: deriv-521
+kind: DERIVATION
+natural_name: "Q521 follows"
+premises: rule-521, fact-144, fact-97
+-/
+theorem d521 : Q521 := by
+  exact r521 f144 f97
+
+/-
+@@ telelean v1
+id: deriv-522
+kind: DERIVATION
+natural_name: "Q522 follows"
+premises: rule-522, fact-65, fact-33
+-/
+theorem d522 : Q522 := by
+  exact r522 f65 f33
+
+/-
+@@ telelean v1
+id: deriv-523
+kind: DERIVATION
+natural_name: "Q523 follows"
+premises: rule-523, fact-20, fact-118
+-/
+theorem d523 : Q523 := by
+  exact r523 f20 f118
+
+/-
+@@ telelean v1
+id: deriv-524
+kind: DERIVATION
+natural_name: "Q524 follows"
+premises: rule-524, fact-166, fact-77
+-/
+theorem d524 : Q524 := by
+  exact r524 f166 f77
+
+/-
+@@ telelean v1
+id: deriv-525
+kind: DERIVATION
+natural_name: "Q525 follows"
+premises: rule-525, fact-3, fact-9
+-/
+theorem d525 : Q525 := by
+  exact r525 f3 f9
+
+/-
+@@ telelean v1
+id: deriv-526
+kind: DERIVATION
+natural_name: "Q526 follows"
+premises: rule-526, fact-137, fact-15
+-/
+theorem d526 : Q526 := by
+  exact r526 f137 f15
+
+/-
+@@ telelean v1
+id: deriv-527
+kind: DERIVATION
+natural_name: "Q527 follows"
+premises: rule-527, fact-134, fact-33
+-/
+theorem d527 : Q527 := by
+  exact r527 f134 f33
+
+/-
+@@ telelean v1
+id: deriv-528
+kind: DERIVATION
+natural_name: "Q528 follows"
+premises: rule-528, fact-10, fact-70
+-/
+theorem d528 : Q528 := by
+  exact r528 f10 f70
+
+/-
+@@ telelean v1
+id: deriv-529
+kind: DERIVATION
+natural_name: "Q529 follows"
+premises: rule-529, fact-199, fact-30
+-/
+theorem d529 : Q529 := by
+  exact r529 f199 f30
+
+/-
+@@ telelean v1
+id: deriv-530
+kind: DERIVATION
+natural_name: "Q530 follows"
+premises: rule-530, fact-110, fact-23
+-/
+theorem d530 : Q530 := by
+  exact r530 f110 f23
+
+/-
+@@ telelean v1
+id: deriv-531
+kind: DERIVATION
+natural_name: "Q531 follows"
+premises: rule-531, fact-48, fact-7
+-/
+theorem d531 : Q531 := by
+  exact r531 f48 f7
+
+/-
+@@ telelean v1
+id: deriv-532
+kind: DERIVATION
+natural_name: "Q532 follows"
+premises: rule-532, fact-127, fact-163
+-/
+theorem d532 : Q532 := by
+  exact r532 f127 f163
+
+/-
+@@ telelean v1
+id: deriv-533
+kind: DERIVATION
+natural_name: "Q533 follows"
+premises: rule-533, fact-33, fact-190
+-/
+theorem d533 : Q533 := by
+  exact r533 f33 f190
+
+/-
+@@ telelean v1
+id: deriv-534
+kind: DERIVATION
+natural_name: "Q534 follows"
+premises: rule-534, fact-71, fact-175
+-/
+theorem d534 : Q534 := by
+  exact r534 f71 f175
+
+/-
+@@ telelean v1
+id: deriv-535
+kind: DERIVATION
+natural_name: "Q535 follows"
+premises: rule-535, fact-49, fact-169
+-/
+theorem d535 : Q535 := by
+  exact r535 f49 f169
+
+/-
+@@ telelean v1
+id: deriv-536
+kind: DERIVATION
+natural_name: "Q536 follows"
+premises: rule-536, fact-114, fact-99
+-/
+theorem d536 : Q536 := by
+  exact r536 f114 f99
+
+/-
+@@ telelean v1
+id: deriv-537
+kind: DERIVATION
+natural_name: "Q537 follows"
+premises: rule-537, fact-84, fact-161
+-/
+theorem d537 : Q537 := by
+  exact r537 f84 f161
+
+/-
+@@ telelean v1
+id: deriv-538
+kind: DERIVATION
+natural_name: "Q538 follows"
+premises: rule-538, fact-68, fact-66
+-/
+theorem d538 : Q538 := by
+  exact r538 f68 f66
+
+/-
+@@ telelean v1
+id: deriv-539
+kind: DERIVATION
+natural_name: "Q539 follows"
+premises: rule-539, fact-164, fact-162
+-/
+theorem d539 : Q539 := by
+  exact r539 f164 f162
+
+/-
+@@ telelean v1
+id: deriv-540
+kind: DERIVATION
+natural_name: "Q540 follows"
+premises: rule-540, fact-62, fact-62
+-/
+theorem d540 : Q540 := by
+  exact r540 f62 f62
+
+/-
+@@ telelean v1
+id: deriv-541
+kind: DERIVATION
+natural_name: "Q541 follows"
+premises: rule-541, fact-15, fact-150
+-/
+theorem d541 : Q541 := by
+  exact r541 f15 f150
+
+/-
+@@ telelean v1
+id: deriv-542
+kind: DERIVATION
+natural_name: "Q542 follows"
+premises: rule-542, fact-151, fact-44
+-/
+theorem d542 : Q542 := by
+  exact r542 f151 f44
+
+/-
+@@ telelean v1
+id: deriv-543
+kind: DERIVATION
+natural_name: "Q543 follows"
+premises: rule-543, fact-89, fact-109
+-/
+theorem d543 : Q543 := by
+  exact r543 f89 f109
+
+/-
+@@ telelean v1
+id: deriv-544
+kind: DERIVATION
+natural_name: "Q544 follows"
+premises: rule-544, fact-154, fact-178
+-/
+theorem d544 : Q544 := by
+  exact r544 f154 f178
+
+/-
+@@ telelean v1
+id: deriv-545
+kind: DERIVATION
+natural_name: "Q545 follows"
+premises: rule-545, fact-143, fact-163
+-/
+theorem d545 : Q545 := by
+  exact r545 f143 f163
+
+/-
+@@ telelean v1
+id: deriv-546
+kind: DERIVATION
+natural_name: "Q546 follows"
+premises: rule-546, fact-133, fact-15
+-/
+theorem d546 : Q546 := by
+  exact r546 f133 f15
+
+/-
+@@ telelean v1
+id: deriv-547
+kind: DERIVATION
+natural_name: "Q547 follows"
+premises: rule-547, fact-90, fact-140
+-/
+theorem d547 : Q547 := by
+  exact r547 f90 f140
+
+/-
+@@ telelean v1
+id: deriv-548
+kind: DERIVATION
+natural_name: "Q548 follows"
+premises: rule-548, fact-105, fact-137
+-/
+theorem d548 : Q548 := by
+  exact r548 f105 f137
+
+/-
+@@ telelean v1
+id: deriv-549
+kind: DERIVATION
+natural_name: "Q549 follows"
+premises: rule-549, fact-51, fact-182
+-/
+theorem d549 : Q549 := by
+  exact r549 f51 f182
+
+/-
+@@ telelean v1
+id: deriv-550
+kind: DERIVATION
+natural_name: "Q550 follows"
+premises: rule-550, fact-137, fact-108
+-/
+theorem d550 : Q550 := by
+  exact r550 f137 f108
+
+/-
+@@ telelean v1
+id: deriv-551
+kind: DERIVATION
+natural_name: "Q551 follows"
+premises: rule-551, fact-169, fact-17
+-/
+theorem d551 : Q551 := by
+  exact r551 f169 f17
+
+/-
+@@ telelean v1
+id: deriv-552
+kind: DERIVATION
+natural_name: "Q552 follows"
+premises: rule-552, fact-182, fact-68
+-/
+theorem d552 : Q552 := by
+  exact r552 f182 f68
+
+/-
+@@ telelean v1
+id: deriv-553
+kind: DERIVATION
+natural_name: "Q553 follows"
+premises: rule-553, fact-190, fact-156
+-/
+theorem d553 : Q553 := by
+  exact r553 f190 f156
+
+/-
+@@ telelean v1
+id: deriv-554
+kind: DERIVATION
+natural_name: "Q554 follows"
+premises: rule-554, fact-184, fact-192
+-/
+theorem d554 : Q554 := by
+  exact r554 f184 f192
+
+/-
+@@ telelean v1
+id: deriv-555
+kind: DERIVATION
+natural_name: "Q555 follows"
+premises: rule-555, fact-18, fact-64
+-/
+theorem d555 : Q555 := by
+  exact r555 f18 f64
+
+/-
+@@ telelean v1
+id: deriv-556
+kind: DERIVATION
+natural_name: "Q556 follows"
+premises: rule-556, fact-45, fact-24
+-/
+theorem d556 : Q556 := by
+  exact r556 f45 f24
+
+/-
+@@ telelean v1
+id: deriv-557
+kind: DERIVATION
+natural_name: "Q557 follows"
+premises: rule-557, fact-38, fact-15
+-/
+theorem d557 : Q557 := by
+  exact r557 f38 f15
+
+/-
+@@ telelean v1
+id: deriv-558
+kind: DERIVATION
+natural_name: "Q558 follows"
+premises: rule-558, fact-52, fact-109
+-/
+theorem d558 : Q558 := by
+  exact r558 f52 f109
+
+/-
+@@ telelean v1
+id: deriv-559
+kind: DERIVATION
+natural_name: "Q559 follows"
+premises: rule-559, fact-11, fact-13
+-/
+theorem d559 : Q559 := by
+  exact r559 f11 f13
+
+/-
+@@ telelean v1
+id: deriv-560
+kind: DERIVATION
+natural_name: "Q560 follows"
+premises: rule-560, fact-163, fact-23
+-/
+theorem d560 : Q560 := by
+  exact r560 f163 f23
+
+/-
+@@ telelean v1
+id: deriv-561
+kind: DERIVATION
+natural_name: "Q561 follows"
+premises: rule-561, fact-131, fact-120
+-/
+theorem d561 : Q561 := by
+  exact r561 f131 f120
+
+/-
+@@ telelean v1
+id: deriv-562
+kind: DERIVATION
+natural_name: "Q562 follows"
+premises: rule-562, fact-128, fact-94
+-/
+theorem d562 : Q562 := by
+  exact r562 f128 f94
+
+/-
+@@ telelean v1
+id: deriv-563
+kind: DERIVATION
+natural_name: "Q563 follows"
+premises: rule-563, fact-25, fact-80
+-/
+theorem d563 : Q563 := by
+  exact r563 f25 f80
+
+/-
+@@ telelean v1
+id: deriv-564
+kind: DERIVATION
+natural_name: "Q564 follows"
+premises: rule-564, fact-10, fact-32
+-/
+theorem d564 : Q564 := by
+  exact r564 f10 f32
+
+/-
+@@ telelean v1
+id: deriv-565
+kind: DERIVATION
+natural_name: "Q565 follows"
+premises: rule-565, fact-136, fact-8
+-/
+theorem d565 : Q565 := by
+  exact r565 f136 f8
+
+/-
+@@ telelean v1
+id: deriv-566
+kind: DERIVATION
+natural_name: "Q566 follows"
+premises: rule-566, fact-113, fact-170
+-/
+theorem d566 : Q566 := by
+  exact r566 f113 f170
+
+/-
+@@ telelean v1
+id: deriv-567
+kind: DERIVATION
+natural_name: "Q567 follows"
+premises: rule-567, fact-32, fact-101
+-/
+theorem d567 : Q567 := by
+  exact r567 f32 f101
+
+/-
+@@ telelean v1
+id: deriv-568
+kind: DERIVATION
+natural_name: "Q568 follows"
+premises: rule-568, fact-195, fact-181
+-/
+theorem d568 : Q568 := by
+  exact r568 f195 f181
+
+/-
+@@ telelean v1
+id: deriv-569
+kind: DERIVATION
+natural_name: "Q569 follows"
+premises: rule-569, fact-114, fact-6
+-/
+theorem d569 : Q569 := by
+  exact r569 f114 f6
+
+/-
+@@ telelean v1
+id: deriv-570
+kind: DERIVATION
+natural_name: "Q570 follows"
+premises: rule-570, fact-188, fact-134
+-/
+theorem d570 : Q570 := by
+  exact r570 f188 f134
+
+/-
+@@ telelean v1
+id: deriv-571
+kind: DERIVATION
+natural_name: "Q571 follows"
+premises: rule-571, fact-69, fact-23
+-/
+theorem d571 : Q571 := by
+  exact r571 f69 f23
+
+/-
+@@ telelean v1
+id: deriv-572
+kind: DERIVATION
+natural_name: "Q572 follows"
+premises: rule-572, fact-64, fact-83
+-/
+theorem d572 : Q572 := by
+  exact r572 f64 f83
+
+/-
+@@ telelean v1
+id: deriv-573
+kind: DERIVATION
+natural_name: "Q573 follows"
+premises: rule-573, fact-21, fact-77
+-/
+theorem d573 : Q573 := by
+  exact r573 f21 f77
+
+/-
+@@ telelean v1
+id: deriv-574
+kind: DERIVATION
+natural_name: "Q574 follows"
+premises: rule-574, fact-8, fact-98
+-/
+theorem d574 : Q574 := by
+  exact r574 f8 f98
+
+/-
+@@ telelean v1
+id: deriv-575
+kind: DERIVATION
+natural_name: "Q575 follows"
+premises: rule-575, fact-14, fact-187
+-/
+theorem d575 : Q575 := by
+  exact r575 f14 f187
+
+/-
+@@ telelean v1
+id: deriv-576
+kind: DERIVATION
+natural_name: "Q576 follows"
+premises: rule-576, fact-66, fact-80
+-/
+theorem d576 : Q576 := by
+  exact r576 f66 f80
+
+/-
+@@ telelean v1
+id: deriv-577
+kind: DERIVATION
+natural_name: "Q577 follows"
+premises: rule-577, fact-188, fact-33
+-/
+theorem d577 : Q577 := by
+  exact r577 f188 f33
+
+/-
+@@ telelean v1
+id: deriv-578
+kind: DERIVATION
+natural_name: "Q578 follows"
+premises: rule-578, fact-66, fact-97
+-/
+theorem d578 : Q578 := by
+  exact r578 f66 f97
+
+/-
+@@ telelean v1
+id: deriv-579
+kind: DERIVATION
+natural_name: "Q579 follows"
+premises: rule-579, fact-29, fact-173
+-/
+theorem d579 : Q579 := by
+  exact r579 f29 f173
+
+/-
+@@ telelean v1
+id: deriv-580
+kind: DERIVATION
+natural_name: "Q580 follows"
+premises: rule-580, fact-77, fact-24
+-/
+theorem d580 : Q580 := by
+  exact r580 f77 f24
+
+/-
+@@ telelean v1
+id: deriv-581
+kind: DERIVATION
+natural_name: "Q581 follows"
+premises: rule-581, fact-108, fact-62
+-/
+theorem d581 : Q581 := by
+  exact r581 f108 f62
+
+/-
+@@ telelean v1
+id: deriv-582
+kind: DERIVATION
+natural_name: "Q582 follows"
+premises: rule-582, fact-128, fact-142
+-/
+theorem d582 : Q582 := by
+  exact r582 f128 f142
+
+/-
+@@ telelean v1
+id: deriv-583
+kind: DERIVATION
+natural_name: "Q583 follows"
+premises: rule-583, fact-52, fact-84
+-/
+theorem d583 : Q583 := by
+  exact r583 f52 f84
+
+/-
+@@ telelean v1
+id: deriv-584
+kind: DERIVATION
+natural_name: "Q584 follows"
+premises: rule-584, fact-86, fact-130
+-/
+theorem d584 : Q584 := by
+  exact r584 f86 f130
+
+/-
+@@ telelean v1
+id: deriv-585
+kind: DERIVATION
+natural_name: "Q585 follows"
+premises: rule-585, fact-100, fact-149
+-/
+theorem d585 : Q585 := by
+  exact r585 f100 f149
+
+/-
+@@ telelean v1
+id: deriv-586
+kind: DERIVATION
+natural_name: "Q586 follows"
+premises: rule-586, fact-123, fact-26
+-/
+theorem d586 : Q586 := by
+  exact r586 f123 f26
+
+/-
+@@ telelean v1
+id: deriv-587
+kind: DERIVATION
+natural_name: "Q587 follows"
+premises: rule-587, fact-33, fact-167
+-/
+theorem d587 : Q587 := by
+  exact r587 f33 f167
+
+/-
+@@ telelean v1
+id: deriv-588
+kind: DERIVATION
+natural_name: "Q588 follows"
+premises: rule-588, fact-114, fact-134
+-/
+theorem d588 : Q588 := by
+  exact r588 f114 f134
+
+/-
+@@ telelean v1
+id: deriv-589
+kind: DERIVATION
+natural_name: "Q589 follows"
+premises: rule-589, fact-143, fact-184
+-/
+theorem d589 : Q589 := by
+  exact r589 f143 f184
+
+/-
+@@ telelean v1
+id: deriv-590
+kind: DERIVATION
+natural_name: "Q590 follows"
+premises: rule-590, fact-148, fact-179
+-/
+theorem d590 : Q590 := by
+  exact r590 f148 f179
+
+/-
+@@ telelean v1
+id: deriv-591
+kind: DERIVATION
+natural_name: "Q591 follows"
+premises: rule-591, fact-133, fact-137
+-/
+theorem d591 : Q591 := by
+  exact r591 f133 f137
+
+/-
+@@ telelean v1
+id: deriv-592
+kind: DERIVATION
+natural_name: "Q592 follows"
+premises: rule-592, fact-7, fact-74
+-/
+theorem d592 : Q592 := by
+  exact r592 f7 f74
+
+/-
+@@ telelean v1
+id: deriv-593
+kind: DERIVATION
+natural_name: "Q593 follows"
+premises: rule-593, fact-190, fact-40
+-/
+theorem d593 : Q593 := by
+  exact r593 f190 f40
+
+/-
+@@ telelean v1
+id: deriv-594
+kind: DERIVATION
+natural_name: "Q594 follows"
+premises: rule-594, fact-51, fact-94
+-/
+theorem d594 : Q594 := by
+  exact r594 f51 f94
+
+/-
+@@ telelean v1
+id: deriv-595
+kind: DERIVATION
+natural_name: "Q595 follows"
+premises: rule-595, fact-99, fact-133
+-/
+theorem d595 : Q595 := by
+  exact r595 f99 f133
+
+/-
+@@ telelean v1
+id: deriv-596
+kind: DERIVATION
+natural_name: "Q596 follows"
+premises: rule-596, fact-83, fact-24
+-/
+theorem d596 : Q596 := by
+  exact r596 f83 f24
+
+/-
+@@ telelean v1
+id: deriv-597
+kind: DERIVATION
+natural_name: "Q597 follows"
+premises: rule-597, fact-104, fact-88
+-/
+theorem d597 : Q597 := by
+  exact r597 f104 f88
+
+/-
+@@ telelean v1
+id: deriv-598
+kind: DERIVATION
+natural_name: "Q598 follows"
+premises: rule-598, fact-32, fact-147
+-/
+theorem d598 : Q598 := by
+  exact r598 f32 f147
+
+/-
+@@ telelean v1
+id: deriv-599
+kind: DERIVATION
+natural_name: "Q599 follows"
+premises: rule-599, fact-16, fact-11
+-/
+theorem d599 : Q599 := by
+  exact r599 f16 f11
+
+/-
+@@ telelean v1
+id: deriv-600
+kind: DERIVATION
+natural_name: "Q600 follows"
+premises: rule-600, fact-76, fact-166
+-/
+theorem d600 : Q600 := by
+  exact r600 f76 f166
+
+/-
+@@ telelean v1
+id: deriv-601
+kind: DERIVATION
+natural_name: "Q601 follows"
+premises: rule-601, fact-136, fact-80
+-/
+theorem d601 : Q601 := by
+  exact r601 f136 f80
+
+/-
+@@ telelean v1
+id: deriv-602
+kind: DERIVATION
+natural_name: "Q602 follows"
+premises: rule-602, fact-106, fact-76
+-/
+theorem d602 : Q602 := by
+  exact r602 f106 f76
+
+/-
+@@ telelean v1
+id: deriv-603
+kind: DERIVATION
+natural_name: "Q603 follows"
+premises: rule-603, fact-81, fact-90
+-/
+theorem d603 : Q603 := by
+  exact r603 f81 f90
+
+/-
+@@ telelean v1
+id: deriv-604
+kind: DERIVATION
+natural_name: "Q604 follows"
+premises: rule-604, fact-69, fact-83
+-/
+theorem d604 : Q604 := by
+  exact r604 f69 f83
+
+/-
+@@ telelean v1
+id: deriv-605
+kind: DERIVATION
+natural_name: "Q605 follows"
+premises: rule-605, fact-191, fact-191
+-/
+theorem d605 : Q605 := by
+  exact r605 f191 f191
+
+/-
+@@ telelean v1
+id: deriv-606
+kind: DERIVATION
+natural_name: "Q606 follows"
+premises: rule-606, fact-133, fact-128
+-/
+theorem d606 : Q606 := by
+  exact r606 f133 f128
+
+/-
+@@ telelean v1
+id: deriv-607
+kind: DERIVATION
+natural_name: "Q607 follows"
+premises: rule-607, fact-2, fact-134
+-/
+theorem d607 : Q607 := by
+  exact r607 f2 f134
+
+/-
+@@ telelean v1
+id: deriv-608
+kind: DERIVATION
+natural_name: "Q608 follows"
+premises: rule-608, fact-31, fact-38
+-/
+theorem d608 : Q608 := by
+  exact r608 f31 f38
+
+/-
+@@ telelean v1
+id: deriv-609
+kind: DERIVATION
+natural_name: "Q609 follows"
+premises: rule-609, fact-81, fact-186
+-/
+theorem d609 : Q609 := by
+  exact r609 f81 f186
+
+/-
+@@ telelean v1
+id: deriv-610
+kind: DERIVATION
+natural_name: "Q610 follows"
+premises: rule-610, fact-83, fact-83
+-/
+theorem d610 : Q610 := by
+  exact r610 f83 f83
+
+/-
+@@ telelean v1
+id: deriv-611
+kind: DERIVATION
+natural_name: "Q611 follows"
+premises: rule-611, fact-146, fact-17
+-/
+theorem d611 : Q611 := by
+  exact r611 f146 f17
+
+/-
+@@ telelean v1
+id: deriv-612
+kind: DERIVATION
+natural_name: "Q612 follows"
+premises: rule-612, fact-115, fact-71
+-/
+theorem d612 : Q612 := by
+  exact r612 f115 f71
+
+/-
+@@ telelean v1
+id: deriv-613
+kind: DERIVATION
+natural_name: "Q613 follows"
+premises: rule-613, fact-122, fact-116
+-/
+theorem d613 : Q613 := by
+  exact r613 f122 f116
+
+/-
+@@ telelean v1
+id: deriv-614
+kind: DERIVATION
+natural_name: "Q614 follows"
+premises: rule-614, fact-93, fact-189
+-/
+theorem d614 : Q614 := by
+  exact r614 f93 f189
+
+/-
+@@ telelean v1
+id: deriv-615
+kind: DERIVATION
+natural_name: "Q615 follows"
+premises: rule-615, fact-97, fact-20
+-/
+theorem d615 : Q615 := by
+  exact r615 f97 f20
+
+/-
+@@ telelean v1
+id: deriv-616
+kind: DERIVATION
+natural_name: "Q616 follows"
+premises: rule-616, fact-148, fact-14
+-/
+theorem d616 : Q616 := by
+  exact r616 f148 f14
+
+/-
+@@ telelean v1
+id: deriv-617
+kind: DERIVATION
+natural_name: "Q617 follows"
+premises: rule-617, fact-34, fact-12
+-/
+theorem d617 : Q617 := by
+  exact r617 f34 f12
+
+/-
+@@ telelean v1
+id: deriv-618
+kind: DERIVATION
+natural_name: "Q618 follows"
+premises: rule-618, fact-134, fact-125
+-/
+theorem d618 : Q618 := by
+  exact r618 f134 f125
+
+/-
+@@ telelean v1
+id: deriv-619
+kind: DERIVATION
+natural_name: "Q619 follows"
+premises: rule-619, fact-147, fact-64
+-/
+theorem d619 : Q619 := by
+  exact r619 f147 f64
+
+/-
+@@ telelean v1
+id: deriv-620
+kind: DERIVATION
+natural_name: "Q620 follows"
+premises: rule-620, fact-62, fact-179
+-/
+theorem d620 : Q620 := by
+  exact r620 f62 f179
+
+/-
+@@ telelean v1
+id: deriv-621
+kind: DERIVATION
+natural_name: "Q621 follows"
+premises: rule-621, fact-146, fact-191
+-/
+theorem d621 : Q621 := by
+  exact r621 f146 f191
+
+/-
+@@ telelean v1
+id: deriv-622
+kind: DERIVATION
+natural_name: "Q622 follows"
+premises: rule-622, fact-86, fact-92
+-/
+theorem d622 : Q622 := by
+  exact r622 f86 f92
+
+/-
+@@ telelean v1
+id: deriv-623
+kind: DERIVATION
+natural_name: "Q623 follows"
+premises: rule-623, fact-164, fact-94
+-/
+theorem d623 : Q623 := by
+  exact r623 f164 f94
+
+/-
+@@ telelean v1
+id: deriv-624
+kind: DERIVATION
+natural_name: "Q624 follows"
+premises: rule-624, fact-103, fact-78
+-/
+theorem d624 : Q624 := by
+  exact r624 f103 f78
+
+/-
+@@ telelean v1
+id: deriv-625
+kind: DERIVATION
+natural_name: "Q625 follows"
+premises: rule-625, fact-118, fact-153
+-/
+theorem d625 : Q625 := by
+  exact r625 f118 f153
+
+/-
+@@ telelean v1
+id: deriv-626
+kind: DERIVATION
+natural_name: "Q626 follows"
+premises: rule-626, fact-87, fact-136
+-/
+theorem d626 : Q626 := by
+  exact r626 f87 f136
+
+/-
+@@ telelean v1
+id: deriv-627
+kind: DERIVATION
+natural_name: "Q627 follows"
+premises: rule-627, fact-129, fact-42
+-/
+theorem d627 : Q627 := by
+  exact r627 f129 f42
+
+/-
+@@ telelean v1
+id: deriv-628
+kind: DERIVATION
+natural_name: "Q628 follows"
+premises: rule-628, fact-7, fact-37
+-/
+theorem d628 : Q628 := by
+  exact r628 f7 f37
+
+/-
+@@ telelean v1
+id: deriv-629
+kind: DERIVATION
+natural_name: "Q629 follows"
+premises: rule-629, fact-64, fact-175
+-/
+theorem d629 : Q629 := by
+  exact r629 f64 f175
+
+/-
+@@ telelean v1
+id: deriv-630
+kind: DERIVATION
+natural_name: "Q630 follows"
+premises: rule-630, fact-56, fact-144
+-/
+theorem d630 : Q630 := by
+  exact r630 f56 f144
+
+/-
+@@ telelean v1
+id: deriv-631
+kind: DERIVATION
+natural_name: "Q631 follows"
+premises: rule-631, fact-34, fact-28
+-/
+theorem d631 : Q631 := by
+  exact r631 f34 f28
+
+/-
+@@ telelean v1
+id: deriv-632
+kind: DERIVATION
+natural_name: "Q632 follows"
+premises: rule-632, fact-47, fact-196
+-/
+theorem d632 : Q632 := by
+  exact r632 f47 f196
+
+/-
+@@ telelean v1
+id: deriv-633
+kind: DERIVATION
+natural_name: "Q633 follows"
+premises: rule-633, fact-105, fact-186
+-/
+theorem d633 : Q633 := by
+  exact r633 f105 f186
+
+/-
+@@ telelean v1
+id: deriv-634
+kind: DERIVATION
+natural_name: "Q634 follows"
+premises: rule-634, fact-158, fact-12
+-/
+theorem d634 : Q634 := by
+  exact r634 f158 f12
+
+/-
+@@ telelean v1
+id: deriv-635
+kind: DERIVATION
+natural_name: "Q635 follows"
+premises: rule-635, fact-25, fact-139
+-/
+theorem d635 : Q635 := by
+  exact r635 f25 f139
+
+/-
+@@ telelean v1
+id: deriv-636
+kind: DERIVATION
+natural_name: "Q636 follows"
+premises: rule-636, fact-174, fact-68
+-/
+theorem d636 : Q636 := by
+  exact r636 f174 f68
+
+/-
+@@ telelean v1
+id: deriv-637
+kind: DERIVATION
+natural_name: "Q637 follows"
+premises: rule-637, fact-182, fact-27
+-/
+theorem d637 : Q637 := by
+  exact r637 f182 f27
+
+/-
+@@ telelean v1
+id: deriv-638
+kind: DERIVATION
+natural_name: "Q638 follows"
+premises: rule-638, fact-52, fact-66
+-/
+theorem d638 : Q638 := by
+  exact r638 f52 f66
+
+/-
+@@ telelean v1
+id: deriv-639
+kind: DERIVATION
+natural_name: "Q639 follows"
+premises: rule-639, fact-17, fact-161
+-/
+theorem d639 : Q639 := by
+  exact r639 f17 f161
+
+/-
+@@ telelean v1
+id: deriv-640
+kind: DERIVATION
+natural_name: "Q640 follows"
+premises: rule-640, fact-146, fact-134
+-/
+theorem d640 : Q640 := by
+  exact r640 f146 f134
+
+/-
+@@ telelean v1
+id: deriv-641
+kind: DERIVATION
+natural_name: "Q641 follows"
+premises: rule-641, fact-164, fact-20
+-/
+theorem d641 : Q641 := by
+  exact r641 f164 f20
+
+/-
+@@ telelean v1
+id: deriv-642
+kind: DERIVATION
+natural_name: "Q642 follows"
+premises: rule-642, fact-18, fact-55
+-/
+theorem d642 : Q642 := by
+  exact r642 f18 f55
+
+/-
+@@ telelean v1
+id: deriv-643
+kind: DERIVATION
+natural_name: "Q643 follows"
+premises: rule-643, fact-164, fact-44
+-/
+theorem d643 : Q643 := by
+  exact r643 f164 f44
+
+/-
+@@ telelean v1
+id: deriv-644
+kind: DERIVATION
+natural_name: "Q644 follows"
+premises: rule-644, fact-130, fact-110
+-/
+theorem d644 : Q644 := by
+  exact r644 f130 f110
+
+/-
+@@ telelean v1
+id: deriv-645
+kind: DERIVATION
+natural_name: "Q645 follows"
+premises: rule-645, fact-5, fact-151
+-/
+theorem d645 : Q645 := by
+  exact r645 f5 f151
+
+/-
+@@ telelean v1
+id: deriv-646
+kind: DERIVATION
+natural_name: "Q646 follows"
+premises: rule-646, fact-94, fact-124
+-/
+theorem d646 : Q646 := by
+  exact r646 f94 f124
+
+/-
+@@ telelean v1
+id: deriv-647
+kind: DERIVATION
+natural_name: "Q647 follows"
+premises: rule-647, fact-181, fact-72
+-/
+theorem d647 : Q647 := by
+  exact r647 f181 f72
+
+/-
+@@ telelean v1
+id: deriv-648
+kind: DERIVATION
+natural_name: "Q648 follows"
+premises: rule-648, fact-56, fact-51
+-/
+theorem d648 : Q648 := by
+  exact r648 f56 f51
+
+/-
+@@ telelean v1
+id: deriv-649
+kind: DERIVATION
+natural_name: "Q649 follows"
+premises: rule-649, fact-153, fact-126
+-/
+theorem d649 : Q649 := by
+  exact r649 f153 f126
+
+/-
+@@ telelean v1
+id: deriv-650
+kind: DERIVATION
+natural_name: "Q650 follows"
+premises: rule-650, fact-60, fact-108
+-/
+theorem d650 : Q650 := by
+  exact r650 f60 f108
+
+/-
+@@ telelean v1
+id: deriv-651
+kind: DERIVATION
+natural_name: "Q651 follows"
+premises: rule-651, fact-115, fact-172
+-/
+theorem d651 : Q651 := by
+  exact r651 f115 f172
+
+/-
+@@ telelean v1
+id: deriv-652
+kind: DERIVATION
+natural_name: "Q652 follows"
+premises: rule-652, fact-93, fact-139
+-/
+theorem d652 : Q652 := by
+  exact r652 f93 f139
+
+/-
+@@ telelean v1
+id: deriv-653
+kind: DERIVATION
+natural_name: "Q653 follows"
+premises: rule-653, fact-48, fact-123
+-/
+theorem d653 : Q653 := by
+  exact r653 f48 f123
+
+/-
+@@ telelean v1
+id: deriv-654
+kind: DERIVATION
+natural_name: "Q654 follows"
+premises: rule-654, fact-185, fact-18
+-/
+theorem d654 : Q654 := by
+  exact r654 f185 f18
+
+/-
+@@ telelean v1
+id: deriv-655
+kind: DERIVATION
+natural_name: "Q655 follows"
+premises: rule-655, fact-65, fact-104
+-/
+theorem d655 : Q655 := by
+  exact r655 f65 f104
+
+/-
+@@ telelean v1
+id: deriv-656
+kind: DERIVATION
+natural_name: "Q656 follows"
+premises: rule-656, fact-51, fact-2
+-/
+theorem d656 : Q656 := by
+  exact r656 f51 f2
+
+/-
+@@ telelean v1
+id: deriv-657
+kind: DERIVATION
+natural_name: "Q657 follows"
+premises: rule-657, fact-191, fact-136
+-/
+theorem d657 : Q657 := by
+  exact r657 f191 f136
+
+/-
+@@ telelean v1
+id: deriv-658
+kind: DERIVATION
+natural_name: "Q658 follows"
+premises: rule-658, fact-197, fact-97
+-/
+theorem d658 : Q658 := by
+  exact r658 f197 f97
+
+/-
+@@ telelean v1
+id: deriv-659
+kind: DERIVATION
+natural_name: "Q659 follows"
+premises: rule-659, fact-131, fact-124
+-/
+theorem d659 : Q659 := by
+  exact r659 f131 f124
+
+/-
+@@ telelean v1
+id: deriv-660
+kind: DERIVATION
+natural_name: "Q660 follows"
+premises: rule-660, fact-19, fact-103
+-/
+theorem d660 : Q660 := by
+  exact r660 f19 f103
+
+/-
+@@ telelean v1
+id: deriv-661
+kind: DERIVATION
+natural_name: "Q661 follows"
+premises: rule-661, fact-157, fact-130
+-/
+theorem d661 : Q661 := by
+  exact r661 f157 f130
+
+/-
+@@ telelean v1
+id: deriv-662
+kind: DERIVATION
+natural_name: "Q662 follows"
+premises: rule-662, fact-148, fact-149
+-/
+theorem d662 : Q662 := by
+  exact r662 f148 f149
+
+/-
+@@ telelean v1
+id: deriv-663
+kind: DERIVATION
+natural_name: "Q663 follows"
+premises: rule-663, fact-108, fact-10
+-/
+theorem d663 : Q663 := by
+  exact r663 f108 f10
+
+/-
+@@ telelean v1
+id: deriv-664
+kind: DERIVATION
+natural_name: "Q664 follows"
+premises: rule-664, fact-90, fact-117
+-/
+theorem d664 : Q664 := by
+  exact r664 f90 f117
+
+/-
+@@ telelean v1
+id: deriv-665
+kind: DERIVATION
+natural_name: "Q665 follows"
+premises: rule-665, fact-1, fact-48
+-/
+theorem d665 : Q665 := by
+  exact r665 f1 f48
+
+/-
+@@ telelean v1
+id: deriv-666
+kind: DERIVATION
+natural_name: "Q666 follows"
+premises: rule-666, fact-76, fact-178
+-/
+theorem d666 : Q666 := by
+  exact r666 f76 f178
+
+/-
+@@ telelean v1
+id: deriv-667
+kind: DERIVATION
+natural_name: "Q667 follows"
+premises: rule-667, fact-176, fact-164
+-/
+theorem d667 : Q667 := by
+  exact r667 f176 f164
+
+/-
+@@ telelean v1
+id: deriv-668
+kind: DERIVATION
+natural_name: "Q668 follows"
+premises: rule-668, fact-1, fact-138
+-/
+theorem d668 : Q668 := by
+  exact r668 f1 f138
+
+/-
+@@ telelean v1
+id: deriv-669
+kind: DERIVATION
+natural_name: "Q669 follows"
+premises: rule-669, fact-30, fact-77
+-/
+theorem d669 : Q669 := by
+  exact r669 f30 f77
+
+/-
+@@ telelean v1
+id: deriv-670
+kind: DERIVATION
+natural_name: "Q670 follows"
+premises: rule-670, fact-131, fact-191
+-/
+theorem d670 : Q670 := by
+  exact r670 f131 f191
+
+/-
+@@ telelean v1
+id: deriv-671
+kind: DERIVATION
+natural_name: "Q671 follows"
+premises: rule-671, fact-80, fact-198
+-/
+theorem d671 : Q671 := by
+  exact r671 f80 f198
+
+/-
+@@ telelean v1
+id: deriv-672
+kind: DERIVATION
+natural_name: "Q672 follows"
+premises: rule-672, fact-139, fact-165
+-/
+theorem d672 : Q672 := by
+  exact r672 f139 f165
+
+/-
+@@ telelean v1
+id: deriv-673
+kind: DERIVATION
+natural_name: "Q673 follows"
+premises: rule-673, fact-146, fact-141
+-/
+theorem d673 : Q673 := by
+  exact r673 f146 f141
+
+/-
+@@ telelean v1
+id: deriv-674
+kind: DERIVATION
+natural_name: "Q674 follows"
+premises: rule-674, fact-72, fact-134
+-/
+theorem d674 : Q674 := by
+  exact r674 f72 f134
+
+/-
+@@ telelean v1
+id: deriv-675
+kind: DERIVATION
+natural_name: "Q675 follows"
+premises: rule-675, fact-105, fact-138
+-/
+theorem d675 : Q675 := by
+  exact r675 f105 f138
+
+/-
+@@ telelean v1
+id: deriv-676
+kind: DERIVATION
+natural_name: "Q676 follows"
+premises: rule-676, fact-132, fact-104
+-/
+theorem d676 : Q676 := by
+  exact r676 f132 f104
+
+/-
+@@ telelean v1
+id: deriv-677
+kind: DERIVATION
+natural_name: "Q677 follows"
+premises: rule-677, fact-154, fact-161
+-/
+theorem d677 : Q677 := by
+  exact r677 f154 f161
+
+/-
+@@ telelean v1
+id: deriv-678
+kind: DERIVATION
+natural_name: "Q678 follows"
+premises: rule-678, fact-148, fact-78
+-/
+theorem d678 : Q678 := by
+  exact r678 f148 f78
+
+/-
+@@ telelean v1
+id: deriv-679
+kind: DERIVATION
+natural_name: "Q679 follows"
+premises: rule-679, fact-115, fact-77
+-/
+theorem d679 : Q679 := by
+  exact r679 f115 f77
+
+/-
+@@ telelean v1
+id: deriv-680
+kind: DERIVATION
+natural_name: "Q680 follows"
+premises: rule-680, fact-33, fact-129
+-/
+theorem d680 : Q680 := by
+  exact r680 f33 f129
+
+/-
+@@ telelean v1
+id: deriv-681
+kind: DERIVATION
+natural_name: "Q681 follows"
+premises: rule-681, fact-113, fact-150
+-/
+theorem d681 : Q681 := by
+  exact r681 f113 f150
+
+/-
+@@ telelean v1
+id: deriv-682
+kind: DERIVATION
+natural_name: "Q682 follows"
+premises: rule-682, fact-35, fact-140
+-/
+theorem d682 : Q682 := by
+  exact r682 f35 f140
+
+/-
+@@ telelean v1
+id: deriv-683
+kind: DERIVATION
+natural_name: "Q683 follows"
+premises: rule-683, fact-197, fact-41
+-/
+theorem d683 : Q683 := by
+  exact r683 f197 f41
+
+/-
+@@ telelean v1
+id: deriv-684
+kind: DERIVATION
+natural_name: "Q684 follows"
+premises: rule-684, fact-64, fact-162
+-/
+theorem d684 : Q684 := by
+  exact r684 f64 f162
+
+/-
+@@ telelean v1
+id: deriv-685
+kind: DERIVATION
+natural_name: "Q685 follows"
+premises: rule-685, fact-2, fact-108
+-/
+theorem d685 : Q685 := by
+  exact r685 f2 f108
+
+/-
+@@ telelean v1
+id: deriv-686
+kind: DERIVATION
+natural_name: "Q686 follows"
+premises: rule-686, fact-188, fact-169
+-/
+theorem d686 : Q686 := by
+  exact r686 f188 f169
+
+/-
+@@ telelean v1
+id: deriv-687
+kind: DERIVATION
+natural_name: "Q687 follows"
+premises: rule-687, fact-144, fact-9
+-/
+theorem d687 : Q687 := by
+  exact r687 f144 f9
+
+/-
+@@ telelean v1
+id: deriv-688
+kind: DERIVATION
+natural_name: "Q688 follows"
+premises: rule-688, fact-94, fact-107
+-/
+theorem d688 : Q688 := by
+  exact r688 f94 f107
+
+/-
+@@ telelean v1
+id: deriv-689
+kind: DERIVATION
+natural_name: "Q689 follows"
+premises: rule-689, fact-102, fact-72
+-/
+theorem d689 : Q689 := by
+  exact r689 f102 f72
+
+/-
+@@ telelean v1
+id: deriv-690
+kind: DERIVATION
+natural_name: "Q690 follows"
+premises: rule-690, fact-168, fact-192
+-/
+theorem d690 : Q690 := by
+  exact r690 f168 f192
+
+/-
+@@ telelean v1
+id: deriv-691
+kind: DERIVATION
+natural_name: "Q691 follows"
+premises: rule-691, fact-171, fact-4
+-/
+theorem d691 : Q691 := by
+  exact r691 f171 f4
+
+/-
+@@ telelean v1
+id: deriv-692
+kind: DERIVATION
+natural_name: "Q692 follows"
+premises: rule-692, fact-23, fact-23
+-/
+theorem d692 : Q692 := by
+  exact r692 f23 f23
+
+/-
+@@ telelean v1
+id: deriv-693
+kind: DERIVATION
+natural_name: "Q693 follows"
+premises: rule-693, fact-1, fact-98
+-/
+theorem d693 : Q693 := by
+  exact r693 f1 f98
+
+/-
+@@ telelean v1
+id: deriv-694
+kind: DERIVATION
+natural_name: "Q694 follows"
+premises: rule-694, fact-68, fact-118
+-/
+theorem d694 : Q694 := by
+  exact r694 f68 f118
+
+/-
+@@ telelean v1
+id: deriv-695
+kind: DERIVATION
+natural_name: "Q695 follows"
+premises: rule-695, fact-69, fact-95
+-/
+theorem d695 : Q695 := by
+  exact r695 f69 f95
+
+/-
+@@ telelean v1
+id: deriv-696
+kind: DERIVATION
+natural_name: "Q696 follows"
+premises: rule-696, fact-162, fact-191
+-/
+theorem d696 : Q696 := by
+  exact r696 f162 f191
+
+/-
+@@ telelean v1
+id: deriv-697
+kind: DERIVATION
+natural_name: "Q697 follows"
+premises: rule-697, fact-123, fact-196
+-/
+theorem d697 : Q697 := by
+  exact r697 f123 f196
+
+/-
+@@ telelean v1
+id: deriv-698
+kind: DERIVATION
+natural_name: "Q698 follows"
+premises: rule-698, fact-86, fact-99
+-/
+theorem d698 : Q698 := by
+  exact r698 f86 f99
+
+/-
+@@ telelean v1
+id: deriv-699
+kind: DERIVATION
+natural_name: "Q699 follows"
+premises: rule-699, fact-116, fact-29
+-/
+theorem d699 : Q699 := by
+  exact r699 f116 f29
+
+/-
+@@ telelean v1
+id: deriv-700
+kind: DERIVATION
+natural_name: "Q700 follows"
+premises: rule-700, fact-123, fact-90
+-/
+theorem d700 : Q700 := by
+  exact r700 f123 f90
+
+/-
+@@ telelean v1
+id: deriv-701
+kind: DERIVATION
+natural_name: "Q701 follows"
+premises: rule-701, fact-37, fact-106
+-/
+theorem d701 : Q701 := by
+  exact r701 f37 f106
+
+/-
+@@ telelean v1
+id: deriv-702
+kind: DERIVATION
+natural_name: "Q702 follows"
+premises: rule-702, fact-37, fact-4
+-/
+theorem d702 : Q702 := by
+  exact r702 f37 f4
+
+/-
+@@ telelean v1
+id: deriv-703
+kind: DERIVATION
+natural_name: "Q703 follows"
+premises: rule-703, fact-44, fact-66
+-/
+theorem d703 : Q703 := by
+  exact r703 f44 f66
+
+/-
+@@ telelean v1
+id: deriv-704
+kind: DERIVATION
+natural_name: "Q704 follows"
+premises: rule-704, fact-94, fact-32
+-/
+theorem d704 : Q704 := by
+  exact r704 f94 f32
+
+/-
+@@ telelean v1
+id: deriv-705
+kind: DERIVATION
+natural_name: "Q705 follows"
+premises: rule-705, fact-150, fact-73
+-/
+theorem d705 : Q705 := by
+  exact r705 f150 f73
+
+/-
+@@ telelean v1
+id: deriv-706
+kind: DERIVATION
+natural_name: "Q706 follows"
+premises: rule-706, fact-105, fact-66
+-/
+theorem d706 : Q706 := by
+  exact r706 f105 f66
+
+/-
+@@ telelean v1
+id: deriv-707
+kind: DERIVATION
+natural_name: "Q707 follows"
+premises: rule-707, fact-131, fact-73
+-/
+theorem d707 : Q707 := by
+  exact r707 f131 f73
+
+/-
+@@ telelean v1
+id: deriv-708
+kind: DERIVATION
+natural_name: "Q708 follows"
+premises: rule-708, fact-189, fact-107
+-/
+theorem d708 : Q708 := by
+  exact r708 f189 f107
+
+/-
+@@ telelean v1
+id: deriv-709
+kind: DERIVATION
+natural_name: "Q709 follows"
+premises: rule-709, fact-176, fact-70
+-/
+theorem d709 : Q709 := by
+  exact r709 f176 f70
+
+/-
+@@ telelean v1
+id: deriv-710
+kind: DERIVATION
+natural_name: "Q710 follows"
+premises: rule-710, fact-110, fact-85
+-/
+theorem d710 : Q710 := by
+  exact r710 f110 f85
+
+/-
+@@ telelean v1
+id: deriv-711
+kind: DERIVATION
+natural_name: "Q711 follows"
+premises: rule-711, fact-198, fact-124
+-/
+theorem d711 : Q711 := by
+  exact r711 f198 f124
+
+/-
+@@ telelean v1
+id: deriv-712
+kind: DERIVATION
+natural_name: "Q712 follows"
+premises: rule-712, fact-55, fact-183
+-/
+theorem d712 : Q712 := by
+  exact r712 f55 f183
+
+/-
+@@ telelean v1
+id: deriv-713
+kind: DERIVATION
+natural_name: "Q713 follows"
+premises: rule-713, fact-125, fact-102
+-/
+theorem d713 : Q713 := by
+  exact r713 f125 f102
+
+/-
+@@ telelean v1
+id: deriv-714
+kind: DERIVATION
+natural_name: "Q714 follows"
+premises: rule-714, fact-183, fact-108
+-/
+theorem d714 : Q714 := by
+  exact r714 f183 f108
+
+/-
+@@ telelean v1
+id: deriv-715
+kind: DERIVATION
+natural_name: "Q715 follows"
+premises: rule-715, fact-23, fact-16
+-/
+theorem d715 : Q715 := by
+  exact r715 f23 f16
+
+/-
+@@ telelean v1
+id: deriv-716
+kind: DERIVATION
+natural_name: "Q716 follows"
+premises: rule-716, fact-33, fact-52
+-/
+theorem d716 : Q716 := by
+  exact r716 f33 f52
+
+/-
+@@ telelean v1
+id: deriv-717
+kind: DERIVATION
+natural_name: "Q717 follows"
+premises: rule-717, fact-38, fact-58
+-/
+theorem d717 : Q717 := by
+  exact r717 f38 f58
+
+/-
+@@ telelean v1
+id: deriv-718
+kind: DERIVATION
+natural_name: "Q718 follows"
+premises: rule-718, fact-186, fact-6
+-/
+theorem d718 : Q718 := by
+  exact r718 f186 f6
+
+/-
+@@ telelean v1
+id: deriv-719
+kind: DERIVATION
+natural_name: "Q719 follows"
+premises: rule-719, fact-26, fact-64
+-/
+theorem d719 : Q719 := by
+  exact r719 f26 f64
+
+/-
+@@ telelean v1
+id: deriv-720
+kind: DERIVATION
+natural_name: "Q720 follows"
+premises: rule-720, fact-39, fact-122
+-/
+theorem d720 : Q720 := by
+  exact r720 f39 f122
+
+/-
+@@ telelean v1
+id: deriv-721
+kind: DERIVATION
+natural_name: "Q721 follows"
+premises: rule-721, fact-198, fact-25
+-/
+theorem d721 : Q721 := by
+  exact r721 f198 f25
+
+/-
+@@ telelean v1
+id: deriv-722
+kind: DERIVATION
+natural_name: "Q722 follows"
+premises: rule-722, fact-102, fact-166
+-/
+theorem d722 : Q722 := by
+  exact r722 f102 f166
+
+/-
+@@ telelean v1
+id: deriv-723
+kind: DERIVATION
+natural_name: "Q723 follows"
+premises: rule-723, fact-185, fact-47
+-/
+theorem d723 : Q723 := by
+  exact r723 f185 f47
+
+/-
+@@ telelean v1
+id: deriv-724
+kind: DERIVATION
+natural_name: "Q724 follows"
+premises: rule-724, fact-0, fact-22
+-/
+theorem d724 : Q724 := by
+  exact r724 f0 f22
+
+/-
+@@ telelean v1
+id: deriv-725
+kind: DERIVATION
+natural_name: "Q725 follows"
+premises: rule-725, fact-109, fact-156
+-/
+theorem d725 : Q725 := by
+  exact r725 f109 f156
+
+/-
+@@ telelean v1
+id: deriv-726
+kind: DERIVATION
+natural_name: "Q726 follows"
+premises: rule-726, fact-13, fact-140
+-/
+theorem d726 : Q726 := by
+  exact r726 f13 f140
+
+/-
+@@ telelean v1
+id: deriv-727
+kind: DERIVATION
+natural_name: "Q727 follows"
+premises: rule-727, fact-55, fact-136
+-/
+theorem d727 : Q727 := by
+  exact r727 f55 f136
+
+/-
+@@ telelean v1
+id: deriv-728
+kind: DERIVATION
+natural_name: "Q728 follows"
+premises: rule-728, fact-108, fact-88
+-/
+theorem d728 : Q728 := by
+  exact r728 f108 f88
+
+/-
+@@ telelean v1
+id: deriv-729
+kind: DERIVATION
+natural_name: "Q729 follows"
+premises: rule-729, fact-12, fact-166
+-/
+theorem d729 : Q729 := by
+  exact r729 f12 f166
+
+/-
+@@ telelean v1
+id: deriv-730
+kind: DERIVATION
+natural_name: "Q730 follows"
+premises: rule-730, fact-26, fact-188
+-/
+theorem d730 : Q730 := by
+  exact r730 f26 f188
+
+/-
+@@ telelean v1
+id: deriv-731
+kind: DERIVATION
+natural_name: "Q731 follows"
+premises: rule-731, fact-141, fact-173
+-/
+theorem d731 : Q731 := by
+  exact r731 f141 f173
+
+/-
+@@ telelean v1
+id: deriv-732
+kind: DERIVATION
+natural_name: "Q732 follows"
+premises: rule-732, fact-107, fact-171
+-/
+theorem d732 : Q732 := by
+  exact r732 f107 f171
+
+/-
+@@ telelean v1
+id: deriv-733
+kind: DERIVATION
+natural_name: "Q733 follows"
+premises: rule-733, fact-189, fact-30
+-/
+theorem d733 : Q733 := by
+  exact r733 f189 f30
+
+/-
+@@ telelean v1
+id: deriv-734
+kind: DERIVATION
+natural_name: "Q734 follows"
+premises: rule-734, fact-67, fact-175
+-/
+theorem d734 : Q734 := by
+  exact r734 f67 f175
+
+/-
+@@ telelean v1
+id: deriv-735
+kind: DERIVATION
+natural_name: "Q735 follows"
+premises: rule-735, fact-71, fact-45
+-/
+theorem d735 : Q735 := by
+  exact r735 f71 f45
+
+/-
+@@ telelean v1
+id: deriv-736
+kind: DERIVATION
+natural_name: "Q736 follows"
+premises: rule-736, fact-122, fact-180
+-/
+theorem d736 : Q736 := by
+  exact r736 f122 f180
+
+/-
+@@ telelean v1
+id: deriv-737
+kind: DERIVATION
+natural_name: "Q737 follows"
+premises: rule-737, fact-12, fact-54
+-/
+theorem d737 : Q737 := by
+  exact r737 f12 f54
+
+/-
+@@ telelean v1
+id: deriv-738
+kind: DERIVATION
+natural_name: "Q738 follows"
+premises: rule-738, fact-173, fact-164
+-/
+theorem d738 : Q738 := by
+  exact r738 f173 f164
+
+/-
+@@ telelean v1
+id: deriv-739
+kind: DERIVATION
+natural_name: "Q739 follows"
+premises: rule-739, fact-22, fact-99
+-/
+theorem d739 : Q739 := by
+  exact r739 f22 f99
+
+/-
+@@ telelean v1
+id: deriv-740
+kind: DERIVATION
+natural_name: "Q740 follows"
+premises: rule-740, fact-31, fact-171
+-/
+theorem d740 : Q740 := by
+  exact r740 f31 f171
+
+/-
+@@ telelean v1
+id: deriv-741
+kind: DERIVATION
+natural_name: "Q741 follows"
+premises: rule-741, fact-114, fact-75
+-/
+theorem d741 : Q741 := by
+  exact r741 f114 f75
+
+/-
+@@ telelean v1
+id: deriv-742
+kind: DERIVATION
+natural_name: "Q742 follows"
+premises: rule-742, fact-174, fact-130
+-/
+theorem d742 : Q742 := by
+  exact r742 f174 f130
+
+/-
+@@ telelean v1
+id: deriv-743
+kind: DERIVATION
+natural_name: "Q743 follows"
+premises: rule-743, fact-127, fact-100
+-/
+theorem d743 : Q743 := by
+  exact r743 f127 f100
+
+/-
+@@ telelean v1
+id: deriv-744
+kind: DERIVATION
+natural_name: "Q744 follows"
+premises: rule-744, fact-29, fact-155
+-/
+theorem d744 : Q744 := by
+  exact r744 f29 f155
+
+/-
+@@ telelean v1
+id: deriv-745
+kind: DERIVATION
+natural_name: "Q745 follows"
+premises: rule-745, fact-122, fact-27
+-/
+theorem d745 : Q745 := by
+  exact r745 f122 f27
+
+/-
+@@ telelean v1
+id: deriv-746
+kind: DERIVATION
+natural_name: "Q746 follows"
+premises: rule-746, fact-38, fact-98
+-/
+theorem d746 : Q746 := by
+  exact r746 f38 f98
+
+/-
+@@ telelean v1
+id: deriv-747
+kind: DERIVATION
+natural_name: "Q747 follows"
+premises: rule-747, fact-157, fact-179
+-/
+theorem d747 : Q747 := by
+  exact r747 f157 f179
+
+/-
+@@ telelean v1
+id: deriv-748
+kind: DERIVATION
+natural_name: "Q748 follows"
+premises: rule-748, fact-51, fact-42
+-/
+theorem d748 : Q748 := by
+  exact r748 f51 f42
+
+/-
+@@ telelean v1
+id: deriv-749
+kind: DERIVATION
+natural_name: "Q749 follows"
+premises: rule-749, fact-133, fact-65
+-/
+theorem d749 : Q749 := by
+  exact r749 f133 f65
+
+/-
+@@ telelean v1
+id: deriv-750
+kind: DERIVATION
+natural_name: "Q750 follows"
+premises: rule-750, fact-106, fact-190
+-/
+theorem d750 : Q750 := by
+  exact r750 f106 f190
+
+/-
+@@ telelean v1
+id: deriv-751
+kind: DERIVATION
+natural_name: "Q751 follows"
+premises: rule-751, fact-137, fact-73
+-/
+theorem d751 : Q751 := by
+  exact r751 f137 f73
+
+/-
+@@ telelean v1
+id: deriv-752
+kind: DERIVATION
+natural_name: "Q752 follows"
+premises: rule-752, fact-126, fact-162
+-/
+theorem d752 : Q752 := by
+  exact r752 f126 f162
+
+/-
+@@ telelean v1
+id: deriv-753
+kind: DERIVATION
+natural_name: "Q753 follows"
+premises: rule-753, fact-139, fact-54
+-/
+theorem d753 : Q753 := by
+  exact r753 f139 f54
+
+/-
+@@ telelean v1
+id: deriv-754
+kind: DERIVATION
+natural_name: "Q754 follows"
+premises: rule-754, fact-194, fact-159
+-/
+theorem d754 : Q754 := by
+  exact r754 f194 f159
+
+/-
+@@ telelean v1
+id: deriv-755
+kind: DERIVATION
+natural_name: "Q755 follows"
+premises: rule-755, fact-86, fact-124
+-/
+theorem d755 : Q755 := by
+  exact r755 f86 f124
+
+/-
+@@ telelean v1
+id: deriv-756
+kind: DERIVATION
+natural_name: "Q756 follows"
+premises: rule-756, fact-26, fact-2
+-/
+theorem d756 : Q756 := by
+  exact r756 f26 f2
+
+/-
+@@ telelean v1
+id: deriv-757
+kind: DERIVATION
+natural_name: "Q757 follows"
+premises: rule-757, fact-193, fact-186
+-/
+theorem d757 : Q757 := by
+  exact r757 f193 f186
+
+/-
+@@ telelean v1
+id: deriv-758
+kind: DERIVATION
+natural_name: "Q758 follows"
+premises: rule-758, fact-168, fact-88
+-/
+theorem d758 : Q758 := by
+  exact r758 f168 f88
+
+/-
+@@ telelean v1
+id: deriv-759
+kind: DERIVATION
+natural_name: "Q759 follows"
+premises: rule-759, fact-181, fact-68
+-/
+theorem d759 : Q759 := by
+  exact r759 f181 f68
+
+/-
+@@ telelean v1
+id: deriv-760
+kind: DERIVATION
+natural_name: "Q760 follows"
+premises: rule-760, fact-14, fact-138
+-/
+theorem d760 : Q760 := by
+  exact r760 f14 f138
+
+/-
+@@ telelean v1
+id: deriv-761
+kind: DERIVATION
+natural_name: "Q761 follows"
+premises: rule-761, fact-160, fact-112
+-/
+theorem d761 : Q761 := by
+  exact r761 f160 f112
+
+/-
+@@ telelean v1
+id: deriv-762
+kind: DERIVATION
+natural_name: "Q762 follows"
+premises: rule-762, fact-76, fact-194
+-/
+theorem d762 : Q762 := by
+  exact r762 f76 f194
+
+/-
+@@ telelean v1
+id: deriv-763
+kind: DERIVATION
+natural_name: "Q763 follows"
+premises: rule-763, fact-25, fact-58
+-/
+theorem d763 : Q763 := by
+  exact r763 f25 f58
+
+/-
+@@ telelean v1
+id: deriv-764
+kind: DERIVATION
+natural_name: "Q764 follows"
+premises: rule-764, fact-130, fact-70
+-/
+theorem d764 : Q764 := by
+  exact r764 f130 f70
+
+/-
+@@ telelean v1
+id: deriv-765
+kind: DERIVATION
+natural_name: "Q765 follows"
+premises: rule-765, fact-69, fact-180
+-/
+theorem d765 : Q765 := by
+  exact r765 f69 f180
+
+/-
+@@ telelean v1
+id: deriv-766
+kind: DERIVATION
+natural_name: "Q766 follows"
+premises: rule-766, fact-63, fact-105
+-/
+theorem d766 : Q766 := by
+  exact r766 f63 f105
+
+/-
+@@ telelean v1
+id: deriv-767
+kind: DERIVATION
+natural_name: "Q767 follows"
+premises: rule-767, fact-37, fact-33
+-/
+theorem d767 : Q767 := by
+  exact r767 f37 f33
+
+/-
+@@ telelean v1
+id: deriv-768
+kind: DERIVATION
+natural_name: "Q768 follows"
+premises: rule-768, fact-65, fact-49
+-/
+theorem d768 : Q768 := by
+  exact r768 f65 f49
+
+/-
+@@ telelean v1
+id: deriv-769
+kind: DERIVATION
+natural_name: "Q769 follows"
+premises: rule-769, fact-104, fact-143
+-/
+theorem d769 : Q769 := by
+  exact r769 f104 f143
+
+/-
+@@ telelean v1
+id: deriv-770
+kind: DERIVATION
+natural_name: "Q770 follows"
+premises: rule-770, fact-161, fact-153
+-/
+theorem d770 : Q770 := by
+  exact r770 f161 f153
+
+/-
+@@ telelean v1
+id: deriv-771
+kind: DERIVATION
+natural_name: "Q771 follows"
+premises: rule-771, fact-14, fact-136
+-/
+theorem d771 : Q771 := by
+  exact r771 f14 f136
+
+/-
+@@ telelean v1
+id: deriv-772
+kind: DERIVATION
+natural_name: "Q772 follows"
+premises: rule-772, fact-155, fact-130
+-/
+theorem d772 : Q772 := by
+  exact r772 f155 f130
+
+/-
+@@ telelean v1
+id: deriv-773
+kind: DERIVATION
+natural_name: "Q773 follows"
+premises: rule-773, fact-38, fact-105
+-/
+theorem d773 : Q773 := by
+  exact r773 f38 f105
+
+/-
+@@ telelean v1
+id: deriv-774
+kind: DERIVATION
+natural_name: "Q774 follows"
+premises: rule-774, fact-69, fact-71
+-/
+theorem d774 : Q774 := by
+  exact r774 f69 f71
+
+/-
+@@ telelean v1
+id: deriv-775
+kind: DERIVATION
+natural_name: "Q775 follows"
+premises: rule-775, fact-122, fact-178
+-/
+theorem d775 : Q775 := by
+  exact r775 f122 f178
+
+/-
+@@ telelean v1
+id: deriv-776
+kind: DERIVATION
+natural_name: "Q776 follows"
+premises: rule-776, fact-78, fact-68
+-/
+theorem d776 : Q776 := by
+  exact r776 f78 f68
+
+/-
+@@ telelean v1
+id: deriv-777
+kind: DERIVATION
+natural_name: "Q777 follows"
+premises: rule-777, fact-125, fact-54
+-/
+theorem d777 : Q777 := by
+  exact r777 f125 f54
+
+/-
+@@ telelean v1
+id: deriv-778
+kind: DERIVATION
+natural_name: "Q778 follows"
+premises: rule-778, fact-127, fact-94
+-/
+theorem d778 : Q778 := by
+  exact r778 f127 f94
+
+/-
+@@ telelean v1
+id: deriv-779
+kind: DERIVATION
+natural_name: "Q779 follows"
+premises: rule-779, fact-153, fact-120
+-/
+theorem d779 : Q779 := by
+  exact r779 f153 f120
+
+/-
+@@ telelean v1
+id: deriv-780
+kind: DERIVATION
+natural_name: "Q780 follows"
+premises: rule-780, fact-61, fact-86
+-/
+theorem d780 : Q780 := by
+  exact r780 f61 f86
+
+/-
+@@ telelean v1
+id: deriv-781
+kind: DERIVATION
+natural_name: "Q781 follows"
+premises: rule-781, fact-45, fact-155
+-/
+theorem d781 : Q781 := by
+  exact r781 f45 f155
+
+/-
+@@ telelean v1
+id: deriv-782
+kind: DERIVATION
+natural_name: "Q782 follows"
+premises: rule-782, fact-194, fact-46
+-/
+theorem d782 : Q782 := by
+  exact r782 f194 f46
+
+/-
+@@ telelean v1
+id: deriv-783
+kind: DERIVATION
+natural_name: "Q783 follows"
+premises: rule-783, fact-189, fact-148
+-/
+theorem d783 : Q783 := by
+  exact r783 f189 f148
+
+/-
+@@ telelean v1
+id: deriv-784
+kind: DERIVATION
+natural_name: "Q784 follows"
+premises: rule-784, fact-177, fact-115
+-/
+theorem d784 : Q784 := by
+  exact r784 f177 f115
+
+/-
+@@ telelean v1
+id: deriv-785
+kind: DERIVATION
+natural_name: "Q785 follows"
+premises: rule-785, fact-136, fact-38
+-/
+theorem d785 : Q785 := by
+  exact r785 f136 f38
+
+/-
+@@ telelean v1
+id: deriv-786
+kind: DERIVATION
+natural_name: "Q786 follows"
+premises: rule-786, fact-14, fact-129
+-/
+theorem d786 : Q786 := by
+  exact r786 f14 f129
+
+/-
+@@ telelean v1
+id: deriv-787
+kind: DERIVATION
+natural_name: "Q787 follows"
+premises: rule-787, fact-83, fact-135
+-/
+theorem d787 : Q787 := by
+  exact r787 f83 f135
+
+/-
+@@ telelean v1
+id: deriv-788
+kind: DERIVATION
+natural_name: "Q788 follows"
+premises: rule-788, fact-176, fact-34
+-/
+theorem d788 : Q788 := by
+  exact r788 f176 f34
+
+/-
+@@ telelean v1
+id: deriv-789
+kind: DERIVATION
+natural_name: "Q789 follows"
+premises: rule-789, fact-165, fact-194
+-/
+theorem d789 : Q789 := by
+  exact r789 f165 f194
+
+/-
+@@ telelean v1
+id: deriv-790
+kind: DERIVATION
+natural_name: "Q790 follows"
+premises: rule-790, fact-54, fact-80
+-/
+theorem d790 : Q790 := by
+  exact r790 f54 f80
+
+/-
+@@ telelean v1
+id: deriv-791
+kind: DERIVATION
+natural_name: "Q791 follows"
+premises: rule-791, fact-159, fact-126
+-/
+theorem d791 : Q791 := by
+  exact r791 f159 f126
+
+/-
+@@ telelean v1
+id: deriv-792
+kind: DERIVATION
+natural_name: "Q792 follows"
+premises: rule-792, fact-122, fact-84
+-/
+theorem d792 : Q792 := by
+  exact r792 f122 f84
+
+/-
+@@ telelean v1
+id: deriv-793
+kind: DERIVATION
+natural_name: "Q793 follows"
+premises: rule-793, fact-30, fact-32
+-/
+theorem d793 : Q793 := by
+  exact r793 f30 f32
+
+/-
+@@ telelean v1
+id: deriv-794
+kind: DERIVATION
+natural_name: "Q794 follows"
+premises: rule-794, fact-35, fact-178
+-/
+theorem d794 : Q794 := by
+  exact r794 f35 f178
+
+/-
+@@ telelean v1
+id: deriv-795
+kind: DERIVATION
+natural_name: "Q795 follows"
+premises: rule-795, fact-65, fact-57
+-/
+theorem d795 : Q795 := by
+  exact r795 f65 f57
+
+/-
+@@ telelean v1
+id: deriv-796
+kind: DERIVATION
+natural_name: "Q796 follows"
+premises: rule-796, fact-22, fact-162
+-/
+theorem d796 : Q796 := by
+  exact r796 f22 f162
+
+/-
+@@ telelean v1
+id: deriv-797
+kind: DERIVATION
+natural_name: "Q797 follows"
+premises: rule-797, fact-137, fact-179
+-/
+theorem d797 : Q797 := by
+  exact r797 f137 f179
+
+/-
+@@ telelean v1
+id: deriv-798
+kind: DERIVATION
+natural_name: "Q798 follows"
+premises: rule-798, fact-12, fact-144
+-/
+theorem d798 : Q798 := by
+  exact r798 f12 f144
+
+/-
+@@ telelean v1
+id: deriv-799
+kind: DERIVATION
+natural_name: "Q799 follows"
+premises: rule-799, fact-44, fact-175
+-/
+theorem d799 : Q799 := by
+  exact r799 f44 f175
+

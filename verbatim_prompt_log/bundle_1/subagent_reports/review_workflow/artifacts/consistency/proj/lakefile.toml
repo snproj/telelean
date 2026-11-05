@@ -1,0 +1,9 @@
+name = "t"
+defaultTargets = ["T"]
+
+[leanOptions]
+autoImplicit = false
+relaxedAutoImplicit = false
+
+[[lean_lib]]
+name = "T"

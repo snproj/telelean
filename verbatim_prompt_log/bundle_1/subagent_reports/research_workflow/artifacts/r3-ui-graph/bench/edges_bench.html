@@ -1,0 +1,148 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>edge overlay bench</title>
+<style>
+  html, body { margin: 0; height: 100%; font: 13px system-ui, sans-serif; background: #1e1e1e; color: #ddd; }
+  #wrap { position: relative; width: 1500px; height: 900px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 60px; padding: 0 30px; box-sizing: border-box; }
+  .col { position: relative; overflow-y: auto; height: 900px; z-index: 1; }
+  .card { margin: 8px 6px; padding: 8px 10px; background: #2b2b2b; border: 1px solid #444; border-radius: 6px; }
+  .cv .card { content-visibility: auto; contain-intrinsic-size: auto 60px; }
+  svg#edges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; overflow: visible; }
+  svg#edges path { fill: none; stroke: #4aa3ff; stroke-width: 1.5; opacity: .6; }
+  svg#edges path.clamped { stroke-dasharray: 4 3; opacity: .35; }
+  svg#edges path.hit { stroke: transparent; stroke-width: 10; pointer-events: stroke; opacity: 1; }
+</style></head>
+<body>
+<div id="wrap"></div>
+<script>
+// ---------- deterministic RNG ----------
+let seed = 12345; const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+const WORDS = 'cynder spyro game character dark past rated pg lore news assumption derivation goal proof lemma axiom structure prop model world dragon purple'.split(' ');
+const sentence = () => { const n = 4 + Math.floor(rnd() * 18); let s = []; for (let i = 0; i < n; i++) s.push(WORDS[Math.floor(rnd() * WORDS.length)]); return s.join(' '); };
+const raf = () => new Promise(r => requestAnimationFrame(r));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const q = new URLSearchParams(location.search);
+const FRAMES = +(q.get('frames') || 90);
+
+function build(N, E, cv, withHit) {
+  const wrap = document.getElementById('wrap');
+  wrap.innerHTML = ''; wrap.className = cv ? 'cv' : '';
+  const t0 = performance.now();
+  const cols = [], nodes = [];
+  for (let c = 0; c < 3; c++) {
+    const col = document.createElement('div'); col.className = 'col';
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < N; i++) {
+      const el = document.createElement('div'); el.className = 'card'; el.textContent = sentence();
+      frag.appendChild(el); nodes.push({ el, col: c, top: 0, h: 0 });
+    }
+    col.appendChild(frag); wrap.appendChild(col); cols.push(col);
+  }
+  void wrap.offsetHeight; // force style+layout
+  const tDom = performance.now() - t0;
+  // edges: mostly A->D, D->G, A->G, some D->D
+  const edges = [];
+  for (let k = 0; k < E; k++) {
+    const r = rnd(); let ca, cb;
+    if (r < 0.4) { ca = 0; cb = 1; } else if (r < 0.7) { ca = 1; cb = 2; } else if (r < 0.9) { ca = 0; cb = 2; } else { ca = 1; cb = 1; }
+    const a = ca * N + Math.floor(rnd() * N), b = cb * N + Math.floor(rnd() * N);
+    edges.push({ a, b, ca, cb, path: null, hit: null, d: '' });
+  }
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.id = 'edges';
+  const t1 = performance.now();
+  for (const e of edges) {
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); svg.appendChild(p); e.path = p;
+    if (withHit) { const h = document.createElementNS('http://www.w3.org/2000/svg', 'path'); h.setAttribute('class', 'hit'); svg.appendChild(h); e.hit = h; }
+  }
+  wrap.appendChild(svg);
+  const incident = [[], [], []];
+  edges.forEach((e, i) => { incident[e.ca].push(i); if (e.cb !== e.ca) incident[e.cb].push(i); });
+  return { cols, nodes, edges, svg, incident, tDom, tSvgCreate: performance.now() - t1, wrap };
+}
+
+// ---------- geometry ----------
+function colRects(cols, wrap) {
+  return cols.map(c => ({ left: c.offsetLeft, top: c.offsetTop, width: c.clientWidth, height: c.clientHeight, scrollTop: c.scrollTop }));
+}
+function measureNodes(nodes) { for (const n of nodes) { n.top = n.el.offsetTop; n.h = n.el.offsetHeight; } }
+const PAD = 6;
+function endpoint(cr, top, h, side) { // side: 'R' | 'L'
+  let y = cr.top + top - cr.scrollTop + h / 2, clamped = 0;
+  if (y < cr.top + PAD) { y = cr.top + PAD; clamped = -1; } else if (y > cr.top + cr.height - PAD) { y = cr.top + cr.height - PAD; clamped = 1; }
+  const x = side === 'R' ? cr.left + cr.width - 8 : cr.left + 8;
+  return { x, y, clamped };
+}
+function pathFor(e, crs, nodes) {
+  const A = nodes[e.a], B = nodes[e.b];
+  let p, q2, d;
+  if (e.ca === e.cb) {
+    p = endpoint(crs[e.ca], A.top, A.h, 'R'); q2 = endpoint(crs[e.cb], B.top, B.h, 'R');
+    const k = 24 + Math.min(60, Math.abs(q2.y - p.y) * 0.15);
+    d = `M${p.x},${p.y}C${p.x + k},${p.y} ${q2.x + k},${q2.y} ${q2.x},${q2.y}`;
+  } else {
+    const fwd = e.ca < e.cb;
+    p = endpoint(crs[e.ca], A.top, A.h, fwd ? 'R' : 'L'); q2 = endpoint(crs[e.cb], B.top, B.h, fwd ? 'L' : 'R');
+    const dx = Math.max(40, Math.abs(q2.x - p.x) / 2) * (fwd ? 1 : -1);
+    d = `M${p.x},${p.y}C${p.x + dx},${p.y} ${q2.x - dx},${q2.y} ${q2.x},${q2.y}`;
+  }
+  return { d, clamped: p.clamped !== 0 || q2.clamped !== 0 };
+}
+function writeEdge(e, r) {
+  if (r.d !== e.d) { e.d = r.d; e.path.setAttribute('d', r.d); if (e.hit) e.hit.setAttribute('d', r.d); }
+  const cls = r.clamped ? 'clamped' : '';
+  if (e.cls !== cls) { e.cls = cls; e.path.setAttribute('class', cls); }
+}
+// mode A: getBoundingClientRect on both endpoints per edge per frame
+function updateGBCR(S) {
+  const wr = S.wrap.getBoundingClientRect();
+  const crs = S.cols.map(c => { const r = c.getBoundingClientRect(); return { left: r.left - wr.left, top: r.top - wr.top, width: c.clientWidth, height: c.clientHeight, scrollTop: 0 }; });
+  for (const e of S.edges) {
+    const ra = S.nodes[e.a].el.getBoundingClientRect(), rb = S.nodes[e.b].el.getBoundingClientRect();
+    const ta = { top: ra.top - wr.top - crs[e.ca].top, h: ra.height }, tb = { top: rb.top - wr.top - crs[e.cb].top, h: rb.height };
+    const fake = [{ top: ta.top, h: ta.h }, { top: tb.top, h: tb.h }];
+    const nodesView = { [e.a]: fake[0], [e.b]: fake[1] };
+    writeEdge(e, pathFor(e, crs, nodesView));
+  }
+}
+// mode B: cached offsets, recompute all edges
+function updateCachedAll(S) { const crs = colRects(S.cols); for (const e of S.edges) writeEdge(e, pathFor(e, crs, S.nodes)); }
+// mode C: cached offsets, only edges incident to scrolled column
+function updateCachedIncident(S, dirtyCol) { const crs = colRects(S.cols); for (const i of S.incident[dirtyCol]) { const e = S.edges[i]; writeEdge(e, pathFor(e, crs, S.nodes)); } }
+
+function stats(arr) { const a = [...arr].sort((x, y) => x - y); const sum = a.reduce((s, x) => s + x, 0); return { mean: +(sum / a.length).toFixed(3), p50: +a[Math.floor(a.length * .5)].toFixed(3), p95: +a[Math.floor(a.length * .95)].toFixed(3), max: +a[a.length - 1].toFixed(3) }; }
+
+async function runScenario(N, E, mode, cv, withHit) {
+  const S = build(N, E, cv, withHit);
+  measureNodes(S.nodes);
+  const tm0 = performance.now(); measureNodes(S.nodes); const tMeasure = performance.now() - tm0;
+  const ti0 = performance.now(); updateCachedAll(S); void S.wrap.offsetHeight; const tInitialPaths = performance.now() - ti0;
+  await raf(); await raf();
+  const js = [], layout = [], frame = [];
+  let last = performance.now();
+  const col = S.cols[1]; // scroll the middle column (most incident edges)
+  for (let f = 0; f < FRAMES; f++) {
+    await raf();
+    const now = performance.now(); frame.push(now - last); last = now;
+    const t0 = performance.now();
+    col.scrollTop += 7;
+    if (mode === 'gbcr') updateGBCR(S); else if (mode === 'cachedAll') updateCachedAll(S); else updateCachedIncident(S, 1);
+    const t1 = performance.now();
+    void S.wrap.offsetHeight; // force style/layout for the path changes
+    layout.push(performance.now() - t1); js.push(t1 - t0);
+  }
+  // hit test cost
+  let hitMs = null;
+  if (withHit) { const th = performance.now(); for (let i = 0; i < 200; i++) document.elementFromPoint(30 + rnd() * 1440, rnd() * 900); hitMs = +((performance.now() - th) / 200).toFixed(4); }
+  return { N, E, mode, cv, withHit, domNodes: document.getElementsByTagName('*').length, tDomBuildLayoutMs: +S.tDom.toFixed(1), tMeasureAllNodesMs: +tMeasure.toFixed(2), tInitialPathsMs: +tInitialPaths.toFixed(1), jsPerFrame: stats(js), layoutPerFrame: stats(layout), rafInterval: stats(frame.slice(5)), slowFrames20ms: frame.slice(5).filter(x => x > 20).length, hitTestMsPerCall: hitMs };
+}
+
+(async () => {
+  const scenarios = JSON.parse(q.get('s') || '[]');
+  const results = [];
+  for (const [N, E, mode, cv, withHit] of scenarios) {
+    try { results.push(await runScenario(N, E, mode, !!cv, !!withHit)); } catch (err) { results.push({ N, E, mode, error: String(err) }); }
+    await sleep(50);
+  }
+  await fetch('/result', { method: 'POST', body: JSON.stringify({ ua: navigator.userAgent, flags: q.get('label'), results }) });
+})();
+</script>
+</body></html>

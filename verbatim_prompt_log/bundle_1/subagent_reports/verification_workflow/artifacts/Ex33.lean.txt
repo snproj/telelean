@@ -1,0 +1,48 @@
+set_option autoImplicit false
+set_option relaxedAutoImplicit false
+namespace Spyro
+
+/-
+@@ telelean v1
+id: pg-no-dark-past
+type: ASSUMPTION
+natural_name: PG games cannot have characters with dark pasts
+stance: rule
+-/
+                                     -- blank line: code-less node ("no rationale yet" badge)
+
+/-
+@@ telelean v1
+id: cynder-dark-past
+type: ASSUMPTION
+natural_name: Cynder is a character who has a dark past
+rationale: familiar with gaming lore
+source: common
+lean: Spyro.cynder_dark_past
+-/
+/-- Cynder is a character who has a dark past -/          -- generated docstring mirror (D-9)
+abbrev cynder_dark_past : Prop := HasDarkPast cynder
+axiom cynder_dark_past.holds : cynder_dark_past           -- assumed
+
+/-
+@@ telelean v1
+id: cynder-not-good
+type: GOAL
+natural_name: Cynder would not be a good addition to the new Spyro game
+premises: cynder-dark-past, new-spyro-pg, pg-no-dark-past
+lean: Spyro.cynder_not_good
+-/
+/-- Cynder would not be a good addition to the new Spyro game -/
+abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro
+-- formalised, not proved: no `cynder_not_good.holds` yet, and no sorry
+
+-- Vocabulary (computed, no markup needed; docstrings are Claude's wording until you rewrite them)
+/-- characters -/            axiom Character : Type
+/-- games -/                 axiom Game : Type
+/-- has a dark past -/       axiom HasDarkPast : Character → Prop
+/-- would be a good addition to -/ axiom GoodAddition : Character → Game → Prop
+/-- there is at least one character -/ axiom Character.exists : Nonempty Character   -- presupposition (ASSUMPTION role)
+instance : Nonempty Character := Character.exists
+/-- Cynder -/                noncomputable opaque cynder : Character
+
+end Spyro

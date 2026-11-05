@@ -1,0 +1,21 @@
+{
+  // Type-check only: esbuild bundles src/ to dist/extension.js (CommonJS, `vscode` external).
+  // `@telelean/core` and `@telelean/runner` resolve to their sources (no build step, no workspace link). The extension
+  // imports the runner's subpaths (workspace/, and since M2 run/, gate/, shadow/, proposal/, llm/), never the package
+  // root. `llm/` reads `import.meta.url`: the build defines it as the bundle's own URL (scripts/esbuild-options.mjs),
+  // and the extension always passes the guard script's path explicitly (docs/m2-plan.md section 8.4, risk R2).
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "Preserve",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2023"],
+    "types": ["node", "vscode", "mocha"],
+    "noEmit": true,
+    "paths": {
+      "@telelean/core": ["../core/src/index.ts"],
+      "@telelean/runner": ["../runner/src/index.ts"],
+      "@telelean/runner/*": ["../runner/src/*"]
+    }
+  },
+  "include": ["src", "test", "vitest.config.mts"]
+}

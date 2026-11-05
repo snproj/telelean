@@ -1,0 +1,49 @@
+{
+ "name": "@dnd-kit/sortable",
+ "latest": "10.0.0",
+ "dist_tags": {
+  "latest": "10.0.0",
+  "next": "10.0.0-next-202410244445"
+ },
+ "latest_published": "2024-12-04T18:39:12.664Z",
+ "modified": "2024-12-04T18:39:12.840Z",
+ "created": "2021-01-02T02:07:03.380Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 234022,
+ "fileCount": 40,
+ "tarball": "https://registry.npmjs.org/@dnd-kit/sortable/-/sortable-10.0.0.tgz",
+ "dependencies": {
+  "@dnd-kit/utilities": "^3.2.2",
+  "tslib": "^2.0.0"
+ },
+ "peerDependencies": {
+  "react": ">=16.8.0",
+  "@dnd-kit/core": "^6.3.0"
+ },
+ "repository": "git+https://github.com/clauderic/dnd-kit.git",
+ "recent_versions": [
+  [
+   "9.0.0-next-20241023161720",
+   "2024-11-23T16:17:36.878Z"
+  ],
+  [
+   "9.0.0-next-20241023165632",
+   "2024-11-23T16:56:48.190Z"
+  ],
+  [
+   "9.0.0",
+   "2024-11-23T17:01:06.714Z"
+  ],
+  [
+   "10.0.0-next-202410244445",
+   "2024-11-24T04:04:59.287Z"
+  ],
+  [
+   "10.0.0",
+   "2024-12-04T18:39:12.664Z"
+  ]
+ ],
+ "homepage": "https://github.com/clauderic/dnd-kit#readme",
+ "description": "Official sortable preset and sensors for dnd kit"
+}

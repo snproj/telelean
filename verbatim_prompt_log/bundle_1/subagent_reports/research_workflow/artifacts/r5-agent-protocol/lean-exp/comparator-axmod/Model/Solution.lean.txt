@@ -1,0 +1,4 @@
+import Model.Defs
+namespace Telelean.Model
+theorem cynder_not_good : ¬ GoodAdditionTo cynder newSpyro := good_needs_appear _ _
+end Telelean.Model

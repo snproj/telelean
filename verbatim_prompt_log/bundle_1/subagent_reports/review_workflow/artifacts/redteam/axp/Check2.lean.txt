@@ -1,0 +1,13 @@
+import Lean
+import Model
+open Lean Elab Command in
+#eval show CommandElabM Unit from do
+  let env ← getEnv
+  let targets := [`Telelean.Model.cynder_not_good, `Telelean.Model.cannot_appear, `Telelean.Model.unproved_goal]
+  for n in targets do
+    let some ci := env.find? n | logInfo m!"missing {n}"
+    let axs ← liftCoreM (Lean.collectAxioms n)
+    let used := ci.getUsedConstantsAsSet.toList.filter (fun c => (`Telelean.Model).isPrefixOf c)
+    let j := Json.mkObj [("name", toJson n), ("axioms", toJson axs), ("refs", toJson used),
+                         ("isTheorem", toJson ci.isTheorem)]
+    IO.println j.compress

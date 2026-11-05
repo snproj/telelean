@@ -1,0 +1,32 @@
+/-! Uniform encoding (B): `abbrev n : Prop := S` (statement) + `n.holds` (justification) -/
+axiom Character : Type
+axiom Game : Type
+axiom Cynder : Character
+axiom newSpyro : Game
+axiom HasDarkPast : Character → Prop
+axiom IsPG : Game → Prop
+axiom GoodAddition : Character → Game → Prop
+axiom age : Character → Nat
+
+abbrev cynder_dark : Prop := HasDarkPast Cynder
+axiom cynder_dark.holds : cynder_dark                       -- ASSUMPTION
+abbrev spyro_pg : Prop := IsPG newSpyro
+axiom spyro_pg.holds : spyro_pg                             -- ASSUMPTION
+abbrev pg_no_dark : Prop := ∀ g c, IsPG g → HasDarkPast c → ¬ GoodAddition c g
+axiom pg_no_dark.holds : pg_no_dark                         -- ASSUMPTION
+abbrev cynder_age : Prop := age Cynder = 17
+axiom cynder_age.holds : cynder_age
+abbrev cynder_adult_bound : Prop := age Cynder ≤ 20
+axiom cynder_adult_bound.holds : cynder_adult_bound
+
+abbrev cynder_not_good : Prop := ¬ GoodAddition Cynder newSpyro   -- GOAL statement
+-- variants
+example : cynder_not_good := by simp [cynder_not_good, pg_no_dark.holds, spyro_pg.holds, cynder_dark.holds]
+example : cynder_not_good := by
+  have h := pg_no_dark.holds; have h1 := spyro_pg.holds; have h2 := cynder_dark.holds
+  simp only [pg_no_dark, spyro_pg, cynder_dark, cynder_not_good] at *
+  exact h _ _ h1 h2
+example : cynder_not_good := by
+  have h := pg_no_dark.holds; have h1 := spyro_pg.holds; have h2 := cynder_dark.holds
+  simp_all
+example : ¬ GoodAddition Cynder newSpyro := by simp [pg_no_dark.holds, spyro_pg.holds, cynder_dark.holds]

@@ -1,0 +1,21 @@
+import Model
+
+theorem telelean_consistency :
+    Exists fun (Character : Type) =>
+      Exists fun (Game : Type) =>
+        Exists fun (cynder : Character) =>
+          Exists fun (newSpyro : Game) =>
+            Exists fun (HasDarkPast : Character → Prop) =>
+              Exists fun (IsPG : Game → Prop) =>
+                Exists fun (AppearsIn : Character → Game → Prop) =>
+                  Exists fun (GoodAdditionTo : Character → Game → Prop) =>
+                    And (HasDarkPast cynder)
+                      (And (IsPG newSpyro)
+                        (And
+                          (∀ (g : Game) (c : Character),
+                            IsPG g → HasDarkPast c → Not (AppearsIn c g))
+                          (∀ (c : Character) (g : Game), GoodAdditionTo c g → AppearsIn c g))) := by
+  exact ⟨Unit, Unit, (), (), fun _ => True, fun _ => True, fun _ _ => False, fun _ _ => False,
+    trivial, trivial, fun _ _ _ _ h => h, fun _ _ h => h⟩
+
+#print axioms telelean_consistency

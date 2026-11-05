@@ -1,0 +1,50 @@
+{
+ "name": "@dnd-kit/core",
+ "latest": "6.3.1",
+ "dist_tags": {
+  "latest": "6.3.1",
+  "next": "6.3.1-next-202411517925"
+ },
+ "latest_published": "2024-12-05T17:10:19.974Z",
+ "modified": "2024-12-05T17:10:20.159Z",
+ "created": "2021-01-02T02:07:10.605Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 1066148,
+ "fileCount": 141,
+ "tarball": "https://registry.npmjs.org/@dnd-kit/core/-/core-6.3.1.tgz",
+ "dependencies": {
+  "tslib": "^2.0.0",
+  "@dnd-kit/accessibility": "^3.1.1",
+  "@dnd-kit/utilities": "^3.2.2"
+ },
+ "peerDependencies": {
+  "react": ">=16.8.0",
+  "react-dom": ">=16.8.0"
+ },
+ "repository": "git+https://github.com/clauderic/dnd-kit.git",
+ "recent_versions": [
+  [
+   "6.2.0",
+   "2024-11-23T17:01:11.254Z"
+  ],
+  [
+   "6.3.0-next-202410244445",
+   "2024-11-24T04:05:03.952Z"
+  ],
+  [
+   "6.3.0",
+   "2024-12-04T18:39:17.623Z"
+  ],
+  [
+   "6.3.1-next-202411517925",
+   "2024-12-05T17:09:39.649Z"
+  ],
+  [
+   "6.3.1",
+   "2024-12-05T17:10:19.974Z"
+  ]
+ ],
+ "homepage": "https://github.com/clauderic/dnd-kit#readme",
+ "description": "dnd kit \u2013 a lightweight React library for building performant and accessible drag and drop experiences"
+}

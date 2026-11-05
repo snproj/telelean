@@ -1,0 +1,45 @@
+{
+ "name": "@floating-ui/dom",
+ "latest": "1.8.0",
+ "dist_tags": {
+  "latest": "1.8.0"
+ },
+ "latest_published": "2026-07-11T08:41:32.794Z",
+ "modified": "2026-07-11T08:41:33.105Z",
+ "created": "2021-12-01T15:07:42.800Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 174208,
+ "fileCount": 11,
+ "tarball": "https://registry.npmjs.org/@floating-ui/dom/-/dom-1.8.0.tgz",
+ "dependencies": {
+  "@floating-ui/core": "^1.8.0",
+  "@floating-ui/utils": "^0.2.12"
+ },
+ "peerDependencies": {},
+ "repository": "git+https://github.com/floating-ui/floating-ui.git",
+ "recent_versions": [
+  [
+   "1.7.3",
+   "2025-07-30T09:17:02.096Z"
+  ],
+  [
+   "1.7.4",
+   "2025-08-21T06:33:44.504Z"
+  ],
+  [
+   "1.7.5",
+   "2026-01-27T16:27:18.629Z"
+  ],
+  [
+   "1.7.6",
+   "2026-03-03T03:02:09.308Z"
+  ],
+  [
+   "1.8.0",
+   "2026-07-11T08:41:32.794Z"
+  ]
+ ],
+ "homepage": "https://floating-ui.com",
+ "description": "Floating UI for the web"
+}

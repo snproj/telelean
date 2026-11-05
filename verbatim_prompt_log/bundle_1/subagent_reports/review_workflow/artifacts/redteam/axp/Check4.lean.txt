@@ -1,0 +1,7 @@
+import Model
+set_option pp.fullNames true
+-- Prop-ness probes: succeed iff the axiom's type is a proposition
+example : Prop := type_of% @Telelean.Model.cynder_dark_past
+example : Prop := type_of% @Telelean.Model.HasDarkPast
+example : Prop := type_of% @Telelean.Model.cynder
+example : Prop := type_of% @Telelean.Model.pg_no_dark_past

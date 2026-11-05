@@ -1,0 +1,10 @@
+axiom Game : Type
+axiom newSpyro : Game
+axiom IsSpyroGame : Game → Prop
+axiom IsPG : Game → Prop
+axiom spyro_is_spyro : IsSpyroGame newSpyro
+/-- ASSUMPTION (before): the new Spyro game is PG -/
+axiom spyro_pg : IsPG newSpyro
+/-- DERIVATION depending on spyro_pg -/
+theorem uses_pg : IsPG newSpyro ∧ True := ⟨spyro_pg, trivial⟩
+#print axioms uses_pg

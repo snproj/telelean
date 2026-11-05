@@ -1,0 +1,1 @@
+def Dep.answer : Nat := 42

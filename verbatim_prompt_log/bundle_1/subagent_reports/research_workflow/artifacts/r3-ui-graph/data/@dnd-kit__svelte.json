@@ -1,0 +1,50 @@
+{
+ "name": "@dnd-kit/svelte",
+ "latest": "0.5.3",
+ "dist_tags": {
+  "latest": "0.5.3",
+  "beta": "0.5.3-beta-20261031140713"
+ },
+ "latest_published": "2026-10-31T14:10:39.431Z",
+ "modified": "2026-10-31T14:10:39.783Z",
+ "created": "2026-02-14T23:11:18.499Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 39687,
+ "fileCount": 48,
+ "tarball": "https://registry.npmjs.org/@dnd-kit/svelte/-/svelte-0.5.3.tgz",
+ "dependencies": {
+  "tslib": "^2.6.2",
+  "@dnd-kit/dom": "^0.5.3",
+  "@dnd-kit/state": "^0.5.3",
+  "@dnd-kit/abstract": "^0.5.3"
+ },
+ "peerDependencies": {
+  "svelte": "^5.29.0"
+ },
+ "repository": "git+https://github.com/clauderic/dnd-kit.git",
+ "recent_versions": [
+  [
+   "0.5.2-beta-20261029020134",
+   "2026-10-29T02:02:44.124Z"
+  ],
+  [
+   "0.5.2-beta-20261030024109",
+   "2026-10-30T02:42:16.390Z"
+  ],
+  [
+   "0.5.2",
+   "2026-10-31T14:04:55.043Z"
+  ],
+  [
+   "0.5.3-beta-20261031140713",
+   "2026-10-31T14:08:16.206Z"
+  ],
+  [
+   "0.5.3",
+   "2026-10-31T14:10:39.431Z"
+  ]
+ ],
+ "homepage": "https://github.com/clauderic/dnd-kit#readme",
+ "description": "[![Stable release](https://img.shields.io/npm/v/@dnd-kit/svelte.svg)](https://npm.im/@dnd-kit/svelte)"
+}

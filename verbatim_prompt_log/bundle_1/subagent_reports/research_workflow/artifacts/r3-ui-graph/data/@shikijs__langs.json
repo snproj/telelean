@@ -1,0 +1,44 @@
+{
+ "name": "@shikijs/langs",
+ "latest": "4.5.0",
+ "dist_tags": {
+  "latest": "4.5.0"
+ },
+ "latest_published": "2026-10-01T06:47:13.279Z",
+ "modified": "2026-10-01T06:47:13.754Z",
+ "created": "2025-01-02T04:45:40.897Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 8650980,
+ "fileCount": 725,
+ "tarball": "https://registry.npmjs.org/@shikijs/langs/-/langs-4.5.0.tgz",
+ "dependencies": {
+  "@shikijs/types": "4.5.0"
+ },
+ "peerDependencies": {},
+ "repository": "git+https://github.com/shikijs/shiki.git",
+ "recent_versions": [
+  [
+   "4.4.0",
+   "2026-07-31T09:54:38.055Z"
+  ],
+  [
+   "4.4.1",
+   "2026-07-31T10:03:30.982Z"
+  ],
+  [
+   "4.4.2",
+   "2026-08-05T00:40:32.624Z"
+  ],
+  [
+   "4.4.3",
+   "2026-08-10T05:01:00.056Z"
+  ],
+  [
+   "4.5.0",
+   "2026-10-01T06:47:13.279Z"
+  ]
+ ],
+ "homepage": "https://github.com/shikijs/shiki#readme",
+ "description": "TextMate grammars for Shiki in ESM"
+}

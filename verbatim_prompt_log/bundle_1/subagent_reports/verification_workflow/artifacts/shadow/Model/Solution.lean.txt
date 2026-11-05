@@ -1,0 +1,6 @@
+namespace C
+axiom P : Prop
+axiom p : P
+abbrev goal : Prop := P
+theorem goal.holds : goal := p
+end C

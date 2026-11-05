@@ -1,0 +1,6 @@
+✔ [2/5] Built Model.Spyro.Vocabulary (264ms)
+✖ [3/5] Building Model.Spyro.Main (283ms)
+trace: .> LEAN_PATH=/work/model/.lake/build/lib/lean /home/user/.elan/toolchains/leanprover--lean4---v4.35.0/bin/lean /work/model/Model/Spyro/Main.lean -o /work/model/.lake/build/lib/lean/Model/Spyro/Main.olean -i /work/model/.lake/build/lib/lean/Model/Spyro/Main.ilean -c /work/model/.lake/build/ir/Model/Spyro/Main.c --setup /work/model/.lake/build/ir/Model/Spyro/Main.setup.json --json
+error: Model/Spyro/Main.lean:56:30: Unknown identifier `undefinedThing`
+Some required targets logged failures:
+- Model.Spyro.Main

@@ -1,0 +1,4 @@
+{"label":"default","info":"ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) / Google Inc. (Google)"}
+{"label":"enable-gpu","info":"no webgl"}
+{"label":"enable-gpu angle-vulkan","info":"ANGLE (Intel, Vulkan 1.4.318 (Intel(R) Graphics (ARL) (0x00007D41)), Intel open-source Mesa driver) / Google Inc. (Intel)"}
+{"label":"enable-gpu angle-gl","info":"no webgl"}

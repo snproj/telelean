@@ -1,0 +1,20 @@
+name = "mm"
+version = "0.1.0"
+defaultTargets = ["MentalModel"]
+
+[[lean_lib]]
+name = "MentalModel"
+
+[[lean_exe]]
+name = "telelean-extract"
+root = "Extract"
+supportInterpreter = true
+
+[[lean_lib]]
+name = "Challenge"
+
+[[lean_lib]]
+name = "Solution"
+
+[[lean_lib]]
+name = "Sus"

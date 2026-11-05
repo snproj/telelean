@@ -1,0 +1,75 @@
+[
+ {
+  "label": "integrate",
+  "agentId": "a4dc6eef222dcc325",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Write",
+   "Edit",
+   "ToolSearch",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "verify:semantics",
+  "agentId": "a70b1ea393bc915c8",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "verify:ux",
+  "agentId": "a9374160d277dfecb",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Write",
+   "Edit",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "verify:safety",
+  "agentId": "a856ffad5d9e94910",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Write",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "fix:core+runner+sample",
+  "agentId": "a711972aaaea12192",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Edit",
+   "Write",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "fix:extension+webview",
+  "agentId": "ae248c28d7a091a44",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Edit",
+   "Write",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "final-check",
+  "agentId": "a92a4086801f693fb",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "StructuredOutput"
+  ]
+ }
+]

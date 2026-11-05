@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <!-- Negative control for the boot script: this page's CSP refuses the stylesheet (style-src has only the nonce,
+         and the link below has none), as a broken webview CSP would. The refusal happens while the document loads,
+         before the module bundle runs; boot.js must catch it so the bundle can report it. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; img-src 'self' data:; font-src 'self'; style-src 'nonce-harness'; script-src 'nonce-harness';"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>telelean board harness (stylesheet refused)</title>
+    <link rel="icon" href="data:," />
+    <script nonce="harness" src="/dist/boot.js"></script>
+    <link rel="stylesheet" href="/dist/webview.css" />
+  </head>
+  <body>
+    <script nonce="harness" src="/harness/harness.js"></script>
+    <div id="root"></div>
+    <script type="module" nonce="harness" src="/dist/webview.js"></script>
+  </body>
+</html>

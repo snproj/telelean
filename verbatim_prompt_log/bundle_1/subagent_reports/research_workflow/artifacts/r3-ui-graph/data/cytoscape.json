@@ -1,0 +1,42 @@
+{
+ "name": "cytoscape",
+ "latest": "3.34.4",
+ "dist_tags": {
+  "latest": "3.34.4"
+ },
+ "latest_published": "2026-10-15T19:14:50.649Z",
+ "modified": "2026-10-15T19:14:51.041Z",
+ "created": "2012-10-18T20:28:28.001Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 5704386,
+ "fileCount": 205,
+ "tarball": "https://registry.npmjs.org/cytoscape/-/cytoscape-3.34.4.tgz",
+ "dependencies": {},
+ "peerDependencies": {},
+ "repository": "git+https://github.com/cytoscape/cytoscape.js.git",
+ "recent_versions": [
+  [
+   "3.34.0",
+   "2026-06-02T14:34:55.055Z"
+  ],
+  [
+   "3.34.1",
+   "2026-08-11T15:47:58.322Z"
+  ],
+  [
+   "3.34.2",
+   "2026-08-25T14:38:11.193Z"
+  ],
+  [
+   "3.34.3",
+   "2026-09-07T16:01:53.123Z"
+  ],
+  [
+   "3.34.4",
+   "2026-10-15T19:14:50.649Z"
+  ]
+ ],
+ "homepage": "http://js.cytoscape.org",
+ "description": "Graph theory (a.k.a. network) library for analysis and visualisation"
+}

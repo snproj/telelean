@@ -1,0 +1,277 @@
+# files:runner-a (agent a7b3bb29ec10a1287)
+
+## package_overview
+Scope: the package plumbing plus the runner's three foundation layers (lean/, semantic/, llm/). The other runner directories (workspace/, shadow/, gate/, run/, proposal/) build on these and are mentioned only where they connect.
+
+Plumbing. @telelean/runner is Node-only (no vscode imports). src/index.ts re-exports eight namespaces. The extension instead imports subpaths: its tsconfig paths map @telelean/runner/* to the TypeScript sources, which esbuild bundles. scripts/walkthrough-claude.mjs bundles src/index.ts itself, and scripts/smoke-claude.mjs imports llm/index.ts directly. Nothing is ever emitted. tsconfig.json is noEmit, so `npm run build` is only a type-check of src, and the dist/ entry points named in package.json do not exist. Only zod is declared as a dependency. @modelcontextprotocol/sdk comes from the root devDependencies, and @telelean/core comes from path aliases. Tests run one file at a time with TELELEAN_NO_REAL_CLAUDE=1, the quota tripwire.
+
+lean/ (written as the M0 spike, now production code). runLean is the single path for every Lean-family process. It wraps each run in four layers:
+- a systemd user scope with a hard memory cap and no swap;
+- a setpriv death signal;
+- a keeper shell that keeps the cgroup readable until the runner has read it;
+- bwrap with the allowlist from sandboxProfile.ts: no network, fresh /tmp, /run and $HOME, ~/.elan read-only, the project read-only except .lake/, a cleared environment, and LEAN_NUM_THREADS=4.
+It fails closed: when it cannot sandbox safely, the status is could-not-start. Otherwise it reports ok, failed, oom, timeout or cancelled, with peak memory from the cgroup. An AbortSignal or cancelRun(runId) cancels a run.
+
+The other lean/ modules:
+- toolchain.ts pins leanprover/lean4:v4.35.0 and calls its binaries directly, never elan's proxies.
+- leanNames.ts makes names written into generated Lean injection-safe.
+- shadow.ts makes copies of a model and refuses symlinks.
+- comparator.ts is gate step G4: it freezes a `theorem T.holds : T := sorry` challenge, exports it with leanexport, then runs and classifies `lake comparator`.
+- footprint.ts supplies the `lean --json` and `#print axioms` parsers used elsewhere. Its own computeFootprints is now called only by tests.
+
+semantic/ (M1 facts). refreshLeanFacts turns a model root into core's LeanFacts in this order:
+1. memory guard;
+2. checks for the pinned toolchain and a dependency-free manifest;
+3. source hashing;
+4. `lake build <library>` in place under runLean;
+5. Lake log parsing and module states;
+6. declarations and references from .ilean v5, with docstrings read from the source;
+7. one generated check file (#check, #print, #print axioms, type_of%), with Lean's messages attributed by line number;
+8. a re-hash that marks modules changed during the refresh as stale.
+Lean and sandbox failures become statuses, not exceptions. runExclusive is a process-wide queue that runs one Lean job at a time; workspace/, shadow/ and gate/ all share it. spawnMemoryMax lowers a run's memory cap to what MemAvailable allows.
+
+llm/ (the "These suffice" harness). This is a provider-agnostic slot. LlmBackend and LlmSession emit normalized LlmEvents. One AgentToolHost interface offers five tools: check_lean, freeze_statements, ask_user, propose_assumption and finish. Their zod schemas, descriptions and reply renderers live in toolSchemas.ts.
+
+ClaudeCliBackend drives the user's own `claude` binary headless in stream-json mode:
+- binary.ts finds a binary of version 2.1.295 or newer;
+- env.ts strips API-key, provider and parent-session variables from the environment;
+- only Read, Glob, Grep, Edit, Write and mcp__telelean__* tools are allowed;
+- confinement.ts writes a PreToolUse path-guard hook (bin/telelean-path-guard.mjs) plus the CLI's own fences, and self-tests the hook before start;
+- a preflight refuses anything but a claude.ai subscription login, and refuses if the guard is missing;
+- toolServer.ts serves the tool host as MCP over loopback HTTP, protected by a bearer token;
+- streamJson.ts normalizes the CLI's output.
+
+FakeBackend replays scripted steps through the same guard decision, schemas and renderers; fakeScripts.ts loads its JSON scripts. StubToolHost is the M0 host, still used by the smoke script and tests; the production host lives in run/. The CLI backend passed M0's single live smoke test (CLI 2.1.314 with StubToolHost). Since then it has run only against a node test double and recorded 2.1.314 streams. The M2 real-Claude walkthrough has not been run, so options such as toolServer's endTurnOnFinish are still unverified.
+
+Data flow.
+- M1: workspace/ calls semantic.refreshLeanFacts on the real model root; that runs lean.runLean, and the resulting LeanFacts feed core's project model and then the board.
+- M2: run/manager opens an llm session in the run's shadow. Tool calls arrive over MCP, or directly from the fake, at run/'s AgentToolHost, which drives gate/engine. The engine re-runs the semantic refresh on the shadow's build mirror and calls lean.freezeChallenge and runComparator for G4. Verdicts return to the model through the toolSchemas renderers.
+
+## files
+- **path:** packages/runner/package.json
+  - **purpose:** Workspace manifest for @telelean/runner, a private ESM package described as the Node-only engine (shadow workspace, sandboxed Lean runs, gate, LLM harness). Scripts: build (tsc -p tsconfig.json), typecheck (tsc -p tsconfig.test.json) and test (vitest run); the only declared dependency is zod 4.6.7. Manifest and code disagree in two ways. First, main/types point at dist/index.js and dist/index.d.ts, but tsconfig.json is noEmit, so no dist/ is ever produced (consumers use the TS sources through path aliases). Second, @modelcontextprotocol/sdk (used by llm/toolServer.ts) and @telelean/core are imported but not declared; the root devDependencies and tsconfig paths supply them.
+  - **key_exports:** scripts build / typecheck / test; main dist/index.js and types dist/index.d.ts (both absent)
+  - **depends_on:** zod (declared); relies on root devDependencies for @modelcontextprotocol/sdk, typescript, vitest; @telelean/core via path aliases
+- **path:** packages/runner/src/index.ts
+  - **purpose:** Frozen package root that re-exports each runner area as a namespace: lean, llm, semantic, workspace, shadow, gate, run, proposal. They are namespaced because lean/comparator.ts and llm/types.ts both export a FreezeResult. The extension never imports this root (it imports subpaths such as @telelean/runner/run/index.js); scripts/walkthrough-claude.mjs uses it as its esbuild entry point.
+  - **key_exports:** namespaces lean, llm, semantic, workspace, shadow, gate, run, proposal
+  - **depends_on:** ./lean/index.js, ./llm/index.js, ./semantic/index.js, ./workspace/index.js, ./shadow/index.js, ./gate/index.js, ./run/index.js, ./proposal/index.js
+- **path:** packages/runner/src/lean/comparator.ts
+  - **purpose:** Gate step G4 (D-26). freezeChallenge copies a snapshot (createShadow), optionally removes declarations from the copy (removeDeclarations via core applyLeanOps; M2 drops the target's .holds and its users), writes a generated challenge module `theorem T.holds : T := sorry`, builds it, and exports the comparator targets to NDJSON with leanexport, all under runLean. runComparator writes comparator.json and runs `lake comparator --challenge-from-export` in the solution directory. classifyComparatorRun maps the exit code, the stderr judgements and the stdout phases to accepted, rejected (with a reason), could-not-start or incomplete. Doc/code drift: the header's 'freeze after phase A is signed off' and its permitted-axioms formula are original-design wording. In M2, gate/engine calls freezeChallenge from the freeze_statements flow with core's computePermittedAxioms result, and calls runComparator only for 'proved' finishes.
+  - **key_exports:** freezeChallenge, runComparator, classifyComparatorRun, removeDeclarations, generateChallengeModule, holdsTarget, comparatorExportTargets, builtinTargets, PRIMITIVE_TARGETS, STANDARD_AXIOMS, CHALLENGE_MARKER; types Freeze, FreezeOptions, FreezeResult, ChallengeTarget, ComparatorVerdict, RejectionReason, ComparatorOptions, ComparatorResult
+  - **depends_on:** ./runLean (runLean), ./shadow (createShadow), ./leanNames (assert/format names, modulePath), ./toolchain; @telelean/core (parseLeanFile, findDecl, applyLeanOps, applyTextEdits)
+- **path:** packages/runner/src/lean/footprint.ts
+  - **purpose:** M0 axiom-footprint check. generateFootprintCheck writes `import ...` plus one `#print axioms` per declaration. computeFootprints feeds that file to `lake env lean --stdin --json` under runLean and attributes the messages to declarations by line number. The header ties it to gate step G3, but no production code calls computeFootprints or generateFootprintCheck (only tests do): M1/M2 get footprints from the semantic check file. Its parsers (parseLeanJsonMessages, parseAxiomsMessage, the LeanMessage type) are reused by semantic/ and gate/engine.
+  - **key_exports:** parseLeanJsonMessages, parseAxiomsMessage, generateFootprintCheck, footprintsFromMessages, computeFootprints; types LeanMessage, FootprintCheck, DeclFootprint, FootprintResult, FootprintOptions
+  - **depends_on:** ./runLean, ./leanNames (assertModuleName, formatDeclName), ./toolchain
+- **path:** packages/runner/src/lean/index.ts
+  - **purpose:** Barrel for lean/, re-exporting toolchain, sandboxProfile, systemd, runLean, shadow, leanNames, footprint and comparator. Its comment still calls the directory an 'M0 spike', although runLean, comparator, toolchain and leanNames are now production dependencies of semantic/ and gate/.
+  - **key_exports:** export * from all eight lean modules
+  - **depends_on:** ./toolchain, ./sandboxProfile, ./systemd, ./runLean, ./shadow, ./leanNames, ./footprint, ./comparator
+- **path:** packages/runner/src/lean/leanNames.ts
+  - **purpose:** Validates and safely renders Lean names written into generated source. A declaration name must be dotted, with no control characters, whitespace or guillemets, no empty component, and at most 1024 chars; a module name must consist of plain identifiers. formatDeclName wraps non-plain components, and every single-component name, in «» so names can never inject commands; modulePath maps A.B.C to A/B/C.lean.
+  - **key_exports:** isValidDeclName, isValidModuleName, assertDeclName, assertModuleName, formatDeclName, modulePath
+  - **depends_on:** none (pure)
+- **path:** packages/runner/src/lean/runLean.ts
+  - **purpose:** The one wrapper for every Lean-family process: `systemd-run --user --scope` (MemoryMax, MemorySwapMax=0, OOMPolicy=stop), then `setpriv --pdeathsig KILL`, then a SIGTERM-surviving sh keeper, then bwrap with buildBwrapArgs. Defaults are a 4G cap, a 120 s timeout, 32 MiB of captured output per stream and LEAN_NUM_THREADS=4; it checks that the run sits in its own scope's cgroup with an enforced cap and polls cgroup memory every 200 ms. It fails closed (could-not-start) when preflight fails: bwrap, systemd-run, systemctl, setpriv, sh, cgroup v2, the toolchain or the user manager missing (successful preflights are cached). Otherwise it classifies the run as ok, failed, oom, timeout or cancelled from bwrap's --json-status-fd, memory.events and systemd's Result, reports peak memory only from an end-of-run sample, and stops or resets lingering and failed scopes. Runs are cancelled by AbortSignal (registered before the first await) or by cancelRun(runId), which also SIGKILLs every `telelean-<run>-*` unit.
+  - **key_exports:** runLean, checkSandboxSupport, cancelRun, memoryMaxToBytes, DEFAULT_MEMORY_MAX, DEFAULT_TIMEOUT_MS, DEFAULT_MAX_OUTPUT_BYTES, DEFAULT_SANDBOX_ENV; types RunLeanOptions, RunLeanResult, RunLeanStatus
+  - **depends_on:** ./sandboxProfile (buildBwrapArgs), ./systemd (HostTools, defaultHostTools, checkUserManager, showUnit, killUnits, stopUnit, resetFailed, cgroupOfPid, sampleCgroupMemory, CGROUP_ROOT), ./toolchain
+- **path:** packages/runner/src/lean/sandboxProfile.ts
+  - **purpose:** Pure builder of the bwrap argv (the mount allowlist), in this order:
+- read-only /usr and /etc, with /lib, /lib64 and /bin as symlinks into /usr;
+- fresh /proc and /dev;
+- tmpfs over /tmp, /run and the real $HOME;
+- optional /root, /run/user and /var mount points for lake comparator's nested bwrap;
+- read-only ~/.elan and any extra roBinds;
+- the shadow read-only with only <shadow>/.lake writable, plus an optional read-only .lake/packages, rwBinds and tmpfs masks;
+- then --unshare-all (no network), --die-with-parent, --new-session and --clearenv, with HOME and PATH fixed (toolchain bin first).
+It rejects relative paths, NUL bytes, bad environment-variable names and overrides of HOME or PATH.
+  - **key_exports:** buildBwrapArgs, sandboxPath, type SandboxProfile
+  - **depends_on:** node:path only
+- **path:** packages/runner/src/lean/shadow.ts
+  - **purpose:** createShadow copies a Lean model project into an absent or empty directory outside it. It copies:
+- every *.lean file (dot-directories and node_modules are skipped);
+- the root lakefile.toml/lakefile.lean, lean-toolchain and lake-manifest.json;
+- optionally .lake/build, for incremental builds.
+Mode and timestamps are kept; .lake/packages is reported, not copied. Everything is checked before anything is copied: symlinks anywhere in the walked tree, non-regular model files, a missing lakefile, or a non-empty or in-source destination throw a ShadowError. In current code only comparator.freezeChallenge (and tests) call it; the M2 run shadow (src/shadow/) has its own implementation and reuses only PROJECT_CONFIG_FILES.
+  - **key_exports:** createShadow, ShadowError, PROJECT_CONFIG_FILES; types Shadow, ShadowOptions, ShadowErrorCode
+  - **depends_on:** node:fs/promises, node:path only
+- **path:** packages/runner/src/lean/systemd.ts
+  - **purpose:** Host-side helpers that runLean uses around the systemd user manager and cgroup v2:
+- locating bwrap, systemd-run, systemctl and setpriv in the system bin directories;
+- an execFile wrapper that never throws;
+- `systemctl --user` is-system-running, show, kill, reset-failed and stop;
+- reading /proc/<pid>/cgroup and a cgroup's memory.max, memory.peak and memory.events (oom, oom_kill).
+  - **key_exports:** HostTools, defaultHostTools, findSystemExecutable, execCapture, ExecResult, checkUserManager, showUnit, killUnits, resetFailed, stopUnit, cgroupOfPid, CGROUP_ROOT, sampleCgroupMemory, CgroupMemorySample
+  - **depends_on:** node:child_process, node:fs, node:path only
+- **path:** packages/runner/src/lean/toolchain.ts
+  - **purpose:** Locates the pinned toolchain leanprover/lean4:v4.35.0 under $ELAN_HOME or ~/.elan (toolchains/leanprover--lean4---v4.35.0), so telelean always runs its bin/ executables directly and never elan's proxies. checkToolchain explains why lake or lean is missing or not executable. ToolchainExe also lists leanexport (used by comparator) and leanchecker, which nothing invokes yet (G2 hardening).
+  - **key_exports:** PINNED_TOOLCHAIN, resolveToolchain, checkToolchain, toolchainExe, toolchainBinDir, toolchainDirName, defaultElanHome; types LeanToolchain, ToolchainExe
+  - **depends_on:** node:fs, node:os, node:path only
+- **path:** packages/runner/src/llm/binary.ts
+  - **purpose:** Finds the user's own Claude Code binary. An explicit setting is tried alone, with no fallback. Otherwise the order is: VS Code extension binaries (anthropic.claude-code-*/resources/native-binary/claude under ~/.vscode and ~/.vscode-server, newest first), then PATH, then ~/.local/bin. Each candidate must answer `--version` with at least MIN_CLAUDE_VERSION 2.1.295 (needed for hook onFailure); if none does, LlmHarnessError('binary') lists what was tried.
+  - **key_exports:** resolveClaudeBinary, listCandidates, findExtensionBinaries, runClaudeVersion, parseClaudeVersion, compareVersions, MIN_CLAUDE_VERSION; types ResolveBinaryOptions, ResolvedBinary, BinaryCandidate, BinarySource
+  - **depends_on:** ./types (LlmHarnessError); node:child_process, node:fs/promises
+- **path:** packages/runner/src/llm/claudeCli.ts
+  - **purpose:** ClaudeCliBackend runs the user's own `claude` binary headless (`-p`, stream-json input and output, --verbose). Allowed tools are only Read, Glob, Grep, Edit, Write and mcp__telelean__*; Bash, WebFetch, WebSearch, Agent, AskUserQuestion and NotebookEdit are disallowed. It also passes dontAsk permissions, --restricted, an empty --setting-sources, and generated --settings, --strict-mcp-config and system-prompt files.
+
+startSession works in this order:
+1. Refuse under the TELELEAN_NO_REAL_CLAUDE tripwire unless the launch is the node test double.
+2. Start the MCP tool server and write the config files.
+3. Self-test the path guard.
+4. Spawn the CLI detached (its own process group).
+5. Preflight over the control protocol: initialize must classify the login as a claude.ai subscription, and get_hooks_listing must show the guard.
+An init message that reports an API key also stops the session.
+
+ClaudeCliSession streams one turn at a time through an async queue, answers the CLI's control requests with errors, and supports interrupt. close() goes graceful first, then SIGTERM, then SIGKILL on the whole process group; live groups are also SIGTERMed when the host process exits.
+  - **key_exports:** ClaudeCliBackend, ClaudeCliSession, buildClaudeArgs, classifyAuth, describeAuth, realClaudeDisabled, isTestDoubleLaunch, NO_REAL_CLAUDE_ENV, BUILTIN_TOOLS, DISALLOWED_TOOLS; types ClaudeCliBackendOptions, ClaudeArgsInput, PreparedLaunch, PreflightReport, ClaudeCliSessionOptions
+  - **depends_on:** ./confinement (writeConfinementFiles, selfTestGuard, verifyHooksListing), ./env (sanitizeClaudeEnv), ./streamJson (LineSplitter, StreamNormalizer), ./toolServer (startToolServer), ./toolSchemas (MCP_TOOL_PREFIX), ./types
+- **path:** packages/runner/src/llm/confinement.ts
+  - **purpose:** writeConfinementFiles creates a 0700 run directory, which must lie outside the shadow, holding three files:
+- guard-policy.json;
+- guard-log.jsonl;
+- claude-settings.json: a PreToolUse command hook on every tool that runs bin/telelean-path-guard.mjs (30 s timeout, onFailure 'block'), plus the CLI's own fences (block reads and writes outside working directories; Read/Edit deny rules for .lake, .telelean, .git and dot-entries).
+selfTestGuard runs the hook exactly as configured on a synthetic outside read, which must be denied, and an inside read, which must pass. verifyHooksListing checks that the CLI's get_hooks_listing reply shows the guard enabled for PreToolUse with matcher '*' and hooks not disabled by policy. defaultHookRuntime picks a real `node` inside Electron (the VS Code extension host), falling back to ELECTRON_RUN_AS_NODE.
+  - **key_exports:** writeConfinementFiles, buildGuardPolicy, buildClaudeSettings, cliDenyRules, selfTestGuard, verifyHooksListing, defaultHookRuntime, findNodeBinary, defaultGuardScriptPath, HIDDEN_SEGMENTS, GUARD_TIMEOUT_SECONDS, GUARD_SELFTEST_FILE, GUARD_SELFTEST_SESSION; types GuardPolicy, HookRuntime, CommandHook, ClaudeSettings, ConfinementFiles, GuardSelfTest, GuardProbeResult, HookVerification
+  - **depends_on:** ../../bin/telelean-path-guard.mjs (GUARD_POLICY_VERSION, GuardPolicy type; the script sits outside src), ./toolSchemas (MCP_TOOL_PREFIX); node:child_process, node:fs
+- **path:** packages/runner/src/llm/env.ts
+  - **purpose:** Builds the CLI process environment (D-23).
+
+It strips:
+- API-key, auth-token, provider and gateway variables (ANTHROPIC_*, CLAUDE*, AWS_BEARER_TOKEN_*, VERTEX_REGION_*, CCR_*, ...);
+- links to a parent Claude Code session;
+- MCP_, ENABLE_ and DISABLE_ switches;
+- snap, Electron and VS Code host variables.
+
+It keeps CLAUDE_CONFIG_DIR and the user's telemetry opt-outs, and restores XDG lists that a snap host rewrote.
+
+It sets telelean's own switches:
+- no auto memory and no CLAUDE.md files;
+- no claude.ai MCP servers and no tool search;
+- no auto-backgrounding;
+- a one-day MCP tool timeout;
+- Glob does not list hidden files;
+- no autoupdater.
+
+Only the names of removed variables are reported, never their values.
+  - **key_exports:** sanitizeClaudeEnv, teleleanClaudeEnv, shouldStrip, STRIP_PREFIXES, STRIP_EXACT, KEEP, TOOL_CALL_TIMEOUT_MS; types SanitizeOptions, SanitizedEnv
+  - **depends_on:** none (pure)
+- **path:** packages/runner/src/llm/fake.ts
+  - **purpose:** FakeBackend/FakeSession is an LlmBackend that replays scripted steps (text, writeFile, edit, read, callTool, usage, rateLimit, sleep, result), so tests, the extension's Test-mode run backend and the walkthrough dry run can exercise everything except the model. File steps are checked in-process with the real path-guard decide() and policy before they touch the shadow. callTool validates arguments with the real zod schemas, calls the session's AgentToolHost, and renders the reply with the MCP server's renderers. Each session emits init on its first turn, a turn nobody has read ends at once as 'interrupted', and later results repeat the last cumulative cost estimate. Fidelity gap: the edit step uses String.prototype.replace, so `$$` or `$&` in newString are treated as replacement patterns, unlike the real Edit tool.
+  - **key_exports:** FakeBackend, FakeSession; types FakeStep, FakeScript
+  - **depends_on:** ../../bin/telelean-path-guard.mjs (decide), ./confinement (buildGuardPolicy), ./toolSchemas (toolInputSchemas, mcpToolName, renderers), ./types
+- **path:** packages/runner/src/llm/fakeScripts.ts
+  - **purpose:** Loads FakeBackend scripts as data, for example test-fixtures/walkthrough/{normative,literal}.json. validateFakeScriptFile checks step kinds and required fields. playFakeScript returns a FakeScript that, on each send(), plays the first unplayed turn whose optional `match` text occurs in the user turn; a send with no match gets no steps. It records what it played, hands out copies of the steps, and keeps its position across resumed sessions of the same backend.
+  - **key_exports:** playFakeScript, validateFakeScriptFile; types FakeScriptFile, FakeScriptTurn, FakeScriptPlayer, PlayedTurn
+  - **depends_on:** ./fake (FakeScript, FakeStep types)
+- **path:** packages/runner/src/llm/index.ts
+  - **purpose:** Barrel for the LLM harness, re-exporting types, toolSchemas, env, binary, confinement, streamJson, toolServer, stubToolHost, claudeCli, fake and fakeScripts. scripts/smoke-claude.mjs imports it directly as TypeScript.
+  - **key_exports:** export * from the eleven llm modules
+  - **depends_on:** ./types, ./toolSchemas, ./env, ./binary, ./confinement, ./streamJson, ./toolServer, ./stubToolHost, ./claudeCli, ./fake, ./fakeScripts
+- **path:** packages/runner/src/llm/streamJson.ts
+  - **purpose:** Parses the CLI's stream-json stdout. LineSplitter splits chunks into lines. The stateful StreamNormalizer turns each JSON line into one of two things:
+- a normalized LlmEvent: init, assistant_text, thinking, tool_use, tool_result, usage (deduplicated per message id), text_delta, retry, permission_denied, hook, rate_limit, tool_progress, result (with status mapping), error, or other for unknown types;
+- a control-protocol item: control request, response or cancel, user replay, or keep_alive.
+UsageTracker sums the latest usage per API message, and long texts are cut at 20 000 chars.
+  - **key_exports:** StreamNormalizer, LineSplitter, UsageTracker, tokenUsage, toolResultText, resultStatus, type StreamItem
+  - **depends_on:** ./types (event types)
+- **path:** packages/runner/src/llm/stubToolHost.ts
+  - **purpose:** The M0 AgentToolHost. ask_user really blocks until answer() is called; if the call is aborted, the question is left 'orphaned' to be answered in a resumed turn. check_lean, freeze_statements and propose_assumption return stub results, and finish runs a pluggable GateFn with the re-prompt cap: makeGateVerdict accepts, retries, or gives up after 3 attempts. Production runs use the real host in run/; this one is used only by scripts/smoke-claude.mjs and tests.
+  - **key_exports:** StubToolHost, makeGateVerdict, DEFAULT_GATE_ATTEMPTS; types GateFn, PendingQuestion, RecordedCall
+  - **depends_on:** ./types
+- **path:** packages/runner/src/llm/toolSchemas.ts
+  - **purpose:** The single definition of the five agent tools, shared by every backend. It holds:
+- zod input shapes and schemas, with a compile-time check that they match the interfaces in types.ts;
+- tool titles and short descriptions;
+- Claude _meta (alwaysLoad, maxResultSizeChars);
+- MCP naming: server 'telelean', tools named mcp__telelean__<tool>;
+- the text renderers for what the model reads back: answers, answers sent as a user turn after a resume, check result, freeze result with the permitted axioms, adoption, and the gate verdict, including the stop message used when telelean itself could not run the checks.
+  - **key_exports:** toolInputShapes, toolInputSchemas, TOOL_DESCRIPTIONS, TOOL_TITLES, TOOL_META, AGENT_TOOL_NAMES, TOOL_SERVER_NAME, MCP_TOOL_PREFIX, mcpToolName, renderAnswers, renderAnswersAsUserTurn, renderCheckResult, renderFreezeResult, renderAdoption, renderGateVerdict, describeChoice, type SchemaDriftChecks
+  - **depends_on:** zod; ./types (PHENOMENA and the tool argument/result types)
+- **path:** packages/runner/src/llm/toolServer.ts
+  - **purpose:** Serves an AgentToolHost to the Claude CLI as MCP tools over Streamable HTTP on 127.0.0.1 (random port), with one McpServer per MCP session. A request must hit /mcp with the per-run bearer token (compared in constant time) and a loopback Host header, and must carry no browser Origin header; bodies are capped at 4 MiB. Each tool call gets:
+- an AbortSignal context;
+- MCP progress notifications every 30 s while it is pending, if the client sent a progress token;
+- errors rendered as isError text;
+- optionally the `claude/endTurn` meta on a final finish (endTurnOnFinish, off by default and unverified).
+mcpConfigDocument() produces the --mcp-config entry with a one-day timeout.
+  - **key_exports:** startToolServer; types ToolServer, ToolServerOptions, McpHttpServerConfig, ToolServerLogEntry
+  - **depends_on:** @modelcontextprotocol/sdk (McpServer, StreamableHTTPServerTransport, isInitializeRequest); ./toolSchemas; ./env (TOOL_CALL_TIMEOUT_MS); ./types
+- **path:** packages/runner/src/llm/types.ts
+  - **purpose:** The provider-agnostic harness contract:
+- LlmBackend, LlmSession, SessionConfig and BackendCaps;
+- the normalized LlmEvent union and the auth verdicts;
+- the agent-tool types: ask_user with D-20 phenomenon tags, check_lean, freeze_statements, propose_assumption with an M2 gap proof, and finish with GateVerdict and its M2 fields (stage, checksLeft, environment);
+- AgentToolHost and LlmHarnessError.
+BackendId also names 'claude-agent-sdk' and 'anthropic-api', which nothing implements.
+  - **key_exports:** LlmBackend, LlmSession, SessionConfig, BackendCaps, BackendId, Effort, ThinkingMode, LlmEvent, InitEvent, ResultEvent, TokenUsage, AuthInfo, AuthVerdict, AgentToolHost, AgentToolName, ToolCallContext, AskUserArgs, Answers, CheckLeanArgs, CheckResult, FreezeStatementsArgs, FreezeResult, ProposeAssumptionArgs, Adoption, FinishArgs, FinishStatus, GateVerdict, GateFailure, GateCheckId, PHENOMENA, Phenomenon, LlmHarnessError, HarnessErrorCode
+  - **depends_on:** none
+- **path:** packages/runner/src/semantic/checkFile.ts
+  - **purpose:** Generates the M1 check file that is fed to `lake env lean --stdin --json`. It imports the fresh modules, sets pp.fullNames true and pp.proofs false, and then runs four probes per declaration, each on its own line: `#check @N`, `#print N`, `#print axioms N` and `#check type_of% @N`. Names that cannot be written safely are recorded as unwritable instead of probed. parseCheckOutput attributes Lean's messages to probes by line and extracts the type, sort, printed keyword and kind, attributes, def value, axioms and sorry use; Lean errors and output it cannot parse are kept as explicit problems, never guessed.
+  - **key_exports:** generateCheckFile, parseCheckOutput, parsePrintMessage, afterFirstColon, afterLastColon; types CheckFile, CheckOutput, ProbeResult, ProbeKind, PrintedHeader
+  - **depends_on:** ../lean/footprint (parseAxiomsMessage, LeanMessage), ../lean/leanNames (assertModuleName, formatDeclName), ./text (normalizeWhitespace); @telelean/core (SORRY_AXIOM, LeanDeclKind)
+- **path:** packages/runner/src/semantic/ilean.ts
+  - **purpose:** Parses one Lean 4.35 .ilean file; only version 5 is accepted, and the module name must match. It reads declaration full and selection ranges (LSP positions with UTF-16 characters), constant references with the declaration that contains each one, and auxiliary names such as structure fields (known only through a reference with a parent). It skips _private. names, returns declarations and usages in source order, and never throws.
+  - **key_exports:** parseIlean, comparePositions, SUPPORTED_ILEAN_VERSION; types IleanData, IleanDecl, IleanUsage, IleanResult
+  - **depends_on:** @telelean/core (Range type)
+- **path:** packages/runner/src/semantic/index.ts
+  - **purpose:** Public face of WP-semantic; its signatures are frozen since M1. refreshLeanFacts(request) calls refresh() and uses readMemAvailableBytes (MemAvailable from /proc/meminfo) as the default memory reader; it does not serialize itself. runExclusive is a module-level promise queue that runs Lean jobs one at a time per process, shared by workspace/, shadow/ and gate/. It re-exports types, text, project, lakeLog, ilean, checkFile and some refresh helpers; spawnMemoryMax and refresh are not re-exported, and gate/engine imports spawnMemoryMax from refresh.js directly.
+  - **key_exports:** refreshLeanFacts, runExclusive, readMemAvailableBytes; re-exports declDrafts, gitMaskPaths, messageFacts, rootRelativeFile, toDeclFacts, DeclDraft and everything from types/text/project/lakeLog/ilean/checkFile
+  - **depends_on:** ./refresh (refresh), ./types and the re-exported modules; @telelean/core (LeanFacts)
+- **path:** packages/runner/src/semantic/lakeLog.ts
+  - **purpose:** Parser for `lake build` output (Lake 5.0 / Lean 4.35). It recognizes:
+- progress lines (icon, job counts, verb, caption);
+- error, warning and info messages, with an optional file:line:col and multi-line continuations;
+- trace lines, which it drops;
+- the 'Some required targets logged failures:' list;
+- the build-failed and completed markers.
+ANSI codes and carriage-return redraws are stripped. stdout and stderr are parsed separately and joined with mergeLakeLogs; succeededCaptions lists the jobs that finished without failing.
+  - **key_exports:** parseLakeLog, mergeLakeLogs, succeededCaptions; types LakeLog, LakeMessage, LakeProgress, LakeSeverity
+  - **depends_on:** none (pure)
+- **path:** packages/runner/src/semantic/project.ts
+  - **purpose:** The model project as the semantic layer sees it. readProjectToolchain requires lean-toolchain to equal the pinned toolchain exactly. projectProblem requires a lakefile and a lake-manifest.json with an empty packages list (no Lake dependencies such as Mathlib in M1). readModuleSources lists `<library>.lean` and `<library>/**.lean` (regular files with plain module names, dot-directories skipped), then reads, sha256-hashes, header-parses and topologically orders them. computeModuleStates marks each module failed, not-built, dependency-failed or fresh; not-built means outside the library root's import closure, or not reported as built after a failed build that names no module.
+  - **key_exports:** readProjectToolchain, projectProblem, listModuleFiles, readModuleSources, topologicalOrder, computeModuleStates, inLibrary, sha256Text; types ModuleFile, ModuleSource, ModuleState, ModuleStateInput
+  - **depends_on:** ../lean/leanNames (isValidModuleName), ../lean/toolchain (PINNED_TOOLCHAIN), ./text (parseImports); @telelean/core (ModuleFacts)
+- **path:** packages/runner/src/semantic/refresh.ts
+  - **purpose:** The pipeline behind refreshLeanFacts:
+1. Validate the request and apply the memory guard.
+2. Check the toolchain and the project.
+3. Hash the sources.
+4. Run `lake build <library>` in place under runLean. The given root is the sandbox's shadowDir: the real model root for the M1 workspace, the shadow's build mirror for the M2 gate. .git is masked, and spawnMemoryMax lowers the cap.
+5. Parse the Lake log into messages with LSP positions and compute module states.
+6. Read each fresh module's .ilean, plus docstrings and source keywords.
+7. Run one check file, after a second memory guard.
+8. Re-hash the sources to mark stale modules.
+
+Early exits return low-memory, could-not-start, unsupported-toolchain or unsupported-project. A sandbox failure returns its runLean status with only the run facts. Otherwise the status is build-errors, check-errors or ok, with a detail string listing up to five problems.
+
+Doc/code mismatch: it returns 'ok' even when modules went stale or are not-built (outside the root's import closure), whereas core's FactsStatus comment says 'ok' means every module is fresh.
+  - **key_exports:** refresh, spawnMemoryMax, gitMaskPaths, rootRelativeFile, messageFacts, declDrafts, toDeclFacts, type DeclDraft
+  - **depends_on:** ../lean/runLean (runLean, memoryMaxToBytes), ../lean/footprint (parseLeanJsonMessages), ../lean/leanNames, ../lean/toolchain, ./checkFile, ./ilean, ./lakeLog, ./project, ./text, ./types; @telelean/core (LeanFacts and fact types, DEFAULT_LIBRARY, LEAN_FACTS_FORMAT, LEAN_FACTS_VERSION)
+- **path:** packages/runner/src/semantic/text.ts
+  - **purpose:** Text helpers for the semantic layer:
+- line-start indexes and offset/position mapping;
+- converting Lean positions (1-based line, code-point column) to LSP positions (0-based line, UTF-16 character);
+- whitespace normalization;
+- scanning nested block comments and docstrings at or just before an offset;
+- the declaration keyword after docstring, attributes and modifiers (used to detect `instance`);
+- parsing a file's import header, including module/prelude, public/meta/private import, and import all/runtime.
+  - **key_exports:** lineStarts, lineText, codePointsToUtf16, leanToLspPosition, offsetOf, positionAt, normalizeWhitespace, blockCommentEnd, docstringAt, docstringBefore, declKeywordAt, parseImports
+  - **depends_on:** @telelean/core (Position type)
+- **path:** packages/runner/src/semantic/types.ts
+  - **purpose:** The frozen M1 contract of the semantic layer: the RefreshRequest shape (absolute root, library, runId, signal, memory cap and threshold, timeouts, toolchain, and test hooks host, readMemAvailable, now and onPhase) and its defaults (2 GiB MemAvailable threshold, 4G cap, 120 s build and check timeouts); it also re-exports core's LeanFacts. Doc/code mismatch: its step list says the build target is 'whatever defaultTargets says', but the code builds the request's library (default 'Model', which the workspace takes from .telelean/config.json) and never reads the lakefile.
+  - **key_exports:** RefreshRequest, DEFAULT_MIN_AVAILABLE_BYTES, DEFAULT_REFRESH_MEMORY_MAX, DEFAULT_BUILD_TIMEOUT_MS, DEFAULT_CHECK_TIMEOUT_MS, type LeanFacts (re-export)
+  - **depends_on:** ../lean/systemd (HostTools type), ../lean/toolchain (LeanToolchain type); @telelean/core (LeanFacts)
+- **path:** packages/runner/tsconfig.json
+  - **purpose:** Type-check-only TypeScript config for src (noEmit, Node types). It extends the repo's tsconfig.base.json (ES2023, NodeNext, strict, noUncheckedIndexedAccess, isolatedModules) and maps @telelean/core to ../core/src/index.ts. `npm run build` uses it, so the build emits nothing; the extension bundles the sources with esbuild and vitest runs them directly.
+  - **key_exports:** compilerOptions.paths for @telelean/core; include src
+  - **depends_on:** ../../tsconfig.base.json, ../core/src/index.ts
+- **path:** packages/runner/tsconfig.test.json
+  - **purpose:** Extends tsconfig.json to type-check src and test together (noEmit); `npm run typecheck` runs it. Its comment says `npm run typecheck` covers src only, which contradicts package.json: typecheck uses this file (src and test), and the src-only check is `npm run build` (tsconfig.json).
+  - **key_exports:** include src, test
+  - **depends_on:** ./tsconfig.json
+- **path:** packages/runner/vitest.config.ts
+  - **purpose:** Vitest config: aliases @telelean/core to the core sources and runs test/**/*.test.ts one file at a time (fileParallelism false, because Lean builds and CLI processes use a lot of memory), with 180 s test and hook timeouts. It sets TELELEAN_NO_REAL_CLAUDE=1 for every test: the M2 quota tripwire that llm/claudeCli.ts (startSession) and run/backend.ts (createClaudeBackend) enforce.
+  - **key_exports:** default export defineConfig({...})
+  - **depends_on:** vitest/config; ../core/src/index.ts
+

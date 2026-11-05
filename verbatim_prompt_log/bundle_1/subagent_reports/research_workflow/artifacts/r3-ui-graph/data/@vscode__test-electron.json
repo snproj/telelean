@@ -1,0 +1,48 @@
+{
+ "name": "@vscode/test-electron",
+ "latest": "3.1.0",
+ "dist_tags": {
+  "latest": "3.1.0"
+ },
+ "latest_published": "2026-07-24T21:13:39.379Z",
+ "modified": "2026-07-24T21:13:39.632Z",
+ "created": "2021-07-15T19:12:16.425Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 115884,
+ "fileCount": 27,
+ "tarball": "https://registry.npmjs.org/@vscode/test-electron/-/test-electron-3.1.0.tgz",
+ "dependencies": {
+  "ora": "^8.1.0",
+  "jszip": "^3.10.1",
+  "semver": "^7.6.2",
+  "http-proxy-agent": "^7.0.2",
+  "https-proxy-agent": "^7.0.5"
+ },
+ "peerDependencies": {},
+ "repository": "git+https://github.com/Microsoft/vscode-test.git",
+ "recent_versions": [
+  [
+   "2.4.1",
+   "2024-07-05T22:27:31.925Z"
+  ],
+  [
+   "2.5.1",
+   "2025-04-07T21:38:50.671Z"
+  ],
+  [
+   "2.5.2",
+   "2025-04-09T19:02:38.849Z"
+  ],
+  [
+   "3.0.0",
+   "2026-06-08T18:19:54.566Z"
+  ],
+  [
+   "3.1.0",
+   "2026-07-24T21:13:39.379Z"
+  ]
+ ],
+ "homepage": "https://github.com/Microsoft/vscode-test#readme",
+ "description": "![Test Status Badge](https://github.com/microsoft/vscode-test/workflows/Tests/badge.svg)"
+}

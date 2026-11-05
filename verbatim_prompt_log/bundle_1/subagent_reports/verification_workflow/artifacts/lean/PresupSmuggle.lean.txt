@@ -1,0 +1,30 @@
+-- D-3 as written restricts AXIOMS only; constants are `noncomputable opaque c : T` plus an existence
+-- presupposition `Nonempty T` (a Prop axiom, allowed by rule 3). Nothing in D-3 restricts T.
+namespace Y
+axiom Character : Type
+axiom Game : Type
+axiom HasDarkPast : Character → Prop
+axiom IsPG : Game → Prop
+axiom GoodAddition : Character → Game → Prop
+axiom Character.exists : Nonempty Character
+instance : Nonempty Character := Character.exists
+noncomputable opaque cynder : Character
+-- constant whose type is Prop-carrying (a Subtype); its presupposition reads "some PG game exists"
+axiom PGGame.exists : Nonempty {g : Game // IsPG g}
+instance : Nonempty {g : Game // IsPG g} := PGGame.exists
+noncomputable opaque newSpyro : {g : Game // IsPG g}
+
+-- user assumptions (D-2(b)); A2 "The new Spyro game is PG" is formalised but NOT selected
+abbrev cynder_dark_past : Prop := HasDarkPast cynder
+axiom cynder_dark_past.holds : cynder_dark_past
+abbrev new_spyro_pg : Prop := IsPG newSpyro.1
+axiom new_spyro_pg.holds : new_spyro_pg
+abbrev pg_no_dark_past : Prop := ∀ g c, IsPG g → HasDarkPast c → ¬ GoodAddition c g
+axiom pg_no_dark_past.holds : pg_no_dark_past
+-- goal mentions newSpyro, so (★ D-3 default) its presupposition is auto-included in the obligation
+abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro.1
+theorem cynder_not_good.holds : cynder_not_good :=
+  pg_no_dark_past.holds _ _ newSpyro.2 cynder_dark_past.holds
+end Y
+#check Y.cynder_not_good
+#print axioms Y.cynder_not_good.holds

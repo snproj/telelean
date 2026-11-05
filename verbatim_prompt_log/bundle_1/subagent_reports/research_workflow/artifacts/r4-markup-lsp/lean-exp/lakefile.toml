@@ -1,0 +1,8 @@
+name = "spyro"
+defaultTargets = ["Spyro"]
+
+[[lean_lib]]
+name = "Spyro"
+
+[[lean_lib]]
+name = "Canonical"

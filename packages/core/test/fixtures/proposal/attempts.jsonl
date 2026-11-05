@@ -1,0 +1,11 @@
+{"format":"telelean-attempt","version":1,"id":"rA.1","run":"rA","round":1,"date":"2026-11-01T10:00:00.000Z","subject":"Spyro","target":"cynder-not-good","premises":["cynder-dark-past","new-spyro-pg","pg-no-dark-past"],"verdict":"not-proved","ghosts":[{"id":"ghost-1","naturalName":"A character who cannot be in a game would not be a good addition to it","adopted":true}],"summary":"Under the literal reading the goal does not follow.","gateAttempts":1,"model":"claude-opus-5-5","effort":"high","usage":{"requests":12,"inputTokens":3400,"outputTokens":1800,"costEstimateUsd":0.21}}
+{"format":"telelean-attempt-resolution","version":1,"run":"rA","round":1,"date":"2026-11-01T10:05:00.000Z","resolution":"superseded"}
+
+this line is not JSON
+{"format":"telelean-attempt","version":2,"id":"rZ.1","run":"rZ","round":1,"date":"2026-11-01T09:00:00.000Z"}
+{"format":"someone-else","version":1}
+{"format":"telelean-attempt","version":1,"id":"rB.1","run":"rB","round":1,"date":"2026-11-01T11:00:00.000Z","subject":"Spyro","target":"cynder-not-good","premises":[],"verdict":"bogus","gateAttempts":1,"model":"m"}
+{"format":"telelean-attempt","version":1,"id":"rA.2","run":"rA","round":2,"date":"2026-11-01T10:20:00.000Z","subject":"Spyro","target":"cynder-not-good","premises":["cynder-dark-past","new-spyro-pg","pg-no-dark-past"],"verdict":"proved","footprint":["cynder-dark-past","new-spyro-pg","pg-no-dark-past","a-character-who-cannot-be-in","presup:Spyro.Character.exists","presup:Spyro.Game.exists"],"summary":"Proved with the adopted premise.","gateAttempts":2,"model":"claude-opus-5-5","effort":"high","usage":{"requests":7,"inputTokens":2100,"outputTokens":900,"costEstimateUsd":0.33},"extra":"ignored"}
+{"format":"telelean-attempt-resolution","version":1,"run":"rA","round":2,"date":"2026-11-01T10:30:00.000Z","resolution":"discarded"}
+{"format":"telelean-attempt-resolution","version":1,"run":"rA","round":2,"date":"2026-11-01T10:40:00.000Z","resolution":"accepted"}
+{"format":"telelean-attempt","version":1,"id":"rC.1","run":"rC","round":1,"date":"2026-11-01T08:00:00.000Z","subject":"Spyro","target":"pg-again","premises":["dark-and-pg"],"verdict":"cancelled","gateAttempts":0,"model":"claude-opus-5-5"}

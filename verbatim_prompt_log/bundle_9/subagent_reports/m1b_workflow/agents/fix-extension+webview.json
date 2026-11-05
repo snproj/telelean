@@ -1,0 +1,147 @@
+{
+ "summary": "I fixed the blocker, both major issues and all but one of the 14 minor issues in packages/extension and packages/webview. The one left is the junction dot, deferred and listed under open issues. Every affected suite passes: webview 83 unit tests and 47 Playwright tests, extension 92 unit tests, and the VS Code smoke run (30 passing) plus the e2e run (12 passing, real Lean and git) with no isolation failures.\n\n**Blocker (board blank after reload/restart).** Two changes, either of which alone breaks the wait. (1) `restoreBoard` now resolves as soon as the restored panel has the board's HTML; the model session attaches in the background (`host.ts`: new `showBoard`, which `openBoard` awaits and `restoreBoard` does not). (2) `BoardPanel.post` never waits for `webview.postMessage` to resolve; delivery is only logged and reported through `onDidPostToBoard`. A new unit test (`hostRestore.test.ts`, with a vitest stand-in for `vscode` in `vscodeStub.ts`) uses fake panels whose `postMessage` never resolves. Against the old behaviour it fails 4 of 5; with the fix it passes 5 of 5. I also checked it for real in an isolated VS Code 1.140 instance: after a restart and after two \"Developer: Reload Window\" rounds, both restored boards render 4 cards each (6/6 checks). The extension log now shows the full sequence, including the webview's \"ready\".\n\n**Major.**\n- **Toast Undo:** only the newest undoable toast offers Undo, and only while the host's Undo label equals that toast's text. Any Undo or Redo removes the button from every toast. At most three toasts show, at the bottom right of the board area, never over the tray or the A|D|G box.\n- **Narrow board:** columns keep at least 220 px and the board scrolls sideways; the arrows stay correct while it scrolls. Words no longer break inside (`break-word` instead of `anywhere`), and the \"uses:\" line wraps instead of being cut. \"Open in editor\" uses another editor group when one exists and splits the board's group only when it is the only one. In real VS Code this gave 220 px columns, sideways scrolling and no broken words.\n\n**Minor.**\n- **Keyboard:** opening a dropdown moves focus into it. Up/Down/Home/End move between items, Tab past the ends leaves it, and Escape or choosing an item returns focus to its button. Saving or cancelling an inline edit returns focus to the card. The Delete dialog focuses Cancel. Alt+Up/Down re-orders the focused card.\n- **History:** the listing reloads while the dropdown is open when history becomes ready (e.g. right after \"Initialize git\"). \"Keep last N\" asks first (\"Drop 1 older snapshot of Spyro? This cannot be undone.\") and is disabled when there is nothing to drop.\n- **Files changed outside VS Code:** a Lean file written by another program now triggers a Lean refresh. Dirty editors, telelean's own writes and echoes of the user's saves are ignored. In real VS Code the badge returned to \"up to date\" after about 2 s. The stale chip now reads \"changed since last check\", and \"checking…\" only while Lean is actually checking.\n- **Highlight:** an outline plus a 16 % tint and a halo, so the item's text keeps its colour.\n- **Arrows:** a focused arrow that skips the Derivations column is routed through a gap between Derivation cards (and around the empty-column placeholder); unfocused ones still run under the cards.\n- **Backticks:** spans from core render as `<code>` in visible text and are stripped in tooltips. The Lean badge tooltip is joined as proper sentences (\"…threshold. Click to check again.\").\n- **History preview:** short tab title such as `History: <label> (14:03)`, opened beside the board, never over it.\n- **Empty board:** points to the A|D|G box.\n- **\"These suffice\":** names the declared premises it would drop and offers \"Add to its premises\".\n- **Save failure:** \"applied but not saved\" now counts as applied, so it is recorded for Undo, snapshotted and re-read, and VS Code shows a warning to save the file.\n- **Non-atomic applyEdit:** the files to be edited are opened before the check, so VS Code's own version check covers the edit. A batch VS Code applied only in part is changed back, or the error names exactly which files are left changed.\n\nI also fixed a small existing bug in the file-watcher batching (`some` with a side-effecting delete left later paths behind).",
+ "files_changed": [
+  "/home/zhengyew/telelean/packages/extension/src/board/BoardPanel.ts",
+  "/home/zhengyew/telelean/packages/extension/src/vscode/host.ts",
+  "/home/zhengyew/telelean/packages/extension/src/vscode/registry.ts",
+  "/home/zhengyew/telelean/packages/extension/src/vscode/editor.ts",
+  "/home/zhengyew/telelean/packages/extension/src/vscode/historyProvider.ts",
+  "/home/zhengyew/telelean/packages/extension/src/logic/editApplier.ts",
+  "/home/zhengyew/telelean/packages/extension/src/logic/groups.ts (new)",
+  "/home/zhengyew/telelean/packages/extension/src/logic/historyPreview.ts",
+  "/home/zhengyew/telelean/packages/extension/src/logic/boardSession.ts (doc of the post port only)",
+  "/home/zhengyew/telelean/packages/extension/src/api.ts (docs only)",
+  "/home/zhengyew/telelean/packages/extension/vitest.config.mts (alias vscode -> test/unit/vscodeStub.ts)",
+  "/home/zhengyew/telelean/packages/extension/test/unit/hostRestore.test.ts (new)",
+  "/home/zhengyew/telelean/packages/extension/test/unit/vscodeStub.ts (new)",
+  "/home/zhengyew/telelean/packages/extension/test/unit/groups.test.ts (new)",
+  "/home/zhengyew/telelean/packages/extension/test/unit/editApplier.test.ts",
+  "/home/zhengyew/telelean/packages/extension/test/unit/watchers.test.ts",
+  "/home/zhengyew/telelean/packages/extension/test/suite/boards.test.ts",
+  "/home/zhengyew/telelean/packages/extension/test/suite/model.test.ts",
+  "/home/zhengyew/telelean/packages/extension/test/suite/e2e.test.ts",
+  "/home/zhengyew/telelean/packages/extension/dist/extension.js and .map (rebuilt 15:25:22)",
+  "/home/zhengyew/telelean/packages/extension/dist/webview/* (Vite rebuild: webview.js, webview.css, boot.js, assets/codicon.ttf, map)",
+  "/home/zhengyew/telelean/packages/extension/out/** (rebuilt suite bundles and vitest cache)",
+  "/home/zhengyew/telelean/packages/webview/src/App.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/state/store.ts",
+  "/home/zhengyew/telelean/packages/webview/src/toasts/Toasts.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/board/Board.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/board/Column.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/board/NodeCard.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/board/CardDetails.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/board/VocabularyGroup.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/board/EdgeEngine.ts",
+  "/home/zhengyew/telelean/packages/webview/src/board/geometry.ts",
+  "/home/zhengyew/telelean/packages/webview/src/common/Popover.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/common/OneLineInput.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/common/InlineCode.tsx (new)",
+  "/home/zhengyew/telelean/packages/webview/src/dialogs/Dialogs.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/header/HistoryMenu.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/header/LeanStatus.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/labels.ts",
+  "/home/zhengyew/telelean/packages/webview/src/model/cardData.ts",
+  "/home/zhengyew/telelean/packages/webview/src/model/format.ts",
+  "/home/zhengyew/telelean/packages/webview/src/tray/SelectionTray.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/styles/board.css",
+  "/home/zhengyew/telelean/packages/webview/test/unit/store.test.ts",
+  "/home/zhengyew/telelean/packages/webview/test/unit/cardData.test.ts",
+  "/home/zhengyew/telelean/packages/webview/test/unit/format.test.ts",
+  "/home/zhengyew/telelean/packages/webview/test/unit/geometry.test.ts",
+  "/home/zhengyew/telelean/packages/webview/test/e2e/m1-fixes.spec.ts (new)",
+  "/home/zhengyew/telelean/packages/webview/test/e2e/m1-edits.spec.ts",
+  "/home/zhengyew/telelean/packages/webview/test/e2e/m1-header.spec.ts",
+  "/home/zhengyew/telelean/packages/webview/test/e2e/m1-cards.spec.ts",
+  "/home/zhengyew/telelean/packages/webview/test/e2e/board.spec.ts",
+  "/home/zhengyew/telelean/packages/webview/test-results/*.png (screenshots, e.g. m1-fix-narrow-board.png, m1-fix-routed-arrow.png, m1-fix-highlight-dark.png, m1-fix-toasts.png, m1-fix-tray-replaces.png, m1-fix-empty-board.png)"
+ ],
+ "test_runs": "All runs below were made after the last code change of their package, except where noted. TELELEAN_TEST_TMP was my scratch dir, Chrome and VS Code ran with isolated HOME/XDG and `ulimit -c 0`, and LEAN_NUM_THREADS=4.\n\n1) Webview typecheck and unit tests (final):\n```\nWEBVIEW TSC OK\n Test Files  6 passed (6)\n      Tests  83 passed (83)\n```\n\n2) Webview build and Playwright (`vite build` then `sh -c 'ulimit -c 0; playwright test'`, log …/fix-ext-webview/pw2.log):\n```\n✓ built in 164ms\n  ✓  30 test/e2e/m1-fixes.spec.ts:45:1 › a narrow board keeps readable columns and scrolls sideways; words are not broken; arrows stay on the cards (555ms)\n  ✓  31 … › toasts sit above the tray and the A|D|G box, three at most, never covering them (737ms)\n  ✓  32 … › dropdowns: the focus moves in, arrows move between items, Escape and choosing give it back to the button (587ms)\n  ✓  33 … › inline edits give the focus back to the card; Alt+Up/Down re-orders the focused card (555ms)\n  ✓  34 … › \"These suffice\" names the declared premises it would drop and offers \"Add to its premises\" (690ms)\n  ✓  35 … › the highlight outlines the item and keeps its own text colours (595ms)\n  ✓  36 … › a focused arrow that skips the Derivations column is routed through a gap, never across a Derivation card (552ms)\n  ✓  37 … › backtick spans from core render as code in Problems; tooltips have none (500ms)\n  ✓  38 … › an empty board points to the A|D|G box (389ms)\nhome guard: ~/.config/google-chrome 10 entries, ~/.cache/google-chrome absent, ~/.cache/fontconfig 113 entries, ~/.pki 4 entries, ~/.local/share/pki absent; unchanged\n  47 passed (40.3s)\n```\nThe run before it (pw1) had 3 failures: two from a history-listing request loop I had introduced and fixed, and one old colour assertion on the highlight's background. All are fixed in pw2.\n\n3) Extension typecheck and unit tests (final, after the last source change):\n```\nEXTENSION TSC OK\n Test Files  14 passed (14)\n      Tests  92 passed (92)\n```\n\n4) The new restore test against the old, waiting behaviour (temporarily restored, then put back and confirmed identical with diff):\n```\n ❯ test/unit/hostRestore.test.ts (5 tests | 4 failed) 11057ms\n     × resolves while the restored webview cannot receive anything yet; the session attaches in the background 2021ms\nAssertionError: expected 'pending' to be 'settled'\n      Tests  4 failed | 1 passed (5)\nRESTORED\n```\nWith the fix: `Test Files  1 passed (1)  Tests  5 passed (5)`.\n\n5) VS Code smoke and e2e (`node scripts/smoke.mjs` after rebuilding dist at 15:25:22; log …/fix-ext-webview/smoke3.log):\n```\n  30 passing (14s)      [smoke configuration]\n  12 passing (16s)      [e2e configuration: real workspace, Lean, git, board UI over CDP]\n[smoke] isolation checks:\n  ok    isolated user-data dir used: 143 entries …\n  ok    ~/.copilot: unchanged (56 entries)\n  ok    ~/.config/Code (top level): unchanged (67 entries)\n  ok    ~/.config/google-chrome (top level): unchanged (1 entries)\n  ok    ~/.local/share/Trash/files: unchanged (35 entries)\n  ok    no process of this run is left\n[smoke] vscode-test exit code 0; 0 isolation failure(s)\n```\nThe first smoke run (smoke1) had 2 failures, both test-side: a notice-event timing assumption, and my new \"board stays visible\" assertion running while another board's tab was in front. Both tests were fixed; smoke2 and smoke3 pass.\n\n6) Real reload and restart check (isolated VS Code 1.140 test build, `--extensionDevelopmentPath`, CDP on 127.0.0.1, scripts in …/fix-ext-webview/reload/harness), with the final build:\n```\n07:26:24.761 restart active tab: board \"second_model\" renders 4 cards after 25 ms\n07:26:25.188 restart background tab, shown: board \"mental_model\" renders 4 cards after 309 ms\n07:26:30.154 reload #1 active tab: board \"second_model\" renders 4 cards after 15 ms\n07:26:30.524 reload #1 background tab, shown: board \"mental_model\" renders 4 cards after 285 ms\n07:26:30.528 reload #1: iframes in the workbench: 2\n07:26:36.490 reload #2 active tab: board \"second_model\" renders 4 cards after 12 ms\n07:26:36.861 reload #2 background tab, shown: board \"mental_model\" renders 4 cards after 291 ms\n07:26:37.949 RESULT: PASS (6/6 checks)\nleft: 0 processes, 0 units\n```\ntelelean.log for the restore: `restoring board \"telelean: second_model\" -> …` then `board opened` then `model workspace loaded (1 subjects)` then `Lean refresh requested (open)` then `[webview->host] ready {\"lastVersion\":null}`.\n\n7) Real-VS-Code checks of two minor fixes (drive2.mjs, 15:17 build):\n```\noutside write: refresh requested (files) 1x; badge \"Lean: up to date\" after 2167 ms (saw \"files changed\": true); stale chips now: []\nopen in editor: editor groups 2; column widths [220,220,220]; board scroll [768,393]; words broken inside: []\n```",
+ "resolved": [
+  "BLOCKER (extension) restored board stays blank: `restoreBoard` no longer awaits the session; `BoardPanel.post` never awaits delivery. Covered by the new hostRestore unit test (fails 4/5 on the old code) and a real restart plus 2-reload check (6/6 PASS).",
+  "MAJOR (webview) toast Undo undoes a different action: Undo shows only on the newest undoable toast while `workspace.undo` equals its label, and any Undo or Redo clears it everywhere (`toastCanUndo`, store, Toasts.tsx). Store unit test and Playwright AT6.10 updated.",
+  "MAJOR (webview) board unreadable below ~600 px: columns keep at least 220 px with sideways scrolling, the gap narrows to 40 px under 860 px, `overflow-wrap: break-word`, and the uses line wraps. 'Open in editor' prefers an existing other editor group (`groupBesideBoard`). Playwright narrow-board test and a real-VS-Code check (columns [220,220,220], no broken words).",
+  "MINOR keyboard: dropdowns take the focus (checked or first menu item, else the dropdown itself), Up/Down/Home/End move between items, Tab and Shift+Tab leave past the ends, focus returns to the button on close; inline edits return focus to the card; the Delete dialog focuses Cancel; Alt+Up/Down re-orders cards (`moveCard`).",
+  "MINOR History: listing re-requested while open when history becomes ready (and on subject or undo/redo change); 'Keep last N' asks with a count and is disabled when nothing would be dropped.",
+  "MINOR extension: outside writes to Lean files trigger `requestRefresh('files')`, ignoring dirty editors, telelean's own writes and echoes of user saves. Stale chip renamed 'changed since last check' ('checking…' only while Lean checks). Suite test extended; real VS Code check passed.",
+  "MINOR highlight unreadable: outline, 16% tint and halo instead of an opaque fill (board.css).",
+  "MINOR focused arrows strike through cards: focused A↔G arrows are routed through a gap in the Derivations column; the empty-column placeholder also counts as an obstacle (`gutterY`, `routedPath`, EdgeEngine obstacles). Unit and Playwright tests.",
+  "MINOR toasts over the tray: toasts sit in the board area (`.tl-main`), at most 3.",
+  "MINOR literal backticks and run-together tooltip: `InlineCode` renders <code> spans, `plainText` strips them in titles, `sentences` joins the badge tooltip properly.",
+  "MINOR history preview title and placement: title 'History: <label cut at 40> (<time>)[ vs now]'; the preview opens in another group, or a new second group, so it never covers the board.",
+  "MINOR empty board gives no first step: a first-step hint in the tray and the Assumptions placeholder ('No assumptions yet: type your first one in the box below').",
+  "MINOR 'These suffice' silently replaces premises: the tray names the premises it would drop and offers 'Add to its premises' (`theseSuffice('add')` posts the union).",
+  "MINOR applied-but-not-saved: the applier now resolves (the runner records Undo, snapshots and re-reads) and calls `onUnsaved`; VS Code shows a warning to save the file.",
+  "MINOR applyEdit not atomic: touched documents are opened before the check (`prepare`), so VS Code's version check covers the edit; a partly applied batch is reverted, or the error names the files left changed. Unit tests for both paths.",
+  "Extra: fixed an existing watcher-batch bug (`some` with a side-effecting delete left later paths in refreshPaths)."
+ ],
+ "open_issues": [
+  "Not fixed (deferred): joint premises drawn through a junction dot (03 §7, D-13). M1's scope only lists declared and verified arrows. The deferral should be recorded in docs/decisions-log.md, which is outside my paths, e.g. 'Joint premises are drawn as separate declared arrows in M1; the junction dot is deferred to a later milestone.'",
+  "Integrator: rebuild the extension bundle at the end (packages/extension: `node scripts/build.mjs`, then `node scripts/smoke.mjs`). My last build (dist/extension.js, 15:25:22) bundles core and runner sources as of then, and the other fixer is still editing them (packages/core/src/markup/leanOps.ts changed after my 15:17 build). The webview bundle dist/webview is current with all my changes.",
+  "docs/user-guide.md (outside my paths) needs these updates: line 49, toast Undo now shows only on the newest toast while it is still the latest action; line 69, 'Keep last N' asks for confirmation; line 91, the chip table should read 'changed since last check' (with 'checking…' only while Lean runs); lines 112 and 117, the blank-board-after-reload workaround is no longer needed. New behaviour to mention: Lean files written by other programs are re-checked; Alt+Up/Down re-orders a card; dropdowns work from the keyboard; the Delete dialog defaults to Cancel; a narrow board scrolls sideways; 'Open in editor' and the history preview open beside the board; 'These suffice' warns about the premises it drops and offers 'Add to its premises'.",
+  "Frozen runner contract (packages/runner/src/workspace/types.ts, integrator-owned): the EditApplier doc says it 'saves them, so they are on disk when it resolves'. The extension's applier now resolves when the change is applied but a file could not be saved: the change stays in the editor buffer (which the TextSource reads), so the runner records it, and the user gets a warning. It also now actively reverts a partly applied batch, as the doc's 'leave nothing half-applied' asks. Suggested doc-only edit: 'Saves them; a file that cannot be saved keeps the change in its editor and apply still resolves (the extension tells the user to save it).'",
+  "docs/m1-plan.md section 14 (contract log; docs are outside my paths) could record these extension/webview-internal changes: BoardSessionPorts.post resolves without waiting for delivery; TeleleanApi.onDidPostToBoard fires once delivery is known; TeleleanApi.restoreBoard resolves before the session is attached; WorkspaceEditPort gains an optional prepare(); CheckedEditApplierOptions gains onUnsaved; the webview TrayModel gains `dropped`; theseSuffice(mode) and moveCard are new store actions; Toast.undoable is narrowed and toastCanUndo added; geometry FrameInput gains `obstacles` and PathSpec gains `routed`. The refresh-trigger list in section 2 should add 'a Lean file written by another program (file watcher)'.",
+  "Not covered by automated tests: a real window reload (test-electron cannot reload without killing the mocha runner). My manual harness (isolated profile, CDP on loopback) is in my scratch dir at /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/fix-ext-webview/reload/harness/ (launch.sh, drive.mjs, drive2.mjs) if someone wants to add it under packages/extension/scripts.",
+  "Small remaining gaps: (a) Popover's anchorVisible only checks vertical visibility, so a dropdown stays open when its anchor scrolls out sideways on a narrow board. (b) A toast's Undo button appears a few milliseconds after the notice, once the host's workspace state arrives (by design: it must match the host's Undo label)."
+ ],
+ "minor_decisions": [
+  {
+   "decision": "The restore fix has two layers: the serializer resolves as soon as the panel has its HTML, and posts never wait for delivery.",
+   "rationale": "Either one breaks the wait-for-each-other deadlock. Non-blocking posts also stop 'Open Board' from hanging when a new webview never loads (the integrator's unexplained smoke race)."
+  },
+  {
+   "decision": "TeleleanApi.onDidPostToBoard now fires when VS Code reports delivery, and tests wait for events instead of assuming their order.",
+   "rationale": "Delivery is only known asynchronously once posts stop waiting for it. Two suite tests were adjusted accordingly."
+  },
+  {
+   "decision": "A toast's Undo button needs the toast to be the newest undoable one, its label to equal workspace.undo, and no Undo or Redo since. At most 3 toasts, placed in the board area.",
+   "rationale": "The protocol's undo names no action, so this is the only safe way to make toast Undo mean 'undo this'."
+  },
+  {
+   "decision": "Minimum column width 220 px with a horizontally scrolling board, and a 40 px gutter under an 860 px viewport, instead of a stacked or tabbed layout.",
+   "rationale": "The edge engine assumes three side-by-side columns. Sideways scrolling keeps every arrow correct (tested) with little code."
+  },
+  {
+   "decision": "'Open in editor' and the history preview use an existing other editor group (one already showing the file first) and split the board's group only when it is the only one. The multi-file diff is placed by focusing that group first (`workbench.action.focus<Nth>EditorGroup`).",
+   "rationale": "`vscode.changes` takes no view column; this never covers the board and splits it at most once."
+  },
+  {
+   "decision": "Lean files written by other programs trigger a Lean refresh, while echoes of the user's own saves are ignored so a save does not refresh twice.",
+   "rationale": "Such a write is a save by another program. Otherwise cards stayed 'changed since last check' until the next save or Refresh. The refresh still runs only while the board is open (D-28)."
+  },
+  {
+   "decision": "The stale chip reads 'changed since last check'; 'checking…' appears only while semantic.state is 'checking'.",
+   "rationale": "The chip and the badge no longer use the same word for different things."
+  },
+  {
+   "decision": "Only focused arrows that skip the Derivations column are routed through a gap there; unfocused ones stay under the cards, as before.",
+   "rationale": "A focused arrow can be traced without striking through text, while background arrows add no new clutter."
+  },
+  {
+   "decision": "'These suffice' keeps D-13's replace semantics as the default; the tray names what it drops and adds an 'Add to its premises' button that posts the union.",
+   "rationale": "Follows the review's suggested fix with no protocol change."
+  },
+  {
+   "decision": "History pruning is confirmed inline in the dropdown rather than in a modal.",
+   "rationale": "The updated listing and storage counter stay visible after pruning."
+  },
+  {
+   "decision": "When a dropdown opens, focus goes to its checked or first menu item, otherwise to the dropdown itself. Tab past the last item moves to the control after the button, as if the dropdown sat there in the page.",
+   "rationale": "The dropdowns are rendered at the end of <body>, so without this Tab and arrows went to the wrong places."
+  },
+  {
+   "decision": "Applied-but-unsaved is treated as success plus a warning, and a partly applied batch is reverted.",
+   "rationale": "The runner's contract assumes all-or-nothing and records nothing when apply throws. Throwing after a partial apply left changes nobody could undo."
+  }
+ ],
+ "effects_outside_repo": [
+  "Playwright harness (2 runs): created /tmp/tl-pw-chrome-XXXXXX as Chrome's isolated TMPDIR/HOME/XDG (my scratch path is too long for Chrome's socket) and deleted it at teardown; none remain. The home guard reported ~/.config/google-chrome, ~/.cache/fontconfig and ~/.pki unchanged.",
+  "VS Code smoke and e2e runs (3) and my manual reload instance (4 launches): the VS Code 1.140 test build in packages/extension/.vscode-test was run but not modified. Xvfb displays left transient /tmp/.X<n>-lock and /tmp/.X11-unix/X<n> files, removed on exit (none stale). The smoke isolation checks reported the real ~/.copilot, ~/.config/Code, ~/.config/google-chrome and ~/.local/share/Trash/files unchanged.",
+  "Sandboxed Lean builds (runLean via systemd-run --user transient telelean-* units) ran in the smoke e2e copies and in my scratch copies of mental_model (they now contain .lake build output, in scratch only). 0 units and 0 processes were left afterwards (checked).",
+  "One misconfigured launch of my manual VS Code instance (empty debugging-port argument) was stopped by killing only its own process group (setsid); all its processes were mine.",
+  "Network: loopback only. Chrome DevTools ports on 127.0.0.1 for the e2e configuration and my manual instance, and Playwright's local static server on 127.0.0.1:41739. No internet access and no downloads.",
+  "Git: only in scratch test repositories created by the test suites (smoke/e2e copies, GIT_CONFIG_GLOBAL=/dev/null, ceiling set to scratch). No git in /home/zhengyew/telelean or mental_model; mental_model was only copied (read).",
+  "Inside the repo but outside my assigned paths: /home/zhengyew/telelean/node_modules/.vitest-cache/ got new module-cache entries from my vitest runs. That directory is vitest 5's default and existed since 06:45. I wrote no files elsewhere in the repo outside packages/extension and packages/webview.",
+  "~/.npm: no writes by me. My smoke runs sent npm's logs into their scratch profiles (3 logs found there). The ~/.npm/_logs entries from 07:17 to 07:22 UTC are `npm exec`/`npm test` runs in packages/core and packages/runner, plus `npm exec -- tsc --noEmit` checks run in packages/extension and packages/webview. I never ran npm/npx or tsc with --noEmit there, so they are not mine.",
+  "Scratch content (all under /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/fix-ext-webview/): smoke profiles (smoke/), the reload harness with its VS Code profile and model copies (reload/), test logs (pw1.log, pw2.log, smoke1-3.log), the vitest temp dir (tt/), and backups of two files used for the regression proof."
+ ]
+}

@@ -1,0 +1,5 @@
+/.lake/
+/.telelean/graph.json
+/.telelean/frozen/
+/.telelean/sessions/
+/.telelean/*.tmp

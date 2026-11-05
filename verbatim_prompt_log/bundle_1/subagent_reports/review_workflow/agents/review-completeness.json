@@ -1,0 +1,503 @@
+{
+ "lens": "completeness-traceability",
+ "summary": "The traceability is sound at the ID level. I segmented prompt1.md myself (55 sentences) and confirmed by script that every Appendix A row appears verbatim and in order. t1's validator re-runs with no errors. Checked against the design itself, not just the IDs, 49 of 55 sentences have a concrete design element: SelectionTray (S26), the overlay table plus vscode.changes (S31), D-17's drag rules (S16), the §2 node model (S34), D-28 plus a versioned export (S43), the themable formalizedAura (S41) and §10/§12 (S52). Six are weak: S15 (arrow meaning), S32 (new vocabulary hidden in a collapsed group), S44 (learnharness lessons not surfaced), S48 (Step-2 coverage) and S54/S55 (logging). None is missing outright. The files honour M2–M4. M1 is honoured during development but not yet at runtime. 03 was revised at 02:55 while I was reviewing (§8.2 Packaging, §12 run directions), and this audit covers that version.\n\nThe real gaps are unspoken constraints with large design impact that 02 never raises, plus some contradictions. (1) As written, telelean activates in every Lean project you open, including Mathlib or pre-4.35 ones, and runs an uncapped `lake build` plus the extractor on save. `lake comparator` and `leanexport` exist only in v4.35.0 (verified). Given your RAM-crash history, this is the top risk. (2) Nothing beyond add and kind-change is defined: no delete/retract, merge or supersede, though your cynder.lean uses supersede. Gate G5 also forbids agent deletions and reclassifications that the overlay, IC-10 and Instruct assume are possible. (3) There is no notion of several subjects per workspace, though your sketches keep five in one folder. A name clash between subjects breaks the root import that telelean maintains (verified). (4) There is no board-level undo or model history. Git snapshots only happen if a repo already exists, and the scaffold never creates one. A mistaken D→A drag deletes a proof. (5) Doc 01 still states the logging rule that M3/M4 replaced, and nobody checked the spectec example.\n\nThe Step-3 deliverable is close to actionable: a no-sudo Node install with checksum, an exact Lean pin, only the optional xvfb needs sudo, and installing from the repo folder solves the SDK-binary problem. The remaining gaps are minor: some pins are not exact, @types/react(-dom) and ajv are missing, two test downloads are unlisted, and the claim that your existing login is reused is unverified, with no auth preflight.",
+ "issues": [
+  {
+   "id": "CMP-01",
+   "severity": "major",
+   "doc": "03",
+   "section": "§6 Activation; §5 Pipeline; §4 'Existing Lean projects work too'; §12 'How you will run it' step 3; §13 (also 02 D-8/D-29/D-30)",
+   "problem": "As written, telelean activates in every Lean project you open. §12 step 3 installs it into your main VS Code profile, and §6 activates on `workspaceContains:**/lakefile.{toml,lean}`. Nothing in §5/§6 limits the semantic refresh (an unsandboxed `lake build` of the real workspace plus `telelean-extract` importing the root modules, run after any save that changes non-comment tokens) to projects that contain `@@ telelean` blocks, or to times when the board is open. §13's budget and §8.4's 4 GB cap cover only tiny Mathlib-free models and agent builds. The real-workspace build has a 'memory cap' with no number, and Mathlib cost is explicitly unmeasured. Separately, §4's 'existing Lean projects work too' ignores a toolchain floor: G4 (`lake comparator`) and the freeze step (`leanexport`) exist only in v4.35.0, while toolchains v4.30 to v4.34 are installed, so you likely have projects on them. With the RAM-crash history (M1), this is the riskiest unspoken constraint.",
+   "evidence": "Verified: `lake help comparator` on v4.34.0 prints only generic usage, while v4.35.0 prints 'Judge a solution against a challenge'. The bin/ folders of v4.30.0, v4.33.1 and v4.34.0 contain no leanexport. `lake help` on v4.35.0 shows no job-limit option. r2: 'Performance with Mathlib (import time, RAM per extraction and build process) is unmeasured.'",
+   "suggested_fix": "(1) Auto-activate only on `workspaceContains:**/.telelean/layout.json` (the scaffold creates it). Elsewhere, require an explicit 'telelean: Enable in this workspace' command. (2) Run SemanticRunner only while that project's board is open. (3) Wrap the real-workspace `lake build` and the extractor in the same `systemd-run --user --scope -p MemoryMax=…` as agent builds. Check MemAvailable before every spawn and show a 'paused: low memory' badge, like the dev-time watchdog. (4) If lake-manifest.json pulls in Mathlib, require opt-in and measure the cost first. (5) State the floor in D-8/§4: Prove and the gate need v4.35.0 or later; older toolchains get the board and markup only (syntactic mode). (6) Trace M1 as NFR-5 in doc 01."
+  },
+  {
+   "id": "CMP-02",
+   "severity": "major",
+   "doc": "all",
+   "section": "03 §6 EditService ('delete'), §7 ProposalBanner/overlay row 'removed', §8.5 G5; 02 D-17, D-27 G5; 01 IC-10",
+   "problem": "Only 'add node' and 'change kind' have defined semantics. Deleting or retracting a node is undefined: what happens to its declaration, to dependents' `premises`, to proofs that used it, and to its layout and frozen entries. Merging duplicates, splitting a node and superseding or refining one are also undefined. Yet retracting a belief is the core belief-revision move, and your own cynder.lean treats refinement as first-class ('h1 is actually cynder instance_of Character {…}', '… superseding h1'). Meanwhile G5 rejects any agent proposal containing a deletion, or a reclassification other than G→D when proved. That contradicts three things: (a) §7's overlay row 'removed' and the banner example '4 new · 3 changed · 1 moved · 1 removed'; (b) IC-10, which says such changes are 'a flagged proposal that needs explicit acceptance'; (c) v1 Instruct requests such as 'merge these two assumptions' or 'drop unused vocabulary', which could never pass the gate.",
+   "evidence": "/home/zhengyew/telelean_scripts/cynder.lean (read-only) has six revisions, including 'superseding h1' and 'h1 is actually'. Compare the 03 §7 overlay with the §8.5 G5 row. r5 lists 'delete' only as a deterministic op, with no semantics.",
+   "suggested_fix": "Add a ★ decision 'Node lifecycle'. Delete: remove the block, and optionally the declaration, in one WorkspaceEdit after a confirmation that lists affected dependents; prune dangling `premises`; mark dependents 'depends-on-removed'. Suspend/retract: exclude an assumption for what-if analysis without deleting it. Refine: a new `supersedes:` field, with the old node shown greyed as history. Merge: re-point premises, affects, layout and frozen ids. Relax G5 so a proposal may contain deletions or kind changes only when an Instruct request asked for them, or as flagged items you confirm one by one. Otherwise, remove 'removed' from the overlay."
+  },
+  {
+   "id": "CMP-03",
+   "severity": "major",
+   "doc": "all",
+   "section": "03 §4 scaffold (single root `Model.lean`, 'imports maintained by telelean'), §6 ProjectService ('one board per project'); 02 D-11; 01 §2.2 #7 (S2 'about a subject')",
+   "problem": "Inside a workspace there is no notion of a subject, i.e. a separate mental model. Each project gets one board, one root import file, one Vocabulary/Main/Decisions/Inbox and one shared namespace. Your own practice is several subjects in one folder (bank, bayonetta, cynder, kopiteh, smoking), with cross-subject comparison (bayonetta.lean: 'compare cynder.lean: contrast cynder.goal'). In this design a second subject either mixes into all three columns, every selection and every agent context, or breaks the whole project build at the first name clash. A broken build blanks the semantic layer for every subject.",
+   "evidence": "Verified on v4.35.0 in a scratch project. Model/Cynder.lean and Model/Smoking.lean each declare `axiom Character : Type`, and each builds on its own. A telelean-style root `Model.lean` that imports both fails with: \"import Model.Smoking failed, environment already contains 'Character' from Model.Cynder\".",
+   "suggested_fix": "Add a ★ decision: one subject per project, or several? Recommended: a subject is a module subtree plus a namespace (`Model/<Subject>/{Vocabulary,Main,Decisions,Inbox}.lean` under `namespace <Subject>`). The board gets a subject picker. Selections and agent context stay within one subject, and one subject reuses another only through an explicit import. Reserve a `contrasts:` relation for your compare/contrast use."
+  },
+  {
+   "id": "CMP-04",
+   "severity": "major",
+   "doc": "all",
+   "section": "02 D-17 ('D→A … (undoable)'), D-33; 03 §4 scaffold, §6 EditService; 01 App. D #6",
+   "problem": "You will mostly work in the board (S42), but undo is designed only as VS Code's text undo on the edited .lean files. There is no board-level Undo/Redo, and a webview handles Ctrl+Z inside its own page. So a mistaken D→A drag, which deletes the proof (D-17), can only be undone by finding and focusing the edited file. D-33's git snapshot applies only 'if the model folder is a git repository', and only before LLM proposals. The scaffold writes a .gitignore but never runs `git init`, and the sample mental_model/ sits inside /home/zhengyew/telelean, which is not a git repo. There is also no model history, although your sketches keep successive versions of a model (cynder.lean has six revisions separated by `___`). 01 App. D #6's 'was a goal' badge has no field in §2.1. The save policy is unspecified as well: board edits leave unsaved buffers while `lake build` reads disk, so statuses lag. VS Code's files.refactoring.autoSave only saves files that are not open, and only for edits applied as refactorings.",
+   "evidence": "Verified: /home/zhengyew/telelean has no .git. VS Code 1.140's workbench registers 'files.refactoring.autoSave' with default true. That Ctrl+Z stays inside a webview is inferred, not tested.",
+   "suggested_fix": "(1) Add board Undo/Redo (Ctrl+Z / Ctrl+Shift+Z while the board has focus), built from recorded inverse core edit operations. (2) On D→A, archive the displaced proof in `.telelean/attic/<id>.lean` or the block body, and have A→D offer 'restore previous proof'. (3) Have `telelean init` offer `git init`, and have telelean auto-commit each accepted proposal or kind change (opt-out). Add a History drawer, which can also show the 'was a goal' badge. (4) Have EditService save every file it touched, so Lean status matches what the board shows."
+  },
+  {
+   "id": "CMP-05",
+   "severity": "major",
+   "doc": "01",
+   "section": "§2.7 item 45; Appendix D #20; Appendix B PROC-8 open point (T20); Appendix C IC-33",
+   "problem": "Doc 01 still states the rule you corrected twice: 'Log every prompt, even mid-turn ones, in a new bundle' (§2.7 #45), and 'every later prompt, including mid-turn ones, gets its own bundle … Follow the convention already used in bundle_2' (App. D #20). That contradicts M3/M4 ('put it all in bundle 1 … within one turn') and refers to a bundle_2 that no longer exists. The doc's own TODO 'Check this against the referenced spectec example' (S55) was never done. The spectec layout has a `response_N_modelinfo.md` for each response, but bundle_1 has none, and the earlier response2_modelinfo.md cited by t1/IC-33 did not survive the merge. M1 to M4 are not traced anywhere in 01.",
+   "evidence": "Verified by fetching the spectec tree: verbatim_dialogue_log/bundle1…bundle22. bundle1 contains prompt_1.md, response_1.md and response_1_modelinfo.md; bundle2 also has user_requested_documents/. `ls bundle_1` shows no modelinfo file, and there is no bundle_2. The actual files and the memory rule (interim response 3) already follow M3/M4.",
+   "suggested_fix": "Rewrite PROC-8, IC-33, §2.7 #45 and App. D #20 as: one bundle per user turn, laid out as `bundle_N/{promptN.md, promptN_midturn.md, responseN.md, responseN_interim.md, responseN_modelinfo.md, user_requested_documents/, subagent_reports/{research_workflow,review_workflow}/}`. Keep your local names (bundle_1/prompt1.md) and say they deliberately differ from spectec's bundle1/prompt_1.md. Mark T20 as resolved by M3/M4. Add an Appendix A2 that traces M1→NFR-5 (bounded memory), M2→PROC-11 (save every subagent response) and M3/M4→PROC-12 (one bundle per turn, with mid-turn prompts in a separate file)."
+  },
+  {
+   "id": "CMP-06",
+   "severity": "minor",
+   "doc": "03",
+   "section": "§7 component tree '<VocabularyGroup/> (top of Assumptions, collapsed)', proposal overlay; 02 D-3; 01 App. D #12",
+   "problem": "S32 says the LLM causes 'several more nodes to be created in the extension window'. In the walkthrough those nodes are exactly vocabulary (structure `Cynder`, Prop `isCharacter`). D-3 puts vocabulary in a group that is 'collapsed by default', and nothing says the group expands during a proposal, so the new nodes are created but hidden while you review. It is also unspecified whether helper lemmas the agent writes get blocks (DERIVATION, origin: agent) or stay unmarked. The 'untracked' display promised in 01 App. D #12 has no UI in §7.",
+   "suggested_fix": "While a proposal touches vocabulary, expand the group automatically and show a count such as 'Vocabulary (12 · +3 new)' on its header. Have G5 require a block for every agent-created declaration on the target's dependency path. Add an 'Untracked declarations' strip with a 'Track as node' action, which also covers Lean you write by hand."
+  },
+  {
+   "id": "CMP-07",
+   "severity": "minor",
+   "doc": "02",
+   "section": "D-13; 03 §2.1 Edge, §3.2 `premises`; 01 App. D #3",
+   "problem": "S15 asks for arrows 'from any node in one section to a node in another', but every drawn arrow becomes a `premises:` entry on its target. Three consequences follow. (a) An arrow into an ASSUMPTION (from a derivation or a goal) gives an axiom premises, which has no defined meaning and no validator rule. (b) An arrow from an unproved GOAL makes its target conditional, and how that is drawn is not stated. (c) Arrows drawn at different times silently merge into one joint argument, because alternative arguments are deferred to D-34. D-13 also never asks whether the cross-section-only wording was intended, which 01 App. D #3 promised.",
+   "suggested_fix": "Define the meaning per direction. An arrow into an ASSUMPTION means 'I think this follows from that': it stores no premises and offers A→D 'Prove from …'. An arrow from a GOAL is drawn as conditional support. Drawing into a node that already has premises asks 'add to this argument or start an alternative?', or states that alternatives arrive in v2. Add the restriction question to the ★ list."
+  },
+  {
+   "id": "CMP-08",
+   "severity": "minor",
+   "doc": "03",
+   "section": "§7 Node card ('your sentence (wraps)'), §16; 02 D-13; 01 §2.7 #46",
+   "problem": "The docs don't show what came of looking at learnharness (S44). It is credited only for junction dots and 'AGPL, ideas only'. Several of its ideas are adopted without credit: the layout sidecar, submit tools that return validation errors to the model, a held ask-user tool, and honest billing labels. The two lessons that matter most for 'many, many nodes' are neither adopted nor rejected with a reason. First, learnharness found that full-sentence canvas labels 'proved unworkable' and moved to a short `name` with the verbatim statement one click away, while telelean cards show the full sentence. Second, it runs an auditor pass to catch duplicate nodes, and telelean has nothing comparable. Your own sketches use short handles (h1, h2).",
+   "evidence": "r7: learnharness docs/vision.md amendment of 2026-09-08: 'full-sentence canvas labels proved unworkable — ten-line labels, illegible overprint'.",
+   "suggested_fix": "Add a 'Borrowed from learnharness / deliberately different' table to 03. Decide, as ★ or as a default, on an optional `label` field: a few words, suggested by the LLM and editable by you, shown on the card, with the verbatim natural_name on hover or expand. Add a 'similar node already exists' check when adding a node."
+  },
+  {
+   "id": "CMP-09",
+   "severity": "minor",
+   "doc": "03",
+   "section": "§12 'npm packages (exact pins)', Optional, Not needed",
+   "problem": "The list is headed 'exact pins', yet `@vscode/codicons` has no version, `@modelcontextprotocol/sdk@^1.29` is a range, and the `@anthropic-ai/sdk` peer has no version. Missing entirely: `@types/react` and `@types/react-dom` (r3 marks them required, 19.3.0) for the React 19 TypeScript webview, and `ajv` (r4, 8.20.0), although §10 tests 'JSON schema conformance' against a 2020-12 schema. Two downloads are unlisted: the VS Code 'stable' test build that §14 promises (about 350 MB more), and `leanprover.lean4@0.0.240` installed into the test instance (r6's test config). `@vscode/vsce` is still listed although §8.2 now defers .vsix packaging to v2.",
+   "suggested_fix": "Pin every package exactly: codicons 0.0.46-24 (per r3), plus the @modelcontextprotocol/sdk and @anthropic-ai/sdk versions that satisfy SDK 0.3.316's peer ranges. Add @types/react@19.3.0, @types/react-dom@19.3.0 and ajv@8.20.0. List both test downloads with their sizes in §12/§13. Mark vsce as v2."
+  },
+  {
+   "id": "CMP-10",
+   "severity": "minor",
+   "doc": "03",
+   "section": "§2.1 flag 'signoff-stale'; §14 'hash-bound'; 02 D-18 Freeze, D-27 G4; §6 rename provider",
+   "problem": "S3 and S42 make editing the Lean files by hand a normal workflow, but its consequences appear only as a flag name and a phrase in the risk table. Five things are undefined. (a) After you hand-edit a signed-off statement or natural_name, is the stored `.telelean/frozen/` entry dropped or re-frozen? Otherwise the next run's G4 rejects the agent for your own change. (b) Does Lean you write yourself count as signed off? (c) If you copy-paste a block, the id is duplicated and only a TL00x error results; which copy keeps the identity? (d) Is a new .lean file you create added to the root imports telelean maintains, or do its nodes silently lack Lean facts? (e) Which stores must an explicit id rename rewrite (premises and affects in other files, layout.json, frozen/, sessions)?",
+   "suggested_fix": "Add the default 'your edits are authoritative'. A hand change to a frozen statement or natural_name marks the node signoff-stale and invalidates its frozen entry, with a 'Re-sign' action. Lean you write counts as signed off by you (or telelean asks once). A quick fix gives the later copy of a duplicated block a new id. Hand-created files get an offer to add them to the root imports, plus a TL warning while they stay unimported. The rename edit updates every store that holds ids."
+  },
+  {
+   "id": "CMP-11",
+   "severity": "minor",
+   "doc": "all",
+   "section": "02 ★ summary; D-2, D-10, D-16, D-17, D-19; 01 App. B LLM-7, App. C IC-24 and its header, App. D #3/#4/#6/#11",
+   "problem": "Several defaults depart from your wording without being marked ★. DECISION becomes a fifth node kind stored in the Lean files (D-19, a plain default), while the fourth kind, DEFINITION, is ★ (D-3). S40's 'click on the node and expand it' becomes click to select, chevron to expand (D-17). The docstring mirror you suggested in S40 is off by default (03 §6). Doc 01 also disagrees with 02 in places. IC-24 and App. D #11 recommend the sorry-free def-statement encoding, but D-2 recommends `theorem … := by sorry`. LLM-7 ('each prompt carries the user's A/D/G marking', a must) conflicts with D-16's unmarked Instruct mode. App. D #4's opt-in 'formalize on create' setting and #6's 'was a goal' badge disappear from 02/03. Finally, App. C says every IC is resolved in 02 by a D-item that cites it, but no D-item cites IC-16, IC-18, IC-25, IC-32 or IC-33.",
+   "evidence": "grep of 02 for each IC number: IC-16, IC-18, IC-25, IC-32 and IC-33 get 0 hits. Their substance is covered in 03 §6, §7, §10 and §8.3, except IC-33.",
+   "suggested_fix": "Add 'deviations from your wording' rows to the ★ table: D-17's click reassignment, D-19's DECISION kind and D-10's docstring default. Mark IC-24, App. D #11 and LLM-7 as superseded by D-2/D-16. Either carry the formalize-on-create setting and the was-a-goal badge into 03 §6/§2.1, or say they were dropped. Cite IC-16/18/25/32/33 from whichever D-items or 03 sections resolve them."
+  },
+  {
+   "id": "CMP-12",
+   "severity": "minor",
+   "doc": "03",
+   "section": "§3.2 `id`; §7 sign-off 'plain-English back-translation'; §11 v1.5 'logic-skeleton English'",
+   "problem": "ids must match `^[a-z0-9]+([-_.][a-z0-9]+)*$` and are 'generated once from natural_name' (r4), but there is no rule for non-Latin text or diacritics; slugifying a Chinese sentence gives an empty id. The faithfulness check is also fixed to English. Your models may mix languages (kopiteh.lean uses kopitiam Hokkien and Malay terms), and for that the back-translation should be in the statement's own language.",
+   "suggested_fix": "Transliterate, otherwise fall back to `n-<6 hex>`, and never let Add fail on the id. Produce the back-translation in natural_name's language (a setting, defaulting to the same language). State that markup is UTF-8 and that the Lean names the agent chooses may be ASCII even when the natural language is not."
+  },
+  {
+   "id": "CMP-13",
+   "severity": "minor",
+   "doc": "03",
+   "section": "§12 'Your Claude Code login is used automatically'; §8.4 Preflight; 02 D-24 'Both read the same login'",
+   "problem": "The docs state as fact that the SDK's own pinned binary (2.1.316) reuses the login you made in the VS Code Claude extension (2.1.314). r1 marks this as inferred and never run (node isn't installed) and lists it as an open question. Preflight checks only file hashes and bwrap, not auth. If the login isn't picked up, the first press of 'These suffice' fails, and the run directions don't say what to do.",
+   "evidence": "r1-claude-slot.md, open question: 'Does the SDK-bundled binary reuse the existing /login credential with no re-login…? Test in a clean child env.' Finding: '[inferred] … Not executed here.'",
+   "suggested_fix": "Label the claim 'inferred, to be verified in the first smoke test'. Add an auth preflight: start a session with the sanitized environment, read the auth source from the SDK's init message, refuse unless it is the subscription, and tell you to sign in via the Claude Code extension. Add that line to the §12 directions."
+  },
+  {
+   "id": "CMP-14",
+   "severity": "nit",
+   "doc": "03",
+   "section": "§15 Side effects of the research phase",
+   "problem": "§15 says research 'appended 8 scratch-path lines to ~/.elan/known-projects'. The file actually holds 25 lines from research (r2 8, r4 4, r5 11, r6 1, t1 1) plus 3 from review lenses so far, so the disclosure undercounts.",
+   "evidence": "Read-only grep of ~/.elan/known-projects: 28 lines contain this session's id. My own experiment called ~/.elan/toolchains/leanprover--lean4---v4.35.0/bin/lake directly and added no entry.",
+   "suggested_fix": "At the end of the turn, report the final count and give a cleanup command that removes only this session's scratch paths. In tests and experiments, call the toolchain's own `lake` binary rather than the elan proxy, so no new entries are added."
+  }
+ ],
+ "strengths": [
+  "Appendix A is faithful and checkable. I confirmed the 55-sentence segmentation independently, verbatim and in order. t1's validator re-runs with no errors, and every one of the 53 requirements and 34 implied constraints traces back to a sentence.",
+  "Most sentences map to concrete design elements, not just IDs, including the hard ones: S26 (SelectionTray), S31 (overlay glyphs plus the native multi-file diff), S16 (rules per transition), S41 (themable aura) and S43 (a reasoned 'LSP not now', backed by Argdown's layering).",
+  "The walkthrough is treated as the acceptance test. The research checked with the Lean kernel that its three assumptions do not entail the goal, which turns S30's pragmatics into a concrete question about the missing bridging premise. Your cynder.lean reaches the same point.",
+  "★ decisions are cleanly separated from defaults, with evidence labels (verified or documented). The 'approve all ★, plus overrides' reply path respects your time.",
+  "M1 and M2 are visibly honoured in the process: an explicit RAM budget, one Lean job at a time, a 4 GB sandbox cap, sequential tests and a memory watchdog during development. Every research subagent's raw response, prompt and evidence is saved, and the plan is to save the review reports too.",
+  "Step 3 is concrete: a checksum-verified Node install without sudo, an exact toolchain pin, sudo only for the optional xvfb, disk and RAM budgets, and (since the 02:55 revision) a workable install-from-folder path with run directions."
+ ],
+ "questions_for_user": [
+  "Should one Lean project hold one mental model (subject) or several, as in your telelean_scripts folder (bank, bayonetta, cynder, kopiteh, smoking)? Do you want relations across subjects, like bayonetta's 'contrast cynder.goal'?",
+  "Should telelean switch itself on in all your Lean projects, including Mathlib ones, or only in folders you initialise as telelean models?",
+  "What should deleting an assumption do: remove it and flag what breaks, or 'suspend' it so you can explore what-if? Do you want a first-class refine/supersede relation, like 'h1 is actually …' in your cynder.lean?",
+  "When you ask in Instruct mode, may the AI propose deletions, merges, or kind changes other than goal→derivation?",
+  "Do you want a visible history of how your model evolved (your sketches keep successive versions)? May telelean run `git init` in model folders and auto-commit accepted changes?",
+  "Arrows that point into an ASSUMPTION or start from a GOAL: should they be allowed, and what should they mean? Was 'from one section to another' meant to exclude arrows within a section?",
+  "On the cards, do you want the full sentence always, or a short label (like your h1/h2) with the sentence on hover?",
+  "Will you write nodes in languages other than English? This affects how ids are generated and which language the back-translation uses.",
+  "S40 says 'click on the node and expand it'. Is it acceptable that click selects and a chevron expands instead?",
+  "Should telelean copy your sentence into a Lean docstring by default (your S40 suggestion), and should DECISION records be a fifth node kind in your Lean files?"
+ ],
+ "sentence_audit": [
+  {
+   "id": "S1",
+   "status": "addressed",
+   "where": "01 NFR-1; 03 §0, §6",
+   "note": "A VS Code extension whose board is a WebviewPanel in an editor tab."
+  },
+  {
+   "id": "S2",
+   "status": "addressed",
+   "where": "02 D-17, D-22, D-11; 03 §4, §6, §7 Gestures",
+   "note": "Click and drag re-order, re-classify or draw arrows. The Lean files in the open folder are the model. 'About a subject' is not modelled (CMP-03)."
+  },
+  {
+   "id": "S3",
+   "status": "addressed",
+   "where": "03 §2.2, §6 WorkspaceIndex/EditService, §8.4",
+   "note": "A watcher re-parses hand edits. The AI changes the model via Prove, Formalize or Instruct. Consequences of hand edits are under-specified (CMP-10)."
+  },
+  {
+   "id": "S4",
+   "status": "addressed",
+   "where": "02 D-16; 03 §7 PromptBox",
+   "note": "The switch is read, never inferred. A/D/G add nodes without the LLM; a 4th 'Instruct' position sends unmarked requests. A marked prompt never reaches the AI (App. D #4's opt-in was dropped), and LLM-7 conflicts with this (CMP-11)."
+  },
+  {
+   "id": "S5",
+   "status": "addressed",
+   "where": "02 D-1 ★; 03 §4",
+   "note": "Global axioms, with each theorem's axiom footprint (collectAxioms) tracked as a first-class fact."
+  },
+  {
+   "id": "S6",
+   "status": "addressed",
+   "where": "02 D-14; 03 §3.2 rationale, §7 'Why do you believe this?'",
+   "note": "Captured on Add and shown as 'because: …'."
+  },
+  {
+   "id": "S7",
+   "status": "addressed",
+   "where": "02 D-5, D-6, D-27 G3/G4; 03 TL103",
+   "note": "Purity is machine-checked. The LLM may only propose 'ghost' assumptions."
+  },
+  {
+   "id": "S8",
+   "status": "addressed",
+   "where": "03 §4, TL105; 02 D-20",
+   "note": "A goal stays a goal until a gate-verified proof is accepted."
+  },
+  {
+   "id": "S9",
+   "status": "addressed",
+   "where": "02 D-23 ★, D-24; 03 §8.1–8.2, §12",
+   "note": "Agent-level LlmBackend slot (Claude Agent SDK and a fake backend in v1). Installing from the repo folder lets the SDK binary resolve. Reuse of your login is inferred, and there is no auth preflight (CMP-13)."
+  },
+  {
+   "id": "S10",
+   "status": "addressed",
+   "where": "03 §0, §7 PromptBox",
+   "note": "Text box with the kind switch and a 'why' field."
+  },
+  {
+   "id": "S11",
+   "status": "addressed",
+   "where": "02 D-22; 03 §7 Design/Stack",
+   "note": "Three natively scrolling DOM columns plus an SVG overlay, measured at 3,000 cards per column at 60 fps. The Vocabulary group and DECISION drawer extend the three sections."
+  },
+  {
+   "id": "S12",
+   "status": "addressed",
+   "where": "03 §7 <Column kind=A>",
+   "note": ""
+  },
+  {
+   "id": "S13",
+   "status": "addressed",
+   "where": "03 §7 <Column kind=D>",
+   "note": ""
+  },
+  {
+   "id": "S14",
+   "status": "addressed",
+   "where": "03 §7 <Column kind=G>",
+   "note": ""
+  },
+  {
+   "id": "S15",
+   "status": "weak",
+   "where": "02 D-13 ★; 03 §2.1 Edge, §7 EdgeEngine",
+   "note": "Arrows can be drawn from ports alongside computed solid edges, and the library question is answered (custom SVG overlay). But arrows into an ASSUMPTION or out of a GOAL have no defined meaning, drawn arrows merge into one joint argument, and the promised question about the cross-section restriction was not asked (CMP-07)."
+  },
+  {
+   "id": "S16",
+   "status": "addressed",
+   "where": "02 D-17, D-20, D-11",
+   "note": "A→D becomes 'claimed', D→A becomes an axiom with a rationale, G→D only once proved, →G becomes sorry. G→A is missing. D→A discards the proof with only file-level undo (CMP-04). A→D turns dependents into TL102 errors rather than 'conditional'."
+  },
+  {
+   "id": "S17",
+   "status": "addressed",
+   "where": "01 IC-25; 03 §10 End-to-end",
+   "note": "The walkthrough is scripted with the fake backend, plus one smoke run against real Claude."
+  },
+  {
+   "id": "S18",
+   "status": "addressed",
+   "where": "02 D-16; 03 §4 Inbox",
+   "note": "Comment-only GOAL block, no LLM involved."
+  },
+  {
+   "id": "S19",
+   "status": "addressed",
+   "where": "02 D-16; 03 §3.1 binding, §3.3, §4",
+   "note": "A code-less node is a block followed by a blank line, with no sorry."
+  },
+  {
+   "id": "S20",
+   "status": "addressed",
+   "where": "02 D-14; 03 §3.2, §7",
+   "note": "The rationale is entered in the add form."
+  },
+  {
+   "id": "S21",
+   "status": "addressed",
+   "where": "same as S19",
+   "note": ""
+  },
+  {
+   "id": "S22",
+   "status": "addressed",
+   "where": "same as S20",
+   "note": ""
+  },
+  {
+   "id": "S23",
+   "status": "addressed",
+   "where": "same as S19",
+   "note": ""
+  },
+  {
+   "id": "S24",
+   "status": "addressed",
+   "where": "02 D-14; 03 TL011",
+   "note": "Rationale is optional; a 'no rationale yet' badge shows when it is missing."
+  },
+  {
+   "id": "S25",
+   "status": "addressed",
+   "where": "02 D-17, D-5",
+   "note": "Multi-select across columns by click or checkbox. No rule covers zero or several goals, or a claimed DERIVATION as the target (IC-31 is only partly answered)."
+  },
+  {
+   "id": "S26",
+   "status": "addressed",
+   "where": "03 §0, §7 SelectionTray; 02 D-5",
+   "note": "A tray below the columns shows 'prove G from {A1,A2,A3}'."
+  },
+  {
+   "id": "S27",
+   "status": "addressed",
+   "where": "03 §7 'These suffice ▶', §8.4",
+   "note": "The button starts the two-phase run."
+  },
+  {
+   "id": "S28",
+   "status": "addressed",
+   "where": "02 D-5 ★, D-6; 03 §8.5 G4",
+   "note": "Strict sufficiency is enforced by lake comparator's permitted_axioms."
+  },
+  {
+   "id": "S29",
+   "status": "addressed",
+   "where": "02 D-18 ★, D-1, D-2, D-4; 03 §8.4",
+   "note": "Phase A writes the vocabulary, axioms and `theorem … := by sorry` (the signatures); phase B proves. 'Intuitive' is limited by D-4's uninterpreted-vocabulary default and G0's ban on `notation`."
+  },
+  {
+   "id": "S30",
+   "status": "addressed",
+   "where": "02 D-19; 03 §8.3 ask_user",
+   "note": "Question cards cover generic vs universal readings, scope and granularity ('model characters as entities?'), and answers are recorded as DECISION nodes."
+  },
+  {
+   "id": "S31",
+   "status": "addressed",
+   "where": "03 §7 Proposal overlay, Toolbar overlay switch, 'Raw Lean diff…'",
+   "note": "Per-node overlay glyphs plus the native multi-file diff (vscode.changes) on a read-only proposal file system."
+  },
+  {
+   "id": "S32",
+   "status": "weak",
+   "where": "02 D-3 ★; 03 §7 VocabularyGroup",
+   "note": "New vocabulary nodes land in a group that is collapsed by default. Whether helper lemmas become nodes is unspecified, and 'untracked' declarations have no UI (CMP-06)."
+  },
+  {
+   "id": "S33",
+   "status": "addressed",
+   "where": "03 §7 ProposalBanner, §8.4; 02 D-21",
+   "note": "Accept, Feedback (continues the same session) or Reject; all-or-nothing in v1."
+  },
+  {
+   "id": "S34",
+   "status": "addressed",
+   "where": "03 §2.1–2.3",
+   "note": "TlNode, DerivedStatus, Edge and Graph types, plus the versioned export."
+  },
+  {
+   "id": "S35",
+   "status": "addressed",
+   "where": "02 D-9 ★; 03 §3",
+   "note": "Every node, DECISIONs included, is a block in a .lean file."
+  },
+  {
+   "id": "S36",
+   "status": "addressed",
+   "where": "02 D-9",
+   "note": "Treated as a suggestion and made precise. Not YAML, because YAML was verified to mangle natural-language values."
+  },
+  {
+   "id": "S37",
+   "status": "addressed",
+   "where": "02 D-9 ★, D-2 ★ option (b)",
+   "note": "The look is kept (version marker, id, kind, `type:` alias). The example's GOAL-as-`def` survives only as D-2(b), while 01 IC-24 and App. D #11 still recommend it (CMP-11)."
+  },
+  {
+   "id": "S38",
+   "status": "addressed",
+   "where": "03 §3.1, §4; 02 D-11 Inbox",
+   "note": ""
+  },
+  {
+   "id": "S39",
+   "status": "addressed",
+   "where": "02 D-2 ★; 01 §3",
+   "note": "Reinterpreted to allow sorry for formalised-but-unproved nodes, and the reinterpretation is flagged openly."
+  },
+  {
+   "id": "S40",
+   "status": "addressed",
+   "where": "02 D-10 ★, D-17; 03 §7 Node card",
+   "note": "Cards show natural language first; a chevron expands to syntax-highlighted Lean. 'Click to expand' moves to the chevron without a ★, and the docstring mirror is off by default (CMP-11)."
+  },
+  {
+   "id": "S41",
+   "status": "addressed",
+   "where": "02 D-15; 03 §7 Theming",
+   "note": "Blue aura means 'has a Lean representation' (theme colour, default charts.blue), with an outline in high-contrast themes."
+  },
+  {
+   "id": "S42",
+   "status": "addressed",
+   "where": "02 D-22; 03 §6",
+   "note": "The board is the main workspace and direct editing stays live. What happens after hand edits is weakly specified (CMP-10)."
+  },
+  {
+   "id": "S43",
+   "status": "addressed",
+   "where": "02 D-28 ★; 03 §2.3, §9",
+   "note": "LSP: not now. Core library, CLI, JSON Schema export and versioned markup. The §12 directions don't say how to run the CLI for your scripts."
+  },
+  {
+   "id": "S44",
+   "status": "weak",
+   "where": "02 D-13; 03 §16; 01 §2.7 #46",
+   "note": "No summary of what was borrowed and what differs. The short-label and duplicate-detection lessons are neither adopted nor rejected (CMP-08)."
+  },
+  {
+   "id": "S45",
+   "status": "addressed",
+   "where": "01",
+   "note": "A faithful reading, e.g. the kernel-checked finding that the walkthrough's premises don't entail the goal."
+  },
+  {
+   "id": "S46",
+   "status": "addressed",
+   "where": "01–03 throughout; 02 D-19",
+   "note": "Precise vocabulary from logic, pragmatics and HCI."
+  },
+  {
+   "id": "S47",
+   "status": "addressed",
+   "where": "01 App. A–D",
+   "note": "Re-verified: 55 rows, verbatim and in order; t1's validator reports no errors."
+  },
+  {
+   "id": "S48",
+   "status": "weak",
+   "where": "02 (34 decisions, 15 ★)",
+   "note": "Misses activation and RAM scope (CMP-01), node lifecycle (CMP-02), multiple subjects (CMP-03), board undo and history (CMP-04) and i18n (CMP-12). No D-item cites IC-16, 18, 25, 32 or 33."
+  },
+  {
+   "id": "S49",
+   "status": "addressed",
+   "where": "03 §0–§16",
+   "note": ""
+  },
+  {
+   "id": "S50",
+   "status": "addressed",
+   "where": "03 §12",
+   "note": "Actionable: Node install without sudo, with checksum; only the optional xvfb needs sudo. But some pins are not exact, @types/react(-dom) and ajv are missing, and two test downloads are unlisted (CMP-09)."
+  },
+  {
+   "id": "S51",
+   "status": "addressed",
+   "where": "03 §1; 02 'How to respond', D-32",
+   "note": "Implementation waits for approval of the ★ decisions."
+  },
+  {
+   "id": "S52",
+   "status": "addressed",
+   "where": "03 §10, §12 'How you will run it'",
+   "note": "Layered test plan, a definition of done and an install-from-folder outline. The login precondition and preflight are missing, as is CLI usage."
+  },
+  {
+   "id": "S53",
+   "status": "addressed",
+   "where": "bundle_1/",
+   "note": "Holds prompt1.md, prompt1_midturn.md, response1_interim.md, user_requested_documents/ and subagent_reports/. response1.md is still to come."
+  },
+  {
+   "id": "S54",
+   "status": "weak",
+   "where": "01 §2.7 #45, App. D #20, PROC-8",
+   "note": "The text still says mid-turn prompts get new bundles, contradicting M3/M4; the actual files comply (CMP-05)."
+  },
+  {
+   "id": "S55",
+   "status": "weak",
+   "where": "01 App. D #20",
+   "note": "The spectec example was never checked. Its layout, which I fetched, has a modelinfo file per response; bundle_1 has none (CMP-05)."
+  },
+  {
+   "id": "M1",
+   "status": "weak",
+   "where": "03 §13, §8.4, §10, §6; response1_interim.md",
+   "note": "Honoured during development (watchdog, one job at a time, sequential tests). At runtime it is unscoped: telelean runs in all Lake projects, the real-workspace build has no cap, and Mathlib cost is unmeasured. M1 is not traced in 01 (CMP-01, CMP-05)."
+  },
+  {
+   "id": "M2",
+   "status": "addressed",
+   "where": "subagent_reports/README.md, research_workflow/",
+   "note": "All 8 raw JSON responses, readable renderings, prompts and artifacts are saved; review_workflow/ is planned."
+  },
+  {
+   "id": "M3",
+   "status": "addressed",
+   "where": "bundle_1/prompt1_midturn.md, response1_interim.md",
+   "note": "bundle_2 and bundle_3 were merged, and the memory rule was updated. Doc 01's text still contradicts it (CMP-05)."
+  },
+  {
+   "id": "M4",
+   "status": "addressed",
+   "where": "bundle_1/prompt1_midturn.md",
+   "note": "Recorded verbatim; same caveat as M3."
+  }
+ ]
+}

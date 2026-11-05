@@ -1,0 +1,46 @@
+{
+ "name": "vscrui",
+ "latest": "1.1.0",
+ "dist_tags": {
+  "next": "1.0.0-beta.2940399",
+  "latest": "1.1.0"
+ },
+ "latest_published": "2026-08-12T11:59:30.254Z",
+ "modified": "2026-08-12T11:59:30.389Z",
+ "created": "2024-09-11T10:31:32.764Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 316741,
+ "fileCount": 86,
+ "tarball": "https://registry.npmjs.org/vscrui/-/vscrui-1.1.0.tgz",
+ "dependencies": {},
+ "peerDependencies": {
+  "@types/react": "*",
+  "react": "^17 || ^18 || ^19"
+ },
+ "repository": "git+ssh://git@github.com/estruyf/vscrui.git",
+ "recent_versions": [
+  [
+   "0.3.0",
+   "2025-11-20T13:28:32.046Z"
+  ],
+  [
+   "1.0.0-beta.2940222",
+   "2026-07-15T08:50:44.992Z"
+  ],
+  [
+   "1.0.0-beta.2940399",
+   "2026-07-15T09:19:05.071Z"
+  ],
+  [
+   "1.0.0",
+   "2026-07-15T09:23:37.798Z"
+  ],
+  [
+   "1.1.0",
+   "2026-08-12T11:59:30.254Z"
+  ]
+ ],
+ "homepage": "https://github.com/estruyf/vscrui",
+ "description": "A React components library for building webview-based extensions with React in Visual Studio Code."
+}

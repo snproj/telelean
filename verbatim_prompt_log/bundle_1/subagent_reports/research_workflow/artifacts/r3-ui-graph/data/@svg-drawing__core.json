@@ -1,0 +1,43 @@
+{
+ "name": "@svg-drawing/core",
+ "latest": "5.0.1-beta.0",
+ "dist_tags": {
+  "latest": "5.0.1-beta.0",
+  "debug": "4.2.4"
+ },
+ "latest_published": "2022-08-10T17:02:05.057Z",
+ "modified": "2022-08-10T17:02:05.132Z",
+ "created": "2020-07-09T14:47:33.181Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 875489,
+ "fileCount": 41,
+ "tarball": "https://registry.npmjs.org/@svg-drawing/core/-/core-5.0.1-beta.0.tgz",
+ "dependencies": {},
+ "peerDependencies": {},
+ "repository": "git+https://github.com/kmkzt/svg-drawing.git",
+ "recent_versions": [
+  [
+   "4.2.3",
+   "2022-05-22T16:23:36.574Z"
+  ],
+  [
+   "4.2.4",
+   "2022-05-24T14:49:45.193Z"
+  ],
+  [
+   "4.2.5",
+   "2022-06-28T15:58:48.337Z"
+  ],
+  [
+   "5.0.0-beta.1",
+   "2022-08-10T15:27:15.107Z"
+  ],
+  [
+   "5.0.1-beta.0",
+   "2022-08-10T17:02:05.057Z"
+  ]
+ ],
+ "homepage": "https://github.com/kmkzt/svg-drawing#readme",
+ "description": "svg drawing library."
+}

@@ -1,0 +1,42 @@
+{
+ "name": "sortablejs",
+ "latest": "1.15.7",
+ "dist_tags": {
+  "latest": "1.15.7"
+ },
+ "latest_published": "2026-02-11T22:42:31.720Z",
+ "modified": "2026-02-11T22:42:32.147Z",
+ "created": "2014-11-25T21:23:59.462Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 640152,
+ "fileCount": 14,
+ "tarball": "https://registry.npmjs.org/sortablejs/-/sortablejs-1.15.7.tgz",
+ "dependencies": {},
+ "peerDependencies": {},
+ "repository": "git://github.com/SortableJS/Sortable.git",
+ "recent_versions": [
+  [
+   "1.15.3",
+   "2024-09-01T22:55:30.201Z"
+  ],
+  [
+   "1.15.4",
+   "2024-11-24T10:31:41.749Z"
+  ],
+  [
+   "1.15.5",
+   "2024-11-27T23:13:54.713Z"
+  ],
+  [
+   "1.15.6",
+   "2024-11-28T18:21:49.918Z"
+  ],
+  [
+   "1.15.7",
+   "2026-02-11T22:42:31.720Z"
+  ]
+ ],
+ "homepage": "https://github.com/SortableJS/Sortable#readme",
+ "description": "JavaScript library for reorderable drag-and-drop lists on modern browsers and touch devices. No jQuery required. Supports Meteor, AngularJS, React, Polymer, Vue, Knockout and any CSS library, e.g. Bootstrap."
+}

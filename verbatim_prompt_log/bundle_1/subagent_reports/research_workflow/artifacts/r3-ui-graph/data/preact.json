@@ -1,0 +1,47 @@
+{
+ "name": "preact",
+ "latest": "11.1.1",
+ "dist_tags": {
+  "legacy": "8.5.3",
+  "beta": "11.0.0-beta.2",
+  "rc": "11.0.0-rc.2",
+  "latest": "11.1.1"
+ },
+ "latest_published": "2026-10-31T05:01:22.350Z",
+ "modified": "2026-10-31T05:01:22.608Z",
+ "created": "2015-09-11T02:41:33.521Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 625661,
+ "fileCount": 91,
+ "tarball": "https://registry.npmjs.org/preact/-/preact-11.1.1.tgz",
+ "dependencies": {},
+ "peerDependencies": {
+  "preact-render-to-string": ">=6.7.0"
+ },
+ "repository": "git+https://github.com/preactjs/preact.git",
+ "recent_versions": [
+  [
+   "11.0.0",
+   "2026-09-30T05:43:56.371Z"
+  ],
+  [
+   "11.0.1",
+   "2026-10-08T08:23:33.881Z"
+  ],
+  [
+   "11.0.2",
+   "2026-10-23T15:47:02.059Z"
+  ],
+  [
+   "11.1.0",
+   "2026-10-27T11:52:26.844Z"
+  ],
+  [
+   "11.1.1",
+   "2026-10-31T05:01:22.350Z"
+  ]
+ ],
+ "homepage": "https://preactjs.com",
+ "description": "Fast 4kb React-compatible Virtual DOM library."
+}

@@ -1,0 +1,5 @@
+set_option autoImplicit false
+namespace Spyro
+axiom Game : Type
+noncomputable opaque newSpyro : Game
+end Spyro

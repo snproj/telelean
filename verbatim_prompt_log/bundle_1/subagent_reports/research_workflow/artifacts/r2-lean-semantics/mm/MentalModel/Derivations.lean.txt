@@ -1,0 +1,31 @@
+import MentalModel.Assumptions
+namespace MM
+
+/- @@ telelean
+id: g.cynder
+kind: GOAL
+natural_name: "Cynder would not be a good addition to the new Spyro game"
+-/
+/-- Cynder would not be a good addition to the new Spyro game. -/
+abbrev cynder_not_good : Prop := ¬ GoodAddition Cynder newSpyro
+
+/-- Proof of the goal (turns the GOAL into a DERIVATION). -/
+theorem cynder_not_good.holds : cynder_not_good :=
+  pg_no_dark _ _ spyro_pg cynder_dark
+
+/- @@ telelean
+id: g.not_dark_and_good
+kind: GOAL
+natural_name: "Cynder is not both dark and a good addition"
+-/
+/-- Statement only: formalized but not yet proved (no sorry). -/
+abbrev not_dark_and_good : Prop := ¬ DarkAndGood newSpyro Cynder
+
+/-- A derivation that cheats with sorry. -/
+theorem sorry_deriv : ¬ DarkAndGood newSpyro Cynder := sorry
+
+/-- A derivation using classical logic. -/
+theorem classical_deriv : GoodAddition Cynder newSpyro ∨ ¬ GoodAddition Cynder newSpyro :=
+  Classical.em _
+
+end MM

@@ -1,0 +1,146 @@
+{
+  "_comment": [
+    "Edit scripts for the WP2 engine tests (docs/m2-plan.md sections 9 WP2 and 10.3), applied to a scratch copy of",
+    "test-fixtures/spyro the way Claude's Edit tool would: each oldString must occur exactly once; oldString null creates",
+    "a new file. newStringFile names an inert snippet (*.lean.txt) for text with forbidden commands (sorry, #eval)."
+  ],
+  "formalise-normative": [
+    {
+      "path": "Model/Spyro/Main.lean",
+      "oldString": "stance: rule\nasserted: 2026-11-01\n-/\n\n",
+      "newString": "stance: rule\nasserted: 2026-11-01\n-/\n/-- PG games cannot have characters with dark pasts -/\nabbrev pg_no_dark_past : Prop := ∀ (g : Game) (c : Character), IsPG g → HasDarkPast c → ¬ GoodAddition c g\naxiom pg_no_dark_past.holds : pg_no_dark_past\n\n"
+    }
+  ],
+  "formalise-literal": [
+    {
+      "path": "Model/Spyro/Vocabulary.lean",
+      "oldString": "/-- Cynder -/",
+      "newString": "/-- is in -/\naxiom InGame : Character → Game → Prop\n/-- Cynder -/"
+    },
+    {
+      "path": "Model/Spyro/Main.lean",
+      "oldString": "stance: rule\nasserted: 2026-11-01\n-/\n\n",
+      "newString": "stance: rule\nasserted: 2026-11-01\n-/\n/-- PG games cannot have characters with dark pasts -/\nabbrev pg_no_dark_past : Prop := ∀ (g : Game) (c : Character), IsPG g → HasDarkPast c → ¬ InGame c g\naxiom pg_no_dark_past.holds : pg_no_dark_past\n\n"
+    }
+  ],
+  "formalise-definition": [
+    {
+      "path": "Model/Spyro/Vocabulary.lean",
+      "oldString": "/-- Cynder -/",
+      "newString": "/-- is in -/\ndef InGame (c : Character) (g : Game) : Prop := GoodAddition c g\n/-- Cynder -/"
+    },
+    {
+      "path": "Model/Spyro/Main.lean",
+      "oldString": "stance: rule\nasserted: 2026-11-01\n-/\n\n",
+      "newString": "stance: rule\nasserted: 2026-11-01\n-/\n/-- PG games cannot have characters with dark pasts -/\nabbrev pg_no_dark_past : Prop := ∀ (g : Game) (c : Character), IsPG g → HasDarkPast c → ¬ InGame c g\naxiom pg_no_dark_past.holds : pg_no_dark_past\n\n"
+    }
+  ],
+  "prove-normative": [
+    {
+      "path": "Model/Spyro/Main.lean",
+      "oldString": "abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro\n",
+      "newString": "abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro\ntheorem cynder_not_good.holds : cynder_not_good :=\n  pg_no_dark_past.holds newSpyro cynder new_spyro_pg.holds cynder_dark_past.holds\n"
+    }
+  ],
+  "adopt-ghost": [
+    {
+      "path": "Model/Spyro/Main.lean",
+      "oldString": "/-\n@@ telelean v1\nid: cynder-not-good\n",
+      "newString": "/-\n@@ telelean v1\nid: a-character-who-cannot-be-in\ntype: ASSUMPTION\nnatural_name: A character who cannot be in a game would not be a good addition to it\nrationale: it seems obvious to me\nasserted: 2026-11-01\nlean: Spyro.not_in_game_not_good\norigin: agent\nsession: gate_fixture\nworded_by: agent\n-/\n/-- A character who cannot be in a game would not be a good addition to it -/\nabbrev not_in_game_not_good : Prop := ∀ (c : Character) (g : Game), ¬ InGame c g → ¬ GoodAddition c g\naxiom not_in_game_not_good.holds : not_in_game_not_good\n\n/-\n@@ telelean v1\nid: cynder-not-good\n"
+    }
+  ],
+  "prove-literal-adopted": [
+    {
+      "path": "Model/Spyro/Main.lean",
+      "oldString": "abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro\n",
+      "newString": "abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro\ntheorem cynder_not_good.holds : cynder_not_good :=\n  not_in_game_not_good.holds cynder newSpyro (pg_no_dark_past.holds newSpyro cynder new_spyro_pg.holds cynder_dark_past.holds)\n"
+    }
+  ],
+  "cheat-axiom": [
+    {
+      "path": "Model/Spyro/Main.lean",
+      "oldString": "abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro\n",
+      "newString": "abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro\naxiom shortcut : cynder_not_good\ntheorem cynder_not_good.holds : cynder_not_good := shortcut\n"
+    }
+  ],
+  "cheat-sorry": [
+    {
+      "path": "Model/Spyro/Main.lean",
+      "oldString": "abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro\n",
+      "newStringFile": "snippets/sorry-proof.lean.txt"
+    }
+  ],
+  "cheat-weakened-abbrev": [
+    {
+      "path": "Model/Spyro/Main.lean",
+      "oldString": "abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro\n",
+      "newString": "abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro ∨ True\ntheorem cynder_not_good.holds : cynder_not_good := Or.inr trivial\n"
+    }
+  ],
+  "cheat-weakened-type": [
+    {
+      "path": "Model/Spyro/Main.lean",
+      "oldString": "abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro\n",
+      "newString": "abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro\ntheorem cynder_not_good.holds : cynder_not_good ∨ True := Or.inr trivial\n"
+    }
+  ],
+  "cheat-vocabulary-redefined": [
+    {
+      "path": "Model/Spyro/Vocabulary.lean",
+      "oldString": "/-- would be a good addition to -/\naxiom GoodAddition : Character → Game → Prop\n",
+      "newString": "/-- would be a good addition to -/\ndef GoodAddition (c : Character) (_g : Game) : Prop := ¬ HasDarkPast c\n"
+    },
+    {
+      "path": "Model/Spyro/Main.lean",
+      "oldString": "abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro\n",
+      "newString": "abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro\ntheorem cynder_not_good.holds : cynder_not_good := fun h => h cynder_dark_past.holds\n"
+    }
+  ],
+  "cheat-edited-words": [
+    {
+      "path": "Model/Spyro/Main.lean",
+      "oldString": "natural_name: Cynder is a character who has a dark past\n",
+      "newString": "natural_name: Cynder is a character who once had a dark past\n"
+    }
+  ],
+  "cheat-eval": [
+    {
+      "path": "Model/Spyro/Main.lean",
+      "oldString": "abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro\n",
+      "newStringFile": "snippets/eval-command.lean.txt"
+    }
+  ],
+  "rebind-target": [
+    {
+      "path": "Model/Spyro/Main.lean",
+      "oldString": "lean: Spyro.cynder_not_good\n",
+      "newString": "lean: Spyro.cynder_not_good_weak\n"
+    },
+    {
+      "path": "Model/Spyro/Main.lean",
+      "oldString": "abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro\n",
+      "newString": "abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro\nabbrev cynder_not_good_weak : Prop := True\n"
+    }
+  ],
+  "lemma-unselected": [
+    {
+      "path": "Model/Spyro/Main.lean",
+      "oldString": "abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro\n",
+      "newString": "abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro\ntheorem helper : new_spyro_pg := new_spyro_pg.holds\n"
+    }
+  ],
+  "shape-violation": [
+    {
+      "path": "Model/Spyro/Vocabulary.lean",
+      "oldString": "/-- Cynder -/",
+      "newString": "/-- someone -/\naxiom someone : Character\n/-- Cynder -/"
+    }
+  ],
+  "stray-notes": [
+    {
+      "path": "Model/Spyro/notes.md",
+      "oldString": null,
+      "newString": "Claude's notes: the literal reading needs a bridge premise.\n"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+axiom Character : Type
+axiom Game : Type
+axiom Cynder : Character
+axiom newSpyro : Game
+axiom HasDarkPast : Character → Prop
+axiom IsPG : Game → Prop
+axiom GoodAddition : Character → Game → Prop
+axiom cynder_dark : HasDarkPast Cynder
+axiom spyro_pg : IsPG newSpyro
+axiom pg_no_dark : ∀ g c, IsPG g → HasDarkPast c → ¬ GoodAddition c g
+theorem t_grind : ¬ GoodAddition Cynder newSpyro := by grind [pg_no_dark, spyro_pg, cynder_dark]
+#print axioms t_grind
+theorem t_exact? : ¬ GoodAddition Cynder newSpyro := by exact?
+theorem t_simp : ¬ GoodAddition Cynder newSpyro := by simp_all [pg_no_dark, spyro_pg, cynder_dark]
+example (p q : Prop) : p ∧ q → q ∧ p := by tauto
+example (p q : Prop) : p ∧ q → q ∧ p := by aesop
+example (p q : Prop) (hp : p) (hq : q) : q ∧ p := by constructor <;> assumption

@@ -1,0 +1,11 @@
+-- 03 §4 "Structured facts" row / D-4 footprint-preserving pattern
+namespace Z
+structure Character where
+  past : String
+noncomputable opaque cynder : Character        -- no existence presupposition declared
+abbrev cynder_past : Prop := cynder.past = "dark"
+axiom cynder_past.holds : cynder_past
+theorem uses : cynder.past = "dark" := cynder_past.holds
+end Z
+#synth Nonempty Z.Character
+#print axioms Z.uses

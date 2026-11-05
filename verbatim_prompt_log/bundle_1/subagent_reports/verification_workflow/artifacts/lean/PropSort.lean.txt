@@ -1,0 +1,28 @@
+-- D-3 rule check, literally: every axiom below is one of
+--  (1) a monomorphic sort former `axiom T : Type` (no universe params),
+--  (2) a predicate/relation ending in `Prop`, or
+--  (3) a Prop-valued belief (ASSUMPTION or presupposition);
+-- constants are `noncomputable opaque c : T` with `axiom T.exists : Nonempty T` + instance.
+-- No `Sort u`, no universe parameters, no data axioms.
+namespace X
+axiom Character : Prop                                    -- rule (2): a 0-ary "predicate ending in Prop"
+axiom Game : Type                                         -- rule (1)
+axiom GoodAddition : Character → Game → Prop              -- rule (2)
+axiom Character.exists : Nonempty Character               -- rule (3): presupposition
+instance : Nonempty Character := Character.exists
+axiom Game.exists : Nonempty Game                         -- rule (3): presupposition
+instance : Nonempty Game := Game.exists
+noncomputable opaque cynder : Character
+noncomputable opaque spyro  : Character
+noncomputable opaque newSpyro : Game
+
+-- ASSUMPTION (D-2(b) form), about Spyro only
+abbrev spyro_not_good : Prop := ¬ GoodAddition spyro newSpyro
+axiom spyro_not_good.holds : spyro_not_good
+-- GOAL, about Cynder
+abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro
+theorem cynder_not_good.holds : cynder_not_good := spyro_not_good.holds
+theorem cynder_is_spyro : cynder = spyro := rfl
+end X
+#print axioms X.cynder_not_good.holds
+#print axioms X.cynder_is_spyro

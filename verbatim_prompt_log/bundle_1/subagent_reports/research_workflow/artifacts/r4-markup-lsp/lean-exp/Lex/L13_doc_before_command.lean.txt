@@ -1,0 +1,2 @@
+/-- doc before #check -/
+#check 1

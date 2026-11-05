@@ -1,0 +1,352 @@
+# inventory:disk (agent a80baf6acb2dbf39a)
+
+## items
+- **what:** Mathlib build-cache files (.ltar), pulled in by an accidental Mathlib project template
+  - **location:** /home/zhengyew/.cache/mathlib (9,022 new *.ltar among 26,300)
+  - **by:** wf_a7c3b292-09a r2-lean-semantics (agent aca4d11f56e12b6d0): 'lake +leanprover/lean4:v4.35.0 new TemplMath math-lax.toml' (lake's math template, which downloads the cache with curl)
+  - **turn:** 1
+  - **still_present:** yes
+  - **evidence:** stat %W: 9,022 .ltar files born 2026-11-01 01:33:57-01:34:56 +0800, 448,300,083 B. The other 17,278 files (837.6 MB) have ctime before the cutoff, so they were untouched. The leftover curl-658721.cfg lists 9,031 URLs on cache.mathlib.org. The pre-scan shows the command at 17:32Z. The TemplMath folder (with its Mathlib clone) no longer exists anywhere.
+  - **source:** https://cache.mathlib.org/mathlib4-master/
+  - **size:** 448.3 MB (9,022 files)
+  - **when:** 2026-11-01 01:33:57-01:34:56 +0800
+  - **removal:** find ~/.cache/mathlib -maxdepth 1 -type f -newerct '2026-11-01 01:33:00' ! -newerct '2026-11-01 01:35:30' -print | wc -l   (expect 9028: the .ltar files plus the 6 leftovers below), then run the same find with -delete
+  - **notes:** A future Mathlib project on the same version could reuse these files, so deleting them is optional. GNU find here cannot test birth time, so the command uses ctime, which picks out exactly this set.
+- **what:** Leftovers from the interrupted Mathlib download: 5 partial files and curl's URL list
+  - **location:** /home/zhengyew/.cache/mathlib/*.ltar.658721.part (5) and /home/zhengyew/.cache/mathlib/curl-658721.cfg
+  - **by:** same lake/curl run as above (r2-lean-semantics)
+  - **turn:** 1
+  - **still_present:** yes
+  - **evidence:** .part files born 01:34:26-01:34:48 (one is 200,587 B, four are 0 B). curl-658721.cfg is 1,273,371 B, born 01:33:57. The download stopped at 01:34:56 with 4 URLs never started.
+  - **size:** ~1.5 MB
+  - **when:** 2026-11-01 01:33:57-01:34:56 +0800
+  - **removal:** rm ~/.cache/mathlib/*.ltar.658721.part ~/.cache/mathlib/curl-658721.cfg
+- **what:** 28 scratchpad project paths appended to elan's known-projects list
+  - **location:** /home/zhengyew/.elan/known-projects (lines 10-37)
+  - **by:** lake/elan during the turn-1 Lean experiments of r2-lean-semantics, r4-markup-lsp, r5-agent-protocol, r6-vscode-toolchain, t1-traceability, review:red-team-simplify, review:hci-pragmatics and review:lean-soundness
+  - **turn:** 1
+  - **still_present:** yes
+  - **evidence:** File ctime 2026-11-01 03:05:23. It has 37 entries; wc -l reports 36 because the last line has no trailing newline. Lines 10-37 are all /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-.../scratchpad/{research,review}/... paths. Lines 1-9 are the user's own.
+  - **when:** 2026-11-01 01:35-03:05 +0800
+  - **removal:** grep -v '/tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/' ~/.elan/known-projects > ~/.elan/known-projects.new && mv ~/.elan/known-projects.new ~/.elan/known-projects
+  - **notes:** No Lean toolchain was downloaded. All 10 folders in ~/.elan/toolchains predate the session (newest is v4.35.0, born 2026-10-18), and ~/.elan/tmp has not changed since 2026-10-18.
+- **what:** Node.js release tarballs saved for research
+  - **location:** /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r6-vscode-toolchain/nodedl/{node-v24.22.2-linux-x64.tar.xz,node-v26.13.0-linux-x64.tar.xz}
+  - **by:** wf_a7c3b292-09a r6-vscode-toolchain (ac7b60c678b6f445a), curl
+  - **turn:** 1
+  - **still_present:** yes
+  - **evidence:** 32,039,312 B and 34,083,252 B, mtime 2026-11-01 01:45. The pre-scan shows the curl loop at 17:45Z.
+  - **source:** https://nodejs.org/dist/
+  - **version:** v24.22.2, v26.13.0
+  - **size:** 66.1 MB
+  - **when:** 2026-11-01 01:45 +0800
+  - **removal:** rm -rf /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r6-vscode-toolchain/nodedl
+- **what:** Registry metadata dumps: full npm package documents, Node release index, PyPI JSON, arXiv API XML
+  - **location:** /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r6-vscode-toolchain/npmmeta (58 files: 56 npm package documents + node-index.json, node-schedule.json); .../research/r4-markup-lsp/meta (12 npm package documents); .../research/r7-prior-art/meta (6 @argdown npm documents, 5 pypi-*.json, 3 arxiv*.xml); .../research/r1-claude-slot/npm-meta/agent-sdk-latest.json; .../research/r3-ui-graph/data (npm-registry summaries and bundlephobia tables mixed with local benchmark results, 131 files)
+  - **by:** r6-vscode-toolchain, r4-markup-lsp, r7-prior-art, r1-claude-slot, r3-ui-graph (wf_a7c3b292-09a), curl
+  - **turn:** 1
+  - **still_present:** yes
+  - **evidence:** npmmeta is 192 MB; the largest files are vite.json 39.0 MB, npm.json 25.9 MB and playwright-core.json 18.6 MB. r4/meta is 6.5 MB (mtimes 01:37-01:38). r7/meta is 852 KB (01:38-01:53). r3/data is 560 KB.
+  - **source:** registry.npmjs.org, nodejs.org, pypi.org, arXiv API, bundlephobia
+  - **size:** ~200 MB
+  - **when:** 2026-11-01 01:32-02:26 +0800
+  - **removal:** rm -rf /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r6-vscode-toolchain/npmmeta /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r4-markup-lsp/meta /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r7-prior-art/meta
+- **what:** npm package tarballs fetched for inspection, plus their extracted contents
+  - **location:** /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r1-claude-slot/{pkg-agent-sdk-0.3.316,pkg-anthropic-sdk,pkg-types-vscode}; .../research/r5-agent-protocol/dl/agent-sdk; .../research/r6-vscode-toolchain/pkgs (8 .tgz files + x-* extracted folders); .../research/r4-markup-lsp/dl/types-vscode-1.140.0; .../research/r7-prior-art/tarballs/argdown-ls; .../research/r3-ui-graph/dl (24 extracted packages, tarballs not kept)
+  - **by:** r1-claude-slot, r5-agent-protocol, r6-vscode-toolchain, r4-markup-lsp, r7-prior-art, r3-ui-graph (wf_a7c3b292-09a), using npm pack / curl
+  - **turn:** 1
+  - **still_present:** yes
+  - **evidence:** A name search found 16 archives, for example agent-sdk.tgz 1,435,061 B (01:38), pkg.tgz 2,605,339 B (01:56), playwright-core-1.64.1.tgz 3,172,161 B (01:38) and ls.tgz 362,071 B (01:48). Extracted files carry npm's 1985 mtimes, so an mtime scan misses them; they show up by ctime.
+  - **source:** registry.npmjs.org
+  - **version:** @anthropic-ai/claude-agent-sdk 0.3.316 (3 copies), @anthropic-ai/sdk 1.3.0, @types/vscode 1.140.0 (4 copies), @types/vscode-webview 1.57.5, @vscode/test-cli 0.0.15, @vscode/test-electron 3.1.0, @vscode/vsce 4.1.0, generator-code 1.12.0, playwright-core 1.64.1, @argdown/language-server 2.0.1. The r3 dl folder holds @atlaskit/pragmatic-drag-and-drop 4.0.0 (+auto-scroll 3.2.1, hitbox 3.0.0), @dnd-kit/{abstract,dom,helpers,react} 0.5.3, shiki 4.5.0 (+@shikijs core/engine-javascript/langs), react and react-dom 19.3.1, @tanstack/virtual-core 3.19.9, @vscode-elements/elements 2.5.1, highlightjs-lean 1.2.0, @leanprover/unicode-input 0.1.13 (+component 0.2.4), perfect-arrows 0.3.7, curved-arrows 0.3.0, react-xarrows 2.2.1
+  - **size:** ~105 MB (r1 33 MB, r3 dl 36 MB, r6 pkgs 26 MB, r5 6.2 MB, r7 1.7 MB, r4 ~0.9 MB)
+  - **when:** 2026-11-01 01:35-02:26 +0800 (the r4 @types/vscode was extracted at 04:38)
+- **what:** Nine shallow git clones of Lean and tooling repositories
+  - **location:** /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r7-prior-art/repos/{import-graph,LeanArchitect,lean-beam,leanblueprint,lean-lsp-mcp,learnharness,paperproof,ProofWidgets4,repl}
+  - **by:** wf_a7c3b292-09a r7-prior-art (a668a4344fd8c7db7), git clone --depth
+  - **turn:** 1
+  - **still_present:** yes
+  - **evidence:** .git folders dated 01:31-01:45, all shallow. Remotes: github.com/leanprover-community/import-graph (b8cc5dd), hanwenzhu/LeanArchitect (c948bae), leanprover/lean-beam (6417176), PatrickMassot/leanblueprint (56e066d), oOo0oOo/lean-lsp-mcp (ee7d833), amosblomqvist/learnharness (e69e852), Paper-Proof/paperproof (05c68e9), leanprover-community/ProofWidgets4 (16259c0), leanprover-community/repl (58bdde1)
+  - **source:** https://github.com
+  - **size:** 54 MB
+  - **when:** 2026-11-01 01:31-01:45 +0800
+  - **removal:** rm -rf /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r7-prior-art/repos
+  - **notes:** The other .git folders in the scratchpad were not downloaded: TemplStd, TemplLib and TemplLeanCfg come from lake's own git init, and the r5 depgit/consumer dep and verify/pkgtest Dep clones are local-path clones.
+- **what:** Single source files and web pages saved from GitHub and other sites
+  - **location:** /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r4-markup-lsp/dl/{eglot-manual/eglot.html, lspmode/lsp-mode.el, leannvim/lsp.lua, leannvim/tree.json, leanarchitect/tags.json, leanarchitect/tc_commits.json, learnharness/architecture.md, node-release/index.json, node-release/schedule.json, vscode-src/*.ts (4)} and .../research/r6-vscode-toolchain/ghsrc/vscode-lean4_src_*.ts (3)
+  - **by:** r4-markup-lsp and r6-vscode-toolchain (wf_a7c3b292-09a), curl
+  - **turn:** 1
+  - **still_present:** yes
+  - **evidence:** mtimes 01:39-02:06 (r4) and 01:46 (r6). eglot.html is 186 KB, lsp-mode.el 469 KB, Node index.json 336 KB.
+  - **source:** gnu.org, raw.githubusercontent.com / api.github.com, nodejs.org
+  - **size:** ~1.2 MB
+  - **when:** 2026-11-01 01:39-02:06 +0800
+- **what:** Chrome runtime downloads into a throwaway profile (optimization-guide ML models, variations seed, Safe Browsing data)
+  - **location:** /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r3-ui-graph/home (chrome-profile is 55 MB, of which optimization_guide_model_store is 47 MB; there are also .cache/fontconfig and .cache/mesa_shader_cache)
+  - **by:** wf_a7c3b292-09a r3-ui-graph (a6f5f2d5dab615921), which ran the system Google Chrome headless with HOME and --user-data-dir pointed at the scratchpad
+  - **turn:** 1
+  - **still_present:** yes
+  - **evidence:** chrome-profile/Last Version = 155.0.8059.39. The optimization_guide_model_store folders are dated 01:47 and profile activity runs 01:45-02:28. Matching /tmp/com.google.Chrome.* singleton folders were born 01:45:26-02:28:40.
+  - **source:** Google services contacted by Chrome itself
+  - **version:** Google Chrome 155.0.8059.39 (already installed at /opt/google/chrome)
+  - **size:** 58 MB (about 47 MB of downloaded models)
+  - **when:** 2026-11-01 01:45-02:28 +0800
+  - **removal:** rm -rf /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/research/r3-ui-graph/home
+  - **notes:** Nothing was written to the user's real ~/.config/google-chrome by these runs.
+- **what:** Claude Code and Anthropic policy pages saved into the project
+  - **location:** /home/zhengyew/telelean/verbatim_prompt_log/bundle_1/subagent_reports/policy_sources/ (code.claude.com_docs_en_agent-sdk_overview.md, code.claude.com_docs_en_authentication.md, code.claude.com_docs_en_legal-and-compliance.md, www.anthropic.com_legal_consumer-terms.html, plus a .txt made locally from the HTML)
+  - **by:** main session (curl loop)
+  - **turn:** 1
+  - **still_present:** yes
+  - **evidence:** Files dated 2026-11-01 03:25:22-03:25:49. The pre-scan lists the curl loop at 19:25Z.
+  - **source:** code.claude.com, www.anthropic.com
+  - **size:** 588 KB
+  - **when:** 2026-11-01 03:25 +0800
+- **what:** Copies of a few downloaded research files inside the project's prompt log
+  - **location:** /home/zhengyew/telelean/verbatim_prompt_log/bundle_1/subagent_reports/research_workflow/artifacts/ (for example r1-claude-slot/npm-meta/agent-sdk-latest.json and r6-vscode-toolchain/ghsrc/vscode-lean4_src_*.ts)
+  - **by:** main session (prompt-logging copies of agent artifacts)
+  - **turn:** 1
+  - **still_present:** yes
+  - **evidence:** research_workflow is 7.6 MB. A name search finds no archives, .git or .lake folders anywhere in /home/zhengyew/telelean outside node_modules and .vscode-test.
+  - **notes:** Almost everything here is the agents' own scripts, Lean files and benchmark HTML; only a handful of files are copies of web content.
+- **what:** xvfb installed with apt, plus upgrades of 4 xserver packages; run by the user at the session's request
+  - **location:** system: /usr/bin/Xvfb, /usr/bin/xvfb-run, /usr/share/doc/xvfb, /usr/bin/Xephyr, /usr/lib/xorg, dpkg database
+  - **by:** the user via sudo, as recommended in the main session's turn-1 plan (D-31: 'sudo apt install xvfb (you run this)')
+  - **turn:** between turn 1 and turn 2
+  - **still_present:** yes
+  - **evidence:** /var/log/apt/history.log: 'Commandline: apt install xvfb', 'Requested-By: zhengyew (1002)', 06:02:47-06:02:49. dpkg.log: install xvfb 2:21.1.12-1ubuntu1.9; upgrade of xserver-common, xserver-xephyr, xserver-xorg-legacy and xserver-xorg-core from 1ubuntu1.8 to 1ubuntu1.9. /usr/bin/Xvfb was born 06:02:48. No Bash call in any transcript ran sudo or apt install; r6-vscode-toolchain only ran the read-only 'apt-cache policy xvfb'. The user's turn-2 message (22:15:58Z) says: 'I've completed sudo apt install xvfb'.
+  - **source:** Ubuntu archive (apt)
+  - **version:** xvfb 2:21.1.12-1ubuntu1.9
+  - **when:** 2026-11-01 06:02:47 +0800
+  - **removal:** sudo apt remove xvfb   (the 4 upgrades are ordinary Ubuntu updates and are best kept)
+  - **notes:** Turn-2 tests then ran the test VS Code under xvfb-run, so its windows did not appear on the user's desktop.
+- **what:** Node.js 24.22.2 (bundles npm 11.19.1 and corepack 0.36.0) with command symlinks
+  - **location:** /home/zhengyew/.local/opt/node-v24.22.2-linux-x64, /home/zhengyew/.local/opt/node (symlink), /home/zhengyew/.local/bin/{node,npm,npx,corepack} (symlinks)
+  - **by:** main session: curl -fsSLO https://nodejs.org/dist/v24.22.2/node-v24.22.2-linux-x64.tar.xz, then a sha256 check and extraction
+  - **turn:** 2
+  - **still_present:** yes (tarball deleted)
+  - **evidence:** ~/.local/opt born 06:23:19; the Node folder born 06:23:23 with all 5,888 entries ctime-new; symlinks born 06:23:25. node_version.h says 24.22.2. The pre-scan shows the command at 22:23Z.
+  - **source:** https://nodejs.org/dist/v24.22.2/
+  - **version:** node 24.22.2, npm 11.19.1, corepack 0.36.0
+  - **size:** 208 MB
+  - **when:** 2026-11-01 06:23 +0800
+  - **removal:** rm -rf ~/.local/opt/node-v24.22.2-linux-x64 ~/.local/opt/node ~/.local/bin/node ~/.local/bin/npm ~/.local/bin/npx ~/.local/bin/corepack && rmdir ~/.local/opt
+  - **notes:** ~/.local/opt was created by the session. ~/.local/bin already existed (it holds the user's isabelle link from August).
+- **what:** npm install of the project's dependencies
+  - **location:** /home/zhengyew/telelean/node_modules (and package-lock.json)
+  - **by:** main session (npm install), then reused by all turn-2 agents; the scratchpad repo copies link their node_modules to this folder
+  - **turn:** 2
+  - **still_present:** yes
+  - **evidence:** node_modules born 06:24:13 and package-lock.json born 06:24:17. node_modules/.package-lock.json lists 306 entries (286 unique name@version). Only esbuild has an install script. Native binaries come from @esbuild/linux-x64 0.28.2, @rolldown/binding-linux-x64-gnu 1.2.16 and lightningcss-linux-x64-gnu 1.33.0. packages/*/node_modules hold only .vite caches.
+  - **source:** registry.npmjs.org
+  - **version:** devDependencies include typescript 6.0.3, vite 8.3.5, vitest 5.0.5, esbuild 0.28.2, @playwright/test 1.64.1, @vscode/test-electron 3.1.0, @vscode/test-cli 0.0.15, react 19.3.1, @modelcontextprotocol/sdk 1.32.2, zod 4.6.7
+  - **size:** 177 MB
+  - **when:** 2026-11-01 06:24 +0800
+  - **removal:** rm -rf ~/telelean/node_modules   (npm ci restores it)
+  - **notes:** Playwright 1.64.1 downloaded no browsers: there is no ~/.cache/ms-playwright, and the config uses channel 'chrome' (the installed Google Chrome).
+- **what:** npm cache, logs and update-check stamp
+  - **location:** /home/zhengyew/.npm (_cacache, _logs, _update-notifier-last-checked)
+  - **by:** npm run by the main session and turn-2 agents
+  - **turn:** 2
+  - **still_present:** yes
+  - **evidence:** ~/.npm born 06:23:44, so all of it is new. _cacache is 279 MB and holds tarballs for exactly the installed packages (all from registry.npmjs.org) plus about 346 metadata documents, some from 'npm view' queries. _logs keeps the last 11 debug logs (npm test/run at 08:20). There is no _npx folder, so npx downloaded nothing extra.
+  - **source:** registry.npmjs.org
+  - **size:** 279 MB
+  - **when:** 2026-11-01 06:23-08:20 +0800
+  - **removal:** rm -rf ~/.npm
+- **what:** VS Code 1.140.0 test build, downloaded by the extension test runner
+  - **location:** /home/zhengyew/telelean/packages/extension/.vscode-test/{vscode-linux-x64-1.140.0, user-data, extensions}
+  - **by:** wf_1ea207b3-94f build:board (first run at 07:01), via @vscode/test-electron 3.1.0; later reused by verify:board, fix:board and the main session's 'npm test'
+  - **turn:** 2
+  - **still_present:** yes
+  - **evidence:** vscode-linux-x64-1.140.0 born 07:01:46, 988 MB, resources/app/package.json version 1.140.0. user-data born 07:02:52 (14 MB, 14 launch log folders). extensions/extensions.json is [], so no extension was installed; the telelean extension was loaded as a development path. No archive was left behind.
+  - **source:** Microsoft's VS Code download service (standard @vscode/test-electron behaviour)
+  - **version:** VS Code 1.140.0 linux-x64
+  - **size:** ~1.0 GB
+  - **when:** 2026-11-01 07:01:46 +0800
+  - **removal:** rm -rf ~/telelean/packages/extension/.vscode-test   (the tests download it again when needed)
+  - **notes:** Six scratchpad repo copies (turn2/board-fix/probe/repo and turn2/verify-board/{repo,p1a,p1b,p1c,p2}) have their own .vscode-test folders. Each symlinks this same VS Code build and has its own user-data (5-7 MB each).
+- **what:** Network fetches made by the running test VS Code: a Chromium spell-check dictionary and VS Code's chat metadata
+  - **location:** user-data/Dictionaries/en-US-10-1.bdic and user-data/Cache/Cache_Data in /home/zhengyew/telelean/packages/extension/.vscode-test and in each of the 6 scratchpad .vscode-test copies
+  - **by:** test VS Code instances launched by build:board, verify:board, fix:board and the main session (23 launches in total: 14 + 2 + 1 + 1 + 1 + 1 + 3)
+  - **turn:** 2
+  - **still_present:** yes
+  - **evidence:** All 7 profiles have en-US-10-1.bdic (451,968 B, first at 07:02). Each HTTP cache records redirector.gvt1.com/edgedl/chrome/dict/en-us-10-1.bdic, its gvt1.com CDN redirect, and https://main.vscode-cdn.net/extensions/chat.json. The other WebStorage caches hold only the local webview bundle.
+  - **source:** redirector.gvt1.com (Google), main.vscode-cdn.net (Microsoft)
+  - **size:** ~0.5 MB per profile (~3.3 MB in total)
+  - **when:** 2026-11-01 07:02-08:20 +0800
+- **what:** 23 Copilot runtime logs written into the real home folder by the test VS Code's built-in Copilot
+  - **location:** /home/zhengyew/.copilot/logs/process-*.log (23 files from 07:02:53 to 08:20:36)
+  - **by:** test VS Code 1.140.0 instances run by turn-2 agents and the main session
+  - **turn:** 2
+  - **still_present:** yes
+  - **evidence:** Each 570-byte log's start time matches a test launch folder (for example log 07:02:53 and folder user-data/logs/20261101T070252). The content starts with 'Native runtime logging initialized ... source=github.copilot'. The other 26 logs in the folder predate the session.
+  - **size:** ~13 KB
+  - **when:** 2026-11-01 07:02-08:20 +0800
+  - **removal:** find ~/.copilot/logs -name 'process-*.log' -newerct '2026-11-01 07:00:00' ! -newerct '2026-11-01 08:21:00' -delete
+- **what:** Side effects of the Playwright tests in the system Google Chrome: transform cache, Chrome temp folders and crash reports (no browser was downloaded)
+  - **location:** /tmp/playwright-transform-cache-1002; 10 empty /tmp/com.google.Chrome.chrome_chrome_url_fetcher_.* folders dated 06:58-07:15; /home/zhengyew/.config/google-chrome/Crash Reports/completed/{07a6e357-...,5763b5b3-...}.{dmp,meta} and Crash Reports/settings.dat; /var/crash/_opt_google_chrome_chrome.1002.crash
+  - **by:** wf_1ea207b3-94f build:board and verify:board, plus later e2e runs; Chrome launched by Playwright with channel 'chrome'
+  - **turn:** 2
+  - **still_present:** yes
+  - **evidence:** The transform cache was born 06:58:04 (1 MB). The url_fetcher folders are left by Chrome's component updater, which fetches into the temporary Playwright profiles (those profiles are deleted afterwards). Two crash dumps (56-58 KB each) appeared at 07:35, and /var/crash got a 3.6 MB report owned by zhengyew at 07:35:22-07:36:05. The user's own Chrome is not running, and nothing else in ~/.config/google-chrome changed. verify:board deleted one url_fetcher folder (kP06m8) at 07:24.
+  - **size:** ~4.8 MB
+  - **when:** 2026-11-01 06:58-08:20 +0800
+  - **removal:** rm -rf /tmp/playwright-transform-cache-1002 /tmp/com.google.Chrome.chrome_chrome_url_fetcher_.{lxOjta,RzJWzq,VJBDi9,lxYmGj,d5jN7I,8KErkD,Cl6R0e,BUuNC3,eX5tCz,nXaM7N} /var/crash/_opt_google_chrome_chrome.1002.crash; rm "$HOME/.config/google-chrome/Crash Reports/completed/"{07a6e357-54d6-46b2-9467-b2711579be12,5763b5b3-ad76-4e6f-87fa-071f3135fa95}.{dmp,meta}
+  - **notes:** After about 07:15 the Chrome temp files go to a short temporary folder that the test teardown deletes, so later runs left nothing in /tmp.
+- **what:** Vitest secret-token file (a config side effect)
+  - **location:** /home/zhengyew/.local/share/vitest/.vitest-secret-token
+  - **by:** wf_1ea207b3-94f build:board ('npx vitest run' at 06:45:03)
+  - **turn:** 2
+  - **still_present:** yes
+  - **evidence:** Folder and file born 06:45:04, 37 bytes. The contents were not read.
+  - **size:** 37 B
+  - **when:** 2026-11-01 06:45:04 +0800
+  - **removal:** rm -rf ~/.local/share/vitest
+- **what:** Files from the live Claude CLI smoke test: 3 session transcripts, MCP logs, a fetched model catalog and a plugin-store entry
+  - **location:** /home/zhengyew/.claude/projects/-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn2-smoke-live-ws-{a,b,c}/ (3 .jsonl); /home/zhengyew/.cache/claude-cli-nodejs/-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn2-smoke-live-ws-{a,b,c}/mcp-logs-telelean/ (5 logs); /home/zhengyew/.claude/cache/model-catalog/<id>-cc.json; /home/zhengyew/.claude/plugins/store/cc-plugin-agents-md_builtin-b049b47b3618.json
+  - **by:** main session (node scripts/smoke-claude.mjs, which ran the Claude binary from the VS Code extension)
+  - **turn:** 2
+  - **still_present:** yes
+  - **evidence:** Metadata only. Transcripts of 60, 76 and 65 KB at 08:22:53, 08:22:59 and 08:23:08. MCP logs 08:21-08:23. model-catalog born 08:21:33 (14 KB), the same second the ws-a run started. Plugin-store entry 08:23:04.
+  - **source:** Anthropic servers, fetched by the Claude CLI itself
+  - **size:** ~230 KB
+  - **when:** 2026-11-01 08:21-08:23 +0800
+  - **removal:** rm -rf ~/.claude/projects/-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn2-smoke-live-ws-{a,b,c} ~/.cache/claude-cli-nodejs/-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn2-smoke-live-ws-{a,b,c}
+- **what:** ~/.claude.json rewritten, with 5 automatic backups
+  - **location:** /home/zhengyew/.claude.json; /home/zhengyew/.claude/backups/.claude.json.backup.{1793484940118,1793491220881,1793492493782,1793492574654,1793492803899}
+  - **by:** Claude processes. The 08:21:33 and 08:22:54 backups line up with smoke runs ws-a and ws-b. The others (06:15:40, 08:00:20, 08:26:43) match no session CLI call; Claude processes rewrite this file routinely, including the user's own VS Code panels.
+  - **turn:** 2 (partly)
+  - **still_present:** yes
+  - **evidence:** Metadata only. ~/.claude.json born 08:26:43 (76,979 B). Backup names decode to 06:15:40, 08:00:20, 08:21:33, 08:22:54 and 08:26:43 +0800, each about 76 KB.
+  - **when:** 2026-11-01 06:15-08:26 +0800
+  - **removal:** none needed (live config; the backups can be deleted if unwanted)
+- **what:** Node compile cache written by the session's Node 24.22.2
+  - **location:** /tmp/node-compile-cache/v24.22.2-x64-964aae3f-1002
+  - **by:** Node/npm run by the main session and turn-2 agents
+  - **turn:** 2
+  - **still_present:** yes
+  - **evidence:** Subfolder born 06:23:25, 671 files. The parent folder and the empty v24.21.0 subfolder were born 01:37:52 by the user's VS Code TypeScript server (Electron's Node).
+  - **size:** ~5 MB
+  - **when:** 2026-11-01 06:23-08:20 +0800
+  - **removal:** rm -rf /tmp/node-compile-cache/v24.22.2-x64-964aae3f-1002
+- **what:** Small leftovers from the test VS Code and Xvfb
+  - **location:** /tmp/vscode-ah-f115415680df (empty folder); /home/zhengyew/.cache/mesa_shader_cache/marker (touched)
+  - **by:** test VS Code agent host (08:20:36); Mesa, loaded when build:board started xvfb-run
+  - **turn:** 2
+  - **still_present:** yes
+  - **evidence:** The Mesa marker's ctime is 07:01:44.58, within 0.1 s of the birth of turn2/board-spike/node-compile-cache (07:01:44.68), which is when build:board's first xvfb-run test started. vscode-ah was born 08:20:36, during the main session's npm test run.
+  - **when:** 2026-11-01 07:01 and 08:20 +0800
+  - **removal:** rmdir /tmp/vscode-ah-f115415680df
+- **what:** Turn-1 temp leftovers in /tmp: Chrome singleton folders, lake temp setup files and Python temp folders
+  - **location:** /tmp/com.google.Chrome.{0eAeQt,0OJtda,1ueSkr,5j5lhX,Bi9tTu,bwRf51,cbaYmp,dUC4BZ,ewf1oc,GEKZBH,isMgFG,k79LzN,KVUlXV,kyaXeT,KZa4Dg,OiSs3n,TuTdcW,u3x2AG,Y0TaV9,y5ZJtq,ykBfz0} (21); /tmp/com.google.Chrome.chrome_chrome_url_fetcher_.{MaeABG,yxLSta}; /tmp/tmp.{XXQQecm0,XXc3Py5u,XXVU3Q9c,XXRv5tHm}; /tmp/{tmp7g3lnizr,tmpbdxhzpxw,tmpluzgl_lo,tmpgzxei492,tmpp56hdlfj,tmpydwikzfd}
+  - **by:** r3-ui-graph (headless Chrome, 01:45-02:28); lake runs by r5-agent-protocol (package 'model') and r2-lean-semantics (package 'mentalmodel'), 01:57-02:00; r4-markup-lsp proto/test_telelean_ref.py (tempdirs holding A/B/C/M.lean, 02:01-02:02)
+  - **turn:** 1
+  - **still_present:** yes
+  - **evidence:** The Chrome folders hold only SingletonCookie/SingletonSocket, or nothing. The tmp.XX* files are lake 'lean --setup' JSON for packages 'model' and 'mentalmodel'. The tmp* folders hold A.lean, B.lean, C.lean and M.lean, matching test_telelean_ref.py, which uses mkdtemp.
+  - **size:** <100 KB
+  - **when:** 2026-11-01 01:45-02:28 +0800
+  - **removal:** cd /tmp && rm -rf com.google.Chrome.{0eAeQt,0OJtda,1ueSkr,5j5lhX,Bi9tTu,bwRf51,cbaYmp,dUC4BZ,ewf1oc,GEKZBH,isMgFG,k79LzN,KVUlXV,kyaXeT,KZa4Dg,OiSs3n,TuTdcW,u3x2AG,Y0TaV9,y5ZJtq,ykBfz0} com.google.Chrome.chrome_chrome_url_fetcher_.{MaeABG,yxLSta} tmp.XXQQecm0 tmp.XXc3Py5u tmp.XXVU3Q9c tmp.XXRv5tHm tmp7g3lnizr tmpbdxhzpxw tmpluzgl_lo tmpgzxei492 tmpp56hdlfj tmpydwikzfd
+- **what:** The session's whole scratchpad and task-output folder (contains the downloaded research items above, plus locally built material)
+  - **location:** /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/{scratchpad,tasks}
+  - **by:** main session and all workflow agents
+  - **turn:** 1 and 2
+  - **still_present:** yes
+  - **evidence:** scratchpad is 1.3 GB: research 1.2 GB, turn2 161 MB, review 1.4 MB, verify 1 MB. tasks is 1.2 MB. Of this, about 670 MB is locally built Lean output (research/r2-lean-semantics/mm/.lake 223 MB, mm3/.lake 223 MB, r4-markup-lsp/scale/big3k/.lake 225 MB, none with downloaded packages). turn2 holds claude-strings.txt (64 MB, strings output from the local binary), redirected tool caches (node-compile-cache, playwright-transform-cache) and repo copies whose node_modules are symlinks.
+  - **size:** 1.3 GB
+  - **removal:** rm -rf /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef   (only after the session ends; it also holds this audit's own files)
+- **what:** Claude Code's own records for this session (not downloads)
+  - **location:** /home/zhengyew/.claude/projects/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef(.jsonl) and its memory folder; /home/zhengyew/.claude/file-history/03a29d54-7342-40e3-b5f0-2697a62c93ef; /home/zhengyew/.claude/session-env/03a29d54-...; /home/zhengyew/.claude/shell-snapshots/snapshot-bash-1793467390058-b9rp3l.sh; /home/zhengyew/.claude/sessions/645458.json
+  - **by:** Claude Code (main session process and workflow harness)
+  - **turn:** 1 and 2
+  - **still_present:** yes
+  - **evidence:** Metadata only. Main transcript 8.3 MB, subagents 64 MB (61 files), tool-results 2.2 MB (29 files), workflows 1.2 MB, file-history 26 files / 340 KB. session-env and shell snapshot dated 01:23:10.
+  - **size:** ~76 MB
+  - **notes:** tool-results keeps large tool outputs, which may include fetched web text as part of the transcript.
+- **what:** Discord snap update pre-download (system, not the session)
+  - **location:** /var/lib/snapd/snaps/discord_320.snap
+  - **by:** snapd auto-refresh (system)
+  - **turn:** n/a (user's system)
+  - **still_present:** yes
+  - **evidence:** 287,498,240 B, ctime 03:34. 'snap changes' #329 reads 'Pre-download discord for auto-refresh', today at 03:34; the same happened on earlier days.
+  - **size:** 287 MB
+  - **when:** 2026-11-01 03:34 +0800
+- **what:** Routine apt list and AppStream refresh, and Chrome repository keyring refresh (system, not the session)
+  - **location:** /var/lib/apt/lists, /var/cache/apt/srcpkgcache.bin, /var/lib/swcatalog (4,443 entries); /usr/share/keyrings/google-chrome.gpg
+  - **by:** apt-daily.timer (last run 05:15:46) and anacron cron.daily (07:35:29, Chrome's repository cron job)
+  - **turn:** n/a (user's system)
+  - **still_present:** yes
+  - **evidence:** systemctl list-timers shows apt-daily's last run at 05:15:46, and the list files are dated 05:15-05:16. The keyring and /var/spool/anacron/cron.daily are both dated 07:35. dpkg.log has no installs other than the 06:02 xvfb transaction.
+  - **when:** 2026-11-01 05:15 and 07:35 +0800
+- **what:** The user's own VS Code activity (snap code 267). No extensions were installed or changed.
+  - **location:** /home/zhengyew/.config/Code (History 157 entries, logs for windows opened 02:26 and 02:41, Cache_Data, Copilot Chat CLI shims in globalStorage at 02:41, storage.json); /home/zhengyew/.vscode-shared; /home/zhengyew/.copilot/ide/*.lock; /home/zhengyew/.claude/ide/{60984,20922}.lock; /home/zhengyew/.vscode/extensions/ms-python.vscode-pylance-2026.4.1/dist/.cache/local_indices (106 entries at 08:27:12); /tmp/pyright-703029-*, /tmp/pyright-637905-*, /tmp/python-languageserver-cancellation, /tmp/mcp-Zh8Xsp, /tmp/mcp-oTSrkb
+  - **by:** the user's VS Code (main process since 2026-10-31 22:50), with its Pylance, Copilot Chat and Claude Code extensions
+  - **turn:** n/a (user's app)
+  - **still_present:** yes
+  - **evidence:** Metadata only. ~/.vscode/extensions/extensions.json was last changed 2026-10-31 02:54, and no extension folder is newer. No new globalStorage folder was created in the profile. No transcript ran the 'code' CLI. New windows' renderer and Claude processes started at 02:26:30 and 02:41. The Pylance local index is a cache, not a download.
+- **what:** TypeScript typings-cache stub created by the user's VS Code (nothing downloaded)
+  - **location:** /home/zhengyew/.cache/typescript/6.0/package.json
+  - **by:** the user's VS Code TypeScript typingsInstaller (pid 677668, started 01:37:52, --globalTypingsCacheLocation /home/zhengyew/.cache/typescript/6.0)
+  - **turn:** n/a (user's app, during turn 1)
+  - **still_present:** yes
+  - **evidence:** Born 01:37:54, 19 bytes. There is no node_modules folder, so no @types were fetched; npm did not exist until 06:23.
+  - **size:** 12 KB
+  - **when:** 2026-11-01 01:37:54 +0800
+  - **notes:** It was possibly triggered by a JS/TS file opening in the editor during the session, but the process belongs to the user's VS Code.
+- **what:** A separate Claude panel the user opened in another VS Code window (folder telelean_scripts)
+  - **location:** /home/zhengyew/.cache/claude-cli-nodejs/-home-zhengyew-telelean-scripts/mcp-logs-*/2026-10-31T18-26-43-643Z.jsonl (2 new logs); /home/zhengyew/.claude/plugins/synced/.../.marketplaces.json; /home/zhengyew/.claude/sessions/703063.*; /tmp/claude-1002/-home-zhengyew-telelean-scripts/{6240828c-...,f9544b4f-...}
+  - **by:** the user's VS Code Claude extension (claude pid 703063, cwd /home/zhengyew/telelean_scripts, started 02:26:42)
+  - **turn:** n/a (user's app)
+  - **still_present:** yes
+  - **evidence:** Metadata only. Folders and files were born 02:26:36-02:26:44, and /proc/703063/cwd is /home/zhengyew/telelean_scripts. That folder's cache directory dates from 2026-07-05. No transcript was saved for that panel.
+- **what:** Snap apps' own data (Vivaldi, Telegram, Discord, VS Code snap)
+  - **location:** /home/zhengyew/snap/vivaldi (2,178 entries), /home/zhengyew/snap/telegram-desktop (73), /home/zhengyew/snap/discord (27), /home/zhengyew/snap/code/267/.config (1)
+  - **by:** the user's running apps (Vivaldi and Discord have run since 2026-10-29 17:06)
+  - **turn:** n/a (user's apps)
+  - **still_present:** yes
+  - **evidence:** Metadata only: ctime counts plus process start times from ps.
+- **what:** Desktop and personal files changed by the user's own activity
+  - **location:** /home/zhengyew/.cache/tracker3/files (06:15, 08:26); /home/zhengyew/.local/share/recently-used.xbel (06:15); /home/zhengyew/.local/state/wireplumber (06:15, 07:30); /home/zhengyew/.local/share/gnome-shell/application_state (07:40); /home/zhengyew/Pictures/Screenshots (4 screenshots at 05:14, 05:22, 06:15:27, 06:15:42); /home/zhengyew/.GlobalProtect/PanGPUI.log (01:12); /home/zhengyew/webring/Webring/Blog.lean (04:22)
+  - **by:** GNOME tracker, GNOME Shell and screenshot tool, PipeWire, the GlobalProtect VPN client, and the user's own editing
+  - **turn:** n/a (user's apps)
+  - **still_present:** yes
+  - **evidence:** The timestamps cluster around the user's screenshots (06:15). The test VS Code ran under Xvfb, so it would not appear in GNOME Shell's app tracking.
+- **what:** An empty folder moved to the Trash (a deletion, not a download)
+  - **location:** /home/zhengyew/.local/share/Trash/files/graph_representation (originally /home/zhengyew/telelean/mental_model/graph_representation)
+  - **by:** the user (D-32: 'I've removed it')
+  - **turn:** between turn 1 and turn 2
+  - **still_present:** yes (in Trash)
+  - **evidence:** The trashinfo records DeletionDate 2026-11-01T06:02:59. The folder was born 00:43, before the session. The user's turn-2 message confirms the removal.
+
+## web_fetches
+This counts only WebFetch and WebSearch calls. Their content went into the agents' context; these tools wrote nothing to disk beyond transcript storage. Total: 144 WebFetch + 26 WebSearch (deduplicated by tool_use id). Per agent: main session 2 WebFetch; turn 1 r1-claude-slot 23 WebFetch; r2-lean-semantics 4 WebFetch + 4 WebSearch; r3-ui-graph 20 + 4; r4-markup-lsp 22 + 2; r5-agent-protocol 19 + 3; r6-vscode-toolchain 11 + 1; r7-prior-art 19 + 12; t1-traceability 4 WebFetch; review:hci-pragmatics 3 WebFetch; review:completeness 3 WebFetch; turn 2 build:claude-cli 14 WebFetch; every other agent 0. There are 39 distinct WebFetch domains: code.claude.com 47, github.com 21, code.visualstudio.com 12, raw.githubusercontent.com 6, platform.claude.com 5, lean-lang.org 5, argdown.org 5, atlassian.design 3, www.w3.org 3, arxiv.org 2, neovim.io 2, microsoft.github.io 2, dndkit.com 2, gojs.net 2, shiki.style 2, vite.dev 2, and one each for icml.cc, www.gnu.org, emacs-lsp.github.io, eemeli.org, hitchdev.com, go.dev, doc.rust-lang.org, spec.commonmark.org, git-scm.com, www.rfc-editor.org, toml.io, learnharness.ai, www.scsc.uk, plato.stanford.edu, foambubble.github.io, docs.foam.md, jsoncanvas.org, jonasthewolf.github.io, reactflow.dev, eclipse.dev, www.anthropic.com, devblogs.microsoft.com, docs.npmjs.com. curl/wget output that was only printed (not saved) is left to the transcript-side inventory and is not counted here.
+
+## temp_leftovers
+- /home/zhengyew/.cache/mathlib/*.ltar.658721.part (5 partial downloads) and /home/zhengyew/.cache/mathlib/curl-658721.cfg (1.27 MB URL list) from the interrupted Mathlib download, 01:34
+- /tmp/com.google.Chrome.{0eAeQt,0OJtda,1ueSkr,5j5lhX,Bi9tTu,bwRf51,cbaYmp,dUC4BZ,ewf1oc,GEKZBH,isMgFG,k79LzN,KVUlXV,kyaXeT,KZa4Dg,OiSs3n,TuTdcW,u3x2AG,Y0TaV9,y5ZJtq,ykBfz0}: 21 Chrome singleton folders from r3-ui-graph's headless Chrome, 01:45-02:28
+- /tmp/com.google.Chrome.chrome_chrome_url_fetcher_.{MaeABG,yxLSta} (turn 1, 01:45) and .{lxOjta,RzJWzq,VJBDi9,lxYmGj,d5jN7I,8KErkD,Cl6R0e,BUuNC3,eX5tCz,nXaM7N} (turn 2 Playwright, 06:58-07:15): empty Chrome component-updater folders
+- /tmp/tmp.XXQQecm0, /tmp/tmp.XXc3Py5u, /tmp/tmp.XXVU3Q9c, /tmp/tmp.XXRv5tHm: lake temp setup JSON from r5/r2 Lean runs, 01:57-02:00
+- /tmp/tmp7g3lnizr, /tmp/tmpbdxhzpxw, /tmp/tmpluzgl_lo, /tmp/tmpgzxei492, /tmp/tmpp56hdlfj, /tmp/tmpydwikzfd: Python mkdtemp folders from r4-markup-lsp proto/test_telelean_ref.py, 02:01-02:02
+- /tmp/node-compile-cache/v24.22.2-x64-964aae3f-1002 (671 files, ~5 MB; the parent folder belongs to the user's VS Code)
+- /tmp/playwright-transform-cache-1002 (~1 MB)
+- /tmp/vscode-ah-f115415680df (empty, test VS Code agent host)
+- /home/zhengyew/.config/google-chrome/Crash Reports/completed/07a6e357-54d6-46b2-9467-b2711579be12.{dmp,meta} and 5763b5b3-ad76-4e6f-87fa-071f3135fa95.{dmp,meta}, plus /var/crash/_opt_google_chrome_chrome.1002.crash (3.6 MB): crash of the session's Playwright Chrome at 07:35
+- /home/zhengyew/.copilot/logs/process-*.log: the 23 files from 07:02:53 to 08:20:36, written by the test VS Code instances
+- /home/zhengyew/.local/share/vitest/.vitest-secret-token
+- /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad (1.3 GB, including all turn-1 research downloads) and .../tasks (1.2 MB)
+
+## uncertain
+- /home/zhengyew/.claude/plugins/plugin-directory-cache-v2.json (2.7 MB, born 02:33:59): Claude Code's plugin-directory download. It could be this session's process or the user's telelean_scripts panel opened at 02:26; the disk can't tell which.
+- /home/zhengyew/.claude/skills/synced/.../manifest.json (08:26:04): Claude Code's background skill sync (a download by the app, not a tool call); which process did it is unknown.
+- The ~/.claude.json backups at 06:15:40, 08:00:20 and 08:26:43, and the 08:26:43 rewrite, match no session CLI call. Any running Claude process, including the user's own panels, rewrites this file. Only the 08:21:33 and 08:22:54 backups line up with smoke runs.
+- /home/zhengyew/.claude/settings.json changed at 01:20:07. No session tool call wrote it (the session only read it at 01:23:57), so the user or the app probably did. /home/zhengyew/.claude/.credentials.json ctime 01:47:25 is a token refresh by some Claude process (only metadata was checked).
+- /home/zhengyew/.gnupg directory ctime 07:36:55: an entry was created and removed; pubring.kbx and trustdb.gpg are unchanged since 2026-04-30. No session command used gpg, and the origin is unknown. It is not a download.
+- /home/zhengyew/.local/share/gnome-shell/application_state (07:40) and wireplumber default-routes (07:30) look like the user's own desktop activity, because the test VS Code ran under Xvfb. That can't be ruled out completely.
+- /tmp/claude-1002/bundled-skills/2.1.314 (2.4 MB, 01:25:58): skills that ship inside the Claude Code binary, extracted to /tmp (not a network download). Which Claude process did it is unknown.
+- /tmp/vscode-typescript1002 is a TypeScript-server pipe folder shared by the user's VS Code (born 2026-10-31 22:49) and probably the test VS Code (entries changed 08:20). It holds no downloads.
+- The empty url_fetcher folders show that Chrome's component updater fetched data into temporary profiles (the turn-2 Playwright profiles, deleted afterwards). What it fetched can't be recovered from disk.
+- The deleted TemplMath project (Mathlib template clone and dependencies under its .lake/packages) is gone, so its size can't be measured from disk. Only the ~/.cache/mathlib files remain.
+
+## method
+Read-only, with no network use. The shell's 'find' is a bfs wrapper, so I used ISO timestamps with it and /usr/bin/find (GNU) elsewhere. GNU find here cannot test birth time, so I got birth times from stat %W and relied on ctime for selection. (1) Ran find over $HOME with -xdev -newerct 2026-10-31T17:00Z, with no exclusions, and counted entries per top-level item: telelean, .cache, .local, .npm, snap, .config, .claude, .vscode, .copilot, Pictures, .vscode-shared, webring, .gnupg, .GlobalProtect, .elan, .claude.json. Then drilled into each area with birth, ctime and mtime. For ~/.claude, ~/.config and ~/snap I used names, sizes and times only, and never read .credentials.json. (2) Listed /tmp and /var/tmp entries owned by uid 1002 and changed since the cutoff, and checked /dev/shm. In the session scratchpad I searched by name for archives (16 found), .git folders (read remotes, HEAD and shallow flags with git config/rev-parse), node_modules (all symlinks to the project's), .lake folders and their packages (no Mathlib anywhere), registry dumps, and the throwaway Chrome profile. (3) Checked ~/.vscode/extensions (unchanged since 2026-10-31 02:54), the user's VS Code profile (no new storage folders), the project's .vscode-test and its 6 copies (extensions.json = [], with their HTTP caches and dictionaries), and confirmed there is no ~/.cache/ms-playwright. (4) Checked ~/.elan/toolchains (no new toolchain) and known-projects (28 session lines). (5) Scanned the rest of the root filesystem by ctime and read apt/dpkg logs, snap changes, systemd timers, anacron stamps and /var/crash. (6) Matched npm cache keys against node_modules/.package-lock.json. For attribution I used process start times and cwd from ps and /proc, workflow journals (agent id to label), and targeted reads of the transcripts. These found the user's 'I've completed sudo apt install xvfb' message, confirmed that no session Bash call ran sudo, apt/snap/pip install or the code CLI, and identified who created the vitest token and /tmp leftovers. I also used the pre-scan for exact commands (Node curl, lake new TemplMath).
+

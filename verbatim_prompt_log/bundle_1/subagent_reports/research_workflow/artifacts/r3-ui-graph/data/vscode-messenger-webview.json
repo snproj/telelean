@@ -1,0 +1,45 @@
+{
+ "name": "vscode-messenger-webview",
+ "latest": "0.7.0",
+ "dist_tags": {
+  "latest": "0.7.0",
+  "next": "0.7.0-next.ab54f39"
+ },
+ "latest_published": "2026-09-04T11:16:57.696Z",
+ "modified": "2026-09-04T11:16:57.983Z",
+ "created": "2022-04-22T08:21:28.966Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 50970,
+ "fileCount": 17,
+ "tarball": "https://registry.npmjs.org/vscode-messenger-webview/-/vscode-messenger-webview-0.7.0.tgz",
+ "dependencies": {
+  "vscode-messenger-common": "^0.7"
+ },
+ "peerDependencies": {},
+ "repository": "git+https://github.com/TypeFox/vscode-messenger.git",
+ "recent_versions": [
+  [
+   "0.6.0-next.aea0a84",
+   "2026-01-15T15:04:44.742Z"
+  ],
+  [
+   "0.6.0",
+   "2026-01-15T15:09:38.758Z"
+  ],
+  [
+   "0.6.1",
+   "2026-05-22T07:51:50.070Z"
+  ],
+  [
+   "0.7.0-next.ab54f39",
+   "2026-09-04T08:38:38.620Z"
+  ],
+  [
+   "0.7.0",
+   "2026-09-04T11:16:57.696Z"
+  ]
+ ],
+ "homepage": "https://github.com/TypeFox/vscode-messenger#readme",
+ "description": "VS Code Messenger: webview integration"
+}

@@ -1,0 +1,11 @@
+module
+public import ModModel.A
+@[expose] public section
+namespace MM
+/-- A derivation whose proof body may change. -/
+theorem dark_again : HasDarkPast Cynder ∧ True := ⟨cynder_dark, trivial⟩
+theorem em_use : HasDarkPast Cynder ∨ ¬ HasDarkPast Cynder := Classical.em _
+def stmtD : Prop := HasDarkPast Cynder
+abbrev stmtA : Prop := HasDarkPast Cynder
+@[expose] def stmtE : Prop := HasDarkPast Cynder
+end MM

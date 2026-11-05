@@ -1,0 +1,50 @@
+{
+ "name": "@dnd-kit/vue",
+ "latest": "0.5.3",
+ "dist_tags": {
+  "latest": "0.5.3",
+  "beta": "0.5.3-beta-20261031140713"
+ },
+ "latest_published": "2026-10-31T14:11:08.657Z",
+ "modified": "2026-10-31T14:11:08.982Z",
+ "created": "2026-02-10T02:17:30.737Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 157283,
+ "fileCount": 23,
+ "tarball": "https://registry.npmjs.org/@dnd-kit/vue/-/vue-0.5.3.tgz",
+ "dependencies": {
+  "tslib": "^2.6.2",
+  "@dnd-kit/dom": "^0.5.3",
+  "@dnd-kit/state": "^0.5.3",
+  "@dnd-kit/abstract": "^0.5.3"
+ },
+ "peerDependencies": {
+  "vue": "^3.5.0"
+ },
+ "repository": "git+https://github.com/clauderic/dnd-kit.git",
+ "recent_versions": [
+  [
+   "0.5.2-beta-20261029020134",
+   "2026-10-29T02:03:05.189Z"
+  ],
+  [
+   "0.5.2-beta-20261030024109",
+   "2026-10-30T02:42:43.282Z"
+  ],
+  [
+   "0.5.2",
+   "2026-10-31T14:04:03.971Z"
+  ],
+  [
+   "0.5.3-beta-20261031140713",
+   "2026-10-31T14:08:18.028Z"
+  ],
+  [
+   "0.5.3",
+   "2026-10-31T14:11:08.657Z"
+  ]
+ ],
+ "homepage": "https://github.com/clauderic/dnd-kit#readme",
+ "description": "[![Stable release](https://img.shields.io/npm/v/@dnd-kit/vue.svg)](https://npm.im/@dnd-kit/vue)"
+}

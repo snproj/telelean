@@ -1,0 +1,49 @@
+{
+ "name": "@floating-ui/react",
+ "latest": "0.27.20",
+ "dist_tags": {
+  "latest": "0.27.20"
+ },
+ "latest_published": "2026-07-11T08:41:33.223Z",
+ "modified": "2026-07-11T08:41:33.559Z",
+ "created": "2022-12-10T23:48:31.423Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 934317,
+ "fileCount": 19,
+ "tarball": "https://registry.npmjs.org/@floating-ui/react/-/react-0.27.20.tgz",
+ "dependencies": {
+  "tabbable": "^6.0.0",
+  "@floating-ui/react-dom": "^2.1.9",
+  "@floating-ui/utils": "^0.2.12"
+ },
+ "peerDependencies": {
+  "react": ">=17.0.0",
+  "react-dom": ">=17.0.0"
+ },
+ "repository": "git+https://github.com/floating-ui/floating-ui.git",
+ "recent_versions": [
+  [
+   "0.27.16",
+   "2025-08-21T06:33:44.461Z"
+  ],
+  [
+   "0.27.17",
+   "2026-01-27T16:27:18.745Z"
+  ],
+  [
+   "0.27.18",
+   "2026-02-17T05:43:01.596Z"
+  ],
+  [
+   "0.27.19",
+   "2026-03-03T03:02:09.664Z"
+  ],
+  [
+   "0.27.20",
+   "2026-07-11T08:41:33.223Z"
+  ]
+ ],
+ "homepage": "https://floating-ui.com/docs/react",
+ "description": "Floating UI for React"
+}

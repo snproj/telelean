@@ -1,0 +1,1217 @@
+{
+ "package_overview": "Four independent suites, one per package, all deliberately sequential (vitest fileParallelism: false, one Playwright worker, one VS Code instance at a time) because of the RAM rule. File headers cite acceptance-test ids from docs/m1-plan.md or docs/m2-plan.md; the two plans reuse AT1.x-AT6.x for different work packages (M1: markup, model/planner, semantic, workspace, extension, webview; M2: gate rules, engine/shadow, RunManager, proposals, extension, webview).\n\ncore (pure TS; `cd packages/core && npm test` = tsc -p tsconfig.test.json, then vitest run). Unit tests of markup (lexer, parser, serializer, values, edits, Lean ops; ported research cases, property, robustness and scale tests), the project model (statuses, edges, vocabulary, stale facts, subjects, diagnostics), the planner (D-11, delete, conditional proofs, carry-overs), graph.json and its committed schema, the protocol, and the M2 gate rules (G0, permitted set/freeze, evaluateRules incl. cheats, carriers, notices, normalisation, ghost adoption) plus proposal codecs/diff. Lean facts are hand-written JSON (test/fixtures/project), derived from text (project/helpers/fakeFacts.ts) or recorded from real Lean 4.35 (gate/realFacts). Fixtures are read through Vite `?raw` (core has no Node types).\n\nrunner (Node; `cd packages/runner && npm test` = vitest run with TELELEAN_NO_REAL_CLAUDE=1 and 180 s timeouts; `npm run typecheck` checks src and tests). Three layers. (1) Parsers on recorded Lean/Lake output and pure helpers (semantic/*, gate/pure, llm/streamJson, llm/argvEnv, lean/profile-shadow). (2) Real-Lean integration under runLean (systemd-run --user scope, bwrap, MemoryMax, toolchain v4.35.0 from ~/.elan, LEAN_NUM_THREADS=4) on scratch copies of test-fixtures/ or mental_model/, git only in scratch repos: lean/*, semantic/refresh, gate/engine and gate/rules (Claude played by test-fixtures/gate/edits.json), shadow, workspace, proposal/build, integration/*, and run/walkthrough.e2e, where the FakeBackend plays test-fixtures/walkthrough/*.json: both readings plus a 20-script cheat catalogue (added axiom, sorry, weakened abbrev/type, unselected premise, rebind-target, helper lemma, definition-belief, redefined vocabulary, #eval, proof before freeze, edited words, give-up, goal-premise axiom/belief, derivation-premise proof, private lemma, two carrier cases, example). These assert that no telelean-<runId>-* systemd unit is left; several skip below 12 GB MemAvailable. (3) Fakes: run/manager.* via run/helpers (FakeEngine, FakeShadow, fake services, TrackingBackend, fake timers); llm/* against the FakeBackend, the CLI double fixtures/fake-claude.mjs with a real loopback MCP server, and the path-guard hook. Knobs: TELELEAN_TEST_TMP, TELELEAN_KEEP_TMP=1, TELELEAN_ALLOW_REAL_CLAUDE_VERSION=1.\n\nextension: `npm run test:unit` (vitest; `vscode` aliased to test/unit/vscodeStub.ts) covers host logic, the edit applier, manifest/settings, the bundle, host restore and run wiring. `npm run build:all && npm run test:smoke`: scripts/smoke.mjs makes an isolated profile under $TELELEAN_TEST_TMP/vscode-<pid> (HOME, XDG_*, user-data, extensions, a ws with model copies) and runs `xvfb-run npx vscode-test` (VS Code 1.140.0, mocha tdd) as two instances: smoke (activation, board, boards with a fake workspace via testing.useRunner, model with the real workspace and Lean, runs with a FakeBackend) and e2e (e2e.test.ts, e2e-runs.test.ts driving the real board over CDP). Afterwards it fails on changes in the real ~/.config/Code, ~/.copilot, Chrome dirs or trash and on leftover processes or units. TELELEAN_SMOKE_GREP filters; `npm test` runs typecheck, build, unit and smoke.\n\nwebview: `npm run test:unit` (DOM-free store, run model, geometry, edges, formatting, card data, theme CSS); `npm run build && npm run test:e2e` runs Playwright (installed Chrome, headless, one worker) on the built bundle served at 127.0.0.1:41739 with a mock acquireVsCodeApi and the real CSP. Every spec fails on console, page or CSP errors; home-guard and chrome-tmp keep Chrome out of the real home. Root `npm test` runs every package's script.\n\nQuota tripwires (plan 10.4): (1) TELELEAN_NO_REAL_CLAUDE=1 in both vitest configs, .vscode-test.mjs and smoke.mjs: createClaudeBackend refuses without a scratch resolve, and ClaudeCliBackend.startSession launches only node plus a test-fixture double (llm/tripwire, run/backend). (2) The Test-mode extension never builds the real backend; only testing.useRunBackend installs one (unit/runBackend, hostRuns, realRuns). (3) The live scripts are dry by default and refuse half-armed or tripwired runs (run/smokeScript, walkthroughScript, quotaTripwire). No test runs real Claude.\n\nDocs vs code: core edit/conditional.test.ts cites a missing runner integration/conditional.test.ts (its real-Lean counterpart is integration/fixes.test.ts); helper headers (fakeMarkup, scenarios, parseFixture, gate/helpers, run/helpers/*, proposal/helpers, m2-carryover.spec) still describe stubs and gated blocks, but nothing is gated now; no test reads llm/fixtures/recorded-cli-2.1.314 although docs/m2-plan.md says tests use it; the walkthrough README says the RunManager unit tests use its scripts, but they script inline.",
+ "files": [
+  {
+   "path": "packages/core/test/carryover/confirmedDependents.test.ts",
+   "purpose": "AT1.13 (M1 carry-over 3): a kind change's dependents choice applies only to the dependents the dialog listed (confirmedDependents); when the facts find more (e.g. the card-less lemma Spyro.helper) planKindChange/planAction refuse with needs-confirmation listing all of them. Also covers the D->A drop-arguments case and changes that need no confirmation.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/edit (planKindChange, planAction), src/kindChange, src/project (subjectGraph), src/actions; gate/helpers/spyroRun, project/helpers/build, project/helpers/spyro"
+  },
+  {
+   "path": "packages/core/test/carryover/externalUsers.test.ts",
+   "purpose": "AT1.11 (carry-over 1): subjectGraph fills LeanBinding.externalUsers with users of a card's statement or .holds that its board does not show (card-less lemmas, another subject's card), proof uses before statement uses. Checks the text-scan fallback for stale files and for no facts, and that the board copies nodes rather than mutating the model.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/project (buildProjectModel, subjectGraph), src/markup/api; fixtures/carryover/*.lean; gate/helpers/spyroRun, project/helpers/fakeFacts, project/helpers/spyro"
+  },
+  {
+   "path": "packages/core/test/carryover/kindTexts.test.ts",
+   "purpose": "AT1.12 (carry-over 2): exact singular and plural dependents texts of kindChangeImpact (the board dialog, fresh and stale facts) and of planKindChange's needs-confirmation messages, for A->G and for D->A of a proof taking hypotheses.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/kindChange, src/edit, src/project, src/actions; project/helpers/build, gate/helpers/spyroRun"
+  },
+  {
+   "path": "packages/core/test/contracts.test.ts",
+   "purpose": "Tests the M1 contract code: Spyro sample card data (refs point at identifiers, uses/presupposes resolve), D-11 drop-zone impacts of kindChangeImpact and proofDependents, layout.json helpers, path conventions (module/subject/inbox/layout/attic paths, snapshot scope, lenient config), the exact subjectScaffold texts and buildGraph defaults.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/index (samples, kindChange, layout, paths, config, scaffold, graph helpers)"
+  },
+  {
+   "path": "packages/core/test/edit/bindings.test.ts",
+   "purpose": "A plan never re-binds another card as a side effect: deleting a block (card only or with its Lean) leaves a blank line so the code-less block above does not silently bind to the declarations left behind. Real parser and primitives.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/edit (planAction), src/markup/api (parseLeanFile), src/project (buildProjectModel)"
+  },
+  {
+   "path": "packages/core/test/edit/conditional.test.ts",
+   "purpose": "D-11 on conditional proofs (theorem d.holds (h : a) : d): conditional status and verified edge, D->A asks and 'rewrite' drops arguments, 'mark broken', D->G replaces each application by a new hypothesis, unsafe uses refused, card-less lemma users; plus the A->G rewrite with Lean's reference forms (@H, duplicated @c, parenthesised (c)). Its header cites runner integration/conditional.test.ts, which does not exist; the real-Lean counterpart is runner integration/fixes.test.ts.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/edit, src/kindChange, src/markup/api, src/project, src/project/text (LineMap), src/facts; edit/helpers/confirm, project/helpers/build, project/helpers/fakeFacts"
+  },
+  {
+   "path": "packages/core/test/edit/delete.test.ts",
+   "purpose": "AT2.7 planDelete (premise removals, removed declarations, broken dependents, keepLean leaving an unmarked axiom) and D-18: delete with its Lean asks first (needs-confirmation, singular/plural wording) and proceeds when confirmed, kept or unused. AT2.6 reorder is layout-only; set-premises refuses cycles, self, unknown or foreign cards, and empty premises with not-yet ('Self-evident? arrives with Claude in M2').",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/edit (planAction, planDelete), src/layout, src/actions; project/helpers/build"
+  },
+  {
+   "path": "packages/core/test/edit/helpers/confirm.ts",
+   "purpose": "Mirrors the board's kind-change flow for the planner tests: ask planKindChange without a choice, take the needs-confirmation dependents (what the dialog shows), then resend with confirmedDependents set to exactly that list.",
+   "key_exports": "listedDependents, confirmed, confirmedAction",
+   "depends_on": "src/edit (planKindChange), src/actions, src/model, src/project/types"
+  },
+  {
+   "path": "packages/core/test/edit/helpers/fakeMarkup.ts",
+   "purpose": "Reference fake of markup/api's text primitives written from their documentation (renderBlock, setBlockField, removeBlockEdits, insertBlockEdits, applyLeanOps, deriveId, escapes, parseLeanFile via parseFixture), swapped in with vi.mock by plans.fake.test.ts. Its header still says the real-primitive run is skipped until WP-markup exists; plans.wp1.test.ts runs ungated.",
+   "key_exports": "fakeMarkup plus escapeJsonValue, formatFieldValue, escapeBodyText, renderBlock, deriveId, applyTextEdits, setBlockField, removeBlockEdits, insertBlockEdits, applyLeanOps, parseLeanFile",
+   "depends_on": "src/markup/types; project/helpers/parseFixture"
+  },
+  {
+   "path": "packages/core/test/edit/helpers/scenarios.ts",
+   "purpose": "planScenarios(parse) registers the AT2.6-AT2.8 planner text scenarios with exact expected file texts, labels, layouts and archives: add-node (Inbox creation and import, unique ids, escaping), edit-node (docstring mirror, pin and derived id), set-premises, create-subject, delete-node (archive, keepLean) and change-kind (G->A, A->G rewrite or mark-broken, A->D).",
+   "key_exports": "planScenarios",
+   "depends_on": "src/edit (planAction), src/project, src/layout, src/actions; project/helpers/fakeFacts, project/helpers/spyro"
+  },
+  {
+   "path": "packages/core/test/edit/kindChange.test.ts",
+   "purpose": "AT2.8: planKindChange covers every cell of the D-11 table, its refusals (needs-confirmation, facts-stale, unsafe for non-theorem users or hidden axiom use), the rewrite's op order and replace spans, fresh hypothesis names, text-scan dependents without facts, and that its impact equals kindChangeImpact on the same graph.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/edit (planKindChange, planKind.modelSemantic), src/kindChange, src/project, src/markup/types; edit/helpers/confirm, project/helpers/build"
+  },
+  {
+   "path": "packages/core/test/edit/plans.fake.test.ts",
+   "purpose": "Runs planScenarios with markup/api mocked by fakeMarkup and the fixture parser, so the planner's orchestration (sessions, re-parsing, block re-location, Lean ops before block edits) is tested independently of the real primitives.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "edit/helpers/scenarios, edit/helpers/fakeMarkup (via vi.mock of src/markup/api), project/helpers/parseFixture"
+  },
+  {
+   "path": "packages/core/test/edit/plans.wp1.test.ts",
+   "purpose": "Runs the same planScenarios with the real parseLeanFile and markup primitives (integrated, no gate).",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "edit/helpers/scenarios, src/markup/api"
+  },
+  {
+   "path": "packages/core/test/edit/staleUsers.test.ts",
+   "purpose": "While a file is not freshly checked, the guard against removing a used .holds relies on a text scan; this checks it finds uses inside the namespace, fully qualified, through `open S in`, `open S`, `namespace Other` + `open S` and `export`, and asks nothing for an unrelated file.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/edit (planAction), src/markup/api, src/project; project/helpers/build, project/helpers/fakeFacts"
+  },
+  {
+   "path": "packages/core/test/export/graphJson.test.ts",
+   "purpose": "AT2.10: toGraphJson exports the Spyro model (nodes, vocabulary, edges, files with hashes, diagnostics) and validates against the zod graphJsonSchema; proved footprints and verified edges; semantic.stale semantics; determinism regardless of input order; a project with every field filled; rejection of broken documents while accepting unknown properties and format 1.0.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/export (toGraphJson, schema), src/project; project/helpers/build, parseFixture, spyro"
+  },
+  {
+   "path": "packages/core/test/export/schema.test.ts",
+   "purpose": "The committed schema/telelean-graph-1.0.schema.json must equal the JSON Schema generated from zod (UPDATE_SCHEMA=1 rewrites it through a dynamic node:fs import); checks the required top-level keys and open additionalProperties, and that zod stays out of the bundled entry points (export/index, graphJson, core index).",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/export/schema (graphJsonJsonSchema); raw sources of src/export/index.ts, graphJson.ts, src/index.ts"
+  },
+  {
+   "path": "packages/core/test/fixtures/carryover/Other-Main.lean",
+   "purpose": "Fixture module of a second subject Other with a DERIVATION card other-dark whose statement and proof use Spyro.cynder_dark_past(.holds): another subject's card as an external user.",
+   "key_exports": "none (fixture data)",
+   "depends_on": "consumed by carryover/externalUsers.test.ts"
+  },
+  {
+   "path": "packages/core/test/fixtures/carryover/Spyro-Lemmas.lean",
+   "purpose": "Fixture with two card-less lemmas (helper, and helper2 resting on it) that use cynder_dark_past.holds, for the externalUsers carry-over.",
+   "key_exports": "none (fixture data)",
+   "depends_on": "consumed by carryover/externalUsers.test.ts"
+  },
+  {
+   "path": "packages/core/test/fixtures/project/spyro-derived-facts.json",
+   "purpose": "Hand-written LeanFacts (telelean-lean-facts v1, 23 declarations) for the derived Spyro variant, including Lean's And.right ref on the `.2` projection.",
+   "key_exports": "none (fixture data)",
+   "depends_on": "loaded by project/helpers/spyro.ts (spyroDerivedFacts)"
+  },
+  {
+   "path": "packages/core/test/fixtures/project/spyro-derived/Main.lean",
+   "purpose": "The proved Spyro Main plus a DERIVATION dark-and-pg and a GOAL pg-again proved via dark_and_pg.holds.2 (a proof through a derivation, AT2.11).",
+   "key_exports": "none (fixture data)",
+   "depends_on": "loaded by project/helpers/spyro.ts; also read by runner test/integration/session.test.ts"
+  },
+  {
+   "path": "packages/core/test/fixtures/project/spyro-facts.json",
+   "purpose": "Hand-written LeanFacts for test-fixtures/spyro (3 modules, 16 declarations, toolchain v4.35.0, sha-* hashes); project/spyro.test.ts checks it against the fixture text and runner integration/session.test.ts against real Lean.",
+   "key_exports": "none (fixture data)",
+   "depends_on": "loaded by project/helpers/spyro.ts (spyroFacts)"
+  },
+  {
+   "path": "packages/core/test/fixtures/project/spyro-proved-facts.json",
+   "purpose": "Hand-written LeanFacts for the proved overlay (19 declarations, the theorem cynder_not_good.holds with its axioms).",
+   "key_exports": "none (fixture data)",
+   "depends_on": "loaded by project/helpers/spyro.ts (spyroProvedFacts)"
+  },
+  {
+   "path": "packages/core/test/fixtures/proposal/attempts.jsonl",
+   "purpose": "An attempts.jsonl sample mixing valid attempt records and resolutions with a blank line, a non-JSON line, a newer version, a foreign format, a bad verdict and an extra key, to exercise the codec's skip and drop rules and summariseAttempts.",
+   "key_exports": "none (fixture data)",
+   "depends_on": "consumed by proposal/codecs.test.ts"
+  },
+  {
+   "path": "packages/core/test/gate/adoption.test.ts",
+   "purpose": "AT1.6 planGhostAdoption: inserts Claude's suggested premise as a new ASSUMPTION card (block with origin/session/worded_by agent, docstring, collapsed abbrev, axiom .holds) right before the target's block and adds it to the target's premises; parses back correctly; lean-name fallback and suffixing, unique node ids; refuses comment delimiters, the injected statement, sorry, multi-line metadata, bad dates/sessions and unknown targets; escapes delimiters in the sentence.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/gate (planGhostAdoption), src/actions; gate/helpers/spyroRun"
+  },
+  {
+   "path": "packages/core/test/gate/carriers.test.ts",
+   "purpose": "Fixer round 2: proofs carried by non-theorems (a PLift def, an Inhabited instance, a structure field default, a `where` declaration) are footprint findings, and proof-before-freeze (token carrier) before the freeze; legitimate vocabulary, definitions, presupposition instances and generated fields pass; private declarations without facts fail closed; names only Lean reports are judged only when new. Facts are shaped like Lean 4.35's.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/gate (evaluateRules, frozenSnapshot, describeFinding, attemptNotice), src/facts, src/project, src/project/text; gate/helpers/spyroRun, project/helpers/fakeFacts"
+  },
+  {
+   "path": "packages/core/test/gate/describe.test.ts",
+   "purpose": "AT1.8: describeFinding and attemptNotice give the plan's sentences for findings from the real rules, G0 and the comparator mapping (unselected premise, sorry, changed statement, forbidden command with line, added axiom, edited words, give-up, status mismatch, re-pointed pin, changed declaration, examples), with singular/plural and a sentence for every code.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/gate (describeFinding, attemptNotice, scanForbidden, frozenSnapshot), src/project, src/facts; gate/helpers/spyroRun"
+  },
+  {
+   "path": "packages/core/test/gate/g0.test.ts",
+   "purpose": "AT1.1/1.2/1.2b: scanForbidden's token denylist (hash commands, metaprogramming, native code, unsafe/partial, set_option, sorry/admit, external imports) with exact ranges and declaration names, ignoring comments, strings, docstrings and blocks and reporting only Claude's lines against baseText; checkFileChanges' file rules; ghostTextProblems' single-term rule for suggested premises.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/gate (scanForbidden, checkFileChanges, ghostTextProblems); gate/helpers/spyroRun"
+  },
+  {
+   "path": "packages/core/test/gate/helpers/spyroRun.ts",
+   "purpose": "Shared gate fixture: the Spyro sample at the M2 walkthrough states (BASE, normative, proved, literal, pinned) built with exactly-once edits like the FakeBackend scripts, models with text-derived facts (or none, or mutated), the walkthrough selections and an evaluateRules wrapper.",
+   "key_exports": "ROOT, MAIN, VOCAB, Texts, BASE, edit, TARGET_LINE, HONEST_PROOF, normative, proved, literal, pinned, ModelOptions, model, SEL, SEL_NO_PG, rules, codes, findingsOf",
+   "depends_on": "src/gate (evaluateRules), src/markup/api, src/project, src/facts; project/helpers/fakeFacts, project/helpers/spyro"
+  },
+  {
+   "path": "packages/core/test/gate/normalise.test.ts",
+   "purpose": "AT1.5 normalisationChanges: pins, writes the derived id and mirrors the docstring of a newly formalised card, idempotently, and never pins a stray theorem; AT1.7 lifecycleChanges: G->D changes only the type line and refuses (unsafe) an item that no longer applies.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/gate (normalisationChanges, lifecycleChanges), src/run, src/actions; gate/helpers/spyroRun"
+  },
+  {
+   "path": "packages/core/test/gate/permitted.test.ts",
+   "purpose": "AT1.3 computePermittedAxioms (D-5): the 13 names of the M0 comparator test, an unselected premise excluded, proved derivations adding their footprint, unusable premises (unproved goal, code-less, conditional, circular), zero premises, adopted ghosts, refusals; and the contents and refusals of frozenSnapshot.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/gate (computePermittedAxioms, frozenSnapshot), src/project, src/markup/api; project/helpers/spyro, project/helpers/build"
+  },
+  {
+   "path": "packages/core/test/gate/premiseCheats.test.ts",
+   "purpose": "Fixer round 1 regressions: an axiom right below a selected code-less GOAL/DERIVATION premise is a new-axiom (statement) and never signature (P1/P6b); a proof Claude writes for a selected premise never widens the permitted set (P2); run-added private declarations without facts fail closed (P12); G5 accepts exactly the premises line ghost adoption writes.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/gate (evaluateRules, computePermittedAxioms, frozenSnapshot, planGhostAdoption); gate/helpers/spyroRun"
+  },
+  {
+   "path": "packages/core/test/gate/realFacts.test.ts",
+   "purpose": "Runs the gate rules on recorded real Lean 4.35 facts (test-fixtures/semantic/recorded spyro-facts.json and the extras overlay's extras-facts.json): permitted set from typeSort, no findings on the unchanged base, the exact findings for the extras, unselected-premise footprints, externalUsers from real refs, and freeze values in Lean's own strings.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/gate, src/project, src/markup/api, src/facts; test-fixtures/semantic (raw imports); gate/helpers/spyroRun"
+  },
+  {
+   "path": "packages/core/test/gate/rules.test.ts",
+   "purpose": "AT1.4 evaluateRules: a positive and a negative case for every finding code on the walkthrough states and the plan 10.3 cheats (build, readiness, proof-before-freeze, examples, not-frozen, not-proved, status-mismatch, footprint, sorry-axiom, new-axiom, vocabulary-shape, existing-changed incl. by meaning, statement-changed, G5 markup incl. rebind-target and adopted ghosts), flagged definitions, footprints, the declaration diff, finding order, never throwing.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/gate (evaluateRules, frozenSnapshot, planGhostAdoption); gate/helpers/spyroRun"
+  },
+  {
+   "path": "packages/core/test/gate/scale.test.ts",
+   "purpose": "evaluateRules on a 2000-card project must finish well within a second (no per-block rescans of the file).",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/gate, src/markup/api, src/project"
+  },
+  {
+   "path": "packages/core/test/markup/decls.test.ts",
+   "purpose": "AT1.9 header parser: declaration spans end at command starts (column-0 comments, set_option, variable, open, attribute, #check), keep indented continuations, handle deriving, mutual and indented namespaces; names and namespaces (_root_, guillemets), keywords, modifiers, attributes, instances, value starts, docstring attachment, imports; column-0 comments inside declarations.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/index (parseLeanFile)"
+  },
+  {
+   "path": "packages/core/test/markup/edits.test.ts",
+   "purpose": "AT1.6 setBlockField(s), removeBlockEdits, insertBlockEdits and applyTextEdits on the Spyro Main.lean: only targeted lines change, missing keys go to their FIELD_ORDER place, null removes, lists, CRLF preserved, derived ids written back, duplicates, indentation, closers, tidy blank lines, overlapping edits refused.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/index (markup edit primitives, subjectScaffold); test-fixtures/spyro Main.lean (raw)"
+  },
+  {
+   "path": "packages/core/test/markup/ids.test.ts",
+   "purpose": "AT1.8 deriveId: transliterated slugs of at most 6 words, uniqueness suffixes, the deterministic FNV-1a n-<6 hex> fallback, ID_PATTERN; distinct derived ids (with TL112) for id-less blocks in one file.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/index (deriveId, ID_PATTERN, parseLeanFile)"
+  },
+  {
+   "path": "packages/core/test/markup/leanOps.test.ts",
+   "purpose": "AT1.7 applyLeanOps on the Spyro texts and the proved overlay: add-holds-axiom (incl. _root_), holds-theorem-to-axiom with archive, remove-holds/remove-decl with tidy spacing, binder-first add-hypothesis and apply-hypothesis (with @, universes), escaped set-docstring, all-or-nothing problems and column-0 comments inside declarations.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/index (applyLeanOps, applyTextEdits, findDecl, lexLean, parseLeanFile); test-fixtures/spyro and runner-lean proved overlay (raw)"
+  },
+  {
+   "path": "packages/core/test/markup/lexer.test.ts",
+   "purpose": "AT1.1 lexLean on the research lexing cases of gen_lex_tests.py (verified with Lean 4.35) plus edge cases: comment kinds and spans, code tokens, strings/chars/raw strings/guillemets hiding markers, interpolation, identifiers, nesting start rules, whitespace after /-- and /-!.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/index (lexLean)"
+  },
+  {
+   "path": "packages/core/test/markup/research.test.ts",
+   "purpose": "AT1.2: the research prototype's non-graph tests (Lexing, Values, Binding) ported to parseLeanFile under the 02/03 rule changes (kind: alias, no DEFINITION, missing version means v1, premises on any type): diagnostics TL003/4/8/9/10/13 and binding rules incl. a pinned lean: field.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/index (parseLeanFile)"
+  },
+  {
+   "path": "packages/core/test/markup/robustness.test.ts",
+   "purpose": "parseLeanFile never throws and keeps its span/range invariants on 3000 random Lean-ish texts and on every prefix of a Spyro-style text; lineIndex converts both ways (LF, CRLF, non-BMP, clamping); a 30 000-line file parses within a second or two.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/index (parseLeanFile, lexLean, lineIndex, renderBlock)"
+  },
+  {
+   "path": "packages/core/test/markup/serializer.test.ts",
+   "purpose": "AT1.5 renderBlock: marker, fields in FIELD_ORDER, extensions after them, escaped body, CRLF on request, no trailing newline, minimal blocks, round trip through parseLeanFile, NewBlock fields winning over extra, bad keys throwing.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/index (renderBlock, FIELD_ORDER, parseLeanFile)"
+  },
+  {
+   "path": "packages/core/test/markup/spyro.test.ts",
+   "purpose": "AT1.3: parsing test-fixtures/spyro (Main, Vocabulary) and the proved overlay reproduces the frozen sample's blocks, fields, ranges and bindings, the declarations with their spans and the vocabulary locations; only TL011 is reported.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/index (parseLeanFile, findDecl, spyroGraph, spyroProvedGraph, spyroVocabulary); test-fixtures (raw)"
+  },
+  {
+   "path": "packages/core/test/markup/values.test.ts",
+   "purpose": "AT1.4 field values: parseFieldValue (raw or JSON, never YAML), escapeJsonValue's D-8 rule, formatFieldValue quoting, escapeBodyText (incl. a leading --), and seeded property tests that random values round-trip through renderBlock and parseLeanFile with each block exactly one terminated comment.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/index (value codecs, renderBlock, parseLeanFile, lexLean)"
+  },
+  {
+   "path": "packages/core/test/project/binding.test.ts",
+   "purpose": "Binding and graph diagnostics: pinned names resolved through enclosing namespaces, TL101 (not found), TL017 (bound twice), TL007 (dangling premise), TL015 (premise cycle), TL118 (file not imported by the library root).",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "project/helpers/build (fixture parser and fake facts over buildProjectModel)"
+  },
+  {
+   "path": "packages/core/test/project/cards.test.ts",
+   "purpose": "AT2.4: a card's uses and refs come from Lean's references (DeclFacts.refs), not hard-coded names; the closure runs breadth-first through other statements and vocabulary definitions; refs are code-relative; non-contiguous code is joined.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/project; project/helpers/build, parseFixture, spyro"
+  },
+  {
+   "path": "packages/core/test/project/edges.test.ts",
+   "purpose": "AT2.11: verified edges come from Lean references, not footprints (a proof through a derivation or through a card-less lemma); proofDependents; D-13 mismatches (TL107 used-undeclared, TL109 declared-unused), never for an unproved goal; lean-ref edges.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/kindChange; project/helpers/build"
+  },
+  {
+   "path": "packages/core/test/project/facts.test.ts",
+   "purpose": "AT2.3: stale files keep their previous facts by name while the keyword is unchanged; a changed keyword or an unknown theorem is not-checked and never proved; failed, dependency-failed and not-built modules; no facts at all gives syntactic mode.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/project; project/helpers/build, parseFixture, spyro"
+  },
+  {
+   "path": "packages/core/test/project/helpers/build.ts",
+   "purpose": "Builders for small synthetic projects of subject S: the shared vocabulary, markup blocks as telelean writes them, a Main module wrapper, and build() which parses with the fixture parser and adds text-derived facts (optionally stale via factsFrom).",
+   "key_exports": "VOCAB_S, BlockSpec, block, mainS, Built, BuildOptions, build, graphOf, nodeOf, codes",
+   "depends_on": "src/project (buildProjectModel, subjectGraph); project/helpers/fakeFacts, parseFixture"
+  },
+  {
+   "path": "packages/core/test/project/helpers/fakeFacts.ts",
+   "purpose": "Stand-in for the semantic layer on synthetic fixtures: derives LeanFacts from parsed files (ranges, refs to project declarations, #check-style types, typeSort, #print axioms closures in Lean's order), with per-declaration overrides (kind, type, axioms, refs, parent, drop), module states and messages.",
+   "key_exports": "DeclOverride, FakeFactsOptions, hashOf, freshHashes, fakeFacts",
+   "depends_on": "src/facts, src/paths, src/project/factsIndex, src/project/text, src/project/vocabulary"
+  },
+  {
+   "path": "packages/core/test/project/helpers/parseFixture.ts",
+   "purpose": "A small parseLeanFile stand-in following the frozen ParsedFile contract (blocks, top-level declarations with docstrings/attributes/modifiers, namespaces, imports) for the simple Lean the fixtures use. Still used by build() and the dual-parser tests although its header says it exists while WP-markup is a stub.",
+   "key_exports": "parseFixture",
+   "depends_on": "src/markup/types, src/model"
+  },
+  {
+   "path": "packages/core/test/project/helpers/spyro.ts",
+   "purpose": "The Spyro fixture texts (test-fixtures/spyro, the proved overlay, the derived Main) with the hand-written facts and hashes, as ProjectInputs and models for the model, planner and export tests.",
+   "key_exports": "Parser, SPYRO_TEXTS, SPYRO_HASHES, SPYRO_PROVED_HASHES, SPYRO_DERIVED_HASHES, spyroFacts, spyroProvedFacts, spyroDerivedFacts, spyroFiles, spyroInput, spyroProvedInput, spyroDerivedInput, spyroModel, spyroProvedModel",
+   "depends_on": "src/project, src/facts; fixtures/project/*, test-fixtures/spyro, test-fixtures/runner-lean/overlays/proved (raw)"
+  },
+  {
+   "path": "packages/core/test/project/lakefile.test.ts",
+   "purpose": "TL110 (autoImplicit on): computed from lakefile.toml or lakefile.lean text (scaffold fine, missing setting warns at the start, explicit true on its line, commented-out false ignored) and reported by buildProjectModel as a project-level diagnostic on every board.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/project (buildProjectModel, subjectGraph), src/project/lakefile; test-fixtures/spyro/lakefile.toml (raw)"
+  },
+  {
+   "path": "packages/core/test/project/scale.test.ts",
+   "purpose": "buildProjectModel plus subjectGraph on a file with 2000 pinned cards stays well within a second (regression test for a quadratic rescan).",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/markup/api, src/project"
+  },
+  {
+   "path": "packages/core/test/project/spyro.test.ts",
+   "purpose": "AT2.1: buildProjectModel and subjectGraph on the Spyro fixture reproduce spyroGraph() and spyroProvedGraph() (cards, statuses, vocabulary, edges, hidden Nonempty instances, diagnostics), once with the fixture parser and once with the real parser; the derived variant's arrow from a derivation (AT2.11); and the hand-written facts are consistent with the fixture text.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/project, src/markup/api, src/samples/spyro, src/kindChange, src/edit; project/helpers/parseFixture, spyro"
+  },
+  {
+   "path": "packages/core/test/project/status.test.ts",
+   "purpose": "AT2.2: node statuses per cell of the status table (ASSUMPTION/DERIVATION/GOAL x .holds absent/axiom/theorem/sorry) with TL105/106/115/116/117; conditional vs proved, holds-mismatch TL114, def justifications, footprint mapping and TL103, rests-on-claimed, self-evident, TL104, TL108, TL102, TL113, per-node Lean errors and TL011.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/model; project/helpers/build"
+  },
+  {
+   "path": "packages/core/test/project/subjects.test.ts",
+   "purpose": "AT2.9 two subjects (separate graphs, workspace-wide ids, TL006/TL120/TL121, layout ordering) and AT2.12 diagnostics (LEAN messages by containment with Lean's severity, markup diagnostics with node ids, per-subject filtering); D-10 cross-subject vocabulary through an explicit import.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/project, src/layout, src/samples/spyro; project/helpers/fakeFacts, parseFixture, spyro"
+  },
+  {
+   "path": "packages/core/test/project/vocabulary.test.ts",
+   "purpose": "AT2.5 the Vocabulary group with facts (typeSort) and in syntactic mode: kinds, arities, flags and display order, presuppositions attached to sorts with the anonymous Nonempty instance hidden, structure fields folded, TL104/TL111, usedBy and definitional choices.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/model; project/helpers/build"
+  },
+  {
+   "path": "packages/core/test/proposal/codecs.test.ts",
+   "purpose": "AT1.10: the attempts.jsonl codec (round trip, key order, skipping bad lines from the fixture), summariseAttempts (newest first with latest resolution), the decisions.json codec, addDecisions, decisionsInForce scopes, and proposalLabel.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/proposal, src/run; fixtures/proposal/attempts.jsonl (raw)"
+  },
+  {
+   "path": "packages/core/test/proposal/diff.test.ts",
+   "purpose": "AT1.9 diffGraphs (the proposal overlay's diff marks) on the walkthrough boards: normative (statement/binding and proof/status changes), literal (added vocabulary, an adopted ghost as an added node), removed nodes last, field distinctions, vocabulary changes, empty diff for identical boards.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/proposal (diffGraphs), src/gate (planGhostAdoption), src/project; gate/helpers/spyroRun"
+  },
+  {
+   "path": "packages/core/test/protocol.m2.test.ts",
+   "purpose": "The M2 protocol additions: parseWebviewToHost accepts all 11 run message types in canonical form, refuses malformed ones and strips unknown properties; parseHostToWebview passes run and proposal messages; DEFAULT_RUN_CAPS, isTerminalRunState, sidecar paths and that scanForbidden/diffGraphs are implemented.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/index (protocol validators, run constants, paths, gate/proposal functions)"
+  },
+  {
+   "path": "packages/core/test/protocol.test.ts",
+   "purpose": "The M1 protocol: parseWebviewToHost accepts every webview message, rejects wrong versions, unknown types, malformed payloads, no-op kind changes, repeated ids and reserved data keys, and normalises optional text; parseHostToWebview accepts graph and other host messages and fills M1 fields for an older host; slugId, createUserNode, validateGraph.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/index (protocol, graph helpers, samples)"
+  },
+  {
+   "path": "packages/core/test/raw-imports.d.ts",
+   "purpose": "Ambient declaration of `*?raw` modules so core tests, type-checked without Node or DOM typings, can import fixture files as strings through Vite's ?raw.",
+   "key_exports": "module declaration '*?raw'",
+   "depends_on": "none"
+  },
+  {
+   "path": "packages/core/test/samples.test.ts",
+   "purpose": "The frozen samples: spyroGraph's four walkthrough nodes in their columns, formal statuses and declared arrows; spyroProvedGraph's verified arrows; largeGraph's determinism, about 25 cards per column, every edge shape and perColumn.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/index (spyroGraph, spyroProvedGraph, largeGraph, columnOrder, validateGraph)"
+  },
+  {
+   "path": "packages/runner/test/gate/engine.test.ts",
+   "purpose": "The Lean check engine with real Lean under runLean and fake core rules: checkBase, G0 findings start no Lean, mirror sync and build, Lean errors never pass, a job timeout is a counted budget finding, cancellation and low memory are environment outcomes, RuleInput base/adopt/roundStart wiring, normalise mechanics, incremental mirror builds, freeze and gate with the real challenge and comparator, the freeze copy dropping the target .holds and its users, checkGhost and renderStatements. Asserts no telelean-<runId>-* unit is left.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/gate (createLeanCheckEngine), src/lean/runLean, src/lean/toolchain, src/semantic, src/shadow; gate/helpers, semantic/helpers"
+  },
+  {
+   "path": "packages/runner/test/gate/helpers.ts",
+   "purpose": "Shared WP2 helpers: Spyro model files and scratch roots with test-fixtures/gate overlays, the named edit scripts of test-fixtures/gate/edits.json applied to ws/ as Claude would, selections, job settings and CheckContext, the D-5 name sets, and simple fakes of core's gate functions. Its header still says the gated tests skip themselves until WP1 exists; nothing is gated now.",
+   "key_exports": "GATE_FIXTURES, GiB, spyroModelFiles, spyroRoot, EditStep, editScript, applyEdits, editWs, removeFromWs, SUBJECT, TARGET, ALL_PREMISES, selection, jobFor, contextFor, STD, SIGNATURE, PRESUPPOSITIONS, SELECTED_ALL, PERMITTED_NORMATIVE, permittedAxioms, fakeCheckFileChanges, passingRules, fakeFreezeCore, fakeCore, fakeFreezeRecord (+ re-exports of lean/helpers)",
+   "depends_on": "src/gate types, src/shadow; lean/helpers; @telelean/core types"
+  },
+  {
+   "path": "packages/runner/test/gate/pure.test.ts",
+   "purpose": "The engine's pure parts: every comparator rejection reason mapped to its comparator-* finding (accepted, environment, budget), facts statuses to budget/environment, diagnostics filtering, filesKey/projectModulesOf, the freeze copy's removal closure and removeDeclarations, and the ghost-check and statement-rendering scratch files.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/gate (pure helpers), src/lean/comparator, src/lean/footprint; gate/helpers"
+  },
+  {
+   "path": "packages/runner/test/gate/rules.test.ts",
+   "purpose": "The engine with core's real gate rules and real Lean, Claude played by edits.json: AT2.6 check, AT2.7 freeze refusals and success, AT2.8 one cheating case per test (axiom shortcut, sorry, weakened abbrev or type, redefined GoodAddition, edited words, #eval, status mismatch, stray notes.md, adopted ghost, unselected premise, flagged definition, rebind-target), AT2.9 checkGhost, AT2.13 normalise and AT2.15 Accept's re-check against an accept-base commit.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/gate, src/semantic, src/shadow, @telelean/core (ghostTextProblems); gate/helpers, semantic/helpers"
+  },
+  {
+   "path": "packages/runner/test/integration/escapes.test.ts",
+   "purpose": "Markup escapes survive a Lean build: sentences with comment delimiters, quotes, backslashes and a leading -- are written by add-node and a docstring-mirrored edit-node, then refreshNow under runLean must be fresh and re-parse to the exact sentences. Skips below 12 GB MemAvailable.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/workspace (createModelWorkspace, fs adapters); workspace/helpers"
+  },
+  {
+   "path": "packages/runner/test/integration/fixes.test.ts",
+   "purpose": "The M1 fixes end to end with Lean 4.35 on a copy of mental_model/: column-0 comments inside proofs and statements (D->A, delete, attic), D-11 on conditional proofs (A->G rewrite, D->A dropping arguments, D->G replacing the application) with Lean building after each, and delete-with-Lean listing a card-less lemma and another subject's proof first.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/workspace; workspace/helpers; @telelean/core types"
+  },
+  {
+   "path": "packages/runner/test/integration/m2flow.test.ts",
+   "purpose": "The integrator's M2 flow test: real ModelWorkspace (fs adapters, git history on private refs inside a user repository), RunManager with the FakeBackend playing test-fixtures/walkthrough, the real engine, proposal service and sidecar store. Covers (a) normative Accept/Undo/Redo/History revert, (b) literal ghost adoption, (c) Accept after drift (far edit rebased, overlapping edit a conflict), (d) premises declaration and a preflight refusal, (e) recovery from run.json with a pending question; the user's repository state stays untouched.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/run, src/gate, src/llm (FakeBackend, playFakeScript), src/proposal, src/shadow, src/workspace; run/helpers/env, run/helpers/harness"
+  },
+  {
+   "path": "packages/runner/test/integration/session.test.ts",
+   "purpose": "Plan 11.3: the hand-written facts fixtures and real Lean facts give identical boards (Spyro, proved, derived); a board session with real Lean on a proved mental_model copy in a user git repo: A->G rewrite and mark-broken (Lean agrees, byte-exact undo), derivation edges, set-premises mismatch, reorder, delete with attic, history (storage, revert, undo), schema-valid graph.json, branch/index/hooks untouched. Memory-guarded.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/semantic (refreshLeanFacts, runExclusive), src/workspace, core/src/export/schema; workspace/helpers"
+  },
+  {
+   "path": "packages/runner/test/lean/comparator.test.ts",
+   "purpose": "Gate step G4: pure parts (challenge module generation, export targets, outcome classification not fooled by build logs) and lake comparator under runLean against a frozen challenge: accepts the honest proof, rejects a weakened abbrev or theorem type, an unselected assumption, a smuggled axiom and a noisy failing build, reports nested-sandbox and missing-bwrap failures as could-not-start; ~/.elan/known-projects untouched.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/lean/comparator, src/lean/runLean, src/lean/toolchain; lean/helpers; test-fixtures/runner-lean overlays"
+  },
+  {
+   "path": "packages/runner/test/lean/footprint.test.ts",
+   "purpose": "Gate step G3 footprints via #print axioms: check-file generation and parsing (axiom lists, no axioms, errors by line, header import errors), and a sandboxed computeFootprints giving the normative proof exactly its eleven axioms.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/lean/footprint, src/lean/runLean, src/lean/toolchain; lean/helpers"
+  },
+  {
+   "path": "packages/runner/test/lean/helpers.ts",
+   "purpose": "Shared helpers for the sandboxed-Lean tests: repo and fixture paths, a per-process run id, scratch dirs under TELELEAN_TEST_TMP (kept with TELELEAN_KEEP_TMP=1), the elan known-projects counter, Spyro shadows with runner-lean overlays, inert probe installation and output parsing, and process polling.",
+   "key_exports": "REPO_ROOT, SPYRO, RUNNER_FIXTURES, TEST_RUN_ID, makeTempRoot, cleanupTempRoot, knownProjectsLines, spyroShadow, installProbe, probeLines, processesMatching, isDirectory, sleep, waitForProcesses, MiB",
+   "depends_on": "src/lean/shadow (createShadow)"
+  },
+  {
+   "path": "packages/runner/test/lean/profile-shadow.test.ts",
+   "purpose": "Pure checks without a sandbox: the bwrap argument profile (mount allowlist order, namespaces, cleared environment, binds and masks, validation), MemoryMax parsing, Lean name escaping and injection refusal, and the M0 shadow copier (model files only, .lake/build copied, symlinks and bad destinations refused).",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/lean/sandboxProfile, src/lean/shadow, src/lean/leanNames, src/lean/runLean (memoryMaxToBytes); lean/helpers"
+  },
+  {
+   "path": "packages/runner/test/lean/sandbox.test.ts",
+   "purpose": "runLean on this machine: preflight, sandboxed fixture build and rebuild, failing commands, extra binds, inert probes (no writes to $HOME, ~/.elan or sources; empty tmpfs home; no network or D-Bus), the memory cap reported as oom, timeouts and cancellation killing the whole scope (also a cancel before or during scope creation, with no leftover unit), the sandbox dying with a crashed host, and failing closed without bwrap, systemd, systemd-run or setpriv.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/lean/runLean, src/lean/shadow, src/lean/systemd, src/lean/toolchain; lean/helpers, lean/support/hostCrashChild"
+  },
+  {
+   "path": "packages/runner/test/lean/support/hostCrashChild.ts",
+   "purpose": "A stand-in extension host process that starts one long sandboxed `sleep` through runLean and waits; sandbox.test.ts bundles it with esbuild, runs it with node and SIGKILLs it to check the sandbox goes down too.",
+   "key_exports": "none (script)",
+   "depends_on": "src/lean/runLean"
+  },
+  {
+   "path": "packages/runner/test/llm/argvEnv.test.ts",
+   "purpose": "buildClaudeArgs (headless stream-json invocation with confinement flags, never --bare, comma-joined variadic flags, resume, optional model controls, the guarded file tools), sanitizeClaudeEnv (removes billing, provider, parent-session, snap, Electron and VS Code variables, reports names only), confinement settings and hook-listing verification, and classifyAuth (subscription login vs API keys and providers).",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/llm/claudeCli, src/llm/confinement, src/llm/env"
+  },
+  {
+   "path": "packages/runner/test/llm/binary.test.ts",
+   "purpose": "Claude binary resolution with fake binaries in a scratch home: version parsing and comparison, candidate order (VS Code extension, PATH, ~/.local/bin), the 2.1.295 floor, an explicit setting never falling back, findNodeBinary. One opt-in test (TELELEAN_ALLOW_REAL_CLAUDE_VERSION=1) runs the user's real `claude --version` only.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/llm/binary, src/llm/confinement, src/llm/types; llm/helpers"
+  },
+  {
+   "path": "packages/runner/test/llm/cliSession.test.ts",
+   "purpose": "ClaudeCliBackend against the node double fake-claude.mjs: preflight and fixed session id, sanitised env and confinement flags, refusal of API-key logins and of a CLI not listing the path guard, startup death, several turns, ask_user/finish over the MCP server, the PreToolUse hook as the CLI runs it, guard self-test, interrupt, process-group close, graceful end_session, a CLI killed during ask_user, resume.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/llm/claudeCli, src/llm/confinement, src/llm/stubToolHost, src/llm/types; llm/helpers, llm/fixtures/fake-claude.mjs"
+  },
+  {
+   "path": "packages/runner/test/llm/fake.test.ts",
+   "purpose": "The FakeBackend: replays writes into the shadow and real tool calls against a StubToolHost, confines file steps with the same guard as the CLI hook, validates tool arguments with the real schemas, interrupt semantics, multi-turn scripts with a stable session id.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/llm/fake, src/llm/stubToolHost, src/llm/types; llm/helpers"
+  },
+  {
+   "path": "packages/runner/test/llm/fixtures/fake-claude.mjs",
+   "purpose": "A node stand-in for the Claude Code CLI in stream-json mode for offline tests: answers initialize/get_hooks_listing/interrupt/end_session, plays echo, ask (ask_user then finish over the real loopback MCP server), read (runs the --settings PreToolUse hook), hang and spawn-grandchild turns, with env switches for recording, account shape, dropped hooks, API key source and early exit. It is the only CLI the tripwire lets tests spawn.",
+   "key_exports": "none (executable test double)",
+   "depends_on": "@modelcontextprotocol/sdk client; used by cliSession, tripwire tests"
+  },
+  {
+   "path": "packages/runner/test/llm/fixtures/recorded-cli-2.1.314/events-a.jsonl",
+   "purpose": "Normalised LlmEvent log ({at, label, e}) recorded from M0's live smoke run against Claude Code 2.1.314 (claude-haiku-5-5): an ask_user round trip, then finish and result. Reference data only: no test reads it.",
+   "key_exports": "none (fixture data)",
+   "depends_on": "unused by tests (cited by docs/m2-plan.md)"
+  },
+  {
+   "path": "packages/runner/test/llm/fixtures/recorded-cli-2.1.314/events-b.jsonl",
+   "purpose": "Recorded normalised events of the confinement probe session: Read inside the shadow, Read of /etc/hostname and an outside canary, a Grep for a hidden canary and a Glob, with hook events, then finish. Reference data only: no test reads it.",
+   "key_exports": "none (fixture data)",
+   "depends_on": "unused by tests"
+  },
+  {
+   "path": "packages/runner/test/llm/fixtures/recorded-cli-2.1.314/events-c.jsonl",
+   "purpose": "Recorded normalised events of a window-reload case: ask_user pending, the CLI killed (exit 143, fatal process error), then a resumed session that finishes. Reference data only: no test reads it.",
+   "key_exports": "none (fixture data)",
+   "depends_on": "unused by tests"
+  },
+  {
+   "path": "packages/runner/test/llm/helpers.ts",
+   "purpose": "Temp dirs for the LLM tests (TELELEAN_TEST_TMPDIR) and shadow fixtures for the path guard: makeShadow with hidden .lake/.telelean/.git entries and escaping, innocent, hidden and dangling symlinks; makeCleanShadow with no hidden entry below the root.",
+   "key_exports": "testTmpBase, makeTempDir, removeDir, ShadowFixture, makeShadow, makeCleanShadow",
+   "depends_on": "node fs only"
+  },
+  {
+   "path": "packages/runner/test/llm/m2Harness.test.ts",
+   "purpose": "WP3's harness additions: compact tool-result renderings (permitted axioms in the freeze reply, the alone-entails note, an environment give-up, check results), MCP tools declared without readOnlyHint, the FakeBackend's usage/rateLimit/sleep steps and cumulative cost, playFakeScript turn matching with a cursor kept across resumed sessions, validateFakeScriptFile.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/llm/fake, src/llm/fakeScripts, src/llm/toolSchemas, src/llm/toolServer, src/llm/stubToolHost; llm/helpers; MCP SDK client"
+  },
+  {
+   "path": "packages/runner/test/llm/pathGuard.test.ts",
+   "purpose": "The PreToolUse path guard bin/telelean-path-guard.mjs: file-tool decisions (inside vs outside, ~ and .., escaping and dangling symlinks, hidden entries), Glob/Grep scope, patterns and roots (incl. verifier bypasses), the tool policy, the hook protocol run as a subprocess (deny output, exit codes, logs without contents) and the backend's guard self-test.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "bin/telelean-path-guard.mjs, src/llm/confinement; llm/helpers"
+  },
+  {
+   "path": "packages/runner/test/llm/streamJson.test.ts",
+   "purpose": "LineSplitter and StreamNormalizer on synthetic SDK-shaped lines: a full turn, usage emitted once per message id, result subtypes, control requests/responses, retries, permission denials, hooks, progress, partial text, rate limits, unknown messages and garbage.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/llm/streamJson, src/llm/types"
+  },
+  {
+   "path": "packages/runner/test/llm/toolServer.test.ts",
+   "purpose": "The MCP tool server over loopback HTTP: the five agent tools with schemas and alwaysLoad, the CLI config entry, a blocking ask_user with progress and immediate SSE headers, cancelled ask_user orphaning the question, finish running the gate (retry, give-up), endTurn marking, stub Lean tools and host errors, and refusal of wrong tokens, foreign Host or browser Origin.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/llm/toolServer, src/llm/stubToolHost, src/llm/types; MCP SDK client"
+  },
+  {
+   "path": "packages/runner/test/llm/tripwire.test.ts",
+   "purpose": "The quota tripwire of ClaudeCliBackend.startSession, observed with a spy on child_process.spawn: under TELELEAN_NO_REAL_CLAUDE=1 a real launcher or a directly run binary throws before any spawn, a non-fixture JavaScript CLI is refused (isTestDoubleLaunch), fake-claude.mjs still runs, and realClaudeDisabled arms for any value but empty/0/false.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/llm/claudeCli (ClaudeCliBackend, isTestDoubleLaunch, realClaudeDisabled), src/llm/stubToolHost; llm/helpers"
+  },
+  {
+   "path": "packages/runner/test/proposal/accept.test.ts",
+   "purpose": "AT4.4 baseDrift, AT4.5 planAccept (3-line merge context: conflicts vs merges, created/deleted/user-added files, lifecycle items, shownState after a re-gate, label and nodes, facts kept across a reload), the report card from the proposed board, AT4.9 diffFiles and apply through ModelWorkspace.applyChanges; with an in-memory shadow and faked core functions.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/proposal (createProposalService), src/workspace/types; proposal/helpers, workspace/helpers"
+  },
+  {
+   "path": "packages/runner/test/proposal/apply.test.ts",
+   "purpose": "AT4.6 Accept through a real ModelWorkspace in a scratch user repository (model dir with a space): the user's run-time hand edits are snapshotted first as Manual edits, then one accept-proposal history entry and one Undo step; a refresh is requested (fake refreshFacts); HEAD, index, branches, config and hooks untouched; applyChanges refusals; the real proposalLabel.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/proposal, src/workspace, src/semantic/types; proposal/helpers, workspace/helpers"
+  },
+  {
+   "path": "packages/runner/test/proposal/build.test.ts",
+   "purpose": "AT4.1-AT4.3 ProposalService.build from real Lean facts (sandboxed refreshes of mental_model copies in the base and run states): normative proved (statement review, G->D lifecycle, footprint, report), source-text fallback and drift, literal not proved (new vocabulary, ghost), adopted ghost reviewed as Claude's words, the definition cheat's flagged-definition question, a syntactic board; plus real diffGraphs and lifecycleChanges blocks. Skips when Lean cannot run for lack of memory.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/proposal, src/gate/types; proposal/helpers, lean/helpers, semantic/helpers, workspace/helpers"
+  },
+  {
+   "path": "packages/runner/test/proposal/helpers.ts",
+   "purpose": "WP4 helpers: an in-memory ShadowWorkspace, the Spyro run states with their exact edits (normative, literal, adopted ghost, definition cheat), selection and usage constants, real Lean facts of a scratch copy, model/board builders and fake codecs/diff. Its header still calls WP1/WP2 stubs (outdated).",
+   "key_exports": "LIBRARY, MAIN, VOCABULARY, INBOX, FakeShadow, shadowFilesOnDisk, fakeShadow, realReader, edit, normativeState, literalState, GHOST_NODE, adoptedState, definitionCheatState, SELECTION_ALL, USAGE, realFacts, modelOf, boardOf, isDirectory, fakeDiff, fakeCodecs",
+   "depends_on": "src/semantic, src/shadow/types, src/workspace/files, @telelean/core; workspace/helpers"
+  },
+  {
+   "path": "packages/runner/test/proposal/sidecars.test.ts",
+   "purpose": "AT4.8 the run sidecar store on disk: append-only attempts.jsonl with no interleaving across stores and processes, resolutions as lines, decisions.json replaced atomically through a temp file in .telelean/, no lost concurrent updates, a failed write leaving the old file, refusals of bad subjects and relative roots, and neither file in history snapshots, Undo or revert; plus the real codecs.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/proposal (createRunSidecarStore), src/workspace; proposal/helpers, workspace/fakeCore, workspace/helpers"
+  },
+  {
+   "path": "packages/runner/test/run/backend.test.ts",
+   "purpose": "AT3.13 createClaudeBackend with fake binaries and settings.resolve (scratch home, PATH and extension dirs): resolution order, version floor, explicit path without fallback, the absolute setpriv --pdeathsig launcher, runVersion override; tripwire: without resolve, or without a scratch home and PATH, it throws before resolving anything, and startSession with a non-node launcher refuses.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/run (createClaudeBackend), src/llm/claudeCli, src/llm/confinement, src/lean/systemd; run/helpers/env"
+  },
+  {
+   "path": "packages/runner/test/run/fixtures/system-prompt-5.1.txt",
+   "purpose": "Verbatim copy of the system prompt of docs/m2-plan.md section 5.1, the expected output of buildSystemPrompt().",
+   "key_exports": "none (fixture data)",
+   "depends_on": "consumed by run/prompts.test.ts"
+  },
+  {
+   "path": "packages/runner/test/run/helpers/env.ts",
+   "purpose": "Scratch space and timers for the run tests: a scratch base under TELELEAN_TEST_TMP (or its own mkdtemp, removed after the file), git isolation variables, repo paths (mental_model, Spyro fixture, walkthrough fixtures, recorded facts), the real timers captured before vitest fakes them, flushIo and the FAKE_TIMERS set.",
+   "key_exports": "realSetTimeout, realClearTimeout, realSetImmediate, REPO_ROOT, MENTAL_MODEL, SPYRO_FIXTURE, WALKTHROUGH_FIXTURES, SPYRO_FACTS, SCRATCH, makeTempDir, cleanup, flushIo, FAKE_TIMERS",
+   "depends_on": "node fs/os only"
+  },
+  {
+   "path": "packages/runner/test/run/helpers/fakeEngine.ts",
+   "purpose": "A scriptable LeanCheckEngine for the RunManager tests that records each call with its context and answers with replaceable handlers whose defaults act like an honest run (ok checks, freeze with the 13-name Spyro permitted set, gate judging a checkpoint commit, not-frozen without a freeze, ok ghost checks, placeholder renderings).",
+   "key_exports": "SPYRO_PERMITTED, EngineCall, okReport, finding, FakeEngine",
+   "depends_on": "src/gate/types, src/llm/types, src/shadow/types, @telelean/core types"
+  },
+  {
+   "path": "packages/runner/test/run/helpers/fakeServices.ts",
+   "purpose": "Fakes for the RunManager's collaborators: FakeProposals and FakeSidecars recording calls, and an in-memory FakeWorkspace built from the Spyro fixture with core's real parser, model, board and planner plus the recorded Spyro facts.",
+   "key_exports": "RecordedBuild, FakeProposals, FakeSidecars, FakeWorkspace",
+   "depends_on": "src/proposal/types, src/shadow/types, src/workspace/types, @telelean/core; run/helpers/env"
+  },
+  {
+   "path": "packages/runner/test/run/helpers/fakeShadow.ts",
+   "purpose": "A disk-backed ShadowWorkspace stand-in with the real run-dir layout and real files in ws/, commits kept as whole-file snapshots in git/commits.json (no git, no Lean), re-openable after a simulated reload.",
+   "key_exports": "FakeShadow, createdShadows, createFakeShadow, openFakeShadow",
+   "depends_on": "src/shadow (rootKeyOf, types), @telelean/core types"
+  },
+  {
+   "path": "packages/runner/test/run/helpers/harness.ts",
+   "purpose": "Wires a RunManager to the fakes (TrackingBackend around FakeBackend, FakeEngine, FakeProposals, FakeSidecars, FakeWorkspace, FakeShadow, the real preflight with hooks, fake core texts) and provides waiting, step builders and walkthrough loading.",
+   "key_exports": "TARGET, ALL_PREMISES, TrackingBackend, fakeCore, HarnessOptions, Harness, makeHarness, waitForRun, state, ASK_MODALITY, step, round1, loadWalkthrough, START, readJson",
+   "depends_on": "src/run, src/llm/fake, src/llm/fakeScripts, src/shadow/types; run/helpers/env, fakeEngine, fakeServices, fakeShadow"
+  },
+  {
+   "path": "packages/runner/test/run/manager.accept.test.ts",
+   "purpose": "AT3.10 Accept orchestration with fakes: without drift plan, apply and resolve as accepted; a no-file Accept worded as recorded; stale ids, unknown lifecycle items and missing definition approvals refused; with drift accept-base and rebase commits, re-freeze and re-gate, then apply exactly the re-gated files; a failed re-gate refused with ws/ restored; a refused apply keeps the proposal; Discard.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "run/helpers/harness, run/helpers/fakeEngine"
+  },
+  {
+   "path": "packages/runner/test/run/manager.caps.test.ts",
+   "purpose": "AT3.4 host-enforced per-round caps: the 26th check is a tool error without Lean; the turn cap counts usage events and interrupts (cap-reached, revert, re-check) and Feedback resets the counters; the agent-time cap runs on fake timers and pauses while a question waits; a cap reached during the gate honours its pass.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/llm/fake, src/llm/types; run/helpers/env, run/helpers/harness"
+  },
+  {
+   "path": "packages/runner/test/run/manager.gate.test.ts",
+   "purpose": "The gate loop: AT3.2 retries with the exact failures and notices, then a pass; three failures give up, revert to the freeze, normalise, re-check and propose gave-up; core's real attemptNotice sentences; AT3.2b edits after an accepted finish are discarded; AT3.3 an environment outcome retried once after 30 s, a second fails the run; AT3.5 one nudge, then no-finish.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/run, src/llm/types; run/helpers/env, fakeEngine, harness"
+  },
+  {
+   "path": "packages/runner/test/run/manager.happy.test.ts",
+   "purpose": "AT3.1 happy path: start -> working -> ask_user -> waiting-for-answer (clock paused) -> answer (decision recorded, guess revealed) -> freeze -> finish -> gate pass -> review with a proposal; change events in order, run.json each step, usage summed, cost estimate from the latest result; the context bundle and static system prompt reach the session.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/run/types; run/helpers/harness"
+  },
+  {
+   "path": "packages/runner/test/run/manager.lifecycle.test.ts",
+   "purpose": "AT3.6 cancel during a check (lean.cancelRun, session closed, attempt recorded), double-clicked answers, AT3.7 recovery after a reload (pending question shown without a session and resumed on answer, newer of two run dirs recovered and the older failed, a working run back as interrupted with Resume), Stop and dispose, and the usage-limit wording helpers.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/run, src/llm/toolSchemas; run/helpers/env, fakeEngine, harness"
+  },
+  {
+   "path": "packages/runner/test/run/manager.rounds.test.ts",
+   "purpose": "Later rounds: AT3.8 Feedback starts round 2 in stage formalise, proved needs a new freeze and the earlier proof is not a proof-before-freeze; AT3.9 propose_assumption becomes a GhostView, adoptGhost writes the adoption, commits adopt, re-freezes with it and starts a proving round; a refused re-freeze reverts; propose before the freeze is a tool error.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/gate/types, src/llm/types; run/helpers/fakeEngine, harness"
+  },
+  {
+   "path": "packages/runner/test/run/manager.start.test.ts",
+   "purpose": "AT3.11 a refused start changes nothing: preflight refusals (toolchain, sandbox, memory, selection incl. an ASSUMPTION target), busy, a rejecting backend factory; new premises are declared after the backend and before the shadow, never re-declared; copyBuild only with reuseLeanBuild; a base check with Lean errors or a refused session fails the run before any work.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/run, src/run/types; run/helpers/fakeEngine, harness"
+  },
+  {
+   "path": "packages/runner/test/run/prompts.test.ts",
+   "purpose": "AT3.12 what leaves the machine: buildSystemPrompt equals plan section 5.1 (the fixture, and the plan itself when present); the context bundle quotes cards verbatim with their Lean, the vocabulary and the decisions in force, uses source text when unchecked, words Self-evident?, honours the neighbourhood scope and refuses foreign selections; the later turns (Feedback, Adoption, Resume, nudge).",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/run (prompt builders), @telelean/core; run/helpers/env, fakeServices; run/fixtures/system-prompt-5.1.txt"
+  },
+  {
+   "path": "packages/runner/test/run/quotaTripwire.test.ts",
+   "purpose": "Fixer round 2: scripts/quota-tripwire.mjs's quotaTripwireArmed agrees with the runner's realClaudeDisabled for every spelling, and scripts/walkthrough-claude.mjs (checked as source text, never run) refuses --live under it before bundling, copying or resolving anything.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/llm (realClaudeDisabled), scripts/quota-tripwire.mjs, scripts/walkthrough-claude.mjs; run/helpers/env"
+  },
+  {
+   "path": "packages/runner/test/run/smokeScript.test.ts",
+   "purpose": "scripts/smoke-claude.mjs is dry by default and live only with --live plus TELELEAN_SMOKE_LIVE=yes: either switch alone, both under the tripwire, and contradictory or unknown options refuse before loading, creating dirs or resolving binaries (a recording fake --binary stays untouched); the dry run only runs the fake's --version.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "scripts/smoke-claude.mjs (spawned); run/helpers/env"
+  },
+  {
+   "path": "packages/runner/test/run/walkthrough.e2e.test.ts",
+   "purpose": "AT3.14/AT3.15 end to end: the FakeBackend plays test-fixtures/walkthrough/*.json against the real engine (sandboxed Lean), shadow, proposal service, sidecar store and an fs ModelWorkspace on a scratch git copy of mental_model/. Normative (Accept writes the pinned formalisation, proof and type: DERIVATION; Undo restores) and literal (ghost adopted, re-frozen, proved; Accept writes the agent-worded card declared on the target), then each of the 20 cheat scripts shows its expected first failure and its scripted retry passes (give-up reverts); no leftover units.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/run, src/gate, src/llm (FakeBackend, playFakeScript), src/proposal, src/shadow, src/workspace; run/helpers/env, harness; test-fixtures/walkthrough"
+  },
+  {
+   "path": "packages/runner/test/run/walkthroughScript.test.ts",
+   "purpose": "AT3.16 (pre-integration part): scripts/walkthrough-claude.mjs is live only with --live and TELELEAN_WALKTHROUGH_LIVE=yes; either alone, both under any arming tripwire value (incl. 'true') and contradictory options refuse before anything is bundled, copied or resolved, with a recording fake --binary never invoked and no work dir created.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "scripts/walkthrough-claude.mjs (spawned); run/helpers/env"
+  },
+  {
+   "path": "packages/runner/test/semantic/checkFile.test.ts",
+   "purpose": "The check-file generator (imports, options, four probes per declaration, escaped names) and the parser of its `lean --json` output on recorded Lean 4.35 runs (Spyro and extras: types, kinds, attributes, values, sorts, axioms, sorry, structures, header failures, silent probes), plus the output helpers that build DeclFacts.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/semantic, src/lean/footprint (parseLeanJsonMessages); semantic/helpers (recorded fixtures)"
+  },
+  {
+   "path": "packages/runner/test/semantic/guards.test.ts",
+   "purpose": "Refresh guards that must never start a process (fake recording host tools): AT3.4 memory pause, AT3.6 edited toolchain, AT3.11 Lake dependencies or missing manifest, could-not-start for a broken sandbox or missing root, argument validation; AT3.8 the .git mask only for a directory (argv inspection); the spawn's memory cap lowered to MemAvailable minus a reserve.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/semantic, src/semantic/refresh; semantic/helpers (recordingHost, spyroCopy)"
+  },
+  {
+   "path": "packages/runner/test/semantic/helpers.ts",
+   "purpose": "Semantic-layer test helpers: fixture paths and a per-process run id, readers for recorded fixtures and overlays, scratch Spyro copies with a semantic overlay, listing of telelean-<runId>-* units, and recordingHost (fake systemd-run/systemctl/bwrap/setpriv scripts that record argv and start nothing).",
+   "key_exports": "SEMANTIC_FIXTURES, RECORDED, SEMANTIC_RUN_ID, recorded, overlayText, spyroCopy, unitsOfRun, RecordingHost, recordingHost (+ re-exports of lean/helpers)",
+   "depends_on": "src/lean/systemd; lean/helpers"
+  },
+  {
+   "path": "packages/runner/test/semantic/ilean.test.ts",
+   "purpose": "The .ilean reader on recorded Lean 4.35 index files: declarations with full and selection ranges, references per declaration, auxiliary names with parents, private names skipped, refusals of other versions/modules/malformed files; declDrafts attaching docstrings, keywords and references.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/semantic (parseIlean, declDrafts); semantic/helpers"
+  },
+  {
+   "path": "packages/runner/test/semantic/lakeLog.test.ts",
+   "purpose": "AT3.12 parseLakeLog on recorded Lake 5.0 logs (failed build, warnings built and replayed, bad imports, lakefile error, ANSI stripping) and what the refresh derives: zero-width LSP ranges with UTF-16 columns, root-relative paths, module states, not-built modules, missing imports and cycles.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/semantic; semantic/helpers"
+  },
+  {
+   "path": "packages/runner/test/semantic/refresh.test.ts",
+   "purpose": "refreshLeanFacts on scratch copies under runLean: AT3.1 Spyro (ok, all 16 declarations fresh), AT3.2 a build error, AT3.3 proved overlay plus extras, AT3.5 cancellation and timeout, AT3.7 a source edited during the check, AT3.9 non-BMP columns, check errors for unwritable names, the memory guard before the check spawn; no leftover scope and known-projects untouched.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/semantic; semantic/helpers, lean/helpers"
+  },
+  {
+   "path": "packages/runner/test/semantic/text.test.ts",
+   "purpose": "Text helpers: Lean code-point columns to UTF-16, line indexing, whitespace normalisation, docstrings (nested comments, structure fields), the declaration keyword after attributes and modifiers, import headers.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/semantic (text helpers); semantic/helpers"
+  },
+  {
+   "path": "packages/runner/test/shadow/seed.test.ts",
+   "purpose": "Closing round 1: seeding a run's build mirror from the user's .lake/build is off by default; with copyBuild only the output the board's last successful refresh recorded, complete and untouched since, is seeded, and anything written after the record or during the copy seeds nothing; starts wait for the board's refresh; the last case records a real Spyro refresh.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/shadow, src/shadow/seed, src/semantic; gate/helpers"
+  },
+  {
+   "path": "packages/runner/test/shadow/shadow.test.ts",
+   "purpose": "The run's shadow workspace without Lean: AT2.1 layout (ws/ holds only model and project files, build mirror, base commit, run and session dirs) and refusals (symlinks, non-model paths, existing dirs), AT2.2 path-guard compatibility, AT2.3 syncMirror, AT2.4 commits, history, revertTo and writeFiles, AT2.5 run-dir listing and pruning to 10.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/shadow, src/llm/confinement, bin/telelean-path-guard.mjs; gate/helpers"
+  },
+  {
+   "path": "packages/runner/test/workspace/fakeCore.ts",
+   "purpose": "A minimal WorkspaceCore stand-in that understands just the id/type/natural_name lines of blocks, so the ModelWorkspace's own logic (scan, refresh, sidecars, undo, history, graph.json) is tested apart from the real core.",
+   "key_exports": "fakeParseLeanFile, fakeBuildProjectModel, fakeSubjectGraph, fakePlanAction, fakeToGraphJson, fakeCore",
+   "depends_on": "src/workspace/types, @telelean/core (layout, paths, scaffold helpers)"
+  },
+  {
+   "path": "packages/runner/test/workspace/helpers.ts",
+   "purpose": "Workspace test helpers: a scratch base with git isolation and TMPDIR inside it, copies of mental_model/, file utilities, userGit, overlay TextSource and recording EditApplier, deferreds and polling, fake LeanFacts by status, and waitForMemory (the 12 GB RAM rule used to skip Lean tests).",
+   "key_exports": "REPO_ROOT, MENTAL_MODEL, SPYRO_FIXTURE, SCRATCH, TEST_RUN_ID, makeTempDir, cleanup, copyMentalModel, read, write, exists, listFiles, snapshotTree, sha256, userGit, overlayTextSource, RecordingApplier, recordingApplier, Deferred, deferred, sleep, waitFor, fakeFacts, freshModules, waitForMemory",
+   "depends_on": "src/semantic (readMemAvailableBytes), src/workspace (fs adapters), @telelean/core"
+  },
+  {
+   "path": "packages/runner/test/workspace/historySafety.test.ts",
+   "purpose": "History safety (M1 fixes): git messages keep the fatal line naming the lock; a revert refuses when the current state cannot be snapshotted; only telelean's own sidecars are snapshotted, reverted or deleted (a binary file survives byte-exactly); snapshot temp files live in the git dir; linked worktrees get separate chains.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/workspace, src/workspace/git; workspace/helpers"
+  },
+  {
+   "path": "packages/runner/test/workspace/history.test.ts",
+   "purpose": "AT4.5 history (D-33) in scratch repositories: Initial state chains under refs/telelean/<rootKey>/, Manual edits snapshots, trailers, per-subject chains, diffs, revert and its undo, storage counters, pruning, the user's repo untouched; plus top-level roots, no repository and initGit, disabled or missing git, TL202 for failing snapshots, and a ref moved by another window.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/workspace, src/workspace/git; workspace/fakeCore, workspace/helpers"
+  },
+  {
+   "path": "packages/runner/test/workspace/initialize.test.ts",
+   "purpose": "AT4.6 inspectFolder (empty, model, Lake project, unsupported, minimal TOML reading), planInitialize (exact scaffold files, .gitignore merge, Lake-project mode, refusals, subject suggestion), initGitRepository refusal, the empty-folder scaffold building under runLean (memory-guarded); AT4.8 findModelRoots with excludes and maxDepth.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/workspace, src/workspace/initialize, src/lean/runLean, src/lean/toolchain; workspace/helpers"
+  },
+  {
+   "path": "packages/runner/test/workspace/m2members.test.ts",
+   "purpose": "AT4.7 the ModelWorkspace's M2 members: readText (open buffers first, paths inside the root), modelFiles, library and projectModel, graph(S).attempts from attempts.jsonl (newest first, reloadAttempts and invalidate, unreadable file tolerated), applyChanges (accept-proposal entry, one undo, refusals, Initial state first); plus core's real codecs.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/workspace; workspace/fakeCore, workspace/helpers, proposal/helpers"
+  },
+  {
+   "path": "packages/runner/test/workspace/perform.test.ts",
+   "purpose": "AT4.3 perform: layout.json and attic sidecars materialised as whole-file changes, attic appends, layout-only actions undoable but not snapshotted, refusals as ok:false with dependents, never rejecting, project-level plans undone from the new subject, applier rejections as conflict with nothing recorded.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/workspace, src/workspace/sidecars; workspace/fakeCore, workspace/helpers"
+  },
+  {
+   "path": "packages/runner/test/workspace/realcore.test.ts",
+   "purpose": "The workspace with the real core on a mental_model copy in a scratch git repo: add a card and undo it exactly, reorder (layout only) and undo, create a subject and undo it, history labels.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/workspace; workspace/helpers"
+  },
+  {
+   "path": "packages/runner/test/workspace/refresh.test.ts",
+   "purpose": "AT4.2 refresh scheduling with a fake refreshFacts hook: debounce, coalescing and one refresh at a time, refreshNow, phases, every FactsStatus mapped to SemanticSummary, failed refreshes keeping facts, toolchain changes dropping them, onDidChange and graph.json rewrites, disabled checking, dispose, the recorded .lake/build seed state; plus a real semantic-layer refresh (memory-guarded) and graph.json with the real core.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/workspace, src/workspace/semanticSummary, src/semantic, src/shadow/seed; workspace/fakeCore, workspace/helpers"
+  },
+  {
+   "path": "packages/runner/test/workspace/sample.test.ts",
+   "purpose": "AT4.7: mental_model/ is exactly the plan 7.4 sample (files, project files byte for byte, scaffold root and Inbox, fixture Vocabulary and Main plus one import, opted in, the only model root), parses to the 4 Spyro nodes with the real core, and builds under runLean in a scratch copy.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/workspace, src/lean/runLean, src/lean/toolchain; workspace/fakeCore, workspace/helpers"
+  },
+  {
+   "path": "packages/runner/test/workspace/scan.test.ts",
+   "purpose": "AT4.1 scanning a model root: exactly the model files, hashed, go to core; subjects with counts; unsaved buffers win; parse caching; invalidate; latest read wins; real-core graph and TL110; AT4.9 graph versions strictly increase across subjects and workspaces.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/workspace; workspace/fakeCore, workspace/helpers"
+  },
+  {
+   "path": "packages/runner/test/workspace/undo.test.ts",
+   "purpose": "AT4.4 undo arithmetic (exact reversal, patching past unrelated edits, refusing overlaps, created/deleted files, all or nothing, 100-entry cap) and workspace undo/redo (sidecars included, hand edits kept, conflicts leave files untouched, redo cleared by a new action, per-subject stacks).",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/workspace, src/workspace/undo; workspace/fakeCore, workspace/helpers"
+  },
+  {
+   "path": "packages/extension/test/suite/activation.test.ts",
+   "purpose": "Runs first in the smoke instance: the opted-in workspace activates the extension by itself, VS Code sees the 3 commands, settings defaults and 6 colours, the instance uses the isolated HOME/XDG/git config, a plain folder gets no board, and with two model roots Open Board asks which (fake runner).",
+   "key_exports": "none (mocha tdd suite, @vscode/test-cli)",
+   "depends_on": "src/api (TeleleanApi); suite/fakeWorkspace (FAKE_RUNNER), suite/helpers"
+  },
+  {
+   "path": "packages/extension/test/suite/boards.test.ts",
+   "purpose": "Model boards in real VS Code with the real adapters (panels, serializer, TextSource, EditApplier via WorkspaceEdit + save, watchers, clipboard, editor, history diff editor, Initialize), driven by FakeModelWorkspace through api.testing.useRunner: one panel per root, restore, create-subject and undo, addNode written to the Inbox, unsaved typing read, Copy, openInEditor refusing an escaping link, git and history, refresh triggers, Initialize Model Here, a load failure message.",
+   "key_exports": "none (mocha tdd suite)",
+   "depends_on": "src/api, src/logic/initialize; suite/fakeWorkspace, suite/helpers"
+  },
+  {
+   "path": "packages/extension/test/suite/board.test.ts",
+   "purpose": "The sample board webview in real VS Code 1.140.0 under xvfb: the panel opens, the bundle loads under the strict CSP, posts ready and renders the graph; re-running reveals the same panel with the new graph; a graph sent while loading is re-sent on ready; the contributed theme colours reach the webview.",
+   "key_exports": "none (mocha tdd suite)",
+   "depends_on": "src/api; suite/helpers"
+  },
+  {
+   "path": "packages/extension/test/suite/cdp.ts",
+   "purpose": "Drives the e2e instance's real board webview over the Chrome DevTools Protocol with playwright-core's connectOverCDP (attach only, trusted input), clearing VS Code notification toasts that would take the board's clicks and locating the board frame.",
+   "key_exports": "clearWorkbenchToasts, settleStartupToasts, Workbench, connectWorkbench, boardFrame",
+   "depends_on": "playwright-core, vscode; suite/helpers"
+  },
+  {
+   "path": "packages/extension/test/suite/e2e-runs.test.ts",
+   "purpose": "M2 end to end through the real board UI over CDP with the real host, workspace, RunManager, Lean engine, proposals, sidecars and git on the $TELELEAN_RUNS_E2E_ROOT copy; Claude is a ScriptedClaude wrapping the FakeBackend with test-fixtures/walkthrough scripts, installed via testing.useRunBackend. Covers normative Accept/Undo, literal ghost adoption, cheating plus Feedback plus Discard, give-up, cancel, a race with the board's refresh, and a reload while a question waits.",
+   "key_exports": "none (mocha tdd suite, e2e instance)",
+   "depends_on": "src/api, @telelean/runner/llm (fake, fakeScripts, types); suite/cdp, suite/helpers"
+  },
+  {
+   "path": "packages/extension/test/suite/e2e.test.ts",
+   "purpose": "M1 end to end on the $TELELEAN_E2E_ROOT copy with the real workspace, Lean refresh, git history and board UI over CDP: open with Lean statuses, Initialize git, add via the A|D|G box, sentence edit with docstring mirror, Make Assumption (impact, why dialog, axiom, assumed), Undo x3 and Redo x3 byte-exact, history revert and undo, new subject, uses line, Copy, gloss and highlight, drag-select in code, D-18 delete with dependents.",
+   "key_exports": "none (mocha tdd suite, e2e instance)",
+   "depends_on": "src/api, @telelean/core; suite/cdp, suite/helpers"
+  },
+  {
+   "path": "packages/extension/test/suite/fakeWorkspace.ts",
+   "purpose": "A working stand-in for the runner's ModelWorkspace and Initialize helpers that plans real file changes and writes them through the extension's TextSource and EditApplier, keeps an undo stack and in-memory history and derives the board from the Spyro sample plus Inbox blocks (no Lean, no git); FAKE_RUNNER plugs it in via api.testing.useRunner and has no Claude runs.",
+   "key_exports": "FakeModelWorkspace, fakeFindModelRoots, fakeInspectFolder, fakePlanInitialize, FAKE_RUNNER",
+   "depends_on": "@telelean/core, @telelean/runner/workspace types"
+  },
+  {
+   "path": "packages/extension/test/suite/helpers.ts",
+   "purpose": "Shared helpers of the in-VS-Code suites: the extension API, the scratch workspace paths prepared by scripts/smoke.mjs, waiting for board messages and posts, condition polling, message construction and editor cleanup.",
+   "key_exports": "EXTENSION_ID, BOARD_VIEW_TYPE, getApi, workspacePaths, sleep, nextMessage, nextBoardMessage, nextPost, recordPosts, postsOf, waitFor, isRendered, message, closeAllEditors, settleEditors, closeTextEditors",
+   "depends_on": "src/api, @telelean/core types, vscode"
+  },
+  {
+   "path": "packages/extension/test/suite/model.test.ts",
+   "purpose": "AT5.5 smoke flow on the copied sample with the real runner workspace, core and Lean refresh: 4 cards, fresh semantics and 9 vocabulary items, addNode and undo, G->A then assumed after refresh, Copy, initGit/history/preview/revert on private refs only, openInEditor, .telelean/graph.json, Initialize Model Here with the real planInitialize.",
+   "key_exports": "none (mocha tdd suite)",
+   "depends_on": "src/api, src/logic/initialize; suite/helpers"
+  },
+  {
+   "path": "packages/extension/test/suite/runs.test.ts",
+   "purpose": "AT5.8/AT5.9 a These suffice run through the real extension, workspace, RunManager, engine, proposals and sidecars on the $TELELEAN_RUNS_ROOT copy, with an inline normative FakeBackend script installed via testing.useRunBackend and consent answered by the testing API: question, answer, proved proposal with G->D, raw diff, Accept and Undo, a pending question restored after a simulated reload, and an interrupted run offering Resume.",
+   "key_exports": "none (mocha tdd suite)",
+   "depends_on": "src/api, @telelean/runner/llm (fake, types); suite/helpers"
+  },
+  {
+   "path": "packages/extension/test/unit/actionMapping.test.ts",
+   "purpose": "AT5.7 protocol message to BoardAction: addNode, kindChange (dependents choice, rationale, confirmedDependents), theseSuffice (set-premises, none for zero premises), editNode, deleteNode (confirmed), reorder, createSubject; isActionMessage classification and requestIdOf.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/logic/actionMapping, @telelean/core (parseWebviewToHost)"
+  },
+  {
+   "path": "packages/extension/test/unit/boardSession.test.ts",
+   "purpose": "BoardSession with a fake workspace and recording ports: publishing on ready and on changes, actions with actionResult and notices, refusals and needs-confirmation naming cards across subjects, confirmedDependents, runner exceptions as internal errors, theseSuffice, undo/redo, one mutating message at a time, subject switching and vanishing, history, git, clipboard, editor and refresh.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/logic/boardSession, @telelean/core; unit/fakes"
+  },
+  {
+   "path": "packages/extension/test/unit/bundle.test.ts",
+   "purpose": "Builds the extension bundle with the build's own esbuild options and checks it contains the runner's llm/run/gate/shadow/proposal/workspace sources and the guard module with no import.meta left, loads and activates in plain Node with a stub vscode (3 commands, serializer, two diff providers), resolves import.meta.url, passes the build's load check, and that the guard is copied byte-identically to dist/bin.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "scripts/build-steps.mjs, scripts/esbuild-options.mjs, esbuild, @telelean/runner/llm/confinement"
+  },
+  {
+   "path": "packages/extension/test/unit/dependentCards.test.ts",
+   "purpose": "With the real runner workspace and core on a mental_model copy (Lean and git off), a delete's needs-confirmation answer names another subject's card by subject, kind and sentence (dependentCards) while a card-less lemma stays a Lean name, and nothing is deleted.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/logic/boardSession, @telelean/runner/workspace, @telelean/core; unit/fakes"
+  },
+  {
+   "path": "packages/extension/test/unit/editApplier.test.ts",
+   "purpose": "FileChange to minimal WorkspaceEdit text edits (random round trips, CRLF), VS Code-style positions, planFileOperations with root confinement, and CheckedEditApplier: batch apply and save, refusing stale before-texts and bad creates, editor refusals, rollback of partial batches and reporting when rollback fails, save failures, no-op batches.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/logic/editApplier, @telelean/core, @telelean/runner/workspace types"
+  },
+  {
+   "path": "packages/extension/test/unit/fakes.ts",
+   "purpose": "Test doubles for the vscode-free host logic: an in-memory ModelWorkspace, recording BoardSession ports, RunView/ProposalView builders and a recording RunManager.",
+   "key_exports": "FakeWorkspace, RecordingPorts, sampleRun, sampleProposal, RunMethod, FakeRunManager",
+   "depends_on": "src/logic/boardSession, src/logic/proposalPreview, @telelean/core, @telelean/runner (llm, run, workspace types)"
+  },
+  {
+   "path": "packages/extension/test/unit/groups.test.ts",
+   "purpose": "Where a board opens files and previews: groupBesideBoard and focusCommandBesideBoard never open over the board and never split it twice.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/logic/groups"
+  },
+  {
+   "path": "packages/extension/test/unit/hostRestore.test.ts",
+   "purpose": "AT5.4 the board host's open and restore paths against vscodeStub panels whose postMessage never resolves: restoreBoard resolves and the session attaches in the background, an early ready is answered, a duplicate restored panel is closed, a missing folder says so, Open Board resolves once attached.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/vscode/host (TeleleanHost), src/api; unit/fakes, unit/vscodeStub"
+  },
+  {
+   "path": "packages/extension/test/unit/hostRuns.test.ts",
+   "purpose": "The host's M2 wiring with vscodeStub, a fake workspace and a recording RunManager: one RunManager per root (recovered once, disposed before its workspace), run/proposal posting, runs unavailable without storage, the lazy backend and Test-mode guard (useRunBackend), the Production factory's arguments, egress consent once per root, the raw Lean diff via the telelean-proposal provider, deactivation order.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/vscode/host, src/vscode/runner, src/extension, src/logic/runs, @telelean/runner (run, llm, shadow, gate, proposal types); unit/fakes, unit/vscodeStub"
+  },
+  {
+   "path": "packages/extension/test/unit/html.test.ts",
+   "purpose": "The board webview HTML: a strict nonce CSP without unsafe-*, two nonce-tagged scripts from files (boot, then the module bundle), the boot script before the stylesheet, escaped attributes.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/board/html (renderBoardHtml, boardCsp)"
+  },
+  {
+   "path": "packages/extension/test/unit/initialize.test.ts",
+   "purpose": "AT5.3 Initialize: defaultSubjectName and subjectNameProblem, and runInitialize with fake ports for an empty folder (subject, plan, git offer, board), declined or existing git, cancel, a Lake project, an existing model, unsupported folders and write failures.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/logic/initialize, @telelean/core, @telelean/runner/workspace types"
+  },
+  {
+   "path": "packages/extension/test/unit/modelPaths.test.ts",
+   "purpose": "AT5.7 openInEditor path checks (inside the root, outside however spelled, a symlink pointing outside) and path helpers (isInside, relativeModelPath, rootOfPath, classifyModelPath for file events).",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/logic/modelPaths"
+  },
+  {
+   "path": "packages/extension/test/unit/packageJson.test.ts",
+   "purpose": "AT5.2 the manifest: three commands, activation events, untrusted and virtual workspaces refused, settings defaults equal to the host's fallbacks, M2 run settings' scopes, enums and bounds, six colours with one dot and hex defaults for every theme kind.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "package.json, src/logic/settings"
+  },
+  {
+   "path": "packages/extension/test/unit/realRuns.test.ts",
+   "purpose": "AT5.9 with the real RunManager, shadow, proposal service, sidecar store and model workspace behind the host (vscodeStub) on a mental_model copy, with a fake engine, injected preflight and an LLM session that never ends: Test mode without useRunBackend refuses the start creating nothing; deactivation closes the session and the next window recovers the run as interrupted; run.json says interrupted.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/vscode/host, src/logic/runs, @telelean/runner (run, shadow, workspace, gate/llm types); unit/vscodeStub"
+  },
+  {
+   "path": "packages/extension/test/unit/restore.test.ts",
+   "purpose": "Board titles (folder name, parent when ambiguous) and restoring a board after a reload from webview state, host records or titles (restoreTarget, parseRecords, updateRecords).",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/logic/restore"
+  },
+  {
+   "path": "packages/extension/test/unit/runBackend.test.ts",
+   "purpose": "The Claude backend factory: built lazily with the dist/bin guard, hook runtime, client app and setpriv launcher, resolution failures propagated; Test mode rejects unless testing.useRunBackend installed a backend (never calling createClaudeBackend); backend settings; the exact egress consent text; the busy check.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/logic/runs, @telelean/runner (llm/fake, llm/types, run/types); unit/fakes"
+  },
+  {
+   "path": "packages/extension/test/unit/runRouting.test.ts",
+   "purpose": "AT5.1/5.2/5.6: BoardSession routes every run message to the RunManager (recording fake), turns outcomes into actionResult and toasts, queues run messages but lets Cancel through, handles unavailable runs and recovery, posts run and proposal on ready and changes (also another subject's run), applies startRun's consent and busy rules, and opens proposal diffs.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/logic/boardSession, src/logic/runs, @telelean/core; unit/fakes"
+  },
+  {
+   "path": "packages/extension/test/unit/settings.test.ts",
+   "purpose": "readSettings maps defaults and user values to workspace options with clamping and ignoring mistyped values; M2 run settings default to the runner's DEFAULT_RUN_SETTINGS, convert minutes/seconds to ms, share memory settings, clamp and round.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/logic/settings, @telelean/core, @telelean/runner/run"
+  },
+  {
+   "path": "packages/extension/test/unit/smokeUnits.test.ts",
+   "purpose": "The smoke run's leftover-unit check (scripts/smoke-units.mjs): reading host pids and Claude run ids from logs and run dirs, deciding which telelean-* scopes are the run's, and failing only on one that still runs a process (empty ones are stopped, others left alone).",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "scripts/smoke-units.mjs"
+  },
+  {
+   "path": "packages/extension/test/unit/textSource.test.ts",
+   "purpose": "AT5.7 TextSource: an open (possibly unsaved) document wins over disk, missing files give null, a BOM is dropped, paths outside the root are refused.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/logic/textSource"
+  },
+  {
+   "path": "packages/extension/test/unit/vscodeStub.ts",
+   "purpose": "A small stand-in for the vscode module, aliased by vitest.config.mts: events, URIs, configuration, watchers, fake webview panels whose postMessage never resolves, output channel, serializer, modal messages answered from a queue, content providers, executed commands and installed extensions, all resettable.",
+   "key_exports": "EventEmitter, Uri, RelativePattern, Range, ExtensionMode, ViewColumn, version, shown, messageAnswers, executed, providers, installedExtensions, FakePanel, fakePanel, created, workspace, window, extensions, env, commands, resetStub",
+   "depends_on": "node path only"
+  },
+  {
+   "path": "packages/extension/test/unit/watchers.test.ts",
+   "purpose": "Typing batches (PathBatcher flushing after about 200 ms of quiet), echo detection of telelean's own writes and handled saves (SelfWrites, isDiskEcho), history preview documents (rows, titles, store) and choosing a model root.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/logic/changeBatcher, src/logic/historyPreview, src/logic/roots"
+  },
+  {
+   "path": "packages/webview/test/e2e/board.spec.ts",
+   "purpose": "Playwright on the harness: Spyro rendering (sentence, glyph, aura, dashed declared arrows), the rendered diagnostic, contributed colours under VS Code's variable names, a CSP-refused stylesheet reported through boot.js, a non-vacuous arrow checker, solid verified arrows, column scrolling with stubs, n-linked buttons, a cross-column drag posting kindChange, selection and the tray's startRun, the A|D|G box, card expansion, high contrast.",
+   "key_exports": "none (Playwright spec)",
+   "depends_on": "e2e/helpers, shared/vscode-theme, @telelean/core samples"
+  },
+  {
+   "path": "packages/webview/test/e2e/helpers.ts",
+   "purpose": "Playwright helpers: openBoard loads the harness with a graph, theme, workspace, history, state, run/proposal and pinned clock and collects console, page and CSP problems; plus message sending and replies, drags, attribute watching, posted-message readers, locators, scroll positions, an arrow-geometry checker and badge reports.",
+   "key_exports": "Theme, shotPath, HarnessConfig, OpenedBoard, OpenOptions, openBoard, send, replyNext, dragCard, columnPoint, watchAttribute, seenAttribute, inColumnView, settle, posted, postedOfType, renderedDiagnostic, card, list, scrollTops, ArrowReport, checkArrows, edgePairs, BadgeReport, badgeReport",
+   "depends_on": "@playwright/test, @telelean/core types; harness/harness.js page API"
+  },
+  {
+   "path": "packages/webview/test/e2e/m1-cards.spec.ts",
+   "purpose": "AT6.2 the Vocabulary group (9 items, presupposition chips, collapse kept across reload), AT6.3 card chips, aura, attention badge and D-13 hint, AT6.17 the uses: line and its dropdown, AT6.21 Depends on/Used by and the legend.",
+   "key_exports": "none (Playwright spec)",
+   "depends_on": "e2e/helpers, shared/graphs, @telelean/core"
+  },
+  {
+   "path": "packages/webview/test/e2e/m1-drag.spec.ts",
+   "purpose": "AT6.8 re-ordering drags with the right beforeId; AT6.9 cross-column drop zones with D-11 impacts, the dependents dialog, rewrite disabled on stale facts, G->A rationale, host-only confirmations, D->A of a conditional proof, the Make buttons; AT6.4 arrow kinds.",
+   "key_exports": "none (Playwright spec)",
+   "depends_on": "e2e/helpers, shared/graphs, @telelean/core"
+  },
+  {
+   "path": "packages/webview/test/e2e/m1-edits.spec.ts",
+   "purpose": "AT6.5 the A|D|G box (stance, why and source chips), AT6.6 in-place edits, AT6.7 the delete dialog (dependents, mentions, focus, host confirmation with Delete anyway), AT6.10 undo/redo keys and the Undo toast, AT6.11 the tray's presuppositions and Self-evident? (enabled in M2).",
+   "key_exports": "none (Playwright spec)",
+   "depends_on": "e2e/helpers, shared/graphs, @telelean/core"
+  },
+  {
+   "path": "packages/webview/test/e2e/m1-fixes.spec.ts",
+   "purpose": "M1 UX-review fixes: narrow boards scroll sideways, toasts stay above the tray, keyboard handling of dropdowns, inline edits and Alt+Up/Down, These suffice naming dropped premises with Add to its premises, readable highlights, focused arrows routed through gaps, backtick code spans, the empty-board hint.",
+   "key_exports": "none (Playwright spec)",
+   "depends_on": "e2e/helpers, shared/graphs, @telelean/core"
+  },
+  {
+   "path": "packages/webview/test/e2e/m1-header.spec.ts",
+   "purpose": "AT6.12 the subject picker (counts, selectSubject, New subject validation), AT6.13 the history dropdown (entries, storage counter, Preview, Revert, Keep last, Initialize git and other states), AT6.14 the Lean badge in every state, problems opening in the editor, banners.",
+   "key_exports": "none (Playwright spec)",
+   "depends_on": "e2e/helpers, shared/graphs, @telelean/core"
+  },
+  {
+   "path": "packages/webview/test/e2e/m1-lean-code.spec.ts",
+   "purpose": "The expanded Lean code: AT6.16 a mouse drag selects text and never drags the card, AT6.18 Copy posts exactly lean.code with a Copied notice, AT6.19 identifier glosses and click-to-highlight in the Vocabulary group, and clicking a node name in a proof reveals that card.",
+   "key_exports": "none (Playwright spec)",
+   "depends_on": "e2e/helpers, @telelean/core"
+  },
+  {
+   "path": "packages/webview/test/e2e/m1-store.spec.ts",
+   "purpose": "AT6.1 through the real bridge -> store -> React path: older graphs are dropped, selection and expansion survive a newer graph, refused optimistic adds and drags roll back with an error toast.",
+   "key_exports": "none (Playwright spec)",
+   "depends_on": "e2e/helpers, @telelean/core"
+  },
+  {
+   "path": "packages/webview/test/e2e/m2-carryover.spec.ts",
+   "purpose": "M1 carry-overs on the board: Used by and the delete dialog list users outside the board (externalUsers), the dependents dialog speaks in the singular or plural, and a kind change posts confirmedDependents while a host that finds more re-opens the dialog with its list. The header's 'gated on WP1' remark is stale: nothing is gated.",
+   "key_exports": "none (Playwright spec)",
+   "depends_on": "e2e/helpers, shared/graphs, shared/runs, @telelean/core"
+  },
+  {
+   "path": "packages/webview/test/e2e/m2-layout.spec.ts",
+   "purpose": "M2 layout and wording fixes: during a run on a narrow board the tray and A|D|G box fold, the run panel is resizable and its size kept per layout, new panel content scrolls into view, the statement step shows the proposition without a #print header, diff marks sit on their own line, a gave-up round is announced at once, declined consent is an info toast.",
+   "key_exports": "none (Playwright spec)",
+   "depends_on": "e2e/helpers, shared/graphs, shared/runs, @telelean/core"
+  },
+  {
+   "path": "packages/webview/test/e2e/m2-overlay.spec.ts",
+   "purpose": "AT6.5 the proposal overlay (Current/Proposed toggle, diff marks with glyph, word, colour and halo, +N new vocabulary, result hidden until the review), translucent Claude suggests cards with I hold this (posts adoptGhost) and No (rejectGhost), high contrast outlines, and AT6.6 the attempts history in the expanded card.",
+   "key_exports": "none (Playwright spec)",
+   "depends_on": "e2e/helpers, shared/graphs, shared/runs, @telelean/core"
+  },
+  {
+   "path": "packages/webview/test/e2e/m2-provenance.spec.ts",
+   "purpose": "AT6.10 provenance: every string Claude wrote (token-marked in the fixtures) renders inside data-provenance=agent, in italics, with Claude's marker, and never in the user's style, across questions, answers, guesses, activity, the proposal (board, statements, vocabulary, definitions, report card, suggestions) and the attempts history.",
+   "key_exports": "none (Playwright spec)",
+   "depends_on": "e2e/helpers, shared/graphs, shared/runs, @telelean/core"
+  },
+  {
+   "path": "packages/webview/test/e2e/m2-questions.spec.ts",
+   "purpose": "AT6.3 question cards: phenomenon tag, options with consequences, own words, Leave it open, Decide for me, per-answer scope (default this run); Send posts answerQuestions; Claude's guess appears only after the run update; the card is disabled while sending.",
+   "key_exports": "none (Playwright spec)",
+   "depends_on": "e2e/helpers, shared/graphs, shared/runs, @telelean/core"
+  },
+  {
+   "path": "packages/webview/test/e2e/m2-review.spec.ts",
+   "purpose": "AT6.4 the end-of-round review: statements, then vocabulary, definition questions (Accept waits for every yes), report card (early via Show result), lifecycle ticks; Accept, Feedback, Discard and Raw Lean diff post their messages; fixer round 2: Recorded wording for a no-file Accept, Undo hint read from RunView.accepted, the ticked Goal -> Derivation tooltip.",
+   "key_exports": "none (Playwright spec)",
+   "depends_on": "e2e/helpers, shared/graphs, shared/runs, @telelean/core"
+  },
+  {
+   "path": "packages/webview/test/e2e/m2-run.spec.ts",
+   "purpose": "AT6.1 the tray's run buttons (These suffice, Add to its premises, Self-evident?) posting startRun and their disabling, AT6.2 the run panel (state, stage, counters, usage estimate, rate limit, notices, Cancel) and run states (starting, proving, waiting, checking, interrupted, failed), the panel's placement on a narrow board, AT6.11 another subject's run as one compact line with Show.",
+   "key_exports": "none (Playwright spec)",
+   "depends_on": "e2e/helpers, shared/graphs, shared/runs, @telelean/core"
+  },
+  {
+   "path": "packages/webview/test/harness/blocked-style.html",
+   "purpose": "Negative-control harness page whose CSP refuses the stylesheet, so the boot script must catch and report the refusal (used by board.spec.ts).",
+   "key_exports": "none (static page)",
+   "depends_on": "/dist/boot.js, /dist/webview.js, harness.js (served by serve.mjs)"
+  },
+  {
+   "path": "packages/webview/test/harness/chrome-tmp.ts",
+   "purpose": "Makes one short temporary directory per Playwright run for Chrome's TMPDIR, HOME and XDG dirs (Unix socket path limit) and, as the global teardown, reports what Chrome wrote there and deletes it.",
+   "key_exports": "chromeTmpDir, default (removeChromeTmpDir)",
+   "depends_on": "node fs/os/path; used by playwright.config.ts"
+  },
+  {
+   "path": "packages/webview/test/harness/harness.js",
+   "purpose": "The static harness's stand-in for VS Code and the extension: theme variables and body classes (dark, light, high contrast), a mock acquireVsCodeApi recording posts, getState/setState in sessionStorage, and a minimal host that answers ready with workspace, graph, run and proposal, auto-replies actionResults (or queued replies), canned history and a Copied notice.",
+   "key_exports": "window.__tlHarness (posted, replies, sendToWebview), reads window.__TL_HARNESS__",
+   "depends_on": "none (plain browser script)"
+  },
+  {
+   "path": "packages/webview/test/harness/home-guard.ts",
+   "purpose": "Playwright global setup and teardown that lists Chrome's real-home locations (profile, caches, fontconfig, NSS db) before and after the run and fails it if anything changed (AT6.15).",
+   "key_exports": "listHome, default (homeGuard)",
+   "depends_on": "node fs/os/path; used by playwright.config.ts"
+  },
+  {
+   "path": "packages/webview/test/harness/index.html",
+   "purpose": "The harness page, with the same CSP and load order as the real webview (nonce scripts, boot.js before the stylesheet, harness.js, then the module bundle).",
+   "key_exports": "none (static page)",
+   "depends_on": "/dist/boot.js, /dist/webview.css, /dist/webview.js, /harness/harness.js"
+  },
+  {
+   "path": "packages/webview/test/harness/serve.mjs",
+   "purpose": "A tiny static server on 127.0.0.1 (Playwright's webServer, port 41739) mapping /harness/* to test/harness and /dist/* to the built bundle in packages/extension/dist/webview, refusing path traversal.",
+   "key_exports": "none (script)",
+   "depends_on": "node http/fs"
+  },
+  {
+   "path": "packages/webview/test/shared/graphs.ts",
+   "purpose": "Graph variants for the webview tests derived from core's Spyro samples: node patching, status and semantic overrides, a status gallery, edge-kind, conditional and mention graphs, workspace states and history listings.",
+   "key_exports": "mapNode, withStatus, withSemantic, makeNode, statusGallery, edgeKindsGraph, conditionalGraph, mentionGraph, workspaceState, historyListing",
+   "depends_on": "@telelean/core (samples, types)"
+  },
+  {
+   "path": "packages/webview/test/shared/runs.ts",
+   "purpose": "M2 fixtures typed with core's run types: runs in each state, the walkthrough's ask_user questions and answers, proposals for both readings (normative proved, literal with a ghost, adopted), a definition-question proposal, an empty proposal, notices, attempts and external-users graphs.",
+   "key_exports": "RUN_ID, STARTED, UPDATED, TARGET, ALL_PREMISES, runView, MODALITY_QUESTION, GENERIC_QUESTION, questionSet, waitingRun, answeredModality, normativeProposal, literalGhost, literalGraph, literalProposal, ADOPTED_ID, adoptedProposal, definitionProposal, emptyProposal, ACCEPTED_NOTICE, RECORDED_NOTICE, reviewRun, attemptsGraph, externalUsersGraph",
+   "depends_on": "@telelean/core (run types, samples)"
+  },
+  {
+   "path": "packages/webview/test/shared/vscode-theme.ts",
+   "purpose": "How VS Code 1.140 names theme colours in a webview (--vscode- plus the id with only its first dot replaced) and the colours the extension manifest contributes.",
+   "key_exports": "vscodeColorVariable, ContributedColor, contributedColors",
+   "depends_on": "packages/extension/package.json"
+  },
+  {
+   "path": "packages/webview/test/unit/cardData.test.ts",
+   "purpose": "Card data helpers: the uses line, presupposition chips, code segments cut at Lean's UTF-16 ref ranges, chips per proof status and flag (no check mark for unchecked nodes), Depends on/Used by relations and delete-dialog lists, footprint entries.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/model/cardData, @telelean/core; shared/graphs"
+  },
+  {
+   "path": "packages/webview/test/unit/edges.test.ts",
+   "purpose": "toDisplayEdges (one arrow per pair, solid when verified, conditional and mismatch markings, lean-ref arrows only with focus, no duplicates), hasFocusEdges and markerVariant arrowheads.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/board/edges, src/board/EdgeEngine, @telelean/core; shared/graphs"
+  },
+  {
+   "path": "packages/webview/test/unit/format.test.ts",
+   "purpose": "Formatters (history times, storage sizes, verbatim one-line sentences, undo/redo shortcuts), labels (why placeholder per stance and kind, Lean badge texts and tooltips) and core-message rendering (backtick code spans, plain text, sentences).",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/model/format, src/labels"
+  },
+  {
+   "path": "packages/webview/test/unit/geometry.test.ts",
+   "purpose": "Arrow geometry: endpoint anchoring and clamping, sidesFor, computeFrame (full arrows, stubs counted in badges, culling, gutter routing, focus priority over the budget, missing cards, focused arrows routed through gaps between Derivation cards).",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/board/geometry"
+  },
+  {
+   "path": "packages/webview/test/unit/run.test.ts",
+   "purpose": "The run UI model: duration, token and cost formatting, rate-limit levels, the status line and agent clock, state labels with the result hidden until revealed (D-19), how ended rounds and Accepts are worded, statements without #print headers, tray blocking, answer validation (D-20), review steps and Accept rules, and the proposal overlay hiding the result.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/model/run, @telelean/core; shared/runs"
+  },
+  {
+   "path": "packages/webview/test/unit/store-run.test.ts",
+   "purpose": "The M2 store: run and proposal kept apart from the board graph, the review switching the board to the overlay (own subject only), startRun blocking, consent and target rules, run-panel size persistence, answer drafts, review reveal, definitions, Feedback, ghosts and run controls, adding a card during a review, and confirmedDependents re-asking without loops.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/state/store, @telelean/core; shared/graphs, shared/runs"
+  },
+  {
+   "path": "packages/webview/test/unit/store.test.ts",
+   "purpose": "The board store (M0 behaviour, M1 protocol): columns, selection, tray startRun/Add to its premises/Self-evident?, moves, drops posting kindChange or reorder, verbatim addNode; AT6.1 host messages (stale versions dropped, optimistic rollbacks, provisional ids, needs-confirmation dialog); kind changes via kindChangeImpact; in-place edits; request ids, persistence, highlights, subject resets, toasts and Undo, copyText; the D-18 delete confirmation.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/state/store, @telelean/core; shared/graphs"
+  },
+  {
+   "path": "packages/webview/test/unit/theme.test.ts",
+   "purpose": "The colours the extension manifest contributes match board.css: the four M0 colours and nothing the board does not know, per-colour checks of defaults and variable use, the M1 vocabulary and highlight colours read with fallbacks, no unknown telelean variables.",
+   "key_exports": "none (vitest suite)",
+   "depends_on": "src/styles/board.css (read as text); shared/vscode-theme"
+  }
+ ]
+}

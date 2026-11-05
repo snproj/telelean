@@ -1,0 +1,38 @@
+[smoke 00:21:33] binary /home/zhengyew/.vscode/extensions/anthropic.claude-code-2.1.314-linux-x64/resources/native-binary/claude (vscode-extension, 2.1.314); work dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn2/smoke-live
+[smoke 00:21:33] LIVE RUN: this spends a little of the Claude subscription quota.
+[smoke 00:21:33] scenario a: start
+[smoke 00:21:34] a/main: CLI started (pid 888205), preflight {"verdict":"subscription","apiProvider":"firstParty","subscriptionType":"Claude Ultra","hasEmail":true,"cliVersion":"2.1.314","guardSelfTestOk":true,"hooksOk":true}
+[smoke 00:21:36] a/main: tool_use mcp__telelean__ask_user
+[smoke 00:21:36] a: ask_user received; answering in 75000 ms
+[smoke 00:22:51] a/main: tool_result The user answered: 1. Is this smoke test running?    -> option 0: Yes [scope: run]
+[smoke 00:22:52] a/main: tool_use mcp__telelean__finish
+[smoke 00:22:52] a/main: tool_result Gate passed. The run is complete; stop here.
+[smoke 00:22:53] a/main: result success turns=3 cost~$0.00151737
+[smoke 00:22:53] scenario a: PASS
+[smoke 00:22:53] scenario b: start
+[smoke 00:22:54] b/main: CLI started (pid 888490), preflight {"verdict":"subscription","apiProvider":"firstParty","subscriptionType":"Claude Ultra","hasEmail":true,"cliVersion":"2.1.314","guardSelfTestOk":true,"hooksOk":true}
+[smoke 00:22:56] b/main: tool_use Read
+[smoke 00:22:56] b/main: tool_result 1	import Model.Spyro.Main 2	
+[smoke 00:22:56] b/main: tool_use Read
+[smoke 00:22:56] b/main: tool_result ERROR PreToolUse:Read hook error: telelean confinement: Read "file_path" '/etc/hostname' resolves outside 
+[smoke 00:22:56] b/main: tool_use Read
+[smoke 00:22:56] b/main: tool_result ERROR PreToolUse:Read hook error: telelean confinement: Read "file_path" '/tmp/claude-1002/-home-zhengyew-
+[smoke 00:22:56] b/main: tool_use Grep
+[smoke 00:22:56] b/main: tool_result ERROR PreToolUse:Grep hook error: telelean confinement: Grep would search '.', which contains the hidden e
+[smoke 00:22:57] b/main: tool_use Glob
+[smoke 00:22:57] b/main: tool_result ERROR PreToolUse:Glob hook error: telelean confinement: Glob would search '.', which contains the hidden e
+[smoke 00:22:59] b/main: tool_use mcp__telelean__finish
+[smoke 00:22:59] b/main: tool_result Gate passed. The run is complete; stop here.
+[smoke 00:22:59] b/main: result success turns=7 cost~$0.0009428
+[smoke 00:23:00] scenario b: PASS
+[smoke 00:23:00] scenario c: start
+[smoke 00:23:00] c/before-reload: CLI started (pid 888607), preflight {"verdict":"subscription","apiProvider":"firstParty","subscriptionType":"Claude Ultra","hasEmail":true,"cliVersion":"2.1.314","guardSelfTestOk":true,"hooksOk":true}
+[smoke 00:23:02] c/before-reload: tool_use mcp__telelean__ask_user
+[smoke 00:23:02] c: ask_user received; simulating a window reload (SIGTERM to the CLI process group)
+[smoke 00:23:03] c/before-reload: tool_result ERROR MCP server "telelean" connection closed before the tool call was answered. The tool may have run: ch
+[smoke 00:23:04] c/before-reload: error the Claude CLI exited (code 143, signal null) before the turn ended
+[smoke 00:23:05] c/after-reload: CLI started (pid 888701), preflight {"verdict":"subscription","apiProvider":"firstParty","subscriptionType":"Claude Ultra","hasEmail":true,"cliVersion":"2.1.314","guardSelfTestOk":true,"hooksOk":true}
+[smoke 00:23:07] c/after-reload: tool_use mcp__telelean__finish
+[smoke 00:23:07] c/after-reload: tool_result Gate passed. The run is complete; stop here.
+[smoke 00:23:08] c/after-reload: result success turns=2 cost~$0.00057501
+[smoke 00:23:08] scenario c: PASS

@@ -1,0 +1,2 @@
+import Dep
+def modelVal : Nat := depVal + 1

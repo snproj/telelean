@@ -1,0 +1,32 @@
+theorem nd_ex : 2 + 2 = 4 := by native_decide
+#print nd_ex
+#print nd_ex._native.native_decide.ax_1_1
+#print axioms nd_ex
+-- decide +native and +kernel variants
+theorem nd2 : 10 * 10 = 100 := by decide +native
+#print axioms nd2
+theorem kd : 10 * 10 = 100 := by decide +kernel
+#print axioms kd
+-- direct use of ofReduceBool
+#check @Lean.ofReduceBool
+#print axioms Lean.ofReduceBool
+#check @Lean.trustCompiler
+#print Lean.trustCompiler
+#print Lean.reduceBool
+def myTrue : Bool := true
+theorem viaReduceBool : myTrue = true := Lean.ofReduceBool myTrue true rfl
+#print axioms viaReduceBool
+-- a 'false' implemented_by: compiled code disagrees with the logic
+def realF (n : Nat) : Bool := false
+@[implemented_by realF] def logicalF (n : Nat) : Bool := true
+-- logically logicalF 0 = true; compiled = false
+theorem logical_ok : logicalF 0 = true := rfl
+#print axioms logical_ok
+theorem lie : logicalF 0 = false := by native_decide
+#print axioms lie
+theorem contradiction : False := by
+  have h1 := logical_ok
+  have h2 := lie
+  rw [h1] at h2
+  exact Bool.noConfusion h2
+#print axioms contradiction

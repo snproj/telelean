@@ -1,0 +1,17 @@
+import Lean
+open Lean Elab Command Meta
+axiom Character : Type
+axiom Cynder : Character
+axiom HasDarkPast : Character → Prop
+/-- misleading global notation: reads like a real claim, elaborates to `True` -/
+notation "cynder_has_dark_past" => True
+theorem looks_substantive : cynder_has_dark_past := trivial
+#check looks_substantive
+set_option pp.notation false in
+#check looks_substantive
+elab "#raw " n:ident : command => liftTermElabM do
+  let ci ← getConstInfo n.getId
+  logInfo m!"type Expr = {repr ci.type}"
+#raw looks_substantive
+-- even plain `True` now prints as the notation:
+#check (True : Prop)

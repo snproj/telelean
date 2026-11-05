@@ -1,0 +1,49 @@
+{
+ "name": "react-window",
+ "latest": "2.5.2",
+ "dist_tags": {
+  "rc": "1.0.0",
+  "next": "1.6.0-alpha.1",
+  "alpha": "2.2.5-alpha.1",
+  "latest": "2.5.2"
+ },
+ "latest_published": "2026-10-30T15:50:36.137Z",
+ "modified": "2026-10-30T15:50:36.295Z",
+ "created": "2014-11-24T11:07:12.068Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 418885,
+ "fileCount": 8,
+ "tarball": "https://registry.npmjs.org/react-window/-/react-window-2.5.2.tgz",
+ "dependencies": {},
+ "peerDependencies": {
+  "react": "^18.0.0 || ^19.0.0",
+  "react-dom": "^18.0.0 || ^19.0.0",
+  "@types/react": "^18.2.6 || ^19.0.0"
+ },
+ "repository": "git+https://github.com/bvaughn/react-window.git",
+ "recent_versions": [
+  [
+   "2.4.0",
+   "2026-10-18T13:51:35.846Z"
+  ],
+  [
+   "2.4.1",
+   "2026-10-18T21:33:20.400Z"
+  ],
+  [
+   "2.5.0",
+   "2026-10-22T00:29:12.946Z"
+  ],
+  [
+   "2.5.1",
+   "2026-10-26T23:45:12.239Z"
+  ],
+  [
+   "2.5.2",
+   "2026-10-30T15:50:36.137Z"
+  ]
+ ],
+ "homepage": "https://react-window.vercel.app/",
+ "description": "<img src=\"https://react-window.vercel.app/og.png\" alt=\"react-window logo\" width=\"400\" height=\"210\" />"
+}

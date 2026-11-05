@@ -1,0 +1,25 @@
+import T.A
+open W
+
+/-- Cynder would not be a good addition to the new Spyro game (normative reading). -/
+theorem goal_normative : ¬ GoodAdditionTo cynder newSpyro :=
+  pg_no_dark_good newSpyro cynder newSpyro_pg cynder_dark_past
+
+#print axioms goal_normative
+
+/-- R5's independence certificate (literal reading): the three assumptions hold and the goal fails. -/
+theorem independence_literal :
+    ∃ (Character : Type) (Game : Type) (cynder : Character) (newSpyro : Game)
+      (HasDarkPast : Character → Prop) (IsPG : Game → Prop)
+      (AppearsIn : Character → Game → Prop) (GoodAdditionTo : Character → Game → Prop),
+      HasDarkPast cynder ∧ IsPG newSpyro ∧
+      (∀ (g : Game) (c : Character), IsPG g → HasDarkPast c → ¬ AppearsIn c g) ∧
+      ¬¬ GoodAdditionTo cynder newSpyro :=
+  ⟨Unit, Unit, (), (), fun _ => True, fun _ => True, fun _ _ => False, fun _ _ => True,
+    trivial, trivial, fun _ _ _ _ h => h, fun h => h trivial⟩
+
+#print axioms independence_literal
+
+theorem conj_example : HasDarkPast cynder ∧ IsPG newSpyro := ⟨cynder_dark_past, newSpyro_pg⟩
+
+-- touch

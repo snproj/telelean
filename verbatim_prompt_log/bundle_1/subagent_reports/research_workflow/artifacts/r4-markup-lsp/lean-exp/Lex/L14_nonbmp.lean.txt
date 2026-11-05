@@ -1,0 +1,3 @@
+/- 𝓝 non-BMP and ∀ BMP in comment -/
+def k := "𝓝"
+#eval k.length

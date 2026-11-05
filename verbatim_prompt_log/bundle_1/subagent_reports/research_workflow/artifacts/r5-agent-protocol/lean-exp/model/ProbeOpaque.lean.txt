@@ -1,0 +1,3 @@
+opaque Character : Type
+opaque HasDarkPast : Character → Prop
+opaque cynder : Character

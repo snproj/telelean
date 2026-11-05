@@ -1,0 +1,42 @@
+{
+ "name": "@leanprover/infoview-api",
+ "latest": "0.13.0",
+ "dist_tags": {
+  "latest": "0.13.0"
+ },
+ "latest_published": "2026-04-13T12:37:07.304Z",
+ "modified": "2026-04-13T12:37:07.630Z",
+ "created": "2022-07-26T21:22:58.637Z",
+ "license": "Apache-2.0",
+ "deprecated": null,
+ "unpackedSize": 40755,
+ "fileCount": 13,
+ "tarball": "https://registry.npmjs.org/@leanprover/infoview-api/-/infoview-api-0.13.0.tgz",
+ "dependencies": {},
+ "peerDependencies": {},
+ "repository": "git+https://github.com/leanprover/vscode-lean4.git",
+ "recent_versions": [
+  [
+   "0.9.0",
+   "2025-09-23T16:22:02.195Z"
+  ],
+  [
+   "0.10.0",
+   "2025-10-13T15:03:09.092Z"
+  ],
+  [
+   "0.11.0",
+   "2026-02-26T23:54:23.182Z"
+  ],
+  [
+   "0.12.0",
+   "2026-03-13T23:40:46.485Z"
+  ],
+  [
+   "0.13.0",
+   "2026-04-13T12:37:07.304Z"
+  ]
+ ],
+ "homepage": "https://github.com/leanprover/vscode-lean4#readme",
+ "description": "Types and API for @leanprover/infoview."
+}

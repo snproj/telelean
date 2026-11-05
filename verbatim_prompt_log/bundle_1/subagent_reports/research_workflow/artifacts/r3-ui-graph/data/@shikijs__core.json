@@ -1,0 +1,48 @@
+{
+ "name": "@shikijs/core",
+ "latest": "4.5.0",
+ "dist_tags": {
+  "latest": "4.5.0"
+ },
+ "latest_published": "2026-10-01T06:46:41.238Z",
+ "modified": "2026-10-01T06:46:41.803Z",
+ "created": "2024-01-26T20:40:05.648Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 64135,
+ "fileCount": 9,
+ "tarball": "https://registry.npmjs.org/@shikijs/core/-/core-4.5.0.tgz",
+ "dependencies": {
+  "@types/hast": "^3.0.5",
+  "@shikijs/types": "4.5.0",
+  "hast-util-to-html": "^9.0.5",
+  "@shikijs/primitive": "4.5.0",
+  "@shikijs/vscode-textmate": "^10.0.2"
+ },
+ "peerDependencies": {},
+ "repository": "git+https://github.com/shikijs/shiki.git",
+ "recent_versions": [
+  [
+   "4.4.0",
+   "2026-07-31T09:55:10.009Z"
+  ],
+  [
+   "4.4.1",
+   "2026-07-31T09:59:00.175Z"
+  ],
+  [
+   "4.4.2",
+   "2026-08-05T00:40:02.656Z"
+  ],
+  [
+   "4.4.3",
+   "2026-08-10T04:58:30.073Z"
+  ],
+  [
+   "4.5.0",
+   "2026-10-01T06:46:41.238Z"
+  ]
+ ],
+ "homepage": "https://github.com/shikijs/shiki#readme",
+ "description": "Core of Shiki"
+}

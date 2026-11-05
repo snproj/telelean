@@ -1,0 +1,48 @@
+{
+ "name": "@xyflow/svelte",
+ "latest": "1.7.0",
+ "dist_tags": {
+  "next": "2.0.0-next.4",
+  "latest": "1.7.0"
+ },
+ "latest_published": "2026-09-24T12:41:13.124Z",
+ "modified": "2026-10-11T19:21:31.552Z",
+ "created": "2023-06-13T15:15:50.516Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 332612,
+ "fileCount": 263,
+ "tarball": "https://registry.npmjs.org/@xyflow/svelte/-/svelte-1.7.0.tgz",
+ "dependencies": {
+  "@xyflow/system": "0.0.83",
+  "@svelte-put/shortcut": "^4.1.0"
+ },
+ "peerDependencies": {
+  "svelte": "^5.25.0"
+ },
+ "repository": "git+https://github.com/xyflow/xyflow.git",
+ "recent_versions": [
+  [
+   "1.6.4",
+   "2026-08-25T15:26:18.304Z"
+  ],
+  [
+   "1.6.5",
+   "2026-08-25T19:39:19.989Z"
+  ],
+  [
+   "1.6.6",
+   "2026-09-01T12:03:45.128Z"
+  ],
+  [
+   "1.7.0",
+   "2026-09-24T12:41:13.124Z"
+  ],
+  [
+   "2.0.0-next.4",
+   "2026-10-11T19:21:31.341Z"
+  ]
+ ],
+ "homepage": "https://svelteflow.dev",
+ "description": "Svelte Flow - A highly customizable Svelte library for building node-based editors, workflow systems, diagrams and more."
+}

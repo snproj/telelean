@@ -1,0 +1,161 @@
+[
+ {
+  "label": "integrate",
+  "agentId": "a993dd1ed72a047e9",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Edit",
+   "ToolSearch",
+   "Monitor",
+   "Write",
+   "TaskStop",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "verify:gate",
+  "agentId": "aa48c8758823ee5f3",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Write",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "verify:ux",
+  "agentId": "adaa3b7ff9642e4d6",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Write",
+   "ToolSearch",
+   "Monitor",
+   "TaskStop",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "verify:safety",
+  "agentId": "afcf1f3075208bbf9",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Write",
+   "ToolSearch",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "fix-1:core+runner+docs",
+  "agentId": "a954ccd0c710f48de",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Edit",
+   "Write",
+   "ToolSearch",
+   "Monitor",
+   "TaskStop",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "fix-1:extension+webview",
+  "agentId": "ad1778a0a658e3f12",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Edit",
+   "Write",
+   "ToolSearch",
+   "Monitor",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "final-1",
+  "agentId": "a4a7839f1a4d1051a",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Write",
+   "Edit",
+   "ToolSearch",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "fix-2:core+runner+docs",
+  "agentId": "acdc41c098175d46c",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Edit",
+   "Write",
+   "ToolSearch",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "fix-2:extension+webview",
+  "agentId": "a371eee0157a82655",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Edit",
+   "Write",
+   "ToolSearch",
+   "Monitor",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "final-2",
+  "agentId": "ae5d429af17b8af6f",
+  "toolsUsed": [
+   "Bash",
+   "ToolSearch",
+   "Monitor",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "fix-3:core+runner+docs",
+  "agentId": "a9ec8855982da9304",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Write",
+   "Edit",
+   "ToolSearch",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "fix-3:extension+webview",
+  "agentId": "af6209b79ffef19f7",
+  "toolsUsed": [
+   "Bash",
+   "Read",
+   "Write",
+   "Edit",
+   "ToolSearch",
+   "Monitor",
+   "StructuredOutput"
+  ]
+ },
+ {
+  "label": "final-3",
+  "agentId": "a0c73cbd13cd92a3f",
+  "toolsUsed": [
+   "Bash",
+   "Write",
+   "Edit",
+   "ToolSearch",
+   "Monitor",
+   "StructuredOutput"
+  ]
+ }
+]

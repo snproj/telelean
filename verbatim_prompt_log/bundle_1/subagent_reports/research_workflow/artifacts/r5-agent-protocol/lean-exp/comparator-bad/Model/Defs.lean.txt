@@ -1,0 +1,14 @@
+namespace Telelean.Model
+axiom Character : Type
+axiom Game : Type
+axiom cynder : Character
+axiom newSpyro : Game
+axiom HasDarkPast : Character → Prop
+axiom IsPG : Game → Prop
+axiom AppearsIn : Character → Game → Prop
+axiom GoodAdditionTo : Character → Game → Prop
+axiom cynder_dark_past : HasDarkPast cynder
+axiom newSpyro_pg : IsPG newSpyro
+axiom pg_no_dark : ∀ (g : Game) (c : Character), IsPG g → HasDarkPast c → ¬ AppearsIn c g
+axiom good_needs_appear : ∀ (c : Character) (g : Game), GoodAdditionTo c g → AppearsIn c g
+end Telelean.Model

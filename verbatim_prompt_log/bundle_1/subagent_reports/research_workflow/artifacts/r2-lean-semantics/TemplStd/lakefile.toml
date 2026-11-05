@@ -1,0 +1,10 @@
+name = "TemplStd"
+version = "0.1.0"
+defaultTargets = ["templstd"]
+
+[[lean_lib]]
+name = "TemplStd"
+
+[[lean_exe]]
+name = "templstd"
+root = "Main"

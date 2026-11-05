@@ -1,0 +1,46 @@
+{
+ "name": "@joint/core",
+ "latest": "4.3.4",
+ "dist_tags": {
+  "alpha": "4.2.0-alpha.1",
+  "beta": "4.3.0-beta.2",
+  "latest": "4.3.4",
+  "release-4.2": "4.2.6",
+  "release-4.1": "4.1.4"
+ },
+ "latest_published": "2026-10-27T13:03:12.386Z",
+ "modified": "2026-10-27T14:15:45.530Z",
+ "created": "2024-02-01T16:07:19.765Z",
+ "license": "MPL-2.0",
+ "deprecated": null,
+ "unpackedSize": 6261098,
+ "fileCount": 178,
+ "tarball": "https://registry.npmjs.org/@joint/core/-/core-4.3.4.tgz",
+ "dependencies": {},
+ "peerDependencies": {},
+ "repository": "https://github.com/clientIO/joint.git",
+ "recent_versions": [
+  [
+   "4.3.2",
+   "2026-08-21T08:59:20.330Z"
+  ],
+  [
+   "4.3.3",
+   "2026-09-04T12:02:04.135Z"
+  ],
+  [
+   "4.3.4",
+   "2026-10-27T13:03:12.386Z"
+  ],
+  [
+   "4.2.6",
+   "2026-10-27T14:11:41.143Z"
+  ],
+  [
+   "4.1.4",
+   "2026-10-27T14:15:45.060Z"
+  ]
+ ],
+ "homepage": "https://jointjs.com",
+ "description": "JavaScript diagramming library"
+}

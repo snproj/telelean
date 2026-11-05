@@ -1,0 +1,4 @@
+module
+public import ModModel.A
+public import ModModel.B
+public import ModModel.C

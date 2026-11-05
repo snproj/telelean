@@ -1,0 +1,140 @@
+/-
+telelean audit prototype (Lean 4.35.0).
+
+Usage (from the model project root):
+  lake env lean --run <path>/Audit.lean <RootModulePrefix> [<ImportModule> ...]
+
+Imports the given modules (default: the root prefix itself), then reports, as one JSON
+object on stdout, every constant defined in modules whose name starts with the prefix:
+kind, safety, whether its type is a proposition, transitively used axioms
+(`Lean.collectAxioms`, the same data `#print axioms` shows), declaration range (to join
+with `@@ telelean` markup blocks), and attribute flags. Axioms are classified:
+  prop        : type is a proposition  -> must be a user-approved ASSUMPTION node
+  sort-former : type telescope ends in a Sort (e.g. `Character : Type`, `P : C → Prop`)
+  symbol      : codomain headed by a sort-former axiom (e.g. `cynder : Character`)
+  symbol-std  : codomain is a closed standard type with a `Nonempty` instance (`n : Nat`)
+  nonsignature: anything else (e.g. `f : Nat → Empty`) -> may be inconsistent: reject
+Non-prop axioms in the first four classes are jointly satisfiable (interpret every
+sort-former as a constant PUnit/True), so they cannot introduce inconsistency.
+
+Security: the audited (untrusted) modules are imported with `loadExts := false`, so none of
+their `initialize` code runs. Type-class queries for `symbol-std` run in a separate trusted
+environment that imports only `Init`.
+-/
+import Lean
+open Lean Meta
+
+def standardAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]
+
+def kindOf : ConstantInfo → String
+  | .axiomInfo _  => "axiom"
+  | .defnInfo _   => "def"
+  | .thmInfo _    => "theorem"
+  | .opaqueInfo _ => "opaque"
+  | .quotInfo _   => "quot"
+  | .inductInfo _ => "inductive"
+  | .ctorInfo _   => "ctor"
+  | .recInfo _    => "rec"
+
+/-- `Nonempty ty`, decided in the trusted `Init`-only environment. -/
+def stdNonempty (initEnv : Environment) (ty : Expr) : IO Bool := do
+  if ty.hasFVar || ty.hasMVar then return false
+  unless ty.getUsedConstants.all (initEnv.contains ·) do return false
+  let ctx : Core.Context := { fileName := "<trusted>", fileMap := default, maxHeartbeats := 0 }
+  let act : MetaM Bool := do
+    let u ← getLevel ty
+    return (← synthInstance? (mkApp (.const ``Nonempty [u]) ty)).isSome
+  try
+    let (b, _) ← (act.run').toIO ctx { env := initEnv }
+    return b
+  catch _ => return false
+
+/-- Classify an axiom (see header). `formers` = names already classified sort-former. -/
+def classifyAxiom (initEnv : Environment) (type : Expr) (formers : NameSet) : MetaM String := do
+  if ← isProp type then return "prop"
+  forallTelescopeReducing type fun _ body => do
+    let body ← whnf body
+    if body.isSort then return "sort-former"
+    match body.getAppFn with
+    | .const c _ =>
+      if formers.contains c then return "symbol"
+      if ← stdNonempty initEnv body then return "symbol-std"
+      return "nonsignature"
+    | _ => return "nonsignature"
+
+def rangeJson (r? : Option DeclarationRanges) : Json :=
+  match r? with
+  | none => Json.null
+  | some r => Json.mkObj [("line", r.range.pos.line), ("endLine", r.range.endPos.line)]
+
+def posKey (r? : Option DeclarationRanges) : Nat :=
+  match r? with
+  | none => 0
+  | some r => r.range.pos.line * 10000 + r.range.pos.column
+
+def audit (initEnv : Environment) (root : Name) : MetaM Json := do
+  let env ← getEnv
+  let mut decls : Array Json := #[]
+  let mut axiomsDeclared : Array Json := #[]
+  let mut formers : NameSet := {}
+  let mut moduleAxioms : NameSet := {}
+  -- moduleNames is in import order (dependencies first)
+  for modName in env.header.moduleNames, modData in env.header.moduleData do
+    unless root.isPrefixOf modName do continue
+    -- source order inside the module (constNames is not ordered)
+    let mut keyed : Array (Nat × Name) := #[]
+    for n in modData.constNames do
+      keyed := keyed.push (posKey (← findDeclarationRanges? n), n)
+    let names := (keyed.qsort (fun a b => a.1 < b.1)).map (·.2)
+    for n in names do
+      if let some (.axiomInfo v) := env.find? n then
+        let cls ← classifyAxiom initEnv v.type formers
+        if cls == "sort-former" then formers := formers.insert n
+        moduleAxioms := moduleAxioms.insert n
+        axiomsDeclared := axiomsDeclared.push <| Json.mkObj [
+          ("name", toJson n.toString), ("module", toJson modName.toString),
+          ("class", toJson cls), ("isUnsafe", toJson v.isUnsafe),
+          ("isPrivate", toJson (isPrivateName n)),
+          ("type", toJson (toString (← ppExpr v.type))),
+          ("range", rangeJson (← findDeclarationRanges? n))]
+    for n in names do
+      let some ci := env.find? n | continue
+      let axs ← collectAxioms n
+      let nonstd := axs.filter fun a => !standardAxioms.contains a && !moduleAxioms.contains a
+      let modelAxs := axs.filter fun a => moduleAxioms.contains a
+      let typeIsProp ← isProp ci.type
+      decls := decls.push <| Json.mkObj [
+        ("name", toJson n.toString), ("module", toJson modName.toString),
+        ("kind", toJson (kindOf ci)),
+        ("internal", toJson (n.isInternal || isPrivateName n)),
+        ("isUnsafe", toJson ci.isUnsafe), ("isPartial", toJson ci.isPartial),
+        ("typeIsProp", toJson typeIsProp),
+        ("type", toJson (toString (← ppExpr ci.type))),
+        ("axioms", toJson (axs.map Name.toString)),
+        ("modelAxiomsUsed", toJson (modelAxs.map Name.toString)),
+        ("foreignAxioms", toJson (nonstd.map Name.toString)),
+        ("usesSorry", toJson (axs.contains ``sorryAx)),
+        ("implementedBy", toJson ((Compiler.getImplementedBy? env n).map Name.toString)),
+        ("extern", toJson (isExtern env n)),
+        ("hasDoc", toJson ((← findDocString? env n).isSome)),
+        ("range", rangeJson (← findDeclarationRanges? n))]
+  return Json.mkObj [("root", toJson root.toString),
+    ("axiomsDeclared", Json.arr axiomsDeclared), ("decls", Json.arr decls)]
+
+unsafe def main (args : List String) : IO UInt32 := do
+  let root :: imports := args | do
+    IO.eprintln "usage: Audit.lean <RootModulePrefix> [<ImportModule> ...]"; return 2
+  let root := root.toName
+  let imports := if imports.isEmpty then [root] else imports.map String.toName
+  initSearchPath (← findSysroot)
+  -- trusted environment: Init only, extensions loaded (Init's initializers are Lean's own)
+  enableInitializersExecution
+  let initEnv ← importModules #[{ module := `Init }] {} (loadExts := true)
+  -- untrusted environment: never run initializers of the audited modules
+  let env ← importModules (imports.toArray.map ({ module := · })) {} (trustLevel := 1024)
+    (loadExts := false)
+  let ctx : Core.Context := { fileName := "<telelean-audit>", fileMap := default,
+                              maxHeartbeats := 0 }
+  let (j, _) ← (MetaM.run' (audit initEnv root)).toIO ctx { env }
+  IO.println j.pretty
+  return 0

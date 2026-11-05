@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <!-- Same CSP and load order as the real webview (packages/extension/src/board/html.ts): nonce scripts, no
+         inline styles, and the classic boot script before the stylesheet so it sees violations raised while loading. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; img-src 'self' data:; font-src 'self'; style-src 'self' 'nonce-harness'; script-src 'nonce-harness';"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>telelean board harness</title>
+    <link rel="icon" href="data:," />
+    <script nonce="harness" src="/dist/boot.js"></script>
+    <link rel="stylesheet" nonce="harness" href="/dist/webview.css" />
+  </head>
+  <body>
+    <!-- Runs first: theme variables + mock acquireVsCodeApi, as VS Code would provide them. -->
+    <script nonce="harness" src="/harness/harness.js"></script>
+    <div id="root"></div>
+    <script type="module" nonce="harness" src="/dist/webview.js"></script>
+  </body>
+</html>

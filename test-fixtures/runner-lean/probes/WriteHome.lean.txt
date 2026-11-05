@@ -1,0 +1,27 @@
+/-
+telelean sandbox probe: try to write outside the sandbox's writable area.
+
+INERT FIXTURE. Never open this file with a Lean server. The tests copy it into a sandboxed shadow
+as `Probe.lean` and elaborate it there with `lake env lean` under runLean.
+
+Expected inside the sandbox:
+- home:          WROTE, but into the empty tmpfs that masks $HOME (the real file must not appear);
+- elan:          BLOCKED (~/.elan is bound read-only);
+- shadow-source: BLOCKED (the shadow's sources are read-only);
+- shadow-lake:   WROTE (only <shadow>/.lake is writable; the test finds this file on the host).
+-/
+
+def probeWrite (label : String) (path : System.FilePath) : IO Unit := do
+  try
+    IO.FS.writeFile path "written by the telelean sandbox probe\n"
+    IO.println s!"PROBE {label} WROTE {path}"
+  catch e =>
+    IO.println s!"PROBE {label} BLOCKED {path} ({e})"
+
+#eval show IO Unit from do
+  let home := System.FilePath.mk ((← IO.getEnv "HOME").getD "/nonexistent-home")
+  let cwd ← IO.currentDir
+  probeWrite "home" (home / "telelean-sandbox-probe-escape.txt")
+  probeWrite "elan" (home / ".elan" / "telelean-sandbox-probe-escape.txt")
+  probeWrite "shadow-source" (cwd / "telelean-sandbox-probe-escape.txt")
+  probeWrite "shadow-lake" (cwd / ".lake" / "telelean-sandbox-probe-lake.txt")

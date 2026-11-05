@@ -1,0 +1,4 @@
+import Dep
+theorem C.t : Dep.answer = 42 := rfl
+
+theorem C.u : True := trivial

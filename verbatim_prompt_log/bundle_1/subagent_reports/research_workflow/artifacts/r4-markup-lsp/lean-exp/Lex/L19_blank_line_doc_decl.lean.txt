@@ -1,0 +1,8 @@
+import Lean
+/-- doc then blank line -/
+
+def o := 1
+open Lean in
+#eval show MetaM Unit from do
+  let d? ← findDocString? (← getEnv) `o
+  IO.println s!"doc(o) = {d?}"

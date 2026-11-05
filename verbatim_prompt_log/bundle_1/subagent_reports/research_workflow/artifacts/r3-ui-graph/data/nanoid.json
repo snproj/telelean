@@ -1,0 +1,43 @@
+{
+ "name": "nanoid",
+ "latest": "6.0.2",
+ "dist_tags": {
+  "latest": "6.0.2",
+  "legacy": "3.3.20"
+ },
+ "latest_published": "2026-10-05T21:23:00.134Z",
+ "modified": "2026-10-05T21:23:00.355Z",
+ "created": "2017-08-06T05:04:00.915Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 14728,
+ "fileCount": 11,
+ "tarball": "https://registry.npmjs.org/nanoid/-/nanoid-6.0.2.tgz",
+ "dependencies": {},
+ "peerDependencies": {},
+ "repository": "git+https://github.com/ai/nanoid.git",
+ "recent_versions": [
+  [
+   "6.0.1",
+   "2026-08-03T10:59:07.795Z"
+  ],
+  [
+   "3.3.18",
+   "2026-08-07T16:41:05.696Z"
+  ],
+  [
+   "3.3.19",
+   "2026-09-10T18:00:48.080Z"
+  ],
+  [
+   "3.3.20",
+   "2026-10-05T09:44:40.679Z"
+  ],
+  [
+   "6.0.2",
+   "2026-10-05T21:23:00.134Z"
+  ]
+ ],
+ "homepage": "https://github.com/ai/nanoid#readme",
+ "description": "A tiny (117 bytes), secure URL-friendly unique string ID generator"
+}

@@ -1,0 +1,6 @@
+import Model.Cynder
+namespace Telelean.Model
+/-- agent-introduced definition over vocabulary -/
+def Excluded (c : Character) (g : Game) : Prop := ¬ AppearsIn c g
+axiom pg_excludes_dark : ∀ g c, IsPG g → HasDarkPast c → Excluded c g
+end Telelean.Model

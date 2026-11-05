@@ -1,0 +1,42 @@
+{
+ "name": "esbuild",
+ "latest": "0.28.2",
+ "dist_tags": {
+  "latest": "0.28.2"
+ },
+ "latest_published": "2026-08-08T20:00:55.454Z",
+ "modified": "2026-08-08T20:00:55.803Z",
+ "created": "2017-11-26T05:52:58.272Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 147361,
+ "fileCount": 7,
+ "tarball": "https://registry.npmjs.org/esbuild/-/esbuild-0.28.2.tgz",
+ "dependencies": {},
+ "peerDependencies": {},
+ "repository": "git+https://github.com/evanw/esbuild.git",
+ "recent_versions": [
+  [
+   "0.27.5",
+   "2026-04-02T00:29:23.059Z"
+  ],
+  [
+   "0.27.7",
+   "2026-04-02T16:43:44.831Z"
+  ],
+  [
+   "0.28.0",
+   "2026-04-02T20:38:46.463Z"
+  ],
+  [
+   "0.28.1",
+   "2026-06-11T22:47:05.085Z"
+  ],
+  [
+   "0.28.2",
+   "2026-08-08T20:00:55.454Z"
+  ]
+ ],
+ "homepage": "https://github.com/evanw/esbuild#readme",
+ "description": "An extremely fast JavaScript and CSS bundler and minifier."
+}

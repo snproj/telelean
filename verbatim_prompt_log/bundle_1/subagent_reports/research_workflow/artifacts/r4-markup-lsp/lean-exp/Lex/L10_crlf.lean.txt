@@ -1,0 +1,6 @@
+/-
+@@ telelean v1
+id: h
+-/
+def h := 1
+#print h

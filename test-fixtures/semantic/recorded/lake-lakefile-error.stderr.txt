@@ -1,0 +1,2 @@
+error: lakefile.toml:3:0: error: unexpected end of input; expected ']'
+

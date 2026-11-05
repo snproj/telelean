@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>telelean panel prototype</title>
+<!--
+  Research prototype for R3 (UI architecture). Vanilla JS, no dependencies.
+  Demonstrates: three independently scrolling DOM columns + one SVG overlay (two layers) that draws edges
+  from cached node offsets; endpoint clamping to the column viewport with stub bundles + count badges;
+  culling of edges whose endpoints are both off-screen; hover highlight of neighbours / ancestors;
+  "blue aura" for nodes with Lean code; diff overlay (added / removed / modified / moved) using
+  colour + glyph + line pattern + text; selection tray; A/D/G segmented switch; native HTML5 drag to
+  re-classify. Theme fixtures emulate the --vscode-* variables and body classes VS Code injects.
+  URL params: theme=dark|light|hc  diff=0|1  hover=<id>  ancestors=1  sel=<id,id>  scrollD=<px> scrollA=<px>
+              expand=<id>  mode=A|D|G  filler=<n per column>
+-->
+<style>
+  :root {
+    --gap: 56px;
+    --edge-base: color-mix(in srgb, var(--vscode-foreground) 38%, transparent);
+    --edge-hl: var(--vscode-charts-blue);
+    --add: var(--vscode-editorGutter-addedBackground, #2ea043);
+    --mod: var(--vscode-editorGutter-modifiedBackground, #0078d4);
+    --del: var(--vscode-editorGutter-deletedBackground, #f85149);
+    --aura: var(--vscode-charts-blue, #3794ff);
+    --kA: var(--vscode-charts-purple, #b180d7);
+    --kD: var(--vscode-charts-green, #89d185);
+    --kG: var(--vscode-charts-orange, #d18616);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--vscode-editor-background); color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); display: flex; flex-direction: column; overflow: hidden; }
+  button { font: inherit; color: inherit; }
+  .toolbar { display: flex; align-items: center; gap: 12px; padding: 6px 12px; border-bottom: 1px solid var(--vscode-panel-border); }
+  .toolbar .title { font-weight: 600; }
+  .toolbar .spacer { flex: 1; }
+  .toggle { display: inline-flex; align-items: center; gap: 6px; color: var(--vscode-descriptionForeground); }
+  .switch { width: 28px; height: 14px; border-radius: 7px; background: var(--vscode-input-border, #555); position: relative; display: inline-block; }
+  .switch.on { background: var(--vscode-button-background); }
+  .switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--vscode-editor-background); transition: left .1s; }
+  .switch.on::after { left: 16px; }
+
+  .banner { display: none; align-items: center; gap: 10px; padding: 6px 12px; background: color-mix(in srgb, var(--mod) 14%, var(--vscode-editor-background)); border-bottom: 1px solid var(--mod); }
+  body.diff .banner { display: flex; }
+  .banner .legend { display: flex; gap: 10px; color: var(--vscode-descriptionForeground); margin-left: 8px; }
+  .glyph { display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 3px; font-size: 11px; font-weight: 700; line-height: 1; }
+  .g-add { background: var(--add); color: #fff; } .g-del { background: var(--del); color: #fff; } .g-mod { background: var(--mod); color: #fff; } .g-mov { border: 1px solid var(--vscode-foreground); }
+  .btn { border: 1px solid var(--vscode-button-border, transparent); background: var(--vscode-button-background); color: var(--vscode-button-foreground); padding: 3px 10px; border-radius: 2px; cursor: pointer; }
+  .btn.secondary { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn:focus-visible, .card:focus-visible, .seg button:focus-visible, .edge-badge:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: 1px; }
+
+  /* ---- board: three columns + overlay ---- */
+  .board { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr 1fr; column-gap: var(--gap); padding: 8px 14px 0; }
+  .col { position: relative; z-index: 1; display: flex; flex-direction: column; min-height: 0; }
+  .col-header { display: flex; align-items: center; gap: 8px; padding: 4px 4px 6px; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: .04em; color: var(--vscode-descriptionForeground); border-bottom: 2px solid var(--kc); }
+  .col-header .count { background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); border-radius: 8px; padding: 0 6px; font-weight: 600; }
+  .col[data-kind=A] { --kc: var(--kA); } .col[data-kind=D] { --kc: var(--kD); } .col[data-kind=G] { --kc: var(--kG); }
+  .col-list { position: relative; flex: 1; overflow-y: auto; overflow-x: hidden; padding: 4px 2px 40px; background: transparent; }
+  .col-list.drop-target { background: color-mix(in srgb, var(--kc) 7%, transparent); }
+  .col-list::-webkit-scrollbar { width: 10px; } .col-list::-webkit-scrollbar-thumb { background: var(--vscode-scrollbarSlider-background); }
+  .group-label { font-size: 11px; color: var(--vscode-descriptionForeground); margin: 6px 6px 2px; }
+  .insert-line { height: 2px; background: var(--vscode-focusBorder); margin: -1px 6px; }
+
+  .card { position: relative; margin: 6px 6px; padding: 7px 9px 7px 12px; background: var(--vscode-editorWidget-background); border: 1px solid var(--vscode-widget-border, transparent); border-radius: 5px; cursor: default; user-select: none; }
+  .card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; border-radius: 5px 0 0 5px; background: var(--kc); }
+  .card .row { display: flex; align-items: flex-start; gap: 6px; }
+  .card .check { width: 14px; height: 14px; margin-top: 1px; flex: none; border: 1px solid var(--vscode-checkbox-border, var(--vscode-input-border, #777)); border-radius: 3px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; }
+  .card.selected .check { background: var(--vscode-button-background); color: var(--vscode-button-foreground); border-color: var(--vscode-button-background); }
+  .card .t { flex: 1; line-height: 1.35; }
+  .card .why { margin-top: 3px; color: var(--vscode-descriptionForeground); font-size: 12px; font-style: italic; }
+  .card .chev { flex: none; border: 0; background: none; cursor: pointer; padding: 0 2px; color: var(--vscode-descriptionForeground); }
+  .card .meta { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+  .chip { font-size: 10.5px; padding: 0 5px; border-radius: 3px; border: 1px solid color-mix(in srgb, var(--vscode-foreground) 25%, transparent); color: var(--vscode-descriptionForeground); }
+  .chip.lean { border-color: var(--aura); color: var(--aura); }
+  .card.selected { background: color-mix(in srgb, var(--vscode-list-activeSelectionBackground, #04395e) 70%, var(--vscode-editorWidget-background)); }
+  .card.formal { box-shadow: 0 0 0 1px var(--aura), 0 0 9px 1px color-mix(in srgb, var(--aura) 50%, transparent); }
+  body.vscode-high-contrast .card { border-color: var(--vscode-contrastBorder); }
+  body.vscode-high-contrast .card.formal { box-shadow: none; outline: 2px solid var(--aura); outline-offset: 1px; }
+  .card.dim { color: color-mix(in srgb, var(--vscode-foreground) 45%, var(--vscode-editorWidget-background)); }
+  .card.dim .chip, .card.dim .why { opacity: .6; }
+  .card.hover { border-color: var(--edge-hl); }
+  .lean-code { margin: 6px 0 2px; padding: 6px 8px; background: var(--vscode-textCodeBlock-background); border-radius: 3px; font-family: var(--vscode-editor-font-family); font-size: var(--vscode-editor-font-size); white-space: pre-wrap; line-height: 1.4; }
+  .lean-code .ln { display: block; padding-left: 14px; text-indent: -14px; }
+  .lean-code .ln.plus { background: var(--vscode-diffEditor-insertedLineBackground, rgba(46,160,67,.15)); }
+  .lean-code .ln.plus::before { content: '+ '; color: var(--add); font-weight: 700; }
+  .lean-code .none { color: var(--vscode-descriptionForeground); font-style: italic; font-family: var(--vscode-font-family); }
+  .tk-kw { color: var(--syn-kw); } .tk-ty { color: var(--syn-ty); } .tk-cm { color: var(--syn-cm); } .tk-op { color: var(--syn-op); }
+
+  /* ---- diff overlay on nodes: colour + glyph + border pattern + text ---- */
+  .diffbadge { display: none; }
+  body.diff .diffbadge { display: inline-flex; }
+  body.diff .card[data-diff] { border-width: 1px; }
+  body.diff .card[data-diff=added] { border: 1.5px dashed var(--add); }
+  body.diff .card[data-diff=removed] { border: 1.5px dashed var(--del); opacity: .75; }
+  body.diff .card[data-diff=removed] .t { text-decoration: line-through; text-decoration-color: var(--del); }
+  body.diff .card[data-diff=modified] { border: 1.5px solid var(--mod); }
+  body.diff .card[data-diff=moved] { border: 1.5px solid var(--mod); }
+  body.diff .card.ghost { border: 1.5px dotted var(--vscode-descriptionForeground); background: transparent; color: var(--vscode-descriptionForeground); }
+  body.diff .card.ghost::before { background: transparent; }
+  body.diff .card:not([data-diff]):not(.ghost) { opacity: .55; }
+  body:not(.diff) .card[data-diff=added], body:not(.diff) .card.ghost { display: none; }
+
+  /* ---- edge overlay ---- */
+  svg.edges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; }
+  svg.under { z-index: 0; } svg.over { z-index: 2; }
+  svg.edges path.e { fill: none; stroke: var(--edge-base); stroke-width: 1.4; }
+  svg.edges path.e.clamped { stroke-dasharray: 3 3; }
+  svg.edges path.e.hl { stroke: var(--edge-hl); stroke-width: 2.2; }
+  svg.edges path.e.add { stroke: var(--add); stroke-width: 2; stroke-dasharray: 7 4; }
+  svg.edges path.e.rem { stroke: var(--del); stroke-width: 2; stroke-dasharray: 1.5 4; stroke-linecap: round; }
+  body.diff svg.edges path.e:not(.add):not(.rem) { stroke-opacity: .35; }
+  .edge-badges { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+  .edge-badge { position: absolute; pointer-events: auto; transform: translate(-50%, -50%); font-size: 11px; padding: 1px 6px; border-radius: 9px; background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); border: 1px solid var(--vscode-contrastBorder, transparent); cursor: pointer; white-space: nowrap; }
+
+  /* ---- selection tray + prompt box ---- */
+  .tray { border-top: 1px solid var(--vscode-panel-border); padding: 6px 12px; display: flex; align-items: center; gap: 8px; min-height: 38px; flex-wrap: wrap; }
+  .tray .label { color: var(--vscode-descriptionForeground); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+  .selchip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 4px 1px 6px; border-radius: 3px; background: var(--vscode-editorWidget-background); border: 1px solid var(--vscode-widget-border, transparent); border-left: 3px solid var(--kc); max-width: 280px; }
+  .selchip span.txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .selchip button { border: 0; background: none; cursor: pointer; color: var(--vscode-descriptionForeground); }
+  .selchip[data-kind=A] { --kc: var(--kA); } .selchip[data-kind=D] { --kc: var(--kD); } .selchip[data-kind=G] { --kc: var(--kG); }
+  .arrow-sep { color: var(--vscode-descriptionForeground); font-size: 15px; }
+  .prompt { border-top: 1px solid var(--vscode-panel-border); padding: 8px 12px 10px; display: grid; grid-template-columns: auto 1fr auto; gap: 6px 10px; align-items: start; }
+  .seg { display: inline-flex; border: 1px solid var(--vscode-input-border, #555); border-radius: 4px; overflow: hidden; }
+  .seg button { border: 0; background: transparent; padding: 4px 9px; cursor: pointer; display: inline-flex; gap: 5px; align-items: center; color: var(--vscode-foreground); }
+  .seg button + button { border-left: 1px solid var(--vscode-input-border, #555); }
+  .seg button[aria-checked=true] { background: color-mix(in srgb, var(--kc) 28%, transparent); box-shadow: inset 0 -2px 0 var(--kc); font-weight: 600; }
+  .seg button[data-kind=A] { --kc: var(--kA); } .seg button[data-kind=D] { --kc: var(--kD); } .seg button[data-kind=G] { --kc: var(--kG); }
+  .kdot { width: 8px; height: 8px; border-radius: 2px; background: var(--kc); display: inline-block; }
+  textarea, input.why-input { width: 100%; background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border, transparent); border-radius: 2px; padding: 5px 7px; font: inherit; resize: none; }
+  .why-row { grid-column: 2 / 3; display: none; }
+  .prompt[data-mode=A] .why-row { display: block; }
+  .hint { grid-column: 2 / 3; color: var(--vscode-descriptionForeground); font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <span class="title">telelean — mental model</span>
+  <span class="toggle" title="Edges: auto (budgeted) / focus only / all"><span>Edges:</span><b id="edgeStat"></b></span>
+  <span class="spacer"></span>
+  <span class="toggle"><span class="switch" id="diffSwitch" role="switch" aria-checked="false" tabindex="0"></span> Proposal overlay</span>
+</div>
+<div class="banner" role="region" aria-label="LLM proposal">
+  <b>Proposal #3</b> <span>from Claude: formalize 3 assumptions + 1 goal, prove goal</span>
+  <span class="legend"><span><span class="glyph g-add">+</span> new</span><span><span class="glyph g-mod">~</span> changed</span><span><span class="glyph g-del">−</span> removed</span><span><span class="glyph g-mov">→</span> moved</span></span>
+  <span class="spacer" style="flex:1"></span>
+  <button class="btn secondary">Raw Lean diff…</button><button class="btn secondary">Feedback…</button><button class="btn secondary">Reject</button><button class="btn">Accept</button>
+</div>
+<div class="board" id="board">
+  <svg class="edges under" id="svgUnder" aria-hidden="true"></svg>
+  <svg class="edges over" id="svgOver" aria-hidden="true">
+    <defs>
+      <marker id="ah-base" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" style="fill: var(--edge-base)"/></marker>
+      <marker id="ah-hl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" style="fill: var(--edge-hl)"/></marker>
+      <marker id="ah-add" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" style="fill: var(--add)"/></marker>
+      <marker id="ah-rem" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" style="fill: var(--del)"/></marker>
+    </defs>
+  </svg>
+  <div class="edge-badges" id="badges"></div>
+</div>
+<div class="tray" id="tray" role="region" aria-label="Selection"></div>
+<div class="prompt" id="prompt" data-mode="A">
+  <div class="seg" role="radiogroup" aria-label="Node kind for this prompt" id="seg">
+    <button role="radio" data-kind="A" aria-checked="true" tabindex="0"><span class="kdot"></span>Assumption</button>
+    <button role="radio" data-kind="D" aria-checked="false" tabindex="-1"><span class="kdot"></span>Derivation</button>
+    <button role="radio" data-kind="G" aria-checked="false" tabindex="-1"><span class="kdot"></span>Goal</button>
+  </div>
+  <textarea id="promptText" rows="2" placeholder="State something you believe is true…"></textarea>
+  <button class="btn" id="sendBtn">Add ⏎</button>
+  <div class="why-row"><input class="why-input" placeholder="Why do you believe this? (required for assumptions)" value="familiar with gaming lore"></div>
+  <div class="hint">Ctrl+Enter to add · Alt+1/2/3 switches kind · the node is created as an <code>@@ telelean</code> comment with no Lean code yet</div>
+</div>
+
+<script>
+// ===================== theme fixtures (what VS Code injects into a real webview) =====================
+const THEMES = {
+  dark: { cls: 'vscode-dark', vars: { 'font-family': 'system-ui, Ubuntu, sans-serif', 'font-size': '13px', 'editor-font-family': '"DejaVu Sans Mono", monospace', 'editor-font-size': '12px',
+    foreground: '#cccccc', descriptionForeground: '#9d9d9d', 'editor-background': '#1f1f1f', 'editorWidget-background': '#252526', 'widget-border': '#313131', 'panel-border': '#2b2b2b',
+    focusBorder: '#0078d4', 'button-background': '#0078d4', 'button-foreground': '#ffffff', 'button-secondaryBackground': '#313131', 'button-secondaryForeground': '#cccccc',
+    'input-background': '#313131', 'input-foreground': '#cccccc', 'input-border': '#3c3c3c', 'badge-background': '#616161', 'badge-foreground': '#f8f8f8',
+    'list-activeSelectionBackground': '#04395e', 'charts-blue': '#3794ff', 'charts-green': '#89d185', 'charts-orange': '#d18616', 'charts-purple': '#b180d7',
+    'editorGutter-addedBackground': '#2ea043', 'editorGutter-modifiedBackground': '#0078d4', 'editorGutter-deletedBackground': '#f85149',
+    'diffEditor-insertedLineBackground': 'rgba(155,185,85,0.2)', 'textCodeBlock-background': '#2b2b2b', 'scrollbarSlider-background': 'rgba(121,121,121,0.4)' },
+    syn: { kw: '#569cd6', ty: '#4ec9b0', cm: '#6a9955', op: '#d4d4d4' } },
+  light: { cls: 'vscode-light', vars: { 'font-family': 'system-ui, Ubuntu, sans-serif', 'font-size': '13px', 'editor-font-family': '"DejaVu Sans Mono", monospace', 'editor-font-size': '12px',
+    foreground: '#3b3b3b', descriptionForeground: '#616161', 'editor-background': '#ffffff', 'editorWidget-background': '#f8f8f8', 'widget-border': '#e5e5e5', 'panel-border': '#e5e5e5',
+    focusBorder: '#005fb8', 'button-background': '#005fb8', 'button-foreground': '#ffffff', 'button-secondaryBackground': '#e5e5e5', 'button-secondaryForeground': '#3b3b3b',
+    'input-background': '#ffffff', 'input-foreground': '#3b3b3b', 'input-border': '#cecece', 'badge-background': '#cccccc', 'badge-foreground': '#3b3b3b',
+    'list-activeSelectionBackground': '#cce3f7', 'charts-blue': '#1a85ff', 'charts-green': '#388a34', 'charts-orange': '#d18616', 'charts-purple': '#652d90',
+    'editorGutter-addedBackground': '#2ea043', 'editorGutter-modifiedBackground': '#005fb8', 'editorGutter-deletedBackground': '#f85149',
+    'diffEditor-insertedLineBackground': 'rgba(155,185,85,0.2)', 'textCodeBlock-background': '#f0f0f0', 'scrollbarSlider-background': 'rgba(100,100,100,0.4)' },
+    syn: { kw: '#0000ff', ty: '#267f99', cm: '#008000', op: '#3b3b3b' } },
+  hc: { cls: 'vscode-high-contrast', vars: { 'font-family': 'system-ui, Ubuntu, sans-serif', 'font-size': '13px', 'editor-font-family': '"DejaVu Sans Mono", monospace', 'editor-font-size': '12px',
+    foreground: '#ffffff', descriptionForeground: '#ffffff', 'editor-background': '#000000', 'editorWidget-background': '#0c141f', 'widget-border': '#6fc3df', 'panel-border': '#6fc3df',
+    contrastBorder: '#6fc3df', contrastActiveBorder: '#f38518', focusBorder: '#f38518', 'button-background': '#000000', 'button-foreground': '#ffffff', 'button-border': '#6fc3df',
+    'button-secondaryBackground': '#000000', 'button-secondaryForeground': '#ffffff', 'input-background': '#000000', 'input-foreground': '#ffffff', 'input-border': '#6fc3df',
+    'badge-background': '#000000', 'badge-foreground': '#ffffff', 'list-activeSelectionBackground': '#000000', 'charts-blue': '#3794ff', 'charts-green': '#89d185',
+    'charts-orange': '#d18616', 'charts-purple': '#b180d7', 'editorGutter-addedBackground': '#487e02', 'editorGutter-modifiedBackground': '#1b81a8', 'editorGutter-deletedBackground': '#f48771',
+    'textCodeBlock-background': '#0c141f', 'scrollbarSlider-background': 'rgba(111,195,223,0.6)' },
+    syn: { kw: '#569cd6', ty: '#4ec9b0', cm: '#7ca668', op: '#ffffff' } },
+};
+const P = new URLSearchParams(location.search);
+(function applyTheme() {
+  const th = THEMES[P.get('theme') || 'dark'];
+  const s = document.documentElement.style;
+  for (const [k, v] of Object.entries(th.vars)) s.setProperty('--vscode-' + k, v);
+  for (const [k, v] of Object.entries(th.syn)) s.setProperty('--syn-' + k, v);
+  document.body.classList.add(th.cls); document.body.dataset.vscodeThemeKind = th.cls;
+})();
+
+// ===================== model =====================
+const KINDS = ['A', 'D', 'G'], KLABEL = { A: 'Assumptions', D: 'Derivations', G: 'Goals' };
+const nodes = new Map();  // id -> {id, kind, title, why?, lean?, diff?, group?}
+const order = { A: [], D: [], G: [] };
+const edges = [];         // {id, from, to, diff?}
+function N(id, kind, title, o = {}) { nodes.set(id, { id, kind, title, ...o }); order[kind].push(id); }
+function E(from, to, diff) { edges.push({ id: from + '>' + to, from, to, diff }); }
+const FILL = +(P.get('filler') || 24);
+// --- proposal (diff) nodes: vocabulary the LLM introduces (shown only when diff overlay is on) ---
+N('V1', 'A', 'Characters and games are things we can talk about', { group: 'Vocabulary (definitions)', diff: 'added', lean: 'structure Character where\n  name : String\nstructure Game where\n  title : String' });
+N('V2', 'A', '"has a dark past" is a property of characters', { group: 'Vocabulary (definitions)', diff: 'added', lean: 'opaque hasDarkPast : Character → Prop' });
+N('V3', 'A', '"is rated PG" is a property of games', { group: 'Vocabulary (definitions)', diff: 'added', lean: 'opaque isPG : Game → Prop' });
+// --- the user's example ---
+N('A1', 'A', 'Cynder is a character who has a dark past', { why: 'familiar with gaming lore', diff: 'modified', lean: 'axiom cynder_dark_past : hasDarkPast cynder' });
+N('A2', 'A', 'The new Spyro game is PG', { why: 'known from gaming news', diff: 'modified', lean: 'axiom newSpyro_pg : isPG newSpyro' });
+N('A3', 'A', 'PG games cannot have characters with dark pasts', { why: 'common sense about ratings', diff: 'modified', lean: 'axiom pg_no_dark_past :\n  ∀ (g : Game) (c : Character),\n    isPG g → hasDarkPast c → ¬ appearsIn c g' });
+N('A4', 'A', 'A good addition to a game must be able to appear in it', { why: 'definition of "addition"', diff: 'added', lean: 'axiom good_needs_appear :\n  ∀ c g, goodAddition c g → appearsIn c g' });
+N('D1', 'D', 'Cynder cannot appear in the new Spyro game', { diff: 'added', lean: 'theorem cynder_cannot_appear : ¬ appearsIn cynder newSpyro :=\n  pg_no_dark_past _ _ newSpyro_pg cynder_dark_past' });
+N('G1', 'G', 'Cynder would not be a good addition to the new Spyro game', { diff: 'moved', movedTo: 'D', lean: 'theorem cynder_not_good : ¬ goodAddition cynder newSpyro :=\n  fun h => cynder_cannot_appear (good_needs_appear _ _ h)' });
+N('G1ghost', 'D', 'Cynder would not be a good addition to the new Spyro game', { ghostOf: 'G1' });
+// --- filler so that columns scroll ---
+const topics = ['ratings', 'lore', 'sales', 'franchise', 'villains', 'tone', 'audience', 'sequels', 'canon', 'reviews'];
+for (let i = 1; i <= FILL; i++) {
+  N('a' + i, 'A', `Assumption about ${topics[i % 10]} #${i}: players remember ${topics[(i * 3) % 10]} more than ${topics[(i * 7) % 10]}`, { why: i % 3 ? 'personal experience' : 'read it somewhere', lean: i % 4 === 0 ? `axiom ax_${i} : ∀ p : Player, remembers p ${topics[i % 10]}` : null });
+  N('d' + i, 'D', `Derived #${i}: ${topics[(i * 3) % 10]} affects ${topics[(i + 4) % 10]}${i % 5 === 0 ? ' in every mainline entry of the series, including spin-offs' : ''}`, { lean: i % 3 === 0 ? `theorem thm_${i} : affects ${topics[(i * 3) % 10]} ${topics[(i + 4) % 10]} := by\n  exact ax_${(i % 6) * 4 || 4} _` : null });
+  if (i <= Math.ceil(FILL / 2)) N('g' + i, 'G', `Goal #${i}: show that ${topics[(i * 7) % 10]} predicts ${topics[(i * 2) % 10]}`, {});
+}
+E('A1', 'G1'); E('A2', 'G1'); E('A3', 'G1');
+E('V2', 'A1', 'added'); E('V3', 'A2', 'added'); E('V2', 'A3', 'added'); E('V3', 'A3', 'added');
+E('A1', 'D1', 'added'); E('A2', 'D1', 'added'); E('A3', 'D1', 'added'); E('D1', 'G1', 'added'); E('A4', 'G1', 'added');
+for (let i = 1; i <= FILL; i++) {
+  E('a' + i, 'd' + (((i * 5) % FILL) + 1));
+  if (i % 2) E('a' + i, 'd' + (((i * 11) % FILL) + 1));
+  if (i % 3 === 0) E('d' + i, 'g' + (((i * 7) % Math.ceil(FILL / 2)) + 1));
+  if (i % 4 === 0) E('a' + i, 'g' + (((i * 3) % Math.ceil(FILL / 2)) + 1));
+  if (i % 6 === 0 && i > 1) E('d' + (i - 1), 'd' + i);
+}
+E('a3', 'd2', 'removed');
+const state = { selected: new Set((P.get('sel') || '').split(',').filter(Boolean)), expanded: new Set((P.get('expand') || '').split(',').filter(Boolean)), hover: P.get('hover'), ancestors: P.get('ancestors') === '1', diff: P.get('diff') === '1', mode: P.get('mode') || 'A' };
+
+// adjacency for highlight / closure
+function adjacency() { const out = new Map(), inn = new Map(); for (const e of edges) { (out.get(e.from) || out.set(e.from, []).get(e.from)).push(e); (inn.get(e.to) || inn.set(e.to, []).get(e.to)).push(e); } return { out, inn }; }
+
+// ===================== rendering of columns (in a real app: React components) =====================
+const board = document.getElementById('board'), lists = {}, cardEls = new Map();
+function hl(src) { // tiny Lean highlighter for the prototype only (real app: Shiki codeToTokens with the 'lean' grammar)
+  return src.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))
+    .replace(/(--.*$)/gm, '<span class="tk-cm">$1</span>')
+    .replace(/\b(axiom|theorem|structure|where|opaque|fun|by|exact|def|lemma)\b/g, '<span class="tk-kw">$1</span>')
+    .replace(/\b(Prop|Type|String|Character|Game|Player)\b/g, '<span class="tk-ty">$1</span>')
+    .replace(/(∀|→|¬|:=)/g, '<span class="tk-op">$1</span>');
+}
+function renderColumns() {
+  for (const k of KINDS) {
+    let col = board.querySelector(`.col[data-kind=${k}]`);
+    if (!col) {
+      col = document.createElement('section'); col.className = 'col'; col.dataset.kind = k; col.setAttribute('aria-label', KLABEL[k]);
+      col.innerHTML = `<div class="col-header"><span>${KLABEL[k]}</span><span class="count"></span></div><div class="col-list" role="listbox" aria-multiselectable="true" tabindex="-1"></div>`;
+      board.appendChild(col); lists[k] = col.querySelector('.col-list'); wireDrop(lists[k], k);
+      lists[k].addEventListener('scroll', () => schedule(k), { passive: true });
+    }
+    const list = lists[k]; list.textContent = '';
+    let lastGroup = null, visibleCount = 0;
+    for (const id of order[k]) {
+      const n = nodes.get(id);
+      if (n.group !== lastGroup && n.group && state.diff) { const g = document.createElement('div'); g.className = 'group-label'; g.textContent = n.group; list.appendChild(g); }
+      lastGroup = n.group;
+      const el = cardFor(n); list.appendChild(el); if (!n.ghostOf && !(n.diff === 'added' && !state.diff)) visibleCount++;
+    }
+    list.parentElement.querySelector('.count').textContent = visibleCount;
+  }
+  schedule('layout');
+}
+function cardFor(n) {
+  const el = document.createElement('div'); el.className = 'card'; el.dataset.id = n.id; el.tabIndex = 0; el.setAttribute('role', 'option');
+  if (n.ghostOf) { el.classList.add('ghost'); el.innerHTML = `<div class="row"><span class="t">→ Moved here: “${n.title}” (proved)</span></div>`; cardEls.set(n.id, el); return el; }
+  const hasLean = !!n.lean && !(state.diff === false && (n.diff === 'modified' || n.diff === 'moved' || n.diff === 'added'));
+  // In the base state the user's example has no Lean yet; the proposal adds it.
+  const showLean = state.diff ? !!n.lean : hasLean;
+  if (showLean && !(state.diff && n.diff === 'removed')) el.classList.add('formal');
+  if (n.diff) el.dataset.diff = n.diff;
+  if (state.selected.has(n.id)) { el.classList.add('selected'); el.setAttribute('aria-selected', 'true'); }
+  const dg = { added: ['g-add', '+', 'new'], removed: ['g-del', '−', 'removed'], modified: ['g-mod', '~', 'Lean added'], moved: ['g-mov', '→', 'Goal → Derivation (proved)'] }[n.diff];
+  const expanded = state.expanded.has(n.id);
+  el.innerHTML = `<div class="row"><span class="check" aria-hidden="true">${state.selected.has(n.id) ? '✓' : ''}</span>
+      <span class="t">${n.title}</span>
+      <button class="chev" aria-label="${expanded ? 'Collapse' : 'Expand'} Lean code" aria-expanded="${expanded}">${expanded ? '▾' : '▸'}</button></div>
+    ${n.why ? `<div class="why">because: ${n.why}</div>` : ''}
+    <div class="meta">${showLean ? '<span class="chip lean" title="Has a Lean representation">λ Lean</span>' : '<span class="chip" title="Comment-only node: no Lean code yet">no Lean yet</span>'}
+      ${dg ? `<span class="diffbadge chip" style="border:0;padding:0"><span class="glyph ${dg[0]}">${dg[1]}</span>&nbsp;${dg[2]}</span>` : ''}</div>
+    ${expanded ? `<div class="lean-code">${showLean ? n.lean.split('\n').map(l => `<span class="ln${state.diff && n.diff ? ' plus' : ''}">${hl(l)}</span>`).join('') : '<span class="none">/- @@ telelean … -/ — no Lean code yet</span>'}</div>` : ''}`;
+  el.draggable = true;
+  el.addEventListener('dragstart', ev => { ev.dataTransfer.setData('text/x-telelean-node', n.id); ev.dataTransfer.effectAllowed = 'move'; });
+  el.addEventListener('mouseenter', () => { state.hover = n.id; applyFocus(); schedule('focus'); });
+  el.addEventListener('mouseleave', () => { state.hover = null; applyFocus(); schedule('focus'); });
+  el.addEventListener('click', ev => {
+    if (ev.target.closest('.chev')) { state.expanded.has(n.id) ? state.expanded.delete(n.id) : state.expanded.add(n.id); renderColumns(); return; }
+    state.selected.has(n.id) ? state.selected.delete(n.id) : state.selected.add(n.id); renderColumns(); renderTray();
+  });
+  cardEls.set(n.id, el); return el;
+}
+
+// ===================== drag to re-classify (prototype: native HTML5 DnD; real app: a DnD library) =====================
+function wireDrop(list, kind) {
+  let line = null;
+  list.addEventListener('dragover', ev => {
+    if (!ev.dataTransfer.types.includes('text/x-telelean-node')) return;
+    ev.preventDefault(); list.classList.add('drop-target');
+    const cards = [...list.querySelectorAll('.card')]; let before = null;
+    for (const c of cards) { const r = c.getBoundingClientRect(); if (ev.clientY < r.top + r.height / 2) { before = c; break; } }
+    line = line || Object.assign(document.createElement('div'), { className: 'insert-line' });
+    before ? list.insertBefore(line, before) : list.appendChild(line);
+  });
+  list.addEventListener('dragleave', ev => { if (!list.contains(ev.relatedTarget)) { list.classList.remove('drop-target'); line?.remove(); } });
+  list.addEventListener('drop', ev => {
+    ev.preventDefault(); list.classList.remove('drop-target');
+    const id = ev.dataTransfer.getData('text/x-telelean-node'); const n = nodes.get(id); if (!n) return;
+    const next = line?.nextElementSibling?.dataset?.id; line?.remove();
+    order[n.kind] = order[n.kind].filter(x => x !== id); n.kind = kind;
+    const idx = next ? order[kind].indexOf(next) : -1; idx >= 0 ? order[kind].splice(idx, 0, id) : order[kind].push(id);
+    // real app: post {type:'request', method:'moveNode', params:{id, kind, beforeId: next}} and wait for the graph patch
+    renderColumns(); renderTray();
+  });
+}
+
+// ===================== EDGE OVERLAY ENGINE =====================
+// read phase -> compute phase (no DOM) -> write phase; at most once per animation frame.
+const geo = { cols: {}, node: new Map() };
+const pool = new Map();           // edgeId -> <path>
+const svgUnder = document.getElementById('svgUnder'), svgOver = document.getElementById('svgOver'), badgesEl = document.getElementById('badges');
+const BUDGET = 250, PAD = 9, CARD_INSET = 7, STUBS = P.get('stubs') !== '0';
+let dirty = { layout: true, cols: new Set(), focus: true }, rafId = 0;
+function schedule(what) { if (what === 'layout') dirty.layout = true; else if (what === 'focus') dirty.focus = true; else dirty.cols.add(what); if (!rafId) rafId = requestAnimationFrame(frame); }
+const ro = new ResizeObserver(() => schedule('layout'));
+ro.observe(board);
+
+function measure() { // READ: column viewport rects relative to the board + node offsets inside their list
+  const b = board.getBoundingClientRect();
+  for (const k of KINDS) { const L = lists[k], r = L.getBoundingClientRect(); geo.cols[k] = { left: r.left - b.left, top: r.top - b.top, width: L.clientWidth, height: L.clientHeight }; }
+  geo.node.clear();
+  for (const [id, el] of cardEls) if (el.isConnected && el.offsetParent) geo.node.set(id, { kind: nodes.get(id).kind, top: el.offsetTop, h: el.offsetHeight });
+}
+function endpoint(id, side, scroll) {
+  const g = geo.node.get(id); if (!g) return null;
+  const c = geo.cols[g.kind];
+  let y = c.top + g.top - scroll[g.kind] + Math.min(g.h / 2, 16), st = 0;   // anchor at the title line, not the middle of an expanded card
+  if (y < c.top + PAD) { y = c.top + PAD; st = -1; } else if (y > c.top + c.height - PAD) { y = c.top + c.height - PAD; st = 1; }
+  const x = side === 'R' ? c.left + c.width - CARD_INSET : c.left + CARD_INSET;
+  return { x, y, st, kind: g.kind, id };
+}
+const CI = { A: 0, D: 1, G: 2 };
+function route(e, scroll) {
+  const kf = nodes.get(e.from).kind, kt = nodes.get(e.to).kind;
+  let s, t, d;
+  if (kf === kt) { // same-column edge: loop through the gutter on the right (left for the goals column)
+    const side = kf === 'G' ? 'L' : 'R'; s = endpoint(e.from, side, scroll); t = endpoint(e.to, side, scroll); if (!s || !t) return null;
+    const k = (side === 'R' ? 1 : -1) * (18 + Math.min(34, Math.abs(t.y - s.y) * 0.12));
+    d = `M${s.x},${s.y}C${s.x + k},${s.y} ${t.x + k},${t.y} ${t.x},${t.y}`;
+  } else {
+    const fwd = CI[kf] < CI[kt];
+    s = endpoint(e.from, fwd ? 'R' : 'L', scroll); t = endpoint(e.to, fwd ? 'L' : 'R', scroll); if (!s || !t) return null;
+    const dx = Math.max(30, Math.min(160, Math.abs(t.x - s.x) * 0.45)) * (fwd ? 1 : -1);
+    d = `M${s.x},${s.y}C${s.x + dx},${s.y} ${t.x - dx},${t.y} ${t.x},${t.y}`;
+  }
+  return { s, t, d, skip: Math.abs(CI[kf] - CI[kt]) === 2 };
+}
+function isVisibleNode(id) { const n = nodes.get(id); if (n.ghostOf) return true; if (!state.diff && n.diff === 'added') return false; return true; }
+const FT = [];
+function frame() {
+  const __t0 = performance.now();
+  rafId = 0;
+  if (dirty.layout) measure();                                        // READ (only when layout changed)
+  const scroll = {}; for (const k of KINDS) scroll[k] = lists[k].scrollTop;  // READ (cheap)
+  // ---------- COMPUTE (pure) ----------
+  const focus = focusSet();
+  const draw = [], hidden = { A: { up: new Map(), down: new Map() }, D: { up: new Map(), down: new Map() }, G: { up: new Map(), down: new Map() } };
+  let culled = 0;
+  for (const e of edges) {
+    if (!isVisibleNode(e.from) || !isVisibleNode(e.to)) continue;
+    if (!state.diff && e.diff === 'added') continue;
+    if (state.diff && nodes.get(e.to).diff === 'moved' && !e.diff) { /* edges into a moved node are re-targeted in the proposal */ }
+    const r = route(e, scroll); if (!r) continue;
+    const focused = focus.edges.has(e.id);
+    for (const p of [r.s, r.t]) if (p.st) { const m = hidden[p.kind][p.st < 0 ? 'up' : 'down']; m.set(p.id, (m.get(p.id) || 0) + 1); }
+    if (r.s.st && r.t.st) { culled++; continue; }                       // both ends off-screen: summarised by badges only
+    if (!focused && (r.s.st || r.t.st) && STUBS) { // one end off-screen and not focused: short stub pointing towards it
+      const vis = r.s.st ? r.t : r.s, hid = r.s.st ? r.s : r.t;
+      const hs = CI[hid.kind] > CI[vis.kind] ? 1 : CI[hid.kind] < CI[vis.kind] ? -1 : (vis.kind === 'G' ? -1 : 1);
+      const v = hid.st; const x2 = vis.x + hs * 22, y2 = vis.y + v * 20;
+      r.d = `M${vis.x},${vis.y}C${vis.x + hs * 16},${vis.y} ${x2},${vis.y} ${x2},${y2}`; r.stub = true;
+    }
+    draw.push({ e, r, focused });
+  }
+  let shown = draw;
+  if (draw.length > BUDGET && !focus.any) shown = draw.slice(0, BUDGET); // edge budget (real app: prefer edges near selection)
+  // ---------- WRITE ----------
+  const seen = new Set();
+  for (const { e, r, focused } of shown) {
+    seen.add(e.id);
+    let p = pool.get(e.id);
+    if (!p) { p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); p._d = p._c = ''; pool.set(e.id, p); }
+    const cls = 'e' + ((r.s.st || r.t.st) ? ' clamped' : '') + (focused ? ' hl' : '') + (state.diff && e.diff === 'added' ? ' add' : '') + (state.diff && e.diff === 'removed' ? ' rem' : '');
+    const layer = (focused || (state.diff && e.diff) || r.stub) ? svgOver : (r.skip ? svgUnder : svgOver);
+    if (p.parentNode !== layer) layer.appendChild(p);
+    if (p._d !== r.d) { p._d = r.d; p.setAttribute('d', r.d); }
+    if (p._c !== cls) { p._c = cls; p.setAttribute('class', cls); p.setAttribute('marker-end', `url(#${cls.includes('add') ? 'ah-add' : cls.includes('rem') ? 'ah-rem' : focused ? 'ah-hl' : 'ah-base'})`); }
+  }
+  for (const [id, p] of pool) if (!seen.has(id)) { p.remove(); pool.delete(id); }
+  renderBadges(hidden, scroll);
+  document.getElementById('edgeStat').textContent = `${shown.length} drawn · ${culled} off-screen`;
+  dirty = { layout: false, cols: new Set(), focus: false };
+  FT.push(performance.now() - __t0);
+}
+function renderBadges(hidden, scroll) {
+  badgesEl.textContent = '';
+  for (const k of KINDS) for (const dir of ['up', 'down']) {
+    const m = hidden[k][dir]; if (!m.size) continue;
+    const c = geo.cols[k]; const b = document.createElement('button'); b.className = 'edge-badge';
+    b.textContent = `${dir === 'up' ? '▲' : '▼'} ${m.size} linked`;
+    b.setAttribute('aria-label', `${m.size} linked ${KLABEL[k].toLowerCase()} ${dir === 'up' ? 'above' : 'below'}; scroll to nearest`);
+    b.style.left = (c.left + c.width / 2) + 'px'; b.style.top = (dir === 'up' ? c.top + PAD : c.top + c.height - PAD) + 'px';
+    b.onclick = () => { // scroll to the nearest hidden linked node in that direction
+      const ids = [...m.keys()].map(id => geo.node.get(id)).filter(Boolean).sort((a, b2) => a.top - b2.top);
+      const target = dir === 'up' ? ids[ids.length - 1] : ids[0]; if (target) lists[k].scrollTo({ top: Math.max(0, target.top - 40), behavior: 'smooth' });
+    };
+    badgesEl.appendChild(b);
+  }
+}
+function focusSet() { // hovered node (+ its ancestor closure if requested) and the selection
+  const ids = new Set(), es = new Set(); const { inn, out } = adjacency();
+  const seeds = state.hover ? [state.hover] : [];
+  for (const s of seeds) {
+    ids.add(s);
+    if (state.ancestors) { const stack = [s]; while (stack.length) { const x = stack.pop(); for (const e of inn.get(x) || []) { es.add(e.id); if (!ids.has(e.from)) { ids.add(e.from); stack.push(e.from); } } } }
+    else { for (const e of inn.get(s) || []) { es.add(e.id); ids.add(e.from); } for (const e of out.get(s) || []) { es.add(e.id); ids.add(e.to); } }
+  }
+  return { ids, edges: es, any: seeds.length > 0 };
+}
+function applyFocus() {
+  const f = focusSet();
+  for (const [id, el] of cardEls) { el.classList.toggle('dim', f.any && !f.ids.has(id)); el.classList.toggle('hover', id === state.hover); }
+}
+
+// ===================== selection tray =====================
+function renderTray() {
+  const tray = document.getElementById('tray'); const sel = [...state.selected].filter(id => nodes.has(id));
+  const prem = sel.filter(id => nodes.get(id).kind !== 'G'), goals = sel.filter(id => nodes.get(id).kind === 'G');
+  const chip = id => { const n = nodes.get(id); return `<span class="selchip" data-kind="${n.kind}"><span class="txt" title="${n.title}">${n.title}</span><button aria-label="Remove ${n.title} from selection" data-unsel="${id}">✕</button></span>`; };
+  const ok = prem.length >= 1 && goals.length === 1;
+  tray.innerHTML = `<span class="label">Selection</span>${prem.map(chip).join('') || '<span style="opacity:.6">select premises…</span>'}<span class="arrow-sep">⊢</span>${goals.map(chip).join('') || '<span style="opacity:.6">select one goal…</span>'}
+    <span style="flex:1"></span><button class="btn secondary" data-clear>Clear</button>
+    <button class="btn" ${ok ? '' : 'disabled'} title="Ask the LLM to formalise these and prove the goal from them">These suffice to prove the goal ▶</button>`;
+  tray.querySelectorAll('[data-unsel]').forEach(b => b.onclick = () => { state.selected.delete(b.dataset.unsel); renderColumns(); renderTray(); });
+  tray.querySelector('[data-clear]').onclick = () => { state.selected.clear(); renderColumns(); renderTray(); };
+}
+
+// ===================== A/D/G switch (radiogroup with roving tabindex) =====================
+const PH = { A: 'State something you believe is true…', D: 'State something that should follow from the assumptions…', G: 'State something you want to prove…' };
+function setMode(k) {
+  state.mode = k; document.getElementById('prompt').dataset.mode = k; document.getElementById('promptText').placeholder = PH[k];
+  document.querySelectorAll('#seg button').forEach(b => { const on = b.dataset.kind === k; b.setAttribute('aria-checked', on); b.tabIndex = on ? 0 : -1; });
+}
+document.querySelectorAll('#seg button').forEach(b => b.onclick = () => setMode(b.dataset.kind));
+document.getElementById('seg').addEventListener('keydown', ev => {
+  const i = KINDS.indexOf(state.mode); if (ev.key === 'ArrowRight' || ev.key === 'ArrowLeft') { const k = KINDS[(i + (ev.key === 'ArrowRight' ? 1 : 2)) % 3]; setMode(k); document.querySelector(`#seg button[data-kind=${k}]`).focus(); ev.preventDefault(); }
+});
+document.addEventListener('keydown', ev => { if (ev.altKey && ['1', '2', '3'].includes(ev.key)) setMode(KINDS[+ev.key - 1]); });
+const ds = document.getElementById('diffSwitch');
+function setDiff(on) { state.diff = on; document.body.classList.toggle('diff', on); ds.classList.toggle('on', on); ds.setAttribute('aria-checked', on); renderColumns(); }
+ds.onclick = () => setDiff(!state.diff);
+
+// ===================== boot =====================
+setMode(state.mode); setDiff(state.diff); renderTray();
+requestAnimationFrame(() => {
+  if (P.get('scrollD')) lists.D.scrollTop = +P.get('scrollD');
+  if (P.get('scrollA')) lists.A.scrollTop = +P.get('scrollA');
+  if (P.get('scrollG')) lists.G.scrollTop = +P.get('scrollG');
+  applyFocus(); schedule('layout');
+  if (P.get('perf')) (async () => {
+    const raf = () => new Promise(r => requestAnimationFrame(r));
+    await raf(); await raf(); const t0 = performance.now(); measure(); const tMeasure = performance.now() - t0;
+    FT.length = 0; const iv = []; let last = performance.now();
+    for (let i = 0; i < 120; i++) { lists.D.scrollTop += 9; if (i % 4 === 0) lists.A.scrollTop += 6; await raf(); const n = performance.now(); iv.push(n - last); last = n; }
+    const st = a => { const b = [...a].sort((x, y) => x - y); return { mean: +(b.reduce((x, y) => x + y, 0) / b.length).toFixed(2), p95: +b[Math.floor(b.length * .95)].toFixed(2), max: +b[b.length - 1].toFixed(2) }; };
+    await fetch('/result', { method: 'POST', body: JSON.stringify({ nodes: nodes.size, edges: edges.length, cards: cardEls.size, tMeasureAllMs: +tMeasure.toFixed(2), frameFn: st(FT), rafInterval: st(iv.slice(5)), drawnNow: pool.size }) });
+  })();
+});
+</script>
+</body>
+</html>

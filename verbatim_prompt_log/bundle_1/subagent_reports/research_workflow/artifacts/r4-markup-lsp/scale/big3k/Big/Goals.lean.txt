@@ -1,0 +1,1962 @@
+import Big.Derivs
+
+/-
+@@ telelean v1
+id: goal-0
+kind: GOAL
+natural_name: "open question 0"
+premises: deriv-118
+-/
+
+/-
+@@ telelean v1
+id: goal-1
+kind: GOAL
+natural_name: "Q231 and P0 1"
+premises: deriv-231, fact-0
+-/
+theorem g1 : Q231 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-2
+kind: GOAL
+natural_name: "Q576 and P0 2"
+premises: deriv-576, fact-0
+-/
+theorem g2 : Q576 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-3
+kind: GOAL
+natural_name: "Q204 and P0 3"
+premises: deriv-204, fact-0
+-/
+theorem g3 : Q204 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-4
+kind: GOAL
+natural_name: "Q515 and P0 4"
+premises: deriv-515, fact-0
+-/
+theorem g4 : Q515 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-5
+kind: GOAL
+natural_name: "Q581 and P0 5"
+premises: deriv-581, fact-0
+-/
+theorem g5 : Q581 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-6
+kind: GOAL
+natural_name: "Q675 and P0 6"
+premises: deriv-675, fact-0
+-/
+theorem g6 : Q675 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-7
+kind: GOAL
+natural_name: "Q315 and P0 7"
+premises: deriv-315, fact-0
+-/
+theorem g7 : Q315 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-8
+kind: GOAL
+natural_name: "Q432 and P0 8"
+premises: deriv-432, fact-0
+-/
+theorem g8 : Q432 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-9
+kind: GOAL
+natural_name: "Q335 and P0 9"
+premises: deriv-335, fact-0
+-/
+theorem g9 : Q335 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-10
+kind: GOAL
+natural_name: "open question 10"
+premises: deriv-4
+-/
+
+/-
+@@ telelean v1
+id: goal-11
+kind: GOAL
+natural_name: "Q792 and P0 11"
+premises: deriv-792, fact-0
+-/
+theorem g11 : Q792 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-12
+kind: GOAL
+natural_name: "Q20 and P0 12"
+premises: deriv-20, fact-0
+-/
+theorem g12 : Q20 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-13
+kind: GOAL
+natural_name: "Q312 and P0 13"
+premises: deriv-312, fact-0
+-/
+theorem g13 : Q312 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-14
+kind: GOAL
+natural_name: "Q630 and P0 14"
+premises: deriv-630, fact-0
+-/
+theorem g14 : Q630 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-15
+kind: GOAL
+natural_name: "Q225 and P0 15"
+premises: deriv-225, fact-0
+-/
+theorem g15 : Q225 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-16
+kind: GOAL
+natural_name: "Q86 and P0 16"
+premises: deriv-86, fact-0
+-/
+theorem g16 : Q86 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-17
+kind: GOAL
+natural_name: "Q760 and P0 17"
+premises: deriv-760, fact-0
+-/
+theorem g17 : Q760 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-18
+kind: GOAL
+natural_name: "Q229 and P0 18"
+premises: deriv-229, fact-0
+-/
+theorem g18 : Q229 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-19
+kind: GOAL
+natural_name: "Q286 and P0 19"
+premises: deriv-286, fact-0
+-/
+theorem g19 : Q286 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-20
+kind: GOAL
+natural_name: "open question 20"
+premises: deriv-697
+-/
+
+/-
+@@ telelean v1
+id: goal-21
+kind: GOAL
+natural_name: "Q640 and P0 21"
+premises: deriv-640, fact-0
+-/
+theorem g21 : Q640 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-22
+kind: GOAL
+natural_name: "Q349 and P0 22"
+premises: deriv-349, fact-0
+-/
+theorem g22 : Q349 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-23
+kind: GOAL
+natural_name: "Q275 and P0 23"
+premises: deriv-275, fact-0
+-/
+theorem g23 : Q275 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-24
+kind: GOAL
+natural_name: "Q615 and P0 24"
+premises: deriv-615, fact-0
+-/
+theorem g24 : Q615 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-25
+kind: GOAL
+natural_name: "Q736 and P0 25"
+premises: deriv-736, fact-0
+-/
+theorem g25 : Q736 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-26
+kind: GOAL
+natural_name: "Q530 and P0 26"
+premises: deriv-530, fact-0
+-/
+theorem g26 : Q530 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-27
+kind: GOAL
+natural_name: "Q388 and P0 27"
+premises: deriv-388, fact-0
+-/
+theorem g27 : Q388 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-28
+kind: GOAL
+natural_name: "Q23 and P0 28"
+premises: deriv-23, fact-0
+-/
+theorem g28 : Q23 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-29
+kind: GOAL
+natural_name: "Q124 and P0 29"
+premises: deriv-124, fact-0
+-/
+theorem g29 : Q124 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-30
+kind: GOAL
+natural_name: "open question 30"
+premises: deriv-337
+-/
+
+/-
+@@ telelean v1
+id: goal-31
+kind: GOAL
+natural_name: "Q355 and P0 31"
+premises: deriv-355, fact-0
+-/
+theorem g31 : Q355 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-32
+kind: GOAL
+natural_name: "Q142 and P0 32"
+premises: deriv-142, fact-0
+-/
+theorem g32 : Q142 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-33
+kind: GOAL
+natural_name: "Q116 and P0 33"
+premises: deriv-116, fact-0
+-/
+theorem g33 : Q116 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-34
+kind: GOAL
+natural_name: "Q256 and P0 34"
+premises: deriv-256, fact-0
+-/
+theorem g34 : Q256 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-35
+kind: GOAL
+natural_name: "Q788 and P0 35"
+premises: deriv-788, fact-0
+-/
+theorem g35 : Q788 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-36
+kind: GOAL
+natural_name: "Q146 and P0 36"
+premises: deriv-146, fact-0
+-/
+theorem g36 : Q146 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-37
+kind: GOAL
+natural_name: "Q697 and P0 37"
+premises: deriv-697, fact-0
+-/
+theorem g37 : Q697 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-38
+kind: GOAL
+natural_name: "Q587 and P0 38"
+premises: deriv-587, fact-0
+-/
+theorem g38 : Q587 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-39
+kind: GOAL
+natural_name: "Q42 and P0 39"
+premises: deriv-42, fact-0
+-/
+theorem g39 : Q42 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-40
+kind: GOAL
+natural_name: "open question 40"
+premises: deriv-355
+-/
+
+/-
+@@ telelean v1
+id: goal-41
+kind: GOAL
+natural_name: "Q79 and P0 41"
+premises: deriv-79, fact-0
+-/
+theorem g41 : Q79 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-42
+kind: GOAL
+natural_name: "Q94 and P0 42"
+premises: deriv-94, fact-0
+-/
+theorem g42 : Q94 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-43
+kind: GOAL
+natural_name: "Q742 and P0 43"
+premises: deriv-742, fact-0
+-/
+theorem g43 : Q742 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-44
+kind: GOAL
+natural_name: "Q105 and P0 44"
+premises: deriv-105, fact-0
+-/
+theorem g44 : Q105 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-45
+kind: GOAL
+natural_name: "Q307 and P0 45"
+premises: deriv-307, fact-0
+-/
+theorem g45 : Q307 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-46
+kind: GOAL
+natural_name: "Q324 and P0 46"
+premises: deriv-324, fact-0
+-/
+theorem g46 : Q324 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-47
+kind: GOAL
+natural_name: "Q254 and P0 47"
+premises: deriv-254, fact-0
+-/
+theorem g47 : Q254 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-48
+kind: GOAL
+natural_name: "Q275 and P0 48"
+premises: deriv-275, fact-0
+-/
+theorem g48 : Q275 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-49
+kind: GOAL
+natural_name: "Q542 and P0 49"
+premises: deriv-542, fact-0
+-/
+theorem g49 : Q542 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-50
+kind: GOAL
+natural_name: "open question 50"
+premises: deriv-50
+-/
+
+/-
+@@ telelean v1
+id: goal-51
+kind: GOAL
+natural_name: "Q370 and P0 51"
+premises: deriv-370, fact-0
+-/
+theorem g51 : Q370 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-52
+kind: GOAL
+natural_name: "Q31 and P0 52"
+premises: deriv-31, fact-0
+-/
+theorem g52 : Q31 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-53
+kind: GOAL
+natural_name: "Q80 and P0 53"
+premises: deriv-80, fact-0
+-/
+theorem g53 : Q80 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-54
+kind: GOAL
+natural_name: "Q142 and P0 54"
+premises: deriv-142, fact-0
+-/
+theorem g54 : Q142 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-55
+kind: GOAL
+natural_name: "Q408 and P0 55"
+premises: deriv-408, fact-0
+-/
+theorem g55 : Q408 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-56
+kind: GOAL
+natural_name: "Q380 and P0 56"
+premises: deriv-380, fact-0
+-/
+theorem g56 : Q380 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-57
+kind: GOAL
+natural_name: "Q737 and P0 57"
+premises: deriv-737, fact-0
+-/
+theorem g57 : Q737 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-58
+kind: GOAL
+natural_name: "Q653 and P0 58"
+premises: deriv-653, fact-0
+-/
+theorem g58 : Q653 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-59
+kind: GOAL
+natural_name: "Q707 and P0 59"
+premises: deriv-707, fact-0
+-/
+theorem g59 : Q707 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-60
+kind: GOAL
+natural_name: "open question 60"
+premises: deriv-247
+-/
+
+/-
+@@ telelean v1
+id: goal-61
+kind: GOAL
+natural_name: "Q96 and P0 61"
+premises: deriv-96, fact-0
+-/
+theorem g61 : Q96 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-62
+kind: GOAL
+natural_name: "Q695 and P0 62"
+premises: deriv-695, fact-0
+-/
+theorem g62 : Q695 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-63
+kind: GOAL
+natural_name: "Q336 and P0 63"
+premises: deriv-336, fact-0
+-/
+theorem g63 : Q336 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-64
+kind: GOAL
+natural_name: "Q280 and P0 64"
+premises: deriv-280, fact-0
+-/
+theorem g64 : Q280 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-65
+kind: GOAL
+natural_name: "Q8 and P0 65"
+premises: deriv-8, fact-0
+-/
+theorem g65 : Q8 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-66
+kind: GOAL
+natural_name: "Q527 and P0 66"
+premises: deriv-527, fact-0
+-/
+theorem g66 : Q527 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-67
+kind: GOAL
+natural_name: "Q329 and P0 67"
+premises: deriv-329, fact-0
+-/
+theorem g67 : Q329 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-68
+kind: GOAL
+natural_name: "Q114 and P0 68"
+premises: deriv-114, fact-0
+-/
+theorem g68 : Q114 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-69
+kind: GOAL
+natural_name: "Q360 and P0 69"
+premises: deriv-360, fact-0
+-/
+theorem g69 : Q360 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-70
+kind: GOAL
+natural_name: "open question 70"
+premises: deriv-656
+-/
+
+/-
+@@ telelean v1
+id: goal-71
+kind: GOAL
+natural_name: "Q741 and P0 71"
+premises: deriv-741, fact-0
+-/
+theorem g71 : Q741 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-72
+kind: GOAL
+natural_name: "Q128 and P0 72"
+premises: deriv-128, fact-0
+-/
+theorem g72 : Q128 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-73
+kind: GOAL
+natural_name: "Q620 and P0 73"
+premises: deriv-620, fact-0
+-/
+theorem g73 : Q620 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-74
+kind: GOAL
+natural_name: "Q277 and P0 74"
+premises: deriv-277, fact-0
+-/
+theorem g74 : Q277 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-75
+kind: GOAL
+natural_name: "Q414 and P0 75"
+premises: deriv-414, fact-0
+-/
+theorem g75 : Q414 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-76
+kind: GOAL
+natural_name: "Q93 and P0 76"
+premises: deriv-93, fact-0
+-/
+theorem g76 : Q93 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-77
+kind: GOAL
+natural_name: "Q695 and P0 77"
+premises: deriv-695, fact-0
+-/
+theorem g77 : Q695 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-78
+kind: GOAL
+natural_name: "Q590 and P0 78"
+premises: deriv-590, fact-0
+-/
+theorem g78 : Q590 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-79
+kind: GOAL
+natural_name: "Q635 and P0 79"
+premises: deriv-635, fact-0
+-/
+theorem g79 : Q635 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-80
+kind: GOAL
+natural_name: "open question 80"
+premises: deriv-742
+-/
+
+/-
+@@ telelean v1
+id: goal-81
+kind: GOAL
+natural_name: "Q540 and P0 81"
+premises: deriv-540, fact-0
+-/
+theorem g81 : Q540 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-82
+kind: GOAL
+natural_name: "Q486 and P0 82"
+premises: deriv-486, fact-0
+-/
+theorem g82 : Q486 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-83
+kind: GOAL
+natural_name: "Q577 and P0 83"
+premises: deriv-577, fact-0
+-/
+theorem g83 : Q577 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-84
+kind: GOAL
+natural_name: "Q428 and P0 84"
+premises: deriv-428, fact-0
+-/
+theorem g84 : Q428 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-85
+kind: GOAL
+natural_name: "Q548 and P0 85"
+premises: deriv-548, fact-0
+-/
+theorem g85 : Q548 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-86
+kind: GOAL
+natural_name: "Q403 and P0 86"
+premises: deriv-403, fact-0
+-/
+theorem g86 : Q403 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-87
+kind: GOAL
+natural_name: "Q308 and P0 87"
+premises: deriv-308, fact-0
+-/
+theorem g87 : Q308 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-88
+kind: GOAL
+natural_name: "Q224 and P0 88"
+premises: deriv-224, fact-0
+-/
+theorem g88 : Q224 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-89
+kind: GOAL
+natural_name: "Q647 and P0 89"
+premises: deriv-647, fact-0
+-/
+theorem g89 : Q647 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-90
+kind: GOAL
+natural_name: "open question 90"
+premises: deriv-309
+-/
+
+/-
+@@ telelean v1
+id: goal-91
+kind: GOAL
+natural_name: "Q562 and P0 91"
+premises: deriv-562, fact-0
+-/
+theorem g91 : Q562 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-92
+kind: GOAL
+natural_name: "Q136 and P0 92"
+premises: deriv-136, fact-0
+-/
+theorem g92 : Q136 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-93
+kind: GOAL
+natural_name: "Q55 and P0 93"
+premises: deriv-55, fact-0
+-/
+theorem g93 : Q55 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-94
+kind: GOAL
+natural_name: "Q614 and P0 94"
+premises: deriv-614, fact-0
+-/
+theorem g94 : Q614 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-95
+kind: GOAL
+natural_name: "Q520 and P0 95"
+premises: deriv-520, fact-0
+-/
+theorem g95 : Q520 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-96
+kind: GOAL
+natural_name: "Q112 and P0 96"
+premises: deriv-112, fact-0
+-/
+theorem g96 : Q112 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-97
+kind: GOAL
+natural_name: "Q179 and P0 97"
+premises: deriv-179, fact-0
+-/
+theorem g97 : Q179 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-98
+kind: GOAL
+natural_name: "Q246 and P0 98"
+premises: deriv-246, fact-0
+-/
+theorem g98 : Q246 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-99
+kind: GOAL
+natural_name: "Q220 and P0 99"
+premises: deriv-220, fact-0
+-/
+theorem g99 : Q220 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-100
+kind: GOAL
+natural_name: "open question 100"
+premises: deriv-445
+-/
+
+/-
+@@ telelean v1
+id: goal-101
+kind: GOAL
+natural_name: "Q281 and P0 101"
+premises: deriv-281, fact-0
+-/
+theorem g101 : Q281 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-102
+kind: GOAL
+natural_name: "Q559 and P0 102"
+premises: deriv-559, fact-0
+-/
+theorem g102 : Q559 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-103
+kind: GOAL
+natural_name: "Q20 and P0 103"
+premises: deriv-20, fact-0
+-/
+theorem g103 : Q20 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-104
+kind: GOAL
+natural_name: "Q256 and P0 104"
+premises: deriv-256, fact-0
+-/
+theorem g104 : Q256 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-105
+kind: GOAL
+natural_name: "Q551 and P0 105"
+premises: deriv-551, fact-0
+-/
+theorem g105 : Q551 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-106
+kind: GOAL
+natural_name: "Q277 and P0 106"
+premises: deriv-277, fact-0
+-/
+theorem g106 : Q277 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-107
+kind: GOAL
+natural_name: "Q542 and P0 107"
+premises: deriv-542, fact-0
+-/
+theorem g107 : Q542 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-108
+kind: GOAL
+natural_name: "Q268 and P0 108"
+premises: deriv-268, fact-0
+-/
+theorem g108 : Q268 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-109
+kind: GOAL
+natural_name: "Q484 and P0 109"
+premises: deriv-484, fact-0
+-/
+theorem g109 : Q484 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-110
+kind: GOAL
+natural_name: "open question 110"
+premises: deriv-129
+-/
+
+/-
+@@ telelean v1
+id: goal-111
+kind: GOAL
+natural_name: "Q412 and P0 111"
+premises: deriv-412, fact-0
+-/
+theorem g111 : Q412 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-112
+kind: GOAL
+natural_name: "Q725 and P0 112"
+premises: deriv-725, fact-0
+-/
+theorem g112 : Q725 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-113
+kind: GOAL
+natural_name: "Q106 and P0 113"
+premises: deriv-106, fact-0
+-/
+theorem g113 : Q106 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-114
+kind: GOAL
+natural_name: "Q762 and P0 114"
+premises: deriv-762, fact-0
+-/
+theorem g114 : Q762 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-115
+kind: GOAL
+natural_name: "Q382 and P0 115"
+premises: deriv-382, fact-0
+-/
+theorem g115 : Q382 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-116
+kind: GOAL
+natural_name: "Q70 and P0 116"
+premises: deriv-70, fact-0
+-/
+theorem g116 : Q70 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-117
+kind: GOAL
+natural_name: "Q670 and P0 117"
+premises: deriv-670, fact-0
+-/
+theorem g117 : Q670 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-118
+kind: GOAL
+natural_name: "Q557 and P0 118"
+premises: deriv-557, fact-0
+-/
+theorem g118 : Q557 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-119
+kind: GOAL
+natural_name: "Q371 and P0 119"
+premises: deriv-371, fact-0
+-/
+theorem g119 : Q371 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-120
+kind: GOAL
+natural_name: "open question 120"
+premises: deriv-557
+-/
+
+/-
+@@ telelean v1
+id: goal-121
+kind: GOAL
+natural_name: "Q568 and P0 121"
+premises: deriv-568, fact-0
+-/
+theorem g121 : Q568 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-122
+kind: GOAL
+natural_name: "Q740 and P0 122"
+premises: deriv-740, fact-0
+-/
+theorem g122 : Q740 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-123
+kind: GOAL
+natural_name: "Q519 and P0 123"
+premises: deriv-519, fact-0
+-/
+theorem g123 : Q519 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-124
+kind: GOAL
+natural_name: "Q701 and P0 124"
+premises: deriv-701, fact-0
+-/
+theorem g124 : Q701 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-125
+kind: GOAL
+natural_name: "Q594 and P0 125"
+premises: deriv-594, fact-0
+-/
+theorem g125 : Q594 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-126
+kind: GOAL
+natural_name: "Q31 and P0 126"
+premises: deriv-31, fact-0
+-/
+theorem g126 : Q31 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-127
+kind: GOAL
+natural_name: "Q633 and P0 127"
+premises: deriv-633, fact-0
+-/
+theorem g127 : Q633 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-128
+kind: GOAL
+natural_name: "Q315 and P0 128"
+premises: deriv-315, fact-0
+-/
+theorem g128 : Q315 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-129
+kind: GOAL
+natural_name: "Q456 and P0 129"
+premises: deriv-456, fact-0
+-/
+theorem g129 : Q456 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-130
+kind: GOAL
+natural_name: "open question 130"
+premises: deriv-698
+-/
+
+/-
+@@ telelean v1
+id: goal-131
+kind: GOAL
+natural_name: "Q135 and P0 131"
+premises: deriv-135, fact-0
+-/
+theorem g131 : Q135 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-132
+kind: GOAL
+natural_name: "Q159 and P0 132"
+premises: deriv-159, fact-0
+-/
+theorem g132 : Q159 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-133
+kind: GOAL
+natural_name: "Q76 and P0 133"
+premises: deriv-76, fact-0
+-/
+theorem g133 : Q76 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-134
+kind: GOAL
+natural_name: "Q593 and P0 134"
+premises: deriv-593, fact-0
+-/
+theorem g134 : Q593 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-135
+kind: GOAL
+natural_name: "Q145 and P0 135"
+premises: deriv-145, fact-0
+-/
+theorem g135 : Q145 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-136
+kind: GOAL
+natural_name: "Q692 and P0 136"
+premises: deriv-692, fact-0
+-/
+theorem g136 : Q692 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-137
+kind: GOAL
+natural_name: "Q221 and P0 137"
+premises: deriv-221, fact-0
+-/
+theorem g137 : Q221 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-138
+kind: GOAL
+natural_name: "Q495 and P0 138"
+premises: deriv-495, fact-0
+-/
+theorem g138 : Q495 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-139
+kind: GOAL
+natural_name: "Q785 and P0 139"
+premises: deriv-785, fact-0
+-/
+theorem g139 : Q785 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-140
+kind: GOAL
+natural_name: "open question 140"
+premises: deriv-343
+-/
+
+/-
+@@ telelean v1
+id: goal-141
+kind: GOAL
+natural_name: "Q373 and P0 141"
+premises: deriv-373, fact-0
+-/
+theorem g141 : Q373 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-142
+kind: GOAL
+natural_name: "Q299 and P0 142"
+premises: deriv-299, fact-0
+-/
+theorem g142 : Q299 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-143
+kind: GOAL
+natural_name: "Q163 and P0 143"
+premises: deriv-163, fact-0
+-/
+theorem g143 : Q163 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-144
+kind: GOAL
+natural_name: "Q159 and P0 144"
+premises: deriv-159, fact-0
+-/
+theorem g144 : Q159 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-145
+kind: GOAL
+natural_name: "Q390 and P0 145"
+premises: deriv-390, fact-0
+-/
+theorem g145 : Q390 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-146
+kind: GOAL
+natural_name: "Q450 and P0 146"
+premises: deriv-450, fact-0
+-/
+theorem g146 : Q450 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-147
+kind: GOAL
+natural_name: "Q415 and P0 147"
+premises: deriv-415, fact-0
+-/
+theorem g147 : Q415 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-148
+kind: GOAL
+natural_name: "Q120 and P0 148"
+premises: deriv-120, fact-0
+-/
+theorem g148 : Q120 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-149
+kind: GOAL
+natural_name: "Q615 and P0 149"
+premises: deriv-615, fact-0
+-/
+theorem g149 : Q615 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-150
+kind: GOAL
+natural_name: "open question 150"
+premises: deriv-148
+-/
+
+/-
+@@ telelean v1
+id: goal-151
+kind: GOAL
+natural_name: "Q276 and P0 151"
+premises: deriv-276, fact-0
+-/
+theorem g151 : Q276 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-152
+kind: GOAL
+natural_name: "Q302 and P0 152"
+premises: deriv-302, fact-0
+-/
+theorem g152 : Q302 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-153
+kind: GOAL
+natural_name: "Q682 and P0 153"
+premises: deriv-682, fact-0
+-/
+theorem g153 : Q682 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-154
+kind: GOAL
+natural_name: "Q703 and P0 154"
+premises: deriv-703, fact-0
+-/
+theorem g154 : Q703 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-155
+kind: GOAL
+natural_name: "Q654 and P0 155"
+premises: deriv-654, fact-0
+-/
+theorem g155 : Q654 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-156
+kind: GOAL
+natural_name: "Q618 and P0 156"
+premises: deriv-618, fact-0
+-/
+theorem g156 : Q618 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-157
+kind: GOAL
+natural_name: "Q8 and P0 157"
+premises: deriv-8, fact-0
+-/
+theorem g157 : Q8 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-158
+kind: GOAL
+natural_name: "Q550 and P0 158"
+premises: deriv-550, fact-0
+-/
+theorem g158 : Q550 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-159
+kind: GOAL
+natural_name: "Q9 and P0 159"
+premises: deriv-9, fact-0
+-/
+theorem g159 : Q9 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-160
+kind: GOAL
+natural_name: "open question 160"
+premises: deriv-658
+-/
+
+/-
+@@ telelean v1
+id: goal-161
+kind: GOAL
+natural_name: "Q135 and P0 161"
+premises: deriv-135, fact-0
+-/
+theorem g161 : Q135 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-162
+kind: GOAL
+natural_name: "Q388 and P0 162"
+premises: deriv-388, fact-0
+-/
+theorem g162 : Q388 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-163
+kind: GOAL
+natural_name: "Q764 and P0 163"
+premises: deriv-764, fact-0
+-/
+theorem g163 : Q764 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-164
+kind: GOAL
+natural_name: "Q575 and P0 164"
+premises: deriv-575, fact-0
+-/
+theorem g164 : Q575 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-165
+kind: GOAL
+natural_name: "Q103 and P0 165"
+premises: deriv-103, fact-0
+-/
+theorem g165 : Q103 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-166
+kind: GOAL
+natural_name: "Q470 and P0 166"
+premises: deriv-470, fact-0
+-/
+theorem g166 : Q470 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-167
+kind: GOAL
+natural_name: "Q31 and P0 167"
+premises: deriv-31, fact-0
+-/
+theorem g167 : Q31 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-168
+kind: GOAL
+natural_name: "Q797 and P0 168"
+premises: deriv-797, fact-0
+-/
+theorem g168 : Q797 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-169
+kind: GOAL
+natural_name: "Q442 and P0 169"
+premises: deriv-442, fact-0
+-/
+theorem g169 : Q442 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-170
+kind: GOAL
+natural_name: "open question 170"
+premises: deriv-612
+-/
+
+/-
+@@ telelean v1
+id: goal-171
+kind: GOAL
+natural_name: "Q695 and P0 171"
+premises: deriv-695, fact-0
+-/
+theorem g171 : Q695 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-172
+kind: GOAL
+natural_name: "Q432 and P0 172"
+premises: deriv-432, fact-0
+-/
+theorem g172 : Q432 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-173
+kind: GOAL
+natural_name: "Q282 and P0 173"
+premises: deriv-282, fact-0
+-/
+theorem g173 : Q282 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-174
+kind: GOAL
+natural_name: "Q379 and P0 174"
+premises: deriv-379, fact-0
+-/
+theorem g174 : Q379 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-175
+kind: GOAL
+natural_name: "Q418 and P0 175"
+premises: deriv-418, fact-0
+-/
+theorem g175 : Q418 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-176
+kind: GOAL
+natural_name: "Q415 and P0 176"
+premises: deriv-415, fact-0
+-/
+theorem g176 : Q415 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-177
+kind: GOAL
+natural_name: "Q620 and P0 177"
+premises: deriv-620, fact-0
+-/
+theorem g177 : Q620 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-178
+kind: GOAL
+natural_name: "Q473 and P0 178"
+premises: deriv-473, fact-0
+-/
+theorem g178 : Q473 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-179
+kind: GOAL
+natural_name: "Q54 and P0 179"
+premises: deriv-54, fact-0
+-/
+theorem g179 : Q54 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-180
+kind: GOAL
+natural_name: "open question 180"
+premises: deriv-101
+-/
+
+/-
+@@ telelean v1
+id: goal-181
+kind: GOAL
+natural_name: "Q482 and P0 181"
+premises: deriv-482, fact-0
+-/
+theorem g181 : Q482 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-182
+kind: GOAL
+natural_name: "Q797 and P0 182"
+premises: deriv-797, fact-0
+-/
+theorem g182 : Q797 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-183
+kind: GOAL
+natural_name: "Q38 and P0 183"
+premises: deriv-38, fact-0
+-/
+theorem g183 : Q38 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-184
+kind: GOAL
+natural_name: "Q661 and P0 184"
+premises: deriv-661, fact-0
+-/
+theorem g184 : Q661 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-185
+kind: GOAL
+natural_name: "Q721 and P0 185"
+premises: deriv-721, fact-0
+-/
+theorem g185 : Q721 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-186
+kind: GOAL
+natural_name: "Q714 and P0 186"
+premises: deriv-714, fact-0
+-/
+theorem g186 : Q714 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-187
+kind: GOAL
+natural_name: "Q0 and P0 187"
+premises: deriv-0, fact-0
+-/
+theorem g187 : Q0 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-188
+kind: GOAL
+natural_name: "Q43 and P0 188"
+premises: deriv-43, fact-0
+-/
+theorem g188 : Q43 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-189
+kind: GOAL
+natural_name: "Q113 and P0 189"
+premises: deriv-113, fact-0
+-/
+theorem g189 : Q113 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-190
+kind: GOAL
+natural_name: "open question 190"
+premises: deriv-601
+-/
+
+/-
+@@ telelean v1
+id: goal-191
+kind: GOAL
+natural_name: "Q142 and P0 191"
+premises: deriv-142, fact-0
+-/
+theorem g191 : Q142 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-192
+kind: GOAL
+natural_name: "Q543 and P0 192"
+premises: deriv-543, fact-0
+-/
+theorem g192 : Q543 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-193
+kind: GOAL
+natural_name: "Q520 and P0 193"
+premises: deriv-520, fact-0
+-/
+theorem g193 : Q520 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-194
+kind: GOAL
+natural_name: "Q781 and P0 194"
+premises: deriv-781, fact-0
+-/
+theorem g194 : Q781 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-195
+kind: GOAL
+natural_name: "Q364 and P0 195"
+premises: deriv-364, fact-0
+-/
+theorem g195 : Q364 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-196
+kind: GOAL
+natural_name: "Q564 and P0 196"
+premises: deriv-564, fact-0
+-/
+theorem g196 : Q564 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-197
+kind: GOAL
+natural_name: "Q277 and P0 197"
+premises: deriv-277, fact-0
+-/
+theorem g197 : Q277 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-198
+kind: GOAL
+natural_name: "Q581 and P0 198"
+premises: deriv-581, fact-0
+-/
+theorem g198 : Q581 ∧ P0 := by
+  sorry
+
+/-
+@@ telelean v1
+id: goal-199
+kind: GOAL
+natural_name: "Q670 and P0 199"
+premises: deriv-670, fact-0
+-/
+theorem g199 : Q670 ∧ P0 := by
+  sorry
+

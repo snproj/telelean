@@ -1,0 +1,9 @@
+structure CynderS where
+  dummy : Nat
+def usesStruct : CynderS → Nat := fun c => c.dummy
+#print axioms usesStruct
+inductive Character where
+  | cynder | spyro
+opaque hasDarkPast : Character → Prop
+theorem t (h : hasDarkPast .cynder) : hasDarkPast .cynder := h
+#print axioms t

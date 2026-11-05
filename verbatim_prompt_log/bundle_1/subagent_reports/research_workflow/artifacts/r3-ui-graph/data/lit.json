@@ -1,0 +1,48 @@
+{
+ "name": "lit",
+ "latest": "3.3.3",
+ "dist_tags": {
+  "next": "2.3.0-next.1",
+  "pre": "3.0.0-pre.1",
+  "latest": "3.3.3"
+ },
+ "latest_published": "2026-05-14T03:55:58.007Z",
+ "modified": "2026-05-14T03:55:58.367Z",
+ "created": "2012-07-04T20:56:00.044Z",
+ "license": "BSD-3-Clause",
+ "deprecated": null,
+ "unpackedSize": 106390,
+ "fileCount": 312,
+ "tarball": "https://registry.npmjs.org/lit/-/lit-3.3.3.tgz",
+ "dependencies": {
+  "@lit/reactive-element": "^2.1.0",
+  "lit-element": "^4.2.0",
+  "lit-html": "^3.3.0"
+ },
+ "peerDependencies": {},
+ "repository": "git+https://github.com/lit/lit.git",
+ "recent_versions": [
+  [
+   "3.2.1",
+   "2024-10-07T19:00:49.620Z"
+  ],
+  [
+   "3.3.0",
+   "2025-04-11T15:37:17.931Z"
+  ],
+  [
+   "3.3.1",
+   "2025-07-11T03:36:50.618Z"
+  ],
+  [
+   "3.3.2",
+   "2025-12-23T22:03:29.485Z"
+  ],
+  [
+   "3.3.3",
+   "2026-05-14T03:55:58.007Z"
+  ]
+ ],
+ "homepage": "https://lit.dev/",
+ "description": "A library for building fast, lightweight web components"
+}

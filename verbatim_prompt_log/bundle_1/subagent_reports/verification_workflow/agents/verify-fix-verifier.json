@@ -1,0 +1,177 @@
+{
+ "verdict": "needs-work",
+ "summary": "Verdict: not ready to approve as written, but close. The fixes are small and local: a rewrite of D-3's rule, one bwrap line, a defined \"claimed\" state under D-2(b), and some example and escaping fixes.\n\nBLOCKERS\n- ENG-1: done correctly in 03 §8.2/§12. The extension runs in place via Install-from-Location, the SDK stays external with a build check for the literal import(), the binary is resolved explicitly via createRequire, the auth preflight is honestly labelled unverified, and the VSIX route waits for M4. Nothing to add.\n- SEC-PATHGUARD-SYMLINK: done in substance. Every path, glob base and grep root is realpath-contained; dotfiles, .lake and .telelean are denied; the shadow holds model files only and refuses symlinks. A few edges remain (FV-12), and the CLI fallback has no guard specified (FV-13).\n- SEC-SANDBOX-RUN-SOCKETS: socket isolation works. I ran the exact 03 §8.4 profile on this Ubuntu 24.04.5 machine:\n  - the /lib, /lib64 and /bin symlinks resolve (/usr/lib64/ld-linux-x86-64.so.2 exists);\n  - `lake build` through elan exits 0 in 0.89 s with ~/.elan read-only, and ~/.elan/known-projects is untouched;\n  - there is no D-Bus, X11 path or abstract socket, no network, and the environment is HOME and PATH only;\n  - /etc/ssl is covered by the whole-/etc bind and is not needed offline.\n  Two new errors, though: the profile breaks lake comparator's own nested bwrap, so G4 would reject every solution (FV-2); and the packages bind points at the wrong path for a symlink-free shadow (FV-8).\n- LS-1: only partly closed. The existence axiom + instance + `noncomputable opaque` pattern works, but D-3 constrains only axioms. It says nothing about constant types or the auto-created `Nonempty T` presuppositions, and it allows Prop-sorted \"sorts\". Two exploits pass every stated rule on Lean 4.35.0 (FV-1), which also re-opens LS-2 without `Sort u`.\n\nMAJORS\nImplemented as claimed: CMP-01..05, C1-C5 (C5 via App. E), ENG-2..7, HCI-1, -2, -4, -5, -6, -8, -9, -10, LS-3..6, RT-1..4, RT-7, RT-8, SEC-POSTACCEPT, SEC-READ-EXFIL and POL. All five D-23 quotes match policy_sources byte-for-byte (the developers sentence with Markdown stripped), and the Consumer Terms are \"Effective Oct 8, 2025\".\n\nNot as claimed, or with new errors:\n- LS-7: D-2(b) was adopted but not carried through to kind changes (FV-3), the freeze (FV-4) or the examples (FV-9).\n- LS-2 is re-opened (FV-1).\n- HCI-3 and HCI-7 have nowhere to store the asserted date or the wording history (FV-17).\n- ENG-5/RT-14: surviving a window reload is claimed but unspecified (FV-16).\n\nAmong minors: C9/RT-13 are marked fixed, but `/-` still escapes to itself, because the `/` escape was JSON-decoded on the way (FV-5). C13 was only partly done (FV-10, FV-15).\n\nPRESUPPOSITIONS are not consistent across D-3, D-5, 03 §2, §3.3, TL104 and G4 (FV-6). D-2(b) is used in 03 §3.3 and the main rows of §4, but not in the §4 structured-facts row, D-4 or D-18.\n\nThe experiments are in /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/verify/ (lean/PropSort.lean, lean/PresupSmuggle.lean, lean/Example33.lean, lean/Example33Reordered.lean, shadow/, pkgtest/, probe.sh, nested.sh). I called the toolchain's lean directly. ~/.elan/known-projects stayed at 37 records, no credentials were touched, and no doc was modified.",
+ "problems": [
+  {
+   "id": "FV-1",
+   "severity": "major",
+   "doc": "02_design_decisions.md (+03 §4, §8.5 G3, §3.4 TL111, §10)",
+   "section": "D-3 Structural rules / constants / presuppositions (LS-1, LS-2 fix)",
+   "quote": "predicates and relations ending in `Prop`: `axiom HasDarkPast : Character → Prop`;",
+   "problem": "The LS-1/LS-2 fix is incomplete. D-3 restricts only which axioms may exist. It puts no limit on the types used as binders or sorts, on the types of `noncomputable opaque` constants, or on the `Nonempty T` presupposition telelean auto-creates for each constant. The LS-1 reviewer's rule said 'sort formers with data-only binders'; that qualifier was dropped.\n\nRan on Lean 4.35.0:\n(1) verify/lean/PropSort.lean. `axiom Character : Prop` is a 0-ary 'predicate ending in Prop' (rule 2). Add the presupposition `Character.exists : Nonempty Character` and `noncomputable opaque cynder spyro : Character`. Then `cynder = spyro := rfl`, and the GOAL `¬ GoodAddition cynder newSpyro` is proved by `spyro_not_good.holds`. The footprint is Classical.choice, Character, Game, GoodAddition, Character.exists, Game.exists and spyro_not_good.holds: std + signature + presuppositions + one selected assumption about Spyro. So G4 accepts. None of G3's checks (no data axioms, no Sort u, no Prop-carrying data) fires. D-19 also auto-approves 'pure signature items', so `axiom Character : Prop` is never reviewed. This is LS-2 without `Sort u`.\n(2) verify/lean/PresupSmuggle.lean. `noncomputable opaque newSpyro : {g : Game // IsPG g}` gets the presupposition `Nonempty {g : Game // IsPG g}`. The goal is proved with A2 ('The new Spyro game is PG') unselected: the footprint has PGGame.exists in place of new_spyro_pg.holds. Because newSpyro occurs in the goal, the ★ default auto-includes that presupposition.\n\nOnly 03's undefined 'no Prop-carrying data' (G3, TL111; absent from D-3) could stop (2), and nothing stops (1). D-3 also allows 'sort formers' while 03 §4 allows only `axiom T : Type`. Indexed families, such as LS-1's `Reported : Prop → Type`, make `Nonempty (F a)` contentful too.",
+   "fix": "Restate the rule in D-3 and repeat it verbatim in 03 §4, §8.5 and TL111:\n(i) Sort axioms are 0-ary `axiom T : Type` only, as 03 §4 already says.\n(ii) Every predicate binder, every constant's type, and every field or parameter of an endorsed vocabulary structure or inductive must be a data type: those sorts, function types between them, or data-only structures and inductives. A Prop-sorted atom (`axiom P : Prop`) is a proposition and may never be used as a type. No Subtype, Sigma, PLift or Prop-field types.\n(iii) telelean generates presuppositions only as `Nonempty T` for 0-ary data sorts (function types inherit them), never for indexed or Prop-carrying types.\n(iv) 'Pure signature' auto-approval applies only to items that pass (i) and (ii).\nAdd PropSort.lean and PresupSmuggle.lean as gate fixtures next to 'Prop-carrying vocabulary' and 'Sort u' in 03 §10."
+  },
+  {
+   "id": "FV-2",
+   "severity": "major",
+   "doc": "03_architecture.md (+02 D-24, 03 §11 M0)",
+   "section": "§8.4 runLean bwrap allowlist profile (SEC-SANDBOX-RUN-SOCKETS fix)",
+   "quote": "--proc /proc --dev /dev --tmpfs /tmp --tmpfs /run --tmpfs $HOME",
+   "problem": "The new allowlist profile breaks G4. I ran the exact command on this machine. `lake build` works: exit 0 in 0.89 s, with elan's proxy and a read-only ~/.elan, and no write to known-projects. The socket probes pass.\n\nBut runLean must also wrap `lake comparator` ('one wrapper for … comparator'), and comparator starts its own nested bwrap. Per Lake 5.0.0's src/lean/lake/Lake/CLI/Check.lean, that sandbox runs `--ro-bind / / --tmpfs /home --tmpfs /root --tmpfs /run/user …` and puts a tmpfs over /var for the build. None of /root, /run/user or /var exists inside the allowlist root. Ran: the nested sandbox dies with 'bwrap: Can't mkdir /root: Read-only file system', and lake exits 1. `lake help comparator` defines exit 1 as 'rejected: … or a build that did not succeed', so G4 would reject every solution as if it were illegal. The nested-comparator evidence (3.2 s) was gathered under the old `--ro-bind / /` profile.",
+   "fix": "Add `--dir /root --dir /run/user --dir /var` to the profile. Ran: real `lake comparator` then reports 'Your solution is okay!' (exit 0, 3.25 s), and dropping any one of the three breaks it again. Keep comparator's own sandbox; do not fall back to --inadvisably-no-sandbox.\nAlso:\n- Reword 'no `/run`' to 'no host /run'.\n- Add 'lake comparator nested under runLean' to the M0 sandbox spike.\n- Have G4 classify a bwrap setup error as 'could not start', not 'rejected'."
+  },
+  {
+   "id": "FV-3",
+   "severity": "major",
+   "doc": "02_design_decisions.md (+03 §4)",
+   "section": "D-1(a), D-11, D-17 drop zones; 03 §4 'Kind changes' (LS-7 fix not propagated)",
+   "quote": "Promote/demote changes the `type:` line plus `n.holds`. Names and statements stay put, so dependents never break.",
+   "problem": "Switching D-2 to (b) was never carried through to kind changes. Under (b), an unproved DERIVATION or GOAL has no `n.holds`, because there is no sorry. So A→D, A→G and D→G must delete `axiom a.holds`, and every dependent proof that cites it stops compiling. r2 said exactly this: 'Under scheme B their references to n.holds break.'\n- D-1's 'Promote/demote stays a local edit (ran)' was run under scheme A with a proof present (r2: 'With the axiom encoding, promoting an assumption to a derivation is a local edit').\n- 03 §4's 'A→D: `axiom` becomes `theorem` (needs a proof; \"claimed\" until proved)' gives no sorry-free Lean form for the claimed state.\n- D-17's drop-zone preview, '7 results become conditional', would need every transitive dependent rewritten to `theorem x.holds (h : a) : x`, with `h` threaded through all of its users. M1 ('drop-zone kind changes', no AI) would have to ship that deterministic proof rewrite, and it is specified nowhere.\nD-2's cost line ('two declarations per node, plus a little simp friction') leaves this out, so the ★ goes to the user with incomplete trade-offs.",
+   "fix": "Pick and document the claimed state under (b):\n(1) Rewrite dependents mechanically to take `(h : a)`. Give the algorithm, how it propagates, its inverse on G→D, and M1 tests.\n(2) Keep `axiom a.holds` tagged 'claimed'. It is attributable, unlike sorryAx, and TL103 and G4 treat it as a non-ASSUMPTION axiom.\n(3) Mark dependents 'broken: depends on unproved a'.\nThen update D-1 (drop the scheme-A '(ran)'), D-11, D-17's preview text, 03 §4, DerivedStatus.conditional (conditional on unproved nodes, not only on goals), and D-2's cost list."
+  },
+  {
+   "id": "FV-4",
+   "severity": "minor",
+   "doc": "03_architecture.md (+02 D-2, D-5)",
+   "section": "§8.4 automatic Freeze / §8.5 G4",
+   "quote": "`lake comparator --challenge-from-export frozen.ndjson`.",
+   "problem": "Under D-2(b), the frozen phase-A snapshot holds `abbrev g : Prop := S` but no `g.holds`. Ran: a challenge built from such a snapshot makes comparator panic ('PANIC at LeanExport.dumpConstant … Constant C.goal.holds not found in environment'), and it exits 1, which counts as 'rejected'. The challenge must declare `theorem g.holds : g := sorry`. LS-7's fix ('generate the comparator challenge automatically') was dropped, and D-2's 'No sorry anywhere' is then literally false for this internal file.",
+   "fix": "Define the freeze as the exact snapshot plus a generated challenge module, owned by telelean, that declares `theorem n.holds : n := sorry` for each target. Leave the statement abbrevs untouched and out of definition_names, and export with leanexport. Reword D-2 to 'no sorry in your files'. Add a fixture."
+  },
+  {
+   "id": "FV-5",
+   "severity": "minor",
+   "doc": "03_architecture.md + 02_design_decisions.md",
+   "section": "03 §3.1 Escaping; 02 D-8 Escaping (C9 / RT-13 marked fixed)",
+   "quote": "In values, `-/` becomes `-\\/` and `/-` becomes `/-`.",
+   "problem": "C9 and RT-13 are marked 'Escaping fixed', but in both docs the value rule for `/-` is still the identity. R4's verified rule writes `/-` as the JSON unicode escape for the solidus followed by `-`, because writing a backslash and then `/-` would still contain `/-`. Root cause: that escape was JSON-decoded to a plain `/` on the way. The review's own problem text already reads 'R4 specifies `/-` in JSON-string values', while its raw JSON evidence field still has the escaped form. A serializer built from the docs would write a raw `/-` into a value and comment out the rest of the file.",
+   "fix": "Spell the rule out so it survives JSON round-trips. For example: 'in JSON-string values, `/-` is written as backslash, u, 0, 0, 2, f, then `-` (i.e. /-)'. Check the saved bytes with grep. Add RT-13's round-trip test: a natural_name containing both delimiters must still compile."
+  },
+  {
+   "id": "FV-6",
+   "severity": "minor",
+   "doc": "02 D-3, D-5; 03 §2, §3.3, §3.4, §7, §8.5",
+   "section": "Presupposition handling across D-3, D-5, 03 §2, §3.3, TL104, G4",
+   "quote": "**TL104** a Prop axiom with no block (hidden assumption).",
+   "problem": "Presuppositions are handled inconsistently:\n(a) Representation. D-3 says telelean creates them 'tagged `presupposition`', as if they were blocks. 03 §2 says presupposition items 'come from declarations that have no block', and §3.3 shows `axiom Character.exists` with no block. TL104 therefore flags every presupposition as a hidden assumption. And `footprint: … node ids incl. presuppositions` needs ids that blockless items do not have.\n(b) Permitted set. D-3's ★ auto-includes only presuppositions of constants that occur in the selected statements, and says those 'used but not named must be selected explicitly'. D-5 follows 'per D-3'. But 03 §8.5 G4 permits 'std ∪ signature ∪ selected ∪ presuppositions ∪ …', i.e. all of them.\n(c) Timing. For informal selections, which is the whole walkthrough, constants and presuppositions are created during phase A. The tray cannot show 'presupposes: …' before the run, and the agent effectively chooses which ones are auto-permitted.\n(d) Form. They are raw `axiom T.exists`, not the D-2(b) form.\n(e) Wording. The 03 §7 chip 'assumes Cynder exists' is really the shared `Nonempty Character`. It also covers Spyro and cannot be deselected per constant.",
+   "fix": "Fix the five points:\n- State the representation once, in D-3: a computed role with no block, exempt from TL104, id `presup:<Lean name>`, and exempt from D-2(b).\n- Write the G4 set out explicitly: std ∪ signature ∪ selected ∪ presup(constants in the selected statements) ∪ footprints of selected derivations.\n- Presuppositions created in phase A are listed in the end review and are never auto-approved.\n- Word the chips per type ('assumes characters exist')."
+  },
+  {
+   "id": "FV-7",
+   "severity": "minor",
+   "doc": "02_design_decisions.md (+03 §8.5)",
+   "section": "D-26 G0 allowlist",
+   "quote": "Allowed: comments, `namespace`/`section`/`end`/plain `open`, the restricted axiom forms of D-3, `theorem`/`abbrev`/`def`/`structure`/`inductive`/`opaque` with whitelisted attributes.",
+   "problem": "`instance` is its own Lean command and is not in the allowlist. Yet D-3 ('plus an instance'), 03 §3.3 (`instance : Nonempty Character := Character.exists`) and 03 §4 all require it. The G0 parser check would reject the design's own vocabulary pattern on every run that introduces a constant. LS-9's allowlist included `instance`. Separately, D-4 says endorsement covers 'notation if you allow it', but G0's denylist always bans `notation`.",
+   "fix": "Add `instance` to G0, constrained: either a `Nonempty T` instance whose body is the presupposition axiom, or an endorsed instance. Never allow a `priority` attribute (LS-3's instance-priority attack). Either drop 'notation if you allow it' from D-4, or define the opt-in and how G0 honours it."
+  },
+  {
+   "id": "FV-8",
+   "severity": "minor",
+   "doc": "03_architecture.md (+02 D-24, 03 §5)",
+   "section": "§8.4 runLean: packages and extractor binds",
+   "quote": "--ro-bind ~/.elan ~/.elan --ro-bind <extractor dir> <same> --ro-bind <real>/.lake/packages <same>",
+   "problem": "The same-path packages bind comes from ENG-4/r5, which assumed a `.lake/packages` symlink in the shadow. The SEC fix now refuses symlinks, so Lake in the shadow looks in $SHADOW/.lake/packages, finds nothing and tries to re-fetch. Ran with a project that has a git dependency: 'Dep: failed to fetch the package revision … from the Git repository', exit 1. Binding onto $SHADOW/.lake/packages, after the shadow bind, builds fine.\nTwo related errors:\n- D-24 says '`.lake` … is bound read-only only inside the build sandbox', but `.lake/build` must be writable for `lake build`.\n- The extractor's first-use compile (03 §5) needs a writable extractor dir, yet runLean binds it read-only, and no profile is given for that compile.",
+   "fix": "Use `--bind $SHADOW $SHADOW --ro-bind <real>/.lake/packages $SHADOW/.lake/packages`; the order matters. Reword D-24 to: packages read-only, `.lake/build` writable, `.lake` hidden from agent tools. Specify a separate runLean variant for compiling telelean-extract: writable extractor dir, no shadow."
+  },
+  {
+   "id": "FV-9",
+   "severity": "minor",
+   "doc": "03 §4 + 02 D-2, D-4, D-8, D-18",
+   "section": "03 §4 'Structured facts' row; D-4; D-18; D-2; D-8 example",
+   "quote": "e.g. `axiom cynder_past.holds : cynder.past = \"dark\"`",
+   "problem": "D-2(b) is not used consistently:\n- 03 §4 uses a hybrid: a `.holds` axiom over the raw proposition, with no `abbrev cynder_past`.\n- D-4 uses scheme A: `axiom cynder_past : cynder.past = \"dark\"`.\n- D-18 writes `cynder_past : cynder.past = \"dark\"`.\n- D-2 writes `theorem d (h : g) : …`, which clashes with `abbrev d`; 03 §4 writes `theorem d.holds (h : g) : d`.\n- D-8's formalised example lacks both the pinned `lean:` binding that D-8 itself requires and the D-9 docstring mirror.\nThe agent's brief and G5's binding rules will be derived from these examples.",
+   "fix": "Use `abbrev cynder_past : Prop := cynder.past = \"dark\"` + `axiom cynder_past.holds : cynder_past` in 03 §4, D-4 and D-18. Use `theorem d.holds (h : g) : d` in D-2. Add `lean: Spyro.cynder_not_good` and the docstring line to D-8's example."
+  },
+  {
+   "id": "FV-10",
+   "severity": "minor",
+   "doc": "03_architecture.md (+02 D-13)",
+   "section": "§3.3 canonical example; §7 EdgeEngine vs D-13 (C13 marked accepted)",
+   "quote": "abbrev cynder_dark_past : Prop := HasDarkPast cynder",
+   "problem": "C13 is marked accepted, but only its item (a), the evidence labels, was done.\n(f) The canonical example still does not compile as the single file it is shown as. Ran on Lean 4.35.0: 'Unknown identifier `HasDarkPast`' and 'Unknown identifier `GoodAddition`', because the vocabulary is declared after it is used. With the vocabulary moved up, 'Unknown identifier `newSpyro`' remains, and `Game.exists` is missing.\n(b) D-13 still makes every non-focused edge a stub ('Other edges become stubs'), whereas 03 §7 culls edges with both ends off-screen and stubs only those with one end hidden.",
+   "fix": "Split §3.3 into Model/Spyro/Vocabulary.lean and Main.lean. Vocabulary.lean declares the vocabulary first, plus `axiom Game.exists`, its instance and `noncomputable opaque newSpyro : Game`. Main.lean starts with `import Model.Spyro.Vocabulary`. Compile the pair as a test fixture. Align D-13's stub rule with §7."
+  },
+  {
+   "id": "FV-11",
+   "severity": "minor",
+   "doc": "02_design_decisions.md (+03 §8.5 G5)",
+   "section": "D-18 Refine / supersede (HCI-1 fix)",
+   "quote": "h1 stays on the board, re-proved as a DERIVATION from its refinement and shown collapsed under it (\"h1 ⇐ refined by …\"). Dependents compile unchanged.",
+   "problem": "The pattern HCI-1 verified (review scratch V2b_field_axiom.lean) re-derives h1 only by redefining vocabulary: `Character` becomes a structure, and `HasDarkPast` becomes `def … := c.past = \"dark\"`. It also uses `axiom cynder : Character` (a data axiom, now banned by D-3) and scheme A.\nUnder the final design, those redefinitions change the statement-closure hash of every formalised node that mentions Character or HasDarkPast. G5's formal immutability would reject the refine run, and every such sign-off goes stale, since D-19 binds sign-offs to the closure. Without a redefinition, deriving h1 from `cynder.past = \"dark\"` needs a bridge assumption, which is a new belief. Neither consequence is stated, and the pattern has not been re-run under D-2(b) and D-3.",
+   "fix": "Say what a Refine run may change: the vocabulary it redefines plus every node whose closure that vocabulary reaches. List those in the review as 'meaning changed by refinement', and authorise G5 for exactly that set. Say whether h1 is bridged by a definition (needs endorsement) or by an adopted assumption. Re-verify the pattern under D-2(b) with `noncomputable opaque` and `structure … deriving Nonempty`."
+  },
+  {
+   "id": "FV-12",
+   "severity": "minor",
+   "doc": "03_architecture.md (+02 D-24)",
+   "section": "§8.4 realpathGuard / Shadow; D-24 sandboxed refreshes",
+   "quote": "canonicalises every path, every glob base and every grep root;",
+   "problem": "The SEC fixes leave some edges open:\n(a) Glob's `pattern` can be absolute or contain `..`. Checking only the `path` argument still lets the agent list file names under $HOME.\n(b) The shadow lives under ~/.config/…, so a naive dotfile check on the absolute path denies everything. The check must be relative to realpath(shadow).\n(c) A Write to a new file cannot be realpath'd directly.\n(d) The shadow is bound read-write into bwrap. Lean that slipped past G0 could plant symlinks after the copy. The guard's check-then-open is racy, and telelean's own diff, merge and apply would follow those symlinks into the proposal.\n(e) 'Your own workspace refreshes run in the same sandbox', but with the real workspace bound read-write (ENG-3). Sandboxed code could then write lakefile.lean, .git/hooks/* or .vscode/tasks.json, which later run unsandboxed.\nAlso, 'It contains **only** `*.lean`…' is inaccurate: the shadow also holds .lake/build and its own .git.",
+   "fix": "One remedy per edge:\n- (a) Reject absolute Glob patterns and any `..` segment; derive the base from path plus the pattern's static prefix.\n- (b) Test dotfiles on path segments relative to the shadow.\n- (c) For a new file, realpath the parent and open the leaf with O_NOFOLLOW.\n- (d) Have the proposal builder refuse non-regular files, and bind the shadow's sources read-only in bwrap with only .lake/ writable.\n- (e) For real-workspace refreshes, bind sources read-only and .lake/ writable, and never bind .git.\n- Reword the shadow sentence to 'agent-visible files are only model files'."
+  },
+  {
+   "id": "FV-13",
+   "severity": "minor",
+   "doc": "02_design_decisions.md + 03_architecture.md",
+   "section": "D-23 shared safeguards; 03 §8.2 CLI fallback (ClaudeCliBackend)",
+   "quote": "Both routes need the same safeguards:",
+   "problem": "The list of safeguards both backends share leaves out file-tool confinement, which is exactly what SEC-PATHGUARD made a blocker. 03 §8.2 specifies realpathGuard only as an in-process SDK hook, and describes the CLI fallback only as 'with the same tool and permission flags'. RT-3's disposition even cites 'the realpath hook' as a reason the SDK stays the default. If the fallback is used, the agent's Read, Glob and Grep run unconfined.",
+   "fix": "Add 'realpath confinement of every file-tool path' to D-23's shared list. For ClaudeCliBackend, install the same guard as a command PreToolUse hook via `--settings <file>` (user and project settings are disabled), or run the CLI inside bwrap. Fail closed if neither is active."
+  },
+  {
+   "id": "FV-14",
+   "severity": "minor",
+   "doc": "02 D-29 vs 03 §11, §10",
+   "section": "Milestone M2 scope vs the walkthrough acceptance test",
+   "quote": "tools `check_lean`/`ask_user`/`propose_assumption`/`finish`",
+   "problem": "The M2 scope is inconsistent. 03 §11 puts `propose_assumption` in M2; 02 D-29 does not. Both put ghosts and the model finder in M3. Yet the 03 §10 walkthrough test is part of the M2 'good enough to start using' bar ('the tests for those rows pass, and the real-Claude walkthrough succeeds'). Its literal branch requires 'countermodel, then ghost adopted, re-freeze, proved', which cannot pass before M3. Under D-6, at M2 that branch can only end in 'not proved'.",
+   "fix": "Either move a minimal ghost flow into M2, or state that the M2 walkthrough covers the normative branch fully and the literal branch up to 'not proved' plus a suggested premise, with the full literal branch as an M3 test. Align D-29 and §11 on `propose_assumption`."
+  },
+  {
+   "id": "FV-15",
+   "severity": "minor",
+   "doc": "03 §5 + 02 D-23",
+   "section": "Evidence labels ('ran') — LS-10(b), C13(a)",
+   "quote": "about 0.5 s and 475 MB RSS per run, ran",
+   "problem": "These 'ran' labels are not supported for the configuration the docs specify. r2's 0.5 s / 475 MB extractor ran with enableInitializersExecution and initializers enabled. 03 §5 now specifies loadExts := false with initializers disabled; LS-10 asked for a re-measurement, and none was done. Separately, D-23's 'never `--bare`, which never reads your login (ran)' rests on `claude --help` text, quoted by r5 and r6, which makes it 'documented'. C13(a) flagged exactly this, and the disposition says the labels were split.",
+   "fix": "Label the extractor figures 'ran (r2, initializers enabled); re-measure with loadExts := false in M2'. Change D-23's label to 'documented (claude --help)'."
+  },
+  {
+   "id": "FV-16",
+   "severity": "minor",
+   "doc": "03_architecture.md (+02 D-25)",
+   "section": "§8.3 ask_user (ENG-5 / RT-14)",
+   "quote": "The run clock pauses, and a pending question survives closing the board (resume via `sessionId`)",
+   "problem": "The ENG-5/RT-14 dispositions say a pending question 'survives reload via resume', but the docs only promise that it survives closing the board. That case needs no resume: the extension host and the blocked SDK call keep running. The hard case is a window reload or extension-host restart, which kills the claude child and leaves an unanswered ask_user tool_use in the transcript. How that session resumes is unspecified, and the case is not in the M0 spike list.",
+   "fix": "Treat the two cases separately in 02 D-25 and 03 §8.3. Specify the reload path, e.g. on resume deliver the answer as the next user turn after Claude Code's interrupted-tool marker. Add 'reload during a pending ask_user, then resume' to M0."
+  },
+  {
+   "id": "FV-17",
+   "severity": "minor",
+   "doc": "02 D-20, D-8, D-12; 03 §3.2, §7",
+   "section": "Storage for asserted-on dates and wording history (HCI-3, HCI-7)",
+   "quote": "**Indexicals.** Each user node records the date it was asserted, so indexicals like \"new\" stay interpretable later.",
+   "problem": "HCI-3 (asserted-on date) and HCI-7 (wording history) are marked accepted, but neither has anywhere to live. There is no markup field (D-8, 03 §3.2). There is no sidecar either: D-12 lists layout, decisions, attempts, signoffs, attic, frozen, sessions and graph only. 03 §7's expanded card shows a 'wording history' that nothing records.",
+   "fix": "Add an `asserted:` field (ISO date, written at Add) to D-8 and 03 §3.2. Add `.telelean/wording.jsonl` (id, text, date) to D-12, appended whenever natural_name changes."
+  },
+  {
+   "id": "FV-18",
+   "severity": "nit",
+   "doc": "01_consolidated_idea.md",
+   "section": "Appendix B vs Appendix A2",
+   "quote": "**NFR-5** (new): bounded memory",
+   "problem": "A2 introduces NFR-5, PROC-11 and PROC-12, and §2.7 #45 cites the PROC IDs. Appendix B, which holds 'the full requirement statements', still stops at NFR-4 and PROC-10, so the doc's claim that 'every ID below exists' no longer holds.",
+   "fix": "Add the NFR-5, PROC-11 and PROC-12 rows to Appendix B."
+  },
+  {
+   "id": "FV-19",
+   "severity": "nit",
+   "doc": "01_consolidated_idea.md",
+   "section": "§3 walkthrough, cynder.lean sub-bullet",
+   "quote": "which I only read because your Lean server had it open",
+   "problem": "This contradicts 03 §15 ('I read `~/telelean_scripts/*.lean` (read-only) to understand your formalisation style'). It also contradicts the docs' own use of smoking.lean, bayonetta.lean and kopiteh.lean (D-4, D-10). For a privacy disclosure the user is asked to rely on, this should be accurate.",
+   "fix": "Replace the clause with 'which I read, with the other sketches in ~/telelean_scripts (read-only; see 03 §15)'."
+  }
+ ]
+}

@@ -1,0 +1,181 @@
+# build:WP2 (agent a4a99cf4ab9a89350)
+
+## summary
+WP2 is implemented and every acceptance test AT2.1–AT2.16 passed in real runs. That includes all the [gated] ones: WP1's core gate functions already exist in the shared tree, so the gated tests ran against WP1's in-progress code instead of skipping.
+
+What was built:
+1. The run shadow (packages/runner/src/shadow/): a working copy `ws/` holding only model and project files, and a separate build copy `build/` where Lean runs, seeded from the user's `.lake/build`. Symlinks and special files in the user's tree or in `.lake/build` refuse the shadow before anything is created. The shadow keeps its own history in a bare git repo written with plumbing only (`git fast-import`, `ls-tree`, `cat-file`), with an isolated configuration. Commit, revert (a no-op when nothing differs), writes checked against the expected old text, and listing/pruning of old run directories are all in place.
+2. The Lean check engine (packages/runner/src/gate/: engine.ts, findings.ts, scratch.ts):
+   - `checkBase` builds the user's files before any prompt. Lean errors come back as problems naming file and line; on success the base facts are kept in `<runDir>/base-facts.json`.
+   - `check` runs G0 first and starts no Lean when G0 finds something; otherwise it syncs the build copy, builds, and hands core's rules the base, the newest adopt commit and the round start. A build with Lean errors never passes, even if the rules say nothing.
+   - `freeze` computes the permitted set and builds the comparator challenge in a copy without the target's `.holds` and everything that uses it, via the new optional `FreezeOptions.removeDecls`.
+   - `gate` judges one committed state and runs the comparator only for status proved.
+   - `checkGhost` applies the single-term rule before any Lean, makes sure the build copy holds a clean check, then runs the pinned scratch file and reads the axioms only from the message naming `telelean_ghost_check`.
+   - `renderStatements` prints the default and explicit forms.
+   - Outcome mapping: timeout/oom → `budget` (counted); could-not-start, low memory, cancelled, an unusable working copy, and shadow git errors → `environment` (not counted).
+3. Fixtures in test-fixtures/gate/: edit scripts, inert `*.lean.txt` snippets for `sorry` and `#eval`, and overlays (a slow module for the timeout/cancel tests, another subject with a Lean error, a pending promotion, an already-proved derivation).
+
+## files
+- /home/zhengyew/telelean/packages/runner/src/shadow/index.ts
+- /home/zhengyew/telelean/packages/runner/src/shadow/workspace.ts
+- /home/zhengyew/telelean/packages/runner/src/shadow/git.ts
+- /home/zhengyew/telelean/packages/runner/src/shadow/paths.ts
+- /home/zhengyew/telelean/packages/runner/src/gate/index.ts
+- /home/zhengyew/telelean/packages/runner/src/gate/engine.ts
+- /home/zhengyew/telelean/packages/runner/src/gate/findings.ts
+- /home/zhengyew/telelean/packages/runner/src/gate/scratch.ts
+- /home/zhengyew/telelean/packages/runner/src/lean/comparator.ts
+- /home/zhengyew/telelean/packages/runner/test/shadow/shadow.test.ts
+- /home/zhengyew/telelean/packages/runner/test/gate/helpers.ts
+- /home/zhengyew/telelean/packages/runner/test/gate/pure.test.ts
+- /home/zhengyew/telelean/packages/runner/test/gate/engine.test.ts
+- /home/zhengyew/telelean/packages/runner/test/gate/rules.test.ts
+- /home/zhengyew/telelean/test-fixtures/gate/README.md
+- /home/zhengyew/telelean/test-fixtures/gate/edits.json
+- /home/zhengyew/telelean/test-fixtures/gate/snippets/sorry-proof.lean.txt
+- /home/zhengyew/telelean/test-fixtures/gate/snippets/eval-command.lean.txt
+- /home/zhengyew/telelean/test-fixtures/gate/overlays/slow/Model.lean
+- /home/zhengyew/telelean/test-fixtures/gate/overlays/slow/Model/Spyro/Slow.lean
+- /home/zhengyew/telelean/test-fixtures/gate/overlays/broken-other/Model.lean
+- /home/zhengyew/telelean/test-fixtures/gate/overlays/broken-other/Model/Other/Main.lean
+- /home/zhengyew/telelean/test-fixtures/gate/overlays/pending/Model/Spyro/Main.lean
+- /home/zhengyew/telelean/test-fixtures/gate/overlays/proved-derivation/Model/Spyro/Main.lean
+
+## how_to_run_tests
+cd /home/zhengyew/telelean/packages/runner && free -m && npx tsc -p tsconfig.json && npx tsc -p tsconfig.test.json && ulimit -c 0 && TELELEAN_TEST_TMP=<a scratch dir> npx vitest run test/shadow test/gate test/lean test/semantic   (real Lean under runLean; about 160 s; the [gated] blocks in test/gate/rules.test.ts run whenever WP1's core functions are implemented, as they are now)
+
+## test_output
+Final WP2 run (vitest 5.0.5, real Lean): `npx vitest run test/shadow test/gate test/lean test/semantic` → "Test Files  14 passed (14) / Tests  169 passed (169) / Duration 160.98s". That is shadow 12, gate/pure 10, gate/engine 28, gate/rules 26 (the gated ones, all executed, none skipped), and M0/M1 lean+semantic 93. `telelean-*` units 0 before and 0 after for my run ids; `~/.elan/known-projects` 37 lines before and after.
+Separate runs earlier: gate/rules verbose listing showed 26 ✓ (80 s); `test/lean test/semantic` alone gave "Test Files 10 passed (10), Tests 93 passed (93)".
+Typecheck: `tsc -p tsconfig.json` (runner src) is clean. `tsc -p tsconfig.test.json` has errors only in WP3's files: test/run/helpers/harness.ts (1), test/run/manager.caps.test.ts (2), test/run/manager.gate.test.ts (2).
+Informational, whole runner suite: `npx vitest run` → "Test Files 3 failed | 48 passed (51) / Tests 6 failed | 498 passed (504)". None of the 6 failures is in shadow, gate, lean or semantic:
+- 5 are the integrator-owned M1 tests test/integration/fixes.test.ts and session.test.ts, where `change-kind` now answers `needs-confirmation` (WP1's carry-over 3).
+- 1 is WP3's test/run/manager.lifecycle.test.ts ("a double-clicked answer ... gets conflict").
+
+## acceptance
+- **test:** AT2.1 layout
+  - **status:** pass
+  - **evidence:** test/shadow/shadow.test.ts 'createRunShadow: layout and refusals' (5 tests) passed. ws/ holds exactly the model and project files with no dot-entry at any depth (`Check/` and `.telelean` excluded). build/.lake/build is seeded with mtimes kept. There is one base commit (round 1, label 'Your files at the start of the run'). The run, session, git, frozen, gate and scratch dirs are outside ws/. A symlink in the library tree, a symlinked project file, or a symlink in .lake/build throws ShadowLayoutError not-regular and the runs dir is never created. Bad paths are refused before anything is created.
+- **test:** AT2.2 path guard
+  - **status:** pass
+  - **evidence:** shadow.test.ts 'path guard compatibility': M0 decide() with buildGuardPolicy(realpath ws) passes Grep and Glob on the ws/ root (with and without a path) and denies Read of build/…, git/config and run.json, and Grep/Glob on build/ or git/.
+- **test:** AT2.3 syncMirror
+  - **status:** pass
+  - **evidence:** shadow.test.ts 'currentFiles and syncMirror without a build' (2 tests): only changed model files are copied, unchanged mtimes are kept, deletions are mirrored, notes.md is returned by currentFiles() but never copied, and a symlink or a .hidden/.lake entry throws ShadowLayoutError with nothing synced. engine.test.ts 'the mirror builds incrementally' (real Lean): after an empty sync the second `lake build` shows 0 'Built' lines; changing Main rebuilds Main but not Vocabulary.
+- **test:** AT2.4 history and writes
+  - **status:** pass
+  - **evidence:** shadow.test.ts 'history and telelean writes' (3 tests): commit/commits/lastCommit/filesAt/changes work; accept-base is not in PASSING_COMMIT_KINDS and lastCommit() skips it; revertTo restores the commit (deleting stray and hidden entries), commits `revert`, and a second revertTo returns [] with no new commit; writeFiles refuses on a stale `before` (nothing written), creates and deletes, and refuses non-model paths.
+- **test:** AT2.5 run directories
+  - **status:** pass
+  - **evidence:** shadow.test.ts 'run directories': listRunDirs is newest first (run.json view.updatedAt, else directory mtime); pruneRunDirs(keep 10, protect r02) deletes only the old terminal and unreadable runs (r00, r03, r04), keeps the non-terminal r01 and the protected r02, and leaves other roots and non-run names alone.
+- **test:** AT2.6 check
+  - **status:** pass
+  - **evidence:** Gated, ran with WP1's real rules (rules.test.ts AT2.6): the normative formalisation checks ok; after the freeze the proof checks ok with the 11-axiom footprint. Runs now with fakes (engine.test.ts): sorry, #eval and a stray notes.md give G0 findings with refreshFacts called 0 times; leanJobMs 4000 on the slow fixture gives problems with a G1 `budget` finding (not environment) and no leftover unit; a Lean error is never passed even when the rules say nothing.
+- **test:** AT2.7 freeze
+  - **status:** pass
+  - **evidence:** Gated, real rules: refused for an unformalised selected assumption (not-formalised), a proof before the freeze, a shape violation (vocabulary-shape) and an edited natural_name (markup), with no freeze commit. Succeeds with permitted.all = the 13 names and frozen.ndjson non-empty. On the proved-derivation overlay the copy lacks `theorem cynder_not_good.holds`; on the pending overlay it lacks both the axiom `.holds` and `cynder_not_good_again`; the challenge builds in both. The same mechanics also run with fake rules in engine.test.ts.
+- **test:** AT2.8 gate cases + pure verdict mapping
+  - **status:** pass
+  - **evidence:** Gated, real rules and real Lean, all 15 cases passed: honest proof passed with comparator accepted (judged commit = the normalise commit); literal + adopted ghost passed (accepted, footprint includes not_in_game_not_good.holds); axiom shortcut → new-axiom; sorry → G0 sorry with no Lean; weakened abbrev → existing-changed; weakened type → not-proved; unselected → footprint naming new_spyro_pg.holds; def InGame → passed with flagged Spyro.InGame; GoodAddition turned into a def → existing-changed (names Spyro.GoodAddition); edited natural_name → markup; #eval → G0 with no Lean; re-pointed pin → markup and the freeze refused; not_proved with the proof → status-mismatch; not_proved with an unselected lemma → footprint; notes.md → G0 bad-path (not environment). Pure test (pure.test.ts) maps all 8 rejection reasons to comparator-* codes, could-not-start and cancelled to environment, timeout and oom to budget. Real-comparator mechanics in engine.test.ts: definition-mismatch with the M0 wording, illegal-axiom, a missing export → environment.
+- **test:** AT2.9 checkGhost
+  - **status:** pass
+  - **evidence:** Gated, real rules: the literal ghost is ok with fact 7's 12-name footprint, aloneEntails false and the statement collapsed; `¬ GoodAddition cynder newSpyro` with `fun h => h` is ok with aloneEntails true; a proof using unselected new_spyro_pg.holds is refused; before the freeze it is refused with 'freeze first…'; `sorry` and fact 8's injected statement are refused with zero host calls (recording host); with a permissive ghostTextProblems the injected statement is refused because of 'Lean error in the suggested statement'. The same set also passes with fake rules in engine.test.ts, which additionally shows the clean check of the build copy is reused.
+- **test:** AT2.10 renderStatements
+  - **status:** pass
+  - **evidence:** engine.test.ts: pg_no_dark_past renders pretty containing '¬Spyro.InGame c g' and explicit containing 'Not (Spyro.InGame c g)'; a missing name gets an 'Unknown constant' error.
+- **test:** AT2.11 cancellation
+  - **status:** pass
+  - **evidence:** engine.test.ts: cancelRun(runId) is scheduled 1.5 s after the refreshFacts onPhase('build') hook while the slow fixture builds; the outcome is environment 'the Lean job was cancelled', with no leftover telelean-<runId>-* unit and no process on the build path.
+- **test:** AT2.12 low memory
+  - **status:** pass
+  - **evidence:** engine.test.ts: readMemAvailable 1 GiB against a 2 GiB guard gives environment ('the machine is low on memory…') for check, renderStatements and checkBase; recordingHost recorded zero calls.
+- **test:** AT2.13 normalise
+  - **status:** pass
+  - **evidence:** Gated (real normalisationChanges): pin `lean: Spyro.pg_no_dark_past` is written and the docstring reset to the sentence; commit `normalise`; the second call returns {changes: []} with no new commit. Mechanics with a fake: core is asked only for ['pg-no-dark-past'].
+- **test:** AT2.14 M0/M1 suites
+  - **status:** pass
+  - **evidence:** `npx vitest run test/lean test/semantic` → 10 files, 93 tests passed. They were also part of the final 169/169 run. comparator.ts was changed only additively.
+- **test:** AT2.15 B and A
+  - **status:** pass
+  - **evidence:** Gated, real rules: with baseCommit = an accept-base commit holding the user's rationale edit and a declaration docstring edit, then the rebase commit, normalise → freeze → gate(proved) passes with no existing-changed or markup finding. Runs now with a fake evaluateRules: RuleInput.base is the base commit (or accept-base, then without facts); adopted is the newest adopt commit; roundStart is roundStartCommit; a freeze is evaluated without the previous freeze while check sees it.
+- **test:** AT2.16 checkBase
+  - **status:** pass
+  - **evidence:** engine.test.ts: the Spyro copy is ok with facts kept in base-facts.json; a second engine on the reopened run dir sees base.facts equal to them; checkFileChanges was called 0 times. The broken-other overlay gives problems, finding file Model/Other/Main.lean, range line 2, message '^Model/Other/Main.lean:3:…: error:', and no facts file.
+
+## contract_changes
+- runner lean/comparator.ts (additive): optional `FreezeOptions.removeDecls?: readonly string[]` (removed from the freeze copy before the challenge is written; names are validated up front) and a new export `removeDeclarations(dir, files, names): Promise<string[]>` (core applyLeanOps remove-decl, all or nothing per file, throws when a name is declared nowhere or the removal is unsafe). comparator.ts now imports `@telelean/core`.
+- runner shadow/index.ts (new exports only; shadow/types.ts unchanged): BASE_COMMIT_LABEL, isLeanModelPath, isModelPath, isSafeRelativePath, moduleNameOf, commitMessage, parseCommitMessage, scanTree, shadowPaths, SHADOW_COMMIT_KINDS, SHADOW_REF.
+- runner gate/index.ts (new exports only; gate/types.ts unchanged): BASE_FACTS_FILE, CHALLENGE_MODULE_NAME, filesKey, projectModulesOf, removalClosure, budgetFinding, buildErrorFindings, classifyFacts, COMPARATOR_FINDING_CODES, comparatorFindings, diagnosticsOf, environmentMessage, notFrozenFinding, collapseWhitespace, EXPLICIT_OPTIONS, GHOST_CHECK_NAME, GHOST_NEEDS_FREEZE, GHOST_STATEMENT_NAME, ghostScratchSource, parseNamedAxiomsMessage, readGhostScratch, readRenderScratch, renderScratchSource, and the types ComparatorOutcome, FactsOutcome, GhostScratch, GhostScratchResult, RenderScratch.
+- docs/m2-plan.md section 14 was NOT edited (docs/ is outside my assigned paths): the three entries above still need logging there.
+
+## minor_decisions
+- **decision:** Shadow history is a bare repository written with `git fast-import` (the whole snapshot per commit, `deleteall` + inline files) and read with ls-tree and cat-file. There is no index, checkout or work-tree command; revertTo writes the files itself. All `GIT_*` environment variables are dropped, then GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM=1, hooks/excludes/attributes set to /dev/null, an empty init template.
+  - **rationale:** A commit is then exactly the judged bytes, and no user git setting, filter, attribute or hook can touch the shadow.
+- **decision:** The `freeze` commit is made only after the challenge export succeeded (the brief listed it before the challenge).
+  - **rationale:** A failed challenge must not leave a commit of a passing kind that a give-up revert could land on.
+- **decision:** engine.freeze evaluates the rules without ctx.freeze (always as the state before this freeze).
+  - **rationale:** Otherwise an adoption's re-freeze or Accept's re-check would flag the adopted ghost's `.holds` or the user's own axioms as axioms added after a freeze.
+- **decision:** A failing challenge build or export, or any exception while preparing the freeze copy, is an `environment` outcome (not counted).
+  - **rationale:** At that point the agent's files have already built and passed the rules, so the failure is telelean's.
+- **decision:** checkBase maps a timeout or oom of the user's own files to `problems` with a `budget` finding ('Your files took too long or too much memory to build …'); sandbox, low memory and cancel map to environment.
+  - **rationale:** It is a property of the user's files, and the run must end before any prompt either way.
+- **decision:** The engine adds G1 `build` findings from the facts whenever core's rules report no `build` finding but the build had errors.
+  - **rationale:** Fail closed: a gate must never pass Lean errors.
+- **decision:** The gate reuses the head commit when it is a normalise or checkpoint commit with exactly ws/'s files; otherwise it commits a `checkpoint` ('State judged by the gate (round N)'). Other labels: 'Statements frozen (round N)', 'Normalised (round N)'.
+  - **rationale:** One judged commit per state, with no duplicates on a repeated finish.
+- **decision:** createRunShadow also refuses symlinks anywhere under `<library>/` (dot-entries skipped, as M1's scan does), symlinked root model or project files, and non-regular on-disk versions of the given files. A symlinked `.lake` or `.lake/build` itself is simply not seeded (M0 behaviour).
+  - **rationale:** Makes 'a symlink in the source' concrete while the texts come from the TextSource; a symlinked model file could otherwise pull outside text into what Claude reads.
+- **decision:** Base commit round = 1. commits() returns oldest first.
+  - **rationale:** The first round starts from the base.
+- **decision:** The build copy keeps the user's mtime for a source whose text equals the file on disk.
+  - **rationale:** Keeps a seeded .lake/build valid. I verified that Lake 4.35 decides rebuilds by content hash: rewriting a source with identical text rebuilds nothing.
+- **decision:** Ghost scratch file: only the statement is whitespace-collapsed; the proof keeps its line breaks, each line indented two spaces. Errors are reported as 'Lean error in the suggested statement / in the proof: …'. aloneEntails = no `.holds` from permitted.selected or permitted.derivationFootprints in the axioms.
+  - **rationale:** Collapsing a proof would break tactic blocks; indenting keeps every proof line inside the check theorem.
+- **decision:** RenderedStatement.pretty and .explicit are Lean's whole `#print` message (header and value), from one stdin file with each form on its own line.
+  - **rationale:** Matches the type doc '#print of the statement abbrev'.
+- **decision:** Freeze copies keep their sources in frozen/<n>/project but drop their .lake after the export; comparator work dirs are gate/<n>; base facts live in <runDir>/base-facts.json.
+  - **rationale:** Keeps run dirs small while leaving what was frozen inspectable.
+- **decision:** checkGhost reuses the last clean check only when it was of exactly ws/'s files and the build copy's model files still equal them. The engine's caches are bounded (32 models, 16 runs).
+  - **rationale:** One engine may serve many runs; the content comparison guards against another engine or a direct syncMirror changing the build copy.
+
+## open_issues
+- The [gated] tests are not skipped right now: WP1's functions already exist in the shared tree, and the tests passed against WP1's in-progress code at about 20:48–20:57 and 21:02 local time. The integrator should re-run test/gate/rules.test.ts once WP1 is final.
+- The freeze copy's removal closure comes from facts refs, so an `example` that uses the target's `.holds` (it has no name) cannot be removed. The challenge build then fails and the freeze is refused as `environment`, with Lean's message. Rare: proof-before-freeze forbids examples before a freeze, so this can only happen in Accept's re-check.
+- LeanDiagnosticView.column and findings' `file:line:col` use the facts' UTF-16 character. That equals Lean's code-point column except after astral-plane characters.
+- Not mine, seen while running the whole runner suite:
+- 5 integrator-owned M1 integration tests (test/integration/fixes.test.ts, session.test.ts) fail because `change-kind` now answers `needs-confirmation` (WP1's carry-over 3).
+- WP3's test/run/manager.lifecycle.test.ts has 1 failure.
+- WP3's test/run files have tsc errors (helpers/harness.ts, manager.caps.test.ts, manager.gate.test.ts).
+- WP3's run-manager tests leave `run-mgr-*` temp dirs under $TELELEAN_TEST_TMP; I removed the ones created in my scratch dir.
+- Other agents run the full runner suite concurrently, which includes my Lean-heavy test files. I saw their transient units (e.g. telelean-tlws1344844_14_1-203, telelean-rmvxu956b7b0f06-222, telelean-wp2rghostunsel1398240-107 from another agent's run) and did not touch them.
+
+## integration_notes
+For WP3, the RunManager:
+- Call engine.checkBase(ctx) right after createRunShadow. It needs a full CheckContext (selection, stage 'formalise', round 1, teleleanBlocks []).
+- Pass `roundStartCommit` for round > 1 and for Accept's re-check, and `baseCommit` = the accept-base commit only for that re-check. The engine finds the newest `adopt` commit itself.
+- ctx.freeze is ignored by engine.freeze but used by check, gate and checkGhost.
+- GateReport.commit is the normalise commit when normalisation changed something, else a checkpoint; commit `gate-pass` with filesAt(GateReport.commit.id).
+- GateReport.footprint is present for status proved whenever the facts have T.holds, even when the gate failed.
+- environment outcomes: a GateReport with `environment` and no findings, a CheckReport with outcome 'environment', a FreezeOutcome with `environment`, a GhostCheck with `environment`.
+- GhostCheck ok always carries `statement` (the collapsed text). When the pre-check fails, `problems` starts with 'The files do not pass check_lean, so the suggestion was not checked. Fix these first:' followed by the finding messages.
+- The give-up sentence can use the freeze commit label 'Statements frozen (round N)'.
+- pruneRunDirs is the RunManager's to call after a run ends; pass the active run id in `protect`.
+
+For WP4: CheckReport.model and .facts are set whenever Lean ran (ok or problems after the build); renderStatements returns '' plus `error` for names Lean could not print.
+
+ShadowWorkspace:
+- commits() returns oldest first.
+- currentFiles() throws ShadowLayoutError not-regular or hidden-entry with `paths`.
+- writeFiles is all-or-nothing on `before`.
+- openRunShadow(runDir, { root, library }) matches RunServices.openShadow.
+
+The challenge module is `<library>.TeleleanChallenge` inside frozen/<n>/project. The fixture edit scripts in test-fixtures/gate/edits.json are anchored on test-fixtures/spyro (WP3's walkthrough scripts may reuse their texts).
+
+## effects_outside_repo
+- Transient systemd user scopes `telelean-wp2*`, `telelean-wp2r*`, `telelean-sem<pid>-*` and `telelean-t<pid>-*` were created by my test runs (sandboxed Lean under runLean) and all ended; checked 0 left for my run ids.
+- Temporary directories under my scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/wp2/tmp (TELELEAN_TEST_TMP) were created and removed by the tests. I also removed WP3's `run-mgr-*` dirs and a `tmp` dir that WP3's tests left there during my full-suite run.
+- Exploration: I ran the toolchain's `lean` and `lake` binaries directly (unsandboxed; never elan proxies) on scratch files and three scratch project copies in /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/wp2/explore. The project builds wrote only their own .lake/ and were deleted afterwards; the small .lean probe files are still there.
+- git ran only inside shadow `git/` directories under temp dirs and in one scratch exploration repo (since deleted), with GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM=1 and hooks disabled. It never ran in /home/zhengyew/telelean or mental_model/.
+- ~/.elan/known-projects stayed at 37 lines before and after every run.
+- No network use, no Claude CLI, no npm install, nothing written outside the repo's assigned paths and my scratch dir. I did not touch the user's own Lean server processes or other agents' processes and units.
+

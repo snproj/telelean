@@ -1,0 +1,5 @@
+import Model.Defs
+namespace T
+-- frozen, signed-off goal statement (D-2 style: formalised, unproved)
+theorem cynder_not_good : ¬ GoodAddition cynder newSpyro := by sorry
+end T

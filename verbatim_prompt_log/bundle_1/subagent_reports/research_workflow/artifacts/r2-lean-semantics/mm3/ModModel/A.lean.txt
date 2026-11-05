@@ -1,0 +1,11 @@
+module
+-- shifted
+public section
+namespace MM
+/-- A videogame character! -/
+axiom Character : Type
+axiom Cynder : Character
+axiom HasDarkPast : Character → Prop
+/-- Cynder has a dark past. -/
+axiom cynder_dark : HasDarkPast Cynder
+end MM

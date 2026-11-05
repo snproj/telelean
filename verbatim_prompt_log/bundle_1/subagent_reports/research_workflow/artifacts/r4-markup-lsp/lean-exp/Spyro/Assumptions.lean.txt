@@ -1,0 +1,53 @@
+import Spyro.Vocabulary
+
+/-
+@@ telelean v1
+id: cynder-dark-past
+kind: ASSUMPTION
+natural_name: "Cynder is a character who has a dark past"
+rationale: "Familiar with gaming lore"
+origin: user
+-/
+axiom cynder_dark_past : hasDarkPast cynder
+
+/-
+@@ telelean v1
+id: new-spyro-pg
+kind: ASSUMPTION
+natural_name: "The new Spyro game is PG"
+rationale: "Known from gaming news"
+-/
+axiom new_spyro_pg : isPG newSpyro
+
+/-
+@@ telelean v1
+id: pg-no-dark-past
+kind: ASSUMPTION
+natural_name: "PG games cannot have characters with dark pasts"
+rationale: "My understanding of age ratings"
+-/
+axiom pg_no_dark_past :
+  ∀ (g : Game) (c : Character), isPG g → hasDarkPast c → ¬ goodAddition c g
+
+/-
+@@ telelean v1
+id: lore-matters
+kind: ASSUMPTION
+natural_name: "Lore consistency matters to long-time fans"
+rationale: "Reading fan forums for years"
+---
+Still informal: no Lean code yet. A code-less node is *only* this comment,
+followed by a blank line (or EOF, or another block).
+-/
+
+/-
+@@ telelean v1
+id: hidden-helper-axiom-test
+kind: DERIVATION
+natural_name: "Something the LLM 'proved' by sneaking in an axiom"
+premises: cynder-dark-past
+-/
+theorem sneaky : goodAddition cynder newSpyro → False := by
+  intro h
+  exact sneaky_ax h
+where sneaky_ax : goodAddition cynder newSpyro → False := fun _ => by sorry

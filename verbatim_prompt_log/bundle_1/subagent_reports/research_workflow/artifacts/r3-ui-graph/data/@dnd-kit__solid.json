@@ -1,0 +1,50 @@
+{
+ "name": "@dnd-kit/solid",
+ "latest": "0.5.3",
+ "dist_tags": {
+  "latest": "0.5.3",
+  "beta": "0.5.3-beta-20261031140713"
+ },
+ "latest_published": "2026-10-31T14:09:26.083Z",
+ "modified": "2026-10-31T14:09:26.391Z",
+ "created": "2026-02-10T02:16:12.430Z",
+ "license": "MIT",
+ "deprecated": null,
+ "unpackedSize": 151140,
+ "fileCount": 23,
+ "tarball": "https://registry.npmjs.org/@dnd-kit/solid/-/solid-0.5.3.tgz",
+ "dependencies": {
+  "tslib": "^2.6.2",
+  "@dnd-kit/dom": "^0.5.3",
+  "@dnd-kit/state": "^0.5.3",
+  "@dnd-kit/abstract": "^0.5.3"
+ },
+ "peerDependencies": {
+  "solid-js": "^1.8.0"
+ },
+ "repository": "git+https://github.com/clauderic/dnd-kit.git",
+ "recent_versions": [
+  [
+   "0.5.2-beta-20261029020134",
+   "2026-10-29T02:02:43.469Z"
+  ],
+  [
+   "0.5.2-beta-20261030024109",
+   "2026-10-30T02:42:19.830Z"
+  ],
+  [
+   "0.5.2",
+   "2026-10-31T14:04:03.251Z"
+  ],
+  [
+   "0.5.3-beta-20261031140713",
+   "2026-10-31T14:08:37.352Z"
+  ],
+  [
+   "0.5.3",
+   "2026-10-31T14:09:26.083Z"
+  ]
+ ],
+ "homepage": "https://github.com/clauderic/dnd-kit#readme",
+ "description": "[![Stable release](https://img.shields.io/npm/v/@dnd-kit/solid.svg)](https://npm.im/@dnd-kit/solid)"
+}

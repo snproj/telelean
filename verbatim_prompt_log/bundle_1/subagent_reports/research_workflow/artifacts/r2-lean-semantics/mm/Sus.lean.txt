@@ -1,0 +1,12 @@
+namespace Sus
+def realF (_n : Nat) : Bool := false
+@[implemented_by realF] def logicalF (_n : Nat) : Bool := true
+@[extern "lean_my_c_fn"] def externF (n : Nat) : Nat := n
+unsafe def unsafeF (n : Nat) : Nat := n
+partial def loop (n : Nat) : Nat := loop (n + 1)
+axiom emptyAx : Empty
+axiom natAx : Nat
+axiom propAx : 1 = 2
+axiom dataHidingProp : PLift (1 = 2)
+theorem lie : logicalF 0 = false := by native_decide
+end Sus

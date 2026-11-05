@@ -1,0 +1,10 @@
+name = "model"
+defaultTargets = ["Model"]
+
+[leanOptions]
+autoImplicit = false
+relaxedAutoImplicit = false
+
+[[lean_lib]]
+name = "Model"
+globs = ["Model.+"]

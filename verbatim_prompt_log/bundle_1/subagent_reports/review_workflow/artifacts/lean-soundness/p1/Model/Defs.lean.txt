@@ -1,0 +1,23 @@
+namespace T
+-- vocabulary (type formers, predicates, existence commitments)
+axiom Character : Type
+axiom Game : Type
+axiom cynder : Character
+axiom newSpyro : Game
+axiom HasDarkPast : Character → Prop
+axiom IsPG : Game → Prop
+axiom GoodAddition : Character → Game → Prop
+-- ASSUMPTIONS (Prop axioms bound to ASSUMPTION nodes)
+axiom cynder_dark : HasDarkPast cynder                        -- A1: NOT selected
+axiom spyro_pg : IsPG newSpyro                                -- A2: selected
+axiom pg_no_dark : ∀ (g : Game) (c : Character),
+    IsPG g → HasDarkPast c → ¬ GoodAddition c g               -- A3: selected
+-- agent-written "fine-grained vocabulary" (S32): a profile record for Cynder
+structure CynderProfile : Type where
+  dark : HasDarkPast cynder
+instance : Nonempty CynderProfile := ⟨⟨cynder_dark⟩⟩
+axiom cynderProfile : CynderProfile                           -- data axiom
+-- provenance-style vocabulary: a sort-former with a Prop parameter
+axiom Reported : Prop → Type
+axiom reportedPG : Reported (IsPG newSpyro)                   -- "symbol"/existence commitment
+end T

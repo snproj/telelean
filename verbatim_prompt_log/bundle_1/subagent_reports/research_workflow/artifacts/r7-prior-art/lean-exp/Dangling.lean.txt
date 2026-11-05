@@ -1,0 +1,12 @@
+/-- A dangling docstring with no declaration.
+@@ telelean
+type: GOAL
+-/
+
+/-! @@ telelean
+type: GOAL
+-/
+
+/- @@ telelean
+type: ASSUMPTION
+-/

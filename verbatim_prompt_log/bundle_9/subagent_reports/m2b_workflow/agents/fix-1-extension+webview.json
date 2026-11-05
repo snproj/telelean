@@ -1,0 +1,90 @@
+{
+ "summary": "I fixed all six UX issues (one major, five minor) in packages/webview, with small changes in packages/extension. All affected suites pass on the final build: webview 127/127 unit and 78/78 browser tests, extension 166/166 unit tests, and the full VS Code smoke (36 + 20 passing, 0 isolation failures).\n\nMajor issue, narrow board during a run:\n- While a run is active, the selection tray folds to one line: the selection summed up (\"3 premises ⊢ “…”\"), Clear, the disabled button and the reason. A chevron unfolds it for that run.\n- While the run panel is shown, the A|D|G box hides its optional second row until it has the focus or some content. The box still works.\n- Below the board, the panel now sizes to its content up to 60% (was 48%).\n- The panel's edge towards the board is a resize handle. It works by dragging, by arrow keys or Home/End, and double-click or Enter restores the default. The size is kept per layout in the webview state.\n- A new question set or review, and every review step change, now scrolls into view inside the panel only.\n- Tested at 790×795 (the first question's options are all visible, the board is over 250 px high) and at 545 px wide (the raw-diff-beside case: the statement and its Lean are visible).\n- I did not change where the raw diff opens. It still follows the M1 rule in groups.ts: use an existing other editor group, and split only when the board's group is the only one. The half-width board is now usable. Whether to change that rule is listed in open issues.\n\nMinor issues:\n- **Diff mark:** the \"~changed\" / \"+new\" badge now sits on its own line above the sentence, so the sentence keeps the card's width.\n- **Statement step:** the Lean shows only the proposition. A new helper drops Lean's `#print` header and leaves any other text as it is. The sentence now sits above the Lean, and the Lean name in the heading is no longer upper-cased.\n- **Gave-up rounds:** this applies to rounds that gave up, hit a limit, or ended without finishing. The header badge says \"Claude: gave up · Spyro\" and the state line \"Ready for review · Claude gave up\". The proposal banner adds a line saying what happened and that the proposal holds only the last passing state, and Accept is no longer the primary button. The gave-up and revert notices now come before the review. Notices from earlier attempts are folded below it under \"Earlier notices (n)\". While Claude is still working, every notice shows as before. Proof results are still hidden until the statements are reviewed.\n- **Wording:**\n  - \"check attempts\" replaces \"gate attempts\" everywhere.\n  - Each failed check shows a plain-words label (\"what it rests on\"), with \"Check G3: …\" in the tooltip.\n  - With a Derivation selected, the tray now says \"Choose the target (a Goal or a Derivation) with ⊢.\"\n  - Declining consent shows an info toast, cleared by the next start.\n  - A small extra fix: the other-subject run line no longer lower-cases \"Claude\".\n\nI updated one VS Code test in the extension: the cheating test now unfolds \"Earlier notices\" before it checks the failed-attempt notice.",
+ "files_changed": [
+  "/home/zhengyew/telelean/packages/webview/src/model/run.ts",
+  "/home/zhengyew/telelean/packages/webview/src/state/store.ts",
+  "/home/zhengyew/telelean/packages/webview/src/main.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/run/RunPanel.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/run/reveal.ts",
+  "/home/zhengyew/telelean/packages/webview/src/run/Review.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/run/Questions.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/run/ProposalBanner.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/run/ReportCard.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/run/RunBadge.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/board/NodeCard.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/board/CardDetails.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/tray/SelectionTray.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/prompt/PromptBox.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/styles/board.css",
+  "/home/zhengyew/telelean/packages/webview/test/unit/run.test.ts",
+  "/home/zhengyew/telelean/packages/webview/test/unit/store.test.ts",
+  "/home/zhengyew/telelean/packages/webview/test/unit/store-run.test.ts",
+  "/home/zhengyew/telelean/packages/webview/test/e2e/m2-run.spec.ts",
+  "/home/zhengyew/telelean/packages/webview/test/e2e/m2-layout.spec.ts",
+  "/home/zhengyew/telelean/packages/extension/src/logic/runs.ts",
+  "/home/zhengyew/telelean/packages/extension/test/unit/runRouting.test.ts",
+  "/home/zhengyew/telelean/packages/extension/test/suite/e2e-runs.test.ts",
+  "/home/zhengyew/telelean/packages/extension/dist/webview/ (rebuilt by vite: webview.js, webview.css, maps, assets)",
+  "/home/zhengyew/telelean/packages/extension/dist/extension.js, dist/extension.js.map, dist/bin/ (rebuilt by esbuild at 23:43)",
+  "/home/zhengyew/telelean/packages/extension/out/test/suite/*.js (rebuilt by esbuild)",
+  "/home/zhengyew/telelean/packages/webview/test-results/*.png (test screenshots, regenerated; new ones: m2-narrow-questions.png, m2-narrow-resized.png, m2-narrow-review-next.png, m2-half-editor-review.png, m2-review-statement-stacked.png, m2-narrow-diff-marks.png, m2-gave-up.png)"
+ ],
+ "test_runs": "All tests below were actually run.\n- **Webview typecheck** (both tsconfigs): clean, run several times, last at about 23:53.\n- **Webview unit tests** (vitest), final run: \"Test Files 8 passed (8), Tests 127 passed (127)\". The baseline before my changes was 121; 6 new tests were added.\n- **Webview browser tests** (Playwright, installed Chrome, one worker, `ulimit -c 0`), final full run on the final bundle: \"78 passed (1.1m)\". This includes the new m2-layout.spec.ts with 8 tests. The home guard printed \"~/.config/google-chrome 10 entries, ~/.cache/google-chrome absent, ~/.cache/fontconfig 113 entries, ~/.pki 4 entries, ~/.local/share/pki absent; unchanged\".\n- **Extension typecheck**: clean. It includes test/suite.\n- **Extension unit tests** (vitest): \"Test Files 19 passed (19), Tests 166 passed (166)\".\n- **Extension build**: esbuild bundles passed the bundle-load check.\n- **VS Code smoke, M2 end-to-end suite only** (isolated profile under my scratch dir, TELELEAN_NO_REAL_CLAUDE=1, FakeBackend, real Lean): \"7 passing (1m)\". The smoke reported \"vscode-test exit code 0; 0 isolation failure(s)\".\n- **VS Code smoke, full run** (both instances): smoke instance \"36 passing (30s)\", e2e instance (M1 e2e + M2 e2e-runs) \"20 passing (2m)\", \"0 isolation failure(s)\", \"no process of this run is left\".\n- Both smoke runs used the webview bundle from before my last two small webview changes: keyboard resize now measures the panel on screen, and the other-subject run line keeps \"Claude\" capitalised. Neither is exercised by the VS Code suites. Both are covered by the final Playwright run (78/78).\n- **Not run:** root `npm run build` (see minor decisions) and the core/runner suites (not my packages).",
+ "resolved": [
+  "MAJOR narrow board during a run (webview): the tray folds to one line during an active run (summary, Clear, disabled button, reason, unfold chevron for that run). The A|D|G box hides its optional row while the run panel is shown, unless it is focused or has content. The panel below the board sizes to its content up to 60% (was 48%). A resize handle on the panel's edge works by drag, arrow keys or Home/End, and double-click or Enter for the default; the size is persisted per layout and clamped (panel at least 120 px tall / 260 px wide, board at least 140 px tall / 560 px wide). A new question set or review, and each review step change, scroll into view inside the panel only (run/reveal.ts). Tested at 790x795 and 545x795 (the raw-diff-beside case).",
+  "MINOR diff badge squeezing card text: the badge now sits on its own line (.tl-card__diffline) above the sentence; tested on a 790 px board (text over 110 px wide, badge above the text).",
+  "MINOR statement step: statementBody() strips Lean's #print header (`@[reducible] def <name> : Prop :=`, optional docstring and modifiers) and keeps any other text as it is. The sentence is stacked above the Lean, which gets the full width. The heading reads 'Lean statement <name>' and the name keeps its case (text-transform none on code in headings).",
+  "MINOR gave-up round looked like a normal proposal: rounds that gave up, hit a limit or did not finish now show at once in the badge ('Claude: gave up · Spyro'), the state line ('Ready for review · Claude gave up'), and the banner (an outcome line naming the reverted state; Accept no longer primary, also in the review). placeNotices puts the latest gave-up/cap and revert notices before the review and folds the rest below it as 'Earlier notices (n)'. While Claude works all notices show as before; proof results stay hidden until revealed (D-19).",
+  "MINOR wording: 'check attempts' replaces 'gate attempts' (status line, report card, attempts history). The G-step chip is replaced by plain words (CHECK_STEP: 'build', 'what it rests on', 'statement unchanged', 'your words untouched', 'allowed Lean only') with 'Check Gn: …' in the tooltip. Tray hint: 'Choose the target (a Goal or a Derivation) with ⊢.' when a Derivation is selected, otherwise 'Select the card to prove too: a Goal, or a Derivation (then choose it with ⊢).' Declined consent is an info toast, dismissed by the next start (prefix contract pinned by an extension unit test).",
+  "MINOR panel kept its old scroll position: the review scrolls into view on first appearance and at every step change; the question set does too (e2e test: scrolled to the activity feed, then a question arrives, then the review, then Next from the long result step).",
+  "Extra small fix: the other-subject run line now lower-cases only the first letter of the state, so 'Claude gave up' keeps its capital."
+ ],
+ "open_issues": [
+  "Raw Lean diff placement is unchanged, a design question for the main session. extension/src/logic/groups.ts (M1) already opens previews in an existing other editor group without splitting, and splits only when the board's group is the only one. That split halves the board. With these fixes the half-width board stays usable (test at 545 px). If the user prefers, the diff could open in the board's own group: the board panel has retainContextWhenHidden: true, so the review state would survive. That would reverse M1's rule that a new editor never covers the board.",
+  "Optional, outside my packages (runner): renderStatements could return only the proposition instead of the #print output. Not needed now, because the webview strips the header and keeps anything else unchanged.",
+  "Docs (outside my paths): the main session may want to log two things in docs/m2-plan.md section 14. (1) The board shows a refusal starting with 'Not started:' (extension CONSENT_DECLINED) as an info toast. (2) The webview state gains a 'runSplit' key; the extension's restore reads only 'subject', so nothing breaks.",
+  "packages/extension/dist/extension.js was rebuilt at 23:43 from the core and runner sources as they were then. The other fixer was changing those packages in parallel, so the integrator should rebuild (root npm run build) after both fixers finish."
+ ],
+ "minor_decisions": [
+  {
+   "decision": "Rebuilt only the webview (vite, into packages/extension/dist/webview) and the extension (esbuild), not root `npm run build`.",
+   "rationale": "Root build also runs tsc for core and runner, which writes their dist folders outside my assigned paths. The extension bundle and tests read core and runner sources directly through tsconfig paths, so the two builds I ran are all the extension needs."
+  },
+  {
+   "decision": "The tray folds and the A|D|G box hides its optional row in the wide layout too, not only below 1000 px.",
+   "rationale": "The run buttons are disabled during any run, so the folded tray loses nothing. The same behaviour in both layouts is easier to predict, and vertical room matters in both. The chevron and the focus bring the full forms back."
+  },
+  {
+   "decision": "Default panel height below the board: sized to its content, at most 60%. Once the user drags, an explicit share is kept with px limits.",
+   "rationale": "A fixed split wastes room when the panel has little to show, such as while starting or working. 60% leaves the board over 250 px on the reported 790x795 board. The handle lets the user change the balance."
+  },
+  {
+   "decision": "The split is stored as a fraction of the workspace per layout in the webview state (runSplit) and applied through the CSSOM (a custom property), with the same px limits repeated in CSS.",
+   "rationale": "Fractions follow window resizes. The CSP forbids style attributes but allows CSSOM. Keeping the limits in CSS too keeps a stored value sensible after a resize."
+  },
+  {
+   "decision": "Which notices go before the review: only the latest gave-up/cap and revert notices for an outcome verdict. Everything else folds below the review once a round has ended. While working, all notices show first as before.",
+   "rationale": "Notices carry no round number, so showing all warning-level notices first would put a round-1 give-up above a later round-2 proof. The latest outcome notices are what explain the current proposal."
+  },
+  {
+   "decision": "Declined consent is recognised by the 'Not started:' prefix of the host's text, pinned by an extension unit test, instead of changing the outcome shape.",
+   "rationale": "The code 'not-yet' also covers real preflight failures. Changing the actionResult to ok:true would break existing extension tests and the API callers. Both sides of the convention are in my packages."
+  },
+  {
+   "decision": "The failed check's step is shown as a plain-words chip with the step name in the tooltip, rather than dropping it.",
+   "rationale": "Plain words help scanning ('build' versus 'what it rests on') without jargon. The tooltip keeps the precise step name for the curious."
+  },
+  {
+   "decision": "From the middle of the task on, I ran node_modules/.bin binaries directly and set npm_config_logs_dir to my scratch dir for the VS Code smoke runs.",
+   "rationale": "npm and npx write and prune debug logs in ~/.npm/_logs by default. I noticed this partway through and stopped adding logs there."
+  }
+ ],
+ "effects_outside_repo": [
+  "~/.npm/_logs: my npm and npx calls between about 23:24 and 23:44 (+08:00) each wrote one debug log there (npm's default; about 11 files, roughly 1 KB each, containing command lines and paths, no secrets): npm run typecheck/build, npx vitest, npx playwright, the extension typecheck/vitest/build, and 'npm config get' twice. npm keeps only 10 logs, so these runs also deleted older log files there, which may have belonged to other sessions. Logs dated after 23:44 come from other processes; my later commands used node_modules/.bin directly or npm_config_logs_dir in my scratch dir. I did not set npm_config_logs_max.",
+  "Chrome (Playwright, 5 runs) used HOME, XDG and TMPDIR inside its own temp dir under /tmp (tl-pw-chrome-*), which the test teardown deleted. The home guard reported the watched home folders unchanged after every run. /tmp/playwright-transform-cache-1002 (Playwright's transform cache) was updated, and /tmp/playwright-artifacts-* folders were created and removed per run. The leftover /tmp/playwright-artifacts-O6yYln dated 15:19 is not mine.",
+  "VS Code test instances (2 smoke runs, the existing .vscode-test 1.140.0 build, nothing downloaded) ran with an isolated profile under my scratch dir. smoke.mjs reported ~/.copilot, ~/.config/Code, ~/.config/Code/logs, ~/.config/google-chrome and ~/.local/share/Trash/files unchanged, and no process left. xvfb-run created and removed /tmp/.X99-lock and /tmp/xvfb-run.*.",
+  "The M2 end-to-end suite ran Lean through runLean: Lean toolchain files under ~/.elan were read (ELAN_HOME, not written), and systemd --user created transient telelean-* scopes that were gone at the end (smoke check). Afterwards I saw a scope telelean-tlws1617509_* whose PID belonged to the other fixer's runner vitest worker, and later telelean-rmvy0cmru030d06-248; neither was mine and I left both alone.",
+  "My scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2fix-ext-webview/ (45 MB) holds the run-smoke.sh wrapper with a RAM watchdog that could kill only its own process group (it never fired), the smoke logs and two isolated VS Code profiles (19 MB and 26 MB), and before/after listings of the home folder's top level. The before/after listings are identical.",
+  "Nothing was pushed, uploaded or sent. No network use beyond loopback; no downloads, no npm install, no real Claude session (TELELEAN_NO_REAL_CLAUDE=1 everywhere). No git commands. I did not touch the user's VS Code settings or extensions, ~/telelean_scripts, ~/.config or ~/.claude."
+ ]
+}

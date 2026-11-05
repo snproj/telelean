@@ -1,0 +1,263 @@
+{
+ "summary": "WP6 (webview board UI) is complete. All 21 acceptance tests (AT6.1–6.21) are covered by automated tests, and every test passed in my final `npm test` run: typecheck of both configs, Vite build into packages/extension/dist/webview, 75 unit tests and 38 Playwright tests (13 M0 tests, updated where the plan changed them, plus 25 new M1 tests). No frozen file was changed.\n\nWhat the board does now (React 19 + zustand):\n- **Store.** It handles every host message: graph (older versions dropped, the same version re-applied harmlessly), workspace, history, actionResult and notice. Every mutation carries a request id `r<n>`.\n- **Optimistic changes.** Drag, add, reorder and in-place edits apply at once and roll back with an error toast if the host refuses. A newly added card keeps a provisional id until the host's graph contains it; `outcome.nodeId` moves its selection and expansion to the final id. A `needs-confirmation` answer opens the dependents dialog with the host's list.\n- **Vocabulary group.** Grouped by kind, presupposition chips (\"assumes characters exist\"), collapsible with the state kept in the webview state, and each item can be highlighted and scrolled to.\n- **Card faces.** Aura; one chip per proof status and M1 flag, never a ✓ for a node Lean has not checked; a \"checking…\" marker on stale nodes; the \"needs attention\" badge; the D-13 hint; the \"uses:\" line.\n- **Expanded cards.** Lean code with identifier spans, Copy, Open in editor, problems, footprint and presuppositions, Depends on / Used by, stance and source chips, Make Assumption/Derivation/Goal, Edit, Delete.\n- **Other UI.** Inline edits, the delete dialog, reorder, D-11 drop zones with the dependents and rationale dialogs, the A|D|G box with stance/why/source, the tray with presupposition chips and a disabled \"Self-evident?\", the subject picker, the history dropdown, the Lean badge, problems list and banners, toasts with Undo, Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y, the extended legend, and the new arrow styles (conditional, mismatch, lean-ref).\n\nThe user's four turn-9 requests:\n1. **Drag in the code selects text.** The card's `draggable` attribute is switched off at pointerdown inside the code (risk R5); canDrag is also false, and the code has `draggable=\"false\"` and `user-select: text`. AT6.16 passes. Negative controls: with only one of the two mechanisms active the test still passes (either one is enough in Chrome 155); with both disabled it fails (selection length 0, the card drags instead).\n2. **\"uses:\" line.** Built from `lean.uses`, inline \"GoodAddition, cynder, …\", with a \"▾ N\" dropdown showing kind and gloss; picking an entry highlights the item.\n3. **Copy button.** Posts `copyText` with exactly `lean.code`.\n4. **Identifier hover and click.** Hover shows the gloss or the node's sentence; a click highlights the vocabulary item or reveals the card; Ctrl/Cmd+click does nothing yet.\n\nThe CSP stays strict: no style attributes; popovers are positioned through the CSSOM, and every test asserts zero CSP violations and zero console errors.\n\nTest isolation: Playwright gives Chrome HOME/XDG directories inside the run's short temp dir, adds `--disable-crash-reporter --disable-breakpad --no-first-run`, and runs under `ulimit -c 0`. A global home guard proves the real home locations are unchanged; my own before/after listing of ~/.config/google-chrome is identical.",
+ "files": [
+  "/home/zhengyew/telelean/packages/webview/package.json",
+  "/home/zhengyew/telelean/packages/webview/playwright.config.ts",
+  "/home/zhengyew/telelean/packages/webview/src/main.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/App.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/labels.ts",
+  "/home/zhengyew/telelean/packages/webview/src/host/bridge.ts",
+  "/home/zhengyew/telelean/packages/webview/src/state/store.ts",
+  "/home/zhengyew/telelean/packages/webview/src/state/context.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/model/cardData.ts",
+  "/home/zhengyew/telelean/packages/webview/src/model/format.ts",
+  "/home/zhengyew/telelean/packages/webview/src/board/Board.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/board/Column.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/board/NodeCard.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/board/CardDetails.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/board/LeanCode.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/board/UsesLine.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/board/VocabularyGroup.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/board/dragGuard.ts",
+  "/home/zhengyew/telelean/packages/webview/src/board/reveal.ts",
+  "/home/zhengyew/telelean/packages/webview/src/board/dnd.ts",
+  "/home/zhengyew/telelean/packages/webview/src/board/edges.ts",
+  "/home/zhengyew/telelean/packages/webview/src/board/EdgeEngine.ts",
+  "/home/zhengyew/telelean/packages/webview/src/board/geometry.ts",
+  "/home/zhengyew/telelean/packages/webview/src/common/Popover.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/common/Modal.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/common/OneLineInput.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/dialogs/Dialogs.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/header/Header.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/header/SubjectPicker.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/header/HistoryMenu.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/header/LeanStatus.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/prompt/PromptBox.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/tray/SelectionTray.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/toasts/Toasts.tsx",
+  "/home/zhengyew/telelean/packages/webview/src/styles/board.css",
+  "/home/zhengyew/telelean/packages/webview/test/harness/harness.js",
+  "/home/zhengyew/telelean/packages/webview/test/harness/home-guard.ts",
+  "/home/zhengyew/telelean/packages/webview/test/harness/chrome-tmp.ts",
+  "/home/zhengyew/telelean/packages/webview/test/shared/graphs.ts",
+  "/home/zhengyew/telelean/packages/webview/test/e2e/helpers.ts",
+  "/home/zhengyew/telelean/packages/webview/test/e2e/board.spec.ts",
+  "/home/zhengyew/telelean/packages/webview/test/e2e/m1-cards.spec.ts",
+  "/home/zhengyew/telelean/packages/webview/test/e2e/m1-lean-code.spec.ts",
+  "/home/zhengyew/telelean/packages/webview/test/e2e/m1-edits.spec.ts",
+  "/home/zhengyew/telelean/packages/webview/test/e2e/m1-drag.spec.ts",
+  "/home/zhengyew/telelean/packages/webview/test/e2e/m1-header.spec.ts",
+  "/home/zhengyew/telelean/packages/webview/test/e2e/m1-store.spec.ts",
+  "/home/zhengyew/telelean/packages/webview/test/unit/store.test.ts",
+  "/home/zhengyew/telelean/packages/webview/test/unit/cardData.test.ts",
+  "/home/zhengyew/telelean/packages/webview/test/unit/edges.test.ts",
+  "/home/zhengyew/telelean/packages/webview/test/unit/format.test.ts",
+  "/home/zhengyew/telelean/packages/webview/test/unit/theme.test.ts",
+  "/home/zhengyew/telelean/packages/extension/dist/webview/webview.js",
+  "/home/zhengyew/telelean/packages/extension/dist/webview/webview.js.map",
+  "/home/zhengyew/telelean/packages/extension/dist/webview/webview.css",
+  "/home/zhengyew/telelean/packages/extension/dist/webview/boot.js",
+  "/home/zhengyew/telelean/packages/extension/dist/webview/assets/codicon.ttf"
+ ],
+ "how_to_run_tests": "cd /home/zhengyew/telelean/packages/webview && npm test\nThat runs, in order: typecheck (tsc -p tsconfig.json && tsc -p tsconfig.node.json); vite build into ../extension/dist/webview; vitest run (unit tests, Node only); and `sh -c 'ulimit -c 0; playwright test'`.\n\nThe Playwright part uses the installed Chrome (channel \"chrome\"), one worker, and HOME/XDG_* inside a short /tmp/tl-pw-chrome-* directory that is deleted at teardown. A global home guard fails the run if ~/.config/google-chrome, ~/.cache/google-chrome, ~/.cache/fontconfig, ~/.pki or ~/.local/share/pki change.\n\nScreenshots go to packages/webview/test-results/ (gitignored). Check `free -m` first: MemAvailable should be ≥12 GB.",
+ "test_output": "Final run (`npm test`, 2026-11-01 12:45; MemAvailable 37110 MB before it). Head of the log:\n> npm run typecheck && npm run build && npm run test:unit && npm run test:e2e\n> tsc -p tsconfig.json && tsc -p tsconfig.node.json\n> vite build\n✓ 160 modules transformed.\n../extension/dist/webview/assets/codicon.ttf  149.50 kB\n../extension/dist/webview/webview.css          62.21 kB\n../extension/dist/webview/webview.js          352.08 kB │ map: 1,690.38 kB\n✓ built in 174ms\n> vitest run\n Test Files  6 passed (6)\n      Tests  75 passed (75)\n> sh -c 'ulimit -c 0; playwright test'\nRunning 38 tests using 1 worker\n  ✓   1 board.spec.ts › renders the Spyro sample: sentence first, kind glyph, aura on formalised cards, dashed declared arrows (602ms)\n  ✓   2 board.spec.ts › \"rendered\" always describes the graph it names, and a graph replaced before it settled is not reported late (3.0s)\n  ✓   3 board.spec.ts › the colours the extension contributes reach the board under the variable names VS Code gives them (542ms)\n  ✓   4 board.spec.ts › a stylesheet the CSP refuses while the page loads is reported through boot.js, and \"rendered\" says the board is unstyled (389ms)\n  ✓   5 board.spec.ts › the arrow checker used below is not vacuous: it reports an arrow moved 10 px off its card (398ms)\n  ✓   6 board.spec.ts › verified dependencies are drawn solid (346ms)\n  ✓   7 board.spec.ts › scrolling one column leaves the other columns alone; arrows follow scrolling and resizing; off-screen ends become stubs (912ms)\n  ✓   8 board.spec.ts › \"n linked\" buttons sit in the column header (▲) and footer (▼), cover no card, and scroll only their own column (637ms)\n  ✓   9 board.spec.ts › dragging an Assumptions card onto Goals highlights the drop zone, moves the card and posts kindChange (721ms)\n  ✓  10 board.spec.ts › click selects, Ctrl/Cmd-click multi-selects, the tray counts and \"These suffice\" posts the selected ids (930ms)\n  ✓  11 board.spec.ts › the A|D|G box adds a card to the chosen column and posts addNode (542ms)\n  ✓  12 board.spec.ts › the chevron expands a card to show its Lean code without selecting it (591ms)\n  ✓  13 board.spec.ts › high contrast replaces the aura glow with an outline (355ms)\n  ✓  14 m1-cards › AT6.2 the Vocabulary group lists the 9 Spyro items by kind, with presupposition chips, and stays collapsed across a reload (919ms)\n  ✓  15 m1-cards › AT6.3 cards show the aura, a chip per proof status and flag, the attention badge and the D-13 hint (654ms)\n  ✓  16 m1-cards › AT6.17 the \"uses:\" line truncates after two names and its dropdown lists all, highlighting the item (request 2) (2.8s)\n  ✓  17 m1-cards › AT6.21 Depends on / Used by in the expanded cards (proved Spyro), each entry reveals its card; the legend (885ms)\n  ✓  18 m1-drag › AT6.8 dragging within a column re-orders and posts reorder with the right beforeId (979ms)\n  ✓  19 m1-drag › AT6.9 drop zones state the D-11 impact; A->G of a used assumption opens the dependents dialog (744ms)\n  ✓  20 m1-drag › AT6.9 with stale facts the rewrite is disabled; \"Keep them, marked broken\" posts; Cancel posts nothing (667ms)\n  ✓  21 m1-drag › AT6.9 G->A offers the optional rationale field (Skip allowed); a host needs-confirmation opens the dialog (715ms)\n  ✓  22 m1-drag › AT6.9 the expanded card’s Make buttons behave like the drop zones (same impact, same dialogs) (584ms)\n  ✓  23 m1-drag › AT6.4 arrows: declared dashed, verified solid, conditional marked, mismatch styled, lean-ref only with focus (591ms)\n  ✓  24 m1-edits › AT6.5 the A|D|G box: stance chips for an Assumption, a why prompt per stance and kind, source chips; Enter posts addNode (865ms)\n  ✓  25 m1-edits › AT6.6 in-place edits of the sentence, the reason, the stance and the source post editNode; Escape cancels (833ms)\n  ✓  26 m1-edits › AT6.7 the delete dialog lists premise dependents, proof dependents and statement mentions, and posts deleteNode (658ms)\n  ✓  27 m1-edits › AT6.7 statement mentions (lean-ref) are listed; \"Delete card and its Lean code\" is the default (506ms)\n  ✓  28 m1-edits › AT6.10 Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y post undo/redo, but not while typing; an undoable notice shows Undo (623ms)\n  ✓  29 m1-edits › AT6.11 the tray shows the selection’s presuppositions; These suffice posts; zero premises shows a disabled Self-evident? (581ms)\n  ✓  30 m1-header › AT6.12 the subject picker lists the subjects with counts, posts selectSubject, and validates \"New subject…\" (827ms)\n  ✓  31 m1-header › AT6.13 the history dropdown lists \"time · action · label\" with the storage counter; Preview, Revert, Keep last (939ms)\n  ✓  32 m1-header › AT6.13 without a repository the dropdown offers \"Initialize git\"; other states explain themselves (819ms)\n  ✓  33 m1-header › AT6.14 the Lean badge covers every state and refreshes on click; problems open in the editor; banners (1.3s)\n  ✓  34 m1-lean-code › AT6.16 a mouse drag across the expanded code selects text and never drags the card (request 1) (1.1s)\n  ✓  35 m1-lean-code › AT6.18 the Copy button posts exactly lean.code and the \"Copied\" notice shows (request 3) (489ms)\n  ✓  36 m1-lean-code › AT6.19 hovering an identifier shows its gloss; clicking highlights it in the Vocabulary group; Ctrl+click does nothing (request 4) (870ms)\n  ✓  37 m1-lean-code › AT6.19 clicking a node name in a proof reveals and flashes that card (proved Spyro) (743ms)\n  ✓  38 m1-store › AT6.1 older graphs are dropped; selection and expansion survive; refused add and drag roll back with an error toast (855ms)\nhome guard: ~/.config/google-chrome 10 entries, ~/.cache/google-chrome absent, ~/.cache/fontconfig 113 entries, ~/.pki 4 entries, ~/.local/share/pki absent; unchanged\nisolated Chrome HOME/XDG (deleted now): xdg-config/google-chrome/Crash Reports/settings.dat, xdg-cache/fontconfig/0bd3dc0958fa2205aaaa8ebb13e2872b-le64.cache-12, ... xdg-data/pki/nssdb/cert9.db, xdg-data/pki/nssdb/key4.db, xdg-data/pki/nssdb/pkcs11.txt\n  38 passed (33.4s)\n\nNegative controls for AT6.16, each run with a temporary source edit that was then restored and rebuilt:\n- Attribute toggle disabled (canDrag guard still on): \"1 passed\". Either mechanism alone is enough in Chrome 155.\n- Toggle kept, canDrag unguarded: \"1 passed\".\n- Whole guard disabled: \"✘ … Error: expect(received).toBeGreaterThan(expected) Expected: > 10 Received: 0\" (no selection; the card is dragged).\n\nReal-home listing (my own `find ~/.config/google-chrome -printf '%P %s %T'`), before and after: identical. 11 lines: Crash Reports/{attachments,completed/07a6e357-….dmp/.meta,completed/5763b5b3-….dmp/.meta,new,pending,settings.dat (40 B, 2026-11-01 08:20)}; `diff` printed \"UNCHANGED\". The /tmp entries matching com.google.Chrome|playwright|tl-pw: 35 before, the same 35 after.",
+ "acceptance": [
+  {
+   "test": "AT6.1 Store: version handling, selection/expansion survive, workspace/history/notice stored, optimistic rollback with error toast, provisional add replaced by host id, needs-confirmation dialog",
+   "status": "pass",
+   "evidence": "Unit, in test/unit/store.test.ts:\n- \"drops graphs with a lower version...\"\n- \"stores workspace, history and notice messages\"\n- rollback tests for drag, reorder, add and edit\n- \"an add's provisional card gives way to the host's id...\" (result first, and graph first)\n- \"a needs-confirmation result opens the dependents dialog with the host's dependents\"\n\nBrowser: m1-store.spec.ts AT6.1 runs the real bridge (older graph dropped, refused add and drag roll back with an error toast).\n\nAll pass: 75/75 unit, 38/38 e2e."
+  },
+  {
+   "test": "AT6.2 Vocabulary group: 9 items grouped by kind, collapsible with state surviving reload, presupposition chips",
+   "status": "pass",
+   "evidence": "m1-cards.spec.ts AT6.2:\n- sections are Types [Character, Game], Predicates & relations [HasDarkPast, IsPG, GoodAddition], Constants [cynder, newSpyro], Presuppositions [2 chips 'assumes characters exist', 'assumes games exist'];\n- data-collapsed survives page.reload() through setState (the harness keeps it in sessionStorage);\n- nothing is posted to the host."
+  },
+  {
+   "test": "AT6.3 Cards: aura, chip per ProofStatus kind and M1 flag (pending-promotion, conditional, proved-goal, uses-sorry, not-checked without check mark, stale), attention badge, D-13 hint",
+   "status": "pass",
+   "evidence": "m1-cards.spec.ts AT6.3 on the statusGallery graph:\n- every chip's text is checked;\n- g-unchecked contains no '✓';\n- a-stale's proof chip has data-dim and a 'checking…' chip;\n- attention badges read 2 (warning + error) and 1 (infos are not counted);\n- the D-13 hint shows on a-premised.\n\nUnit: cardData.test.ts 'card chips'."
+  },
+  {
+   "test": "AT6.4 Arrows: declared dashed, verified solid, conditional marked, mismatch styled, lean-ref only on hover/selection; M0 edge-engine e2e still pass",
+   "status": "pass",
+   "evidence": "m1-drag.spec.ts AT6.4 on edgeKindsGraph:\n- dash patterns and stroke colours (warning rgb(204, 167, 0));\n- marker-end values (conditional and mismatch markers);\n- SVG <title> tooltips;\n- the lean-ref path appears only while hovered or selected;\n- checkArrows reports no problems.\n\nAll 13 M0 board.spec.ts tests pass, including the scrolling, stub and badge geometry tests."
+  },
+  {
+   "test": "AT6.5 A|D|G box: stance chips, why placeholder per stance/kind, source chips; Enter posts addNode with trimmed naturalName, rationale, stance, source",
+   "status": "pass",
+   "evidence": "m1-edits.spec.ts AT6.5:\n- placeholders checked for believe/rule/supposing, Derivation and Goal;\n- a paste with line breaks becomes spaces;\n- posted payload: {clientId:'spyro-is-purple-and-brave', type:'ASSUMPTION', naturalName:'Spyro is   purple  and brave', requestId:'r1', rationale:'seen it in the game', stance:'believe', source:'observed'};\n- the host graph then replaces the provisional card under the id the host named."
+  },
+  {
+   "test": "AT6.6 Inline edit of sentence, rationale, stance, source posts editNode; Escape cancels; empty rationale posts null",
+   "status": "pass",
+   "evidence": "m1-edits.spec.ts AT6.6 checks the five editNode payloads in order (naturalName; rationale null; stance supposing; source null; source reported). Escape (also after opening with F2) posts nothing."
+  },
+  {
+   "test": "AT6.7 Delete dialog lists premise dependents, proof dependents, statement mentions; posts deleteNode with keepLean",
+   "status": "pass",
+   "evidence": "m1-edits.spec.ts, two AT6.7 tests:\n- spyroProvedGraph: cynder-dark-past is declared by and used by the proof of cynder-not-good; Cancel, Escape and the Delete key work; 'Delete card only, keep Lean' posts keepLean:true;\n- mentionGraph (lean-ref): the mentions section is listed; the default button (focused) posts keepLean:false;\n- a code-less card offers only 'Delete card'."
+  },
+  {
+   "test": "AT6.8 Dragging within a column posts reorder with the right beforeId",
+   "status": "pass",
+   "evidence": "m1-drag.spec.ts AT6.8 posted reorder {beforeId:'pg-no-dark-past', r1} and {beforeId:null, r2}. Dropping a card on itself posts nothing. A refused reorder rolls back with a toast."
+  },
+  {
+   "test": "AT6.9 Cross-column drag: drop-zone summaries, dependents dialog (rewrite enabled fresh / disabled stale), kindChange with dependents, G->A rationale, Make buttons",
+   "status": "pass",
+   "evidence": "m1-drag.spec.ts, four AT6.9 tests:\n- drop zones read 'Make Derivation: promotion pending until proved' and 'Make Goal: 1 dependent needs a hypothesis rewrite';\n- the dialog lists cynder-not-good, and rewrite posts {dependents:'rewrite'};\n- with stale facts rewrite is disabled and mark-broken posts;\n- G->A shows the rationale field ('Why do you hold it?') and posts with the rationale;\n- a host needs-confirmation lists node sentences and Lean names in <code>;\n- the Make buttons open the same dialogs."
+  },
+  {
+   "test": "AT6.10 Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y post undo/redo but not while typing; undoable notice shows Undo that posts undo",
+   "status": "pass",
+   "evidence": "m1-edits.spec.ts AT6.10: undo r1, redo r2, redo r3; nothing is posted while typing in an input. The undo-button title carries the workspace label. The toast's Undo posts undo r5."
+  },
+  {
+   "test": "AT6.11 Tray presupposition chips; These suffice posts theseSuffice; zero premises shows disabled Self-evident? with M2 note",
+   "status": "pass",
+   "evidence": "m1-edits.spec.ts AT6.11 checks the chips, the disabled 'Self-evident?' with 'available with Claude in M2', the posted theseSuffice payload, and that a chip highlights the vocabulary item."
+  },
+  {
+   "test": "AT6.12 Subject picker lists subjects, posts selectSubject; New subject validates and posts createSubject",
+   "status": "pass",
+   "evidence": "m1-header.spec.ts AT6.12:\n- the menu lists 'Spyro4 cards' and 'Bayonetta2 cards'; choosing one posts selectSubject {subject:'Bayonetta'};\n- validation rejects 'kingdom', 'Bayonetta' (taken) and 'Kingdom-Hearts';\n- a host refusal is shown in place;\n- createSubject posts r1 and r2;\n- the board switches when workspace and graph arrive."
+  },
+  {
+   "test": "AT6.13 History dropdown: historyList on open, 'time · action · label' entries, storage counter, Preview, Revert confirm, Keep last, no-repo Initialize git",
+   "status": "pass",
+   "evidence": "m1-header.spec.ts, two AT6.13 tests:\n- open posts historyList {subject:'Spyro', limit:50};\n- storage reads 'This subject: 12 KB · All subjects: 30 KB'; entry lines are matched by regex;\n- Preview posts historyPreview with compare 'parent';\n- Revert asks first (Cancel posts nothing), then posts historyRevert;\n- historyPrune keepLast 2;\n- no-repo shows 'Initialize git', which posts initGit;\n- the git-missing, disabled and error messages are shown."
+  },
+  {
+   "test": "AT6.14 Lean badge text for every SemanticSummary state; problems list items post openInEditor; unsupported-toolchain banner; disabled detail",
+   "status": "pass",
+   "evidence": "m1-header.spec.ts AT6.14 walks all 9 states with their texts, and a click posts refresh. A problem's file item posts openInEditor with the file and range; 'Show card' highlights the card. The syntactic-mode banner names the toolchain, and the disabled banner shows its detail.\n\nUnit: format.test.ts covers every badge text."
+  },
+  {
+   "test": "AT6.15 Playwright with HOME/XDG inside run temp dir and ulimit -c 0; real ~/.config/google-chrome unchanged",
+   "status": "pass",
+   "evidence": "playwright.config.ts sets launchOptions.env HOME, XDG_CONFIG_HOME, XDG_CACHE_HOME and XDG_DATA_HOME inside /tmp/tl-pw-chrome-*, plus the args; the script is `sh -c 'ulimit -c 0; playwright test'`.\n\nThe teardown log shows Chrome wrote into the isolated dirs (xdg-config/google-chrome/Crash Reports/settings.dat, the fontconfig cache, xdg-data/pki/nssdb).\n\nThe global home guard printed 'unchanged'. My manual `diff` of the before/after listings of ~/.config/google-chrome printed 'UNCHANGED' (11 entries)."
+  },
+  {
+   "test": "AT6.16 Request 1: drag across expanded code selects text, posts no reorder/kindChange, card never data-dragging, tray unchanged, plain click changes nothing, card face drag still works",
+   "status": "pass",
+   "evidence": "m1-lean-code.spec.ts AT6.16:\n- the selection contains 'cynder_dark_past.holds' and is a substring of the code;\n- MutationObserver watchers saw no data-dragging and no data-drop;\n- nothing but diagnostics was posted; the tray still shows '1 selected';\n- draggable is back to 'true';\n- a click on 'abbrev' changes nothing;\n- dragging by the card face afterwards posts kindChange A->D.\n\nNegative control: with the guard disabled the test fails (selection length 0)."
+  },
+  {
+   "test": "AT6.17 Request 2: 'uses: GoodAddition, cynder, …' with '▾ 3'; dropdown lists 3 with glosses and highlights; cynder-dark-past 'uses: HasDarkPast, cynder' '▾ 2'; no line without lean.uses",
+   "status": "pass",
+   "evidence": "m1-cards.spec.ts AT6.17:\n- exact texts checked;\n- dropdown rows [GoodAddition, predicate, 'would be a good addition to'], [cynder, constant, Cynder], [newSpyro, constant, 'the new Spyro game'];\n- a click highlights the item and scrolls it into the column view;\n- no select is posted (this test caught, and I fixed, the React portal-bubbling bug).\n\nUnit: cardData.test.ts 'uses line'."
+  },
+  {
+   "test": "AT6.18 Request 3: Copy posts copyText with exactly node.lean.code; 'Copied' notice shows",
+   "status": "pass",
+   "evidence": "m1-lean-code.spec.ts AT6.18: copyText payload equals spyroProvedGraph's goal code (= SPYRO_LEAN.cynderNotGood + '\\n' + proof). The button reads 'Copied' and the toast contains 'Copied'. Open in editor posts codeLoc."
+  },
+  {
+   "test": "AT6.19 Request 4: hover HasDarkPast shows 'has a dark past'; click expands vocab, scrolls into view, data-highlight; pg_no_dark_past.holds reveals pg-no-dark-past card; Ctrl+click does nothing",
+   "status": "pass",
+   "evidence": "m1-lean-code.spec.ts, two AT6.19 tests:\n- the tooltip text is checked, and a node's own name shows its sentence;\n- Ctrl+click posts nothing, highlights nothing and leaves the group collapsed;\n- a plain click opens the group, the item is in the column view and has data-highlight;\n- the proof ref reveals the pg-no-dark-past card, which had been scrolled out of view."
+  },
+  {
+   "test": "AT6.20 No CSP violations; M0 e2e suite still passes (expectation changes noted)",
+   "status": "pass",
+   "evidence": "Every spec has an afterEach asserting zero console errors, page errors and CSP violations. All 13 M0 tests pass; the expectation changes are listed in minor_decisions/integration_notes (request ids, reorder posts, the M1 colours)."
+  },
+  {
+   "test": "AT6.21 Depends on / Used by for spyroProvedGraph (goal depends on 3 assumptions; cynder-dark-past used by goal), entries reveal cards; legend shows declared, verified, conditional, mismatch arrows and aura",
+   "status": "pass",
+   "evidence": "m1-cards.spec.ts AT6.21:\n- Depends on lists the 3 sentences with 'declared, used by the proof';\n- cynder-dark-past's Used by lists the goal;\n- entries reveal cards that were scrolled away;\n- the legend items are checked (dashed declared, solid verified, hollow conditional head, warning mismatch, aura).\n\nUnit: cardData.test.ts 'relations'."
+  }
+ ],
+ "contract_changes": [
+  "None. I edited no frozen file (core contracts, protocol, samples, runner contracts) and no file outside packages/webview/** and packages/extension/dist/webview/**."
+ ],
+ "minor_decisions": [
+  {
+   "decision": "The Vocabulary group is collapsed by default. Once toggled, the state is kept per board in the webview state, and highlighting an item opens the group.",
+   "rationale": "Opened, the 9-item Spyro vocabulary is about 580 px tall and pushes the Assumptions below the fold of a normal window. D-3 already describes the group as one that expands when needed."
+  },
+  {
+   "decision": "In the A|D|G box, stance chips appear for Assumptions only and source chips for Assumptions and Derivations, not for Goals. In the expanded card the same rule applies, except that a value already set is always shown so it can be removed.",
+   "rationale": "Evidentials (observed/reported/…) describe how a belief is known; a goal is not a belief. The why prompt still follows the kind (\"Why do you care?\")."
+  },
+  {
+   "decision": "The card face is the drag handle. Presses on buttons, fields, the Lean code and the whole expanded area never drag, and clicks in the expanded area never change the selection.",
+   "rationale": "This extends request 1 consistently: the expanded area is for reading, selecting text and pressing buttons, and editing in cards is planned later."
+  },
+  {
+   "decision": "In-place edits (sentence, reason, stance, source) are applied optimistically too. A refused edit rolls back only its own field.",
+   "rationale": "Without this the card shows the old text until the host's graph arrives. A per-field rollback cannot overwrite a later edit that succeeded."
+  },
+  {
+   "decision": "A card the host has not confirmed yet (an add in flight) cannot be dragged, edited or deleted. It is drawn dashed with a 'saving…' chip and survives unrelated graphs until the host's card replaces it (matched by `outcome.nodeId`, or by type and sentence when the graph comes first).",
+   "rationale": "The host has no block for it yet."
+  },
+  {
+   "decision": "Request ids are `r<n>`. The counter is persisted in the webview state, so ids continue after a webview reload.",
+   "rationale": "Otherwise an answer to a request sent before a reload could match a new request."
+  },
+  {
+   "decision": "Dropdowns and tooltips render in document.body, positioned through the CSSOM. They follow their anchor while scrolling and close once it scrolls out of view, on Escape, or on a press outside. They stop click propagation.",
+   "rationale": "A column's scroll box would clip them. React bubbles portal events to the card, which selected it (a bug found by AT6.17). Scroll events arrive a frame late, which closed a just-opened menu."
+  },
+  {
+   "decision": "The same toast text shows once (at most 4 toasts; info 6 s, warning 10 s, error 15 s). Every refused request shows `outcome.error` as an error toast; a needs-confirmation answer to a kind change opens the dialog instead.",
+   "rationale": "The host's notice and the board's refusal toast may say the same thing."
+  },
+  {
+   "decision": "\"Revert to this\" is offered for every history entry, including the newest.",
+   "rationale": "Reverting to the newest snapshot discards unsnapshotted hand edits; the host snapshots the current state first, so it stays undoable."
+  },
+  {
+   "decision": "Delete is not optimistic: the card stays until the host's graph removes it. The keep-Lean choice is shown only for formalised cards; code-less cards get 'Delete card' alone.",
+   "rationale": "Deleting is the least reversible action, and the brief asked for optimism only on drag, add and reorder."
+  },
+  {
+   "decision": "Dropping a card on itself is 'no move' (nothing is posted). M0 moved it to the end of its column.",
+   "rationale": "Reorder now posts and edits layout.json, so an accidental no-op drag should not write anything."
+  },
+  {
+   "decision": "During a drag, each candidate column shows a drop-zone panel near its bottom with the impact summary and detail (backticks stripped). The panel lets the pointer through. The header keeps M0's 'Drop to make X'.",
+   "rationale": "The column header is too narrow for the impact text. A panel that lets the pointer through does not shift cards under the pointer during the drag."
+  },
+  {
+   "decision": "Edge styling:\n- conditional verified edges: a hollow arrowhead (it stays hollow when focused);\n- mismatch edges: the warning colour;\n- both carry SVG <title> tooltips and react to the pointer on their stroke only;\n- lean-ref edges: thin, drawn only while an end is hovered or selected, and only when no declared or verified arrow already joins the pair.",
+   "rationale": "Line pattern stays reserved for epistemic status (D-13/D-15). Tooltips need pointer events, which are limited to the few marked arrows so wheel and clicks still reach the columns."
+  },
+  {
+   "decision": "The expanded card shows 'Rests on' (the footprint, including presupposition chips) and the statement's 'Presupposes' chips, minus those already in the footprint. The raw `#print axioms` list is in a collapsed details element. The proved-goal and provable-assumption chips are buttons that start Make Derivation; the 'no reason yet' chip opens the reason editor. F2 edits the sentence and Delete opens the delete dialog.",
+   "rationale": "No duplicate chips, and keyboard routes for every gesture (03 section 7)."
+  },
+  {
+   "decision": "Lean badge texts:\n- 'Lean: not checked yet', 'Lean: checking…', 'Lean: up to date';\n- 'Lean: files changed';\n- 'Lean: N errors' or 'Lean: check failed';\n- 'Lean paused: low memory';\n- 'Lean: syntactic mode' (plus a banner);\n- 'Lean: off' (plus a banner with the detail).\nHistory action words: add, edit, delete, kind, move, premises, new subject, start, manual edits, undo, redo, revert, initialize.",
+   "rationale": "Short, plain words; the raw action ids are hyphenated programmer terms."
+  },
+  {
+   "decision": "'Copied' feedback appears on the Copy button itself, as well as in the host's notice toast.",
+   "rationale": "Feedback is guaranteed even if the host sends no notice."
+  },
+  {
+   "decision": "Each vocabulary item can be expanded to show its declaration code, the cards that use it, and Open in editor.",
+   "rationale": "A cheap way to explore what the vocabulary means and where it is used."
+  },
+  {
+   "decision": "M0 tests updated where the plan changed them:\n- store.test.ts: theseSuffice/addNode/kindChange payloads carry requestId; 'reordering within a column posts nothing' now expects `reorder`; addNode keeps inner whitespace (D-16 verbatim, M0 collapsed it); the old 'new graph keeps selection' test is replaced by AT6.1's;\n- theme.test.ts: accepts the M1 colours and explicit per-theme hex defaults;\n- board.spec.ts: requestId in kindChange/theseSuffice/addNode payloads; the colour test now covers telelean.vocabulary and telelean.highlight;\n- the toDisplayEdges test moved to edges.test.ts and was extended.",
+   "rationale": "The brief asked to update and name M0 tests whose expectations the plan changed."
+  }
+ ],
+ "open_issues": [
+  "packages/core/src/kindChange.ts (WP2-owned, not mine) has a grammar bug in the impact details shown in drop zones and dialogs: plural() conjugates only the noun, so the text reads '1 proof use it' and 'Until then 1 proof rest on a claimed node'.",
+  "Plan risk R5 (packages/webview/src/board/dragGuard.ts) needs a small correction from my negative controls. The plan says only the draggable toggle works. In Chrome 155, pragmatic-dnd's canDrag=false (preventDefault on dragstart) also lets the text selection continue. Both mechanisms are implemented; with neither, AT6.16 fails. No action needed; the plan text could be corrected.",
+  "The Lean badge always posts refresh on click, also in states where a refresh cannot help (unsupported-toolchain, disabled). The host decides what to do."
+ ],
+ "integration_notes": "For WP5 and the integrator:\n\n1. **Webview state.** The board merges `{ subject, vocabCollapsed, requestCounter }` into the panel's webview state and preserves any other keys. WP5's panel serializer can read `state.subject` to reopen the same subject.\n2. **Message flow.**\n   - On `ready` (lastVersion null after a reload), send `workspace`, then `graph`.\n   - Answer every mutating message that has a `requestId` with an `actionResult`; for addNode, `outcome.nodeId` is the host's final id.\n   - On a refusal the board shows `outcome.error` as an error toast; a notice with the identical text is deduplicated.\n   - `needs-confirmation` for a kindChange rolls the card back and opens the dependents dialog listing `outcome.dependents`.\n   - `historyList` (sent on dropdown open, with limit 50, more on demand) expects a `history` reply.\n   - `selectSubject` and `createSubject` expect the host to post `workspace` + `graph` for the new subject.\n   - A graph of another subject resets selection and expansion and drops pending adds.\n3. **Undo keys.** The webview itself handles Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z and Ctrl+Y, posting undo/redo when focus is not in a field or dialog. WP5 must not also bind Ctrl+Z to post undo for the board, or undo would run twice. VS Code's own webview undo (execCommand) is harmless.\n4. **Clipboard.** copyText carries exactly `lean.code`. The webview shows 'Copied' on the button; a host notice is shown as a toast too. The harness notice text is 'Copied the Lean code to the clipboard.'\n5. **openInEditor targets.** Cards send `lean.codeLoc` (or `loc` for code-less cards), vocabulary items send `item.loc`, and diagnostics send their file and range. The Lean badge posts `refresh`.\n6. **Colours.** The board reads `--vscode-telelean-vocabulary` and `--vscode-telelean-highlight` with fallbacks. WP5's manifest already contributes them with per-theme hex defaults, and my theme tests pass against it.\n7. **Build output.** dist/webview has the same file names as M0 (webview.js, webview.css, boot.js, assets/codicon.ttf). `npm test` in packages/webview rebuilds it. The user's installed extension will show the M1 board after a reload. With the current host, mutations get no actionResult, so optimistic changes simply stay.\n8. **Data the board relies on.**\n   - `lean.refs` are code-relative; refs spanning lines or overlapping are ignored.\n   - `lean.uses` absent hides the \"uses:\" line.\n   - The attention badge counts diagnostics with `nodeId` and severity error or warning.\n   - A `TlEdge` with `conditional` gets the hollow arrowhead, `mismatch` the warning colour, and `lean-ref` the focus-only thin arrow.\n9. **Test harness** (packages/webview/test/harness/harness.js):\n   - auto-replies ok, with nodeId = clientId for addNode;\n   - answers historyList with `__TL_HARNESS__.history` and copyText with a notice;\n   - sends `__TL_HARNESS__.workspace` before the graph;\n   - `__tlHarness.replies` queues failure outcomes;\n   - getState/setState persist in sessionStorage across `page.reload()`.",
+ "effects_outside_repo": [
+  "Scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/wp6/ contains:\n- chrome-config-before.txt and chrome-config-after.txt (identical listings of ~/.config/google-chrome: names, sizes, mtimes only);\n- tmp-chrome-before.txt and tmp-chrome-after.txt (identical lists of /tmp entries matching com.google.Chrome|playwright|tl-pw);\n- npm-test.log (the final test log);\n- dragGuard.ts.bak and NodeCard.tsx.bak (copies used to restore the sources after the AT6.16 negative controls; both were restored and rebuilt).",
+  "Each Playwright run created a short temp dir /tmp/tl-pw-chrome-XXXXXX holding Chrome's TMPDIR and the isolated HOME/XDG dirs. Chrome wrote its crash-report settings.dat, a fontconfig cache and an NSS db there. The global teardown deleted it after each run; no tl-pw-chrome-* dir remains.",
+  "/tmp/playwright-transform-cache-1002 existed before my runs (from M0). Playwright's test runner wrote compiled copies of my test files into it (a cache). I left it in place because it was shared and pre-existing.",
+  "During each run the test HTTP server (test/harness/serve.mjs) listened on 127.0.0.1:41739, loopback only. Playwright started and stopped it. pgrep afterwards found no leftover serve.mjs, playwright or Chrome processes from me.",
+  "Real home folder unchanged: the home guard and my own diff found no change in ~/.config/google-chrome, ~/.cache/google-chrome (absent), ~/.cache/fontconfig, ~/.pki and ~/.local/share/pki. The /tmp com.google.Chrome* set is unchanged (35 entries before and after).",
+  "Inside the repo but outside the source tree: packages/extension/dist/webview/** was rebuilt (my owned output). Screenshots went to packages/webview/test-results/ (gitignored). I wrote one home-guard.json there with a listing of the real home dirs and deleted it; the guard now prints only a summary. Vitest/Vite may have refreshed their caches under node_modules (gitignored).",
+  "None of the following: network access, downloads, npm install, git commands, Claude CLI runs, sudo, credential reads, or changes to VS Code settings or extensions, ~/.config (other than read-only listing), ~/.claude, ~/.elan or global git config."
+ ]
+}
