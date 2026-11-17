@@ -1705,7 +1705,7 @@ class RunManagerImpl implements RunManager {
           if (shown !== undefined) await shadow.revertTo(shown.id, 'Accept refused: working copy restored', run.view.round);
           return refused(
             'conflict',
-            `Accept was refused: Claude's changes, applied to your current files, did not pass the checks (${failure}). Discard, or send Feedback to redo it on your current files.`,
+            `Accept was refused: Claude's changes, applied to your current files, did not pass the checks (${failure}). Discard, or undo your edits since the run started and Accept again.`,
           );
         }
         const shownState = new Map([...(await shadow.currentFiles())].filter(([rel]) => isModelPath(rel, library)));

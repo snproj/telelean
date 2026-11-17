@@ -171,6 +171,7 @@ export function describe(finding: GateFinding, ctx: DescribeContext, brief = fal
       if (token === 'after-freeze') return `it added ${shown !== undefined ? `vocabulary (${shown})` : 'vocabulary'} after freezing the statements`;
       if (token === 'statement') return `it wrote an axiom${shown !== undefined ? ` (${shown})` : ''} as the statement of ${cardLabel(finding.nodeId, ctx)}`;
       if (token === 'unclassified') return `it added an axiom telelean cannot classify as vocabulary${shown !== undefined ? ` (${shown})` : ''}`;
+      if (token === 'detached') return `it left a blank line between ${cardLabel(finding.nodeId, ctx)} and its Lean statement`;
       return `it added an axiom${shown !== undefined ? ` (${shown})` : ''}, and only you can add beliefs`;
     case 'vocabulary-shape':
       return `it added vocabulary of a kind telelean does not allow${shown !== undefined ? ` (${shown})` : ''}`;
@@ -198,6 +199,7 @@ export function describe(finding: GateFinding, ctx: DescribeContext, brief = fal
       return 'it said the goal was not proved but left a proof of it in the files';
     case 'not-formalised':
       if (token === 'malformed') return `it bound ${cardLabel(finding.nodeId, ctx)} to something that is not a Lean statement${shown !== undefined ? ` (${shown})` : ''}`;
+      if (token === 'detached') return `it left a blank line between ${cardLabel(finding.nodeId, ctx)} and its Lean statement`;
       return `it did not formalise ${cardLabel(finding.nodeId, ctx)}`;
     case 'missing-holds':
       return token === 'mismatch'

@@ -1,0 +1,188 @@
+{
+  "name": "variants",
+  "description": "Socrates again, written the way a real Claude may honestly write it: the sort and predicates in Vocabulary.lean without docstrings and with a NAMED presupposition instance, the constant at the top of Inbox.lean, the statements as `def` with their value on the next line, a stray blank line under one card (the freeze is refused naming the blank line; removed; frozen), and the proof as a tactic block in Main.lean. Every variant passes; the first gate attempt passes.",
+  "subject": "Demo",
+  "today": "2026-11-10",
+  "cards": [
+    {
+      "type": "ASSUMPTION",
+      "naturalName": "All humans are mortal",
+      "id": "all-humans-are-mortal"
+    },
+    {
+      "type": "ASSUMPTION",
+      "naturalName": "Socrates is a human",
+      "id": "socrates-is-a-human"
+    },
+    {
+      "type": "GOAL",
+      "naturalName": "Socrates is mortal",
+      "id": "socrates-is-mortal"
+    }
+  ],
+  "target": "socrates-is-mortal",
+  "premises": [
+    "all-humans-are-mortal",
+    "socrates-is-a-human"
+  ],
+  "expect": {
+    "verdict": "proved",
+    "definitions": [
+      "Demo.Being.exists"
+    ],
+    "failedChecks": 1,
+    "freezeRefusals": 1,
+    "footprint": [
+      "all-humans-are-mortal",
+      "socrates-is-a-human",
+      "presup:Demo.Being.exists"
+    ]
+  },
+  "turns": [
+    {
+      "match": "Run: \"These suffice\"",
+      "steps": [
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 76,
+            "outputTokens": 120,
+            "cacheReadInputTokens": 27000,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "read",
+          "path": "Model/Demo/Inbox.lean"
+        },
+        {
+          "kind": "read",
+          "path": "Model/Demo/Vocabulary.lean"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Vocabulary.lean",
+          "oldString": "namespace Demo\n\nend Demo\n",
+          "newString": "namespace Demo\n\naxiom Being : Type\naxiom Being.exists : Nonempty Being\ninstance instNonemptyBeing : Nonempty Being := Being.exists\naxiom Human : Being → Prop\naxiom Mortal : Being → Prop\n\nend Demo\n"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "namespace Demo\n\n",
+          "newString": "namespace Demo\n\n/-- Socrates -/\nnoncomputable opaque socrates : Being\n\n"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "natural_name: All humans are mortal\nasserted: 2026-11-10\n-/\n",
+          "newString": "natural_name: All humans are mortal\nasserted: 2026-11-10\n-/\n\n/-- All humans are mortal -/\ndef all_humans_are_mortal : Prop :=\n  ∀ x : Being, Human x → Mortal x\naxiom all_humans_are_mortal.holds : all_humans_are_mortal\n"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "natural_name: Socrates is a human\nasserted: 2026-11-10\n-/\n",
+          "newString": "natural_name: Socrates is a human\nasserted: 2026-11-10\n-/\n/-- Socrates is a human -/\ndef socrates_is_a_human : Prop :=\n  Human socrates\naxiom socrates_is_a_human.holds : socrates_is_a_human\n"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "natural_name: Socrates is mortal\npremises: all-humans-are-mortal, socrates-is-a-human\nasserted: 2026-11-10\n-/\n",
+          "newString": "natural_name: Socrates is mortal\npremises: all-humans-are-mortal, socrates-is-a-human\nasserted: 2026-11-10\n-/\n/-- Socrates is mortal -/\ndef socrates_is_mortal : Prop :=\n  Mortal socrates\n"
+        },
+        {
+          "kind": "callTool",
+          "tool": "check_lean",
+          "args": {}
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 77,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 27500,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "callTool",
+          "tool": "freeze_statements",
+          "args": {
+            "targets": [
+              "socrates-is-mortal"
+            ]
+          }
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 78,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 28000,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "text",
+          "text": "A blank line separates the first card from its statement; removing it."
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "natural_name: All humans are mortal\nasserted: 2026-11-10\n-/\n\n",
+          "newString": "natural_name: All humans are mortal\nasserted: 2026-11-10\n-/\n"
+        },
+        {
+          "kind": "callTool",
+          "tool": "freeze_statements",
+          "args": {
+            "targets": [
+              "Demo.socrates_is_mortal"
+            ]
+          }
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 79,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 28500,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Main.lean",
+          "oldString": "namespace Demo\n\nend Demo\n",
+          "newString": "namespace Demo\n\ntheorem socrates_is_mortal.holds : socrates_is_mortal := by\n  unfold socrates_is_mortal\n  exact all_humans_are_mortal.holds socrates socrates_is_a_human.holds\n\nend Demo\n"
+        },
+        {
+          "kind": "callTool",
+          "tool": "check_lean",
+          "args": {}
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 80,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 29000,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "callTool",
+          "tool": "finish",
+          "args": {
+            "status": "proved",
+            "summary": "Proved from the two premises.",
+            "assumed_without_asking": []
+          }
+        },
+        {
+          "kind": "result",
+          "costEstimateUsd": 0.01
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,112 @@
+{
+  "name": "arith",
+  "description": "'Self-evident?' with a goal Lean proves by computation alone: no vocabulary and no premises; a helper lemma that mentions no constant either. Proved and flagged self-evident. Regression for turn 13: Lean 4.35's .ilean leaves such declarations out of its `decls` table, so the facts missed them and the gate refused them as 'Lean reported nothing about …'.",
+  "subject": "Demo",
+  "today": "2026-11-10",
+  "cards": [
+    {
+      "type": "GOAL",
+      "naturalName": "Two plus two is four",
+      "id": "two-plus-two-is-four"
+    }
+  ],
+  "target": "two-plus-two-is-four",
+  "premises": [],
+  "expect": {
+    "verdict": "proved",
+    "selfEvident": true,
+    "definitions": [],
+    "footprint": []
+  },
+  "turns": [
+    {
+      "match": "Run: \"These suffice\"",
+      "steps": [
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 72,
+            "outputTokens": 120,
+            "cacheReadInputTokens": 25000,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "read",
+          "path": "Model/Demo/Inbox.lean"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "natural_name: Two plus two is four\nasserted: 2026-11-10\n-/\n",
+          "newString": "natural_name: Two plus two is four\nasserted: 2026-11-10\n-/\n/-- Two plus two is four -/\nabbrev two_plus_two_is_four : Prop := 2 + 2 = 4\n"
+        },
+        {
+          "kind": "callTool",
+          "tool": "check_lean",
+          "args": {}
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 73,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 25500,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "callTool",
+          "tool": "freeze_statements",
+          "args": {
+            "targets": [
+              "two-plus-two-is-four"
+            ]
+          }
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 74,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 26000,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "abbrev two_plus_two_is_four : Prop := 2 + 2 = 4\n",
+          "newString": "abbrev two_plus_two_is_four : Prop := 2 + 2 = 4\ntheorem four_eq : 2 + 2 = 4 := by decide\ntheorem two_plus_two_is_four.holds : two_plus_two_is_four := four_eq\n"
+        },
+        {
+          "kind": "callTool",
+          "tool": "check_lean",
+          "args": {}
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 75,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 26500,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "callTool",
+          "tool": "finish",
+          "args": {
+            "status": "proved",
+            "summary": "True by computation.",
+            "assumed_without_asking": []
+          }
+        },
+        {
+          "kind": "result",
+          "costEstimateUsd": 0.01
+        }
+      ]
+    }
+  ]
+}

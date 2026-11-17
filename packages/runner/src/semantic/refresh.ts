@@ -21,9 +21,11 @@ import {
   DEFAULT_LIBRARY,
   LEAN_FACTS_FORMAT,
   LEAN_FACTS_VERSION,
+  parseLeanFile,
   type BuildFacts,
   type CheckRunFacts,
   type DeclFacts,
+  type DeclInfo,
   type DeclRef,
   type FactsStatus,
   type LeanFacts,
@@ -215,6 +217,8 @@ export interface DeclDraft {
   readonly refs: DeclRef[];
 }
 
+const notAfter = (a: Range['start'], b: Range['start']): boolean => a.line < b.line || (a.line === b.line && a.character <= b.character);
+
 /** Declarations of one module from its `.ilean`, with docstrings and source keywords from the text. */
 export function declDrafts(src: { readonly text: string; readonly starts: readonly number[] }, data: IleanData): DeclDraft[] {
   const refsByParent = new Map<string, DeclRef[]>();
@@ -223,11 +227,29 @@ export function declDrafts(src: { readonly text: string; readonly starts: readon
     list.push({ name: u.name, module: u.module, range: u.range });
     refsByParent.set(u.parent, list);
   }
-  return data.decls.map((d) => {
+  // An unlisted declaration (ilean.ts) comes with its name's range only: telelean's own declaration scanner (the one
+  // the board uses, so the ranges agree) gives its full range, from the docstring to its last line.
+  let syntactic: readonly DeclInfo[] | undefined;
+  const syntacticRange = (name: string, selection: Range): Range | undefined => {
+    syntactic ??= parseLeanFile('', src.text).decls;
+    const decl = syntactic.find((x) => x.fullName === name && notAfter(x.range.start, selection.start) && notAfter(selection.end, x.range.end));
+    return decl?.range;
+  };
+  return data.decls.flatMap((d): DeclDraft[] => {
     let range = d.range;
     let docstring: string | undefined;
     let keyword: string | undefined;
-    if (d.auxiliary) {
+    if (d.unlisted) {
+      // Only a declaration written in the source counts (never a name Lean generated, e.g. by `deriving`).
+      const full = syntacticRange(d.name, d.selectionRange);
+      if (full === undefined) return [];
+      range = full;
+      const off = offsetOf(src.text, src.starts, full.start);
+      if (off !== undefined) {
+        docstring = docstringAt(src.text, off);
+        keyword = declKeywordAt(src.text, off);
+      }
+    } else if (d.auxiliary) {
       const off = offsetOf(src.text, src.starts, d.selectionRange.start);
       const before = off === undefined ? undefined : docstringBefore(src.text, off);
       if (before !== undefined) {
@@ -241,15 +263,17 @@ export function declDrafts(src: { readonly text: string; readonly starts: readon
         keyword = declKeywordAt(src.text, off);
       }
     }
-    return {
-      name: d.name,
-      range,
-      selectionRange: d.selectionRange,
-      ...(docstring !== undefined ? { docstring } : {}),
-      ...(d.parent !== undefined ? { parent: d.parent } : {}),
-      ...(keyword !== undefined ? { keyword } : {}),
-      refs: refsByParent.get(d.name) ?? [],
-    };
+    return [
+      {
+        name: d.name,
+        range,
+        selectionRange: d.selectionRange,
+        ...(docstring !== undefined ? { docstring } : {}),
+        ...(d.parent !== undefined ? { parent: d.parent } : {}),
+        ...(keyword !== undefined ? { keyword } : {}),
+        refs: refsByParent.get(d.name) ?? [],
+      },
+    ];
   });
 }
 

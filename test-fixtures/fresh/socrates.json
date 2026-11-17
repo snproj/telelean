@@ -1,0 +1,152 @@
+{
+  "name": "socrates",
+  "description": "A demo user's first example on a freshly initialised model: two code-less assumptions and a code-less goal typed on the board (Model/Demo/Inbox.lean). Claude creates the vocabulary (a sort with its existence presupposition and instance, two predicates, a constant) in Vocabulary.lean, formalises the three cards directly below their blocks, checks, freezes, proves and finishes proved.",
+  "subject": "Demo",
+  "today": "2026-11-10",
+  "cards": [
+    {
+      "type": "ASSUMPTION",
+      "naturalName": "All humans are mortal",
+      "id": "all-humans-are-mortal"
+    },
+    {
+      "type": "ASSUMPTION",
+      "naturalName": "Socrates is a human",
+      "id": "socrates-is-a-human"
+    },
+    {
+      "type": "GOAL",
+      "naturalName": "Socrates is mortal",
+      "id": "socrates-is-mortal"
+    }
+  ],
+  "target": "socrates-is-mortal",
+  "premises": [
+    "all-humans-are-mortal",
+    "socrates-is-a-human"
+  ],
+  "expect": {
+    "verdict": "proved",
+    "definitions": [
+      "Demo.Being.exists"
+    ],
+    "footprint": [
+      "all-humans-are-mortal",
+      "socrates-is-a-human",
+      "presup:Demo.Being.exists"
+    ]
+  },
+  "turns": [
+    {
+      "match": "Run: \"These suffice\"",
+      "steps": [
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 41,
+            "outputTokens": 120,
+            "cacheReadInputTokens": 9500,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "read",
+          "path": "Model/Demo/Inbox.lean"
+        },
+        {
+          "kind": "read",
+          "path": "Model/Demo/Vocabulary.lean"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Vocabulary.lean",
+          "oldString": "namespace Demo\n\nend Demo\n",
+          "newString": "namespace Demo\n\n/-- beings -/\naxiom Being : Type\n/-- there is at least one being -/\naxiom Being.exists : Nonempty Being\ninstance : Nonempty Being := Being.exists\n/-- is human -/\naxiom Human : Being → Prop\n/-- is mortal -/\naxiom Mortal : Being → Prop\n/-- Socrates -/\nnoncomputable opaque socrates : Being\n\nend Demo\n"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "natural_name: All humans are mortal\nasserted: 2026-11-10\n-/\n",
+          "newString": "natural_name: All humans are mortal\nasserted: 2026-11-10\n-/\n/-- All humans are mortal -/\nabbrev all_humans_are_mortal : Prop := ∀ x : Being, Human x → Mortal x\naxiom all_humans_are_mortal.holds : all_humans_are_mortal\n"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "natural_name: Socrates is a human\nasserted: 2026-11-10\n-/\n",
+          "newString": "natural_name: Socrates is a human\nasserted: 2026-11-10\n-/\n/-- Socrates is a human -/\nabbrev socrates_is_a_human : Prop := Human socrates\naxiom socrates_is_a_human.holds : socrates_is_a_human\n"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "natural_name: Socrates is mortal\npremises: all-humans-are-mortal, socrates-is-a-human\nasserted: 2026-11-10\n-/\n",
+          "newString": "natural_name: Socrates is mortal\npremises: all-humans-are-mortal, socrates-is-a-human\nasserted: 2026-11-10\n-/\n/-- Socrates is mortal -/\nabbrev socrates_is_mortal : Prop := Mortal socrates\n"
+        },
+        {
+          "kind": "callTool",
+          "tool": "check_lean",
+          "args": {}
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 42,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 10000,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "callTool",
+          "tool": "freeze_statements",
+          "args": {
+            "targets": [
+              "socrates-is-mortal"
+            ]
+          }
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 43,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 10500,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "abbrev socrates_is_mortal : Prop := Mortal socrates\n",
+          "newString": "abbrev socrates_is_mortal : Prop := Mortal socrates\ntheorem socrates_is_mortal.holds : socrates_is_mortal :=\n  all_humans_are_mortal.holds socrates socrates_is_a_human.holds\n"
+        },
+        {
+          "kind": "callTool",
+          "tool": "check_lean",
+          "args": {}
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 44,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 11000,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "callTool",
+          "tool": "finish",
+          "args": {
+            "status": "proved",
+            "summary": "Socrates is mortal follows from the two premises.",
+            "assumed_without_asking": []
+          }
+        },
+        {
+          "kind": "result",
+          "costEstimateUsd": 0.01
+        }
+      ]
+    }
+  ]
+}

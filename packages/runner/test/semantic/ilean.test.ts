@@ -74,6 +74,26 @@ describe('parseIlean', () => {
     expect(data.decls.filter((d) => d.parent !== undefined).map((d) => d.name)).toEqual(['Spyro.Rec.past']);
   });
 
+  it('reports the declarations Lean leaves out of `decls` (no constant in their source), never `example` or private ones', () => {
+    // Recorded on Lean 4.35 (turn 13): `decls` omits a top-level declaration whose source mentions no constant
+    // (`2 + 2 = 4`, a generic propositional lemma); its own `references` entry still has a parent-less definition.
+    const data = parsed('unlisted-Inbox.ilean.json', 'Model.Demo.Inbox');
+    expect(data.decls.filter((d) => d.unlisted === true).map((d) => d.name)).toEqual(['Demo.two_plus_two_is_four', 'Demo.plain_mp']);
+    expect(data.decls.find((d) => d.name === 'Demo.two_plus_two_is_four')).toEqual({
+      name: 'Demo.two_plus_two_is_four',
+      range: r(3, 7, 3, 27),
+      selectionRange: r(3, 7, 3, 27),
+      auxiliary: false,
+      unlisted: true,
+    });
+    const names = data.decls.map((d) => d.name);
+    expect(names).toContain('Demo.two_plus_two_is_four.holds');
+    expect(names).toContain('Demo.withWhere.aux');
+    expect(names).toContain('Demo.Pt.x');
+    expect(names.some((n) => n.endsWith('_example') || n.startsWith('_private.'))).toBe(false);
+    expect(data.decls.filter((d) => d.unlisted === true && d.parent !== undefined)).toEqual([]);
+  });
+
   it('refuses other versions, other modules and malformed files (no decls rather than wrong ones)', () => {
     const text = recorded('spyro-Main.ilean.json');
     const v6 = JSON.stringify({ ...JSON.parse(text), version: 6 });
@@ -108,6 +128,25 @@ describe('declDrafts', () => {
     expect(by.get('Spyro.instNonemptyCharacter')?.docstring).toBeUndefined();
     expect(by.get('Spyro.cynder')).toMatchObject({ docstring: 'Cynder', keyword: 'opaque' });
     expect(by.get('Spyro.HasDarkPast')?.refs).toEqual([{ name: 'Spyro.Character', module: 'Model.Spyro.Vocabulary', range: r(13, 20, 13, 29) }]);
+  });
+
+  it('gives an unlisted declaration its full range, docstring and keyword from the source', () => {
+    const text = recorded('unlisted-Inbox.lean');
+    const drafts = declDrafts({ text, starts: lineStarts(text) }, parsed('unlisted-Inbox.ilean.json', 'Model.Demo.Inbox'));
+    expect(drafts.find((d) => d.name === 'Demo.two_plus_two_is_four')).toEqual({
+      name: 'Demo.two_plus_two_is_four',
+      range: r(2, 0, 3, 47),
+      selectionRange: r(3, 7, 3, 27),
+      docstring: 'Two plus two is four',
+      keyword: 'abbrev',
+      refs: [],
+    });
+    expect(drafts.find((d) => d.name === 'Demo.plain_mp')).toMatchObject({ range: { start: { line: 6, character: 0 } }, keyword: 'theorem', refs: [] });
+    expect(drafts.find((d) => d.name === 'Demo.plain_mp')?.docstring).toBeUndefined();
+    // A parent-less definition of a name the source does not declare (a name Lean generates) is never reported.
+    const generated = { name: 'Demo.instReprPt', range: r(8, 10, 8, 12), selectionRange: r(8, 10, 8, 12), auxiliary: false, unlisted: true as const };
+    const data = parsed('unlisted-Inbox.ilean.json', 'Model.Demo.Inbox');
+    expect(declDrafts({ text, starts: lineStarts(text) }, { ...data, decls: [...data.decls, generated] }).map((d) => d.name)).toEqual(drafts.map((d) => d.name));
   });
 
   it('extends an auxiliary declaration to its docstring', () => {

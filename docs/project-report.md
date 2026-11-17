@@ -1,16 +1,19 @@
 # telelean: project report
 
-*2026-11-02. Covers the code in `/home/zhengyew/telelean` as of this date.*
+*2026-11-02; updated 2026-11-13 for turn 13 (2026-11-10): the real-Claude walkthrough, the live demo and the fixes they needed; that update was checked and completed on 2026-11-16 (Appendix D). Covers the code in `/home/zhengyew/telelean` as of 2026-11-16, which is the code of 2026-11-13: turn 13's changes, uncommitted, on top of your commit "initial generation" of 2026-11-05. The live runs and the fixes are reported in full in `docs/m2-live-report.md`.*
 
 ## Status in brief
 
 | | |
 |---|---|
 | **M1** (the board without AI) | **Done.** |
-| **M2** (one-shot "These suffice" with Claude) | **Implemented and integrated, but verified only with a scripted fake Claude (the FakeBackend).** Those runs used real Lean 4.35 and real clicks through the board in an isolated VS Code test instance. The last verification round (m2close-verify-2) ended "needs-work", with minor issues only (Appendix A.2). |
-| **Real Claude** | **Real Claude has never driven the M2 code.** The only live contact was M0's eight-request smoke test of the command-line harness (Claude Code 2.1.314 with a stub tool host). **The real-Claude walkthrough (m2-plan §12) has not been run.** The architecture defines "good enough to start using" as M2 plus a successful walkthrough, so M2 is not formally ready. |
-| **Paused or waiting for you** | <ul><li>The real-Claude walkthrough. It needs both opt-ins, about 12 GB of free memory, and an announcement of the quota use beforehand.</li><li>Real runs in general: you were asked not to press "These suffice" until M2 is declared ready.</li><li>One open decision: where "Raw Lean diff…" opens.</li><li>The end-of-turn modifications audit.</li><li>Two runner test files. They spawn the live scripts to show that live mode refuses, and they have not been run.</li><li>M3, M4 and H have not started.</li></ul> |
-| **Verification figures** (last verifier, clean build in a scratch copy) | <ul><li>core: 498 tests</li><li>runner: 532 passed, 1 skipped (the two files above excluded)</li><li>webview: 130 unit tests and 81 Playwright tests</li><li>extension: 171 unit tests</li><li>VS Code: 36 smoke tests and 21 end-to-end tests</li><li>walkthrough dry run: both readings passed</li><li>no real Claude process was started</li></ul> |
+| **M2** (one-shot "These suffice" with Claude) | **Done, and checked with the real Claude.** It was first verified with a scripted fake Claude (the FakeBackend), real Lean 4.35 and real clicks through the board in an isolated VS Code. On 2026-11-10 (turn 13) the real Claude drove it in four live sessions (next row). The architecture defines "good enough to start using" as M2 plus a successful walkthrough: **that is now met.** The minor issues of the last verification round (m2close-verify-2, which ended "needs-work") are still open (A.2). |
+| **Real Claude** (Opus 5.5, effort high, Claude Code 2.1.322) | <ul><li>**The walkthrough of m2-plan §12 passed both readings** on a copy of the Spyro sample. Normative: proved in round 1, accepted as a Derivation. Literal: not proved, Claude's suggested premise adopted, proved in round 2.</li><li>**The demo passed twice through the real extension UI** in your snap VS Code 1.145.2, on fresh empty folders with typed cards: "Socrates is mortal" (proved) and "Tweety can fly" (not proved; "All penguins are birds" suggested and adopted; proved).</li><li>Every one of the 6 rounds passed the gate at its first attempt. In all: 35 requests, about 4 minutes, $0.63 at API list prices (Claude Code's estimate).</li></ul> |
+| **The demo** | `docs/DEMO.md`: your own simple example in five minutes. `npm run demo` (in `packages/extension`) plays it in an isolated VS Code: `--dry-run` (a scripted Claude), `--rehearse` (the live UI path up to the consent, no quota) or `--live` (double opt-in). See 2.7. |
+| **Fixed in turn 13** | Found by playing the demo's path, a freshly typed model, with a scripted Claude, and by testing in your snap VS Code (details: `docs/m2-live-report.md` §5): <ul><li>Accept refused cards typed, and reasons written, while Claude worked (2.4.12);</li><li>declarations that Lean 4.35 leaves out of its `.ilean` index were refused by the gate (3.4);</li><li>a blank line between a card and its statement got a misleading message (3.6);</li><li>four lines of the system prompt disagreed with the gate (2.4.4);</li><li>a run could start Claude where Lean's sandbox cannot run: the preflight now probes `bwrap` (2.4.3);</li><li>the advice after an Accept conflict wrongly suggested Feedback (2.4.12).</li></ul> |
+| **Know before you use it** | <ul><li>On this Ubuntu, Lean's sandbox works only inside the VS Code snap (2.1.1).</li><li>A fresh folder must be trusted, or telelean's commands are missing (2.1.2).</li><li>Run the demo in a new window: **Developer: Reload Window** restarts a Claude Code session running in the same window (2.1.2).</li></ul> |
+| **Paused or waiting for you** | <ul><li>One open decision: where "Raw Lean diff…" opens (A.3).</li><li>The modifications audit from turn 9 on: the disk view is done, the transcript view was taken up again in turn 16 (A.3).</li><li>M3, M4 and H have not started.</li></ul> |
+| **Verification figures** (the turn-13 integrator, after the fixes; no real Claude) | <ul><li>core: 500 tests</li><li>runner: 566 passed, 1 skipped (all 58 files, including the two script tests and the new fresh-model, board-edit and sandbox-probe tests)</li><li>webview: 130 unit tests and 81 Playwright tests</li><li>extension: 180 unit tests</li><li>VS Code: 40 smoke tests and 21 end-to-end tests, in the 1.140.0 test build and in your snap 1.145.2</li><li>walkthrough dry run: both readings passed; demo driver: dry runs and the snap rehearsal passed</li></ul> |
 
 **How to read this report.**
 - **Part 1** describes the architecture.
@@ -75,6 +78,8 @@ Model folder (opt-in: has .telelean/config.json)     VS Code extension storage
 - fail-closed start: if any layer is missing, nothing runs;
 - one job at a time.
 
+**bwrap needs user namespaces.** On a kernel that restricts them through AppArmor (`kernel.apparmor_restrict_unprivileged_userns=1`, as on this Ubuntu 24.04), only a process whose AppArmor profile allows it may create them. The VS Code snap's processes run as `snap.code.code (complain)`, which does, and the Lean jobs inherit that label. So the sandbox works in the snap VS Code, and fails in a VS Code started any other way or in a script run from a plain terminal. Since turn 13 a run's preflight probes this before anything is sent to Claude (1.4.3).
+
 ## 1.3 The four packages
 
 ### packages/core: pure TypeScript, shared by everything
@@ -116,6 +121,7 @@ Model folder (opt-in: has .telelean/config.json)     VS Code extension storage
 **Foundation layers:**
 - **`lean/`**: M0's spike, now production code.
   - `runLean`, the only way a Lean-family process starts;
+  - `checkSandboxSupport` and, since turn 13, `checkUserNamespaces`: the run preflight's checks that the sandbox tools exist and that `bwrap` can create its namespaces here;
   - `sandboxProfile.ts` (the bwrap allowlist);
   - `toolchain.ts`: pins v4.35.0 and calls its binaries directly, never elan's proxies;
   - `leanNames.ts`: injection-safe generated names;
@@ -124,6 +130,7 @@ Model folder (opt-in: has .telelean/config.json)     VS Code extension storage
   - `footprint.ts`: parsers for `lean --json` and `#print axioms`.
 - **`semantic/`:**
   - `refreshLeanFacts`, which turns a model root into `LeanFacts`;
+  - the `.ilean` reader, which since turn 13 also recovers the declarations Lean 4.35 leaves out of the index's declaration table (3.4);
   - `runExclusive`, the process-wide queue of one Lean job at a time;
   - the memory guard and `spawnMemoryMax`.
 - **`llm/`:**
@@ -145,7 +152,7 @@ Model folder (opt-in: has .telelean/config.json)     VS Code extension storage
   - persistence and recovery after a reload.
 - **`proposal/`:**
   - `ProposalService`: the proposed graph and its diff, changed files, statement and vocabulary reviews, definition questions, the lifecycle item, the report card, drift detection and Accept planning;
-  - `files.ts`: the no-fuzz 3-way merge;
+  - `files.ts`: the no-fuzz 3-way merge, which since turn 13 puts the board's own edits made during a run (added cards, reasons) back by card id (1.4.4);
   - `DiskSidecarStore`: `attempts.jsonl` and `decisions.json`.
 
 **Build.** `tsconfig` is `noEmit`, so the runner is only type-checked. The extension bundles the runner's sources directly.
@@ -172,6 +179,10 @@ Model folder (opt-in: has .telelean/config.json)     VS Code extension storage
 **`src/board/`:** `BoardPanel`. It runs the webview lifecycle, serves strict nonce-CSP HTML from `html.ts`, validates every inbound message with `core.parseWebviewToHost`, and queues messages until the session attaches.
 
 **Build.** esbuild produces one CommonJS `dist/extension.js`. The build copies the path guard to `dist/bin/` and checks that the bundle loads under a stub `vscode`.
+
+**Scripts and test harness** (`scripts/`, `test/`):
+- `smoke.mjs` runs the in-VS-Code suites in an isolated profile: in the downloaded 1.140.0 test build (`npm run test:smoke`), or, since turn 13, in your own snap VS Code (`npm run test:smoke:snap`, with `snap-env.mjs`);
+- `demo-driver.mjs`, with `demo-ui.mjs` and `demo-vscode.mjs` (turn 13; `npm run demo`), plays the whole own-example demo in an isolated VS Code (2.7). Its dry run uses `test/demo/`: an agent inside VS Code and a scripted "Claude".
 
 ### packages/webview: the board
 
@@ -201,7 +212,7 @@ Model folder (opt-in: has .telelean/config.json)     VS Code extension storage
    3. hashing the sources;
    4. `lake build Model` in place under `runLean` (sources read-only, `.lake/` writable, `.git` masked);
    5. parsing Lake's log and computing module states;
-   6. reading the `.ilean` files (declarations, ranges, references) and the docstrings;
+   6. reading the `.ilean` files (declarations, ranges, references), plus the declarations Lean leaves out of their declaration table (turn 13; 3.4), and the docstrings;
    7. running one generated check file (`#check`, `#print`, `#print axioms`, `#check type_of%`) through `lake env lean --stdin --json`;
    8. re-hashing, so that modules that changed meanwhile become stale.
 
@@ -243,7 +254,7 @@ Model folder (opt-in: has .telelean/config.json)     VS Code extension storage
    - the selection;
    - the workspace;
    - the toolchain, a lakefile, and no Lake packages;
-   - the sandbox;
+   - the sandbox: the tools, then (turn 13) one `bwrap` probe that it can create its namespaces;
    - free memory.
 
    Then the backend factory is built lazily: binary lookup and the `setpriv` launcher.
@@ -283,7 +294,7 @@ Model folder (opt-in: has .telelean/config.json)     VS Code extension storage
    - No Lean check runs before applying. If no file changes, the outcome is only recorded.
 3. **Drift.**
    1. Your current files are written into `ws/` as an `accept-base` commit.
-   2. Claude's diff is merged onto them with 3 context lines and no fuzz; an overlap refuses the Accept.
+   2. Claude's diff is merged onto them with 3 context lines and no fuzz; an overlap refuses the Accept. The exception (turn 13): cards added on the board and reasons written during the run are taken out first and put back by card id afterwards.
    3. A `rebase` commit is made, then normalisation and (for `proved`) a re-freeze.
    4. The gate runs again with B := `accept-base`. On success, exactly the re-checked files are applied; any failure refuses the Accept.
 4. **Afterwards.** A resolution line is appended to `attempts.jsonl` and the run ends.
@@ -365,9 +376,10 @@ This part says what a user can do with telelean today and what happens when they
 - the extension manifest and host;
 - the board;
 - the runner and core;
-- `docs/user-guide.md` and the last verifier's report.
+- `docs/user-guide.md` and the last verifier's report;
+- for the turn-13 update: the reports of turn 13's four agents, Claude Code's transcripts of the four live sessions, and the code as changed since your commit of 2026-11-05.
 
-**Which code runs.** The bundles in `packages/extension/dist/` are newer than every source file. The extension is registered in place from `packages/extension`, so VS Code runs exactly this code.
+**Which code runs.** The bundles in `packages/extension/dist/` are newer than every source file: the extension bundle was rebuilt on 2026-11-10 after the turn-13 fixes, and nothing changed since. The extension is registered in place from `packages/extension`, so VS Code runs exactly this code.
 
 **Conventions.** Differences between the user guide and the code are marked **Docs vs code** and collected in Appendix B. Limitations and open items are in Appendix A.
 
@@ -378,14 +390,15 @@ This part says what a user can do with telelean today and what happens when they
 | Need | Details |
 |---|---|
 | Linux with the sandbox tools | <ul><li>`bwrap`</li><li>a reachable systemd user manager (`systemd-run --user`, `systemctl --user`)</li><li>cgroup v2 with the memory controller</li><li>util-linux `setpriv`</li></ul>All are in `/usr/bin` here. Without them Lean checks fail closed: the badge shows "Lean: off" with "sandbox unavailable: …". |
+| `bwrap` allowed to create user namespaces | This Ubuntu 24.04 restricts them through AppArmor (`kernel.apparmor_restrict_unprivileged_userns=1`). They work for the VS Code snap's processes (AppArmor label `snap.code.code (complain)`), so **use the snap VS Code**: in a VS Code started any other way every Lean check fails with "bwrap could not set up the sandbox: … setting up uid map: Permission denied", now followed by a plain hint (turn 13). |
 | Lean `leanprover/lean4:v4.35.0` under `~/.elan` (or `$ELAN_HOME`) | telelean calls that toolchain's `lake` and `lean` directly, never elan's proxies, so it never writes `~/.elan/known-projects`. Installed here. |
 | git (optional) | needed for History; `telelean.git.path` chooses the executable. |
-| For M2: Claude Code 2.1.295 or newer, logged in with a claude.ai subscription | By default telelean uses the binary inside the VS Code Claude Code extension. Here that is `~/.vscode/extensions/anthropic.claude-code-2.1.314-linux-x64/resources/native-binary/claude`. |
-| VS Code 1.140 or newer; Node 24.22.2 to build | the Node version is in `.node-version` |
+| For M2: Claude Code 2.1.295 or newer, logged in with a claude.ai subscription | By default telelean uses the binary inside the VS Code Claude Code extension, `~/.vscode/extensions/anthropic.claude-code-<version>-linux-x64/resources/native-binary/claude`. The live runs of 2026-11-10 used 2.1.322. The extension updates itself: on 2026-11-16 only 2.1.325 was installed, so the next run uses that version. The flags telelean passes were last compared with Claude Code's help text on 2.1.322; `scripts/walkthrough-claude.mjs --dry-run --binary-check` shows the binary and the command line without spending quota. |
+| VS Code 1.140 or newer; Node 24.22.2 to build | the Node version is in `.node-version`. Tested in the 1.140.0 test build and, since turn 13, in your snap VS Code 1.145.2 |
 
 ### 2.1.2 Build, install, reload
 
-- **Packaging.** There is no VSIX (an optional M4 item). The extension is registered in place from `/home/zhengyew/telelean/packages/extension` (Developer: Install Extension from Location…). After a rebuild, **Developer: Reload Window** loads the new `dist/`.
+- **Packaging.** There is no VSIX (an optional M4 item). The extension is registered in place from `/home/zhengyew/telelean/packages/extension` (Developer: Install Extension from Location…). After a rebuild, **Developer: Reload Window** loads the new `dist/`; so does a new window (**File → New Window**). Prefer the new window when a Claude Code session runs in the current one: a reload restarts it too.
 - **Building, only after a source change.** `npm run build` at the root runs each package's build script:
   - **core:** `tsc` into `packages/core/dist`, which nothing uses (the other packages import core's sources);
   - **extension:** esbuild bundles everything into `dist/extension.js`, copies the Claude path-guard hook to `dist/bin/telelean-path-guard.mjs`, and checks that the bundle loads;
@@ -393,7 +406,7 @@ This part says what a user can do with telelean today and what happens when they
   - **webview:** Vite builds into `packages/extension/dist/webview/`.
 
   `npm --prefix packages/extension run build:all` rebuilds only the webview and the extension bundle. At the moment nothing needs rebuilding.
-- **Trust.** Untrusted (Restricted Mode) and virtual workspaces are unsupported, because building a model with Lean can run code.
+- **Trust.** Untrusted (Restricted Mode) and virtual workspaces are unsupported, because building a model with Lean can run code. In practice: when you open a new folder, answer VS Code's trust question with Yes, or telelean's commands are missing from the Command Palette. The test instances run with workspace trust switched off, so only the demo driver's `--rehearse` and `--live` meet this (2.7).
 
 ### 2.1.3 Commands and activation
 
@@ -460,11 +473,11 @@ This part says what a user can do with telelean today and what happens when they
 
 **First open.** The first open builds the model in place: `mental_model/.lake/` and `.telelean/graph.json` appear. Both are gitignored, and neither exists yet.
 
-**History.** Neither `mental_model/` nor the repository is a git repository, so History shows **Initialize git**. Accepting runs `git init` inside `mental_model/`.
+**History.** When this report was first written, neither `mental_model/` nor the repository was a git repository, and History showed **Initialize git**. Since your commit of 2026-11-05 the repository is one, and `mental_model/` is tracked in it. So its board now gets history without being asked (2.1.4 step 3): the snapshots go to private refs under `refs/telelean/` in the repository's `.git`. They are never a branch, never staged, and an ordinary `git push` does not send them (only `--mirror` or an explicit refspec would). None exist yet. The user guide (section 9) says how to remove them.
 
 ### 2.1.7 A caution
 
-Pressing **These suffice ▶** and then **Run with Claude** starts a real run on your claude.ai subscription quota. The real-Claude walkthrough has not been done (Appendix A.3), and the main session asked you not to press it until M2 is declared ready.
+Pressing **These suffice ▶** and then **Run with Claude** starts a real run on your claude.ai subscription quota. For scale, the live runs of 2026-11-10 used 6–11 requests each, which Claude Code estimated at $0.14–$0.18 at API list prices, and took under a minute and a half (`docs/m2-live-report.md`).
 
 ## 2.2 The board
 
@@ -697,7 +710,7 @@ Open a card with the chevron, or Enter on a focused card. Pressing inside the de
 
 **What is written.** A comment-only block (your words, trimmed, no Lean), with an id derived from the sentence and `asserted:` set to today. If `Inbox.lean` is missing, telelean creates it and adds its import.
 
-**During a run.** The box keeps working. Its second row folds while the run panel shows, and adding a card switches the board back to Current.
+**During a run.** The box keeps working. Its second row folds while the run panel shows, and adding a card switches the board back to Current. Since turn 13 a card added this way during a run, or a reason written, no longer makes Accept a conflict (2.4.12).
 
 ### 2.3.3 Editing and deleting
 
@@ -844,7 +857,7 @@ There is no command to withdraw a consent once given.
    2. The selection is valid: the target is a Goal or Derivation of the subject, the premises are cards of the subject, and the target is not among them.
    3. The model loads.
    4. `lean-toolchain` is v4.35.0, there is a lakefile, and `lake-manifest.json` lists no packages.
-   5. The sandbox works.
+   5. The sandbox works. First the tools must exist. Then (turn 13) `checkUserNamespaces` runs `bwrap` once, with the real profile's namespace flags and system mounts, on `/usr/bin/true`, straight from the extension host, whose AppArmor label a run's `bwrap` inherits; a success is cached. Before turn 13 a kernel that forbids the namespaces passed this step, and the run started Claude, spending quota, and then failed at its first Lean job. Now the refusal reads *"Lean's sandbox is not available, so telelean cannot check Claude's work: bwrap cannot set up the sandbox here (…)"*. When `kernel.apparmor_restrict_unprivileged_userns` is 1 it adds *"this kernel lets only some programs create user namespaces (AppArmor: …): run telelean in the VS Code snap, whose processes may create them, or give bwrap an AppArmor profile that allows it"*.
    6. Available memory is at least `telelean.memory.minAvailableGiB`.
 3. **Finding Claude Code**, once per window, at the first start that passes preflight. telelean looks in this order:
    1. the setting (if set, it must work: no fallback);
@@ -883,7 +896,11 @@ There is no command to withdraw a consent once given.
 - No shell, no web, no subagents.
 
 **What is sent through your Claude Code login.**
-- A fixed system prompt, the same text every run.
+- A fixed system prompt, the same text every run (m2-plan §5.1). Turn 13 changed four of its lines so that it teaches exactly what the gate accepts:
+  - typed cards sit in the subject's `Inbox.lean`: formalise them there;
+  - a selected Goal or Derivation premise without Lean may be formalised without a `.holds` axiom and proved after the freeze;
+  - the target's proof may go "right after the target's statement (or lower in the file, below everything it uses)", because a goal typed before its premises comes first in the file;
+  - the vocabulary rule lists propositions `axiom P : Prop`, says that the person confirms each new `T.exists`, and that only *other* definitions and instances are questions. Before, every `instance` was called a question, which contradicted the required presupposition instance.
 - The first message: TARGET; SELECTED PREMISES; OTHER CARDS OF THIS SUBJECT (all of them, or the neighbourhood, per `telelean.run.contextScope`); VOCABULARY; EARLIER ANSWERS IN FORCE; BUDGET.
 - Every model file Claude reads. All subjects are in the copy, so imports work.
 - Every tool result, your answers and your Feedback.
@@ -956,7 +973,7 @@ Claude asks before formalising when a reading changes the result (modality, gene
 
   There is no G2. Part 3.6 gives the rules.
 - **Not failures.** New definitions become yes/no questions in the review, and a missing premise becomes a suggestion.
-- **A failed attempt.** The board shows a notice, for example *"Attempt 1 didn't pass: it added an axiom (`shortcut`), and only you can add beliefs. Asking Claude to retry."*, and Claude receives the exact findings.
+- **A failed attempt.** The board shows a notice, for example *"Attempt 1 didn't pass: it added an axiom (`shortcut`), and only you can add beliefs. Asking Claude to retry."*, and Claude receives the exact findings. Since turn 13, a statement that Claude separated from a selected card's block by a blank line is named as such: *"it left a blank line between “…” and its Lean statement"*. Before, the finding called the card's `.holds` a belief and told Claude to remove it (3.6, token `detached`).
 - **After the last allowed attempt** (`telelean.run.maxGateAttempts`, 3 per round), telelean:
   1. stops Claude;
   2. reverts the working copy to the newest state that passed: the last passing gate, the freeze, or the start;
@@ -985,6 +1002,7 @@ Claude asks before formalising when a reading changes the result (modality, gene
 - **The "$… estimate"** is Claude Code's own figure at API list prices, showing the latest value (it is cumulative across `--resume`). A subscription is not billed per token, but runs use the plan's usage.
 - **Usage limits.** When Claude Code reports a usage-limit status other than "allowed", a notice says so in local time, for example *"Close to your plan's usage limit (five-hour window, 83% used); resets at 00:45."*
 - **Recorded usage.** The report card shows requests, tokens, the estimate, the duration and Claude's working time. `attempts.jsonl` records usage per round.
+- **Known issue: the output-token count is far too low** (A.2 item 11). In the live runs of 2026-11-10 the status line, the report card and the scripts showed 111–143 output tokens per run, where Claude Code's own transcripts record 1,913–3,886. The run adds up the usage that the CLI's stream reports with each message (`RunManager`, from `llm/streamJson.ts`), and those figures held only a small part of each message's output. Requests, uncached input, cache tokens and the estimate matched Claude Code's record.
 
 ### 2.4.9 When a round ends: the proposal on the board
 
@@ -1063,8 +1081,9 @@ The toast reads "Accepted: …. Undo reverts it." Further rules:
 - **"Not proved" rounds** can be accepted too: their statements and vocabulary are applied.
 - **Rounds that changed no file** are only recorded ("Recorded: … (no file changed).") with no history entry and no Undo step.
 - **Changed files (drift).** If you changed model files during the run, telelean merges Claude's changes onto yours with a 3-way patch (3 context lines, no fuzz).
-  - An edit of yours within 3 lines of one of Claude's refuses the Accept: *"Your edits to Model/Spyro/Main.lean since the run started overlap Claude's; Discard, or Feedback to redo it on your current files."*
-  - Otherwise telelean re-freezes and re-gates the combination, with your current files as the base, before applying it. A failure refuses the Accept and lists the findings.
+  - An edit of yours within 3 lines of one of Claude's refuses the Accept: *"Your edits to Model/Spyro/Main.lean since the run started overlap Claude's; Discard, or undo those edits and Accept again."* Until turn 13 it said "Discard, or Feedback to redo it on your current files". But Feedback continues on Claude's working copy and never moves onto your files, so the next Accept met the same conflict.
+  - Exception (turn 13): the board's own edits made during the run are taken out, Claude's patch is applied to the rest, and they are put back by card id. These are cards added with the A|D|G box (new comment-only blocks at the end of the namespace, where the box puts them) and reasons written, changed or removed (`rationale:`). The result must read as you wrote it, or it is still a conflict. On a freshly typed Inbox every card sits within 3 lines of Claude's formalisation, so without this any card added, or reason given, while Claude worked refused the Accept. Every other edit, a changed sentence above all, keeps the 3-line rule.
+  - Otherwise telelean re-freezes and re-gates the combination, with your current files as the base, before applying it. A failure refuses the Accept and lists the findings: *"… did not pass the checks (…). Discard, or undo your edits since the run started and Accept again."*
 - **Never partial.** Accept never applies part of a proposal.
 
 **Feedback** is a text field (Ctrl+Enter sends, Esc closes, up to 4000 characters). It starts a new round in the same Claude session with fresh caps. Claude may revise the statements but must freeze again, and the proposal is withdrawn until the round ends.
@@ -1110,7 +1129,7 @@ A second line later records what you did with it: accepted, discarded, or supers
 
 ## 2.5 Settings
 
-**When settings take effect.** All are read when a model's workspace and run manager are created, so they apply after **Developer: Reload Window**; open boards come back by themselves. The exception is `telelean.claude.path`, which is read at the first run start in a window.
+**When settings take effect.** All are read when a model's workspace and run manager are created, so they apply after **Developer: Reload Window**, or in a new window; open boards come back by themselves after a reload. The exception is `telelean.claude.path`, which is read at the first run start in a window. Turn 13 added no setting. The live runs used the defaults (`claude-opus-5-5`, effort `high`); `docs/DEMO.md` suggests effort `medium` for a faster demo, which has not been measured.
 
 **Bad values.** Out-of-range numbers are clamped and rounded. Wrong types fall back to the default. An invalid model name falls back to `claude-opus-5-5`.
 
@@ -1151,7 +1170,7 @@ telelean is a personal-use prototype. It keeps the proof-integrity checks and ch
   - `$HOME` under an empty tmpfs, with only `~/.elan` bound read-only;
   - the sources read-only and only `.lake/` writable, with `.git` hidden during board checks;
   - an environment cleared except `HOME`, `PATH` (toolchain first) and `LEAN_NUM_THREADS=4`.
-- **Fail closed.** If bwrap, setpriv, systemd-run, the user manager, cgroup v2 or an enforced memory cap is missing, nothing runs ("could not start").
+- **Fail closed.** If bwrap, setpriv, systemd-run, the user manager, cgroup v2 or an enforced memory cap is missing, nothing runs ("could not start"). The same holds when `bwrap` may not create its user namespaces (an AppArmor restriction, 1.2). Since turn 13 the failure's reason then ends with a plain hint, and a run's preflight finds it before Claude is started (2.4.3).
 - **Limits.** Each job has a wall-clock limit and can be cancelled (its whole scope is killed). One Lean job at a time per window. Nothing starts below the free-memory threshold.
 
 ### 2.6.2 Confining Claude Code
@@ -1194,7 +1213,7 @@ telelean is a personal-use prototype. It keeps the proof-integrity checks and ch
 
 - **`TELELEAN_NO_REAL_CLAUDE`.** Any non-empty value other than `0` or `false` makes the runner refuse to look up a Claude binary, or to spawn anything but a node test double from a test-fixtures folder. Every test configuration sets it.
 - **Test mode.** In VS Code Test mode the extension refuses real Claude ("real Claude is disabled in Test mode"). Only a FakeBackend installed by a test can run.
-- **Scripts.** `scripts/walkthrough-claude.mjs` and `scripts/smoke-claude.mjs` are dry by default. Going live needs both `--live` and `TELELEAN_WALKTHROUGH_LIVE=yes` (or `TELELEAN_SMOKE_LIVE=yes`); either one alone refuses before anything is resolved. The walkthrough also refuses `--live` while the tripwire is armed.
+- **Scripts.** `scripts/walkthrough-claude.mjs` and `scripts/smoke-claude.mjs` are dry by default. Going live needs both `--live` and `TELELEAN_WALKTHROUGH_LIVE=yes` (or `TELELEAN_SMOKE_LIVE=yes`); either one alone refuses before anything is resolved. The walkthrough also refuses `--live` while the tripwire is armed. The demo driver (turn 13, 2.7) follows the same rule with `TELELEAN_DEMO_LIVE=yes`, and its `--rehearse` mode must be refused by the tripwire at the run's start, before any Claude binary is looked up.
 - **Real binary check.** The one test that runs the real binary's `--version` is opt-in (`TELELEAN_ALLOW_REAL_CLAUDE_VERSION=1`).
 - **VS Code smoke and end-to-end tests** run in an isolated profile under a scratch directory:
   - scratch HOME, XDG folders, user data and extensions;
@@ -1202,6 +1221,8 @@ telelean is a personal-use prototype. It keeps the proof-integrity checks and ch
   - copies of the sample model.
 
   The run refuses to start without that profile. Afterwards it checks that the real `~/.config/Code` and similar folders did not change, and that no process or `telelean-*` unit is left.
+
+  Since turn 13 the same suites can run in your own snap VS Code (`npm run test:smoke:snap`). The snap is started through its own `electron-launch`, with the variables of `snap run` and the snap's per-user folders inside the isolated HOME; the real `~/snap/code` and `~/.vscode` are watched too. The instances no longer inherit the variables of a Claude Code session that started them (`CLAUDE*`, `MCP_*`, `AI_AGENT`); a messaging token used to leak through. The run reports the AppArmor label it had and warns when it is unconfined on a kernel that restricts user namespaces.
 - **Order.** Runner and extension tests run sequentially and use `$TELELEAN_TEST_TMP`.
 
 ### 2.6.5 Webview and host hygiene
@@ -1209,6 +1230,36 @@ telelean is a personal-use prototype. It keeps the proof-integrity checks and ch
 - **Strict CSP.** Two nonce'd scripts only; no inline styles; no eval; command URIs disabled; local resources only from `dist/webview`.
 - **Message validation.** Every message from the webview is validated by core's protocol parser.
 - **Open in editor** re-checks that the path stays inside the model folder, also after symlinks are resolved.
+
+## 2.7 The demo and its driver (turn 13)
+
+**The demo** (`docs/DEMO.md`) is "your own simple example in five minutes":
+1. a new window (**File → New Window**) and a new empty folder, trusted;
+2. **telelean: Initialize Model Here**;
+3. two to four Assumptions and a Goal typed in the A|D|G box, selected with Ctrl/Cmd+click;
+4. **These suffice ▶** and the consent;
+5. Claude's questions, if any; the review, where each new sort's "… exists" needs **Yes, I endorse it**;
+6. **Accept**, or **I hold this** on a suggested premise and then Accept.
+
+The guide also gives the measured timings, tips for examples that work (one idea per card, the same word for the same thing, one or two steps, no arithmetic), and troubleshooting: the consent, Claude Code missing, Restricted Mode, the sandbox refusal.
+
+**The driver** (`packages/extension/scripts/demo-driver.mjs`; `npm run demo` in `packages/extension`) plays that demo in a separate, isolated VS Code window and drives the real board over the DevTools protocol:
+1. it creates a fresh folder and runs Initialize;
+2. it types the cards (`--assume …`, `--goal …`; the default is the Socrates example), selects them and presses These suffice;
+3. it gives the consent and answers each question (`--answer` per question: `1`–`4`, `open`, `decide` or `text:…`; option 1 by default);
+4. it steps through the review and endorses the definitions (stop instead with `--no-approve-definitions`);
+5. on a "not proved" round with a gap-closing suggestion it presses **I hold this** (`--no-adopt` stops instead);
+6. it Accepts (or `--end discard`) and waits for Lean's check of the accepted files.
+
+It prints a JSON summary: the verdict, footprint and gate attempts of each round, the questions with the answers given and Claude's guesses, the suggestions, the final Lean files, the statuses after Accept, wall times and usage. It saves screenshots of every step. `--vscode test-build|snap|<binary>` chooses the VS Code; the default is headless under xvfb (`--show` shows the window). The exit code is 0 when the demo reached its end as expected.
+
+| Mode | What runs | Claude |
+|---|---|---|
+| `--dry-run` (default) | VS Code's Test mode, the only mode in which a backend other than the real Claude can be installed. An agent inside VS Code (`test/demo/agent.ts`) installs a scripted "Claude" (`test/demo/demoClaude.ts`), answers in advance the git and consent questions Test mode never shows, and runs Initialize with arguments, since Test mode has no folder picker. Everything else goes through the board | scripted: syllogisms and chains (with a genericity question whose answer changes the result), anything else as whole sentences joined by a linking premise; real Lean and the real gate judge it |
+| `--rehearse` | Development mode: the exact live path (palette, folder pick, subject input, git dialog, the real consent dialog) up to the run's start | none: the quota tripwire must refuse the run before any Claude binary is looked up |
+| `--live` | the same, then the real run. It needs `--live` and `TELELEAN_DEMO_LIVE=yes`, and refuses while `TELELEAN_NO_REAL_CLAUDE` is armed. HOME is the real one (Claude Code's login lives there); VS Code's profile, extensions and XDG folders stay in the work folder. It cancels at the first usage-limit warning unless `--continue-on-rate-warning` | your Claude Code, on your subscription |
+
+**Measured.** On 2026-11-10, `--live --vscode snap` passed with Socrates (1 round, 6 requests, about 52 s from VS Code's start to Lean's re-check) and with the penguin (2 rounds, 10 requests, about 76 s). See `docs/m2-live-report.md` §2.4–2.5.
 
 ---
 
@@ -1220,9 +1271,10 @@ telelean is a personal-use prototype. It keeps the proof-integrity checks and ch
 - unit tests on hand-made Lean facts;
 - integration tests that run Lean 4.35 on the Spyro sample with a scripted (fake) Claude;
 - the Lean outputs quoted in 3.8, re-run for this report in scratch copies;
-- scratch probes that ran the real core rules on hand-made facts, for the gaps in 3.7.
+- scratch probes that ran the real core rules on hand-made facts, for the gaps in 3.7;
+- since turn 13: four live sessions with the real Claude (the Spyro walkthrough, both readings, and two fresh typed-in examples; `docs/m2-live-report.md`), and nine fresh-model scenarios with a scripted Claude (`runner/test/run/fresh.e2e.test.ts`).
 
-**The walkthrough with the real Claude has not been run.**
+**The walkthrough with the real Claude was run on 2026-11-10 and passed both readings.** Live runs show that the rules accept what an honest model writes. They prove nothing about the rules themselves: every live round passed at its first attempt, so the real Claude never met a refusal.
 
 **Notation.**
 - *E*: a built Lean environment (every module of the model).
@@ -1421,6 +1473,8 @@ Further rules:
 
 Lean's `.ilean` index adds positions and the references between declarations.
 
+**Declarations the index leaves out (turn 13).** Lean 4.35's `.ilean` leaves some top-level declarations out of its declaration table (`decls`) when their source mentions no constant: `abbrev two_plus_two_is_four : Prop := 2 + 2 = 4`, `theorem t : 2 + 2 = 4 := by decide`, `theorem plain_mp : ∀ (p q : Prop), p → (p → q) → q := …`. Yet `abbrev q : Prop := True` and `axiom P0 : Prop` are listed, so the exact rule is unknown. Such a declaration still has a `references` entry for itself whose definition has no parent. telelean now reports it as an *unlisted* declaration (never an `example`, never a private name), takes its full range from its own declaration scanner (the one the board uses), and keeps it only when the source declares that name. The check file then probes it like any other declaration. Before this fix these declarations had no facts, so check, freeze and the gate refused them fail-closed ("Lean reported nothing about …"). The facts themselves still come from Lean; only the source range comes from the scanner.
+
 **Facts belong to one version of each file:**
 - **fresh**: the file's hash equals the hash the build saw;
 - **stale**: the file changed since. Its declarations keep their previous facts by name, as long as each declaration's current keyword agrees with the kind Lean reported (`kindsAgree`; for example `abbrev`→`def` keeps the facts, since Lean reports both as `def`);
@@ -1547,7 +1601,7 @@ The inputs are P (possibly empty: the tray's "Self-evident?" button, which decla
 - Every premise is a card of the subject, and T ∉ P.
 - No other run of this model folder is active, and the model loads.
 - The toolchain is v4.35.0, and the project has no Lake dependencies.
-- The sandbox is available, and there is enough free memory.
+- The sandbox is available (since turn 13 this includes a `bwrap` probe that it can create its namespaces, 2.4.3), and there is enough free memory.
 
 Then, in order:
 1. telelean declares P as T's `premises:`, as an undoable M1 edit (skipped when P is empty or unchanged).
@@ -1681,6 +1735,7 @@ The rules:
   - *Invariant before the freeze:* every axiom not known in B is the `.holds` of a selected ASSUMPTION or adopted ghost, or a vocabulary item of its own (bound to no card, not an unmarked axiom). New presuppositions are allowed (and flagged); vocabulary of kind `other` passes here and is refused by `vocabulary-shape`.
   - *Invariant after the freeze:* no axiom lies outside F's list of every project axiom at the freeze. So there are no new sorts, predicates or presuppositions. New `noncomputable opaque` constants and functions, and new definitions, remain possible after the freeze; they are held only to the footprint rule, because `statement-changed` covers only frozen declarations.
   - *Blocks:* asserting the goal or a premise; an axiom directly below a card's block used as its "statement"; the `.holds` of a card that is not a selected assumption; any new axiom after the freeze. That last point includes turning the user's theorem T.holds into an axiom after the freeze (token `belief`).
+  - *Detached statements (turn 13):* if a chosen card (T, a selected premise or an adopted ghost) is left without code only because a blank line separates its block from the declaration below (TL013), that statement's `.holds` would be a Prop-valued axiom of nobody's. It is still refused, but with the token `detached` instead of `belief`, and a message that says to remove the blank line and keep the axiom. Before, Claude was told to remove the axiom and use `propose_assumption`. Same verdict.
 - `existing-changed` (every purpose).
   - *Invariant:* every named declaration of B other than T.holds still exists with the same source text (docstring and attributes included). When B has facts, each also keeps its printed type and value. In addition, an adopted ghost's statement abbrev and `.holds` axiom keep the text they had at A (token `ghost`); G5 separately holds the ghost's block to A.
   - *Blocks:* weakening a statement under its own name; turning a vocabulary axiom into an easy definition (whose footprint looks clean); rewriting a gloss; an `open … in`, a section `variable` or a new declaration that changes the *printed* type or value of unchanged text.
@@ -1702,7 +1757,7 @@ The rules:
     - every name only Lean reports inside such a declaration: structure fields, `where` and `let rec` declarations.
   - "A proof" means a declaration whose type is a `Prop`: a theorem, or a Prop-valued def, abbrev, instance or opaque, except the presupposition instance.
   - Ax\* is Ax, plus, for a structure or class, the axioms of the constants its source mentions. The reason: Lean keeps a field's default value in an auxiliary declaration that `#print axioms` does not follow.
-  - *Fails closed:* a judged declaration that Lean reports nothing about (for example a `private` one) is a finding. So is an `example` added after the freeze: it has no name, so nothing can check it.
+  - *Fails closed:* a judged declaration that Lean reports nothing about (for example a `private` one) is a finding. So is an `example` added after the freeze: it has no name, so nothing can check it. Declarations that Lean's index leaves out of its table are no longer in this case (turn 13, 3.4): an arithmetic statement or a lemma over plain `Prop`s used to fail here although Lean had checked it.
   - *Blocks:*
     - a proof that rests on an unselected assumption;
     - a lemma that rests on one, in a "not proved" round;
@@ -1737,6 +1792,7 @@ The rules:
 - `not-formalised` (freeze and gate-proved).
   - *Invariant:* T, every selected ASSUMPTION and every adopted ghost is bound to an existing Prop abbrev or def.
   - In every purpose, a selected card that had no binding in B must not become bound to something else (token `malformed`). A card left without code is fine: "could not formalise" is an honest outcome.
+  - A card left without code only by a blank line between its block and its statement gets the token `detached`; the finding names that statement and says to remove the blank line (turn 13).
   - *Blocks:* freezing a target that has no statement; an axiom used as a card's statement.
 - `missing-holds` (freeze and gate-proved).
   - *Invariant:* every formalised selected ASSUMPTION and every ghost has a `.holds` whose printed type is exactly its statement (no TL114).
@@ -1878,7 +1934,7 @@ The ghost's Lean name is chosen twice: once when proposed, and again (with a str
 - **No drift** (the user's model files are unchanged since the run started).
   - **No Lean check runs.** The judged state's diff, plus the ticked lifecycle items, is applied through M1's write path as **one history entry and one undo step**.
   - If no file changes, the outcome is only recorded: no history entry, no undo step.
-- **Drift.** Claude's changes are rebased onto the user's current files, with patches that use 3 lines of context and allow no fuzz. An edit of the user's within 3 lines of one of Claude's counts as an overlap, and Accept is refused. On success telelean:
+- **Drift.** Claude's changes are rebased onto the user's current files, with patches that use 3 lines of context and allow no fuzz. An edit of the user's within 3 lines of one of Claude's counts as an overlap, and Accept is refused. The exception (turn 13) is the board's own edits: new comment-only blocks ending a namespace (added with the A|D|G box) and `rationale:` changes. When the plain patch cannot be placed, they are taken out, the patch is applied to the rest, and they are put back by card id; the result must reproduce them exactly. Neither kind has a formal effect: a new block is bound to nothing, and a rationale is never read by the logic (3.1). On success telelean:
   1. normalises;
   2. re-freezes, if the verdict is `proved`;
   3. re-runs the gate with B := the user's files at Accept, so the user's own edits are never judged as Claude's.
@@ -1917,6 +1973,12 @@ The ghost's Lean name is chosen twice: once when proposed, and again (with a str
      - G4's freeze already contains it.
 
      Verified with Lean 4.35: `abbrev A.s : Prop := (1 : Nat) + 1 = 2`, then `instance (priority := high) myAdd : Add Nat := ⟨fun _ _ => 0⟩`, then `abbrev B.s` with the identical text. Both print `1 + 1 = 2` with type `Prop`, yet `example : A.s := rfl` and `example : ¬ B.s := by decide` both compile.
+   - **Seen live (2026-11-10).**
+     - In the penguin demo, Claude formalised "All birds can fly" as `∀ x : Animal, Bird x → CanFly x`, and with the adopted "All penguins are birds" the gate certified "Tweety can fly". That is valid from those formalisations and false of real penguins. Claude said so in its summary and under "assumed without asking"; nothing in telelean would have.
+     - In both demo runs Claude asked no question and chose the strict reading of "All …" itself.
+     - In the literal walkthrough the scripted answer meant impossibility ("cannot contain … at all"), while Claude glossed its new relation as permission ("is allowed to contain") and listed that reading under "assumed without asking".
+
+     See `docs/m2-live-report.md` §4.
    - **Still to come.** Back-translation, alignment and glosses arrive in M3.
 2. **Consistency and vacuity.**
    - Nothing checks that the selected premises are consistent. If they are not, every target is "proved" (from a contradiction), and the footprint is then an inconsistent subset of the premises. Proved results are labelled "consistency unchecked".
@@ -1932,6 +1994,7 @@ The ghost's Lean name is chosen twice: once when proposed, and again (with a str
      - G4's term-level comparison against the freeze, its axiom check for T.holds, and its kernel replay.
    - **TypeScript decides, and is trusted:**
      - which declaration is which card's statement (binding);
+     - the source range of a declaration Lean's index leaves out of its table (telelean's declaration scanner; turn 13, 3.4);
      - the vocabulary classification (it parses printed types into arrow parts);
      - the partition of axiom lists into signature, beliefs and presuppositions;
      - the permitted set itself;
@@ -1941,7 +2004,7 @@ The ghost's Lean name is chosen twice: once when proposed, and again (with a str
      - the markup comparison;
      - what counts as a proof;
      - the single-term rule;
-     - normalisation, adoption and Accept's merge.
+     - normalisation, adoption and Accept's merge, including which edits count as the board's own (turn 13); whatever the merge produces is re-gated before it is applied.
 
      A bug in `permitted.ts` or `rules.ts` could let a wrong verdict pass. The safeguards are a positive and a negative test for many rules, tests on recorded real facts, and end-to-end cheat scripts.
 4. **Examples.** An `example` has no name, so Lean's facts say nothing about it. Examples are therefore refused, not checked: every one Claude adds, in every purpose. The user's own examples are neither judged nor touched.
@@ -2154,6 +2217,12 @@ The proof is a single application. **The content of the result lies entirely in 
 
 **How the table is tested.** The end-to-end test checks each cheat's *first failure by category* (for example `- statement_unchanged:`), not by exact finding code. The exact codes in the table come from the fixtures' `expect` fields. They are pinned in core tests (`rules.test.ts`, `premiseCheats.test.ts`, `carriers.test.ts`).
 
+**The same example with the real Claude** (2026-11-10; `docs/m2-live-report.md` §2.2–2.3).
+- **Normative.** Claude asked about word sense ("what does "cannot have" mean …") rather than modality, then asked a follow-up (enthymeme) that the scripted user left to it. It wrote `∀ (c : Character) (g : Game), IsPG g → HasDarkPast c → ¬ GoodAddition c g`, which differs from the scripted run only in the order of the binders, and proved `pg_no_dark_past.holds cynder newSpyro new_spyro_pg.holds cynder_dark_past.holds`. The permitted set (13 names) and the footprint (11 names) were exactly those above.
+- **Literal.** Claude named its relation `CanContain : Game → Character → Prop` instead of `InGame`. It suggested "A character can only be a good addition to a game that can contain them" (`∀ (c : Character) (g : Game), GoodAddition c g → CanContain g c`), the contrapositive of the scripted suggestion's form ¬InGame → ¬GoodAddition. After adoption it proved the goal in round 2 by assuming Cynder a good addition and deriving `False` (`fun hg => …`), with a 13-name footprint.
+
+Both passed the gate at the first attempt.
+
 ## 3.9 Where each rule lives and how to change it
 
 Paths are relative to `packages/`. "Code" means a change in that file plus its tests. Many rules have one positive and one negative test in `core/test/gate/rules.test.ts`, and the runner tests and cheat scripts pin the outcomes.
@@ -2174,11 +2243,14 @@ Paths are relative to `packages/`. "Code" means a change in that file plus its t
 | D-11 drop-zone previews | `core/src/kindChange.ts` `kindChangeImpact`, `proofDependents` | code |
 | D-11 plans (rewrite, mark broken, conditional proofs) | `core/src/edit/planKind.ts` `planKind`, `holdsArguments`; `core/src/edit/dependents.ts` `usersOf`, `axiomListUsers`; the edit operations in `core/src/markup/leanOps.ts` | code |
 | Run preflight (target kinds, toolchain) | `runner/src/run/preflight.ts` `preflight`; `core/src/paths.ts` `PINNED_TOOLCHAIN_NAME` | code |
+| Sandbox probe before a run (turn 13), and the AppArmor hint in sandbox failures | `runner/src/lean/runLean.ts` `checkSandboxSupport`, `checkUserNamespaces`, `usernsHint`; called by `runner/src/run/preflight.ts` `preflight` (step 5) | code |
+| Declarations missing from `.ilean`'s table (turn 13) | `runner/src/semantic/ilean.ts` `parseIlean` (`unlisted`); `runner/src/semantic/refresh.ts` `declDrafts` | code |
 | G0 token denylist | `core/src/gate/g0.ts` `WORD_CODES`, `NATIVE_CONSTANTS`, `HASH_ALLOWED`, `scanForbiddenText` | code |
 | G0 file rules | `g0.ts` `checkChangeSet`, `PROJECT_FILES`, `inSubjectScope`, `isSubjectModulePath` | code |
 | Permitted set | `core/src/gate/permitted.ts` `permittedAxioms`, `signatureAxioms`, `SIGNATURE_KINDS`, `contribution`, `footprintSinceBase` | code |
 | The freeze record | `permitted.ts` `snapshotOf` | code |
 | G1, G3, G5, readiness and stage rules | `core/src/gate/rules.ts` `evaluate` (one section per rule code), `markupFindings`, `COMPARED_FIELDS`, `flagged`, `footprintOf`, `SOURCE_REF_KINDS`, `G3_ORDER`, `LATE_ORDER` | code |
+| Blank-line findings (token `detached`, turn 13) | `rules.ts` `detachedStatementOf` (in `evaluate`); the board's sentence in `core/src/gate/describe.ts` `describe` | code |
 | What counts as a proof; the presupposition instance | `core/src/gate/decls.ts` `isProof`, `isPresuppositionInstance` | code |
 | Gate order, fail-closed build, when G4 runs | `runner/src/gate/engine.ts` `runCheck`, `gateNow`; `runner/src/gate/findings.ts` `buildErrorFindings`, `classifyFacts` | code |
 | Freeze challenge (removal closure, the `sorry` module) | `engine.ts` `freezeNow`, `removalClosure`; `comparator.ts` `freezeChallenge`, `generateChallengeModule` | code |
@@ -2195,9 +2267,10 @@ Paths are relative to `packages/`. "Code" means a change in that file plus its t
 | Retry after an environment failure | `manager.ts` `ENVIRONMENT_RETRY_MS` (30 s) | code |
 | Finish status to verdict; the status Accept re-checks with | `manager.ts` `verdictOfStatus`, `statusForRegate` | code |
 | Accept: definition approvals, re-check after drift | `manager.ts` `acceptNow`; `runner/src/proposal/service.ts` `planAccept`, which calls `runner/src/proposal/files.ts` `mergeFile` and `MERGE_CONTEXT_LINES` (3) | code |
+| Accept: the board's own edits put back by card id (turn 13); the conflict sentence | `files.ts` `boardEditsOf`, `mergeFile`, `conflictMessage`; the re-check's refusal in `manager.ts` `acceptNow` | code |
 | Lifecycle items | `service.ts` `build`; `normalise.ts` `lifecycle` | code |
 | Report card (footprint, unused premises, self-evident) | `service.ts` `reportCard` | code |
-| What Claude is told | `runner/src/run/systemPrompt.ts`; `runner/src/run/prompts.ts` `renderContextBundle` | code. The system prompt is pinned by `runner/test/run/prompts.test.ts` against `docs/m2-plan.md` §5.1 and a fixture, so change all three. Setting `telelean.run.contextScope` (subject or neighbourhood) |
+| What Claude is told | `runner/src/run/systemPrompt.ts`; `runner/src/run/prompts.ts` `renderContextBundle` | code. The system prompt is pinned by `runner/test/run/prompts.test.ts` against `docs/m2-plan.md` §5.1 and a fixture, so change all three (turn 13 did, for four lines). Setting `telelean.run.contextScope` (subject or neighbourhood) |
 | Model and effort | the Claude backend | settings `telelean.model`, `telelean.effort` |
 | Reuse of the user's Lean build | `runner/src/shadow/seed.ts` | setting `telelean.run.reuseLeanBuild` (off) |
 | Decisions in force for later runs | `core/src/proposal/sidecars.ts` `inForce` | code |
@@ -2226,7 +2299,7 @@ Paths are relative to `packages/`. "Code" means a change in that file plus its t
   - definitions are flagged on the board but endorsed only in a proposal's review;
   - one subject per board;
   - Ctrl/Cmd+click in code does nothing yet.
-- **Platform:** Linux only in practice, because of the sandbox requirements.
+- **Platform:** Linux only in practice, because of the sandbox requirements. On Ubuntu 24.04 with AppArmor's user-namespace restriction (this machine), only inside the VS Code snap (1.2).
 
 **Runs (M2).**
 - **One run at a time:**
@@ -2234,7 +2307,9 @@ Paths are relative to `packages/`. "Code" means a change in that file plus its t
   - the target must be a Goal or Derivation of the board's subject.
 - **Accept:**
   - no partial Accept (D-21 is later);
-  - a definition is endorsed only by its Yes before Accept.
+  - a definition is endorsed only by its Yes before Accept. On a fresh model every new sort brings its existence presupposition `T.exists` (needed to name any individual of the sort), so a typical first run has at least one such question;
+  - after an overlap conflict, Feedback does not help: it continues on Claude's working copy, which is never rebased onto your files. Only Discard, or undoing your overlapping edits, does (turn 13 fixed the advice, not the mechanism).
+- **Vocabulary:** the simple shape rule (D-3) refuses vocabulary over Lean's built-in types, such as `noncomputable opaque age : Person → Nat` or `axiom Even : Nat → Prop`. Numeric examples need predicates over sorts; statements may still use numerals (an arithmetic statement over `Nat` passes).
 - **Not before M3:**
   - no consistency check, non-vacuity check or countermodels ("consistency unchecked"; "insufficient" and "inconsistent" are unverified claims);
   - a minimal review: no alignment check, deterministic gloss or back-translation;
@@ -2274,22 +2349,30 @@ Paths are relative to `packages/`. "Code" means a change in that file plus its t
 5. **The pre-freeze instance blind spot.** An instance that changes how unchanged text elaborates, while printing identically, is caught by no rule. This includes the user's own statements (3.7 item 1).
 6. **The freeze discipline holds per round only.** After Feedback, Claude may revise its earlier statements knowing its earlier proofs (3.7 item 7).
 
-**The real-Claude path is untested.**
+**What the real Claude has not exercised** (four live sessions on 2026-11-10, all passing; `docs/m2-live-report.md` §4).
 
-7. Since M0, `ClaudeCliBackend` has run only against a node test double and recorded 2.1.314 streams. Options such as the tool server's `endTurnOnFinish` have never met a real CLI.
+7. Every live round passed the gate at its first attempt. So the retry loop, the give-up and its revert have met only the FakeBackend, and so have the cheats. Feedback, Cancel, a window reload with `--resume`, usage-limit warnings, "Self-evident?", "Leave it open", a "No" to a definition, and Accept after drift (including turn 13's board-edit exception) have not met the real Claude either. The tool server's `endTurnOnFinish` (off by default) has never met a real CLI. Each live example ran once.
+
+**Found in turn 13, not fixed:**
+
+8. **The exact rule** by which Lean 4.35 leaves declarations out of the `.ilean` table is unknown. telelean recovers every top-level declaration with the observed pattern, a self-reference whose definition has no parent (3.4).
+9. **Test hygiene:** `runner/test/workspace/helpers.ts` leaves an empty `/tmp/telelean-ws-tests-*/tmp` per test file when `TELELEAN_TEST_TMP` is unset.
+10. **VS Code 1.145.2** prints an "InstantiationService has been disposed" stack when the raw Lean diff tab closes. This is VS Code's own bug and harmless.
+
+**Found on 2026-11-16, while checking the turn-13 write-up against Claude Code's transcripts:**
+
+11. **The output-token count is far too low with the real CLI** (2.4.8). For the four live runs telelean recorded 141, 143, 111 and 142 output tokens; Claude Code's transcripts of the same sessions record 2,924, 3,886, 1,913 and 3,388. The run panel ("12 in · 111 out" for Socrates), the report card, `attempts.jsonl` and the scripts' summaries all show telelean's figure. The RunManager adds up, per message, the last usage that the CLI's stream reports (`llm/streamJson.ts` turns it into `usage` events), and in these runs those figures held only a small part of each message's output. Requests, uncached input, cache tokens and the cost estimate agree with Claude Code's record. Not fixed; the cause in the CLI's stream was inferred from the numbers, not traced, because the runs' own stream records were lost with `/tmp`. A lead: the CLI's `result` event also carries totals (`usage`, `modelUsage`), which `streamJson.ts` parses but the RunManager uses only for the cost estimate; whether they hold the full output count was not checked.
 
 ## A.3 Not done yet, and the open decision
 
-- **The real-Claude walkthrough** (m2-plan §12) has not been run.
-  - What it does: it drives the Spyro sample with a scripted user, under two readings of "cannot":
-    - normative: expected proved, then Goal → Derivation accepted;
-    - literal: expected not proved, a suggestion adopted, round 2 proved, accepted.
-  - The script exists, and its dry run passes both readings with the FakeBackend and real Lean.
-  - Going live needs both opt-ins, about 12 GB of free memory, and an announcement of the quota use. The plan estimates roughly 0.5–1.5 M cache-read tokens and 5–15 minutes per reading.
-  - Until it passes, M2 is not formally "good enough to start using".
-- **The modifications audit,** the main session's planned end-of-turn audit of everything modified this turn (files, installs, effectful commands, network effects), has not been done. Verifiers recorded their own effects outside the repository, and a separate scan answered which git repositories were read (`verbatim_prompt_log/bundle_9/evidence/scan_git.py`).
-- **Two runner test files have not been run:** `packages/runner/test/run/walkthroughScript.test.ts` and `smokeScript.test.ts`. They spawn the scripts with `--live` and the `*_LIVE` variables (fake binary, tripwire armed) to show that live mode refuses. The verifiers' no-live rule excluded them. Command: `cd packages/runner && TELELEAN_NO_REAL_CLAUDE=1 npx vitest run test/run/walkthroughScript.test.ts test/run/smokeScript.test.ts`.
-- **Missing reports:** both plans ask for `docs/m1-report.md` and `docs/m2-report.md`; neither exists.
+- **Done in turn 13 (2026-11-10):**
+  - **the real-Claude walkthrough** (m2-plan §12) passed both readings. Normative: proved, accepted as a Derivation. Literal: not proved, the suggestion adopted, round 2 proved, accepted. It took 19 requests and under two minutes, against the plan's estimate of 30–55 requests and 10–30 minutes. With it, M2 is "good enough to start using" by the architecture's definition;
+  - **the two runner test files** that spawn the live scripts to show that live mode refuses (`walkthroughScript.test.ts`, `smokeScript.test.ts`) passed, 11/11, and are part of the full runner run now.
+- **Written afterwards (2026-11-13):** the write-up of the live runs and of turn 13's fixes, `docs/m2-live-report.md`.
+- **The modifications audit,** the main session's planned end-of-turn audit of everything modified in turn 9 (files, installs, effectful commands, network effects), was not done in that turn. Verifiers recorded their own effects outside the repository, and a separate scan answered which git repositories were read (`verbatim_prompt_log/bundle_9/evidence/scan_git.py`). It was started in turn 15 (2026-11-13), when you asked for everything that had been skipped, and covers turn 9 on:
+  - **the disk view is done:** `verbatim_prompt_log/bundle_15/user_requested_documents/01_modifications_audit_disk_view.md`;
+  - **the transcript view** (every command and file write in the session's transcripts) was stopped part-way by a shutdown, with partial notes in `verbatim_prompt_log/bundle_15/evidence/audit-transcripts/`, and was taken up again in turn 16 (2026-11-16). Its reconciliation with the disk view is part of that work.
+- **Missing reports:** both plans ask for `docs/m1-report.md` and `docs/m2-report.md`; neither exists. `docs/m2-live-report.md` covers the live part of M2 and turn 13's fixes.
 - **Open decision: where "Raw Lean diff…" should open** (decisions log, top).
   - **Now:** beside the board. When the board is the only editor group, VS Code splits the window and the board shrinks to half width while the diff is open (still usable).
   - **Alternative:** a tab in the board's own group. The board keeps full width but is hidden until you switch back.
@@ -2343,6 +2426,7 @@ Paths are relative to `packages/`. "Code" means a change in that file plus its t
 - **m2-plan:** says tests use `llm/fixtures/recorded-cli-2.1.314`; no test reads it.
 - **m1/m2 reports:** both plans ask for them (A.3); they do not exist.
 - **m0-report:** an outdated snapshot.
+- **decisions-log §1** says `mental_model/` sits inside "the git-free telelean folder". That was true when it was written; since your commit of 2026-11-05 the repository is a git repository (2.1.6).
 
 **Code comments and package metadata.**
 - **Core** `package.json` describes the package as types, protocol and samples only.
@@ -2389,6 +2473,7 @@ Paths are relative to `packages/`. "Code" means a change in that file plus its t
 | **attempt** | one `finish` call in a round; failed attempts count toward the cap |
 | **attempts.jsonl / decisions.json** | per-subject logs of run rounds (and what you did with them) and of your answers to Claude |
 | **binding / pin** | which declaration is a card's statement: `lean:` (pinned, always wins) or adjacency (the next declaration with no blank line) |
+| **board edits (at Accept)** | the board's own edits made while Claude worked (added cards at the end of a namespace, reasons); since turn 13 Accept puts them back by card id instead of calling them a conflict |
 | **card** | one `@@ telelean v1` block in a Lean comment, with a sentence and optionally a Lean statement |
 | **carrier** | a non-proof declaration (def, instance, structure) that rests on more than the vocabulary layer, i.e. carries a proof; refused before the freeze |
 | **check / round budget** | per-round caps: 25 Lean checks, 80 turns, 20 agent minutes, 120 s per Lean job, 3 attempts |
@@ -2397,6 +2482,8 @@ Paths are relative to `packages/`. "Code" means a change in that file plus its t
 | **D-11** | the kind-change table: only `type:` and `n.holds` change; users of a removed `.holds` are rewritten or marked broken |
 | **D-19** | meaning before proof status: a freeze between formalising and proving, and the review shows statements before results |
 | **definition question** | a new definition on a statement path, or a new presupposition, in a proposal; Accept needs "yes" to each |
+| **demo driver** | `packages/extension/scripts/demo-driver.mjs` (`npm run demo`): plays the own-example demo in an isolated VS Code; `--dry-run`, `--rehearse` or `--live` (2.7) |
+| **detached (statement)** | a statement separated from its card's block by a blank line, so the card has no code (TL013); since turn 13 the gate's findings name it (token `detached`) |
 | **drift** | your model files changed while a run worked; Accept then merges, re-freezes and re-gates |
 | **facts (fresh / stale / unchecked)** | what Lean reported per declaration (type, kind, value, axioms, references), tied to file versions |
 | **footprint** | what a proof rests on: Ax(`n.holds`) mapped to card ids, `presup:` entries and `axiom:` entries |
@@ -2422,6 +2509,8 @@ Paths are relative to `packages/`. "Code" means a change in that file plus its t
 | **subject** | a module subtree and namespace (`Model/<S>/…`) shown on one board |
 | **syntactic mode** | the board without Lean facts (wrong toolchain), cards read from text only |
 | **TLxxx** | diagnostic codes: TL0xx markup, TL1xx Lean side, TL201 project not checkable |
+| **unlisted declaration** | a top-level declaration Lean 4.35's `.ilean` leaves out of its declaration table (its source mentions no constant); since turn 13 telelean recovers it from its self-reference (3.4) |
+| **userns probe** | `checkUserNamespaces`: the run preflight's one-off `bwrap` run that checks the sandbox can create its user namespaces (turn 13; 2.4.3) |
 | **verdict** | proved, not-proved, insufficient, inconsistent, gave-up, no-finish, cap-reached, cancelled, failed |
 | **vocabulary** | declarations in a subject's modules bound to no card, classified as sort, predicate, function, constant, presupposition, definition, lemma, unmarked axiom or other |
 
@@ -2455,3 +2544,20 @@ Test counts are quoted from that verifier, not re-run.
 **Process note:**
 - During the theory work, one probe command was run by mistake in the repository root. It created `p2.lean`, which was deleted at once after its content was confirmed to be the probe text. The fact-checker confirmed that the root has no `p2.lean`, no `.lake` and no root manifest.
 - Assembling this report changed nothing in the repository.
+
+**The turn-13 update (2026-11-13).**
+- **Sources:** the four reports of turn 13's demo-readiness workflow (`verbatim_prompt_log/bundle_13/subagent_reports/demo_readiness_workflow/`); Claude Code's transcripts of the four live sessions, for the exact Lean, questions and usage; `git diff` and `git status` against your commit "initial generation" of 2026-11-05; and the changed and new source files, read for this update.
+- **Test counts** are quoted from turn 13's integrator, not re-run.
+- **Changes:** only files under `docs/` changed: this report, `project-report-files.md`, `user-guide.md`, `decisions-log.md`, `m2-plan.md` §12, `DEMO.md` (two small corrections), and the new `m2-live-report.md`. No code was changed, and no command that changes state was run.
+
+**The completion pass (2026-11-16, turn 16).** The turn-13 update was stopped part-way by a shutdown on 2026-11-13, so every file it touched was checked again.
+- **Checked:** `m2-live-report.md` against Claude Code's transcripts of the four live sessions (questions, options, answers, the Lean, the permitted sets, footprints and token counts) and against the main session's records of 2026-11-10 (results, wall times, cost estimates); the turn-13 claims of this report, the user guide, the plan, the per-file appendix and `DEMO.md` against the current code (the diff against your commit of 2026-11-05, and the changed files themselves); the bundle times; the installed Claude Code and VS Code versions.
+- **Found and corrected:**
+  - the output-token undercount (A.2 item 11), now noted in this report, `m2-live-report.md`, the plan's §12.3, the user guide (10.12) and `DEMO.md`;
+  - Claude Code is now 2.1.325 (2.1.1, `m2-live-report.md` §6);
+  - the pre-check's flag claim in `m2-live-report.md` §1: `claude --help` did not show `--system-prompt-file` and `--max-turns`, which the live sessions then used;
+  - three summaries in `project-report-files.md` that still called the real-Claude path untried;
+  - the plan's §3.3 (`detached` token) and §4.1 (the userns probe) now carry turn-13 notes, like §7.1;
+  - `DEMO.md`: the definition step's example, the output-token note and a line on using the snap VS Code;
+  - the modifications audit's status (A.3).
+- **Not re-run:** no test, build or live run; test counts are still the integrator's.

@@ -23,7 +23,7 @@
  * or an enforced memory cap, nothing runs and the status is `could-not-start`.
  */
 import { spawn, type ChildProcess } from 'node:child_process';
-import { accessSync, closeSync, constants, existsSync, mkdirSync, openSync, statSync } from 'node:fs';
+import { accessSync, closeSync, constants, existsSync, mkdirSync, openSync, readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
@@ -35,6 +35,7 @@ import {
   cgroupOfPid,
   checkUserManager,
   defaultHostTools,
+  execCapture,
   killUnits,
   resetFailed,
   sampleCgroupMemory,
@@ -188,6 +189,63 @@ export async function checkSandboxSupport(
   if (managerProblem !== undefined) return managerProblem;
   preflightOk.add(key);
   return undefined;
+}
+
+/** bwraps that created their namespaces once (the probe below is not repeated for them). */
+const usernsOk = new Set<string>();
+const USERNS_SYSCTL = '/proc/sys/kernel/apparmor_restrict_unprivileged_userns';
+
+/**
+ * The plain reason when a bwrap failure (its stderr) comes from a kernel that lets only some programs create user
+ * namespaces: Ubuntu 24.04's AppArmor restriction (`kernel.apparmor_restrict_unprivileged_userns=1`). Turn 13 (snap
+ * work): there an unconfined bwrap fails with "setting up uid map: Permission denied", while the processes of the snap
+ * VS Code (AppArmor label `snap.code.code`) and everything they start may create them. Empty otherwise.
+ */
+export function usernsHint(stderr: string, readSysctl: () => string | undefined = () => readTextOrUndefined(USERNS_SYSCTL)): string {
+  if (!/uid map|No permissions to create new namespace|Operation not permitted|Permission denied/i.test(stderr)) return '';
+  if (readSysctl()?.trim() !== '1') return '';
+  return '; this kernel lets only some programs create user namespaces (AppArmor: kernel.apparmor_restrict_unprivileged_userns=1): run telelean in the VS Code snap, whose processes may create them, or give bwrap an AppArmor profile that allows it';
+}
+
+function readTextOrUndefined(file: string): string | undefined {
+  try {
+    return readFileSync(file, 'utf8');
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Can bwrap create the sandbox's namespaces here? checkSandboxSupport only finds the programs; on a kernel that
+ * restricts unprivileged user namespaces (see {@link usernsHint}) every sandboxed run would then fail at its first
+ * Lean job. This runs bwrap once with the namespace flags and the system mounts of the real profile and `/usr/bin/true`
+ * (cached per bwrap once it worked), straight from this process: a real run's bwrap inherits this process's AppArmor
+ * label in the same way (`systemd-run --scope` runs it as our descendant). The run preflight calls it before anything is
+ * sent to Claude. Returns a reason if bwrap cannot set up the sandbox.
+ */
+export async function checkUserNamespaces(host: Partial<HostTools> = {}): Promise<string | undefined> {
+  const tools: HostTools = { ...defaultHostTools(), ...host };
+  if (usernsOk.has(tools.bwrap)) return undefined;
+  const args = [
+    '--ro-bind', '/usr', '/usr',
+    '--symlink', 'usr/lib', '/lib',
+    '--symlink', 'usr/lib64', '/lib64',
+    '--symlink', 'usr/bin', '/bin',
+    '--proc', '/proc',
+    '--dev', '/dev',
+    '--unshare-all',
+    '--die-with-parent',
+    '--new-session',
+    '--clearenv',
+    '--', '/usr/bin/true',
+  ];
+  const r = await execCapture(tools.bwrap, args, { PATH: '/usr/bin:/bin' }, 10_000);
+  if (r.code === 0) {
+    usernsOk.add(tools.bwrap);
+    return undefined;
+  }
+  const why = lastLines(r.stderr, 3) || r.error || `exit ${String(r.code)}`;
+  return `bwrap cannot set up the sandbox here (${why})${usernsHint(r.stderr)}`;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -567,7 +625,7 @@ export async function runLean(options: RunLeanOptions): Promise<RunLeanResult> {
             detail = `could not create the scope: ${lastLines(err, 5) || spawnError || `systemd-run exited with ${String(code ?? signal)}`}`;
           } else if (bwrapExit !== null && bwrapExit < 128) {
             status = 'could-not-start';
-            detail = `bwrap could not set up the sandbox: ${lastLines(err, 5) || `bwrap exited with ${bwrapExit}`}`;
+            detail = `bwrap could not set up the sandbox: ${lastLines(err, 5) || `bwrap exited with ${bwrapExit}`}${usernsHint(err)}`;
           } else {
             status = 'failed';
             detail = `the sandbox was killed before the command finished (bwrap ${String(bwrapExit)}, keeper ${String(code ?? signal)})`;

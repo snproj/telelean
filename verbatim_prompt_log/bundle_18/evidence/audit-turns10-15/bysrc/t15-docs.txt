@@ -1,0 +1,2265 @@
+#1 L18 2026-11-13T12:38:27.848Z BASH flags=['git'] hflags=[] bg=None sandboxOff=None
+git status && git log --format='%h %ad %s' --date=iso && git diff --stat && ls -la docs/
+  => err=False On branch main
+     Your branch is up to date with 'origin/main'.
+     
+     Changes not staged for commit:
+       (use "git add <file>..." to update what will be committed)
+       (use "git restore <file>..." to discard changes in working directory)
+     	modified:   docs/m2-plan.md
+     	modified:   docs/project-report-files.md
+     	modified:   docs/project-report.md
+     	modified:   docs/user-guide.md
+     	modified:   packages/core/src/gate/describe.ts
+     	modified:   packages/core/src/gate/rules.ts
+     	modified:   packages/core/test/gate/describe.test.ts
+     	modified:   packages/core/test/gate/rules.test.ts
+     	modified:   packages/extension/.vscode-test.mjs
+     	modified:   packages/extension/package.json
+     	modified:   packages/extension/scripts/smoke.mjs
+     	modified:   packages/runner/src/lean/runLean.ts
+     	modified:   packages/runner/src/proposal/files.ts
+     	modified:   packages/runner/src/run/manager.ts
+     	modified:   packages/runner/src/run/preflight.ts
+     	modified:   packages/runner/src/run/systemPrompt.ts
+     	modified:   packages/runner/src/run/types.ts
+     	modified:   packages/runner/src/semantic/ilean.ts
+     	modified:   packages/runner/src/semantic/refresh.ts
+     	modified:   packages/runner/test/proposal/accept.test.ts
+     	modified:   packages/runner/test/run/fixtures/system-prompt-5.1.txt
+     	modified:   packages/runner/test/semantic/ilean.test.ts
+     	modified:   test-fixtures/semantic/README.md
+     
+     Untracked files:
+       (use "git add <file>..." to include in what will be committed)
+     	.gitignore
+     	.node-version
+     	docs/DEMO.md
+     	packages/extension/scripts/demo-drive
+
+#2 L19 2026-11-13T12:38:29.803Z BASH flags=['home-paths'] hflags=[] bg=None sandboxOff=None
+ls -la /home/zhengyew/.claude/projects/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/subagents/workflows/wf_8e6791a7-556/ && wc -l /home/zhengyew/.claude/projects/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/subagents/workflows/wf_8e6791a7-556/journal.jsonl && ls -d ~/.claude/projects/-tmp-claude-1002--home-zhengyew-telelean* 2>/dev/null | head -50
+  => err=False total 12524
+     drwxrwxr-x  2 zhengyew zhengyew    4096 Nov 10 09:57 .
+     drwxrwxr-x 15 zhengyew zhengyew    4096 Nov 10 08:42 ..
+     -rw-------  1 zhengyew zhengyew 4848117 Nov 10 09:40 agent-a0116ef265163947f.jsonl
+     -rw-rw-r--  1 zhengyew zhengyew     214 Nov 10 08:42 agent-a0116ef265163947f.meta.json
+     -rw-------  1 zhengyew zhengyew 2277396 Nov 10 09:13 agent-a1b1851f487ee611c.jsonl
+     -rw-rw-r--  1 zhengyew zhengyew     214 Nov 10 08:42 agent-a1b1851f487ee611c.meta.json
+     -rw-------  1 zhengyew zhengyew 3414050 Nov 10 09:57 agent-a43b4aeaaf2a5ca1d.jsonl
+     -rw-rw-r--  1 zhengyew zhengyew     214 Nov 10 08:42 agent-a43b4aeaaf2a5ca1d.meta.json
+     -rw-------  1 zhengyew zhengyew 2165038 Nov 10 10:35 agent-af57398dae3cc4610.jsonl
+     -rw-rw-r--  1 zhengyew zhengyew     214 Nov 10 09:57 agent-af57398dae3cc4610.meta.json
+     -rw-rw-r--  1 zhengyew zhengyew   64902 Nov 10 10:35 journal.jsonl
+     9 /home/zhengyew/.claude/projects/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/subagents/workflows/wf_8e6791a7-556/journal.jsonl
+     /home/zhengyew/.claude/projects/-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-demo-1-profile-user-data-User-globalStorage-telelean-telelean-runs-demo-65e9f7ec-rmwb174pbc2fbb9-ws
+     /home/zhengyew/.claude/projects/-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-demo-2-profile-user-data-User-globalStorage-telelean-telelean-runs-demo-6cb3ab42-rmwb18qmg8e8eed-ws
+     /home/zhengyew/.cla
+
+#3 L32 2026-11-13T12:38:33.517Z BASH flags=['home-paths'] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/.claude/projects/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/subagents/workflows/wf_8e6791a7-556/ && python3 -I -c "
+import json,sys
+for i,line in enumerate(open('journal.jsonl')):
+    d=json.loads(line)
+    print(i, list(d.keys()), {k:(str(v)[:200]) for k,v in d.items() if k not in ('result',)})
+"
+  => err=False 0 ['type'] {'type': 'launched'}
+     1 ['type', 'key', 'agentId', 'label', 'phase'] {'type': 'started', 'key': 'v2:2a3cae16157e8fada5dc021a62656e65fe825b93a399aa7b48aa4fcf6fe25fa6', 'agentId': 'a43b4aeaaf2a5ca1d', 'label': 'fresh-model', 'phase': 'Prepare'}
+     2 ['type', 'key', 'agentId', 'label', 'phase'] {'type': 'started', 'key': 'v2:7a49f51d29de0e8970d8982121ffb495ac90115ada6d0d73a94feb0f8c78460d', 'agentId': 'a1b1851f487ee611c', 'label': 'snap-vscode', 'phase': 'Prepare'}
+     3 ['type', 'key', 'agentId', 'label', 'phase'] {'type': 'started', 'key': 'v2:96be40c40eb51b0da102fdebc0992d8edddff24a3c8ad96b1078cc764188b4ef', 'agentId': 'a0116ef265163947f', 'label': 'demo-driver', 'phase': 'Prepare'}
+     4 ['type', 'key', 'agentId', 'result', 'remoteControlDeviceReport', 'toolsUsed'] {'type': 'result', 'key': 'v2:7a49f51d29de0e8970d8982121ffb495ac90115ada6d0d73a94feb0f8c78460d', 'agentId': 'a1b1851f487ee611c', 'remoteControlDeviceReport': 'False', 'toolsUsed': "['Bash', 'Read', 'Write', 'Edit', 'StructuredOutput']"}
+     5 ['type', 'key', 'agentId', 'result', 'remoteControlDeviceReport', 'toolsUsed'] {'type': 'result', 'key': 'v2:96be40c40eb51b0da102fdebc0992d8edddff24a3c8ad96b1078cc764188b4ef', 'agentId': 'a0116ef265163947f', 'remoteControlDeviceReport': 'False', 'toolsUsed': "['Bash', 'Write', 'Read', 'Edit', 'StructuredOutput']"}
+     6 ['type', 'key', 'agentId', 'result', 'remoteControlDeviceReport', 'toolsUsed'] {'type': 'result', 'key': 'v2:2a3cae16157e8fada5dc021a62656e65fe825b93a399aa7b48aa4fcf6f
+
+#4 L35 2026-11-13T12:38:36.259Z BASH flags=['home-paths'] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/.claude/projects/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/subagents/workflows/wf_8e6791a7-556/ && python3 -I -c "
+import json,sys
+lines=open('journal.jsonl').read().splitlines()
+d=json.loads(lines[6])
+r=d['result']
+print(type(r))
+print(json.dumps(r, indent=1, ensure_ascii=False))
+"
+  => err=False <class 'dict'>
+     {
+      "summary": "I tested the fresh-model demo path at the runner level and it now works end to end. A new e2e suite (9 tests, 10 FakeBackend scripts in /home/zhengyew/telelean/test-fixtures/fresh/) drives the real code: the Initialize scaffold, add-node cards, RunManager, gate with sandboxed Lean, proposal service, Accept, a refresh, and checks of the board statuses. In each script a well-behaved Claude creates everything itself: sorts, propositions, predicates, constants with `T.exists` plus its instance, statements below each block, the selected assumptions' `.holds`, lemmas and proofs.\n\nThe four required cases pass:\n- **(a) Socrates:** proved; the goal becomes a Derivation on Accept; the only question is the existence presupposition `Demo.Being.exists`. Undo and Redo work, and a second example (Plato) in the same model reuses the accepted vocabulary.\n- **(b) Chain:** proved, using a named lemma and a tactic proof.\n- **(c) Penguin:** Claude asks a genericity question, finishes not proved with the suggestion \"Every penguin is a bird\" (it closes the gap and does not prove the goal on its own). After \"I hold this\" the statements are re-frozen and round 2 proves the goal; Accept writes the card worded by Claude.\n- **(d) Zero premises, not self-evident:** not proved; Accept keeps the formalisation and the card stays a Goal.\n\nFive more cases pass: goal typed before its premises, propositional with a Derivation target, arithmetic self-evident, honest vari
+
+#5 L38 2026-11-13T12:38:38.896Z BASH flags=['home-paths'] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/.claude/projects/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/subagents/workflows/wf_8e6791a7-556/ && python3 -I -c "
+import json,sys
+lines=open('journal.jsonl').read().splitlines()
+d=json.loads(lines[4])
+r=d['result']
+print(json.dumps(r, indent=1, ensure_ascii=False))
+"
+  => err=False {
+      "summary": "The extension's VS Code suites now run inside the user's own snap VS Code (VS Code 1.145.2, Electron 43.8.3, /snap/code/278) through `npm run test:smoke:snap`, and they all pass. Two full snap runs each passed 40 smoke tests and 21 e2e tests, with no isolation failures. Confirmed in the snap: activation, Initialize Model Here on a fresh folder, the board, the Lean refresh through systemd-run + setpriv + bwrap, history, and FakeBackend runs. The FakeBackend runs covered AT5.8/AT5.9 and the normative, literal, cheating, give-up, cancel, race and reload cases.\n\nHow the instance is started: through the snap's own electron-launch, with the SNAP_* variables `snap run` sets and the snap's per-user folders inside the isolated HOME. The extension host therefore gets exactly the variables the user's real window has: SNAP*, GTK_*, GDK_*, GIO_MODULE_DIR, GSETTINGS_SCHEMA_DIR, LOCPATH, FONTCONFIG_*, *_VSCODE_SNAP_ORIG, the snap-prefixed XDG_DATA_DIRS, and ELECTRON_RUN_AS_NODE=1. VS Code sets ELECTRON_RUN_AS_NODE itself.\n\nNo snap-specific failure in packages/extension needed fixing. I added a host-environment suite. It records what the extension host inherited and checks four things under that environment: the Lean sandbox, the Claude env sanitiser, the PreToolUse guard under ~/.local/bin/node, and the guard under the snap's Electron-as-Node fallback. I also fixed a harness leak: the agent's own CLAUDE_CODE_* session variables, including a messaging token, were reaching 
+
+#6 L41 2026-11-13T12:38:41.402Z BASH flags=['home-paths'] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/.claude/projects/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/subagents/workflows/wf_8e6791a7-556/ && python3 -I -c "
+import json,sys
+lines=open('journal.jsonl').read().splitlines()
+d=json.loads(lines[5])
+r=d['result']
+print(json.dumps(r, indent=1, ensure_ascii=False))
+"
+  => err=False {
+      "summary": "Built a demo driver that plays the whole \"your own simple example\" demo in an isolated VS Code through the real board webview (CDP/playwright-core), plus docs/DEMO.md. Flow: fresh empty folder -> \"telelean: Initialize Model Here\" -> cards typed in the A|D|G box -> premises + goal selected -> \"These suffice\" -> consent -> each question answered (given --answer specs, else option 1) -> review stepped through (definition questions approved by default) -> if not proved and Claude suggests a gap-closing premise, \"I hold this\" (default) and the next round -> Accept -> wait until Lean re-checked the accepted files. Prints a JSON summary (stdout and <work>/summary.json): verdict per round (footprint, gap, gate attempts, statements, new vocabulary, definitions, lifecycle, suggested premises), questions with options and the answers given (and Claude's guess afterwards), ghosts/adopted premises, final Lean files, statuses after Accept (from .telelean/graph.json and the board), wall times, token usage/cost estimate, notifications, problems; screenshots of every step in <work>/screenshots; a short human-readable recap on stderr. Modes: --dry-run (default; VS Code Test mode with test/demo/agent.ts, bundled into the work dir, which installs a dry-run FakeBackend 'Claude' (test/demo/demoClaude.ts: lazily computed steps that formalise simple syllogisms/chains with a genericity question whose answer changes the result, or whole sentences with a linking premise; real Lean
+
+#7 L44 2026-11-13T12:38:43.974Z BASH flags=['home-paths'] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/.claude/projects/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/subagents/workflows/wf_8e6791a7-556/ && python3 -I -c "
+import json,sys
+lines=open('journal.jsonl').read().splitlines()
+d=json.loads(lines[8])
+r=d['result']
+print(json.dumps(r, indent=1, ensure_ascii=False))
+"
+  => err=False {
+      "summary": "The three pieces now work together. I rebuilt everything, and every suite, dry run and rehearsal I ran passed. No real Claude was run.\n\nThe extension bundle had been built at 08:59, before the fresh-model fixes. I rebuilt it at 10:05 and checked that the new behaviour is in it: the 4 prompt lines, the blank-line findings, the `unlisted` declarations and the merge exception. The user's VS Code loads telelean from this folder.\n\nI applied every required change from the three reports, plus the optional changes that matter for the demo:\n- **Plan text:** section 5.1 of docs/m2-plan.md now matches the system prompt, so the prompt test passes. Section 7.1 now describes the board-edit merge exception.\n- **Conflict advice:** two refusal messages told the user to send Feedback \"to redo it on your current files\". Feedback does not rebase onto the user's files, so it would meet the same conflict. Both messages now say to undo the overlapping edits and Accept again. The test and four doc passages are updated to match.\n- **Sandbox check before a run:** the snap agent's suggestion is in. The run preflight now runs bwrap once, the way a real run does, before anything is sent to Claude. If bwrap cannot create its user namespace (the AppArmor restriction on this Ubuntu), the run is refused with one plain sentence. A Lean job that fails this way now carries the same hint. The probe passes on this machine, in the snap test instance and in the snap VS Code the demo driver s
+
+#8 L49 2026-11-13T12:38:47.395Z BASH flags=['git'] hflags=[] bg=None sandboxOff=None
+git diff -- docs/
+  => err=False diff --git a/docs/m2-plan.md b/docs/m2-plan.md
+     index 3bf5069..9f6edd7 100644
+     --- a/docs/m2-plan.md
+     +++ b/docs/m2-plan.md
+     @@ -391,19 +391,19 @@ Your task in this run: decide whether the TARGET card follows from exactly the S
+      Workflow
+      1. Read the files you need, in the subject's folder.
+      2. If a sentence can be read in ways that change the result (modality, genericity, strength of a negation, scope, word sense, vagueness, presupposition), ask with ask_user before formalising. Do not ask about differences that do not matter.
+     -3. Formalise the target if it has no Lean yet, and every selected ASSUMPTION that has none. Directly below its block, with no blank line in between, write:
+     +3. Formalise the target if it has no Lean yet, and every selected ASSUMPTION that has none (cards typed on the board sit in the subject's Inbox.lean: formalise them there). Directly below its block, with no blank line in between, write:
+         /-- <the card's sentence> -/
+         abbrev <snake_case_name> : Prop := <statement>
+         axiom <snake_case_name>.holds : <snake_case_name>     (assumptions only)
+     -   telelean then adds the `lean:` pin to the block and keeps the docstring equal to the sentence. New vocabulary goes into the subject's Vocabulary.lean, inside `namespace <Subject>`.
+     +   telelean then adds the `lean:` pin to the block and keeps the docstring equal to the sentence. New vocabulary goes into the subject's Vocabulary.lean, inside `namespace <Subject>`. A selected GOAL or DERIVATION premise withou
+
+#9 L50 2026-11-13T12:38:47.998Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+grep -n '^#' docs/project-report.md | head -300
+  => err=False 1:# telelean: project report
+     5:## Status in brief
+     27:# Part 1: Architecture
+     34:## 1.1 The system in one picture
+     57:## 1.2 Processes
+     78:## 1.3 The four packages
+     80:### packages/core: pure TypeScript, shared by everything
+     114:### packages/runner: the Node engine (no `vscode` imports)
+     153:### packages/extension: the VS Code adapter (owns no model semantics)
+     176:### packages/webview: the board
+     193:## 1.4 Main data flows
+     195:### 1.4.1 Refresh: how the board learns what Lean thinks
+     214:### 1.4.2 Edit, undo and history
+     238:### 1.4.3 A run, end to end
+     277:### 1.4.4 Accept
+     291:## 1.5 What is stored where
+     320:## 1.6 Trust boundaries
+     338:## 1.7 Where the implementation departs from the original design
+     360:# Part 2: Functionality and features
+     374:## 2.1 Setting up and running
+     376:### 2.1.1 Requirements
+     386:### 2.1.2 Build, install, reload
+     398:### 2.1.3 Commands and activation
+     410:### 2.1.4 Initialize Model Here
+     435:### 2.1.5 Open Board
+     444:### 2.1.6 The sample model
+     465:### 2.1.7 A caution
+     469:## 2.2 The board
+     471:### 2.2.1 Layout, top to bottom
+     486:### 2.2.2 Columns and cards
+     504:### 2.2.3 The expanded card
+     541:### 2.2.4 The "uses:" line and the Vocabulary group
+     564:### 2.2.5 Arrows and status marks
+     600:### 2.2.6 The Lean badge, banners and Problems
+     618:### 2.2.7 Subjects
+     629:### 2.2.8 Selection and the tray
+     639:### 2.2.9 Keyboard
+     649:### 2.2.10 Toasts, provenance and theming
+     667:## 2.3 Editing the model without AI (M1)
+     669:### 2.3.1 Every board action
+     688:### 2.3.2 Adding cards: the A|
+
+#10 L57 2026-11-13T12:38:50.600Z Read {"file_path": "/home/zhengyew/telelean/docs/project-report.md", "limit": 200}
+
+#11 L61 2026-11-13T12:38:52.393Z Read {"file_path": "/home/zhengyew/telelean/docs/project-report.md", "offset": 200, "limit": 270}
+
+#12 L65 2026-11-13T12:38:56.536Z Read {"file_path": "/home/zhengyew/telelean/docs/project-report.md", "offset": 469, "limit": 340}
+
+#13 L68 2026-11-13T12:38:57.861Z Read {"file_path": "/home/zhengyew/telelean/docs/project-report.md", "offset": 808, "limit": 410}
+
+#14 L72 2026-11-13T12:38:59.457Z Read {"file_path": "/home/zhengyew/telelean/docs/project-report.md", "offset": 1216, "limit": 330}
+
+#15 L75 2026-11-13T12:39:01.035Z Read {"file_path": "/home/zhengyew/telelean/docs/project-report.md", "offset": 1545, "limit": 370}
+
+#16 L79 2026-11-13T12:39:06.449Z Read {"file_path": "/home/zhengyew/telelean/docs/project-report.md", "offset": 1914, "limit": 300}
+
+#17 L82 2026-11-13T12:39:08.040Z Read {"file_path": "/home/zhengyew/telelean/docs/project-report.md", "offset": 2208, "limit": 320}
+
+#18 L87 2026-11-13T12:39:13.460Z BASH flags=['git'] hflags=[] bg=None sandboxOff=None
+git diff -- packages/core/ packages/runner/src/
+  => err=False <persisted-output>
+     Output too large (42KB). Full output saved to: /home/zhengyew/.claude/projects/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/tool-results/bg1i7q7m1.txt
+     
+     Preview (first 2KB):
+     diff --git a/packages/core/src/gate/describe.ts b/packages/core/src/gate/describe.ts
+     index d68597e..3af5624 100644
+     --- a/packages/core/src/gate/describe.ts
+     +++ b/packages/core/src/gate/describe.ts
+     @@ -171,6 +171,7 @@ export function describe(finding: GateFinding, ctx: DescribeContext, brief = fal
+            if (token === 'after-freeze') return `it added ${shown !== undefined ? `vocabulary (${shown})` : 'vocabulary'} after freezing the statements`;
+            if (token === 'statement') return `it wrote an axiom${shown !== undefined ? ` (${shown})` : ''} as the statement of ${cardLabel(finding.nodeId, ctx)}`;
+            if (token === 'unclassified') return `it added an axiom telelean cannot classify as vocabulary${shown !== undefined ? ` (${shown})` : ''}`;
+     +      if (token === 'detached') return `it left a blank line between ${cardLabel(finding.nodeId, ctx)} and its Lean statement`;
+            return `it added an axiom${shown !== undefined ? ` (${shown})` : ''}, and only you can add beliefs`;
+          case 'vocabulary-shape':
+            return `it added vocabulary of a kind telelean does not allow${shown !== undefined ? ` (${shown})` : ''}`;
+     @@ -198,6 +199,7 @@ export function describe(finding: GateFinding, ctx: DescribeContext, brief = fal
+            return 'it said the goal was not proved but left 
+
+#19 L92 2026-11-13T12:39:15.279Z Read {"file_path": "/home/zhengyew/.claude/projects/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/tool-results/bg1i7q7m1.txt"}
+
+#20 L96 2026-11-13T12:39:17.399Z BASH flags=['git'] hflags=[] bg=None sandboxOff=None
+git diff -- packages/extension/ test-fixtures/ packages/runner/test/ | head -400
+  => err=False diff --git a/packages/extension/.vscode-test.mjs b/packages/extension/.vscode-test.mjs
+     index e05906c..e16f808 100644
+     --- a/packages/extension/.vscode-test.mjs
+     +++ b/packages/extension/.vscode-test.mjs
+     @@ -7,10 +7,17 @@
+      // --user-data-dir and --extensions-dir are passed here, @vscode/test-electron does not add its own
+      // ./.vscode-test/user-data defaults, and HOME/XDG_* point into the scratch profile, so nothing reaches the user's real
+      // home folder (~/.config/Code, ~/.copilot, ~/.config/google-chrome, ...).
+     +//
+     +// Snap mode (`npm run test:smoke:snap`, scripts/smoke.mjs --snap): both instances run the user's own snap VS Code
+     +// (/snap/code/<rev>, its version instead of 1.140.0) through the snap's electron-launch with the SNAP_* variables of
+     +// `snap run` (scripts/snap-env.mjs), so the extension host gets the snap's environment (SNAP*, GTK_*, GDK_*, LOCPATH,
+     +// XDG_DATA_DIRS, ...) as in the user's window. scripts/smoke.mjs passes the snap it found in TELELEAN_VSCODE_SNAP.
+      import { defineConfig } from '@vscode/test-cli';
+      import { homedir } from 'node:os';
+      import { join } from 'node:path';
+      
+     +import { snapLaunch, snapTestEnv } from './scripts/snap-env.mjs';
+     +
+      const dir = process.env.TELELEAN_SMOKE_DIR;
+      // e2e.test.ts drives the board webview over the DevTools protocol: Chromium serves it on this loopback port
+      // (127.0.0.1 only), in the e2e configuration's own test instance only, so every other suite runs in an instance
+     @@ -25,18 +32,29 @@ if (!dir) {
+      // This shell
+
+#21 L102 2026-11-13T12:39:19.009Z Read {"file_path": "/home/zhengyew/telelean/docs/DEMO.md"}
+
+#22 L106 2026-11-13T12:39:23.991Z BASH flags=['home-paths'] hflags=[] bg=None sandboxOff=None
+cd ~/.claude/projects/ && for d in -tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-*; do echo "== $d"; ls -la "$d"; done
+  => err=True Exit code 2
+     == -tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-demo-1-profile-user-data-User-globalStorage-telelean-telelean-runs-demo-65e9f7ec-rmwb174pbc2fbb9-ws
+     ls: invalid option -- '-'
+     Try 'ls --help' for more information.
+     == -tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-demo-2-profile-user-data-User-globalStorage-telelean-telelean-runs-demo-6cb3ab42-rmwb18qmg8e8eed-ws
+     ls: invalid option -- '-'
+     Try 'ls --help' for more information.
+     == -tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-literal-work-runs-literal-model-literal-17c3a02c-rmwax5aio7f7485-ws
+     ls: invalid option -- '-'
+     Try 'ls --help' for more information.
+     == -tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-normative-work-runs-normative-model-normative-0ecdacd5-rmwax39t7aaa9e9-ws
+     ls: invalid option -- '-'
+     Try 'ls --help' for more information.
+
+#23 L109 2026-11-13T12:39:26.736Z BASH flags=['home-paths'] hflags=[] bg=None sandboxOff=None
+cd ~/.claude/projects/ && for d in ./-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-*; do echo "== $d"; ls -la -- "$d"; done; ls /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/ 2>&1 | head
+  => err=False == ./-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-demo-1-profile-user-data-User-globalStorage-telelean-telelean-runs-demo-65e9f7ec-rmwb174pbc2fbb9-ws
+     total 140
+     drwx------  2 zhengyew zhengyew   4096 Nov 10 10:36 .
+     drwxrwxr-x 19 zhengyew zhengyew   4096 Nov 10 14:08 ..
+     -rw-------  1 zhengyew zhengyew 134336 Nov 10 10:36 f763da21-ff79-4bdc-bc3d-82eaacd5a760.jsonl
+     == ./-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-demo-2-profile-user-data-User-globalStorage-telelean-telelean-runs-demo-6cb3ab42-rmwb18qmg8e8eed-ws
+     total 188
+     drwx------  2 zhengyew zhengyew   4096 Nov 10 10:37 .
+     drwxrwxr-x 19 zhengyew zhengyew   4096 Nov 10 14:08 ..
+     -rw-------  1 zhengyew zhengyew 180316 Nov 10 10:38 90e56e39-fbee-4c4b-ad16-b62ac339460f.jsonl
+     == ./-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-literal-work-runs-literal-model-literal-17c3a02c-rmwax5aio7f7485-ws
+     total 200
+     drwx------  2 zhengyew zhengyew   4096 Nov 10 08:43 .
+     drwxrwxr-x 19 zhengyew zhengyew   4096 Nov 10 14:08 ..
+     -rw-------  1 zhengyew zhengyew 193338 Nov 10 08:43 bed20236-2cab-41db-a359-5a7ec39c1138.jsonl
+     == ./-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-normative-work-runs-normative-model-normative-0ecdacd5-rmwax39t7aaa9e9-ws
+     total 168
+     drwx------  2 zhengyew zhengyew   4096 Nov 10 08:41 .
+     drwxrwxr-x 19 zhengyew zheng
+
+#24 L114 2026-11-13T12:39:38.854Z BASH flags=['home-paths', 'writes(redir/tee)'] hflags=[] bg=None sandboxOff=None
+mkdir -p /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn16-docs && cat > /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn16-docs/extract.py <<'EOF'
+<<HEREDOC EOF 20 lines>>
+cd ~/.claude/projects/ && for d in ./-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-*; do echo "== $d"; python3 -I /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn16-docs/extract.py "$d"/*.jsonl; done
+  --- heredoc EOF (head: mkdir -p /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn16-docs && cat > /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scr)
+  | import json, sys
+  | path = sys.argv[1]
+  | rows = [json.loads(l) for l in open(path)]
+  | print("entries:", len(rows))
+  | types = {}
+  | for r in rows:
+  |     types[r.get('type')] = types.get(r.get('type'), 0) + 1
+  | print("types:", types)
+  | first = rows[0]
+  | print("first keys:", list(first.keys()))
+  | ts = [r.get('timestamp') for r in rows if r.get('timestamp')]
+  | print("time:", ts[0] if ts else None, "->", ts[-1] if ts else None)
+  | vers = set(r.get('version') for r in rows if r.get('version'))
+  | print("versions:", vers)
+  | models = set()
+  | for r in rows:
+  |     m = r.get('message')
+  |     if isinstance(m, dict) and m.get('model'):
+  |         models.add(m['model'])
+  | print("models:", models)
+  => err=False == ./-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-demo-1-profile-user-data-User-globalStorage-telelean-telelean-runs-demo-65e9f7ec-rmwb174pbc2fbb9-ws
+     entries: 75
+     types: {'custom-title': 4, 'session-owner': 4, 'queue-operation': 2, 'user': 11, 'attachment': 10, 'atis-latch': 4, 'api-request-shape': 1, 'api-request-blob': 10, 'api-request': 6, 'last-prompt': 4, 'tools-used': 6, 'assistant': 12, 'cost-state': 1}
+     first keys: ['type', 'customTitle', 'sessionId']
+     time: 2026-11-10T18:36:27.966Z -> 2026-11-10T18:36:54.575Z
+     versions: {'2.1.322'}
+     models: {'claude-opus-5-5'}
+     == ./-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-demo-2-profile-user-data-User-globalStorage-telelean-telelean-runs-demo-6cb3ab42-rmwb18qmg8e8eed-ws
+     entries: 103
+     types: {'custom-title': 5, 'session-owner': 5, 'queue-operation': 4, 'user': 16, 'attachment': 11, 'atis-latch': 5, 'api-request-shape': 1, 'api-request-blob': 14, 'api-request': 10, 'last-prompt': 5, 'tools-used': 5, 'assistant': 21, 'cost-state': 1}
+     first keys: ['type', 'customTitle', 'sessionId']
+     time: 2026-11-10T18:37:42.598Z -> 2026-11-10T18:38:33.071Z
+     versions: {'2.1.322'}
+     models: {'claude-opus-5-5'}
+     == ./-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-literal-work-runs-literal-model-literal-17c3a02c-rmwax5aio7f7485-ws
+     entries: 109
+     types: {'custom-title': 6, 'session-owner': 6, 'queue-ope
+
+#25 L118 2026-11-13T12:39:56.311Z BASH flags=['home-paths', 'writes(redir/tee)'] hflags=[] bg=None sandboxOff=None
+cat > /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn16-docs/dump.py <<'EOF'
+<<HEREDOC EOF 35 lines>>
+cd ~/.claude/projects/ && python3 -I /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn16-docs/dump.py ./-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-normative-*/*.jsonl 2500
+  --- heredoc EOF (head: cat > /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn16-docs/dump.py <<'EOF')
+  | import json, sys
+  | path = sys.argv[1]
+  | cap = int(sys.argv[2]) if len(sys.argv) > 2 else 3000
+  | rows = [json.loads(l) for l in open(path)]
+  | for r in rows:
+  |     t = r.get('type')
+  |     if t in ('user', 'assistant'):
+  |         m = r.get('message', {})
+  |         content = m.get('content')
+  |         ts = r.get('timestamp', '')
+  |         if isinstance(content, str):
+  |             print(f"--- {t} {ts} TEXT: {content[:cap]}")
+  |             continue
+  |         for c in content or []:
+  |             ct = c.get('type')
+  |             if ct == 'text':
+  |                 print(f"--- {t} {ts} text: {c['text'][:cap]}")
+  |             elif ct == 'tool_use':
+  |                 print(f"--- {t} {ts} TOOL_USE {c['name']}: {json.dumps(c['input'], ensure_ascii=False)[:cap]}")
+  |             elif ct == 'tool_result':
+  |                 cc = c.get('content')
+  |                 if isinstance(cc, list):
+  |                     s = ' '.join(x.get('text', '') for x in cc if isinstance(x, dict))
+  |                 else:
+  |                     s = str(cc)
+  |                 print(f"--- {t} {ts} TOOL_RESULT: {s[:cap]}")
+  |             elif ct == 'thinking':
+  |                 print(f"--- {t} {ts} (thinking, {len(c.get('thinking',''))} chars)")
+  |             else:
+  |                 print(f"--- {t} {ts} {ct}")
+  |         if t == 'assistant' and m.get('usage'):
+  |             u = m['usage']
+  |             print(f"    usage: in={u.get('input_tokens')} cache_read={u.get('cache_read_input_tokens')} cache_create={u.get('cache_creation_input_tokens')} out={u.get('output_tokens')}")
+  |     elif t == 'cost-state':
+  |         print("--- cost-state:", json.dumps(r, ensure_ascii=False)[:1500])
+  => err=False --- user 2026-11-10T16:41:29.677Z TEXT: Run: "These suffice" for the subject Spyro (namespace Spyro; the subject's folder is Model/Spyro/, its root module Model/Spyro.lean).
+     
+     TARGET
+     - cynder-not-good (GOAL): "Cynder would not be a good addition to the new Spyro game"
+       Lean: Spyro.cynder_not_good := ¬GoodAddition cynder newSpyro (Model/Spyro/Main.lean, line 53). Not proved.
+     
+     SELECTED PREMISES (prove the target from exactly these)
+     - cynder-dark-past (ASSUMPTION, asserted 2026-11-01): "Cynder is a character who has a dark past" — because: familiar with gaming lore; source: common
+       Lean: Spyro.cynder_dark_past := HasDarkPast cynder; assumed (axiom Spyro.cynder_dark_past.holds).
+     - new-spyro-pg (ASSUMPTION, asserted 2026-11-01): "The new Spyro game is PG" — because: known from gaming news; source: reported
+       Lean: Spyro.new_spyro_pg := IsPG newSpyro; assumed (axiom Spyro.new_spyro_pg.holds).
+     - pg-no-dark-past (ASSUMPTION, stance: rule, asserted 2026-11-01): "PG games cannot have characters with dark pasts"
+       No Lean yet (its block is in Model/Spyro/Main.lean, line 6).
+     
+     Allowed besides these: Lean's standard axioms, the vocabulary, and the existence presuppositions of the things these statements mention (for example "there is at least one character"). freeze_statements tells you the exact list.
+     
+     OTHER CARDS OF THIS SUBJECT (context only; never use them as premises)
+     (none)
+     
+     VOCABULARY (Model/Spyro/Vocabulary.lean and other declarations without a card)
+     - Character : Type — character
+
+#26 L122 2026-11-13T12:40:03.531Z BASH flags=['home-paths'] hflags=[] bg=None sandboxOff=None
+cd ~/.claude/projects/ && python3 -I /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn16-docs/dump.py ./-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-literal-*/*.jsonl 2500 | sed -n '/^--- assistant .*thinking/d; p' | grep -v '^1\s\|^[0-9]*\t' | head -150
+  => err=False --- user 2026-11-10T16:43:03.597Z TEXT: Run: "These suffice" for the subject Spyro (namespace Spyro; the subject's folder is Model/Spyro/, its root module Model/Spyro.lean).
+     
+     TARGET
+     - cynder-not-good (GOAL): "Cynder would not be a good addition to the new Spyro game"
+       Lean: Spyro.cynder_not_good := ¬GoodAddition cynder newSpyro (Model/Spyro/Main.lean, line 53). Not proved.
+     
+     SELECTED PREMISES (prove the target from exactly these)
+     - cynder-dark-past (ASSUMPTION, asserted 2026-11-01): "Cynder is a character who has a dark past" — because: familiar with gaming lore; source: common
+       Lean: Spyro.cynder_dark_past := HasDarkPast cynder; assumed (axiom Spyro.cynder_dark_past.holds).
+     - new-spyro-pg (ASSUMPTION, asserted 2026-11-01): "The new Spyro game is PG" — because: known from gaming news; source: reported
+       Lean: Spyro.new_spyro_pg := IsPG newSpyro; assumed (axiom Spyro.new_spyro_pg.holds).
+     - pg-no-dark-past (ASSUMPTION, stance: rule, asserted 2026-11-01): "PG games cannot have characters with dark pasts"
+       No Lean yet (its block is in Model/Spyro/Main.lean, line 6).
+     
+     Allowed besides these: Lean's standard axioms, the vocabulary, and the existence presuppositions of the things these statements mention (for example "there is at least one character"). freeze_statements tells you the exact list.
+     
+     OTHER CARDS OF THIS SUBJECT (context only; never use them as premises)
+     (none)
+     
+     VOCABULARY (Model/Spyro/Vocabulary.lean and other declarations without a card)
+     - Character : Type — character
+
+#27 L126 2026-11-13T12:40:17.669Z BASH flags=['home-paths'] hflags=[] bg=None sandboxOff=None
+cd ~/.claude/projects/ && python3 -I /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn16-docs/dump.py ./-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-demo-1-*/*.jsonl 3000 | grep -v '^[0-9]*\s' | head -200
+  => err=False --- user 2026-11-10T18:36:28.005Z TEXT: Run: "These suffice" for the subject Demo (namespace Demo; the subject's folder is Model/Demo/, its root module Model/Demo.lean).
+     
+     TARGET
+     - socrates-is-mortal (GOAL): "Socrates is mortal"
+     
+     SELECTED PREMISES (prove the target from exactly these)
+     - all-humans-are-mortal (ASSUMPTION, asserted 2026-11-10): "All humans are mortal"
+     - socrates-is-a-human (ASSUMPTION, asserted 2026-11-10): "Socrates is a human"
+     
+     Allowed besides these: Lean's standard axioms, the vocabulary, and the existence presuppositions of the things these statements mention (for example "there is at least one character"). freeze_statements tells you the exact list.
+     
+     OTHER CARDS OF THIS SUBJECT (context only; never use them as premises)
+     (none)
+     
+     VOCABULARY (Model/Demo/Vocabulary.lean and other declarations without a card)
+     (none)
+     
+     EARLIER ANSWERS IN FORCE
+     (none)
+     
+     BUDGET: 25 Lean checks, 80 turns and 20 minutes of work for this run; waiting for the person's answers does not count.
+     
+     --- assistant 2026-11-10T18:36:29.010Z TOOL_USE Read: {"file_path": "Model/Demo/Inbox.lean"}
+     --- user 2026-11-10T18:36:29.136Z TOOL_RESULT: 1	import Model.Demo.Vocabulary
+     --- assistant 2026-11-10T18:36:29.675Z TOOL_USE Read: {"file_path": "Model/Demo/Vocabulary.lean"}
+     --- assistant 2026-11-10T18:36:29.684Z TOOL_USE Read: {"file_path": "Model/Demo.lean"}
+     --- user 2026-11-10T18:36:29.797Z TOOL_RESULT: 1	-- Vocabulary of Demo: types, predicates and constants (the board lists them in its Vocabulary grou
+
+#28 L130 2026-11-13T12:40:30.056Z BASH flags=['home-paths'] hflags=[] bg=None sandboxOff=None
+cd ~/.claude/projects/ && python3 -I /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn16-docs/dump.py ./-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-demo-2-*/*.jsonl 3000 | grep -v '^[0-9]*\s' | grep -v '^    usage' | head -200
+  => err=False --- user 2026-11-10T18:37:42.621Z TEXT: Run: "These suffice" for the subject Demo (namespace Demo; the subject's folder is Model/Demo/, its root module Model/Demo.lean).
+     
+     TARGET
+     - tweety-can-fly (GOAL): "Tweety can fly"
+     
+     SELECTED PREMISES (prove the target from exactly these)
+     - all-birds-can-fly (ASSUMPTION, asserted 2026-11-10): "All birds can fly"
+     - tweety-is-a-penguin (ASSUMPTION, asserted 2026-11-10): "Tweety is a penguin"
+     
+     Allowed besides these: Lean's standard axioms, the vocabulary, and the existence presuppositions of the things these statements mention (for example "there is at least one character"). freeze_statements tells you the exact list.
+     
+     OTHER CARDS OF THIS SUBJECT (context only; never use them as premises)
+     (none)
+     
+     VOCABULARY (Model/Demo/Vocabulary.lean and other declarations without a card)
+     (none)
+     
+     EARLIER ANSWERS IN FORCE
+     (none)
+     
+     BUDGET: 25 Lean checks, 80 turns and 20 minutes of work for this run; waiting for the person's answers does not count.
+     
+     --- assistant 2026-11-10T18:37:43.975Z (thinking, 0 chars)
+     --- assistant 2026-11-10T18:37:44.038Z TOOL_USE Read: {"file_path": "Model/Demo/Inbox.lean"}
+     --- user 2026-11-10T18:37:44.154Z TOOL_RESULT: 1	import Model.Demo.Vocabulary
+     --- assistant 2026-11-10T18:37:44.495Z TOOL_USE Glob: {"pattern": "Model/**/*.lean"}
+     --- user 2026-11-10T18:37:44.600Z TOOL_RESULT: Model/Demo.lean
+     Model/Demo/Inbox.lean
+     Model/Demo/Main.lean
+     Model/Demo/Vocabulary.lean
+     --- assistant 2026-11-10T18:37:45.649Z TOOL_USE Read: {"file_path": "Mod
+
+#29 L135 2026-11-13T12:40:39.936Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+ls scripts/ && wc -l scripts/walkthrough-claude.mjs && grep -n "passed\|PASS\|expect\|own words\|ownWords\|decide\|answer" scripts/walkthrough-claude.mjs | head -80
+  => err=False quota-tripwire.mjs
+     smoke-claude.mjs
+     walkthrough-claude.mjs
+     410 scripts/walkthrough-claude.mjs
+     26:// is `modality` or whose text mentions "cannot" gets the reading's free-text answer, any other question "Decide for
+     73:// ---- The mode, decided before anything is bundled, copied or resolved (docs/m2-plan.md sections 10.4 and 12.1).
+     231:  const summary = { reading, live: LIVE, model: argv.model, effort: argv.effort, caps: CAPS, root, runsDir, rounds: [], questions: [], ghosts: [], notices: [], definitions: [], passed: false };
+     294:        (x) => ['waiting-for-answer', 'review', 'failed', 'cancelled', 'accepted', 'discarded', 'interrupted'].includes(x.state),
+     298:      if (v.state === 'waiting-for-answer' && v.pendingQuestions) {
+     299:        const answers = v.pendingQuestions.questions.map((q) =>
+     302:            : { question: q.index, choice: { kind: 'decide-for-me' }, scope: 'run' },
+     304:        summary.questions.push({ round: v.round, questions: v.pendingQuestions.questions.map((q) => ({ phenomenon: q.phenomenon, question: q.question, options: q.options.map((o) => o.label) })), answers });
+     305:        log(`${reading}: answering ${answers.length} question(s)`);
+     306:        const answered = await manager.answer(v.runId, v.pendingQuestions.id, answers);
+     307:        if (!answered.ok) throw new Error(`answer refused: ${answered.error}`);
+     308:        await waitFor(manager, (x) => x.state !== 'waiting-for-answer' || x.pendingQuestions?.id !== v.pendingQuestions.id, 60_000, 'the answer
+
+#30 L140 2026-11-13T12:40:41.520Z Read {"file_path": "/home/zhengyew/telelean/scripts/walkthrough-claude.mjs", "limit": 80}
+
+#31 L142 2026-11-13T12:40:42.181Z Read {"file_path": "/home/zhengyew/telelean/scripts/walkthrough-claude.mjs", "offset": 220, "limit": 190}
+
+#32 L148 2026-11-13T12:40:46.528Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+sed -n 80,220p scripts/walkthrough-claude.mjs | grep -n "ANSWERS\|SUBJECT\|TARGET\|PREMISES\|CAPS\|bundle\|esbuild" | head -30; grep -n "const ANSWERS" -A 4 scripts/walkthrough-claude.mjs
+  => err=False 11:const CAPS = {
+     24:// ---- Bundle the runner (esbuild JS API) into the work dir.
+     25:const bundlePath = path.join(work, 'bundle', 'runner.mjs');
+     27:  const esbuild = await import('esbuild');
+     28:  await esbuild.build({
+     30:    bundle: true,
+     34:    outfile: bundlePath,
+     44:const runner = await import(pathToFileURL(bundlePath).href);
+     47:const SUBJECT = 'Spyro';
+     48:const TARGET = 'cynder-not-good';
+     49:const PREMISES = ['cynder-dark-past', 'new-spyro-pg', 'pg-no-dark-past'];
+     50:const ANSWERS = {
+     100:    { cwd: wsDir, runDir: path.join(dir, 'session'), systemPrompt: run.buildSystemPrompt(), model: argv.model, effort: argv.effort, maxTurns: CAPS.maxTurns, toolHost: {} },
+     129:const ANSWERS = {
+     130-  normative: 'I mean it as a rule: PG games should not include characters with dark pasts. I do not mean it is impossible for a PG game to contain one.',
+     131-  literal: 'I mean it literally: a PG game cannot contain a character with a dark past at all.',
+     132-};
+     133-const GIT_ENV = {
+
+#33 L154 2026-11-13T12:40:52.050Z BASH flags=['git', 'lean'] hflags=[] bg=None sandboxOff=None
+wc -l packages/extension/scripts/demo-driver.mjs packages/extension/scripts/demo-ui.mjs packages/extension/scripts/demo-vscode.mjs packages/extension/scripts/snap-env.mjs packages/extension/test/demo/* packages/extension/test/suite/hostEnv.test.ts packages/extension/test/unit/snapEnv.test.ts packages/runner/test/lean/userns.test.ts packages/runner/test/proposal/boardEdits.test.ts packages/runner/test/run/fresh.e2e.test.ts test-fixtures/fresh/* test-fixtures/semantic/recorded/unlisted-Inbox.* .gitignore .node-version && git diff test-fixtures/semantic/README.md && cat .gitignore .node-version && git ls-files | grep -c . && git ls-files | grep -E '^\.|node-version|gitignore' | head
+  => err=False    787 packages/extension/scripts/demo-driver.mjs
+        478 packages/extension/scripts/demo-ui.mjs
+        508 packages/extension/scripts/demo-vscode.mjs
+        202 packages/extension/scripts/snap-env.mjs
+         70 packages/extension/test/demo/agent.ts
+        638 packages/extension/test/demo/demoClaude.ts
+        180 packages/extension/test/suite/hostEnv.test.ts
+        201 packages/extension/test/unit/snapEnv.test.ts
+         85 packages/runner/test/lean/userns.test.ts
+         84 packages/runner/test/proposal/boardEdits.test.ts
+        452 packages/runner/test/run/fresh.e2e.test.ts
+        112 test-fixtures/fresh/arith.json
+        165 test-fixtures/fresh/chain.json
+        183 test-fixtures/fresh/derivation-premise.json
+        179 test-fixtures/fresh/goal-first.json
+        251 test-fixtures/fresh/penguin.json
+        140 test-fixtures/fresh/plato.json
+        149 test-fixtures/fresh/rain.json
+         45 test-fixtures/fresh/README.md
+        103 test-fixtures/fresh/self-evident-not.json
+        152 test-fixtures/fresh/socrates.json
+        188 test-fixtures/fresh/variants.json
+          0 test-fixtures/semantic/recorded/unlisted-Inbox.ilean.json
+         29 test-fixtures/semantic/recorded/unlisted-Inbox.lean
+          8 .gitignore
+          1 .node-version
+       5390 total
+     diff --git a/test-fixtures/semantic/README.md b/test-fixtures/semantic/README.md
+     index 63fcad4..b3732df 100644
+     --- a/test-fixtures/semantic/README.md
+     +++ b/test-fixtures/semantic/README.md
+     @@ -34,6 +34,7 @@ replaced by `/work/model` (the project) and `/home/user` (the home folder); noth
+      | `lake-nonbmp-error.{stdout,stderr
+
+#34 L160 2026-11-13T12:40:56.194Z BASH flags=['git', 'lean'] hflags=[] bg=None sandboxOff=None
+stat -c '%y %n' .gitignore .node-version docs/*.md packages/extension/scripts/*.mjs packages/extension/test/demo/* test-fixtures/fresh/README.md packages/runner/test/lean/userns.test.ts packages/extension/test/suite/hostEnv.test.ts packages/runner/test/run/fresh.e2e.test.ts packages/runner/test/proposal/boardEdits.test.ts; ls -la test-fixtures/semantic/recorded/unlisted-Inbox.ilean.json; git remote -v
+  => err=False 2026-10-31 15:24:00.225326277 -0700 .gitignore
+     2026-10-31 15:24:00.217350564 -0700 .node-version
+     2026-11-01 16:02:00.515841161 -0800 docs/decisions-log.md
+     2026-11-10 10:39:18.125434978 -0800 docs/DEMO.md
+     2026-10-31 17:28:11.025741714 -0700 docs/design-amendments.md
+     2026-10-31 17:28:00.261674064 -0700 docs/m0-report.md
+     2026-11-01 02:27:30.815114655 -0800 docs/m1-plan.md
+     2026-11-10 10:01:42.389083274 -0800 docs/m2-plan.md
+     2026-11-10 10:03:52.895637947 -0800 docs/project-report-files.md
+     2026-11-10 10:01:42.393681935 -0800 docs/project-report.md
+     2026-11-10 10:01:42.386631857 -0800 docs/user-guide.md
+     2026-11-01 04:31:27.963462420 -0800 packages/extension/scripts/build.mjs
+     2026-11-01 04:31:27.955462254 -0800 packages/extension/scripts/build-steps.mjs
+     2026-11-10 09:37:28.216973897 -0800 packages/extension/scripts/demo-driver.mjs
+     2026-11-10 09:21:10.607831103 -0800 packages/extension/scripts/demo-ui.mjs
+     2026-11-10 09:38:31.405685152 -0800 packages/extension/scripts/demo-vscode.mjs
+     2026-11-01 04:31:27.951462170 -0800 packages/extension/scripts/esbuild-options.mjs
+     2026-11-01 04:31:27.947462087 -0800 packages/extension/scripts/import-meta-url.mjs
+     2026-11-10 09:11:41.144939412 -0800 packages/extension/scripts/smoke.mjs
+     2026-11-01 13:42:40.464142453 -0800 packages/extension/scripts/smoke-units.mjs
+     2026-11-10 08:54:58.489428893 -0800 packages/extension/scripts/snap-env.mjs
+     2026-11-10 09:06:30.287088566 -0800 packages/extension/test/demo/agent.ts
+     2026-11-10 09:24:18.821032136 -0800 packages
+
+#35 L166 2026-11-13T12:41:00.122Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/telelean/packages/extension && sed -n 1,90p scripts/demo-driver.mjs
+  => err=False #!/usr/bin/env node
+     // telelean demo driver (docs/DEMO.md): your own simple example, end to end in a real VS Code window, driven like a
+     // user. It starts an isolated VS Code (the downloaded 1.140.0 test build, or the user's snap with --vscode snap) with
+     // the extension under development on a FRESH empty folder, runs "telelean: Initialize Model Here", types the example
+     // into the board's A|D|G box as cards (assumptions and a goal), selects them, presses "These suffice ▶", gives the
+     // consent, answers Claude's questions on the board (your --answer specs, else the first option), steps through the
+     // review, adopts Claude's suggested premise when a round ends not proved (unless --no-adopt), Accepts, waits for Lean's
+     // check of the accepted files, and prints a JSON summary (verdict per round, questions and answers, ghosts, the Lean
+     // written, the statuses after Accept, wall times, token usage), with screenshots of each step.
+     //
+     // !!! A LIVE run SPENDS THE USER'S CLAUDE SUBSCRIPTION QUOTA. It needs BOTH `--live` AND TELELEAN_DEMO_LIVE=yes in the
+     // !!! environment, and refuses while the quota tripwire TELELEAN_NO_REAL_CLAUDE is armed; either one alone refuses
+     // !!! before anything is started. A live run uses the real HOME (Claude Code's login lives there); VS Code's own
+     // !!! profile (user data, extensions) and XDG dirs stay in the work dir. It cancels the run at the first rate-limit
+     // !!! status that is not "allowed" (unless --continue-on-rate-warning).
+     //
+     // Modes (exac
+
+#36 L169 2026-11-13T12:41:02.010Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/telelean/packages/extension && sed -n 1,40p scripts/demo-ui.mjs; echo ======; sed -n 1,60p scripts/demo-vscode.mjs; echo =====; sed -n 1,50p scripts/snap-env.mjs
+  => err=False // The demo driver's hands and eyes (scripts/demo-driver.mjs; docs/DEMO.md): VS Code's workbench and the telelean
+     // board, driven through the DevTools protocol with playwright-core, as the end-to-end suites do from inside VS Code
+     // (test/suite/cdp.ts, e2e-runs.test.ts): clicks and typing are trusted input events in the real webview. The driver
+     // runs outside VS Code, so the workbench is driven like a user does it too: the command palette, quick picks, input
+     // boxes, and VS Code's own dialogs (the instance's settings draw them in the page: window.dialogStyle = custom).
+     //
+     // VS Code's notification toasts sit over the board's bottom-right corner (the A|D|G box and the tray's buttons) and
+     // would take clicks meant for the board (a click in the webview lands on whatever is on top in the page), so they
+     // are recorded and closed before every board gesture.
+     //
+     // Not a script to run: scripts/demo-driver.mjs imports it.
+     import path from 'node:path';
+     
+     import { chromium } from 'playwright-core';
+     
+     export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+     
+     /** Polls `condition` until it returns a truthy value (returned) or `timeoutMs` passes (throws, naming `label`). */
+     export async function waitFor(condition, timeoutMs, label, intervalMs = 250) {
+       const deadline = Date.now() + timeoutMs;
+       let lastError;
+       for (;;) {
+         try {
+           const value = await condition();
+           if (value) return value;
+         } catch (error) {
+           lastError = error;
+         }
+         if (Da
+
+#37 L172 2026-11-13T12:41:04.618Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/telelean/packages/extension && sed -n 1,40p test/demo/agent.ts; echo =====; sed -n 1,60p test/demo/demoClaude.ts; echo =====; sed -n 1,40p test/suite/hostEnv.test.ts; echo ====; sed -n 1,25p test/unit/snapEnv.test.ts
+  => err=False /**
+      * The dry run's agent inside VS Code (scripts/demo-driver.mjs --dry-run; docs/DEMO.md). The driver bundles this file
+      * (esbuild, CommonJS, `vscode` external) into its work dir and starts VS Code with `--extensionTestsPath` pointing at
+      * the bundle, so the extension runs in Test mode: the only mode in which a run gets a backend that is not the real
+      * Claude Code (`testing.useRunBackend`). The agent does exactly the three things the driver cannot do through the UI
+      * in Test mode, and nothing else:
+      *
+      *   1. installs the dry-run Claude (test/demo/demoClaude.ts) as the run backend;
+      *   2. answers the modal questions in advance that Test mode never shows (git for the new folder, and the consent
+      *      "Run Claude on this model?", which the live driver clicks in the dialog);
+      *   3. runs "telelean: Initialize Model Here" with the folder and subject as arguments (in Test mode the command has no
+      *      folder picker or input box, so the palette cannot drive it).
+      *
+      * Everything else (typing the cards, selecting, These suffice, answering, the review, Accept) the driver does through
+      * the real board over the DevTools protocol, as in a live run. The agent then waits until the driver writes the stop
+      * file (or the deadline passes), writes what the dry-run Claude did into its state file, and returns: VS Code then
+      * closes (end of the "test run").
+      *
+      * Configuration: the JSON file named by TELELEAN_DEMO_AGENT ({ folder, subject, stateFile, stopFile, deadline }).
+      * It ref
+
+#38 L176 2026-11-13T12:41:07.567Z BASH flags=['lean'] hflags=[] bg=None sandboxOff=None
+sed -n 1,30p packages/runner/test/lean/userns.test.ts; echo ====; sed -n 1,30p packages/runner/test/proposal/boardEdits.test.ts; echo =====; sed -n 1,60p packages/runner/test/run/fresh.e2e.test.ts; echo ====; cat test-fixtures/fresh/README.md; echo ====; cat test-fixtures/semantic/recorded/unlisted-Inbox.lean
+  => err=False /**
+      * Turn 13 (snap work): bwrap's user namespaces. On Ubuntu 24.04 (`kernel.apparmor_restrict_unprivileged_userns=1`) an
+      * unconfined bwrap cannot create them ("setting up uid map: Permission denied"), while the VS Code snap's processes
+      * may. `checkUserNamespaces` finds that before a run sends anything to Claude (the run preflight calls it), and
+      * `usernsHint` turns such a bwrap failure into a plain reason.
+      */
+     import { chmodSync, readFileSync, writeFileSync } from 'node:fs';
+     import path from 'node:path';
+     import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+     
+     import { checkUserNamespaces, usernsHint } from '../../src/lean/runLean.js';
+     import { preflight } from '../../src/run/preflight.js';
+     import { cleanupTempRoot, makeTempRoot } from './helpers.js';
+     
+     const UID_MAP = 'bwrap: setting up uid map: Permission denied';
+     
+     describe('usernsHint', () => {
+       it('explains a namespace failure on a kernel with the AppArmor userns restriction', () => {
+         const hint = usernsHint(`${UID_MAP}\n`, () => '1\n');
+         expect(hint).toMatch(/apparmor_restrict_unprivileged_userns=1/);
+         expect(hint).toMatch(/VS Code snap/);
+         expect(usernsHint('bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted', () => '1')).not.toBe('');
+       });
+     
+       it('says nothing without the restriction, or for another failure', () => {
+         expect(usernsHint(UID_MAP, () => '0')).toBe('');
+         expect(usernsHint(UID_MAP, () => undefined)).toBe('');
+         expect(usernsHint("bwrap: Can't mkdir /x: Read-
+
+#39 L183 2026-11-13T12:41:09.883Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+grep -n '^#' docs/project-report-files.md | head -100 && sed -n 1,30p docs/project-report-files.md
+  => err=False 1:# telelean: per-file summaries
+     6:## packages/core
+     31:### `packages/core/`
+     40:### `packages/core/schema/`
+     46:### `packages/core/src/`
+     62:### `packages/core/src/edit/`
+     75:### `packages/core/src/export/`
+     83:### `packages/core/src/gate/`
+     97:### `packages/core/src/markup/`
+     116:### `packages/core/src/project/`
+     132:### `packages/core/src/proposal/`
+     140:### `packages/core/src/samples/`
+     147:## packages/runner (lean, semantic, llm)
+     195:### `packages/runner/`
+     204:### `packages/runner/src/`
+     210:### `packages/runner/src/lean/`
+     224:### `packages/runner/src/llm/`
+     241:### `packages/runner/src/semantic/`
+     254:## packages/runner (workspace, shadow, gate, run, proposal)
+     299:### `packages/runner/src/workspace/`
+     315:### `packages/runner/src/shadow/`
+     326:### `packages/runner/src/gate/`
+     336:### `packages/runner/src/run/`
+     349:### `packages/runner/src/proposal/`
+     359:## packages/extension and repository-level files
+     401:### `./`
+     410:### `docs/`
+     421:### `mental_model/`
+     431:### `mental_model/.telelean/`
+     437:### `mental_model/.telelean/subjects/Spyro/`
+     443:### `mental_model/Model/`
+     449:### `mental_model/Model/Spyro/`
+     457:### `packages/extension/`
+     466:### `packages/extension/scripts/`
+     478:### `packages/extension/src/`
+     485:### `packages/extension/src/board/`
+     492:### `packages/extension/src/logic/`
+     511:### `packages/extension/src/vscode/`
+     521:### `scripts/`
+     529:### `test-fixtures/gate/`
+     536:### `test-fixtures/gate/overlays/`
+     542:### `test-fixtures/gate/snippets/`
+     548:### `test-fixtures/runner-lean/`
+     554:###
+
+#40 L189 2026-11-13T12:41:12.868Z Read {"file_path": "/home/zhengyew/telelean/docs/project-report-files.md", "offset": 83, "limit": 15}
+
+#41 L191 2026-11-13T12:41:13.524Z Read {"file_path": "/home/zhengyew/telelean/docs/project-report-files.md", "offset": 147, "limit": 215}
+
+#42 L196 2026-11-13T12:41:15.032Z Read {"file_path": "/home/zhengyew/telelean/docs/project-report-files.md", "offset": 195, "limit": 60}
+
+#43 L200 2026-11-13T12:41:22.466Z BASH flags=['vscode/chrome'] hflags=[] bg=None sandboxOff=None
+grep -n '^| `\(preflight\|systemPrompt\|types\|manager\|files\)\.ts`\|^| `\.vscode-test\.mjs`\|^| `package\.json`\|^| `smoke\.mjs`\|^| `smoke-units\.mjs`\|^| `build\.mjs`\|^| `\.gitignore`\|^| `\.node-version`\|^| `DEMO\|^| `m2-plan\|^| `project-report\|^| `user-guide\|^| `decisions-log\|^| `README\.md`\|^| `walkthrough-claude\|^| `quota-tripwire' docs/project-report-files.md
+  => err=False 35:| `package.json` | Manifest of the private ESM package @telelean/core. main/types point at dist/ (built by `tsc -p tsconfig.json`); scripts are build, typecheck (`tsc -p tsconfig.test.json`) and test (typecheck, then `vitest run`). The description is out of date: it names only graph types, the protocol and samples, while the package now also holds the markup parser, project model, edit planner, gate rules and proposal helpers. | name @telelean/core; exports '.' -> dist/index.js + dist/index.d.ts | zod 4.6.7, its only runtime dependency, used solely by src/export/schema.ts. typescript and vitest come from the root package.json. Other packages alias @telelean/core to src/index.ts and do not use dist/. |
+     73:| `types.ts` | Frozen types of edit planning: PlanContext (today, now, per-subject layouts), KindChangePlan and KindChangeRequest (with the M2 confirmedDependents), DeletePlan and DeleteRequest. | PlanContext, KindChangePlan, KindChangeRequest, DeletePlan, DeleteRequest | actions.ts, kindChange.ts, layout.ts, model.ts, markup/types.ts (types only) |
+     95:| `types.ts` | Frozen M2 gate types: every GateFindingCode (G0, G1, G3, G4 comparator, G5 markup, readiness), GateFinding and its token conventions, G0Context, Selection, PermittedAxioms, FrozenSnapshot, RulePurpose/RuleInput/RuleReport, FlaggedDefinition, the ghost adoption request and plan, and DescribeContext. Its code comments list only some of the G0 tokens (run_tac, declare_simp_like_tactic and reduceBool are missing);
+
+#44 L206 2026-11-13T12:41:35.144Z BASH flags=['git'] hflags=[] bg=None sandboxOff=None
+git ls-files mental_model | head -20; echo ---; git for-each-ref refs/telelean | head; echo ---; git for-each-ref | head -5; echo ---; grep -n "rootKey\|rev-parse\|show-toplevel" packages/runner/src/workspace/git.ts | head -20
+  => err=False mental_model/.gitignore
+     mental_model/.telelean/config.json
+     mental_model/.telelean/subjects/Spyro/layout.json
+     mental_model/Model.lean
+     mental_model/Model/Spyro.lean
+     mental_model/Model/Spyro/Inbox.lean
+     mental_model/Model/Spyro/Main.lean
+     mental_model/Model/Spyro/Vocabulary.lean
+     mental_model/lake-manifest.json
+     mental_model/lakefile.toml
+     mental_model/lean-toolchain
+     ---
+     ---
+     98000b7fdf5e37c839e9e1c921de1a35519d7534 commit	refs/heads/main
+     98000b7fdf5e37c839e9e1c921de1a35519d7534 commit	refs/remotes/origin/main
+     ---
+     177:  rootKey: string;
+     187:    lines = (await gitText(gitPath, ['rev-parse', '--show-toplevel', '--show-prefix', '--absolute-git-dir', '--git-common-dir'], { cwd: root })).split('\n');
+     193:  if (topLevel === '' || gitDir === '') throw new GitError(`unexpected git rev-parse output: ${JSON.stringify(lines.join('\n'))}`, 'failed');
+     195:  // Refs are shared by all worktrees of a repository: a linked worktree gets its own chains (its rootKey says which).
+     199:  return { topLevel, prefix, gitDir, ...(worktree !== undefined ? { worktree } : {}), rootKey: rootKeyOf(prefix, worktree) };
+     209:export function rootKeyOf(prefix: string, worktree?: string): string {
+
+#45 L212 2026-11-13T12:41:43.931Z Read {"file_path": "/home/zhengyew/telelean/docs/project-report-files.md", "offset": 359, "limit": 62}
+
+#46 L216 2026-11-13T12:41:52.826Z BASH flags=['git'] hflags=[] bg=None sandboxOff=None
+grep -c '^| `' docs/project-report-files.md; ls packages/extension/test/demo/ test-fixtures/fresh/ | cat; git status --porcelain --untracked-files=all | grep -v verbatim_prompt_log | grep '^??' | wc -l; git status --porcelain --untracked-files=all | grep -v verbatim_prompt_log | grep '^??'
+  => err=False 466
+     packages/extension/test/demo/:
+     agent.ts
+     demoClaude.ts
+     
+     test-fixtures/fresh/:
+     arith.json
+     chain.json
+     derivation-premise.json
+     goal-first.json
+     penguin.json
+     plato.json
+     rain.json
+     README.md
+     self-evident-not.json
+     socrates.json
+     variants.json
+     27
+     ?? .gitignore
+     ?? .node-version
+     ?? docs/DEMO.md
+     ?? packages/extension/scripts/demo-driver.mjs
+     ?? packages/extension/scripts/demo-ui.mjs
+     ?? packages/extension/scripts/demo-vscode.mjs
+     ?? packages/extension/scripts/snap-env.mjs
+     ?? packages/extension/test/demo/agent.ts
+     ?? packages/extension/test/demo/demoClaude.ts
+     ?? packages/extension/test/suite/hostEnv.test.ts
+     ?? packages/extension/test/unit/snapEnv.test.ts
+     ?? packages/runner/test/lean/userns.test.ts
+     ?? packages/runner/test/proposal/boardEdits.test.ts
+     ?? packages/runner/test/run/fresh.e2e.test.ts
+     ?? test-fixtures/fresh/README.md
+     ?? test-fixtures/fresh/arith.json
+     ?? test-fixtures/fresh/chain.json
+     ?? test-fixtures/fresh/derivation-premise.json
+     ?? test-fixtures/fresh/goal-first.json
+     ?? test-fixtures/fresh/penguin.json
+     ?? test-fixtures/fresh/plato.json
+     ?? test-fixtures/fresh/rain.json
+     ?? test-fixtures/fresh/self-evident-not.json
+     ?? test-fixtures/fresh/socrates.json
+     ?? test-fixtures/fresh/variants.json
+     ?? test-fixtures/semantic/recorded/unlisted-Inbox.ilean.json
+     ?? test-fixtures/semantic/recorded/unlisted-Inbox.lean
+
+#47 L222 2026-11-13T12:41:55.036Z Read {"file_path": "/home/zhengyew/telelean/docs/project-report-files.md", "offset": 457, "limit": 30}
+
+#48 L226 2026-11-13T12:41:57.361Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+sed -n 521,530p docs/project-report-files.md | cut -c1-400; echo; sed -n 572,598p docs/project-report-files.md | cut -c1-600
+  => err=False ### `scripts/`
+     
+     | File | Purpose | Key exports | Depends on |
+     |---|---|---|---|
+     | `quota-tripwire.mjs` | Import-free helper holding the quota-tripwire rule: TELELEAN_NO_REAL_CLAUDE arms it with any non-empty value other than 0 or false (case and spaces ignored), mirroring the runner's realClaudeDisabled() (a runner test keeps the two in step). walkthrough-claude.mjs imports it; smoke-claude.mjs inlines the same rule. It is not a script to run. | NO_REAL_CLAUDE_ENV, quotaTripw
+     | `smoke-claude.mjs` | M0 smoke test of the Claude Code CLI backend (D-23(b)); it loads the runner's llm/ TypeScript sources directly via a registered resolve hook, plus the MCP SDK client. It is dry by default: it sets the tripwire, resolves the binary (`claude --version`), prepares argv, environment, MCP config and settings in a work dir, self-tests the path guard, lists the tools of a local too
+     | `walkthrough-claude.mjs` | M2 walkthrough driver (m2-plan section 12). It bundles the runner with esbuild into <work>/bundle; per reading (normative, literal or both) it copies mental_model/, git-inits the copy with isolated config, refreshes it with Lean, and drives a RunManager as a scripted user (target cynder-not-good, the three premises). Modality or 'cannot' questions get the reading's fre
+     
+     ### `test-fixtures/gate/`
+     
+     
+     ### `test-fixtures/semantic/recorded/`
+     
+     | File | Purpose | Key exports | Depends on |
+     |---|---|---|---|
+     | `` | Real Lake 5.0 / Lean 4.35.0 outputs captured 2026-11-01, with paths anonymise
+
+#49 L232 2026-11-13T12:42:01.464Z BASH flags=['writes(redir/tee)'] hflags=[] bg=None sandboxOff=None
+awk 'NR>=764 && NR<=1110' docs/project-report-files.md | grep -n '' | grep -E '^[0-9]+:(###|\| `(rules|describe|ilean|accept|prompts|walkthrough\.e2e|walkthroughScript|smokeScript|runLean|sandbox|preflight|helpers|e2e|e2e-runs|activation|smokeUnits|bundle|settings|README|harness|env)[^`]*`)' | cut -c1-260
+  => err=False 17:### `packages/core/test/carryover/`
+     25:### `packages/core/test/`
+     35:### `packages/core/test/edit/`
+     47:### `packages/core/test/edit/helpers/`
+     55:### `packages/core/test/export/`
+     62:### `packages/core/test/fixtures/carryover/`
+     69:### `packages/core/test/fixtures/project/`
+     77:### `packages/core/test/fixtures/project/spyro-derived/`
+     83:### `packages/core/test/fixtures/proposal/`
+     89:### `packages/core/test/gate/`
+     95:| `describe.test.ts` | AT1.8: describeFinding and attemptNotice give the plan's sentences for findings from the real rules, G0 and the comparator mapping (unselected premise, sorry, changed statement, forbidden command with line, added axiom, edited words, 
+     101:| `rules.test.ts` | AT1.4 evaluateRules: a positive and a negative case for every finding code on the walkthrough states and the plan 10.3 cheats (build, readiness, proof-before-freeze, examples, not-frozen, not-proved, status-mismatch, footprint, sorry-ax
+     104:### `packages/core/test/gate/helpers/`
+     110:### `packages/core/test/markup/`
+     125:### `packages/core/test/project/`
+     140:### `packages/core/test/project/helpers/`
+     149:### `packages/core/test/proposal/`
+     156:### `packages/runner/test/gate/`
+     161:| `helpers.ts` | Shared WP2 helpers: Spyro model files and scratch roots with test-fixtures/gate overlays, the named edit scripts of test-fixtures/gate/edits.json applied to ws/ as Claude would, selections, job settings and CheckContext, the D-5 name sets,
+     163:| `rules.test.ts` | The engine with core's real gate rules
+
+#50 L238 2026-11-13T12:42:07.773Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+sed -n 764,779p docs/project-report-files.md; echo; sed -n 1004,1010p docs/project-report-files.md
+  => err=False ## Tests (all packages)
+     
+     Four independent suites, one per package, all deliberately sequential (vitest fileParallelism: false, one Playwright worker, one VS Code instance at a time) because of the RAM rule. File headers cite acceptance-test ids from docs/m1-plan.md or docs/m2-plan.md; the two plans reuse AT1.x-AT6.x for different work packages (M1: markup, model/planner, semantic, workspace, extension, webview; M2: gate rules, engine/shadow, RunManager, proposals, extension, webview).
+     
+     core (pure TS; `cd packages/core && npm test` = tsc -p tsconfig.test.json, then vitest run). Unit tests of markup (lexer, parser, serializer, values, edits, Lean ops; ported research cases, property, robustness and scale tests), the project model (statuses, edges, vocabulary, stale facts, subjects, diagnostics), the planner (D-11, delete, conditional proofs, carry-overs), graph.json and its committed schema, the protocol, and the M2 gate rules (G0, permitted set/freeze, evaluateRules incl. cheats, carriers, notices, normalisation, ghost adoption) plus proposal codecs/diff. Lean facts are hand-written JSON (test/fixtures/project), derived from text (project/helpers/fakeFacts.ts) or recorded from real Lean 4.35 (gate/realFacts). Fixtures are read through Vite `?raw` (core has no Node types).
+     
+     runner (Node; `cd packages/runner && npm test` = vitest run with TELELEAN_NO_REAL_CLAUDE=1 and 180 s timeouts; `npm run typecheck` checks src and tests). Three layers. (1) Parsers on recorded Lean/Lake outpu
+
+#51 L245 2026-11-13T12:42:10.082Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+grep -n '^#' docs/user-guide.md && sed -n 1,30p docs/user-guide.md
+  => err=False 1:# telelean: user guide (M1 board, M2 Claude runs)
+     5:## 1. Start
+     15:## 2. Make a new model: `telelean: Initialize Model Here`
+     25:## 3. The board
+     39:## 4. Every board action
+     66:## 5. History (needs git)
+     74:## 6. Subjects
+     78:## 7. What the marks mean
+     107:## 8. Limits of the board (M1)
+     118:## 9. Troubleshooting
+     130:## 10. Proving with Claude: "These suffice" (M2)
+     134:### 10.1 What you need
+     140:### 10.2 Starting a run
+     149:### 10.3 Consent and what leaves the machine
+     157:### 10.4 The run panel
+     163:### 10.5 Claude's questions
+     169:### 10.6 The checks, the notices and the retry loop
+     187:### 10.7 The proposal on the board
+     193:### 10.8 The review
+     203:### 10.9 Suggested premises ("Claude suggests")
+     209:### 10.10 Accept, Feedback, Discard
+     217:### 10.11 Cancel, reload, resume
+     222:### 10.12 Usage, quota and caps
+     226:### 10.13 Settings
+     246:### 10.14 Limits of M2
+     255:### 10.15 Troubleshooting runs
+     # telelean: user guide (M1 board, M2 Claude runs)
+     
+     M1 is "the map without AI": a board of your ASSUMPTION / DERIVATION / GOAL cards, read from and written to Lean files, checked by Lean, with undo and git history. M2 adds one-shot **"These suffice"**: you select premises and a target, Claude formalises and proves in a private copy of your model, telelean checks the result with Lean and a fixed set of rules, and nothing reaches your files until you review the proposal and press **Accept** (section 10). Nothing calls Claude until you press "These suffice" and allow it.
+     
+     ## 1. Start
+     
+     1. **Load the ne
+
+#52 L251 2026-11-13T12:42:13.444Z Read {"file_path": "/home/zhengyew/telelean/docs/user-guide.md", "offset": 60, "limit": 80}
+
+#53 L255 2026-11-13T12:42:15.542Z Read {"file_path": "/home/zhengyew/telelean/docs/user-guide.md", "offset": 139, "limit": 130}
+
+#54 L259 2026-11-13T12:42:29.017Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+grep -rn "sandbox unavailable" packages/*/src | head -10; grep -rn "could-not-start" packages/runner/src/workspace/*.ts | head -10
+  => err=False packages/runner/src/workspace/semanticSummary.ts:10: *   could-not-start             -> disabled ("sandbox unavailable: …")
+     packages/runner/src/workspace/semanticSummary.ts:113:      return { ...common, ...withDetail(`sandbox unavailable: ${detail ?? 'unknown reason'}`), state: 'disabled' };
+     packages/runner/src/workspace/semanticSummary.ts:10: *   could-not-start             -> disabled ("sandbox unavailable: …")
+     packages/runner/src/workspace/semanticSummary.ts:21:  'could-not-start',
+     packages/runner/src/workspace/semanticSummary.ts:112:    case 'could-not-start':
+
+#55 L266 2026-11-13T12:42:32.123Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+grep -n '^#' docs/m2-plan.md | sed -n 1,200p | grep -n "" | awk -F: '$2>=1' | head -120
+  => err=False 1:1:# M2 plan: one-shot "These suffice"
+     2:11:## 0. What exists after the architect's step
+     3:36:## 0.1 Reviewer corrections (turn 9)
+     4:51:## 1. Scope checklist
+     5:55:### 1.1 The M2 scope
+     6:83:### 1.2 Walkthrough targets (D-29), automated now and live later
+     7:91:### 1.3 M1 carry-overs
+     8:107:### 1.4 M0 facts M2 applies
+     9:111:### 1.5 Not in M2
+     10:117:## 2. The run state machine
+     11:204:## 3. The prototype gate, exactly
+     12:214:### 3.1 G0: token denylist and file rules (core `scanForbidden`, `checkFileChanges`)
+     13:232:### 3.2 The permitted set (core `computePermittedAxioms`, from the frozen model)
+     14:259:### 3.3 G1, G3, G5 and the stage rules (core `evaluateRules`; WP2 adds the sandbox outcomes)
+     15:286:### 3.4 Normalisation before every gate (core `normalisationChanges`, WP2 `engine.normalise`)
+     16:290:### 3.5 Findings to the agent, the board and the M0 verdict
+     17:303:### 3.6 Environment failures
+     18:307:### 3.7 The gate loop and the revert (A2)
+     19:313:### 3.8 The ghost check (WP2 `checkGhost`, D-6)
+     20:319:## 4. The runner: flows
+     21:321:### 4.1 Preflight (WP3 `runPreflight`; before anything is created or sent)
+     22:325:### 4.2 The shadow (WP2; layout in `runner/src/shadow/types.ts`)
+     23:334:### 4.3 The tool host (WP3 `RunToolHost implements AgentToolHost`)
+     24:346:### 4.4 Caps, the clock and usage (WP3)
+     25:356:### 4.5 Building the proposal (WP4 `ProposalService.build`; called by WP3)
+     26:360:### 4.6 Persistence and recovery (WP3)
+     27:364:### 4.7 Cancel
+     28:368:### 4.8 Feedback
+     29:372:### 4.9 
+
+#56 L271 2026-11-13T12:42:33.958Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+sed -n 1,35p docs/m2-plan.md | cut -c1-1500; echo ....; sed -n 795,822p docs/m2-plan.md
+  => err=False # M2 plan: one-shot "These suffice"
+     
+     *Architect's plan for milestone M2 (2026-11-01, turn 9), checked and corrected by an independent reviewer the same turn (section 0.1 lists every correction). M2 is where the user starts real use (03 section 11, D-29). Builders implement the six work packages of section 9 in parallel against the frozen contracts listed in section 0 (with the protocol in section 6); an integrator then wires and tests end to end (section 11); the main session alone runs the real-Claude walkthrough afterwards (section 12). The user may read it later to review the smaller design decisions (section 15).*
+     
+     **Design sources, in order of precedence:** the user's requests (turn 9: "continue on to M2 … log whatever smaller design decisions"); `docs/design-amendments.md` (A1 Claude through the user's own CLI behind `LlmBackend`; A2 the gate loop; A3 history); `docs/m0-report.md` ("Design changes learned in M0"); `docs/m1-plan.md` (contracts, protocol, section 14) and the M1 code; `verbatim_prompt_log/bundle_1/user_requested_documents/02_design_decisions.md` (Prototype profile, D-5, D-6, D-15, D-18 to D-26, D-29) and `…/03_architecture.md` (section 8, section 11).
+     
+     **Safety rules for everyone working on M2 (from the user; they apply to every builder, the integrator and anything they start):** never push, add remotes or use `gh`; never publish or send anything to a person (no email, chat, upload, pastebin, web API posts); network only for reading documentation; no downl
+
+#57 L277 2026-11-13T12:42:40.004Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/telelean/verbatim_prompt_log && ls -la bundle_10 bundle_11 bundle_12 2>&1 | head -60; find bundle_10 bundle_11 bundle_12 -type f | head -80
+  => err=False bundle_10:
+     total 20
+     drwxrwxr-x  2 zhengyew zhengyew 4096 Nov 10 08:19 .
+     drwxrwxr-x 17 zhengyew zhengyew 4096 Nov 13 04:39 ..
+     -rw-rw-r--  1 zhengyew zhengyew  461 Nov 10 08:19 prompt10.md
+     -rw-rw-r--  1 zhengyew zhengyew 1870 Nov 10 08:19 response10.md
+     -rw-rw-r--  1 zhengyew zhengyew  753 Nov 10 08:19 response10_modelinfo.md
+     
+     bundle_11:
+     total 24
+     drwxrwxr-x  2 zhengyew zhengyew 4096 Nov 10 08:30 .
+     drwxrwxr-x 17 zhengyew zhengyew 4096 Nov 13 04:39 ..
+     -rw-rw-r--  1 zhengyew zhengyew  319 Nov 10 08:30 prompt11.md
+     -rw-rw-r--  1 zhengyew zhengyew 4447 Nov 10 08:30 response11.md
+     -rw-rw-r--  1 zhengyew zhengyew  302 Nov 10 08:30 response11_modelinfo.md
+     
+     bundle_12:
+     total 24
+     drwxrwxr-x  2 zhengyew zhengyew 4096 Nov 10 08:34 .
+     drwxrwxr-x 17 zhengyew zhengyew 4096 Nov 13 04:39 ..
+     -rw-rw-r--  1 zhengyew zhengyew  322 Nov 10 08:34 prompt12.md
+     -rw-rw-r--  1 zhengyew zhengyew 4701 Nov 10 08:34 response12.md
+     -rw-rw-r--  1 zhengyew zhengyew  571 Nov 10 08:34 response12_modelinfo.md
+     bundle_10/response10_modelinfo.md
+     bundle_10/response10.md
+     bundle_10/prompt10.md
+     bundle_11/response11.md
+     bundle_11/prompt11.md
+     bundle_11/response11_modelinfo.md
+     bundle_12/response12.md
+     bundle_12/response12_modelinfo.md
+     bundle_12/prompt12.md
+
+#58 L281 2026-11-13T12:42:42.799Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/telelean/verbatim_prompt_log && ls -la; cat bundle_12/prompt12.md; echo; cat bundle_11/prompt11.md; echo; cat bundle_10/prompt10.md
+  => err=False total 68
+     drwxrwxr-x 17 zhengyew zhengyew 4096 Nov 13 04:39 .
+     drwxrwxr-x 10 zhengyew zhengyew 4096 Nov  5 06:12 ..
+     drwxrwxr-x  4 zhengyew zhengyew 4096 Oct 31 13:34 bundle_1
+     drwxrwxr-x  2 zhengyew zhengyew 4096 Nov 10 08:19 bundle_10
+     drwxrwxr-x  2 zhengyew zhengyew 4096 Nov 10 08:30 bundle_11
+     drwxrwxr-x  2 zhengyew zhengyew 4096 Nov 10 08:34 bundle_12
+     drwxrwxr-x  4 zhengyew zhengyew 4096 Nov 13 04:39 bundle_13
+     drwxrwxr-x  2 zhengyew zhengyew 4096 Nov 13 04:39 bundle_14
+     drwxrwxr-x  2 zhengyew zhengyew 4096 Nov 13 04:39 bundle_15
+     drwxrwxr-x  5 zhengyew zhengyew 4096 Oct 31 18:33 bundle_2
+     drwxrwxr-x  2 zhengyew zhengyew 4096 Oct 31 19:18 bundle_3
+     drwxrwxr-x  2 zhengyew zhengyew 4096 Oct 31 19:18 bundle_4
+     drwxrwxr-x  2 zhengyew zhengyew 4096 Oct 31 19:18 bundle_5
+     drwxrwxr-x  2 zhengyew zhengyew 4096 Oct 31 19:18 bundle_6
+     drwxrwxr-x  2 zhengyew zhengyew 4096 Oct 31 19:18 bundle_7
+     drwxrwxr-x  2 zhengyew zhengyew 4096 Oct 31 19:18 bundle_8
+     drwxrwxr-x  5 zhengyew zhengyew 4096 Nov  1 19:39 bundle_9
+     # Prompt 12 (turn 12), verbatim
+     
+     ==================================================================
+     How are normative / other kinds of readings currently being treated? Does the user specify if their statement is normative etc? What categories are there?
+     ==================================================================
+     
+     # Prompt 11 (turn 11), verbatim
+     
+     ==================================================================
+     Explain what steps 3, 4 and 7 are.
+     =====================================
+
+#59 L285 2026-11-13T12:42:46.285Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/telelean/verbatim_prompt_log && find bundle_13 bundle_14 bundle_15 -type f -exec ls -la {} \; | awk '{print $5, $6, $7, $8, $9}'
+  => err=False 683 Nov 13 04:38 bundle_13/prompt13.md
+     1331 Nov 13 04:38 bundle_13/response13_interim.md
+     882 Nov 13 04:38 bundle_13/response13.md
+     1285 Nov 13 04:39 bundle_13/response13_modelinfo.md
+     422 Nov 13 04:39 bundle_14/response14_modelinfo.md
+     4149 Nov 13 04:38 bundle_14/response14_interim.md
+     2953 Nov 13 04:38 bundle_14/response14.md
+     337 Nov 13 04:38 bundle_14/prompt14.md
+     229 Nov 13 04:39 bundle_15/prompt15.md
+     11163 Nov 13 04:38 bundle_13/subagent_reports/demo_readiness_workflow/workflow_script.js
+     134312 Nov 13 04:38 bundle_13/evidence/live_claude_sessions/live-demo-1/f763da21-ff79-4bdc-bc3d-82eaacd5a760.jsonl
+     180292 Nov 13 04:38 bundle_13/evidence/live_claude_sessions/live-demo-2/90e56e39-fbee-4c4b-ad16-b62ac339460f.jsonl
+     193314 Nov 13 04:38 bundle_13/evidence/live_claude_sessions/live-literal/bed20236-2cab-41db-a359-5a7ec39c1138.jsonl
+     162587 Nov 13 04:38 bundle_13/evidence/live_claude_sessions/live-normative/fbb29f98-b6d2-4843-b809-1d612a626868.jsonl
+     15775 Nov 13 04:38 bundle_13/subagent_reports/demo_readiness_workflow/agents/snap-vscode.json
+     15646 Nov 13 04:38 bundle_13/subagent_reports/demo_readiness_workflow/agents/snap-vscode.md
+     16784 Nov 13 04:38 bundle_13/subagent_reports/demo_readiness_workflow/agents/fresh-model.md
+     12853 Nov 13 04:38 bundle_13/subagent_reports/demo_readiness_workflow/agents/demo-driver.md
+     264 Nov 13 04:38 bundle_13/subagent_reports/demo_readiness_workflow/agents/_index.json
+     17869 Nov 13 04:38 bundle_13/subagent_reports/demo_readiness_workflow/agents/integrate.
+
+#60 L288 2026-11-13T12:42:48.865Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/telelean/verbatim_prompt_log && for f in bundle_13/prompt13.md bundle_13/response13_interim.md bundle_13/response13.md bundle_13/response13_modelinfo.md bundle_14/prompt14.md bundle_14/response14_interim.md bundle_14/response14.md bundle_14/response14_modelinfo.md bundle_15/prompt15.md; do echo "=== $f"; cat "$f"; echo; done
+  => err=False === bundle_13/prompt13.md
+     # Prompt 13 (turn 13), verbatim
+     
+     Sent 2026-11-10T16:38:16Z. Logged afterwards, at the start of turn 15: during turn 13 the user asked me to skip logging until the demo was done.
+     
+     ==================================================================
+     I want to create a minimal prototype for demo purposes with a real Claude backend as soon as possible. Please proceed with finishing M2, and skip logging steps like 6, 7 and 8 (or any other non-essential to functionality you might come across).
+     
+     By the end, I would like to have a demo where a user can try inputting their own custom simple example and getting results.
+     ==================================================================
+     
+     === bundle_13/response13_interim.md
+     # Interim replies during turn 13, verbatim, in order
+     
+     Extracted from the session transcript. The final reply is in `response13.md`.
+     
+     ## Interim 1 (2026-11-10T16:39:05Z)
+     
+     I'll go straight for a working real-Claude demo and skip the write-ups, the audit and logging. The critical path:
+     1. **Quick checks:** the two script tests, then a dry run against your updated Claude Code (2.1.322).
+     2. **The real-Claude walkthrough**, both readings. I'll post the quota estimate first.
+     3. **A real run of a custom example** through the actual extension UI, which is your demo path.
+     4. Any fixes needed, then demo directions.
+     
+     Starting with the RAM watchdog and the checks.
+     
+     ## Interim 2 (2026-11-10T16:40:24Z)
+     
+     The dry run passes both readings with the fake backend. 
+
+#61 L292 2026-11-13T12:42:59.324Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/telelean/verbatim_prompt_log/bundle_13/subagent_reports/demo_readiness_workflow && cat agents/_index.json; echo; head -c 1500 agents/integrate.md; echo; echo ...; grep -n "phase\|label\|prompt" workflow_script.js | head -40
+  => err=False [
+      {
+       "label": "fresh-model",
+       "agentId": "a43b4aeaaf2a5ca1d"
+      },
+      {
+       "label": "snap-vscode",
+       "agentId": "a1b1851f487ee611c"
+      },
+      {
+       "label": "demo-driver",
+       "agentId": "a0116ef265163947f"
+      },
+      {
+       "label": "integrate",
+       "agentId": "af57398dae3cc4610"
+      }
+     ]
+     # integrate (agent af57398dae3cc4610)
+     
+     ## summary
+     The three pieces now work together. I rebuilt everything, and every suite, dry run and rehearsal I ran passed. No real Claude was run.
+     
+     The extension bundle had been built at 08:59, before the fresh-model fixes. I rebuilt it at 10:05 and checked that the new behaviour is in it: the 4 prompt lines, the blank-line findings, the `unlisted` declarations and the merge exception. The user's VS Code loads telelean from this folder.
+     
+     I applied every required change from the three reports, plus the optional changes that matter for the demo:
+     - **Plan text:** section 5.1 of docs/m2-plan.md now matches the system prompt, so the prompt test passes. Section 7.1 now describes the board-edit merge exception.
+     - **Conflict advice:** two refusal messages told the user to send Feedback "to redo it on your current files". Feedback does not rebase onto the user's files, so it would meet the same conflict. Both messages now say to undo the overlapping edits and Accept again. The test and four doc passages are updated to match.
+     - **Sandbox check before a run:** the snap agent's suggestion is in. The run preflight now runs bwrap once, the way a real run does, before anything is sent to Claud
+
+#62 L297 2026-11-13T12:43:02.983Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/telelean/packages && grep -n "checkSandbox" runner/src/run/*.ts extension/src -r | head -20; grep -n "checkUserNamespaces\|usernsHint" -r runner/src extension/src extension/test | head -20
+  => err=False runner/src/run/preflight.ts:9: *   5 sandbox    lean.checkSandboxSupport(), then lean.checkUserNamespaces() (turn 13: bwrap can create its namespaces,
+     runner/src/run/preflight.ts:17:import { checkSandboxSupport, checkUserNamespaces } from '../lean/runLean.js';
+     runner/src/run/preflight.ts:105:  const sandbox = await (input.checkSandbox ?? (async () => (await checkSandboxSupport()) ?? (await checkUserNamespaces())))();
+     runner/src/run/types.ts:202:  /** WP3 addition (additive), test hook: replaces `lean.checkSandboxSupport()` and `lean.checkUserNamespaces()` (a reason = refused). */
+     runner/src/run/types.ts:203:  checkSandbox?: () => Promise<string | undefined>;
+     runner/src/run/types.ts:211:  /** bwrap / systemd-run --user / cgroup v2 / setpriv missing (lean.checkSandboxSupport), or bwrap cannot create its namespaces (lean.checkUserNamespaces). */
+     runner/src/run/types.ts:202:  /** WP3 addition (additive), test hook: replaces `lean.checkSandboxSupport()` and `lean.checkUserNamespaces()` (a reason = refused). */
+     runner/src/run/types.ts:211:  /** bwrap / systemd-run --user / cgroup v2 / setpriv missing (lean.checkSandboxSupport), or bwrap cannot create its namespaces (lean.checkUserNamespaces). */
+     runner/src/lean/runLean.ts:204:export function usernsHint(stderr: string, readSysctl: () => string | undefined = () => readTextOrUndefined(USERNS_SYSCTL)): string {
+     runner/src/lean/runLean.ts:220: * restricts unprivileged user namespaces (see {@link usernsHint}) every sandboxed run would th
+
+#63 L301 2026-11-13T12:43:05.914Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/telelean/packages && grep -n "preflight" runner/src/run/manager.ts | head -10; grep -n "preflightHooks\|preflight?" runner/src/run/types.ts | head
+  => err=False 7: * "These suffice", after preflight) and the ProposalService's apply (Accept).
+     93:import { preflight as defaultPreflight } from './preflight.js';
+     838:    const pre = await (services.preflight ?? defaultPreflight)({
+     848:    // The backend: a factory runs once, at the first start that passed preflight (`claude --version` only).
+     856:    // The premises declaration (M1 set-premises, undoable): after preflight and the backend, before the shadow.
+     103:  preflight?: (input: PreflightInput) => Promise<PreflightOutcome>;
+
+#64 L304 2026-11-13T12:43:07.490Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/telelean/packages && sed -n 836,850p runner/src/run/manager.ts
+  => err=False     const { root, workspace, settings, services } = this.o;
+         const active = this.activeRun();
+         const pre = await (services.preflight ?? defaultPreflight)({
+           root,
+           workspace,
+           request,
+           settings,
+           ...(active !== undefined ? { activeRunId: active.runId } : {}),
+         });
+         if (!pre.ok) return refused(pre.problem === 'busy' ? 'conflict' : 'not-yet', pre.message);
+         if (this.activeRun() !== undefined) return refused('conflict', 'Another Claude run of this model folder is still active.');
+     
+         // The backend: a factory runs once, at the first start that passed preflight (`claude --version` only).
+         let backend: LlmBackend;
+         try {
+
+#65 L308 2026-11-13T12:43:14.551Z BASH flags=['vscode/chrome', 'home-paths'] hflags=[] bg=None sandboxOff=None
+ls ~/.vscode/extensions/ | grep -i claude; ls /snap/code/ 2>/dev/null; cat /proc/sys/kernel/apparmor_restrict_unprivileged_userns 2>/dev/null; cat /proc/self/attr/current 2>/dev/null; echo; snap list code 2>/dev/null | tail -1
+  => err=False anthropic.claude-code-2.1.322-linux-x64
+     anthropic.claude-code-2.1.323-linux-x64
+     267
+     278
+     current
+     1
+     snap.code.code (complain)
+     
+     code  c4453f8e  278  latest/stable  vscode**   classic
+
+#66 L313 2026-11-13T12:43:22.725Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+grep -n '^#' docs/decisions-log.md | tail -30 && sed -n 1,25p docs/decisions-log.md | cut -c1-700
+  => err=False 51:## 3. Checking with Lean
+     72:## 4. Statuses, arrows and vocabulary
+     92:## 5. Board actions and edits
+     107:## 6. Undo and history
+     128:## 7. The board
+     151:## 8. The extension host
+     166:## 9. Tests and tooling
+     179:## 10. Fixes after the verification (core, runner, sample, docs)
+     205:## 11. Fixes after the verification (extension and webview)
+     225:## 12. Closing fixes (round 1)
+     235:## 13. Closing fixes (round 2)
+     246:# M2 decisions log
+     252:## 14. Runs and rounds
+     274:## 15. Claude's working copy (the shadow)
+     289:## 16. The prototype gate
+     317:## 17. The check loop (A2), notices and the revert
+     324:## 18. Suggested premises ("Claude suggests")
+     334:## 19. The proposal, the review and Accept
+     357:## 20. Logs of runs: attempts and decisions
+     366:## 21. What leaves the machine, the Claude backend and quota safety
+     381:## 22. The extension host and settings
+     394:## 23. The board
+     412:## 24. M1 carry-overs
+     419:## 25. Tests and tooling
+     426:## 26. Integration (int)
+     441:## 27. Fixes after the M2 verification, round 1 (core, runner, scripts, docs)
+     458:## 28. Fixes after the M2 verification, round 2 (core, runner, scripts, docs)
+     469:## 29. Fixes after the M2 verification, round 3 (core, runner, docs)
+     477:## 30. Closing fixes for M2, round 1 (runner, webview, extension, docs)
+     486:## 31. Closing fixes for M2, round 2 (docs, code comments and one new test)
+     # Decisions log (M1 and M2)
+     
+     Sections 1–13 are M1 ("the map without AI"); sections 14–26 are M2 (one-shot "These suffice" with Claude), further down; se
+
+#67 L318 2026-11-13T12:43:24.546Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+sed -n 246,252p docs/decisions-log.md | cut -c1-900; echo ....; sed -n 477,520p docs/decisions-log.md | cut -c1-900
+  => err=False # M2 decisions log
+     
+     Every smaller decision taken while planning, building and integrating M2, grouped by topic. One line each: **the decision**, then why. Sources: plan = `docs/m2-plan.md` section 15.1 (architect and reviewer); WP1–WP6 = the builders (core rules; shadow and engine; run controller; proposals and Accept; extension host; board); int = the integrator. None of these needed your approval to proceed, and all of them can be reversed. If you disagree with one, say which and it can be changed.
+     
+     Contract changes (new exports, optional fields) are listed separately in `docs/m2-plan.md` section 14.
+     
+     ## 14. Runs and rounds
+     ....
+     ## 30. Closing fixes for M2, round 1 (runner, webview, extension, docs)
+     
+     - **A run's working copy no longer copies your Lean build (`.lake/build`) by default: its first Lean job builds your model from scratch, about a second or two for a small model like Spyro (no Mathlib).** Lake writes your `.lake/build` while runs start: the board's own refresh after a save, an Undo or the start's premises declaration, the Lean extension, a `lake build` in a terminal. Round 3's checks of the live tree (no lock, no fresh temporary file, no compiled file newer than its record, nothing changed during the copy) could not prove that a copy was not a snapshot of a build in progress, and their test failed now and then (a file Lake wrote and deleted again while it was copied went unnoticed). Copying nothing is always correct, and a seed problem can then never turn into a
+
+#68 L324 2026-11-13T12:44:16.931Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/telelean/packages && find runner/test -name '*.test.ts' | wc -l; find core/test -name '*.test.ts' | wc -l; find extension/test/unit -name '*.test.ts' | wc -l; find extension/test/suite -name '*.test.ts' | wc -l; find webview/test -name '*.test.ts' -o -name '*.spec.ts' | wc -l; grep -n "exclude" runner/vitest.config.ts
+  => err=False 58
+     48
+     21
+     8
+     23
+
+#69 L328 2026-11-13T12:44:37.740Z BASH flags=['vscode/chrome', 'lean'] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/telelean/packages && stat -c '%y %n' runner/src/run/systemPrompt.ts runner/src/semantic/ilean.ts runner/src/semantic/refresh.ts runner/src/proposal/files.ts core/src/gate/rules.ts core/src/gate/describe.ts runner/src/lean/runLean.ts runner/src/run/preflight.ts runner/src/run/manager.ts extension/dist/extension.js extension/.vscode-test.mjs extension/package.json 2>&1 | cut -c1-19,36-
+  => err=False 2026-11-10 09:24:11 runner/src/run/systemPrompt.ts
+     2026-11-10 09:26:35 runner/src/semantic/ilean.ts
+     2026-11-10 09:26:35 runner/src/semantic/refresh.ts
+     2026-11-10 10:01:30 runner/src/proposal/files.ts
+     2026-11-10 09:09:46 core/src/gate/rules.ts
+     2026-11-10 09:09:46 core/src/gate/describe.ts
+     2026-11-10 10:02:11 runner/src/lean/runLean.ts
+     2026-11-10 10:02:18 runner/src/run/preflight.ts
+     2026-11-10 10:01:30 runner/src/run/manager.ts
+     2026-11-10 10:05:03 extension/dist/extension.js
+     2026-11-10 09:00:07 extension/.vscode-test.mjs
+     2026-11-10 10:03:34 extension/package.json
+
+#70 L332 2026-11-13T12:44:42.375Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/telelean/packages && grep -n "there is at least one character" -r runner/src | head -5
+  => err=False runner/src/run/prompts.ts:221:    'Allowed besides these: Lean\'s standard axioms, the vocabulary, and the existence presuppositions of the things these statements mention (for example "there is at least one character"). freeze_statements tells you the exact list.',
+
+#71 L336 2026-11-13T12:45:10.829Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/telelean/packages/extension && grep -n "passed\b\|passed =\|lifecycle\|DERIVATION\|targetProved\|proved'" scripts/demo-driver.mjs | head -40
+  => err=False 187:  passed: false,
+     333:    gateAttempts: (p?.report.gateAttempts ?? []).map((a) => ({ round: a.round, attempt: a.attempt, passed: a.passed, failures: a.failures.map((f) => `${f.step}: ${f.text}`) })),
+     338:    lifecycle: (p?.lifecycle ?? []).map((l) => ({ card: l.nodeId, from: l.from, to: l.to, recommended: l.recommended, reason: l.reason })),
+     560:    summary.passed = /real Claude is disabled/.test(refusal) && runs.every((r) => r.run.view?.state !== 'working');
+     664:      if (round.verdict !== 'proved' && ghost && !argv['no-adopt'] && view.round < MAX_ROUNDS) {
+     713:    const proved = summary.rounds.at(-1)?.verdict === 'proved';
+     720:        return !proved || node?.proof === 'proved' || lean.state === 'failed' ? lean : undefined;
+     760:  const consistent = argv.end !== 'accept' || lastRound?.verdict !== 'proved' || targetAfter?.proof === 'proved';
+     761:  summary.passed = ended && consistent && summary.stopped === undefined && !summary.rateLimited;
+     767:  exitCode = summary.passed ? 0 : 1;
+     784:log(summary.passed ? 'PASSED' : `did not pass${summary.error ? ` (${summary.error})` : summary.stopped ? ` (${summary.stopped})` : ''}`);
+
+#72 L339 2026-11-13T12:45:12.527Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/telelean/packages/extension && sed -n 690,765p scripts/demo-driver.mjs
+  => err=False         300_000,
+             'the Accept',
+             500,
+           );
+           summary.times.acceptMs = Date.now() - acceptClick;
+           if (outcome.refused) {
+             summary.stopped = `Accept was refused: ${outcome.refused}`;
+             await wb.shot('accept-refused');
+             break;
+           }
+           summary.accept = { state: outcome.entry.run.view.state, changedFiles: outcome.entry.run.view.accepted?.changedFiles, error: outcome.entry.run.view.error };
+           break;
+         }
+         // failed, cancelled, interrupted, or ended otherwise
+         summary.stopped = `the run ended as ${view.state}${view.error ? `: ${view.error}` : ''}`;
+         break;
+       }
+     
+       // ---- After Accept: Lean checks the accepted files; the board shows their real statuses.
+       const last = current();
+       if (last?.run.view.state === 'accepted' && acceptClick !== undefined) {
+         // The board's refresh after Accept rewrites .telelean/graph.json; a proved target must then show as proved.
+         const graphFile = path.join(folder, '.telelean', 'graph.json');
+         const proved = summary.rounds.at(-1)?.verdict === 'proved';
+         await waitFor(
+           async () => {
+             const lean = await board.lean();
+             const written = existsSync(graphFile) ? statSync(graphFile).mtimeMs : 0;
+             if (written <= acceptClick || !['fresh', 'failed'].includes(lean.state)) return undefined;
+             const node = graphNodes(graphJson()).find((n) => n.id === target);
+             return !proved || node?.proof === 'proved' || lean.state === 'failed' ? lean : undefined;
+      
+
+#73 L344 2026-11-13T12:46:40.347Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/telelean/packages && ls -la --time-style=full-iso extension/dist/extension.js extension/dist/webview/*.js 2>/dev/null | awk '{print $6, $7, $9}' | head -5; echo "newer sources than bundle:"; find core/src runner/src runner/bin extension/src webview/src -type f -newer extension/dist/extension.js | head -20
+  => err=False 2026-11-10 10:05:03.534932450 extension/dist/extension.js
+     2026-11-10 10:19:56.223119611 extension/dist/webview/boot.js
+     2026-11-10 10:19:56.408873353 extension/dist/webview/webview.js
+     newer sources than bundle:
+
+#74 L348 2026-11-13T12:47:01.734Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+sed -n 560,577p docs/project-report-files.md | cut -c1-1200
+  => err=False ### `test-fixtures/semantic/`
+     
+     | File | Purpose | Key exports | Depends on |
+     |---|---|---|---|
+     | `` | M1 WP3 fixtures for the semantic layer (lake build + .ilean + check file -> LeanFacts), used by packages/runner/test/semantic; tests always copy ../spyro to $TELELEAN_TEST_TMP first. Its overlays are build-error (multi-line type error), extras, nonbmp-error (a UTF-16 vs code-point column case), toolchain (v4.34.0 -> unsupported-toolchain) and manifest-package (mathlib listed -> unsupported-project). | README.md, overlays/{build-error,extras,nonbmp-error,toolchain,manifest-package}, recorded/ | base test-fixtures/spyro |
+     
+     ### `test-fixtures/semantic/overlays/extras/`
+     
+     | File | Purpose | Key exports | Depends on |
+     |---|---|---|---|
+     | `` | A catalogue of declaration shapes for the fact parser: conditional theorems (d1.holds, d3.holds with a wrapped #check), a derivation used by a proof (d0 -> g2), a proof through an untracked lemma (g3), a sorry theorem, hidden and constant axioms, a def used by a statement, a structure field, a data instance and a private theorem. It also has Orphan.lean, which nothing imports (module state not-built). | Model/Spyro/Main.lean, Model/Spyro/Orphan.lean | test-fixtures/spyro |
+     
+     ### `test-fixtures/semantic/recorded/`
+     
+     | File | Purpose | Key exports | Depends on |
+     |---|---|---|---|
+     | `` | Real Lake 5.0 / Lean 4.35.0 outputs captured 2026-11-01, with paths anonymised, used as parser inputs: lake build stdout/stderr (build error, extras built/replayed
+
+#75 L354 2026-11-13T12:47:13.281Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/telelean/test-fixtures/fresh && python3 -I -c "
+import json,glob
+for f in sorted(glob.glob('*.json')):
+    d=json.load(open(f))
+    print(f, '| name:', d.get('name'), '| cards:', [ (c['type'][0], c['naturalName']) for c in d.get('cards',[])], '| target:', d.get('target'), '| premises:', d.get('premises'), '| answer:', d.get('answer'), '| adopt:', d.get('adopt'), '| after:', d.get('after'))
+    print('   expect:', json.dumps(d.get('expect'), ensure_ascii=False)[:400])
+    print('   desc:', (d.get('description') or '')[:300])
+"
+  => err=False arith.json | name: arith | cards: [('G', 'Two plus two is four')] | target: two-plus-two-is-four | premises: [] | answer: None | adopt: None | after: None
+        expect: {"verdict": "proved", "selfEvident": true, "definitions": [], "footprint": []}
+        desc: 'Self-evident?' with a goal Lean proves by computation alone: no vocabulary and no premises; a helper lemma that mentions no constant either. Proved and flagged self-evident. Regression for turn 13: Lean 4.35's .ilean leaves such declarations out of its `decls` table, so the facts missed them and th
+     chain.json | name: chain | cards: [('A', 'Every cat is a mammal'), ('A', 'Every mammal is an animal'), ('A', 'Tom is a cat'), ('G', 'Tom is an animal')] | target: tom-is-an-animal | premises: ['every-cat-is-a-mammal', 'every-mammal-is-an-animal', 'tom-is-a-cat'] | answer: None | adopt: None | after: None
+        expect: {"verdict": "proved", "definitions": ["Demo.Creature.exists"], "footprint": ["every-cat-is-a-mammal", "every-mammal-is-an-animal", "tom-is-a-cat", "presup:Demo.Creature.exists"]}
+        desc: A two-step chain on a fresh model: three code-less assumptions and a code-less goal. Claude creates the vocabulary, formalises the four cards, freezes, proves a named lemma (Tom is a mammal) and then the goal with a tactic proof, and finishes proved.
+     derivation-premise.json | name: derivation-premise | cards: [('A', 'Every cat is a mammal'), ('A', 'Tom is a cat'), ('D', 'Tom is a mammal'), ('A', 'Every mammal is an animal'), ('G', 'Tom 
+
+#76 L358 2026-11-13T12:47:18.262Z BASH flags=['lean'] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/telelean/packages && for f in runner/test/run/fresh.e2e.test.ts runner/test/proposal/boardEdits.test.ts runner/test/lean/userns.test.ts extension/test/unit/snapEnv.test.ts; do echo "$f: $(grep -cE "^\s*(it|test)(\.skipIf\([^)]*\))?\(" $f)"; done; grep -nE "^\s*test\(|suite\(" extension/test/suite/hostEnv.test.ts | head; grep -nE "^\s*(it|test)\(" runner/test/proposal/boardEdits.test.ts runner/test/lean/userns.test.ts | cut -c1-200
+  => err=False runner/test/run/fresh.e2e.test.ts: 9
+     runner/test/proposal/boardEdits.test.ts: 6
+     runner/test/lean/userns.test.ts: 6
+     extension/test/unit/snapEnv.test.ts: 9
+     83:suite('the extension host environment (snap leaks, Lean sandbox, Claude env, hook runtime)', () => {
+     91:  test('the VS Code under test, and what its extension host inherited (snap mode: the snap through electron-launch)', () => {
+     125:  test('the Lean sandbox works from this environment: preflight, the userns probe, then a sandboxed `lean --version`', async function () {
+     138:  test("Claude Code's environment keeps none of the snap's variables or paths", () => {
+     164:  test('the path guard answers its self-test under the chosen hook runtime and under Electron-as-Node', async function () {
+     runner/test/proposal/boardEdits.test.ts:38:  it('the texts are set up as on a fresh model: the plain 3-line patch cannot place any of these edits', () => {
+     runner/test/proposal/boardEdits.test.ts:43:  it('a card added at the end of the Inbox goes after Claude\'s proof, exactly as typed', () => {
+     runner/test/proposal/boardEdits.test.ts:48:  it('a rationale written on a card Claude formalised and pinned is kept, with the pin', () => {
+     runner/test/proposal/boardEdits.test.ts:56:  it('a changed rationale and a removed one are kept too', () => {
+     runner/test/proposal/boardEdits.test.ts:65:  it('every other edit next to Claude\'s changes stays a conflict: the sentence of a formalised card above all', () => {
+     runner/test/proposal/boardEdits.test.ts
+
+#77 L363 2026-11-13T12:48:36.510Z BASH flags=['home-paths', 'writes(redir/tee)'] hflags=[] bg=None sandboxOff=None
+cd ~/.claude/projects/ && python3 -I - <<'EOF'
+<<HEREDOC EOF 26 lines>>
+  --- heredoc EOF (head: cd ~/.claude/projects/ && python3 -I - <<'EOF')
+  | import json, glob
+  | runs = [('normative','-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-normative-*'),
+  |         ('literal','-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-literal-*'),
+  |         ('socrates','-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-demo-1-*'),
+  |         ('penguin','-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-demo-2-*')]
+  | tot = {}
+  | for name, pat in runs:
+  |     f = glob.glob(pat + '/*.jsonl')[0]
+  |     rows = [json.loads(l) for l in open(f)]
+  |     cs = [r for r in rows if r.get('type') == 'cost-state'][-1]
+  |     mu = cs['modelUsage']['claude-opus-5-5']
+  |     req = sum(1 for r in rows if r.get('type') == 'api-request')
+  |     tools = {}
+  |     for r in rows:
+  |         if r.get('type') == 'assistant':
+  |             for c in r['message'].get('content') or []:
+  |                 if c.get('type') == 'tool_use':
+  |                     tools[c['name']] = tools.get(c['name'], 0) + 1
+  |     ts = [r['timestamp'] for r in rows if r.get('timestamp')]
+  |     d = dict(req=req, inp=mu['inputTokens'], out=mu['outputTokens'], think=mu['thinkingTokens'], cr=mu['cacheReadInputTokens'], cw=mu['cacheCreationInputTokens'], cost=mu['costUSD'], api_s=cs['totalAPIDuration']/1000, dur_s=cs['totalDuration']/1000)
+  |     print(name, d, ts[0], ts[-1])
+  |     print('   tools:', tools)
+  |     for k, v in d.items():
+  |         tot[k] = tot.get(k, 0) + v
+  | print('TOTAL', {k: round(v, 4) for k, v in tot.items()})
+  | print('walkthrough cache read', 76240+128804, 'cw', 13686+7510, 'out', 2924+3886)
+  => err=False normative {'req': 8, 'inp': 16, 'out': 2924, 'think': 369, 'cr': 76240, 'cw': 13686, 'cost': 0.18328, 'api_s': 30.561, 'dur_s': 40.942} 2026-11-10T16:41:29.650Z 2026-11-10T16:42:09.270Z
+        tools: {'Read': 2, 'mcp__telelean__ask_user': 2, 'Edit': 2, 'mcp__telelean__check_lean': 2, 'mcp__telelean__freeze_statements': 1, 'mcp__telelean__finish': 1}
+     literal {'req': 11, 'inp': 24, 'out': 3886, 'think': 830, 'cr': 128804, 'cw': 7510, 'cost': 0.16365680000000002, 'api_s': 40.588, 'dur_s': 55.741} 2026-11-10T16:43:03.554Z 2026-11-10T16:43:58.209Z
+        tools: {'Read': 3, 'mcp__telelean__ask_user': 1, 'Edit': 3, 'mcp__telelean__check_lean': 2, 'mcp__telelean__freeze_statements': 1, 'mcp__telelean__propose_assumption': 1, 'mcp__telelean__finish': 2}
+     socrates {'req': 6, 'inp': 12, 'out': 1913, 'think': 38, 'cr': 47221, 'cw': 11704, 'cost': 0.14138420000000002, 'api_s': 16.961, 'dur_s': 31.977} 2026-11-10T18:36:27.966Z 2026-11-10T18:36:54.575Z
+        tools: {'Read': 3, 'Write': 2, 'mcp__telelean__check_lean': 2, 'mcp__telelean__freeze_statements': 1, 'Edit': 1, 'mcp__telelean__finish': 1}
+     penguin {'req': 10, 'inp': 22, 'out': 3388, 'think': 199, 'cr': 102775, 'cw': 6848, 'cost': 0.143187, 'api_s': 31.655, 'dur_s': 55.979} 2026-11-10T18:37:42.598Z 2026-11-10T18:38:33.071Z
+        tools: {'Read': 2, 'Glob': 1, 'Write': 1, 'Edit': 4, 'mcp__telelean__check_lean': 2, 'mcp__telelean__freeze_statements': 1, 'mcp__telelean__propose_assumption': 1, 'mcp__telelean__finish': 2}
+     TOTAL {'req': 35, 'inp': 74, 'ou
+
+#78 L367 2026-11-13T12:49:46.383Z BASH flags=['sys-paths'] hflags=[] bg=None sandboxOff=None
+grep -E '^(PRETTY_NAME|VERSION_ID)=' /etc/os-release; uname -r; date
+  => err=False PRETTY_NAME="Ubuntu 24.04.5 LTS"
+     VERSION_ID="24.04"
+     6.17.0-1033-oem
+     Fri 13 Nov 2026 04:49:46 AM PST
+
+#79 L372 2026-11-13T12:51:49.054Z Write /home/zhengyew/telelean/docs/m2-live-report.md
+  => err=None File created successfully at: /home/zhengyew/telelean/docs/m2-live-report.md (file state is current in your context — no need to Read it back)
+
+#80 L385 2026-11-13T12:53:45.697Z Edit /home/zhengyew/telelean/docs/m2-live-report.md
+  => err=None The file /home/zhengyew/telelean/docs/m2-live-report.md has been updated successfully. (file state is current in your context — no need to Read it back)
+
+#81 L386 2026-11-13T12:53:47.847Z Edit /home/zhengyew/telelean/docs/m2-live-report.md
+  => err=None The file /home/zhengyew/telelean/docs/m2-live-report.md has been updated successfully. (file state is current in your context — no need to Read it back)
+
+#82 L387 2026-11-13T12:53:49.455Z Edit /home/zhengyew/telelean/docs/m2-live-report.md
+  => err=None The file /home/zhengyew/telelean/docs/m2-live-report.md has been updated successfully. (file state is current in your context — no need to Read it back)
+
+#83 L388 2026-11-13T12:53:51.551Z Edit /home/zhengyew/telelean/docs/m2-live-report.md
+  => err=None The file /home/zhengyew/telelean/docs/m2-live-report.md has been updated successfully. (file state is current in your context — no need to Read it back)
+
+#84 L389 2026-11-13T12:53:54.500Z Edit /home/zhengyew/telelean/docs/m2-live-report.md
+  => err=None The file /home/zhengyew/telelean/docs/m2-live-report.md has been updated successfully. (file state is current in your context — no need to Read it back)
+
+#85 L390 2026-11-13T12:53:56.501Z Edit /home/zhengyew/telelean/docs/m2-live-report.md
+  => err=None The file /home/zhengyew/telelean/docs/m2-live-report.md has been updated successfully. (file state is current in your context — no need to Read it back)
+
+#86 L391 2026-11-13T12:53:59.001Z Edit /home/zhengyew/telelean/docs/m2-live-report.md
+  => err=None The file /home/zhengyew/telelean/docs/m2-live-report.md has been updated successfully. (file state is current in your context — no need to Read it back)
+
+#87 L404 2026-11-13T12:54:24.602Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#88 L411 2026-11-13T12:54:31.105Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#89 L412 2026-11-13T12:54:32.906Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#90 L413 2026-11-13T12:54:34.508Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#91 L414 2026-11-13T12:54:35.808Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#92 L415 2026-11-13T12:54:39.306Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#93 L416 2026-11-13T12:54:40.658Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#94 L417 2026-11-13T12:54:42.059Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#95 L418 2026-11-13T12:54:43.511Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#96 L432 2026-11-13T12:54:54.812Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#97 L433 2026-11-13T12:55:03.262Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#98 L434 2026-11-13T12:55:05.663Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#99 L435 2026-11-13T12:55:07.813Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#100 L436 2026-11-13T12:55:12.313Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#101 L447 2026-11-13T12:55:25.236Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#102 L448 2026-11-13T12:55:28.086Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#103 L449 2026-11-13T12:55:30.637Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#104 L450 2026-11-13T12:55:35.995Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#105 L459 2026-11-13T12:55:44.818Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#106 L460 2026-11-13T12:55:46.969Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#107 L461 2026-11-13T12:55:50.419Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#108 L462 2026-11-13T12:55:54.022Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#109 L472 2026-11-13T12:56:11.883Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#110 L479 2026-11-13T12:56:19.072Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#111 L480 2026-11-13T12:56:23.074Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#112 L481 2026-11-13T12:56:24.677Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#113 L482 2026-11-13T12:56:28.276Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#114 L483 2026-11-13T12:56:30.575Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#115 L484 2026-11-13T12:56:32.574Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#116 L485 2026-11-13T12:56:35.838Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#117 L497 2026-11-13T12:56:51.047Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#118 L498 2026-11-13T12:56:52.797Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#119 L499 2026-11-13T12:56:53.950Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#120 L507 2026-11-13T12:57:03.968Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#121 L508 2026-11-13T12:57:06.769Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#122 L509 2026-11-13T12:57:09.470Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#123 L510 2026-11-13T12:57:12.272Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#124 L511 2026-11-13T12:57:14.724Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#125 L521 2026-11-13T12:57:27.214Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#126 L528 2026-11-13T12:57:31.725Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#127 L529 2026-11-13T12:57:35.423Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#128 L530 2026-11-13T12:57:40.423Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#129 L531 2026-11-13T12:57:48.485Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#130 L540 2026-11-13T12:57:58.867Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#131 L547 2026-11-13T12:58:07.035Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#132 L548 2026-11-13T12:58:10.387Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#133 L549 2026-11-13T12:58:12.990Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#134 L550 2026-11-13T12:58:17.595Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#135 L559 2026-11-13T12:58:29.197Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#136 L560 2026-11-13T12:58:31.107Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#137 L568 2026-11-13T12:58:36.570Z BASH flags=['git'] hflags=[] bg=None sandboxOff=None
+grep -n -i "not been run\|never driven\|has not been done\|not formally\|declared ready\|untested\|real-claude walkthrough\|2\.1\.314\|36 smoke\|171 unit\|498\|532 passed\|not yet executed\|not a git repository\|git-free" docs/project-report.md
+  => err=False 3:*2026-11-02; updated 2026-11-13 for turn 13 (2026-11-10): the real-Claude walkthrough, the live demo and the fixes they needed. Covers the code in `/home/zhengyew/telelean` as of 2026-11-13: turn 13's changes, uncommitted, on top of your commit "initial generation" of 2026-11-05. The live runs and the fixes are reported in full in `docs/m2-live-report.md`.*
+     2364:  - **the real-Claude walkthrough** (m2-plan §12) passed both readings. Normative: proved, accepted as a Derivation. Literal: not proved, the suggestion adopted, round 2 proved, accepted. It took 19 requests and under two minutes, against the plan's estimate of 30–55 requests and 10–30 minutes. With it, M2 is "good enough to start using" by the architecture's definition;
+     2419:- **m2-plan:** says tests use `llm/fixtures/recorded-cli-2.1.314`; no test reads it.
+     2422:- **decisions-log §1** says `mental_model/` sits inside "the git-free telelean folder". That was true when it was written; since your commit of 2026-11-05 the repository is a git repository (2.1.6).
+
+#138 L574 2026-11-13T12:58:39.799Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+grep -n "walkthroughScript\|smokeScript\|Appendix A.3\|A\.3)" docs/project-report.md | head; grep -n "Feedback to redo\|Feedback (redo" docs/*.md | head
+  => err=False 15:| **Paused or waiting for you** | <ul><li>One open decision: where "Raw Lean diff…" opens (A.3).</li><li>The modifications audit of turn 9 (A.3).</li><li>M3, M4 and H have not started.</li></ul> |
+     1019:- **Raw Lean diff…** opens VS Code's multi-file diff of every changed file, read-only, with the run's base on the left, titled "Raw Lean diff: Spyro (round 1)". The report card's per-file **diff** buttons open one file at a time. The diff opens beside the board; if the board's group is the only one, the window splits and the board gets half the width (an open decision, Appendix A.3).
+     2365:  - **the two runner test files** that spawn the live scripts to show that live mode refuses (`walkthroughScript.test.ts`, `smokeScript.test.ts`) passed, 11/11, and are part of the full runner run now;
+     2420:- **m1/m2 reports:** both plans ask for them (A.3); they do not exist.
+     docs/m2-live-report.md:253:- **Symptom.** Both Accept refusals, an overlap and a failed re-check after drift, advised *"Discard, or Feedback to redo it on your current files"*. Feedback continues on Claude's working copy; it never moves onto your files, so the next Accept met the same conflict.
+     docs/project-report.md:1083:  - An edit of yours within 3 lines of one of Claude's refuses the Accept: *"Your edits to Model/Spyro/Main.lean since the run started overlap Claude's; Discard, or undo those edits and Accept again."* Until turn 13 it said "Discard, or Feedback to redo it on your current files". But Feedback continu
+
+#139 L580 2026-11-13T12:58:42.905Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+awk '/^## A.2 Known issues still open/,/^- \*\*Open decision/' docs/project-report.md
+  => err=False ## A.2 Known issues still open
+     
+     **From the last verifier (m2close-verify-2):**
+     1. **Lake can trust a compiled module built from another version of its file** (3.7 item 5).
+        - The scenario: save during an outside `lake build`, then undo.
+        - The board's own facts can then describe a version that is not in the file. That is an M1 exposure.
+        - With `telelean.run.reuseLeanBuild` on, a run seeds that tree and its checks read the wrong version.
+        - The setting's description, the user guide (start step and settings table), m2-plan §4.2, decisions-log §31 and `seed.ts` promise that "Lake still rebuilds whatever in the copy does not match the run's files", which is untrue in this case.
+        - The verifier suggested removing the setting (the default already never seeds, and Spyro builds from scratch in about a second), or rewording all those texts. Neither has been done.
+     2. **The suggested premise's Lean-name chip can differ from the name adoption writes.**
+        - `ghostName` (at propose time) checks only that `<S>.<name>` and its `.holds` are not declared. Core's `adoptionPlan` also rejects a name used as an identifier anywhere in the files.
+        - Example: Claude's name `Spyro` is shown, but `Spyro.pg_rules_out_cynder` is written. The adoption turn and the stored name are corrected afterwards.
+        - Suggested fix: let `ghostName` call core's check.
+     3. **Cosmetic, in the tests:**
+        - the title of `runner/test/shadow/shadow.test.ts:108` still uses the old overstated wording;
+        - the n
+
+#140 L586 2026-11-13T12:58:48.285Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#141 L592 2026-11-13T12:58:53.386Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#142 L599 2026-11-13T12:58:59.292Z Read {"file_path": "/home/zhengyew/telelean/docs/project-report.md", "limit": 30}
+
+#143 L603 2026-11-13T12:59:03.794Z Edit /home/zhengyew/telelean/docs/project-report.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report.md has been updated successfully.
+
+#144 L610 2026-11-13T12:59:12.174Z Edit /home/zhengyew/telelean/docs/user-guide.md
+  => err=None The file /home/zhengyew/telelean/docs/user-guide.md has been updated successfully.
+
+#145 L611 2026-11-13T12:59:17.824Z Edit /home/zhengyew/telelean/docs/user-guide.md
+  => err=None The file /home/zhengyew/telelean/docs/user-guide.md has been updated successfully.
+
+#146 L618 2026-11-13T12:59:22.374Z Edit /home/zhengyew/telelean/docs/user-guide.md
+  => err=None The file /home/zhengyew/telelean/docs/user-guide.md has been updated successfully.
+
+#147 L619 2026-11-13T12:59:24.578Z Edit /home/zhengyew/telelean/docs/user-guide.md
+  => err=None The file /home/zhengyew/telelean/docs/user-guide.md has been updated successfully.
+
+#148 L620 2026-11-13T12:59:26.626Z Edit /home/zhengyew/telelean/docs/user-guide.md
+  => err=None The file /home/zhengyew/telelean/docs/user-guide.md has been updated successfully.
+
+#149 L621 2026-11-13T12:59:28.728Z Edit /home/zhengyew/telelean/docs/user-guide.md
+  => err=None The file /home/zhengyew/telelean/docs/user-guide.md has been updated successfully.
+
+#150 L630 2026-11-13T12:59:37.895Z Edit /home/zhengyew/telelean/docs/user-guide.md
+  => err=None The file /home/zhengyew/telelean/docs/user-guide.md has been updated successfully.
+
+#151 L631 2026-11-13T12:59:40.694Z Edit /home/zhengyew/telelean/docs/user-guide.md
+  => err=None The file /home/zhengyew/telelean/docs/user-guide.md has been updated successfully.
+
+#152 L632 2026-11-13T12:59:42.994Z Edit /home/zhengyew/telelean/docs/user-guide.md
+  => err=None The file /home/zhengyew/telelean/docs/user-guide.md has been updated successfully.
+
+#153 L633 2026-11-13T12:59:47.592Z Edit /home/zhengyew/telelean/docs/user-guide.md
+  => err=None The file /home/zhengyew/telelean/docs/user-guide.md has been updated successfully.
+
+#154 L634 2026-11-13T12:59:50.447Z Edit /home/zhengyew/telelean/docs/user-guide.md
+  => err=None The file /home/zhengyew/telelean/docs/user-guide.md has been updated successfully.
+
+#155 L644 2026-11-13T12:59:59.322Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+grep -n -i "blank line\|directly below\|adjacen" docs/user-guide.md | head
+  => err=False 53:| Delete | **Delete** (or the Delete key); the dialog lists what refers to it on this board (premises, proofs, statements) and has the focus on **Cancel**; a formalised card offers **Delete card and its Lean code** or **Delete card only, keep Lean**. If other declarations use its Lean code (other cards' proofs, lemmas without a card, other subjects' proofs), telelean deletes nothing yet and asks again, listing them (cards by their sentence, another subject's card with "(subject …)", anything else by its Lean name): **Delete anyway** (they stop compiling and show Lean errors until you change them; Undo brings the code back), **Delete card only, keep Lean**, or **Cancel** | the block (and its Lean unless kept); theorem proofs go to `.telelean/subjects/<S>/attic/`. A card directly above it stays comment-only (a blank line keeps it from binding to what follows) |
+     179:- the frozen statements are unchanged (Lean's comparator), your words and blocks are unchanged, declarations that existed before the run are unchanged, and the only new axioms are the `.holds` of selected assumptions Claude formalised and vocabulary of its own (an axiom written directly below a card's block would be that card's statement: it is refused, whatever its type);
+     186:If the check fails, a notice says why, for example *"Attempt 1 didn't pass: it added an axiom (`shortcut`), and only you can add beliefs. Asking Claude to retry."*, and Claude gets the exact failure and tries again. A statement written below
+
+#156 L649 2026-11-13T13:00:02.314Z Edit /home/zhengyew/telelean/docs/user-guide.md
+  => err=None The file /home/zhengyew/telelean/docs/user-guide.md has been updated successfully.
+
+#157 L650 2026-11-13T13:00:05.018Z Edit /home/zhengyew/telelean/docs/user-guide.md
+  => err=None The file /home/zhengyew/telelean/docs/user-guide.md has been updated successfully.
+
+#158 L657 2026-11-13T13:00:11.608Z Edit /home/zhengyew/telelean/docs/user-guide.md
+  => err=None The file /home/zhengyew/telelean/docs/user-guide.md has been updated successfully.
+
+#159 L663 2026-11-13T13:00:14.882Z Edit /home/zhengyew/telelean/docs/user-guide.md
+  => err=None The file /home/zhengyew/telelean/docs/user-guide.md has been updated successfully.
+
+#160 L670 2026-11-13T13:00:24.620Z Edit /home/zhengyew/telelean/docs/m2-plan.md
+  => err=None The file /home/zhengyew/telelean/docs/m2-plan.md has been updated successfully.
+
+#161 L671 2026-11-13T13:00:30.624Z Edit /home/zhengyew/telelean/docs/m2-plan.md
+  => err=None The file /home/zhengyew/telelean/docs/m2-plan.md has been updated successfully.
+
+#162 L679 2026-11-13T13:00:36.718Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/telelean/packages/runner && grep -n "m2-plan\|5\.1\|readFileSync" test/run/prompts.test.ts | head -20
+  => err=False 2: * AT3.12 (docs/m2-plan.md section 5): what leaves the machine. buildSystemPrompt() is section 5.1 verbatim (a fixture
+     6:import { existsSync, readFileSync } from 'node:fs';
+     16:const FIXTURE = path.join(path.dirname(new URL(import.meta.url).pathname), 'fixtures', 'system-prompt-5.1.txt');
+     85:describe('the system prompt (section 5.1)', () => {
+     87:    const fixture = readFileSync(FIXTURE, 'utf8');
+     94:  const plan = path.join(REPO_ROOT, 'docs', 'm2-plan.md');
+     95:  it.skipIf(!existsSync(plan))('still matches section 5.1 of docs/m2-plan.md', () => {
+     96:    const lines = readFileSync(plan, 'utf8').split('\n');
+     97:    const start = lines.findIndex((l) => l.startsWith('### 5.1 The system prompt'));
+
+#163 L682 2026-11-13T13:00:40.446Z BASH flags=['writes(redir/tee)'] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/telelean/packages/runner && sed -n 94,110p test/run/prompts.test.ts; cd /home/zhengyew/telelean && python3 -I - <<'EOF'
+<<HEREDOC EOF 4 lines>>
+  --- heredoc EOF (head: cd /home/zhengyew/telelean/packages/runner && sed -n 94,110p test/run/prompts.test.ts; cd /home/zhengyew/telelean && python3 -I - <<'EOF')
+  | # Re-run the test's extraction logic read-only to confirm the docs still match the fixture.
+  | lines = open('docs/m2-plan.md', encoding='utf8').read().split('\n')
+  | start = next(i for i, l in enumerate(lines) if l.startswith('### 5.1 The system prompt'))
+  | print('start', start)
+  => err=False   const plan = path.join(REPO_ROOT, 'docs', 'm2-plan.md');
+       it.skipIf(!existsSync(plan))('still matches section 5.1 of docs/m2-plan.md', () => {
+         const lines = readFileSync(plan, 'utf8').split('\n');
+         const start = lines.findIndex((l) => l.startsWith('### 5.1 The system prompt'));
+         const open = lines.findIndex((l, i) => i > start && l === '```');
+         const close = lines.findIndex((l, i) => i > open && l === '```');
+         expect(start).toBeGreaterThan(0);
+         expect(`${lines.slice(open + 1, close).join('\n')}\n`).toBe(buildSystemPrompt());
+       });
+     });
+     
+     describe('the context bundle (section 5.2)', () => {
+       it('quotes the cards verbatim with their Lean, the vocabulary and the decisions in force', () => {
+         expect(bundle(new FakeWorkspace('/model'), ['cynder-dark-past', 'new-spyro-pg', 'pg-no-dark-past'], 'subject', undefined, [DECISION])).toBe(EXPECTED_BUNDLE);
+       });
+     
+       it('uses the source text when Lean has not checked the files, and lists unselected cards under OTHER CARDS', () => {
+     start 381
+
+#164 L685 2026-11-13T13:00:43.767Z BASH flags=['writes(redir/tee)'] hflags=[] bg=None sandboxOff=None
+python3 -I - <<'EOF'
+<<HEREDOC EOF 7 lines>>
+  --- heredoc EOF (head: python3 -I - <<'EOF')
+  | lines = open('docs/m2-plan.md', encoding='utf8').read().split('\n')
+  | start = next(i for i, l in enumerate(lines) if l.startswith('### 5.1 The system prompt'))
+  | op = next(i for i, l in enumerate(lines) if i > start and l == '```')
+  | cl = next(i for i, l in enumerate(lines) if i > op and l == '```')
+  | block = '\n'.join(lines[op+1:cl]) + '\n'
+  | fixture = open('packages/runner/test/run/fixtures/system-prompt-5.1.txt', encoding='utf8').read()
+  | print('m2-plan 5.1 block equals fixture:', block == fixture)
+  => err=False m2-plan 5.1 block equals fixture: True
+
+#165 L692 2026-11-13T13:00:47.750Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+tail -c 1500 docs/decisions-log.md; echo; echo ---; tail -c 1 docs/decisions-log.md | xxd | head -2; wc -l docs/decisions-log.md
+  => err=False ake process each time and still could not see that limit, or removing the setting. *(fix)*
+     - **The plan's section 3 now matches the gate's code in four more places (text only: the gate did not change, and none of these affected what it decides).** A stray file Claude writes at the root of its working copy (`notes.md`) or anywhere else outside the subject is "outside the subject" (`outside-subject`); only one inside the subject's folder is "bad path" (also corrected in section 16 and in the plan's sections 0.1, 4.2 and 15.1). `lakefile.lean` is never scanned for forbidden tokens: as a project file it only gets `project-file`. The per-module `build` finding (a module that failed without a Lean message) appears only when the build reported no error message at all, and the engine's fail-closed `build` findings are added only when the rules reported none (a new core test pins the per-module rule). The ghost's Lean name is chosen twice: when Claude suggests the premise (Claude's own name if it is a plain identifier, not a keyword, neither it nor its `.holds` is declared in the subject and no earlier suggestion of the run has it, else one made from the sentence's first six words) and again at adoption, which also refuses a name used as an identifier anywhere in the working copy's Lean files (or declared at the top level) and then derives one from the sentence, turning both `-` and `.` into `_`; the message that continues Claude's session after the adoption names the result. *(fix)*
+     
+
+#166 L697 2026-11-13T13:01:16.095Z BASH flags=['writes(redir/tee)'] hflags=['H:claude-cli', 'H:git', 'H:home-paths', 'H:lean', 'H:sys-paths', 'H:vscode/chrome'] bg=None sandboxOff=None
+cat >> docs/decisions-log.md <<'EOF'
+<<HEREDOC EOF 31 lines>>
+tail -c 300 docs/decisions-log.md
+  --- heredoc EOF (head: cat >> docs/decisions-log.md <<'EOF')
+  | 
+  | ## 32. Turn 13: the real-Claude walkthrough, the live demo, and the fixes and tools they needed (2026-11-10)
+  | 
+  | Turn 13's request was "a minimal prototype for demo purposes with a real Claude backend as soon as possible", with logging and write-ups skipped until the demo worked (they were done in turn 15). Sources: fresh-model, snap, demo driver and int are the four agents of the demo-readiness workflow (their reports: `verbatim_prompt_log/bundle_13/subagent_reports/demo_readiness_workflow/`); main is the main session. The results and every fix in detail: `docs/m2-live-report.md`.
+  | 
+  | - **Real Claude first on the code as it was (the m2-plan §12 walkthrough, both readings), then a quota-free workflow for the demo's path, then live runs of typed-in examples through the extension.** The walkthrough showed the Spyro path works with the real Claude. The demo's path is a fresh model with typed cards and no vocabulary, which the sample never exercises, so it was played first with scripted Claudes against the real gate. Every live run was announced first and run one at a time. *(main)*
+  | - **Declarations that Lean 4.35 leaves out of the `.ilean` declaration table are recovered from their own reference entry (a definition with no parent), with the full range from telelean's own declaration scanner, and kept only when the source declares that name.** Such declarations (source without any constant: `2 + 2 = 4`, a lemma over plain `Prop`s) had no facts, so check, freeze and the gate refused them fail-closed. The facts still come from Lean's own probes of the name; only the source range comes from the scanner. `example` and private names are skipped, as before. The exact rule Lean follows is unknown (`axiom P0 : Prop` and `abbrev q : Prop := True` are listed). *(fresh-model)*
+  | - **When Accept's 3-line patch cannot be placed, the board's own edits are taken out, the patch is applied to the rest, and they are put back by card id.** On a freshly typed Inbox every card sits within 3 lines of Claude's formalisation, so a card added or a reason written while Claude worked made every such Accept a conflict. Yet the board does not lock editing during a run and asks for a reason on every assumption. The merged files are still normalised, re-frozen and re-gated with the person's files at Accept as the base. *(fresh-model)*
+  | - **Only two kinds of edit count as the board's own: new comment-only blocks that end a namespace (where add-node puts them) and `rationale:` changes; everything else keeps the 3-line rule.** Neither kind has a formal effect. A sentence changed next to Claude's formalisation of it must stay a conflict: the formalisation may no longer fit it. The put-back result must reproduce the edits exactly, or it is a conflict. *(fresh-model)*
+  | - **A blank line between a chosen card's block and its statement gets findings with the token `detached`, which name the blank line; the codes and verdicts are unchanged.** The old findings called the assumption's `.holds` a belief and told Claude to remove it (and to use `propose_assumption`), which would have deleted the very axiom it needed. *(fresh-model)*
+  | - **The system prompt was changed in four lines to teach exactly what the gate accepts.** Typed cards are in `Inbox.lean`. A selected Goal or Derivation premise without Lean is formalised without `.holds` and proved after the freeze. The proof may sit lower in the file. Propositions `axiom P : Prop` are vocabulary. The person confirms each new `T.exists`, and only *other* definitions and instances are questions. The old text called every instance a question, which contradicted the required presupposition instance, and its "right after the target's statement" does not build when the goal was typed first. *(fresh-model)*
+  | - **No change to the vocabulary shape rule (D-3) or to the `T.exists` question.** Vocabulary over built-in types (`Person → Nat`) stays refused, and every new sort's existence presupposition still needs the person's Yes before Accept. Both are by design; the demo guide says so instead. *(fresh-model, int)*
+  | - **After a conflict at Accept, the advice is now "Discard, or undo those edits and Accept again" (and, for a failed re-check, "… undo your edits since the run started …"); Feedback is no longer offered.** Feedback continues on the run's working copy and never rebases onto the person's files, so it met the same conflict. Making Feedback rebase was the alternative; it is left for later. *(int, from fresh-model's finding)*
+  | - **The run preflight probes `bwrap` once, straight from the extension host, before anything is sent to Claude; a success is cached.** On a kernel with AppArmor's user-namespace restriction (`kernel.apparmor_restrict_unprivileged_userns=1`, this Ubuntu), `bwrap` works only under a profile that allows it, such as the VS Code snap's. A run elsewhere used to pass the preflight, start Claude (spending quota) and fail at its first Lean job. The probe runs from the extension host because a run's `bwrap` inherits that process's AppArmor label. It uses the real profile's namespace flags and system mounts on `/usr/bin/true`. *(int, from snap's suggestion)*
+  | - **The same plain hint is appended to any Lean job's "bwrap could not set up the sandbox" reason when that sysctl is 1.** The board's "Lean: off … sandbox unavailable" then explains itself. *(int)*
+  | - **The VS Code suites can run in the user's own snap VS Code (`npm run test:smoke:snap`), started through the snap's `electron-launch` with the variables `snap run` sets, not through `snap run`.** `snap run` always uses the real `~/snap/code/<rev>` (snapd takes the home folder from the password database), and the snap's CLI detaches VS Code, so the test runner would lose the exit code. The snap's per-user folders go into the isolated HOME, and the real `~/snap/code` is watched, mtimes and ctimes included. *(snap)*
+  | - **The VS Code test instances drop every `CLAUDE*`, `MCP_*` and `AI_AGENT` variable.** Run from a Claude Code session, they had inherited its session variables, a messaging token among them; the user's own VS Code has none. *(snap)*
+  | - **`smoke.mjs` reports the AppArmor label and cgroup it ran under, warns when it runs unconfined on a userns-restricted kernel, and removes a Chromium shared-memory file its own instance left in `/dev/shm` if no process uses it.** Every Lean check of an unconfined run would fail. One such file was left once by the snap's VS Code 1.145.2 at shutdown. *(snap)*
+  | - **The demo driver has three modes: `--dry-run`, `--rehearse` and `--live`.**
+  |   - `--dry-run` uses Test mode with an agent inside VS Code and a scripted Claude.
+  |   - `--rehearse` uses Development mode and follows the exact live UI path up to the consent; the quota tripwire must then refuse the run.
+  |   - `--live` needs `--live` and `TELELEAN_DEMO_LIVE=yes`, refuses under the tripwire, uses the real HOME with VS Code's own profile isolated, and cancels at the first usage-limit warning.
+  | 
+  |   Test mode is the only mode in which a backend other than the real Claude can be installed. It never shows the git or consent dialogs and has no folder picker, so the dry-run agent answers those in advance, and `--rehearse` covers that path without quota. *(demo driver)*
+  | - **No fake backend in Development mode, not even behind an environment variable.** It would weaken the rule that only Test mode can get a backend other than the real Claude, and `--rehearse` already covers the live UI path up to the consent. *(demo driver, int)*
+  | - **The driver's defaults keep a demo moving:** option 1 for each question, **Yes, I endorse it** for definitions, **I hold this** on a gap-closing suggestion, Accept. Every fresh model brings at least one `T.exists` question, so a driver that stopped at definitions would never finish. `--no-approve-definitions`, `--no-adopt`, `--answer` and `--end discard` change them. *(demo driver)*
+  | - **The dry run's "Claude" computes its steps while they play, from the first message and the working copy's files.** So the user's own simple example runs end to end without a model: syllogisms and chains, with a genericity question whose answer changes the result, and anything else as whole-sentence propositions joined by a linking premise. Real Lean and the real gate judge it. *(demo driver)*
+  | - **`docs/DEMO.md` says to open the demo in a new window (File → New Window), not to reload.** Developer: Reload Window would also restart the Claude Code session running in that window. *(int)*
+  | - **`npm run demo` runs the demo driver.** *(int)*
+  | - **The extension bundle was rebuilt after the fixes, and the bundle was checked for the new behaviour.** The user's VS Code loads telelean from `packages/extension`, so without the rebuild the demo would have run without the fixes. *(int)*
+  | - **The live demo ran in the user's snap VS Code (`--vscode snap`), from the main session's shell.** That shell runs inside the snap VS Code and so carries the AppArmor label `bwrap` needs; a plain terminal would have been refused at the preflight. *(main)*
+  => err=False would have run without the fixes. *(int)*
+     - **The live demo ran in the user's snap VS Code (`--vscode snap`), from the main session's shell.** That shell runs inside the snap VS Code and so carries the AppArmor label `bwrap` needs; a plain terminal would have been refused at the preflight. *(main)*
+
+#167 L703 2026-11-13T13:01:19.262Z Edit /home/zhengyew/telelean/docs/decisions-log.md
+  => err=None The file /home/zhengyew/telelean/docs/decisions-log.md has been updated successfully.
+
+#168 L710 2026-11-13T13:01:27.430Z Edit /home/zhengyew/telelean/docs/DEMO.md
+  => err=None The file /home/zhengyew/telelean/docs/DEMO.md has been updated successfully. (file state is current in your context — no need to Read it back)
+
+#169 L711 2026-11-13T13:01:29.233Z Edit /home/zhengyew/telelean/docs/DEMO.md
+  => err=None The file /home/zhengyew/telelean/docs/DEMO.md has been updated successfully. (file state is current in your context — no need to Read it back)
+
+#170 L719 2026-11-13T13:01:36.288Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#171 L720 2026-11-13T13:01:39.592Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#172 L721 2026-11-13T13:01:42.543Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#173 L729 2026-11-13T13:01:55.310Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#174 L736 2026-11-13T13:02:04.061Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#175 L737 2026-11-13T13:02:07.709Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#176 L738 2026-11-13T13:02:10.809Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#177 L739 2026-11-13T13:02:12.826Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#178 L740 2026-11-13T13:02:15.860Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=True <tool_use_error>String to replace not found in file. String: the toolchain (pinned leanprover/lean4:v4.35.0, a lakefile, a manifest with no packages); the Lean sandbox is available (lean.checkSandboxS
+
+#179 L741 2026-11-13T13:02:19.760Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#180 L742 2026-11-13T13:02:21.308Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#181 L743 2026-11-13T13:02:27.361Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#182 L756 2026-11-13T13:02:37.710Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#183 L763 2026-11-13T13:02:49.959Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#184 L764 2026-11-13T13:02:53.104Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#185 L765 2026-11-13T13:02:54.906Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#186 L773 2026-11-13T13:03:10.537Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#187 L774 2026-11-13T13:03:17.585Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#188 L775 2026-11-13T13:03:20.636Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#189 L784 2026-11-13T13:03:31.869Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#190 L785 2026-11-13T13:03:33.866Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#191 L786 2026-11-13T13:03:46.815Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#192 L794 2026-11-13T13:03:55.120Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+grep -n '^| `\(build\|build-steps\|check-bundle\|demo-driver\|demo-ui\|demo-vscode\|esbuild-options\|import-meta-url\|smoke\|smoke-units\)\.' docs/project-report-files.md | cut -c1-80
+  => err=False 120:| `build.ts` | buildProjectModel's implementation, pure and deterministic. I
+     472:| `build.mjs` | npm run build. Deletes dist/extension.js(.map) and dist/bin,
+     473:| `build-steps.mjs` | Build steps shared by build.mjs and test/unit/bundle.t
+     474:| `demo-driver.mjs` | Turn 13; `npm run demo`; docs/DEMO.md. Plays the own-e
+     475:| `demo-ui.mjs` | Turn 13. The demo driver's hands and eyes: connects to the
+     476:| `demo-vscode.mjs` | Turn 13. The VS Code side of the demo driver: the isol
+     477:| `check-bundle.cjs` | Standalone check (node scripts/check-bundle.cjs <bund
+     478:| `esbuild-options.mjs` | esbuild options shared by build.mjs and the bundle
+     479:| `import-meta-url.mjs` | esbuild inject module exporting teleleanImportMeta
+     480:| `smoke.mjs` | npm run test:smoke. Makes an isolated profile $TELELEAN_TEST
+     481:| `smoke-units.mjs` | Plain helpers (unit-tested in test/unit/smokeUnits.tes
+     912:| `build.ts` | Builders for small synthetic projects of subject S: the share
+     993:| `build.test.ts` | AT4.1-AT4.3 ProposalService.build from real Lean facts (
+
+#193 L799 2026-11-13T13:03:58.978Z BASH flags=['writes(redir/tee)'] hflags=['H:script-writes'] bg=None sandboxOff=None
+python3 -I - <<'EOF'
+<<HEREDOC EOF 10 lines>>
+grep -n '^| `\(check-bundle\|demo-driver\|demo-ui\|demo-vscode\|esbuild-options\)\.' docs/project-report-files.md | cut -c1-60
+  --- heredoc EOF (head: python3 -I - <<'EOF')
+  | p = 'docs/project-report-files.md'
+  | lines = open(p, encoding='utf8').read().split('\n')
+  | # 0-based indices of lines 474..477 (1-based)
+  | demo = lines[473:476]
+  | check = lines[476]
+  | assert demo[0].startswith('| `demo-driver.mjs`') and demo[2].startswith('| `demo-vscode.mjs`'), demo[0][:40]
+  | assert check.startswith('| `check-bundle.cjs`'), check[:40]
+  | lines[473:477] = [check] + demo
+  | open(p, 'w', encoding='utf8').write('\n'.join(lines))
+  | print('moved')
+  => err=False moved
+     474:| `check-bundle.cjs` | Standalone check (node scripts/ch
+     475:| `demo-driver.mjs` | Turn 13; `npm run demo`; docs/DEMO
+     476:| `demo-ui.mjs` | Turn 13. The demo driver's hands and e
+     477:| `demo-vscode.mjs` | Turn 13. The VS Code side of the d
+     478:| `esbuild-options.mjs` | esbuild options shared by buil
+
+#194 L805 2026-11-13T13:04:08.141Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully. (note: the file had been modified on disk since you last read it — the edit applied cleanly, but the file c
+
+#195 L806 2026-11-13T13:04:14.989Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#196 L814 2026-11-13T13:04:20.956Z BASH flags=['vscode/chrome'] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/telelean/packages/extension/scripts && for f in snap-env.mjs demo-vscode.mjs demo-ui.mjs; do echo "== $f"; grep -oE '^export (async )?(function|const|class) [A-Za-z_]+' $f | awk '{print $NF}' | tr '\n' ' '; echo; done; grep -n "findSnap\b" snap-env.mjs | head -3; sed -n '/export function findSnap/,/^}/p' snap-env.mjs | head -40 | grep -n "snap.yaml\|confinement\|version\|electron" | head
+  => err=False == snap-env.mjs
+     DEFAULT_SNAP_ROOT ELECTRON_LAUNCH_VARIABLES PLACEHOLDER_COOKIE findSnap snapRunEnv snapTestEnv snapLaunch snapLeakNames 
+     == demo-vscode.mjs
+     EXTENSION_DIR REPO TEST_BUILD EXTENSION_ID makeProfile writeUserSettings runsDirOf extensionLogs instanceEnv instanceArgs freePort resolveVscode launchInstance withSnapLayer processesOf stopInstance teleleanUnits settleUnits homeSnapshot homeChanges 
+     == demo-ui.mjs
+     sleep waitFor connectWorkbench Workbench Board 
+     86:export function findSnap(snapRoot = DEFAULT_SNAP_ROOT) {
+     8:  const snapYaml = path.join(dir, 'meta', 'snap.yaml');
+     9:  const launcher = path.join(dir, 'electron-launch');
+     10:  const electron = path.join(dir, 'usr', 'share', 'code', 'code');
+     12:  for (const file of [snapYaml, launcher, electron, packageJson]) {
+     17:  const snapVersion = yamlScalar(yaml, 'version') ?? '';
+     19:  if (yamlScalar(yaml, 'confinement') !== 'classic') return { ok: false, reason: `${snapYaml}: the snap is not classic, telelean only knows the classic VS Code snap` };
+     20:  const version = JSON.parse(readFileSync(packageJson, 'utf8')).version;
+     23:    snap: { dir, name, revision: path.basename(dir), snapVersion, version: String(version), launcher, electron, commonId },
+
+#197 L818 2026-11-13T13:04:23.751Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#198 L819 2026-11-13T13:04:27.257Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#199 L827 2026-11-13T13:04:45.205Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#200 L828 2026-11-13T13:04:51.554Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#201 L829 2026-11-13T13:04:53.655Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#202 L838 2026-11-13T13:05:01.651Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#203 L839 2026-11-13T13:05:04.802Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#204 L840 2026-11-13T13:05:06.804Z Edit /home/zhengyew/telelean/docs/project-report-files.md
+  => err=None The file /home/zhengyew/telelean/docs/project-report-files.md has been updated successfully.
+
+#205 L848 2026-11-13T13:05:14.109Z BASH flags=['writes(redir/tee)'] hflags=[] bg=None sandboxOff=None
+grep -n '^| `describe.test.ts`\|^| `rules.test.ts`\|^| `accept.test.ts`\|^| `ilean.test.ts`\|^| `sandbox.test.ts`\|^| `toolchain.test.ts`\|^| `shadow.test.ts`\|^| `profile\|^| `runLean\|^| `systemd\|^| `helpers.ts`\|^| `build.test.ts`\|^| `service.test.ts`\|^| `files.test.ts`\|^| `manager\|^| `fake\|^| `e2e\|^| `activation\|^| `snap\|^| `smokeUnits\|^| `settings.test\|^| `host\|^| `harness\|^| `m2flow\|^### `packages/runner/test\|^### `packages/extension/test' docs/project-report-files.md | awk -F'|' '{print $1 "|" $2}' | sed -n 1,200p | awk 'NR>0' | grep -v "^[0-9]*:| \`helpers.ts\`" 
+  => err=False 218:| `runLean.ts` 
+     221:| `systemd.ts` 
+     232:| `fake.ts` 
+     233:| `fakeScripts.ts` 
+     342:| `manager.ts` 
+     482:| `snap-env.mjs` 
+     523:| `host.ts` 
+     839:| `fakeMarkup.ts` 
+     882:| `describe.test.ts` 
+     888:| `rules.test.ts` 
+     932:| `fakeFacts.ts` 
+     943:### `packages/runner/test/gate/`|
+     950:| `rules.test.ts` 
+     952:### `packages/runner/test/integration/`|
+     958:| `m2flow.test.ts` 
+     961:### `packages/runner/test/lean/`|
+     968:| `profile-shadow.test.ts` 
+     969:| `sandbox.test.ts` 
+     971:### `packages/runner/test/lean/support/`|
+     975:| `hostCrashChild.ts` 
+     977:### `packages/runner/test/llm/`|
+     984:| `fake.test.ts` 
+     992:### `packages/runner/test/llm/fixtures/`|
+     996:| `fake-claude.mjs` 
+     998:### `packages/runner/test/llm/fixtures/recorded-cli-2.1.314/`|
+     1006:### `packages/runner/test/proposal/`|
+     1010:| `accept.test.ts` 
+     1012:| `build.test.ts` 
+     1016:### `packages/runner/test/run/`|
+     1021:| `manager.accept.test.ts` 
+     1022:| `manager.caps.test.ts` 
+     1023:| `manager.gate.test.ts` 
+     1024:| `manager.happy.test.ts` 
+     1025:| `manager.lifecycle.test.ts` 
+     1026:| `manager.rounds.test.ts` 
+     1027:| `manager.start.test.ts` 
+     1034:### `packages/runner/test/run/fixtures/`|
+     1040:### `packages/runner/test/run/helpers/`|
+     1045:| `fakeEngine.ts` 
+     1046:| `fakeServices.ts` 
+     1047:| `fakeShadow.ts` 
+     1048:| `harness.ts` 
+     1050:### `packages/runner/test/semantic/`|
+     1057:| `ilean.test.ts` 
+     1062:### `packages/runner/test/shadow/`|
+     1067:| `shadow.test.ts` 
+     1069:### `packages/runner/test/workspace/`|
+     1073:| `fakeCore.ts` 
+     1086:### `packages/extensi
+
+#206 L853 2026-11-13T13:05:17.521Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+for n in 882 888 961 962 963 964 965 966 967 968 969 970 1006 1007 1008 1009 1010 1011 1012 1013 1014 1015 1016 1017 1018 1019 1020 1028 1029 1030 1031 1032 1033 1050 1051 1052 1053 1054 1055 1056 1057 1058 1059 1060 1086 1087 1088 1089 1097 1098 1099 1100 1101 1102 1103 1104 1124 1125; do printf '%s: ' $n; sed -n "${n}p" docs/project-report-files.md | cut -c1-140; done
+  => err=False 882: | `describe.test.ts` | AT1.8: describeFinding and attemptNotice give the plan's sentences for findings from the real rules, G0 and the compa
+     888: | `rules.test.ts` | AT1.4 evaluateRules: a positive and a negative case for every finding code on the walkthrough states and the plan 10.3 c
+     961: ### `packages/runner/test/lean/`
+     962: 
+     963: | File | Purpose | Key exports | Depends on |
+     964: |---|---|---|---|
+     965: | `comparator.test.ts` | Gate step G4: pure parts (challenge module generation, export targets, outcome classification not fooled by build l
+     966: | `footprint.test.ts` | Gate step G3 footprints via #print axioms: check-file generation and parsing (axiom lists, no axioms, errors by line
+     967: | `helpers.ts` | Shared helpers for the sandboxed-Lean tests: repo and fixture paths, a per-process run id, scratch dirs under TELELEAN_TEST
+     968: | `profile-shadow.test.ts` | Pure checks without a sandbox: the bwrap argument profile (mount allowlist order, namespaces, cleared environme
+     969: | `sandbox.test.ts` | runLean on this machine: preflight, sandboxed fixture build and rebuild, failing commands, extra binds, inert probes (
+     970: 
+     1006: ### `packages/runner/test/proposal/`
+     1007: 
+     1008: | File | Purpose | Key exports | Depends on |
+     1009: |---|---|---|---|
+     1010: | `accept.test.ts` | AT4.4 baseDrift, AT4.5 planAccept (3-line merge context: conflicts vs merges, created/deleted/user-added files, lifecyc
+     1011: | `apply.test.ts` | AT4.6 Accept through a real ModelWorkspace in a scratch
+
+#207 L859 2026-11-13T13:05:28.099Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+sed -n 1034,1039p docs/project-report-files.md | cut -c1-400
+  => err=False ### `packages/runner/test/run/fixtures/`
+     
+     | File | Purpose | Key exports | Depends on |
+     |---|---|---|---|
+     | `system-prompt-5.1.txt` | Verbatim copy of the system prompt of docs/m2-plan.md section 5.1, the expected output of buildSystemPrompt(). | none (fixture data) | consumed by run/prompts.test.ts |
+
+#208 L864 2026-11-13T13:05:35.802Z BASH flags=['writes(redir/tee)'] hflags=['H:script-writes'] bg=None sandboxOff=None
+cat > /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn16-docs/rows.py <<'EOF'
+<<HEREDOC EOF 43 lines>>
+echo ok
+  --- heredoc EOF (head: cat > /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn16-docs/rows.py <<'EOF')
+  | """Edit rows of docs/project-report-files.md: append to a row's Purpose column, or insert new rows after a given row.
+  | Rows are identified by their section heading (### `dir/`) and their file name."""
+  | import sys
+  | 
+  | PATH = '/home/zhengyew/telelean/docs/project-report-files.md'
+  | lines = open(PATH, encoding='utf8').read().split('\n')
+  | 
+  | def section_range(heading):
+  |     start = next(i for i, l in enumerate(lines) if l == heading)
+  |     end = next((i for i in range(start + 1, len(lines)) if lines[i].startswith('#')), len(lines))
+  |     return start, end
+  | 
+  | def find_row(heading, name):
+  |     s, e = section_range(heading)
+  |     hits = [i for i in range(s, e) if lines[i].startswith(f'| `{name}` |')]
+  |     assert len(hits) == 1, (heading, name, hits)
+  |     return hits[0]
+  | 
+  | def purpose_end(line):
+  |     # the second ' | ' that is not escaped: after '| `name` | purpose' -> position of ' | ' ending purpose
+  |     first = line.index('` | ') + 1  # position of ' | ' after the name
+  |     i = first + 3
+  |     while True:
+  |         j = line.index(' | ', i)
+  |         if line[j - 1] != '\\':
+  |             return j
+  |         i = j + 1
+  | 
+  | def append(heading, name, text):
+  |     i = find_row(heading, name)
+  |     j = purpose_end(lines[i])
+  |     lines[i] = lines[i][:j] + ' ' + text + lines[i][j:]
+  | 
+  | def insert_after(heading, name, rows):
+  |     i = find_row(heading, name)
+  |     lines[i + 1:i + 1] = rows
+  | 
+  | def insert_before_heading(heading, block):
+  |     s, _ = section_range(heading)
+  |     lines[s:s] = block
+  | 
+  | def save():
+  |     open(PATH, 'w', encoding='utf8').write('\n'.join(lines))
+  => err=False ok
+
+#209 L868 2026-11-13T13:05:41.907Z BASH flags=['lean'] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/telelean/packages && sed -n 30,85p runner/test/lean/userns.test.ts
+  => err=False });
+     
+     describe('checkUserNamespaces', () => {
+       let tmp: string;
+       beforeAll(() => {
+         tmp = makeTempRoot('userns');
+       });
+       afterAll(() => {
+         cleanupTempRoot(tmp);
+       });
+     
+       function fakeBwrap(name: string, body: string): string {
+         const file = path.join(tmp, name);
+         writeFileSync(file, `#!/bin/sh\n${body}\n`);
+         chmodSync(file, 0o755);
+         return file;
+       }
+     
+       it('passes on this machine (the tests run where the sandbox works)', async () => {
+         expect(await checkUserNamespaces()).toBeUndefined();
+       });
+     
+       it('refuses with bwrap’s own words when it cannot set up the sandbox', async () => {
+         const bwrap = fakeBwrap('bwrap-denied', `echo '${UID_MAP}' >&2; exit 1`);
+         const reason = await checkUserNamespaces({ bwrap });
+         expect(reason).toMatch(/^bwrap cannot set up the sandbox here \(bwrap: setting up uid map: Permission denied\)/);
+       });
+     
+       it('refuses when bwrap is missing, and caches only a success', async () => {
+         expect(await checkUserNamespaces({ bwrap: path.join(tmp, 'no-such-bwrap') })).toMatch(/^bwrap cannot set up the sandbox here/);
+         const marker = path.join(tmp, 'calls');
+         const bwrap = fakeBwrap('bwrap-ok', `echo x >> '${marker}'; exit 0`);
+         expect(await checkUserNamespaces({ bwrap })).toBeUndefined();
+         expect(await checkUserNamespaces({ bwrap })).toBeUndefined();
+         expect(readFileSync(marker, 'utf8')).toBe('x\n');
+       });
+     
+       it('the run preflight runs it by default and passes on this machine', async () => {
+         const outcome = awa
+
+#210 L872 2026-11-13T13:05:44.823Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/telelean/packages && grep -nE "^\s*(it|test|describe|suite)\(" extension/test/unit/snapEnv.test.ts | cut -c1-200; grep -nE "^\s*(it|describe)\(" runner/test/run/fresh.e2e.test.ts | cut -c1-200
+  => err=False 41:describe('findSnap', () => {
+     42:  it('reads the revision the current link points to, its versions and launch files', () => {
+     60:  it('says why when there is no snap, a file is missing, or the snap is not classic', () => {
+     67:describe('the test environment', () => {
+     79:  it("sets snap run's variables with the per-user folders in the given home, and never a real snapctl cookie", () => {
+     100:  it('from inside the snap VS Code: drops its snap layer and restores the original lists before electron-launch runs', () => {
+     130:  it('from a plain terminal: only the variables electron-launch sets itself are removed', () => {
+     136:  it('launches electron-launch with the Electron binary first, as the desktop file does (--force-user-env)', () => {
+     140:  it('names the leaked variables of an extension host (names only)', () => {
+     151:describe('.vscode-test.mjs in snap mode', () => {
+     152:  it('starts both instances through electron-launch with the snap environment', async () => {
+     189:  it('without TELELEAN_VSCODE_SNAP it keeps the 1.140.0 test build', async () => {
+     283:describe('fresh models: a demo user\'s own example from "Initialize Model Here" to the refreshed board', () => {
+     284:  it('(a) socrates: proved; Accept writes the vocabulary and the formalisation; Undo/Redo; a second example reuses the vocabulary', async () => {
+     338:  it('(b) chain: a named lemma and a tactic proof; proved; the card and the reason typed meanwhile are kept by Accept', async () => {
+     358:  it('(c) penguin: a quest
+
+#211 L876 2026-11-13T13:06:13.945Z BASH flags=['writes(redir/tee)'] hflags=['H:git', 'H:lean', 'H:vscode/chrome'] bg=None sandboxOff=None
+cd /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn16-docs && python3 -I - <<'EOF'
+<<HEREDOC EOF 48 lines>>
+  --- heredoc EOF (head: cd /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn16-docs && python3 -I - <<'EOF')
+  | import importlib.util, sys
+  | spec = importlib.util.spec_from_file_location('rows', 'rows.py')
+  | r = importlib.util.module_from_spec(spec); spec.loader.exec_module(r)
+  | 
+  | r.append('### `packages/core/test/gate/`', 'describe.test.ts',
+  |   "Turn 13: a statement detached from its block by a blank line gives, for both its new-axiom and its not-formalised finding, 'it left a blank line between “PG games cannot have characters with dark pasts” and its Lean statement', and the attempt notice starts with it.")
+  | r.append('### `packages/core/test/gate/`', 'rules.test.ts',
+  |   "Turn 13: a blank line between a selected card's block and its statement yields new-axiom and not-formalised findings with the token `detached`, naming the card and the statement and never advising propose_assumption; a belief elsewhere is still `belief`, and the attached formalisation passes the freeze.")
+  | 
+  | r.insert_after('### `packages/runner/test/lean/`', 'sandbox.test.ts', [
+  |   "| `userns.test.ts` | Turn 13: bwrap's user namespaces (6 tests). usernsHint explains a namespace failure (uid map, RTM_NEWADDR) only when the AppArmor sysctl reads 1, and says nothing otherwise. checkUserNamespaces passes on this machine (the tests run where the sandbox works); with a fake bwrap it refuses in bwrap's own words; it refuses when bwrap is missing; and it caches only a success (a second call does not run bwrap again). The run preflight runs it by default and passes here. | none (vitest suite) | src/lean/runLean.ts (checkUserNamespaces, usernsHint), src/run/preflight.ts; ./helpers (makeTempRoot) |",
+  | ])
+  | 
+  | r.append('### `packages/runner/test/proposal/`', 'accept.test.ts',
+  |   "Turn 13: the expected conflict sentence now ends 'Discard, or undo those edits and Accept again.'")
+  | r.insert_after('### `packages/runner/test/proposal/`', 'apply.test.ts', [
+  |   "| `boardEdits.test.ts` | Turn 13 (pure; 6 tests): Accept's rebase places the board's own edits made while Claude worked by card id (mergeFile, boardEditsOf), on the texts a fresh Socrates Inbox and its formalised, pinned and proved version really have. The plain 3-line patch cannot place any of the edits; a card added at the end of the Inbox lands after Claude's proof exactly as typed; a rationale written on a card Claude formalised and pinned is kept with the pin; a changed and a removed rationale are kept too; every other edit next to Claude's changes, a formalised card's sentence above all, stays a conflict; boardEditsOf takes out exactly the board's edits. | none (vitest suite) | src/proposal/files.ts |",
+  | ])
+  | 
+  | r.insert_after('### `packages/runner/test/run/`', 'backend.test.ts', [
+  |   "| `fresh.e2e.test.ts` | Turn 13: fresh models end to end, the demo's path (9 tests, about 2.5 min, real sandboxed Lean). An empty folder goes through the runner's inspectFolder and planInitialize (written as the extension writes them), the git offer (accepted or declined), a Lean refresh and M1 add-node actions, exactly what the A\\|D\\|G box sends; then These suffice with a FakeBackend playing test-fixtures/fresh/*.json, the real RunManager, engine, proposal service and sidecar store, Accept, a refresh and the board's statuses. Scenarios: (a) socrates with Undo/Redo, then plato in the same model; (b) chain, with a card and a reason typed during the run kept by Accept; (c) penguin with a question, a suggestion and I hold this; (d) zero premises, not proved; (e) goal typed first; (f) propositional with a Derivation target; (g) arithmetic, self-evident; (h) honest variants and a named blank line; (i) a Derivation premise proved after the freeze. A well-behaved Claude is never refused except where a script errs on purpose. | none (vitest suite) | src/workspace (createModelWorkspace, fs applier and text source, inspectFolder, planInitialize), src/run, src/gate, src/llm (FakeBackend, playFakeScript, validateFakeScriptFile), src/proposal, src/shadow (listRunDirs); run/helpers/env, harness; test-fixtures/fresh |",
+  | ])
+  | 
+  | r.append('### `packages/runner/test/run/fixtures/`', 'system-prompt-5.1.txt',
+  |   "Turn 13 changed four of its lines with systemPrompt.ts (and docs/m2-plan.md section 5.1).")
+  | 
+  | r.append('### `packages/runner/test/semantic/`', 'ilean.test.ts',
+  |   "Turn 13: two cases on the recorded unlisted-Inbox .ilean (Lean 4.35). The declarations whose source mentions no constant are reported `unlisted` (Demo.two_plus_two_is_four, Demo.plain_mp), never `example` or private names; declDrafts gives them their full range from the source and drops names the source does not declare.")
+  | 
+  | r.insert_after('### `packages/extension/test/suite/`', 'helpers.ts', [
+  |   "| `hostEnv.test.ts` | Turn 13: the extension host's environment and what depends on it (4 tests; in the smoke instance of both modes, so in `npm run test:smoke:snap` inside the user's snap VS Code). It records which VS Code and Electron run, the AppArmor label and cgroup, and which snap variables reached the host, into <profile>/host-env.json (names, and values only of non-secret variables); in snap mode the instance must be the snap, started by electron-launch. It checks the Lean sandbox from this environment (checkSandboxSupport, the userns probe checkUserNamespaces, then a sandboxed `lean --version`), that sanitizeClaudeEnv leaves none of the snap's variables or paths in Claude Code's environment, and that the path guard answers its self-test under the chosen hook runtime and under the Electron-as-Node fallback. | none (mocha suite) | @telelean/runner lean/runLean.js, lean/toolchain.js, llm/confinement.js, llm/env.js; ./helpers |",
+  | ])
+  | 
+  | r.insert_after('### `packages/extension/test/unit/`', 'smokeUnits.test.ts', [
+  |   "| `snapEnv.test.ts` | Turn 13 (9 tests): scripts/snap-env.mjs and the snap mode of .vscode-test.mjs on a fake /snap/code tree. findSnap reads the current revision, its versions and launch files, and says why when there is no snap, a file is missing or the snap is not classic. The test environment gets snap run's variables with the per-user folders in the given home and never a real snapctl cookie; run from inside the snap VS Code, its snap layer is dropped and the original lists restored before electron-launch runs; from a plain terminal only electron-launch's own variables are removed. electron-launch starts with the Electron binary and --force-user-env; leaked variable names are listed. Loaded with and without TELELEAN_VSCODE_SNAP, .vscode-test.mjs starts both instances through electron-launch with the snap environment, or keeps the 1.140.0 build. | none (vitest suite) | ../../scripts/snap-env.mjs, ../../.vscode-test.mjs |",
+  | ])
+  | 
+  | r.insert_before_heading('### `packages/extension/test/suite/`', [
+  |   "### `packages/extension/test/demo/`",
+  |   "",
+  |   "| File | Purpose | Key exports | Depends on |",
+  |   "|---|---|---|---|",
+  |   "| `agent.ts` | Turn 13: the demo driver's dry-run agent inside VS Code. The driver bundles it (esbuild, CommonJS, vscode external) into its work dir and passes it as --extensionTestsPath, so the extension runs in Test mode, the only mode in which a run gets a backend other than the real Claude Code. It does exactly three things the driver cannot do through the UI in Test mode: it installs the dry-run Claude (demoClaude.ts) with testing.useRunBackend; it answers in advance the git and consent questions Test mode never shows; and it runs Initialize Model Here with the folder and subject as arguments, since Test mode has no folder picker. Then it waits for the driver's stop file or a deadline and writes what the dry-run Claude did into a state file. Configuration comes from the JSON file named by TELELEAN_DEMO_AGENT; it refuses without TELELEAN_NO_REAL_CLAUDE=1 or outside Test mode. | run | vscode; ../../src/api (TeleleanApi, InitializeArgs); ./demoClaude |",
+  |   "| `demoClaude.ts` | Turn 13: the dry run's scripted \"Claude\", a FakeBackend whose steps are computed lazily while they play, from the run's first message and the working copy's files, so the user's own simple example runs end to end without a model. Syllogisms (\"All A are B\", \"s is a(n) A\" ⊢ \"s is B\") and chains of universals get a sort, a predicate per class or property and a constant per individual, plus one genericity question. The answer \"every A, no exceptions\", Decide for me or Leave it open proves the goal in round 1; \"in general\" (or own words with general, typical, usually …) reads the sentence generically (`∀ x, A x → Typical x → B x`): not proved, with the suggestion \"s is a typical A\", which proves the goal in round 2. Anything else becomes one proposition per sentence (`axiom … : Prop`), asked about once (granularity), not proved, with the linking suggestion \"If <premises>, then <goal>\". It writes real Lean that the real RunManager tool host and gate judge, and it never contacts anything. | DemoClaude (an LlmBackend); RunContext, ContextCard and the first-message parser | @telelean/runner llm/fake.js (FakeBackend, FakeStep), llm/types.js |",
+  |   "",
+  | ])
+  | r.save()
+  | print('done')
+  => err=False done
+
+#212 L880 2026-11-13T13:06:16.628Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+cd /home/zhengyew/telelean/packages/extension/test/demo && grep -oE '^export (async )?(function|const|class|interface|type) [A-Za-z_]+' demoClaude.ts agent.ts | awk -F: '{print $1": "$2}' | awk '{print $1, $NF}'
+  => err=False agent.ts: run
+     demoClaude.ts: ContextCard
+     demoClaude.ts: RunContext
+     demoClaude.ts: parseContext
+     demoClaude.ts: statementName
+     demoClaude.ts: Phrase
+     demoClaude.ts: Analysis
+     demoClaude.ts: analyse
+     demoClaude.ts: findSyllogism
+     demoClaude.ts: DemoRunRecord
+     demoClaude.ts: DemoClaude
+
+#213 L883 2026-11-13T13:06:20.083Z BASH flags=['writes(redir/tee)'] hflags=['H:script-writes'] bg=None sandboxOff=None
+python3 -I - <<'EOF'
+<<HEREDOC EOF 8 lines>>
+  --- heredoc EOF (head: python3 -I - <<'EOF')
+  | p = 'docs/project-report-files.md'
+  | s = open(p, encoding='utf8').read()
+  | old = "| DemoClaude (an LlmBackend); RunContext, ContextCard and the first-message parser |"
+  | new = "| DemoClaude (an LlmBackend), DemoRunRecord; parseContext (the first message), analyse, findSyllogism, statementName; types RunContext, ContextCard, Phrase, Analysis |"
+  | assert s.count(old) == 1
+  | s = s.replace(old, new)
+  | open(p, 'w', encoding='utf8').write(s)
+  | print('ok')
+  => err=False ok
+
+#214 L889 2026-11-13T13:06:23.918Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+n=$(grep -c '^| `' docs/project-report-files.md); echo $n; grep -n "ROWCOUNT" docs/project-report-files.md | cut -c1-80
+  => err=False 490
+     4:Total: 466 rows in the first survey. Turn 13 (2026-11-10) added 25 files and c
+
+#215 L895 2026-11-13T13:06:27.640Z BASH flags=['writes(redir/tee)'] hflags=['H:script-writes'] bg=None sandboxOff=None
+python3 -I - <<'EOF'
+<<HEREDOC EOF 5 lines>>
+sed -n 1,6p docs/project-report-files.md
+  --- heredoc EOF (head: python3 -I - <<'EOF')
+  | p = 'docs/project-report-files.md'
+  | s = open(p, encoding='utf8').read()
+  | assert s.count('ROWCOUNT') == 1
+  | s = s.replace('ROWCOUNT', '490')
+  | open(p, 'w', encoding='utf8').write(s)
+  => err=False # telelean: per-file summaries
+     
+     Appendix to `docs/project-report.md` (2026-11-02; updated 2026-11-13 for turn 13). One row per file, written by agents that read each file; a few rows with an empty name summarise a whole fixture directory. Grouped by directory, in directory order.
+     Total: 466 rows in the first survey. Turn 13 (2026-11-10) added 25 files and changed 19 outside `docs/`. Rows marked "Turn 13" describe those changes, written from the files as they are on 2026-11-13; the two new recordings in `test-fixtures/semantic/recorded/` are covered by that directory's row. With `docs/m2-live-report.md` (2026-11-13), the total is 490 rows. The report's own two files are not listed.
+     
+     ## packages/core
+
+#216 L902 2026-11-13T13:06:35.731Z BASH flags=[] hflags=[] bg=None sandboxOff=None
+awk '/^### `packages\/extension\/test\/demo\/`/,/^### `packages\/extension\/test\/suite\/`/' docs/project-report-files.md | cut -c1-200; echo; awk '/^### `test-fixtures\/fresh\/`/,/^### `test-fixtures\/gate\/`/' docs/project-report-files.md | cut -c1-160
+  => err=False ### `packages/extension/test/demo/`
+     
+     | File | Purpose | Key exports | Depends on |
+     |---|---|---|---|
+     | `agent.ts` | Turn 13: the demo driver's dry-run agent inside VS Code. The driver bundles it (esbuild, CommonJS, vscode external) into its work dir and passes it as --extensionTestsPath, so the exten
+     | `demoClaude.ts` | Turn 13: the dry run's scripted "Claude", a FakeBackend whose steps are computed lazily while they play, from the run's first message and the working copy's files, so the user's ow
+     
+     ### `packages/extension/test/suite/`
+     
+     ### `test-fixtures/fresh/`
+     
+     Turn 13. FakeBackend scripts in which a well-behaved Claude follows the system prompt on a **fresh** model: an empty folder after Initialize, with the person's 
+     
+     | File | Purpose | Key exports | Depends on |
+     |---|---|---|---|
+     | `README.md` | The format above and a table of the ten scripts. The JSON files were generated by a script kept outside the repository (turn 13 scratch) and are
+     | `arith.json` | (g) "Self-evident?" on G "Two plus two is four": `abbrev … : Prop := 2 + 2 = 4` and a lemma proved `by decide`, neither mentioning a constant
+     | `chain.json` | (b) A "Every cat is a mammal", A "Every mammal is an animal", A "Tom is a cat" ⊢ G "Tom is an animal": sort Creature, a named lemma (Tom is a
+     | `derivation-premise.json` | (i) The chain with "Tom is a mammal" typed as a Derivation and selected: formalised without `.holds`, proved after the freeze and 
+     | `goal-first.json` | (e) The Socrates cards with the goal typed
+

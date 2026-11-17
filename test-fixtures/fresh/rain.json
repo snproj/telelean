@@ -1,0 +1,149 @@
+{
+  "name": "rain",
+  "description": "A propositional example on a fresh model (modus ponens), the conclusion typed as a Derivation: the vocabulary is two propositions `axiom Rains : Prop` and `axiom StreetWet : Prop` (no sorts, so no existence presuppositions and nothing for the person to approve). Proved; a derivation needs no kind change.",
+  "subject": "Demo",
+  "today": "2026-11-10",
+  "cards": [
+    {
+      "type": "ASSUMPTION",
+      "naturalName": "If it rains, the street is wet",
+      "id": "if-it-rains-the-street-is"
+    },
+    {
+      "type": "ASSUMPTION",
+      "naturalName": "It rains",
+      "id": "it-rains"
+    },
+    {
+      "type": "DERIVATION",
+      "naturalName": "The street is wet",
+      "id": "the-street-is-wet"
+    }
+  ],
+  "target": "the-street-is-wet",
+  "premises": [
+    "if-it-rains-the-street-is",
+    "it-rains"
+  ],
+  "expect": {
+    "verdict": "proved",
+    "definitions": [],
+    "footprint": [
+      "if-it-rains-the-street-is",
+      "it-rains"
+    ]
+  },
+  "turns": [
+    {
+      "match": "Run: \"These suffice\"",
+      "steps": [
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 68,
+            "outputTokens": 120,
+            "cacheReadInputTokens": 23000,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "read",
+          "path": "Model/Demo/Inbox.lean"
+        },
+        {
+          "kind": "read",
+          "path": "Model/Demo/Vocabulary.lean"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Vocabulary.lean",
+          "oldString": "namespace Demo\n\nend Demo\n",
+          "newString": "namespace Demo\n\n/-- it rains -/\naxiom Rains : Prop\n/-- the street is wet -/\naxiom StreetWet : Prop\n\nend Demo\n"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "natural_name: If it rains, the street is wet\nasserted: 2026-11-10\n-/\n",
+          "newString": "natural_name: If it rains, the street is wet\nasserted: 2026-11-10\n-/\n/-- If it rains, the street is wet -/\nabbrev rain_wets_street : Prop := Rains → StreetWet\naxiom rain_wets_street.holds : rain_wets_street\n"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "natural_name: It rains\nasserted: 2026-11-10\n-/\n",
+          "newString": "natural_name: It rains\nasserted: 2026-11-10\n-/\n/-- It rains -/\nabbrev it_rains : Prop := Rains\naxiom it_rains.holds : it_rains\n"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "natural_name: The street is wet\npremises: if-it-rains-the-street-is, it-rains\nasserted: 2026-11-10\n-/\n",
+          "newString": "natural_name: The street is wet\npremises: if-it-rains-the-street-is, it-rains\nasserted: 2026-11-10\n-/\n/-- The street is wet -/\nabbrev street_is_wet : Prop := StreetWet\n"
+        },
+        {
+          "kind": "callTool",
+          "tool": "check_lean",
+          "args": {}
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 69,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 23500,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "callTool",
+          "tool": "freeze_statements",
+          "args": {
+            "targets": [
+              "the-street-is-wet"
+            ]
+          }
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 70,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 24000,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "abbrev street_is_wet : Prop := StreetWet\n",
+          "newString": "abbrev street_is_wet : Prop := StreetWet\ntheorem street_is_wet.holds : street_is_wet :=\n  rain_wets_street.holds it_rains.holds\n"
+        },
+        {
+          "kind": "callTool",
+          "tool": "check_lean",
+          "args": {}
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 71,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 24500,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "callTool",
+          "tool": "finish",
+          "args": {
+            "status": "proved",
+            "summary": "Modus ponens.",
+            "assumed_without_asking": []
+          }
+        },
+        {
+          "kind": "result",
+          "costEstimateUsd": 0.01
+        }
+      ]
+    }
+  ]
+}

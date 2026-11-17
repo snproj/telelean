@@ -1,0 +1,251 @@
+{
+  "name": "penguin",
+  "description": "Insufficient premises on a fresh model: from 'All birds can fly' and 'Tweety is a penguin' the goal 'Tweety can fly' does not follow. Claude asks whether 'All birds' is universal (answered: every bird), formalises, freezes, suggests the missing premise 'Every penguin is a bird' with a proof that it closes the gap and finishes not proved; the person adopts it ('I hold this'); round 2 proves the goal with it.",
+  "subject": "Demo",
+  "today": "2026-11-10",
+  "cards": [
+    {
+      "type": "ASSUMPTION",
+      "naturalName": "All birds can fly",
+      "id": "all-birds-can-fly"
+    },
+    {
+      "type": "ASSUMPTION",
+      "naturalName": "Tweety is a penguin",
+      "id": "tweety-is-a-penguin"
+    },
+    {
+      "type": "GOAL",
+      "naturalName": "Tweety can fly",
+      "id": "tweety-can-fly"
+    }
+  ],
+  "target": "tweety-can-fly",
+  "premises": [
+    "all-birds-can-fly",
+    "tweety-is-a-penguin"
+  ],
+  "answer": {
+    "phenomenon": "genericity",
+    "option": 0
+  },
+  "adopt": {
+    "ghost": "ghost-1",
+    "rationale": "penguins are birds"
+  },
+  "expect": {
+    "round1": "not-proved",
+    "round2": "proved",
+    "ghostNode": "every-penguin-is-a-bird",
+    "ghostStatement": "∀ x : Creature, Penguin x → Bird x",
+    "definitions": [
+      "Demo.Creature.exists"
+    ],
+    "footprint": [
+      "all-birds-can-fly",
+      "tweety-is-a-penguin",
+      "every-penguin-is-a-bird",
+      "presup:Demo.Creature.exists"
+    ]
+  },
+  "turns": [
+    {
+      "match": "Run: \"These suffice\"",
+      "steps": [
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 53,
+            "outputTokens": 120,
+            "cacheReadInputTokens": 15500,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "read",
+          "path": "Model/Demo/Inbox.lean"
+        },
+        {
+          "kind": "read",
+          "path": "Model/Demo/Vocabulary.lean"
+        },
+        {
+          "kind": "callTool",
+          "tool": "ask_user",
+          "args": {
+            "questions": [
+              {
+                "phenomenon": "genericity",
+                "question": "Does \"All birds can fly\" mean every single bird, without exception, or birds typically?",
+                "options": [
+                  {
+                    "label": "Every bird, without exception",
+                    "consequence": "Any bird at all can fly; the rule applies to Tweety as soon as Tweety is a bird.",
+                    "formalPreview": "∀ x : Creature, Bird x → CanFly x"
+                  },
+                  {
+                    "label": "Birds typically",
+                    "consequence": "Exceptions are allowed, so the rule alone never settles whether a particular bird can fly."
+                  }
+                ],
+                "claudesGuess": {
+                  "option": 0,
+                  "note": "'All' reads as a universal claim"
+                },
+                "affectedNodes": [
+                  "all-birds-can-fly"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 54,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 16000,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Vocabulary.lean",
+          "oldString": "namespace Demo\n\nend Demo\n",
+          "newString": "namespace Demo\n\n/-- creatures -/\naxiom Creature : Type\n/-- there is at least one creature -/\naxiom Creature.exists : Nonempty Creature\ninstance : Nonempty Creature := Creature.exists\n/-- is a bird -/\naxiom Bird : Creature → Prop\n/-- is a penguin -/\naxiom Penguin : Creature → Prop\n/-- can fly -/\naxiom CanFly : Creature → Prop\n/-- Tweety -/\nnoncomputable opaque tweety : Creature\n\nend Demo\n"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "natural_name: All birds can fly\nasserted: 2026-11-10\n-/\n",
+          "newString": "natural_name: All birds can fly\nasserted: 2026-11-10\n-/\n/-- All birds can fly -/\nabbrev all_birds_can_fly : Prop := ∀ x : Creature, Bird x → CanFly x\naxiom all_birds_can_fly.holds : all_birds_can_fly\n"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "natural_name: Tweety is a penguin\nasserted: 2026-11-10\n-/\n",
+          "newString": "natural_name: Tweety is a penguin\nasserted: 2026-11-10\n-/\n/-- Tweety is a penguin -/\nabbrev tweety_is_a_penguin : Prop := Penguin tweety\naxiom tweety_is_a_penguin.holds : tweety_is_a_penguin\n"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "natural_name: Tweety can fly\npremises: all-birds-can-fly, tweety-is-a-penguin\nasserted: 2026-11-10\n-/\n",
+          "newString": "natural_name: Tweety can fly\npremises: all-birds-can-fly, tweety-is-a-penguin\nasserted: 2026-11-10\n-/\n/-- Tweety can fly -/\nabbrev tweety_can_fly : Prop := CanFly tweety\n"
+        },
+        {
+          "kind": "callTool",
+          "tool": "check_lean",
+          "args": {}
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 55,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 16500,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "callTool",
+          "tool": "freeze_statements",
+          "args": {
+            "targets": [
+              "tweety-can-fly"
+            ]
+          }
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 56,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 17000,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "callTool",
+          "tool": "propose_assumption",
+          "args": {
+            "natural_name": "Every penguin is a bird",
+            "lean_statement": "∀ x : Creature, Penguin x → Bird x",
+            "why_needed": "Nothing says that a penguin is a bird, so the rule about birds says nothing about Tweety.",
+            "proof": "fun h => all_birds_can_fly.holds tweety (h tweety tweety_is_a_penguin.holds)",
+            "lean_name": "every_penguin_is_a_bird"
+          }
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 57,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 17500,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "callTool",
+          "tool": "finish",
+          "args": {
+            "status": "not_proved",
+            "summary": "The goal does not follow: nothing links penguins to birds.",
+            "assumed_without_asking": [],
+            "gap": "Nothing says that a penguin is a bird."
+          }
+        },
+        {
+          "kind": "result",
+          "costEstimateUsd": 0.02
+        }
+      ]
+    },
+    {
+      "match": "The person adopted your suggestion",
+      "steps": [
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 58,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 18000,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "abbrev tweety_can_fly : Prop := CanFly tweety\n",
+          "newString": "abbrev tweety_can_fly : Prop := CanFly tweety\ntheorem tweety_can_fly.holds : tweety_can_fly :=\n  all_birds_can_fly.holds tweety (every_penguin_is_a_bird.holds tweety tweety_is_a_penguin.holds)\n"
+        },
+        {
+          "kind": "callTool",
+          "tool": "check_lean",
+          "args": {}
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 59,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 18500,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "callTool",
+          "tool": "finish",
+          "args": {
+            "status": "proved",
+            "summary": "Proved with the adopted premise.",
+            "assumed_without_asking": []
+          }
+        },
+        {
+          "kind": "result",
+          "costEstimateUsd": 0.03
+        }
+      ]
+    }
+  ]
+}

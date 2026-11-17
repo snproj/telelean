@@ -1,0 +1,183 @@
+{
+  "name": "derivation-premise",
+  "description": "A chain whose intermediate step the person typed as a Derivation card ('Tom is a mammal') and selected with the assumptions. A Derivation premise needs a proof before it can be used: Claude formalises it with the others, freezes, proves it from the assumptions after the freeze, uses it for the goal and finishes proved. Accept writes both proofs.",
+  "subject": "Demo",
+  "today": "2026-11-10",
+  "cards": [
+    {
+      "type": "ASSUMPTION",
+      "naturalName": "Every cat is a mammal",
+      "id": "every-cat-is-a-mammal"
+    },
+    {
+      "type": "ASSUMPTION",
+      "naturalName": "Tom is a cat",
+      "id": "tom-is-a-cat"
+    },
+    {
+      "type": "DERIVATION",
+      "naturalName": "Tom is a mammal",
+      "id": "tom-is-a-mammal"
+    },
+    {
+      "type": "ASSUMPTION",
+      "naturalName": "Every mammal is an animal",
+      "id": "every-mammal-is-an-animal"
+    },
+    {
+      "type": "GOAL",
+      "naturalName": "Tom is an animal",
+      "id": "tom-is-an-animal"
+    }
+  ],
+  "target": "tom-is-an-animal",
+  "premises": [
+    "every-cat-is-a-mammal",
+    "tom-is-a-cat",
+    "tom-is-a-mammal",
+    "every-mammal-is-an-animal"
+  ],
+  "expect": {
+    "verdict": "proved",
+    "definitions": [
+      "Demo.Creature.exists"
+    ],
+    "footprint": [
+      "every-cat-is-a-mammal",
+      "every-mammal-is-an-animal",
+      "tom-is-a-cat",
+      "presup:Demo.Creature.exists"
+    ]
+  },
+  "turns": [
+    {
+      "match": "Run: \"These suffice\"",
+      "steps": [
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 81,
+            "outputTokens": 120,
+            "cacheReadInputTokens": 29500,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "read",
+          "path": "Model/Demo/Inbox.lean"
+        },
+        {
+          "kind": "read",
+          "path": "Model/Demo/Vocabulary.lean"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Vocabulary.lean",
+          "oldString": "namespace Demo\n\nend Demo\n",
+          "newString": "namespace Demo\n\n/-- creatures -/\naxiom Creature : Type\n/-- there is at least one creature -/\naxiom Creature.exists : Nonempty Creature\ninstance : Nonempty Creature := Creature.exists\n/-- is a cat -/\naxiom Cat : Creature → Prop\n/-- is a mammal -/\naxiom Mammal : Creature → Prop\n/-- is an animal -/\naxiom Animal : Creature → Prop\n/-- Tom -/\nnoncomputable opaque tom : Creature\n\nend Demo\n"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "natural_name: Every cat is a mammal\nasserted: 2026-11-10\n-/\n",
+          "newString": "natural_name: Every cat is a mammal\nasserted: 2026-11-10\n-/\n/-- Every cat is a mammal -/\nabbrev every_cat_is_a_mammal : Prop := ∀ x : Creature, Cat x → Mammal x\naxiom every_cat_is_a_mammal.holds : every_cat_is_a_mammal\n"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "natural_name: Tom is a cat\nasserted: 2026-11-10\n-/\n",
+          "newString": "natural_name: Tom is a cat\nasserted: 2026-11-10\n-/\n/-- Tom is a cat -/\nabbrev tom_is_a_cat : Prop := Cat tom\naxiom tom_is_a_cat.holds : tom_is_a_cat\n"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "natural_name: Tom is a mammal\nasserted: 2026-11-10\n-/\n",
+          "newString": "natural_name: Tom is a mammal\nasserted: 2026-11-10\n-/\n/-- Tom is a mammal -/\nabbrev tom_is_a_mammal : Prop := Mammal tom\n"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "natural_name: Every mammal is an animal\nasserted: 2026-11-10\n-/\n",
+          "newString": "natural_name: Every mammal is an animal\nasserted: 2026-11-10\n-/\n/-- Every mammal is an animal -/\nabbrev every_mammal_is_an_animal : Prop := ∀ x : Creature, Mammal x → Animal x\naxiom every_mammal_is_an_animal.holds : every_mammal_is_an_animal\n"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "natural_name: Tom is an animal\npremises: every-cat-is-a-mammal, tom-is-a-cat, tom-is-a-mammal, every-mammal-is-an-animal\nasserted: 2026-11-10\n-/\n",
+          "newString": "natural_name: Tom is an animal\npremises: every-cat-is-a-mammal, tom-is-a-cat, tom-is-a-mammal, every-mammal-is-an-animal\nasserted: 2026-11-10\n-/\n/-- Tom is an animal -/\nabbrev tom_is_an_animal : Prop := Animal tom\n"
+        },
+        {
+          "kind": "callTool",
+          "tool": "check_lean",
+          "args": {}
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 82,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 30000,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "callTool",
+          "tool": "freeze_statements",
+          "args": {
+            "targets": [
+              "tom-is-an-animal"
+            ]
+          }
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 83,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 30500,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "abbrev tom_is_a_mammal : Prop := Mammal tom\n",
+          "newString": "abbrev tom_is_a_mammal : Prop := Mammal tom\ntheorem tom_is_a_mammal.holds : tom_is_a_mammal :=\n  every_cat_is_a_mammal.holds tom tom_is_a_cat.holds\n"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "abbrev tom_is_an_animal : Prop := Animal tom\n",
+          "newString": "abbrev tom_is_an_animal : Prop := Animal tom\ntheorem tom_is_an_animal.holds : tom_is_an_animal :=\n  every_mammal_is_an_animal.holds tom tom_is_a_mammal.holds\n"
+        },
+        {
+          "kind": "callTool",
+          "tool": "check_lean",
+          "args": {}
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 84,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 31000,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "callTool",
+          "tool": "finish",
+          "args": {
+            "status": "proved",
+            "summary": "Tom is a cat, so a mammal (proved), so an animal.",
+            "assumed_without_asking": []
+          }
+        },
+        {
+          "kind": "result",
+          "costEstimateUsd": 0.01
+        }
+      ]
+    }
+  ]
+}

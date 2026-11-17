@@ -209,6 +209,22 @@ describe('AT1.4 G3', () => {
     without(rules('check', 'formalise', B, model(literal())), 'new-axiom');
   });
 
+  it('turn 13: a blank line between a selected card\'s block and its statement is named, not called a belief', () => {
+    // The formalisation is right but detached from its block by one blank line (TL013): the card has no statement, so
+    // its .holds is a Prop-valued axiom nobody holds. Same verdicts as before; the findings now say what to fix.
+    const detached = model(edit(normative(), MAIN, 'stance: rule\nasserted: 2026-11-01\n-/\n/-- PG games', 'stance: rule\nasserted: 2026-11-01\n-/\n\n/-- PG games'));
+    const check = rules('check', 'formalise', B, detached);
+    expect(findingsOf(check, 'new-axiom').map((f) => [f.names, f.token, f.nodeId])).toEqual([[['Spyro.pg_no_dark_past.holds'], 'detached', 'pg-no-dark-past']]);
+    expect(findingsOf(check, 'new-axiom')[0]?.message).toContain('a blank line separates Spyro.pg_no_dark_past from the block of the card pg-no-dark-past');
+    expect(findingsOf(check, 'new-axiom')[0]?.message).not.toContain('propose_assumption');
+    const freeze = rules('freeze', 'formalise', B, detached);
+    expect(findingsOf(freeze, 'not-formalised').map((f) => [f.nodeId, f.names, f.token])).toEqual([['pg-no-dark-past', ['Spyro.pg_no_dark_past'], 'detached']]);
+    expect(findingsOf(freeze, 'not-formalised')[0]?.message).toContain('follows its block after a blank line, so it is not attached; remove the blank line');
+    // A belief elsewhere is still a belief; the attached formalisation passes.
+    expect(findingsOf(rules('check', 'formalise', B, model(addBeforeEnd(normative(), MAIN, 'axiom shortcut : cynder_not_good'))), 'new-axiom').map((f) => f.token)).toEqual(['belief']);
+    without(rules('freeze', 'formalise', B, N), 'not-formalised');
+  });
+
   it('new-axiom after the freeze: any axiom not in the freeze', () => {
     const shortcut = model(addBeforeEnd(pinned(normative()), MAIN, 'axiom shortcut : cynder_not_good\ntheorem cynder_not_good.holds : cynder_not_good := shortcut'));
     const report = rules('gate-proved', 'prove', B, shortcut, { freeze: F });

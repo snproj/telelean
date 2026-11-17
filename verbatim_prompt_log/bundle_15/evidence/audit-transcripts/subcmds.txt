@@ -1,0 +1,394 @@
+    5 .                                                                      | . $SP/turn9/closing-fixer-r2/env.sh
+   18 bash                                                                   | setsid bash -c "echo \$\$ > $M/runner.pid; exec timeout 3000 npx vitest run --exclude test/run/walkthroughScript.test.ts --exclude test/run/
+   28 esbuild                                                                | do $R/node_modules/.bin/esbuild --log-level=error --loader=ts "$f" > /dev/null
+    8 git                                                                    | git --version
+    1 git $D                                                                 | git -C $D status 2>&1
+    2 git $M                                                                 | GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 git -C $M -c core.hooksPath=/dev/null status --short 2>&1
+    4 git /home/zhengyew/telelean                                            | git -C /home/zhengyew/telelean status 2>&1
+    6 git commit.gpgsign=false                                               | git -c commit.gpgsign=false -c core.hooksPath=/dev/null init -q --bare git
+    3 git core.hooksPath=/dev/null                                           | git --git-dir=git -c core.hooksPath=/dev/null fast-import --quiet --done 2>&1
+   22 git diff                                                               | git diff --stat
+    2 git for-each-ref                                                       | git for-each-ref refs/telelean
+    6 git log                                                                | git log --oneline -15 2>&1
+    3 git ls-files                                                           | git ls-files
+    2 git ls-tree                                                            | git --git-dir=git ls-tree -r refs/heads/shadow
+    2 git remote                                                             | git remote -v
+    1 git rev-list                                                           | git rev-list -h 2>&1
+    5 git rev-parse                                                          | git --git-dir=git rev-parse refs/heads/shadow
+   15 git status                                                             | git status --short
+    7 journalctl                                                             | journalctl --list-boots 2>&1
+    3 kill                                                                   | kill -TERM -- -$PG
+    2 kill !                                                                 | until ! kill -0 $P 2>/dev/null
+    7 kill $(…)                                                              | kill $(…) 2>/dev/null
+    1 kill $CHILD                                                            | kill -KILL $CHILD
+    1 kill $MAIN                                                             | kill -TERM $MAIN
+    1 kill $MEMPID                                                           | kill $MEMPID
+    1 kill $PARENT                                                           | kill -KILL $PARENT
+    2 kill $TP                                                               | kill $TP 2>/dev/null
+    1 kill $p                                                                | then kill $p
+    1 kill $pid                                                              | kill -TERM $pid 2>/dev/null
+    1 kill %1                                                                | kill %1 2>/dev/null
+    1 kill 1018435                                                           | kill -TERM 1018435
+    1 kill 1106521                                                           | kill 1106521 2>/dev/null
+    1 kill 2944106                                                           | kill 2944106 2987700 2>/dev/null
+    3 kill 2>/dev/null                                                       | kill -TERM -- -2266560 2>/dev/null
+    1 kill 957770                                                            | kill 957770
+    2 kill kill                                                              | while kill -0 2266560 2>/dev/null
+    9 lake $T/lake                                                           | timeout 300 $T/lake build 2>&1
+   17 lake $TC/lake                                                          | PATH=$TC:/usr/bin:/bin timeout 120 $TC/lake env $TC/lean --stdin --json < $S/$f.lean
+    9 lake HOME=$HOME                                                        | env -i HOME=$HOME PATH=$TC:/usr/bin:/bin LEAN_NUM_THREADS=4 timeout 120 $TC/lake build 2>&1
+   10 lake build                                                             | LEAN_NUM_THREADS=4 lake build 2>&1
+    5 lake env                                                               | LEAN_NUM_THREADS=4 lake env lean --stdin --json < ../ghost1.lean
+    3 lake lake                                                              | timeout 300 lake build 2>&1
+    1 lake systemd-run                                                       | timeout 600 systemd-run --user --scope --quiet -p MemoryMax=4G -p MemorySwapMax=0 --unit=tlverify-mmbuild-$$ $TC/lake build 2>&1
+   10 lean                                                                   | LEAN_NUM_THREADS=4 timeout 120 $T/lean $S/cm.lean 2>&1
+   10 ln                                                                     | ln -s /home/zhengyew/telelean/packages/extension/.vscode-test $R/packages/extension/.vscode-test
+    2 mv                                                                     | mv $B/scan_git.py $B/scan_git.out $B/evidence/
+   18 node                                                                   | node --version
+    1 node 
+// strict mode check: the bundle's top-level 'this' / assignment | node -e "
+// strict mode check: the bundle's top-level 'this' / assignment to undeclared would throw in strict mode
+const src = require('fs'
+    1 node 
+const a=require(process.argv[1]), b=require(process.argv[2]);
+co | node -e '
+const a=require(process.argv[1]), b=require(process.argv[2]);
+const diff=[]; for (let i=0;i<a.sources.length;i++){ const j=b.sourc
+    1 node 
+const f = JSON.parse(require("fs").readFileSync("recorded/extras | node -e '
+const f = JSON.parse(require("fs").readFileSync("recorded/extras-facts.json","utf8"));
+console.log("status", f.status, f.build.sta
+    1 node 
+const f = JSON.parse(require("fs").readFileSync("test-fixtures/s | node -e '
+const f = JSON.parse(require("fs").readFileSync("test-fixtures/semantic/recorded/spyro-facts.json","utf8"));
+console.log("status",
+    1 node 
+const f = JSON.parse(require("fs").readFileSync("test/fixtures/p | node -e '
+const f = JSON.parse(require("fs").readFileSync("test/fixtures/project/spyro-derived-facts.json","utf8"));
+for (const d of f.decls
+    1 node 
+const f = JSON.parse(require("fs").readFileSync("test/fixtures/p | node -e '
+const f = JSON.parse(require("fs").readFileSync("test/fixtures/project/spyro-proved-facts.json","utf8"));
+for (const d of f.decls)
+    1 node 
+const f=require("./test-fixtures/semantic/recorded/spyro-facts.j | node -e '
+const f=require("./test-fixtures/semantic/recorded/spyro-facts.json");
+console.log(f.status, f.library, f.modules.map(m=>m.name+":
+    1 node 
+const fs=require("fs"),path=require("path");
+const dir="test-fix | node -e '
+const fs=require("fs"),path=require("path");
+const dir="test-fixtures/walkthrough";
+let bad=0;
+for (const base of ["mental_model",
+    1 node 
+const fs=require("fs");
+const lines=fs.readFileSync("docs/m2-pla | node -e '
+const fs=require("fs");
+const lines=fs.readFileSync("docs/m2-plan.md","utf8").split("\n");
+const start=lines.findIndex(l=>l.starts
+    1 node 
+const fs=require("fs");
+const lines=fs.readFileSync("docs/m2-pla | node -e '
+const fs=require("fs");
+const lines=fs.readFileSync("docs/m2-plan.md","utf8").split("\n");
+const start=lines.findIndex(l=>l.starts
+    1 node 
+const fs=require("fs"); const a=JSON.parse(fs.readFileSync(proce | node -e '
+const fs=require("fs"); const a=JSON.parse(fs.readFileSync(process.argv[1],"utf8")), b=JSON.parse(fs.readFileSync(process.argv[2],
+    1 node 
+const fs=require("fs"); const lines=fs.readFileSync(process.argv | node -e '
+const fs=require("fs"); const lines=fs.readFileSync(process.argv[1],"utf8").split("\n").filter(l=>l.includes("\"tool_result\""));
+
+    1 node 
+const fs=require("fs"); const lines=fs.readFileSync(process.argv | node -e '
+const fs=require("fs"); const lines=fs.readFileSync(process.argv[1],"utf8").split("\n").filter(l=>l.includes("\"tool_result\""));
+
+    1 node 
+const fs=require("fs"); const lines=fs.readFileSync(process.argv | node -e '
+const fs=require("fs"); const lines=fs.readFileSync(process.argv[1],"utf8").split("\n").filter(l=>l.includes("\"tool_result\""));
+
+    1 node 
+const fs=require("fs"); const lines=fs.readFileSync(process.argv | node -e '
+const fs=require("fs"); const lines=fs.readFileSync(process.argv[1],"utf8").split("\n").filter(l=>l.includes("\"tool_result\""));
+
+    2 node 
+const fs=require("fs"); const lines=fs.readFileSync(process.argv | node -e '
+const fs=require("fs"); const lines=fs.readFileSync(process.argv[1],"utf8").split("\n").filter(l=>l.includes("\"tool_result\""));
+
+    1 node 
+const fs=require("fs"); const lines=fs.readFileSync(process.argv | node -e '
+const fs=require("fs"); const lines=fs.readFileSync(process.argv[1],"utf8").split("\n").filter(l=>l.includes("\"tool_result\""));
+
+    3 node 
+const fs=require("fs"); const lines=fs.readFileSync(process.argv | node -e '
+const fs=require("fs"); const lines=fs.readFileSync(process.argv[1],"utf8").split("\n").filter(l=>l.includes("\"tool_result\""));
+
+    4 node 
+const fs=require("fs"); const lines=fs.readFileSync(process.argv | node -e '
+const fs=require("fs"); const lines=fs.readFileSync(process.argv[1],"utf8").split("\n").filter(l=>l.includes("\"tool_result\""));
+
+    1 node 
+const fs=require("fs"); const lines=fs.readFileSync(process.argv | node -e '
+const fs=require("fs"); const lines=fs.readFileSync(process.argv[1],"utf8").split("\n").filter(l=>l.includes("\"tool_result\""));
+
+    8 node 
+const fs=require("fs"); const lines=fs.readFileSync(process.argv | node -e '
+const fs=require("fs"); const lines=fs.readFileSync(process.argv[1],"utf8").split("\n").filter(l=>l.includes("\"tool_result\""));
+
+    3 node 
+const fs=require("fs"); const lines=fs.readFileSync(process.argv | node -e '
+const fs=require("fs"); const lines=fs.readFileSync(process.argv[1],"utf8").split("\n").filter(l=>l.includes("\"tool_result\""));
+
+   23 node 
+const fs=require("fs"); const lines=fs.readFileSync(process.argv | node -e '
+const fs=require("fs"); const lines=fs.readFileSync(process.argv[1],"utf8").split("\n").filter(l=>l.includes("\"tool_result\""));
+
+    3 node 
+const fs=require("fs"); const lines=fs.readFileSync(process.argv | node -e '
+const fs=require("fs"); const lines=fs.readFileSync(process.argv[1],"utf8").split("\n").filter(l=>l.includes("\"tool_result\""));
+
+    1 node 
+const fs=require("fs"); const s=JSON.parse(fs.readFileSync(proce | node -e '
+const fs=require("fs"); const s=JSON.parse(fs.readFileSync(process.argv[1]+"/summary.json","utf8"));
+const arr = Array.isArray(s) 
+    1 node 
+const fs=require("fs");const dir=process.argv[1];const f=fs.read | node -e '
+const fs=require("fs");const dir=process.argv[1];const f=fs.readdirSync(dir).filter(x=>x.endsWith(".cpuprofile")).map(x=>dir+"/"+x
+    1 node 
+const fs=require("fs");const dir=process.argv[1];const f=fs.read | node -e '
+const fs=require("fs");const dir=process.argv[1];const f=fs.readdirSync(dir).filter(x=>x.endsWith(".cpuprofile"))[0];
+const p=JSON
+    5 node 
+const fs=require("fs");const f=process.argv[1];const end=Date.no | node -e '
+const fs=require("fs");const f=process.argv[1];const end=Date.now()+570000;
+(function poll(){let t="";try{t=fs.readFileSync(f,"utf
+    1 node 
+const m = require('./out2.js');
+console.log(Object.keys(m.all),  | node -e "
+const m = require('./out2.js');
+console.log(Object.keys(m.all), typeof m.all.run.createRunManager, typeof m.all.FakeBackend);
+cons
+    1 node 
+const m = require('./out4.js'); console.log('loaded', typeof m.a | node -e "
+const m = require('./out4.js'); console.log('loaded', typeof m.all.run.createRunManager);
+(function(){ 'x'; })();
+"
+    1 node 
+const p=require("./package.json").contributes.configuration.prop | node -e '
+const p=require("./package.json").contributes.configuration.properties;
+for (const [k,v] of Object.entries(p)) if (k.startsWith("t
+    1 node 
+const p=require("./package.json");
+const props=p.contributes.con | node -e '
+const p=require("./package.json");
+const props=p.contributes.configuration.properties||p.contributes.configuration.reduce((a,c)=>O
+    1 node 
+const p=require('./packages/extension/package.json');
+console.lo | node -e "
+const p=require('./packages/extension/package.json');
+console.log('activation', JSON.stringify(p.activationEvents));
+console.log('
+    1 node 
+const r=JSON.parse(require("fs").readFileSync(process.argv[1],"u | node -e '
+const r=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));
+for (const [k,v] of Object.entries(r)) { const rv=v.review
+    1 node 
+const r=JSON.parse(require('fs').readFileSync('$S/probes/out/che | node -e "
+const r=JSON.parse(require('fs').readFileSync('$S/probes/out/cheats-result.json','utf8'));
+for (const k of ['ADD-1','WEAK-1','VOC-
+    1 node 
+const r=JSON.parse(require('fs').readFileSync('$S/probes/out/lak | node -e "
+const r=JSON.parse(require('fs').readFileSync('$S/probes/out/lakerace-result.json','utf8'));
+console.log(JSON.stringify(r.summary,
+    1 node 
+const r=JSON.parse(require('fs').readFileSync('$S/probes/out/rac | node -e "
+const r=JSON.parse(require('fs').readFileSync('$S/probes/out/race-result.json','utf8'));
+const churn=r.outcomes.filter(o=>o.phase=
+    1 node 
+const r=JSON.parse(require('fs').readFileSync('$S/probes/out/sta | node -e "
+const r=JSON.parse(require('fs').readFileSync('$S/probes/out/startrefresh-result.json','utf8'));
+for (const [k,v] of Object.entrie
+    1 node 
+const r=require("./cheats-result.json");
+for (const [k,v] of Obj | node -e '
+const r=require("./cheats-result.json");
+for (const [k,v] of Object.entries(r)) { console.log(k, JSON.stringify({state:v.review?.s
+    1 node 
+const s=JSON.parse(require("fs").readFileSync("walk-dry-1.json", | node -e '
+const s=JSON.parse(require("fs").readFileSync("walk-dry-1.json","utf8"));
+console.log("live", s.live, "elan", JSON.stringify(s.ela
+    1 node 
+const s=JSON.parse(require('fs').readFileSync('$S/walk/summary.j | node -e "
+const s=JSON.parse(require('fs').readFileSync('$S/walk/summary.json','utf8'));
+console.log('mode', s.mode ?? s.live, 'pass', s.pas
+    1 node 
+const s=require('fs').readFileSync('src/run/systemPrompt.ts','ut | node -e "
+const s=require('fs').readFileSync('src/run/systemPrompt.ts','utf8');"
+    1 node 
+const { llm } = await import('$W/bundle/runner.mjs');
+const b =  | TELELEAN_NO_REAL_CLAUDE=1 node --input-type=module -e "
+const { llm } = await import('$W/bundle/runner.mjs');
+const b = new llm.ClaudeCliBac
+    1 node 
+const { llm } = await import('$W/bundle/runner.mjs');
+const r =  | node --input-type=module -e "
+const { llm } = await import('$W/bundle/runner.mjs');
+const r = llm.sanitizeClaudeEnv({ PATH: '/usr/bin', HOME
+    1 node 
+const { run } = await import('$W/bundle/runner.mjs');
+try { cons | env HOME=$S/home PATH=$S/tripwire/bin:$PATH TELELEAN_NO_REAL_CLAUDE=1 node --input-type=module -e "
+const { run } = await import('$W/bundle/
+    1 node 
+import('/home/zhengyew/telelean/packages/core/dist/index.js').th | node -e "
+import('/home/zhengyew/telelean/packages/core/dist/index.js').then(m => { const keys = Object.keys(m); console.log(['parseLeanFile
+    8 node $D                                                                | TELELEAN_DEMO_LIVE=yes node $D --work-dir $S/never2
+    1 node $M/probe/mgtime.mjs                                               | node $M/probe/mgtime.mjs $M/tmp
+    1 node $M/probe/mgtime2.mjs                                              | node $M/probe/mgtime2.mjs $M/tmp
+    1 node $P/summarize.mjs                                                  | node $P/summarize.mjs $P/out/cheats-result.json 2>/dev/null
+    1 node $S/cancel-probe.mjs                                               | env HOME=$S/home ELAN_HOME=/home/zhengyew/.elan PATH=$S/tripwire/bin:$PATH TMPDIR=$S/tmp/walk LEAN_NUM_THREADS=4 GIT_CONFIG_GLOBAL=/dev/null
+    1 node $S/check-esc.mjs                                                  | node $S/check-esc.mjs $S/out $S/probe/Esc.lean
+    3 node $S/exp/build.mjs                                                  | node $S/exp/build.mjs $S/exp/entry.ts $S/exp/out.js 2>&1
+    1 node $S/exp/build2.mjs                                                 | node $S/exp/build2.mjs $S/exp/entry.ts $S/exp/out4.js $S/exp/import-meta-url.js
+    1 node $S/exp/inputs.mjs                                                 | node $S/exp/inputs.mjs $S/exp/entry.ts $S/exp/out3.js
+    1 node $S/exp/suites.mjs                                                 | node $S/exp/suites.mjs $S/exp/suites
+    1 node $S/explore1.mjs                                                   | node $S/explore1.mjs $S/out
+    1 node $S/explore2.mjs                                                   | node $S/explore2.mjs $S/out
+    2 node $S/gen-escape.mjs                                                 | node $S/gen-escape.mjs $S/out $S/probe/Esc.lean
+    1 node $S/pdeathsig-parent.mjs                                           | node $S/pdeathsig-parent.mjs $mode > $S/tmp/pd-$mode.txt  &BG
+    1 node $S/perf.mjs                                                       | node $S/perf.mjs $S/out
+    1 node $S/probe/out.mjs                                                  | node $S/probe/out.mjs
+    1 node $S/probe/out2.mjs                                                 | node $S/probe/out2.mjs
+    1 node $S/probe/out3.mjs                                                 | node $S/probe/out3.mjs
+    1 node $S/probe/out4.mjs                                                 | node $S/probe/out4.mjs
+    5 node $S/probes/summarize.mjs                                           | node $S/probes/summarize.mjs $S/probes/out/cheats-result.json
+    1 node $S/prune-probe.mjs                                                | env HOME=$S/home ELAN_HOME=/home/zhengyew/.elan PATH=$S/tripwire/bin:$PATH TMPDIR=$S/tmp/walk LEAN_NUM_THREADS=4 GIT_CONFIG_GLOBAL=/dev/null
+    1 node $S/scripts/g0check.mjs                                            | node $S/scripts/g0check.mjs
+    1 node $S/scripts/ghostname.mjs                                          | node $S/scripts/ghostname.mjs
+    2 node $S/scripts/guardcheck.mjs                                         | node $S/scripts/guardcheck.mjs 2>&1
+    1 node $SP/turn9/closing-verify-1/g0check.mjs                            | node $SP/turn9/closing-verify-1/g0check.mjs
+    2 node $SP/turn9/wp2/zodprobe.mjs                                        | ~/.local/bin/node $SP/turn9/wp2/zodprobe.mjs 2>&1
+    1 node $SP/turn9/wp3/gen-walkthrough.mjs                                 | node $SP/turn9/wp3/gen-walkthrough.mjs
+    1 node $V/vs/harness/vf-drive.mjs                                        | node --check $V/vs/harness/vf-drive.mjs
+    2 node $f                                                                | do node --check "$f" 2>&1
+    1 node .vscode-test.mjs                                                  | node --check .vscode-test.mjs
+    4 node /home/zhengyew/.local/bin/node                                    | timeout 600 /home/zhengyew/.local/bin/node drive.mjs $(…) 2>&1
+    1 node /home/zhengyew/telelean/node_modules/typescript/bin/tsc           | node /home/zhengyew/telelean/node_modules/typescript/bin/tsc -p tsconfig.json
+    3 node /home/zhengyew/telelean/node_modules/vitest/vitest.mjs            | node /home/zhengyew/telelean/node_modules/vitest/vitest.mjs run 2>&1
+    1 node 2>/dev/null                                                       | node --version 2>/dev/null
+    1 node JSON.parse(require('fs').readFileSync('package.json','utf8')); co | node -e "JSON.parse(require('fs').readFileSync('package.json','utf8')); console.log('package.json ok')"
+    1 node JSON.parse(require('fs').readFileSync('package.json','utf8')); co | node -e "JSON.parse(require('fs').readFileSync('package.json','utf8')); console.log('package.json parses')"
+    1 node JSON.parse(require('fs').readFileSync('packages/extension/package | node -e "JSON.parse(require('fs').readFileSync('packages/extension/package.json','utf8')); console.log('package.json parses')"
+    1 node TELELEAN_DEMO_LIVE                                                | env -u TELELEAN_DEMO_LIVE node $D --live --work-dir $S/never1
+    4 node TELELEAN_NO_REAL_CLAUDE                                           | env -u TELELEAN_NO_REAL_CLAUDE TELELEAN_WALKTHROUGH_LIVE=yes LEAN_NUM_THREADS=4 node scripts/walkthrough-claude.mjs --live --reading normati
+    2 node TELELEAN_WALKTHROUGH_LIVE                                         | env -u TELELEAN_WALKTHROUGH_LIVE node scripts/walkthrough-claude.mjs --dry-run --binary-check --work-dir $W > $W.out 2> $W.err
+   10 node build.mjs                                                         | node build.mjs 2>&1
+    1 node console.log(JSON.stringify(['x := a'.replace('a', 'f \$\$ b'), 'x | node -e "console.log(JSON.stringify(['x := a'.replace('a', 'f \$\$ b'), 'x := a'.replace('a', '\$&!'), 'x := a'.replace('a', 'f \$ b')]))"
+    1 node console.log(require("os").tmpdir(), require("os").tmpdir().length | node -e 'console.log(require("os").tmpdir(), require("os").tmpdir().length)'
+    1 node console.log(require('./node_modules/vitest/package.json').version | node -e "console.log(require('./node_modules/vitest/package.json').version, require('./node_modules/typescript/package.json').version)"
+    1 node console.log(require('/home/zhengyew/telelean/packages/extension/p | node -e "console.log(require('/home/zhengyew/telelean/packages/extension/package.json').scripts)"
+    1 node console.log(require('esbuild/package.json').version)              | node -e "console.log(require('esbuild/package.json').version)"
+    3 node console.log(require('os').tmpdir())                               | node -e "console.log(require('os').tmpdir())"
+    1 node console.log(require('playwright-core/package.json').version)      | node -e "console.log(require('playwright-core/package.json').version)"
+    1 node const fs=require("fs");for (const f of ["lakefile.toml","lake-man | node -e 'const fs=require("fs");for (const f of ["lakefile.toml","lake-manifest.json"]) console.log(JSON.stringify(fs.readFileSync(f,"utf8")
+    1 node const fs=require('fs'); require('esbuild').transformSync(fs.readF | do node -e "const fs=require('fs'); require('esbuild').transformSync(fs.readFileSync(process.argv[1],'utf8'),{loader:'ts'}); console.log('ok
+    1 node const j=require('./packages/$p/package.json'); console.log(j.name | node -e "const j=require('./packages/$p/package.json'); console.log(j.name, JSON.stringify(j.scripts))"
+    1 node const m=require('./extension/package.json'); console.log(m.contri | node -e "const m=require('./extension/package.json'); console.log(m.contributes.colors.map(c=>c.id+' '+JSON.stringify(c.defaults)).join('\n'
+    1 node const p=require("./$f"); console.log(JSON.stringify(p.scripts||{} | node -e 'const p=require("./'$f'"); console.log(JSON.stringify(p.scripts||{},null,1))'
+    2 node const p=require("./package.json"); console.log(JSON.stringify(p.s | node -e 'const p=require("./package.json"); console.log(JSON.stringify(p.scripts,null,1))'
+    1 node const p=require('$R/packages/$p/package.json'); console.log(JSON. | node -e "const p=require('$R/packages/$p/package.json'); console.log(JSON.stringify(p.scripts,null,1))"
+    1 node const p=require('./$p/package.json'); console.log(JSON.stringify( | node -e "const p=require('./$p/package.json'); console.log(JSON.stringify(p.scripts,null,1))"
+    1 node const p=require('./$p/package.json'); console.log(JSON.stringify( | node -e "const p=require('./$p/package.json'); console.log(JSON.stringify(p.scripts||{}))"
+    1 node const p=require('./node_modules/diff/package.json'); console.log( | node -e "const p=require('./node_modules/diff/package.json'); console.log(JSON.stringify({exports:p.exports, type:p.type, sideEffects:p.side
+    1 node const p=require('./package.json'); console.log(JSON.stringify({ma | node -e "const p=require('./package.json'); console.log(JSON.stringify({main:p.main,types:p.types,exports:p.exports},null,1))"
+    1 node const p=require('./package.json'); const c=p.contributes.configur | node -e "const p=require('./package.json'); const c=p.contributes.configuration; const props=(Array.isArray(c)?c:[c]).flatMap(x=>Object.entr
+    1 node const p=require('./package.json'); for (const [k,v] of Object.ent | node -e "const p=require('./package.json'); for (const [k,v] of Object.entries(p.contributes.configuration.properties)) console.log(k, '=', 
+    3 node const p=require('./packages/$p/package.json'); console.log(JSON.s | node -e "const p=require('./packages/$p/package.json'); console.log(JSON.stringify(p.scripts,null,1))"
+    1 node const p=require('./packages/$p/package.json'); console.log(JSON.s | node -e "const p=require('./packages/$p/package.json'); console.log(JSON.stringify({name:p.name,description:p.description,main:p.main,script
+    1 node const p=require('./packages/extension/package.json'); const c=p.c | node -e "const p=require('./packages/extension/package.json'); const c=p.contributes; const props=(Array.isArray(c.configuration)?c.configur
+    1 node const pw=require('/home/zhengyew/telelean/node_modules/playwright | node -e "const pw=require('/home/zhengyew/telelean/node_modules/playwright-core'); console.log(typeof pw.chromium.connectOverCDP, typeof pw.
+    1 node const r=JSON.parse(require("fs").readFileSync(0,"utf8")); const c | node -e 'const r=JSON.parse(require("fs").readFileSync(0,"utf8")); const c={}; for (const o of r.outcomes) { const k=o.startsWith("created")
+    1 node const r=JSON.parse(require("fs").readFileSync(0,"utf8")); let n=0 | node -e 'const r=JSON.parse(require("fs").readFileSync(0,"utf8")); let n=0, leaked=[]; for (const [k,v] of Object.entries(r)) { n++; if (v.r
+    1 node const r=JSON.parse(require("fs").readFileSync(0,"utf8")); let n=0 | node -e 'const r=JSON.parse(require("fs").readFileSync(0,"utf8")); let n=0, leaked=[]; for (const [k,v] of Object.entries(r)) { n++; if (v.r
+    1 node const s=JSON.parse(require("fs").readFileSync(process.argv[1],"ut | node -e 'const s=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")); console.log("elanKnownProjectsLines:", JSON.stringify(s.ela
+    1 node const s=JSON.parse(require("fs").readFileSync(process.argv[1],"ut | node -e 'const s=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")); console.log(JSON.stringify({exitCode:s.exitCode, durationMs
+    2 node const s=require("net").createServer();s.listen(0,"127.0.0.1",()=> | node -e 'const s=require("net").createServer();s.listen(0,"127.0.0.1",()=>{console.log(s.address().port);s.close()})'
+    1 node const s=require(process.argv[1]); console.log(JSON.stringify({exi | node -e 'const s=require(process.argv[1]); console.log(JSON.stringify({exitCode:s.exitCode, failures:s.failures, warnings:s.warnings, notes:
+    1 node const z=require('zod'); console.log(typeof z.toJSONSchema)        | node -e "const z=require('zod'); console.log(typeof z.toJSONSchema)"
+    1 node demo.cjs                                                          | node demo.cjs
+    5 node demo.mjs                                                          | node demo.mjs
+    1 node demo.ts                                                           | node demo.ts 2>&1
+    1 node exp.mjs                                                           | node exp.mjs model
+    1 node g0check.mjs                                                       | node g0check.mjs
+    1 node guard-probe.mjs                                                   | node guard-probe.mjs $S/guard-tree 2>&1
+  156 node node                                                              | timeout 900 node scripts/walkthrough-claude.mjs --dry-run --work-dir $M/walk-parent/walk > $M/logs/walk.json 2> $M/logs/walk.stderr
+    1 node packages/extension/scripts/demo-driver.mjs                        | TELELEAN_DEMO_LIVE=yes node packages/extension/scripts/demo-driver.mjs --live 2>&1
+    1 node packages/extension/scripts/demo-vscode.mjs                        | node --check packages/extension/scripts/demo-vscode.mjs
+    1 node probe/build.mjs                                                   | node probe/build.mjs
+    7 node probe/run.mjs                                                     | GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 node probe/run.mjs > logs/probe-run1.log 2>&1
+    1 node process.env.TELELEAN_SMOKE_DIR='/tmp/x'; import('/home/zhengyew/t | node -e "process.env.TELELEAN_SMOKE_DIR='/tmp/x'; import('/home/zhengyew/telelean/packages/extension/.vscode-test.mjs').then(m=>console.log(
+    1 node process.env.TELELEAN_SMOKE_DIR='/tmp/x'; process.env.TELELEAN_CDP | node -e "process.env.TELELEAN_SMOKE_DIR='/tmp/x'; process.env.TELELEAN_CDP_PORT='1234'; import('/home/zhengyew/telelean/packages/extension/.
+    2 node process.stdout.write("100644 587be6b4c3f93f93c489c0111bba5596147a | node -e 'process.stdout.write("100644 587be6b4c3f93f93c489c0111bba5596147a26cb\tModel/A.lean\0" + "100644 975fbec8256d3e8a3797e7a3611380f27c
+    1 node process.stdout.write("100644 blob 587be6b4c3f93f93c489c0111bba559 | node -e 'process.stdout.write("100644 blob 587be6b4c3f93f93c489c0111bba5596147a26cb\tA.lean\0")'
+    1 node registry-demo.mjs                                                 | node registry-demo.mjs
+    1 node require('./node_modules/$p/package.json').version                 | node -p "require('./node_modules/$p/package.json').version" 2>/dev/null
+   19 node scripts/build.mjs                                                 | node scripts/build.mjs > $S/logs/build-racepatch.log 2>&1
+    9 node scripts/demo-driver.mjs                                           | node --check scripts/demo-driver.mjs
+    1 node scripts/demo-ui.mjs                                               | node --check scripts/demo-ui.mjs
+    1 node scripts/quota-tripwire.mjs                                        | node --check scripts/quota-tripwire.mjs
+    1 node scripts/smoke-claude.mjs                                          | node --check scripts/smoke-claude.mjs
+    2 node scripts/smoke-units.mjs                                           | node --check scripts/smoke-units.mjs
+   15 node scripts/smoke.mjs                                                 | TELELEAN_TEST_TMP=$S/tmp/smoke-1 LEAN_NUM_THREADS=4 node scripts/smoke.mjs > $S/logs/smoke-1.log 2>&1
+    1 node scripts/snap-env.mjs                                              | node --check scripts/snap-env.mjs
+    4 node scripts/walkthrough-claude.mjs                                    | LEAN_NUM_THREADS=4 node scripts/walkthrough-claude.mjs --dry-run --work-dir $S/walk-dry > $S/logs/walk-dry.stdout 2> $S/logs/walk-dry.stderr
+    1 node t17_adjacent.mjs                                                  | node t17_adjacent.mjs 2>&1
+    1 node t1_markup_edits.mjs                                               | node t1_markup_edits.mjs 2>&1
+    1 node t23_dup.mjs                                                       | node t23_dup.mjs
+    1 node t24_rebind.mjs                                                    | node t24_rebind.mjs
+    1 node t6_col0_more.mjs                                                  | node t6_col0_more.mjs 2>&1
+    1 node t6b.mjs                                                           | node t6b.mjs
+    1 node t6c_delete_tail.mjs                                               | node t6c_delete_tail.mjs 2>&1
+    2 node t9_crlf_actions.mjs                                               | node t9_crlf_actions.mjs 2>&1
+    2 node try{console.log(require('$p/package.json').version)}catch(e){cons | node -e "try{console.log(require('$p/package.json').version)}catch(e){console.log('MISSING')}" 2>/dev/null
+    3 npm                                                                    | npm --version
+    3 npm config                                                             | npm config get cache 2>/dev/null
+   54 npm npm                                                                | timeout 900 npm run build > $M/logs/build.log 2>&1
+    1 npm packages/extension                                                 | npm --prefix packages/extension run demo -- --live 2>&1
+    8 npm run                                                                | time npm run build
+   11 npm test                                                               | time npm test 2>&1
+    1 npx TELELEAN_TEST_TMP                                                  | env -u TELELEAN_TEST_TMP timeout 300 npx vitest run test/run/prompts.test.ts test/run/manager.accept.test.ts 2>&1
+  398 npx npx                                                                | timeout 300 npx tsc -p tsconfig.test.json 2>&1
+   12 npx playwright                                                         | npx playwright test test/e2e/m2-review.spec.ts
+    1 npx strace                                                             | do timeout 600 strace -f -qq -o /dev/null -e trace=file npx vitest run test/shadow/seed.test.ts > $M/logs/seed-strace-$i.log 2>&1
+    1 npx timeout                                                            | do if timeout 300 npx vitest run test/shadow/seed.test.ts -t "^(?!.*real refresh)" > $M/logs/seedloop-$i.log 2>&1
+  123 npx tsc                                                                | npx tsc -p tsconfig.test.json --noEmit 2>&1
+   62 npx vitest                                                             | TELELEAN_NO_REAL_CLAUDE=1 npx vitest run test/run/walkthroughScript.test.ts test/run/smokeScript.test.ts 2>&1
+    2 patch                                                                  | patch -p1 --dry-run < $S/fresh-model/docpatch/m2-plan-5.1.patch
+    1 pkill $D/ramwatch.sh                                                   | pkill -f "$D/ramwatch.sh"
+    1 pkill m2verify-ux/probe/vscode-test.mjs                                | pkill -TERM -f -- "m2verify-ux/probe/vscode-test.mjs"
+    1 pkill m2verify-ux/vsc-20261101T144307                                  | pkill -TERM -f -- "m2verify-ux/vsc-20261101T144307"
+    1 pkill turn13/snap/ramwatch-snap.sh                                     | pkill -f "turn13/snap/ramwatch-snap.sh"
+    2 playwright $B/playwright                                               | timeout 600 $B/playwright test test/e2e/m2-run.spec.ts test/e2e/m2-overlay.spec.ts 2>&1
+   13 playwright test                                                        | /home/zhengyew/telelean/node_modules/.bin/playwright test
+   13 rsync                                                                  | time rsync -a --exclude=/packages/extension/.vscode-test --exclude=/verbatim_prompt_log --exclude=/packages/webview/test-results /home/zheng
+   43 sh                                                                     | timeout 900 sh -c 'ulimit -c 0; npx playwright test test/e2e/m2-review.spec.ts' > /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e
+  170 source                                                                 | source $SP/turn9/closing-verify-2/env.sh
+    6 systemctl                                                              | systemctl --user --failed --plain --no-legend --no-pager
+    1 systemctl 2>/dev/null                                                  | systemctl --user --failed --plain --no-legend --no-pager 2>/dev/null
+    1 systemctl is-system-running                                            | systemctl --user is-system-running
+  190 systemctl list-units                                                   | systemctl --user list-units 'telelean-*' --no-legend
+    5 systemctl reset-failed                                                 | systemctl --user reset-failed $u 2>/dev/null
+   20 systemctl show                                                         | do systemctl --user show -p ActiveState -p SubState -p TasksCurrent -p Result $u
+    3 systemctl status                                                       | systemctl --user status telelean-tlws1500614_2_1-23.scope --no-pager 2>&1
+    5 systemctl stop                                                         | systemctl --user stop $u
+    6 tar                                                                    | tar --exclude='node_modules' --exclude='dist' --exclude='out' --exclude='.vscode-test' --exclude='test-results' -cf $S/backup/before.tar pac
+  113 tsc                                                                    | timeout 600 $B/tsc -p tsconfig.json > $S/tsc2.txt 2>&1
+   13 vite                                                                   | timeout 600 $B/vite build > $S/vite-build3.txt 2>&1
+    1 vitest                                                                 | ./node_modules/.bin/vitest --version
+    4 vitest $B/vitest                                                       | timeout 600 $B/vitest run > $S/vitest-webview2.txt 2>&1
+   20 vitest ../../node_modules/.bin/vitest                                  | timeout 600 ../../node_modules/.bin/vitest run test/workspace 2>&1
+   14 vitest /home/zhengyew/telelean/node_modules/.bin/vitest                | timeout 300 /home/zhengyew/telelean/node_modules/.bin/vitest run test/gate/rules.test.ts 2>&1
+    4 vitest 2>/dev/null                                                     | node_modules/.bin/vitest --help 2>/dev/null
+    2 vitest TELELEAN_NO_REAL_CLAUDE                                         | env -u TELELEAN_NO_REAL_CLAUDE HOME=$S/home ELAN_HOME=/home/zhengyew/.elan PATH=$S/tripwire/bin:$PATH TMPDIR=$S/tmp/runner TELELEAN_TEST_TMP
+   35 vitest run                                                             | do $R/node_modules/.bin/vitest run test/shadow/seed.test.ts -t "race probe" > $S/logs/seedrace-$i.log 2>&1
+    1 vitest trace=execve                                                    | do strace -f --seccomp-bpf -qq -e trace=execve -e signal=none -o /dev/null $R/node_modules/.bin/vitest run test/shadow/seed.test.ts -t "race

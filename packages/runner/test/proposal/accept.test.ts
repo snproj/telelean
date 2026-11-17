@@ -175,7 +175,7 @@ describe('the proposal service around Accept', () => {
         expect(plan, `user edit on line ${k}`).toEqual({
           ok: false,
           code: 'conflict',
-          error: `Your edits to ${MAIN} since the run started overlap Claude's; Discard, or Feedback to redo it on your current files.`,
+          error: `Your edits to ${MAIN} since the run started overlap Claude's; Discard, or undo those edits and Accept again.`,
           files: [MAIN],
         });
       }

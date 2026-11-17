@@ -199,7 +199,7 @@ export interface PreflightInput {
   settings: RunSettings;
   /** WP3 addition (additive): the root's active (non-terminal) run, if any: preflight refuses `busy`. */
   activeRunId?: string;
-  /** WP3 addition (additive), test hook: replaces `lean.checkSandboxSupport()` (a reason = refused). */
+  /** WP3 addition (additive), test hook: replaces `lean.checkSandboxSupport()` and `lean.checkUserNamespaces()` (a reason = refused). */
   checkSandbox?: () => Promise<string | undefined>;
   /** WP3 addition (additive), test hook: replaces reading MemAvailable from /proc/meminfo (bytes; undefined = unknown). */
   readMemAvailable?: () => number | undefined;
@@ -208,7 +208,7 @@ export interface PreflightInput {
 export type PreflightProblem =
   /** `lean-toolchain` is not leanprover/lean4:v4.35.0 (D-7): no runs or gate in syntactic mode. */
   | 'toolchain'
-  /** bwrap / systemd-run --user / cgroup v2 / setpriv missing (lean.checkSandboxSupport). */
+  /** bwrap / systemd-run --user / cgroup v2 / setpriv missing (lean.checkSandboxSupport), or bwrap cannot create its namespaces (lean.checkUserNamespaces). */
   | 'sandbox'
   /** MemAvailable below the guard. */
   | 'memory'

@@ -7,9 +7,16 @@
 // --user-data-dir and --extensions-dir are passed here, @vscode/test-electron does not add its own
 // ./.vscode-test/user-data defaults, and HOME/XDG_* point into the scratch profile, so nothing reaches the user's real
 // home folder (~/.config/Code, ~/.copilot, ~/.config/google-chrome, ...).
+//
+// Snap mode (`npm run test:smoke:snap`, scripts/smoke.mjs --snap): both instances run the user's own snap VS Code
+// (/snap/code/<rev>, its version instead of 1.140.0) through the snap's electron-launch with the SNAP_* variables of
+// `snap run` (scripts/snap-env.mjs), so the extension host gets the snap's environment (SNAP*, GTK_*, GDK_*, LOCPATH,
+// XDG_DATA_DIRS, ...) as in the user's window. scripts/smoke.mjs passes the snap it found in TELELEAN_VSCODE_SNAP.
 import { defineConfig } from '@vscode/test-cli';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+
+import { snapLaunch, snapTestEnv } from './scripts/snap-env.mjs';
 
 const dir = process.env.TELELEAN_SMOKE_DIR;
 // e2e.test.ts drives the board webview over the DevTools protocol: Chromium serves it on this loopback port
@@ -25,18 +32,29 @@ if (!dir) {
 // This shell may run inside the user's (snap) VS Code: drop its IPC hooks and Electron/Wayland settings so the
 // test instance is a fresh, separate X11 window inside xvfb. DBUS_SESSION_BUS_ADDRESS and XDG_RUNTIME_DIR are kept:
 // runLean's `systemd-run --user` needs them.
+// Run by Claude Code (the M2 builders and fixers are), the shell also holds that session's variables (CLAUDECODE,
+// CLAUDE_CODE_SESSION_ID, its messaging socket and token, CLAUDE_CONFIG_DIR, AI_AGENT, MCP_*): the user's VS Code has
+// none of them, so neither does the test instance.
 const inherited = Object.fromEntries(
   Object.keys(process.env)
-    .filter((name) => name.startsWith('VSCODE_') || name.startsWith('ELECTRON_'))
+    .filter((name) => /^(VSCODE_|ELECTRON_|CLAUDE|MCP_)/.test(name) || name === 'AI_AGENT')
     .map((name) => [name, undefined]),
 );
 
+// Snap mode: the launcher and the snap's environment layer (computed from this process's environment, so a run from a
+// terminal of the snap VS Code and one from a plain terminal start the instance alike).
+const snap = process.env.TELELEAN_VSCODE_SNAP ? JSON.parse(process.env.TELELEAN_VSCODE_SNAP) : undefined;
+const snapEnv = snap ? snapTestEnv(process.env, snap, { home: join(dir, 'home'), uid: process.getuid(), euid: process.geteuid() }) : undefined;
+const launch = snap ? snapLaunch(snap) : undefined;
+
 const common = {
-  version: '1.140.0',
+  ...(launch ? { version: snap.version, useInstallation: { fromPath: launch.executable } } : { version: '1.140.0' }),
   workspaceFolder: join(dir, 'ws'),
   // TELELEAN_SMOKE_GREP runs only the matching suites/tests (development aid; `npm run test:smoke` runs everything).
   mocha: { ui: 'tdd', timeout: 60_000, color: false, ...(process.env.TELELEAN_SMOKE_GREP ? { grep: process.env.TELELEAN_SMOKE_GREP } : {}) },
   launchArgs: [
+    // Snap mode: electron-launch's first argument is the Electron binary it execs (see scripts/snap-env.mjs).
+    ...(launch ? launch.prefixArgs : []),
     `--user-data-dir=${join(dir, 'user-data')}`,
     `--extensions-dir=${join(dir, 'extensions')}`,
     '--disable-extensions',
@@ -49,6 +67,11 @@ const common = {
   ],
   env: {
     ...inherited,
+    // Snap mode: the caller's snap layer removed, then the SNAP_* variables of `snap run` and the CLI's VSCODE_CLI=1,
+    // ELECTRON_NO_ATTACH_CONSOLE=1 (electron-launch adds its own variables when it starts the instance).
+    ...(snapEnv ? Object.fromEntries(snapEnv.unset.map((name) => [name, undefined])) : {}),
+    ...(snapEnv ? snapEnv.set : {}),
+    TELELEAN_VSCODE_SNAP: process.env.TELELEAN_VSCODE_SNAP,
     WAYLAND_DISPLAY: undefined,
     XDG_SESSION_TYPE: 'x11',
     HOME: join(dir, 'home'),

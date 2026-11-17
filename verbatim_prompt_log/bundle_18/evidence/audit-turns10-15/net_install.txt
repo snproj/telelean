@@ -1,0 +1,23 @@
+=== [wf-snap-vscode L108 2026-11-10T16:47:49.993Z]
+cd /home/zhengyew/telelean && grep -n "useInstallation\|fromPath\|fromMachine\|vscodeExecutablePath\|version" node_modules/@vscode/test-cli/out/config.d.cts | head -30; ls node_modules/@vscode/test-cli/out/cli; grep -n "useInstallation\|fromPath\|vscodeExecutablePath\|downloadAndUnzip" -r node_modules/@vscode/test-cli/out/cli/*.mjs | head -30
+  => err=False 12:     *   - A version number, like `1.82.0`
+     13:     *   - A commit hash of a version to install
+     15:     * Defaults to `stable`, which is latest stable version.
+     17:    version?: 'insiders' | 'stable' | string;
+     92:     * downloading the {@link versio
+=== [wf-snap-vscode L111 2026-11-10T16:47:53.176Z]
+cd /home/zhengyew/telelean && sed -n 80,130p node_modules/@vscode/test-cli/out/config.d.cts; ls node_modules/@vscode/test-cli/out/cli/platform; grep -n "useInstallation\|fromPath\|fromMachine\|vscodeExecutablePath\|downloadAndUnzip\|runTests\|reuseMachineInstall" node_modules/@vscode/test-cli/out/cli/platform/*.mjs | head -30
+  => err=False      * If the first argument is a path to a file/folder/workspace, the launched VS Code instance
+          * will open it.
+          *
+          * See `code --help` for possible arguments.
+          */
+         launchArgs?: string[];
+         /**
+          * Environment variables to s
+=== [t15-audit-transcripts L604 2026-11-13T13:03:31.719Z]
+ls -d ~/.cache/ms-playwright ~/.cache/vscode* ~/.vscode-test ~/.cache/pip ~/.local/lib/python3*/site-packages 2>&1 | sed "s|$HOME|~|"; TZ=UTC find ~ -maxdepth 1 -newermt '2026-11-01 02:16:34Z' -printf '%TY-%Tm-%TdT%TH:%TM %f\n' 2>/dev/null | sort; echo "--- elan toolchains:"; ls -la --time-style=+%F ~/.elan/toolchains | tail -n +2
+  => err=False ls: cannot access '~/.cache/ms-playwright': No such file or directory
+     ls: cannot access '~/.vscode-test': No such file or directory
+     ls: cannot access '~/.cache/pip': No such file or directory
+     ls: cannot access '~/.local/lib/python3*/site-packages': N

@@ -13,6 +13,14 @@
  *   `[l, c, l, c, parent]`; each usage is `[l, c, l, c, parent]`, `parent` being the declaration that contains it.
  * - Auxiliary names have no `decls` entry but a `definition` whose parent is another declaration: a structure's
  *   field `Spyro.Rec.past` has `definition: [101, 2, 101, 6, "Spyro.Rec"]`.
+ * - Unlisted declarations (verified on Lean 4.35, fresh-model work of turn 13): `decls` leaves out some top-level
+ *   declarations whose source mentions no constant, e.g. `abbrev p : Prop := 2 + 2 = 4`,
+ *   `theorem t : 2 + 2 = 4 := by decide` or `theorem mp : ∀ (p q : Prop), p → (p → q) → q := fun _ _ hp h => h hp`
+ *   (`abbrev q : Prop := True` and `axiom P0 : Prop` are listed). Such a declaration still has a `references` entry
+ *   for itself whose `definition` has no parent (`[l, c, l, c]`, the name's range): it is reported with
+ *   `unlisted: true`, and `declDrafts` keeps it when the source declares that name, so the facts cover it (without
+ *   them the gate could not check it and refused it as "Lean reported nothing about …"). An `example` is elaborated
+ *   as `<namespace>._example` with such an entry too and is skipped (it has no name).
  * - Names starting with `_private.` (private declarations) are skipped.
  */
 import type { Range } from '@telelean/core';
@@ -27,6 +35,11 @@ export interface IleanDecl {
   readonly parent?: string;
   /** No `decls` entry: only the name's range is known (`range` = `selectionRange`). */
   readonly auxiliary: boolean;
+  /**
+   * A top-level declaration that `decls` does not list (see the module comment): only the name's range is known here
+   * (`range` = `selectionRange`); `declDrafts` finds its full range in the source.
+   */
+  readonly unlisted?: true;
 }
 
 export interface IleanUsage {
@@ -50,6 +63,8 @@ export interface IleanData {
 export type IleanResult = { readonly ok: true; readonly data: IleanData } | { readonly ok: false; readonly error: string };
 
 const isPrivate = (name: string): boolean => name.startsWith('_private.');
+/** The name Lean elaborates an `example` under (`Spyro._example`): not a declaration of the module. */
+const isExample = (name: string): boolean => name === '_example' || name.endsWith('._example');
 
 function isNat(v: unknown): v is number {
   return typeof v === 'number' && Number.isInteger(v) && v >= 0;
@@ -96,6 +111,7 @@ export function parseIlean(text: string, expectedModule: string): IleanResult {
 
   const parents = new Map<string, string>();
   const auxiliary: IleanDecl[] = [];
+  const unlisted: IleanDecl[] = [];
   const usages: IleanUsage[] = [];
   const pendingUsages: Array<{ name: string; module: string; usage: readonly unknown[] }> = [];
   for (const [key, value] of Object.entries(root.references as Record<string, unknown>)) {
@@ -120,12 +136,16 @@ export function parseIlean(text: string, expectedModule: string): IleanResult {
           if (sel !== undefined) auxiliary.push({ name: n, range: sel, selectionRange: sel, parent, auxiliary: true });
         }
       }
+    } else if (m === expectedModule && !isPrivate(n) && !isExample(n) && Array.isArray(info.definition) && info.definition.length === 4) {
+      const sel = rangeOf(info.definition, 0);
+      if (sel !== undefined) unlisted.push({ name: n, range: sel, selectionRange: sel, auxiliary: false, unlisted: true });
     }
     if (Array.isArray(info.usages)) {
       for (const usage of info.usages) if (Array.isArray(usage)) pendingUsages.push({ name: n, module: m, usage });
     }
   }
 
+  for (const d of unlisted) if (!decls.has(d.name)) decls.set(d.name, d);
   for (const aux of auxiliary) {
     // Keep auxiliary names only when their parent is a declaration we report.
     if (decls.has(aux.parent ?? '') && !decls.has(aux.name)) decls.set(aux.name, aux);

@@ -1,0 +1,103 @@
+{
+  "name": "self-evident-not",
+  "description": "'Self-evident?' on a fresh model: the goal 'Pingu can swim' with no premises at all. Claude creates the vocabulary, formalises the goal, freezes, finds no proof and finishes not proved (no suggestion). Accepting keeps the formalisation; the goal stays a goal.",
+  "subject": "Demo",
+  "today": "2026-11-10",
+  "cards": [
+    {
+      "type": "GOAL",
+      "naturalName": "Pingu can swim",
+      "id": "pingu-can-swim"
+    }
+  ],
+  "target": "pingu-can-swim",
+  "premises": [],
+  "expect": {
+    "verdict": "not-proved",
+    "definitions": [
+      "Demo.Creature.exists"
+    ]
+  },
+  "turns": [
+    {
+      "match": "Run: \"These suffice\"",
+      "steps": [
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 60,
+            "outputTokens": 120,
+            "cacheReadInputTokens": 19000,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "read",
+          "path": "Model/Demo/Inbox.lean"
+        },
+        {
+          "kind": "read",
+          "path": "Model/Demo/Vocabulary.lean"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Vocabulary.lean",
+          "oldString": "namespace Demo\n\nend Demo\n",
+          "newString": "namespace Demo\n\n/-- creatures -/\naxiom Creature : Type\n/-- there is at least one creature -/\naxiom Creature.exists : Nonempty Creature\ninstance : Nonempty Creature := Creature.exists\n/-- can swim -/\naxiom CanSwim : Creature → Prop\n/-- Pingu -/\nnoncomputable opaque pingu : Creature\n\nend Demo\n"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "natural_name: Pingu can swim\nasserted: 2026-11-10\n-/\n",
+          "newString": "natural_name: Pingu can swim\nasserted: 2026-11-10\n-/\n/-- Pingu can swim -/\nabbrev pingu_can_swim : Prop := CanSwim pingu\n"
+        },
+        {
+          "kind": "callTool",
+          "tool": "check_lean",
+          "args": {}
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 61,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 19500,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "callTool",
+          "tool": "freeze_statements",
+          "args": {
+            "targets": [
+              "pingu-can-swim"
+            ]
+          }
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 62,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 20000,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "callTool",
+          "tool": "finish",
+          "args": {
+            "status": "not_proved",
+            "summary": "Nothing selected says anything about Pingu, and the statement is not true by logic alone.",
+            "assumed_without_asking": [],
+            "gap": "No premise about Pingu or swimming was selected."
+          }
+        },
+        {
+          "kind": "result",
+          "costEstimateUsd": 0.01
+        }
+      ]
+    }
+  ]
+}

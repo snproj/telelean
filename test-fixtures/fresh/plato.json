@@ -1,0 +1,140 @@
+{
+  "name": "plato",
+  "description": "The same person's second example in the model where socrates.json was accepted: one new code-less assumption and a new code-less goal, together with the accepted 'All humans are mortal'. Claude adds one constant to the existing vocabulary, formalises the two new cards, freezes, proves and finishes proved; nothing new needs the person's approval.",
+  "subject": "Demo",
+  "today": "2026-11-10",
+  "cards": [
+    {
+      "type": "ASSUMPTION",
+      "naturalName": "Plato is a human",
+      "id": "plato-is-a-human"
+    },
+    {
+      "type": "GOAL",
+      "naturalName": "Plato is mortal",
+      "id": "plato-is-mortal"
+    }
+  ],
+  "target": "plato-is-mortal",
+  "premises": [
+    "all-humans-are-mortal",
+    "plato-is-a-human"
+  ],
+  "after": "socrates",
+  "expect": {
+    "verdict": "proved",
+    "definitions": [],
+    "footprint": [
+      "all-humans-are-mortal",
+      "plato-is-a-human",
+      "presup:Demo.Being.exists"
+    ]
+  },
+  "turns": [
+    {
+      "match": "Run: \"These suffice\"",
+      "steps": [
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 45,
+            "outputTokens": 120,
+            "cacheReadInputTokens": 11500,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "read",
+          "path": "Model/Demo/Inbox.lean"
+        },
+        {
+          "kind": "read",
+          "path": "Model/Demo/Vocabulary.lean"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Vocabulary.lean",
+          "oldString": "noncomputable opaque socrates : Being\n",
+          "newString": "noncomputable opaque socrates : Being\n/-- Plato -/\nnoncomputable opaque plato : Being\n"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "natural_name: Plato is a human\nasserted: 2026-11-10\n-/\n",
+          "newString": "natural_name: Plato is a human\nasserted: 2026-11-10\n-/\n/-- Plato is a human -/\nabbrev plato_is_a_human : Prop := Human plato\naxiom plato_is_a_human.holds : plato_is_a_human\n"
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "natural_name: Plato is mortal\npremises: all-humans-are-mortal, plato-is-a-human\nasserted: 2026-11-10\n-/\n",
+          "newString": "natural_name: Plato is mortal\npremises: all-humans-are-mortal, plato-is-a-human\nasserted: 2026-11-10\n-/\n/-- Plato is mortal -/\nabbrev plato_is_mortal : Prop := Mortal plato\n"
+        },
+        {
+          "kind": "callTool",
+          "tool": "check_lean",
+          "args": {}
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 46,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 12000,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "callTool",
+          "tool": "freeze_statements",
+          "args": {
+            "targets": [
+              "plato-is-mortal"
+            ]
+          }
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 47,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 12500,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "edit",
+          "path": "Model/Demo/Inbox.lean",
+          "oldString": "abbrev plato_is_mortal : Prop := Mortal plato\n",
+          "newString": "abbrev plato_is_mortal : Prop := Mortal plato\ntheorem plato_is_mortal.holds : plato_is_mortal :=\n  all_humans_are_mortal.holds plato plato_is_a_human.holds\n"
+        },
+        {
+          "kind": "callTool",
+          "tool": "check_lean",
+          "args": {}
+        },
+        {
+          "kind": "usage",
+          "usage": {
+            "inputTokens": 48,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 13000,
+            "cacheCreationInputTokens": 200
+          }
+        },
+        {
+          "kind": "callTool",
+          "tool": "finish",
+          "args": {
+            "status": "proved",
+            "summary": "Plato is mortal follows from the two premises.",
+            "assumed_without_asking": []
+          }
+        },
+        {
+          "kind": "result",
+          "costEstimateUsd": 0.01
+        }
+      ]
+    }
+  ]
+}

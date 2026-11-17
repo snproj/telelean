@@ -1,0 +1,632 @@
+===== 2026-11-02T02:10:29 wf_0f2876ef-f99 m2close-verify-2 [a142a62f97c07c8ac] keys: ['verdict', 'what_i_ran', 'issues', 'effects_outside_repo']
+-- effects_outside_repo
+  * I wrote only inside /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/closing-verify-2 (about 430 MB): the repo copy, logs, strace files, probes and their results, the test temp trees (including the VS Code test profiles and Chrome's temporary profile), the walkthrough work dir and a Lake HOME.
+  * Sandboxed Lean jobs created transient telelean-* systemd user scopes. None is left and there are no failed units (checked before, after every step, and at the end).
+  * xvfb-run created and removed X display sockets in /tmp/.X11-unix. The folder's mtime changed; no socket of mine is left.
+  * The VS Code test instances used the real packages/extension/.vscode-test install read-only, through a symlink from the copy; its listing is unchanged. Their HOME, XDG folders and user data were in scratch. By the harness's design they keep DBUS_SESSION_BUS_ADDRESS and XDG_RUNTIME_DIR, so they talk to the user's session bus (systemd-run --user).
+  * Playwright launched the installed Google Chrome headless with a temporary profile in my scratch TMPDIR.
+  * Read only, outside the repo: Lake 4.35 sources under ~/.elan/toolchains, to check that there is no build lock. Toolchain binaries were run directly, never elan proxies.
+  * Real home unchanged by me (before and after snapshots):
+- ~/.elan/known-projects: 37 lines, same mtime;
+- ~/.gitconfig, VS Code settings.json, the ~/.vscode/extensions listing, ~/.npm/_logs, elan toolchains, the Chrome folder;
+- mental_model/: listing and sha256 unchanged; still not a git repo, no .lake;
+- the real repo: 792 files by sha256, and its node_modules caches.
+The listing hashes of ~/telelean_scripts, ~/.copilot and the Trash changed only through their '..' entry. Nothing in them is newer by mtime or ctime. The home folder's mtime moved because Claude Code rewrote ~/.claude.json at 09:51:03, and ~/.local/share's moved when recently-used.xbel was rewritten at 09:14:37.
+  * Home changes during my run that came from other programs, not from me:
+- the user's own running VS Code: its log folder 20261031T225029, globalStorage and workspaceStorage state, caches;
+- a screenshot the user took at 09:14:37, Steam, gnome-shell, wireplumber, tracker3;
+- ~/.claude and ~/.claude.json (Claude Code);
+- the main session's files in /home/zhengyew/telelean/verbatim_prompt_log/bundle_9: evidence/scan_git.py, evidence/scan_git.out, prompt9_midturn.md.
+  * At the end I killed two of my own leftover `tail -F` processes from my progress monitors. None of my processes is left.
+  * Not done: no git command in the real repo (git ran only in scratch test repos with isolated config), no push, no network use, no npm install, nothing sent to anyone. No Claude CLI with a prompt and no LLM session: strace and the process watcher show none.
+===== 2026-11-02T01:01:27 wf_0f2876ef-f99 m2close-fix-2 [a35f5a70e5feebffb] keys: ['summary', 'files_changed', 'test_runs', 'resolved', 'open_issues', 'minor_decisions', 'effects_outside_repo']
+-- effects_outside_repo
+  * Writes outside the repo: only my scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/closing-fix-2/ (logs, backups, the diff, npm logs, test TMPDIR including the VS Code test profiles, the walkthrough work dir and the Playwright cache); about 107 MB.
+  * The runner tests' sandboxed Lean jobs created transient systemd user scopes (telelean-*). None are left and there are no failed units.
+  * The smoke test's `xvfb-run -a` created and removed an X display socket in /tmp/.X11-unix; the folder's mtime changed and no socket is left. Its VS Code instance used the existing packages/extension/.vscode-test install read-only, with user data and HOME under my scratch TMPDIR. By its existing design it keeps DBUS_SESSION_BUS_ADDRESS and XDG_RUNTIME_DIR, so it talks to the user's session bus.
+  * The webview e2e launched the installed Google Chrome headless, with HOME and XDG folders in its own temp dir (existing harness). Nothing of it was left in /tmp.
+  * Real home folder unchanged by me (before/after snapshots): ~/.elan/known-projects (37 newline-terminated lines; the walkthrough script counts 38, same mtime), ~/.gitconfig, VS Code settings.json, ~/.vscode/extensions, ~/telelean_scripts, ~/.copilot, the Chrome folder, Trash, ~/.npm/_logs, elan toolchains. The listing hashes of ~/telelean_scripts and ~/.copilot changed only through their '..' entry, the home folder's mtime, which Claude Code's ~/.claude.json rewrite moved; no file in them has a newer mtime or ctime. mental_model/ is unchanged (sha256 and listing), still has no .git and no .lake.
+  * Home changes during my run that came from other programs, not from me: the user's real VS Code saved ~/webring/Webring/Blog.lean 50 times between 08:26:45 and 08:53:41 (its local history; the user's Lean server for ~/webring is running), plus VS Code user state, Steam, gnome-shell, wireplumber, tracker3 and ~/.claude.json.
+  * Read only, outside the repo: Lake 4.35 sources under ~/.elan/toolchains (to check the up-to-date logic and the absence of a build lock); the metadata file of VS Code's local history (~/.config/Code/User/History/23d3443e/entries.json), only to find which file the user's VS Code was saving.
+  * Not done: no git commands at all, no push, no network use, no npm install, nothing sent to anyone. No Claude CLI or LLM session; strace and the watcher show none. I did not touch the main session's /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn2/ramwatch.sh process (started 08:35) or the user's Lean servers. None of my processes are left.
+===== 2026-11-01T23:40:30 wf_0f2876ef-f99 m2close-verify-1 [a6fcf018667508bf5] keys: ['verdict', 'what_i_ran', 'issues', 'effects_outside_repo']
+-- effects_outside_repo
+  * My scratch folder /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/closing-verify-1, about 375 MB. It holds:
+- the repo copy (234 MB; .vscode-test is a symlink to the real one, used read-only);
+- logs and strace files;
+- test temp trees (tmp, tmp-probes) and the VS Code smoke profile;
+- the probes and their JSON results (probes/out);
+- the walkthrough work dir (walk-parent), verify-mixed and lake-home;
+- helper scripts and snapshots.
+  * My `top -b -n1` at 06:57:27 created an empty directory ~/.config/procps.
+- I removed it with rmdir at 07:37:38, so ~/.config again has its 23 entries.
+- Side effect I could not undo: the ~/.config directory's modification time is now 2026-11-02 07:37:38 (it was 2026-10-30 01:47:15).
+  * Your systemd user session got many short-lived telelean-* scopes, with journal lines, from the sandboxed Lean jobs of the runner suite, smoke and e2e, the walkthrough and my probes.
+- My check that the probe detects the old bug, run against round 3's runLean, left 11 empty active scopes (telelean-vco2530325-*).
+- The probe stopped one before it crashed; I stopped the other 10 with `systemctl --user stop`.
+- Final state: 0 telelean-* units and 0 failed units.
+  * I ran the toolchain's own lake directly, never an elan proxy (~/.elan/toolchains/leanprover--lean4---v4.35.0/bin/lake).
+- Unsandboxed, only on scratch copies of mental_model, with HOME and XDG set to scratch.
+- Used for the outside build loops, reference builds and verify-mixed builds.
+- ~/.elan is unchanged: known-projects has the same size and mtime, and the toolchain listing is the same.
+  * Read-only: the probes imported round 3's runLean.ts from the previous verifier's scratch copy (turn9/m2verify-r3/repo). No file there or in closing-fix-1 changed.
+  * xvfb-run (for the VS Code smoke run) created and removed its socket in /tmp/.X11-unix; the directory's mtime is now 07:12:22.
+- The VS Code test instances used isolated HOME, XDG and user-data folders under scratch; smoke's check found ~/.copilot, ~/.config/Code, google-chrome and Trash unchanged.
+- Playwright's Chrome ran with its home isolated, and its home guard reported no change.
+- Network: loopback only.
+  * Real repo /home/zhengyew/telelean is unchanged (sha256 of 792 files, build outputs included; node_modules cache listing unchanged), because every build and test ran in the scratch copy.
+- mental_model is unchanged (listing and sha256) and is still not a git repo, with no .lake.
+- The packages/extension/.vscode-test listing is unchanged.
+  * Real-home changes made by other programs during the session:
+- Your running VS Code (pid 630165): ~/.config/Code/*. A new extension host it started at 07:21:59 created ~/.copilot/ide/5058a3ad-…lock and /tmp/mcp-oDEKix/mcp.sock (the socket's owner was checked with ss).
+- Desktop apps: dconf at 06:58:04, gnome-shell, Steam, wireplumber, tracker3, mesa shader cache.
+- ~/webring/Webring/Blog.lean, edited at 07:37:10.
+- Unchanged: ~/.gitconfig, VS Code settings and extensions, ~/telelean_scripts, ~/.npm/_logs.
+  * Not done at all:
+- no git outside the tests' own scratch repositories;
+- no pushes, messages, uploads, downloads or installs;
+- no Claude CLI or LLM session (the walkthrough ran with --dry-run only);
+- runner walkthroughScript.test.ts and smokeScript.test.ts were not run (left for the main session), and TELELEAN_WALKTHROUGH_LIVE / TELELEAN_SMOKE_LIVE were never set.
+===== 2026-11-01T22:20:31 wf_0f2876ef-f99 m2close-fix-1 [ade8a4151a6d0c42a] keys: ['summary', 'files_changed', 'test_runs', 'resolved', 'open_issues', 'minor_decisions', 'effects_outside_repo']
+-- effects_outside_repo
+  * Scratch folder /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/closing-fix-1 (about 77 MB). It holds:
+- logs and npm logs, test temp trees, the smoke profile vscode-2309360
+- the walkthrough work dir, the probe (vitest config, seedrace.probe.ts, out/seedrace-result.json), lake-home
+- doc backups, home and mental_model snapshots, env.sh, ramwatch.sh, finalcheck.sh, the timestamp probes probe/mgtime*.mjs
+  * Your systemd user session got many short-lived telelean-* transient scopes, with their journal lines, from the sandboxed Lean jobs of the runner suite, smoke and e2e, walkthrough and probe.
+- Run against the old runLean to confirm it reproduces the bug, my new test left telelean-t2259874s-21.scope; the test's finally block stopped and reset it at once.
+- I stopped my own first runner-suite run partway through (its process group) to apply a fix.
+- Final state: 0 telelean-* units, 0 failed units, no process of mine left.
+  * Ran the toolchain's lake directly (~/.elan/toolchains/leanprover--lean4---v4.35.0/bin/lake, never an elan proxy), unsandboxed, only in my seed race probe, on scratch copies of mental_model with HOME/XDG pointed into scratch. ~/.elan/known-projects is unchanged: 37 lines, mtime Nov 1 09:09.
+  * Smoke run: xvfb-run created and removed its socket in /tmp/.X11-unix. VS Code test instances used the isolated profile, and smoke's checks found ~/.copilot, ~/.config/Code, google-chrome and Trash unchanged.
+- Playwright: Chrome used a temp dir /tmp/tl-pw-chrome-*, created and deleted by the test teardown, with HOME/XDG isolated; its home guard reported unchanged.
+- Network: loopback only (Playwright server 127.0.0.1:41739, the e2e DevTools port).
+  * Real home, comparing listings at 05:42 and 06:18: only files touched by other programs changed.
+- ~/.claude.json: Claude Code itself.
+- ~/.config/Code (directory mtime, DIPS-wal, TransportSecurity) at 06:05 to 06:06: your running VS Code. This was before my smoke run started at 06:11; Playwright's Chrome had its HOME isolated.
+- ~/.local/share/gnome-shell and ~/.local/share/Steam: desktop apps.
+- Unchanged: ~/.cache, ~/.npm/_logs, ~/.vscode/extensions, ~/.gitconfig, ~/telelean_scripts, ~/.config/google-chrome.
+  * /home/zhengyew/telelean/mental_model is unchanged (listing and sha256), has no .lake and is still not a git repository. The packages/extension/.vscode-test listing is unchanged, and it was not copied.
+  * Inside the repo but not source files: build outputs (core/dist, extension/dist and out), Playwright screenshots in packages/webview/test-results, and vitest caches.
+  * Not done at all: no git outside the tests' own isolated scratch repositories, no pushes, messages, uploads, downloads or installs. No Claude CLI or LLM session; the walkthrough ran with --dry-run only. The two live-script tests were not run, and TELELEAN_WALKTHROUGH_LIVE / TELELEAN_SMOKE_LIVE were never set.
+===== 2026-11-01T20:59:27 wf_468d69cf-0e6 final-3 [a0c73cbd13cd92a3f] keys: ['verdict', 'what_i_ran', 'issues', 'strengths', 'effects_outside_repo']
+-- effects_outside_repo
+  * Scratch folder /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2verify-r3, about 487 MB in total. It holds the repo copy (287 MB with node_modules; .vscode-test is a symlink to the real one), logs, strace files, test temp trees, the probes and their JSON results, the walkthrough dry-run output, the two VS Code smoke profiles and lake-home (HOME/XDG for my direct lake runs).
+  * Real repo /home/zhengyew/telelean: unchanged (sha256 of 790 files, build outputs included; no node_modules cache touched), because every build and test ran in the scratch copy. The real packages/extension/.vscode-test was used read-only through the copy's symlink; its listing is unchanged.
+  * The user's systemd session: many short-lived telelean-* scopes from the sandboxed Lean jobs of the runner suite, walkthrough, probes and smoke runs, with their journal lines. Three were left behind. smoke.mjs stopped telelean-tlws2117147_2_1-23.scope. My start-during-refresh probe left telelean-tlws2173226_2_4-39.scope (active, 0 tasks; I ran `systemctl --user stop`) and telelean-tlws2173226_3_4-60.scope (failed; I ran `systemctl --user reset-failed`). Final state: 0 telelean-* units, 0 failed.
+  * Ran /home/zhengyew/.elan/toolchains/leanprover--lean4---v4.35.0/bin/lake and lean directly, never through an elan proxy. The tests ran them in their bwrap sandbox. My lakerace probe ran them unsandboxed, only on scratch copies of mental_model, with HOME and XDG set to scratch. ~/.elan is unchanged (known-projects 37 lines with the same mtime; same toolchain listing).
+  * Read-only: grep and sed over the Lake sources in ~/.elan/toolchains/leanprover--lean4---v4.35.0/src/lean/lake.
+  * xvfb-run/Xvfb for the two VS Code smoke runs created a socket in /tmp/.X11-unix and an X lock file in /tmp for a while; both were removed. The VS Code test instances used isolated user-data, HOME and XDG folders under scratch. Playwright launched the installed Google Chrome with HOME and XDG in its own temp folder; its home guard reported the real home unchanged.
+  * Local network only: the Playwright test server on 127.0.0.1:41739 and the e2e's DevTools port on loopback. No external network use, no downloads, no installs.
+  * Real home: none of my commands changed it. Changes seen during the session were made by others: the user's own running VS Code (pid 630165, session 20261031T225029: ~/.config/Code logs, globalStorage and workspaceStorage, and the Claude Code extension's log); the main session's prompt log (/home/zhengyew/telelean/verbatim_prompt_log/bundle_9, two files at 03:54); desktop activity (a screenshot at 04:08:31 in ~/Pictures/Screenshots, recently-used.xbel, nautilus tags, gnome-shell, Steam, wireplumber, tracker3, and the mtime of the ~/.gnupg directory at 04:06; no gpg appears in any of my traces). mental_model is unchanged.
+  * No git outside scratch (git ran only in the tests' scratch repositories, with isolated config). No pushes, no messages, no uploads. No Claude CLI and no LLM session; the walkthrough ran with --dry-run only, and the live script tests were not run.
+===== 2026-11-01T17:52:51 wf_468d69cf-0e6 fix-2:extension+webview [a371eee0157a82655] keys: ['summary', 'files_changed', 'test_runs', 'resolved', 'open_issues', 'minor_decisions', 'effects_outside_repo']
+-- effects_outside_repo
+  * ~/.npm/_logs: my npx/npm calls between 01:21 and 01:30 wrote 11 npm debug logs there (tsc, vitest, vite, playwright, typecheck). npm's own log rotation (default 10 kept) may have deleted older logs. Nothing was written there after I switched to the local binaries.
+  * /tmp/tl-pw-chrome-*: the Playwright harness made temporary directories for Chrome's isolated HOME and XDG, one per run (4 runs), and deleted them at teardown. The home guard reported the real Chrome locations unchanged each time.
+  * /tmp: the first extension unit-test run (before I set TELELEAN_TEST_TMP) created and removed its own temp dirs. I checked that nothing of mine was left in /tmp.
+  * systemd --user: the VS Code test instances' sandboxed Lean ran in transient telelean-* scopes. One empty scope of my own (`telelean-tlws1811849_2_1-23.scope`, created by my test instance's extension host) remained after the last run, and I stopped it with `systemctl --user stop`. A scope still running belongs to the other fixer (cwd in m2fix2-core-runner); I left it alone.
+  * The VS Code smoke runs kept everything under my scratch dir. Their checks found ~/.copilot, ~/.config/Code, ~/.config/google-chrome and the Trash unchanged, and no leftover process. ~/.elan was only read, by Lean.
+===== 2026-11-01T17:11:58 wf_468d69cf-0e6 final-1 [a4a7839f1a4d1051a] keys: ['verdict', 'what_i_ran', 'issues', 'strengths', 'effects_outside_repo']
+-- effects_outside_repo
+  * **Scratch dir.** Everything I created is in /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2verify-final (about 412 MB). It holds:
+- a repo copy (node_modules hard-linked to the repo's node_modules, so no extra disk; nothing was modified through the links, as `find /home/zhengyew/telelean -newer marker` printed nothing);
+- test temp trees and VS Code/Chrome profiles;
+- probe results, UX screenshots, logs and strace exec logs.
+  * **VS Code test build.** packages/extension/.vscode-test (the VS Code 1.140.0 test build) was used read-only through a symlink from my copy. Its is-complete marker exists, so nothing was downloaded, and `find .vscode-test -newer marker` printed nothing.
+  * **/tmp.** These were created and removed again; none is left:
+- Playwright's /tmp/tl-pw-chrome-* (deleted by its teardown);
+- xvfb-run's /tmp/xvfb-run.*, /tmp/.X99-lock and /tmp/.X11-unix/X99.
+  * **systemd --user.** runLean created and removed transient scopes telelean-* during the runner suite, the probes, the walkthrough dry run, the smoke tests and the UX runs. None is left.
+  * **Lean.** I used the v4.35.0 toolchain binaries in ~/.elan read-only, never the elan proxies. ~/.elan/known-projects is unchanged: same mtime, 38 lines.
+  * **Network.** Loopback only: CDP ports on 127.0.0.1 for the VS Code e2e and UX test instances, and Playwright's static server on 127.0.0.1:41739. No internet, no downloads, no npm install. npm logs went to my scratch npm-logs; ~/.npm/_logs is unchanged.
+  * **git.** Only the tests' and probes' own git, in scratch repositories with the safe -c flags, GIT_CONFIG_GLOBAL=/dev/null and GIT_CONFIG_NOSYSTEM=1. No git in the repo or in mental_model; no remotes, no pushes.
+  * **strace.** I ran strace only on processes I started myself.
+  * **Not run.** I never ran scripts/smoke-claude.mjs, and ran walkthrough-claude.mjs only with --dry-run. No live mode, no Claude prompt, and the real Claude binary was never run, not even --version.
+  * **Home changes since my start that are not mine:**
+- ~/.config/Code cache, logs and storage (your running VS Code);
+- ~/.claude (this Claude Code session's transcripts and skills sync);
+- ~/.local/state/wireplumber;
+- Steam.
+===== 2026-11-01T16:15:02 wf_468d69cf-0e6 fix-1:core+runner+docs [a954ccd0c710f48de] keys: ['summary', 'files_changed', 'test_runs', 'resolved', 'open_issues', 'minor_decisions', 'effects_outside_repo']
+-- effects_outside_repo
+  * ~/.npm/_logs: my early `npm test`, `npx tsc` and `npx vitest` runs wrote npm debug logs there (other agents' runs probably did too), and npm's default limit of 10 log files prunes older ones. About 11 files with times from 23:43 on Nov 1 to 00:01 on Nov 2 are there now. From the root build on, I redirected logs with npm_config_logs_dir to my scratch folder or called node_modules/.bin binaries directly.
+  * systemd --user transient scopes `telelean-<runId>-*` were created and removed by runLean during the two runner suite runs and the probe runs. None was left (checked with `systemctl --user list-units`).
+  * ~/.elan was used read-only (Lean v4.35.0 toolchain binaries through runLean). ~/.elan/known-projects is unchanged: 37 lines, mtime 2026-11-01 09:09.
+  * Everything else went to my scratch folder /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2fix-core-runner (about 11 MB): test temp dirs, probe copies and results, the smoke dry-run work dir with a fake claude, logs, npm logs.
+  * Inside the repo but outside my assigned paths: the root build rewrote packages/extension/dist (extension.js, its map, bin/telelean-path-guard.mjs, webview/*) and packages/extension/out/test/suite/*. The vitest runs added entries to node_modules/.vitest-cache.
+  * Other home changes since 23:15 that are not from me: ~/.config/Code GPU and network caches and globalStorage (your running VS Code), ~/.claude.json, ~/.claude/backups and ~/.claude/projects/...jsonl (the Claude Code session itself), tracker3, wireplumber and Steam state.
+  * No network use, no git commands, no pushes, no Claude CLI run (not even `--version` of the real binary), no live smoke or walkthrough, no Chrome or VS Code launched, nothing sent to anyone.
+===== 2026-11-01T14:29:56 wf_468d69cf-0e6 integrate [a993dd1ed72a047e9] keys: ['summary', 'files_changed', 'test_runs', 'resolved', 'open_issues', 'minor_decisions', 'effects_outside_repo']
+-- effects_outside_repo
+  * Scratch writes only under /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2-integrator/ (about 90 MB, kept): logs, test tmp dirs, four isolated VS Code profiles, walkthrough work dir and summary, npm debug logs, home-folder baseline files.
+  * Transient systemd --user scopes telelean-* from sandboxed Lean (runner suites, VS Code test instances, walkthrough dry run). All ended. One empty scope (telelean-tlws1500614_2_1-23.scope) created by the final smoke's test instance remained; I stopped it. 0 telelean-* units are left.
+  * Xvfb (:99), two isolated VS Code 1.140 test instances (user-data, extensions, HOME and XDG under scratch) and a DevTools endpoint on a free 127.0.0.1 port in the e2e instance ran during the smoke runs. The smoke isolation checks reported ~/.config/Code, ~/.config/Code/logs, ~/.copilot, ~/.config/google-chrome and ~/.local/share/Trash/files unchanged.
+  * Playwright ran headless Chrome with isolated HOME/XDG in /tmp/tl-pw-chrome-* (deleted by its teardown; none left) and a static server on 127.0.0.1. The home guard reported the real home unchanged.
+  * My own home-folder check matches the start: ~/.elan/known-projects 37 lines (mtime 09:09, untouched), ~/.npm/_logs 11 files, ~/.config/google-chrome, ~/.cache/fontconfig, ~/.pki, ~/.config/Code, ~/.vscode/extensions and ~/.copilot entry counts the same, /tmp/telelean-* 27 (WP3's old leftovers).
+  * Lean ran only through the pinned toolchain binaries under runLean's sandbox. git ran only in scratch test repositories (GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM=1, hooks off) and the shadows' private git dirs, never in /home/zhengyew/telelean or mental_model/.
+  * No network, no Claude CLI (not even --version), no downloads or installs, nothing pushed, published or sent. No credentials read; ~/.claude and ~/.config were not touched.
+  * Inside the repo but outside the sources: vitest caches (node_modules/.vite*, packages/extension/out/.vite), Playwright output in packages/webview/test-results, and build outputs packages/core/dist, packages/extension/dist and packages/extension/out.
+  * The user's installed telelean extension is registered from packages/extension, so it will load the rebuilt M2 dist after their next window reload. Nothing contacts Claude until they press These suffice and allow it.
+===== 2026-11-01T19:44:14 wf_468d69cf-0e6 fix-3:core+runner+docs [a9ec8855982da9304] keys: ['summary', 'files_changed', 'test_runs', 'resolved', 'open_issues', 'minor_decisions', 'effects_outside_repo']
+-- effects_outside_repo
+  * All scratch output went to /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2fix3-core-runner: logs, test temp trees (TMPDIR and TELELEAN_TEST_TMP), a probe copy of test-fixtures/spyro, vitest caches for the extension and webview runs, and home-folder snapshots.
+  * Ran the toolchain's lake directly (/home/zhengyew/.elan/toolchains/leanprover--lean4---v4.35.0/bin/lake build, not the elan proxy) once, on that scratch copy, with HOME and XDG pointed into scratch. ~/.elan/known-projects still has 37 lines.
+  * Read-only: grep and sed over Lake and Lean sources in ~/.elan/toolchains/leanprover--lean4---v4.35.0/src/lean, and `strings` on its lib/lean/libleanshared.so. Nothing in ~/.elan was modified.
+  * The runner suite's sandboxed Lean jobs created transient systemd user scope units (telelean-*); none were left afterwards, and no process of mine is left. The long-running lean --server and lake serve processes belong to the user's VS Code and were not touched.
+  * Inside the repo but outside my assigned paths:
+- The root `npm run build`, which the task asked for, rewrote packages/extension/dist (extension.js, its .map, bin/telelean-path-guard.mjs, webview/*) and recreated packages/extension/out/test/suite. build.mjs deletes out/, which also removed the old out/.vite vitest cache.
+- vitest added entries to the shared transform cache /home/zhengyew/telelean/node_modules/.vitest-cache; the results caches in packages/core and packages/runner node_modules/.vite were also updated.
+  * Home folder compared with my start snapshot. Changed, none of it by my commands: ~/.claude.json (Claude Code itself), the mtime of the ~/.config/Code directory (VS Code), ~/.local/state/wireplumber and ~/.local/share/Steam (desktop apps). Nothing else changed.
+  * No network use, no installs, no git commands, no pushes, no Claude CLI or LLM session, no live walkthrough or smoke script.
+===== 2026-11-01T14:45:40 wf_468d69cf-0e6 verify:gate [aa48c8758823ee5f3] keys: ['verdict', 'what_i_ran', 'issues', 'strengths', 'effects_outside_repo']
+-- effects_outside_repo
+  * Scratch writes only under /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2verify-gate/ (about 17 MB, kept as evidence): vitest config and cache, probe sources, logs, result JSONs, 7 scratch model copies with their run dirs.
+  * Transient systemd --user scopes telelean-<runId>-* from the runner's sandboxed Lean during my probes; all ended. The one unit still listed afterwards, telelean-wp2rgatelit1517717-60.scope, belongs to the m2verify-safety verifier's concurrent runner suite (vitest worker pid 1517717), not to me. None of my processes are left.
+  * git ran only in my scratch model copies and the shadows' private git dirs, with GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM=1, GIT_CEILING_DIRECTORIES set by the repo's env helper, commit.gpgsign=false and core.hooksPath=/dev/null. No git in /home/zhengyew/telelean or mental_model/.
+  * No files in /home/zhengyew/telelean changed (checked with find -newer). Home matches my baseline: ~/.elan/known-projects 37 lines with mtime unchanged, ~/.npm/_logs 11 files, /tmp/telelean-* 27 (older leftovers, not mine).
+  * No network, no Claude CLI, no downloads or installs, nothing pushed, published or sent; no credentials read.
+===== 2026-11-01T18:04:41 wf_468d69cf-0e6 fix-2:core+runner+docs [acdc41c098175d46c] keys: ['summary', 'files_changed', 'test_runs', 'resolved', 'open_issues', 'minor_decisions', 'effects_outside_repo']
+-- effects_outside_repo
+  * Files written only in my scratch dir, /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2fix2-core-runner (about 17 MB): logs, npm debug logs, Lean probe files, the vitest probe (with a symlink to the repo's node_modules), the walkthrough dry-run work dir, and backups of rules.ts and describe.ts used for the mutation checks.
+  * Ran the pinned Lean toolchain binary directly (~/.elan/toolchains/leanprover--lean4---v4.35.0/bin/lean) on scratch probe files, plus the runner's sandboxed Lean jobs from the tests and the dry run. ~/.elan was used read-only. ~/.elan/known-projects is unchanged (mtime 2026-11-01 09:09:13; the dry-run summary counts 38 entries before and after).
+  * The tests and the dry run started transient systemd --user scopes (`telelean-*`) through the runner's sandbox. None are left afterwards (`systemctl --user list-units 'telelean-*'` is empty), and none of my processes remain.
+  * git ran only inside scratch test repositories created by the tests and the dry run, with isolated config. No git in the repo or in mental_model.
+  * No network use, no installs or downloads, no pushes, no Claude CLI or LLM session. TELELEAN_NO_REAL_CLAUDE=1 was set throughout.
+  * My npm debug logs went to my scratch npm-logs. All ~/.npm/_logs files written since my start have cwd packages/webview or packages/extension, so they come from the other fixer, not me.
+  * Real home check (files newer than my start marker, app caches excluded): only those npm logs, Claude Code's own ~/.claude and ~/.claude.json, and ~/.local/state/wireplumber, none of them mine. VS Code settings, extensions, ~/.config, ~/telelean_scripts and git global config were not touched.
+  * Inside the repo, vitest updated node_modules/.vitest-cache, and packages/core/dist was rebuilt.
+===== 2026-11-01T15:55:44 wf_468d69cf-0e6 fix-1:extension+webview [ad1778a0a658e3f12] keys: ['summary', 'files_changed', 'test_runs', 'resolved', 'open_issues', 'minor_decisions', 'effects_outside_repo']
+-- effects_outside_repo
+  * ~/.npm/_logs: my npm and npx calls between about 23:24 and 23:44 (+08:00) each wrote one debug log there (npm's default; about 11 files, roughly 1 KB each, containing command lines and paths, no secrets): npm run typecheck/build, npx vitest, npx playwright, the extension typecheck/vitest/build, and 'npm config get' twice. npm keeps only 10 logs, so these runs also deleted older log files there, which may have belonged to other sessions. Logs dated after 23:44 come from other processes; my later commands used node_modules/.bin directly or npm_config_logs_dir in my scratch dir. I did not set npm_config_logs_max.
+  * Chrome (Playwright, 5 runs) used HOME, XDG and TMPDIR inside its own temp dir under /tmp (tl-pw-chrome-*), which the test teardown deleted. The home guard reported the watched home folders unchanged after every run. /tmp/playwright-transform-cache-1002 (Playwright's transform cache) was updated, and /tmp/playwright-artifacts-* folders were created and removed per run. The leftover /tmp/playwright-artifacts-O6yYln dated 15:19 is not mine.
+  * VS Code test instances (2 smoke runs, the existing .vscode-test 1.140.0 build, nothing downloaded) ran with an isolated profile under my scratch dir. smoke.mjs reported ~/.copilot, ~/.config/Code, ~/.config/Code/logs, ~/.config/google-chrome and ~/.local/share/Trash/files unchanged, and no process left. xvfb-run created and removed /tmp/.X99-lock and /tmp/xvfb-run.*.
+  * The M2 end-to-end suite ran Lean through runLean: Lean toolchain files under ~/.elan were read (ELAN_HOME, not written), and systemd --user created transient telelean-* scopes that were gone at the end (smoke check). Afterwards I saw a scope telelean-tlws1617509_* whose PID belonged to the other fixer's runner vitest worker, and later telelean-rmvy0cmru030d06-248; neither was mine and I left both alone.
+  * My scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2fix-ext-webview/ (45 MB) holds the run-smoke.sh wrapper with a RAM watchdog that could kill only its own process group (it never fired), the smoke logs and two isolated VS Code profiles (19 MB and 26 MB), and before/after listings of the home folder's top level. The before/after listings are identical.
+  * Nothing was pushed, uploaded or sent. No network use beyond loopback; no downloads, no npm install, no real Claude session (TELELEAN_NO_REAL_CLAUDE=1 everywhere). No git commands. I did not touch the user's VS Code settings or extensions, ~/telelean_scripts, ~/.config or ~/.claude.
+===== 2026-11-01T15:15:29 wf_468d69cf-0e6 verify:ux [adaa3b7ff9642e4d6] keys: ['verdict', 'what_i_ran', 'issues', 'strengths', 'effects_outside_repo']
+-- effects_outside_repo
+  * All writes went to the scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2verify-ux/: probe sources and bundles, isolated VS Code profiles (vsc-*, devmode/profile-*), outputs (out-*: about 200 screenshots plus observation and check logs), the repo smoke's profile under smoke-tt/, logs, home snapshots and an empty npm-cache dir. One of those is a symlink, probe/node_modules → /home/zhengyew/telelean/node_modules, which @vscode/test-cli needed to resolve its packages.
+  * Ran Xvfb and VS Code 1.140 test-build instances: 6 Test-mode probe launches, 1 Development-mode instance and the repo smoke's two instances. Each had HOME, XDG dirs, user-data and extensions under scratch (TMPDIR too for my probes) and ulimit -c 0. DevTools endpoints listened on random 127.0.0.1 ports, loopback only.
+  * Transient systemd --user telelean-* scopes ran from sandboxed Lean inside those instances. None of mine is left (checked). The other telelean-* units I saw belonged to the parallel m2verify-gate and m2verify-safety vitest runs; I did not touch them.
+  * I killed only my own processes: two stuck probe instances of mine (vsc-20261101T144307, vsc-20261101T145635) and the Development-mode instance's process group after its driver finished. My own cleanup also terminated two of my own bash shells. Nothing of mine is left running.
+  * git ran only inside my scratch model copies (GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM=1). Lean ran only through runLean inside the instances.
+  * The real-home snapshot before and after is identical: known-projects 37 lines, ~/.npm/_logs 11 files, ~/.vscode/extensions 18, plus ~/.copilot, google-chrome, fontconfig, .pki, Trash and /tmp/telelean-* 27 all unchanged. The only difference is the mtime of ~/.config/Code, from the user's own running VS Code (its TransportSecurity and DIPS-wal files); the entry count is still 67. smoke.mjs's own isolation checks also passed.
+  * No Claude CLI ran. Test mode used the FakeBackend, and the Development-mode start was refused by TELELEAN_NO_REAL_CLAUDE before any binary lookup, with no claude on PATH. Nothing was pushed, sent, uploaded or installed, and I read no credentials. I did not monitor VS Code's own background traffic; updates, telemetry, experiments and AI features were off in every profile.
+  * No file under /home/zhengyew/telelean was changed by me: find -newer my baseline lists only the main session's verbatim_prompt_log/bundle_9 files.
+===== 2026-11-01T18:57:47 wf_468d69cf-0e6 final-2 [ae5d429af17b8af6f] keys: ['verdict', 'what_i_ran', 'issues', 'strengths', 'effects_outside_repo']
+-- effects_outside_repo
+  * All my files are in my scratch dir, 418 MB in total: /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2verify-r2. It holds the repo copy (234 MB), logs and strace traces (30 MB), probe files and their results, scratch Lean and git projects, the walkthrough work dir, the isolated VS Code profile and npm logs. Inside the copy, packages/extension/.vscode-test is a symlink to the real one, used read-only; its listing is unchanged.
+  * /tmp: Playwright's harness created /tmp/tl-pw-chrome-AcWjFX for Chrome's isolated HOME and XDG, and its teardown deleted it. xvfb-run created and removed its display socket, so the mtime of /tmp/.X11-unix changed at 02:52:43. No other new entry in /tmp.
+  * systemd --user: the runner sandbox started transient telelean-* scopes during the tests, probes, smoke run and walkthrough. One empty scope from my smoke instance (telelean-tlws1979697_2_1-23.scope, 0 tasks) stayed active; I stopped it with `systemctl --user stop`. No telelean-* unit is left.
+  * Lean: I ran the pinned toolchain binaries directly (~/.elan/toolchains/leanprover--lean4---v4.35.0/bin/lake, lean, leanchecker, leanexport); ~/.elan was only read. ~/.elan/known-projects is unchanged (mtime 2026-11-01 09:09:13; 37 lines, 38 entries).
+  * The VS Code 1.140.0 test build in the real packages/extension/.vscode-test ran read-only, with HOME, XDG, user-data and extensions all in my scratch dir. Its DevTools port and Playwright's 127.0.0.1:41739 static server were loopback only.
+  * git ran only in scratch test repositories, with GIT_CONFIG_GLOBAL=/dev/null and GIT_CONFIG_NOSYSTEM=1.
+  * No network beyond loopback (npm offline), no installs or downloads, no pushes, no Claude CLI or LLM session. TELELEAN_NO_REAL_CLAUDE=1 was set throughout.
+  * Claude Code's own tooling: when I typed `grep` in my tool shell, Claude Code's shell function ran its native binary as `ugrep`. The watcher recorded two such short-lived processes, at 02:23:39 and 02:24:45, with my tool shell as parent. From then on I used `command grep`.
+  * Real home since my start (02:07): only the user's own running apps changed files. That is ~/.config/Code (logs, state and caches of the user's VS Code session 20261031T225029, including its Claude Code extension log) and ~/.local/share/Steam, plus Claude Code's own ~/.claude files. ~/.npm/_logs is unchanged (11 files), as are VS Code settings and extensions, ~/telelean_scripts and ~/.gitconfig.
+  * The real repo /home/zhengyew/telelean is untouched: sha256 of 787 files (sources, docs, fixtures, dist, out) unchanged, and nothing in node_modules, .vscode-test or verbatim_prompt_log is newer than my start. mental_model is unchanged and is still not a git repo.
+===== 2026-11-01T19:17:55 wf_468d69cf-0e6 fix-3:extension+webview [af6209b79ffef19f7] keys: ['summary', 'files_changed', 'test_runs', 'resolved', 'open_issues', 'minor_decisions', 'effects_outside_repo']
+-- effects_outside_repo
+  * Transient systemd user units in the user's systemd manager, all stopped or reset afterwards. Verified: list-units for 'fix3probe-*' and 'telelean-*' is empty. They were: the probe batches fix3probe-1994410-0..39, fix3probe-1994620-0..44 and a third batch of 15 (fix3probe-<pid>-0..14), all running only `sleep`; the injected telelean-tlws1996279_99_1-991.scope (empty; stopped by smoke.mjs); and the smoke run's own runLean scopes from the test instances.
+  * The user's systemd journal got Started/Stopped/Failed lines for those units: 104 lines for the probe and injected units since 03:00, plus the smoke run's usual telelean-* lines.
+  * Scratch files under /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/fix3-extension-webview/: probe and injection scripts, the smoke profile smoke-tmp/vscode-1996049 (26 MB, with logs and summary), smoke.log, ext-unit.log, mem.log, npm-logs, home-snap listings, dist hashes.
+  * /tmp/vscode-typescript1002, the shared VS Code TypeScript temp folder: its mtime changed at 03:12:19 while the first test instance was shutting down. No new entries remained.
+  * ~/.config/Code/Network Persistent State changed at 03:11:55. This was the user's own running VS Code (pid 630165, started Oct 31), not the test instance, which wrote its own copy inside its isolated user-data folder. smoke.mjs's ~/.config/Code listing checks were unchanged.
+  * xvfb-run started temporary X servers for the two test instances. They exited and none are left.
+  * No other change to the real home folder: listings of ~, ~/.config, ~/.cache, ~/.local/share, ~/.vscode/extensions and ~/.npm/_logs are identical before and after, and nothing under ~/.npm, ~/.cache or ~/.local is newer than the run start. Nothing was pushed, sent or downloaded, and no real Claude was started.
+===== 2026-11-01T15:10:52 wf_468d69cf-0e6 verify:safety [afcf1f3075208bbf9] keys: ['verdict', 'what_i_ran', 'issues', 'strengths', 'effects_outside_repo']
+-- effects_outside_repo
+  * All writes went to /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2verify-safety/ (about 38 MB, kept): logs, the fake claude binaries, a scratch HOME, vitest caches, the walkthrough work dir, probe copies of mental_model (git-initialised with isolated config) and the VS Code smoke profile.
+  * Transient systemd --user scopes telelean-* from sandboxed Lean: the runner suite, the walkthrough dry run, the cancel and prune probes, and the VS Code smoke instances. All ended; 0 telelean-* units are left.
+  * During the smoke: Xvfb (xvfb-run -a), two isolated VS Code 1.140 test instances (HOME, XDG and user-data under scratch) and a DevTools endpoint on a free 127.0.0.1 port. The smoke's isolation checks reported ~/.copilot, ~/.config/Code, ~/.config/Code/logs, ~/.config/google-chrome and Trash unchanged, and no process left.
+  * Read-only use of the real home: the sandbox.test.ts re-run with the real HOME (its probe file ~/telelean-sandbox-probe-escape.txt was absent before and after), smoke.mjs's listings, and my before/after metadata checks. The checks covered ~/.elan/known-projects (37 lines, mtime unchanged), ~/.npm/_logs (11), the number of entries in ~/.claude/projects (10, names counted and pattern-matched only) and the mtime of ~/.claude.json (no contents read), ~/.config/Code (67), ~/.vscode/extensions (18), ~/.copilot, chrome, fontconfig, pki, Trash (35), /tmp/telelean-* (27), and the absence of ~/.config/Code/User/globalStorage/telelean.telelean. All were identical afterwards.
+  * I never executed the real Claude binary: HOME pointed at a scratch home with fakes, or --binary named a fake. No network use, no downloads or installs, nothing pushed, published or sent. git ran only in scratch copies with GIT_CONFIG_GLOBAL=/dev/null and hooks off; never in /home/zhengyew/telelean or mental_model.
+  * Nothing in the repo changed: all 766 file checksums are identical, and no new entries appeared in node_modules/.vitest-cache, packages/*/node_modules/.vite* or packages/extension/.vscode-test. No process of mine is left.
+  * Observed but not mine: ~/.local/share/vitest/.vitest-secret-token already existed (created 06:45 by vitest's own first run) and was not modified. Xvfb and VS Code processes belonging to the m2verify-ux agent were running.
+===== 2026-11-01T13:14:18 wf_48d84e05-3fd build:WP1 [a30195b09657fd060] keys: ['summary', 'files', 'how_to_run_tests', 'test_output', 'acceptance', 'contract_changes', 'minor_decisions', 'open_issues', 'integration_notes', 'effects_outside_repo']
+-- effects_outside_repo
+  * None. I wrote only inside /home/zhengyew/telelean/packages/core and appended to docs/m2-plan.md section 14.
+  * My scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2-wp1/ was created and left empty.
+  * No network, no Lean, no Claude CLI, no systemd units, no git, no installs.
+  * Vitest wrote its usual result caches under the repo's node_modules (.vitest-cache, .vite-temp), which is inside the repo.
+===== 2026-11-01T12:08:53 wf_48d84e05-3fd plan:review [a42e4581d30e942bc] keys: ['plan_path', 'summary', 'work_packages', 'contracts', 'integration_plan', 'minor_decisions', 'major_decisions_needing_user', 'real_claude_walkthrough', 'effects_outside_repo']
+-- effects_outside_repo
+  * Reviewer scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2-reviewer/ (228 KB):
+- lit/: a copy of the architect's literal-reading Spyro project with its .lake;
+- ghost-check.lean, ghost-inject.lean, ghost-inject2.lean, ghost-inject-pinned.lean: check files run with the toolchain's own lake/lean ('lake env lean --stdin --json', unsandboxed, on text I wrote);
+- core-tests.log, core-tests-final.log, runner-tests.log, runner-tests-final.log;
+- tmp/: TELELEAN_TEST_TMP of the two runner suite runs.
+  * Read only, nothing written: the architect's scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2-architect/ (copied lit/ from it).
+  * ~/.npm/_logs: about 15 npx/npm invocations (npx tsc for four packages, npm test for core twice, npx vitest for runner twice) wrote small debug logs; npm's default logs-max of 10 rotated older ones. No npm setting changed.
+  * systemd --user transient scopes telelean-<runId>-<n>: created and removed by runLean during the two runner suite runs; none before or after (systemctl --user list-units 'telelean-*' --all).
+  * ~/.elan/known-projects unchanged: 37 lines before and after (toolchain binaries used directly, never elan proxies).
+  * Inside the repo but outside my assigned paths: the test runs updated packages/core/node_modules/.vite/vitest/*/results.json, packages/runner/node_modules/.vite/vitest/*/results.json and about 130 entries of the root node_modules/.vitest-cache/.
+  * Repo files I changed (plan and contracts):
+- /home/zhengyew/telelean/docs/m2-plan.md;
+- core: src/gate/types.ts, src/gate/index.ts, src/run.ts (doc), src/protocol.ts (doc);
+- runner: src/gate/types.ts, src/run/types.ts, src/run/index.ts (doc), src/proposal/types.ts, src/proposal/index.ts, src/shadow/types.ts;
+- /home/zhengyew/telelean/packages/runner/vitest.config.ts: added test.env TELELEAN_NO_REAL_CLAUDE=1, an integrator-owned config file.
+  * Nothing else: no network access, downloads, npm installs, git commands, Claude CLI runs, or VS Code/Chrome launches. No changes to ~/.config, ~/.claude, ~/.elan, VS Code settings or extensions, or ~/telelean_scripts. The lean --server processes visible in ps belong to the user's VS Code sessions, not to me.
+===== 2026-11-01T13:13:47 wf_48d84e05-3fd build:WP2 [a4a99cf4ab9a89350] keys: ['summary', 'files', 'how_to_run_tests', 'test_output', 'acceptance', 'contract_changes', 'minor_decisions', 'open_issues', 'integration_notes', 'effects_outside_repo']
+-- effects_outside_repo
+  * Transient systemd user scopes `telelean-wp2*`, `telelean-wp2r*`, `telelean-sem<pid>-*` and `telelean-t<pid>-*` were created by my test runs (sandboxed Lean under runLean) and all ended; checked 0 left for my run ids.
+  * Temporary directories under my scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/wp2/tmp (TELELEAN_TEST_TMP) were created and removed by the tests. I also removed WP3's `run-mgr-*` dirs and a `tmp` dir that WP3's tests left there during my full-suite run.
+  * Exploration: I ran the toolchain's `lean` and `lake` binaries directly (unsandboxed; never elan proxies) on scratch files and three scratch project copies in /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/wp2/explore. The project builds wrote only their own .lake/ and were deleted afterwards; the small .lean probe files are still there.
+  * git ran only inside shadow `git/` directories under temp dirs and in one scratch exploration repo (since deleted), with GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM=1 and hooks disabled. It never ran in /home/zhengyew/telelean or mental_model/.
+  * ~/.elan/known-projects stayed at 37 lines before and after every run.
+  * No network use, no Claude CLI, no npm install, nothing written outside the repo's assigned paths and my scratch dir. I did not touch the user's own Lean server processes or other agents' processes and units.
+===== 2026-11-01T11:17:34 wf_48d84e05-3fd plan:architect [abf52c879acb839e8] keys: ['plan_path', 'summary', 'work_packages', 'contracts', 'integration_plan', 'minor_decisions', 'major_decisions_needing_user', 'real_claude_walkthrough', 'effects_outside_repo']
+-- effects_outside_repo
+  * Scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2-architect/ (1.9 MB):
+- lit/, defcheat/, vocabcheat/: copies of test-fixtures/spyro, each with a .lake build. Built unsandboxed with the toolchain's own lake and lean, on text I wrote: the literal reading + ghost, and the two definition cheats.
+- vt/: scratch vitest config + protocol test.
+- tmp/: TELELEAN_TEST_TMP of the runner suite run.
+- runner-tests.log.
+  * ~/.npm/_logs: each npx/npm invocation (npx tsc, npx vitest, npm test) wrote a small debug log, about 20 files of about 1 KB. With npm's default logs-max of 10, npm itself rotated out older debug logs there. I did not change any npm setting.
+  * systemd --user transient scopes telelean-<runId>-<n>: created and removed by runLean during the existing runner suite; none left (checked with systemctl --user list-units 'telelean-*' --all).
+  * ~/.elan/known-projects unchanged: 37 lines before and after (toolchain binaries used directly, never elan proxies).
+  * Inside the repo but outside my owned paths: running the existing suites updated vitest result caches in packages/{core,runner,webview}/node_modules/.vite/vitest/*/results.json and packages/extension/out/.vite/vitest/*/results.json.
+  * Nothing else: no network access, downloads, npm installs, git commands, Claude CLI runs, or VS Code/Chrome launches, and no changes to ~/.config, ~/.claude, ~/.elan, VS Code settings/extensions or ~/telelean_scripts.
+===== 2026-11-01T13:24:39 wf_48d84e05-3fd build:WP3 [ac6f3da35e3ae4edd] keys: ['summary', 'files', 'how_to_run_tests', 'test_output', 'acceptance', 'contract_changes', 'minor_decisions', 'open_issues', 'integration_notes', 'effects_outside_repo']
+-- effects_outside_repo
+  * 27 directories in /tmp created by my test runs before I set TELELEAN_TEST_TMP and fixed the cleanup (about 0.5 MB total): 26 x /tmp/telelean-run-tests-* and /tmp/telelean-llm-sys3XS (a hung test I stopped mid-run). A bulk delete was refused by the permission system, so they remain for the user to remove.
+  * All other test, E2E and dry-run files were written under my scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/wp3/: the generator script, logs, model copies with scratch git repos (isolated git config), runs dirs, the esbuild bundle and walkthrough summaries.
+  * Transient systemd user scopes telelean-<runId>-* for the sandboxed Lean jobs of the E2E tests and the dry run. All ended; none left (checked with systemctl --user list-units 'telelean-*').
+  * Read only: the line count of ~/.elan/known-projects (38 before and after the dry run; file last modified 09:09, before my work). No other file in ~/.elan, ~/.claude, ~/.config or git global config was read or written.
+  * No real Claude CLI was started (not even --version); no network use; nothing pushed, published or sent.
+===== 2026-11-01T13:11:12 wf_48d84e05-3fd build:WP6 [ac82b7f6ba6872cc1] keys: ['summary', 'files', 'how_to_run_tests', 'test_output', 'acceptance', 'contract_changes', 'minor_decisions', 'open_issues', 'integration_notes', 'effects_outside_repo']
+-- effects_outside_repo
+  * ~/.npm/_logs: my early `npx tsc/vitest/vite/playwright` invocations went through npm, which by default writes one small debug log per invocation and deletes logs beyond the newest 10. The folder is shared with the other builders' npm runs. Afterwards I called node_modules/.bin binaries directly, which write no npm logs. I listed file names only, never contents. npm_config_logs_max was never set.
+  * /tmp/tl-pw-chrome-XXXXXX: each Playwright run's isolated Chrome TMPDIR/HOME/XDG directory, created by the existing playwright.config.ts and deleted by its global teardown. Checked afterwards: none left.
+  * A local static server on 127.0.0.1:41739 (test/harness/serve.mjs) and headless Google Chrome ran during the Playwright runs only, with one worker. Both stopped with the runs; I verified none of my processes remain. The vitest processes still running belong to other builders, in packages/runner.
+  * Home guard after every Playwright run: ~/.config/google-chrome, ~/.cache/google-chrome, ~/.cache/fontconfig, ~/.pki and ~/.local/share/pki unchanged.
+  * Scratch writes: /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m2-wp6/final-unit.log and final-e2e.log.
+  * Within the repo but outside src/test: vitest's result cache in packages/webview/node_modules/.vite/vitest/ and Vite's config temp in packages/webview/node_modules/.vite-temp (my assigned path); Playwright's packages/webview/test-results/playwright/.last-run.json; screenshots in packages/webview/test-results/.
+  * No network use, no installs or new packages, no git commands, no Claude CLI invocation, no Lean, no VS Code instance, no writes to the user's VS Code settings, ~/.config, ~/.claude or ~/.elan, and no credentials read.
+===== 2026-11-01T12:47:11 wf_48d84e05-3fd build:WP4 [ad0e022682d60c4d4] keys: ['summary', 'files', 'how_to_run_tests', 'test_output', 'acceptance', 'contract_changes', 'minor_decisions', 'open_issues', 'integration_notes', 'effects_outside_repo']
+-- effects_outside_repo
+  * Scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/wp4/: created tsconfig.wp4.json, final-run.txt and tmp/ (the tests' TELELEAN_TEST_TMP: scratch model copies, scratch git repos, vitest compile cache). tmp/ was emptied after the runs.
+  * Real Lean through M1's runLean (toolchain v4.35.0 binaries, sandboxed, in scratch copies only): transient systemd --user scopes telelean-wp4b<pid>_<n>-* from build.test.ts, and telelean-itg*/tlws* scopes from the M1 integration and workspace suites I ran. All removed by runLean; `systemctl --user list-units 'telelean-wp4*' 'telelean-itg*' 'telelean-tlws*'` is empty afterwards. ~/.elan/known-projects is unchanged at 37 lines (also asserted by build.test.ts).
+  * git ran only in scratch repositories created by the tests under the scratch tmp, with GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM=1, GIT_CEILING_DIRECTORIES and -c commit.gpgsign=false -c core.hooksPath=/dev/null. Never in /home/zhengyew/telelean or mental_model/.
+  * sidecars.test.ts spawned one short-lived child process (process.execPath, a plain Node script it writes into scratch) that appends lines to a scratch attempts.jsonl.
+  * No network use, no Claude CLI invocation, no npm install, no credentials read; nothing written outside the assigned paths and the scratch dir. The running lean --server/lake serve processes belong to the user's own editor sessions and were not touched.
+===== 2026-11-01T12:57:16 wf_48d84e05-3fd build:WP5 [af3e90cbfc730adfb] keys: ['summary', 'files', 'how_to_run_tests', 'test_output', 'acceptance', 'contract_changes', 'minor_decisions', 'open_issues', 'integration_notes', 'effects_outside_repo']
+-- effects_outside_repo
+  * ~/.npm/_logs: my npx tsc / npx vitest runs created npm debug logs there, and npm's default logs-max=10 rotated older ones out (other builders' npx runs do the same at the same time). Contents not read. The final verification used node ../../node_modules/... directly to avoid more logs.
+  * Scratch only: /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/wp5/ held bundle experiments (removed) and the unit tests' temp folders in tmp/ (empty at the end). The older 12:xx files there (smoke-run*.log, vscode-965209/) predate this task and were left alone.
+  * Git ran only inside my scratch tmp: the real WP2 shadow's own git/ folder during realRuns.test.ts, with GIT_CONFIG_GLOBAL=/dev/null and GIT_CONFIG_NOSYSTEM=1 set by the test; those folders were deleted afterwards.
+  * No Lean process, no systemd unit of mine, no Claude CLI (not even --version), no network, no npm install, nothing under ~/.claude, ~/.config, ~/.elan, VS Code settings or extensions. The telelean-* units seen during the session belonged to other builders (wp2…/wp4…/t… scope names).
+===== 2026-11-02T02:20:15 wf_4dee3814-03b files:runner-b [a30c8344b2913ae2a] keys: ['package_overview', 'files']
+===== 2026-11-02T02:21:16 wf_4dee3814-03b files:webview [a5f5ad3ede1cf1cdb] keys: ['package_overview', 'files']
+===== 2026-11-02T03:11:59 wf_4dee3814-03b theory:check [a602f9634f1675069] keys: ['verdict', 'corrections', 'missing']
+===== 2026-11-02T02:26:25 wf_4dee3814-03b files:extension-repo [a6b2e74445d528f31] keys: ['package_overview', 'files']
+===== 2026-11-02T02:23:22 wf_4dee3814-03b files:runner-a [a7b3bb29ec10a1287] keys: ['package_overview', 'files']
+===== 2026-11-02T02:43:36 wf_4dee3814-03b theory:write [a8e3c88532bf81e6c] keys: ['markdown', 'claims']
+===== 2026-11-02T03:36:53 wf_4dee3814-03b assemble [a9e06b5383148a8e6] keys: ['markdown', 'notes']
+===== 2026-11-02T02:32:48 wf_4dee3814-03b files:tests [abfe24640d6d528a5] keys: ['package_overview', 'files']
+===== 2026-11-02T02:22:50 wf_4dee3814-03b files:core [ad079707193c65b91] keys: ['package_overview', 'files']
+===== 2026-11-02T02:37:17 wf_4dee3814-03b features:write [af310d426ec9a7a6a] keys: ['markdown']
+===== 2026-11-01T05:48:56 wf_548120eb-b04 integrate [a4dc6eef222dcc325] keys: ['__unparsedToolInput']
+===== 2026-11-01T05:50:15 wf_548120eb-b04 integrate [a4dc6eef222dcc325] keys: ['summary', 'files_changed', 'test_runs', 'resolved', 'open_issues', 'minor_decisions', 'effects_outside_repo']
+-- effects_outside_repo
+  * Scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/integrator/ (about 21 MB left). It holds logs/, npm-logs/ (npm debug logs, redirected there via npm_config_logs_dir), and smoke/vscode-1006722 and smoke/vscode-1010839, the last two isolated VS Code profiles with copies of mental_model incl. .lake and .git. Older profiles and the probe profile were deleted. Also tt/ (test temp, emptied by the tests), probe/cdp-probe.mjs, negctl/dragGuard.ts.orig, vscode-test.mjs.bak and tsconfig.runner-tests.json.
+  * VS Code test instances: the downloaded build in packages/extension/.vscode-test was only read. I launched it about 12 times under xvfb-run with HOME, XDG_* dirs, user-data-dir and extensions-dir inside the scratch profile and ulimit -c 0. The isolation checks found the real ~/.copilot, ~/.config/Code, ~/.config/google-chrome and ~/.local/share/Trash unchanged after each full run.
+  * One feasibility probe started that VS Code build directly, with an isolated profile and a DevTools port. Killing it left /tmp/xvfb-run.FZZTvZ (only an Xauthority cookie for its dead Xvfb), which I deleted. No Xvfb or VS Code process of mine is left.
+  * Chromium DevTools endpoints on 127.0.0.1 at random free ports, open only while the e2e test instance (and the probe) ran; I connected to them with playwright-core over loopback only.
+  * Lean: lake build and the check file ran under runLean in transient systemd --user scopes (telelean-*) on scratch copies only, through the runner tests, the e2e suite and the model suite. `systemctl --user list-units 'telelean-*'` is empty afterwards. The toolchain in ~/.elan was only read; the elan proxies were never called.
+  * git ran only in scratch copies: git init, telelean's private refs, and in the integration test a user commit plus marker hooks in that scratch repo's .git/hooks (never executed). It always ran with GIT_CONFIG_GLOBAL=/dev/null and GIT_CONFIG_NOSYSTEM=1. git never ran in /home/zhengyew/telelean or mental_model, and both are verified still without .git.
+  * Playwright (webview npm test) launched the installed Chrome headless with HOME/XDG in /tmp/tl-pw-chrome-* dirs, which its teardown deleted; its home guard reported the real Chrome/fontconfig/pki dirs unchanged. Playwright also updated its pre-existing cache /tmp/playwright-transform-cache-1002.
+  * The full runner suite (3 runs) includes M0 tests that create and remove /tmp/telelean-llm-* temp dirs (none left) and run the user's Claude Code binary with `--version` only (binary.test.ts). The Claude CLI never ran with a prompt.
+  * xvfb-run created transient /tmp/xvfb-run.* dirs during the test runs; they were removed.
+  * Read-only: `ls ~/.vscode/extensions` (to see how the extension is installed; nothing changed), ~/.npm/_logs listing (my npm runs wrote nothing there), /proc and systemctl listings.
+  * Inside the repo but outside the source tree: vitest/vite caches under node_modules and packages/extension/out/.vite; rebuilt packages/core/dist, packages/extension/dist and packages/extension/out.
+  * Nothing was pushed, published or sent. No network use, downloads, npm install, sudo or global installs. Nothing in the user's VS Code settings or extensions, ~/telelean_scripts, ~/.config, ~/.claude, ~/.elan or the global git config was changed, and no credentials were read.
+===== 2026-11-01T06:19:41 wf_548120eb-b04 verify:semantics [a70b1ea393bc915c8] keys: ['verdict', 'what_i_ran', 'issues', 'strengths', 'effects_outside_repo']
+-- effects_outside_repo
+  * Scratch dir only, about 5.8 MB: /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/verify-semantics/. It holds the esbuild harness bundle, the test scripts, work copies of mental_model (with .lake build output), an empty test-temp dir tt/ and a BOM probe file.
+  * Transient systemd --user scopes (telelean-*) created by runLean for about 30 Lean builds and check runs on scratch copies (my vsem<pid>_<n> run ids plus the runner tests' own ids). `systemctl --user list-units 'telelean-*'` is empty afterwards.
+  * One direct run of the toolchain binary ~/.elan/toolchains/leanprover--lean4---v4.35.0/bin/lean on a scratch file (LEAN_NUM_THREADS=4, ulimit -c 0). The toolchain was only read, the elan proxies were never used, and ~/.elan/known-projects is unchanged (last modified 09:09).
+  * The runner integration tests ran git only in their scratch repos under my TELELEAN_TEST_TMP, with GIT_CONFIG_GLOBAL=/dev/null and GIT_CONFIG_NOSYSTEM=1. I ran no git commands myself.
+  * vitest ran with --cache=false --fsModuleCache=false. `find /home/zhengyew/telelean -newer <marker>` found no files written in the repo. mental_model still has no .lake and no .git, and the repo still has no .git.
+  * Read-only: /proc/meminfo, systemctl listings, the design docs and the agent reports.
+  * Seen but not caused by me: ~/.config/Code state files updated by the user's running VS Code, and /tmp/.X99-lock. I launched no VS Code, Xvfb or browser.
+  * No network use, no npm install, no pushes or sends, no credentials read, no Claude CLI runs.
+===== 2026-11-01T07:26:32 wf_548120eb-b04 fix:core+runner+sample [a711972aaaea12192] keys: ['summary', 'files_changed', 'test_runs', 'resolved', 'open_issues', 'minor_decisions', 'effects_outside_repo']
+-- effects_outside_repo
+  * Wrote only under my scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/fix-core-runner/ (test temp trees in tt/, logs/, esbuild bundles, a CPU profile, the verifier scripts I copied in with their work dirs in sem/work, scratch git repos and worktrees in runs/). Read-only copies were taken from the other verifiers' scratch dirs.
+  * npm debug logs: each npx invocation (tsc, vitest, esbuild) wrote a log to ~/.npm/_logs, and npm rotated them (its default keeps the newest 10). I did not change any npm setting.
+  * The runner suite's llm tests (runner/test/llm, unchanged) create temp dirs under the OS temp dir (/tmp) because TELELEAN_TEST_TMPDIR was not set; they removed them. No leftovers of mine in /tmp (only other processes' playwright-* and vscode-typescript1002 entries).
+  * Lean ran under runLean: the toolchain binaries in ~/.elan/toolchains/leanprover--lean4---v4.35.0 were used read-only, and transient systemd --user scopes telelean-* were created and removed (none left; checked with systemctl --user list-units). The runner test asserting ~/.elan/known-projects is unchanged passed.
+  * git ran only in scratch repositories under my scratch dir, with GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM=1, GIT_CEILING_DIRECTORIES, the safe -c flags and explicit authors. No remotes, no pushes, no git in /home/zhengyew/telelean or mental_model.
+  * Vitest result caches were written inside my assigned paths (packages/core/node_modules/.vite, packages/runner/node_modules/.vite).
+  * No network use, no downloads, no npm install, no Claude CLI, no files touched in mental_model/ or test-fixtures/ (verified: none modified since 14:28, no .lake/.git/graph.json there), no edits outside my assigned paths.
+===== 2026-11-01T06:17:25 wf_548120eb-b04 verify:safety [a856ffad5d9e94910] keys: ['verdict', 'what_i_ran', 'issues', 'strengths', 'effects_outside_repo']
+-- effects_outside_repo
+  * Scratch only for probes, copies and outputs: /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/verify-safety/ (about 15 MB): probes/, build/, runs/ (scratch git repos and model copies, one with .lake), tt/, tmp/, vitest/, prof/ (CPU profile), baseline/.
+  * Inside the repo, against the 'do not edit' instruction: my single vitest run added 78 entries (about 1.96 MB, timestamps 14:08:00 to 14:08:22) to /home/zhengyew/telelean/node_modules/.vitest-cache. That is vitest 5's file-system module cache: I had redirected cacheDir but not fsModuleCachePath. I left the entries in place. I made no other change under /home/zhengyew/telelean; the later .vite-temp mtime changes (14:13 and 14:14) come from other agents' runs.
+  * Lean: lake build and lake env lean ran under runLean, in transient systemd --user scopes (telelean-vsp<pid>a-*, telelean-vsp<pid>b400-*, and the integration tests' scopes), on scratch copies only. Afterwards `systemctl --user list-units 'telelean-*' --all` was empty. ~/.elan was only read and the elan proxies were never called.
+  * git ran only in scratch repositories (init, add, commit, tag, checkout --detach, config, worktree add, stash list, telelean's private refs), always with GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM=1 and GIT_CEILING_DIRECTORIES pointing at scratch. Never in /home/zhengyew/telelean or mental_model.
+  * TMPDIR was redirected to scratch for every probe and test run; nothing of mine appeared in /tmp.
+  * Read-only actions: listed ~/.vscode/extensions and read extensions.json (telelean is linked to /home/zhengyew/telelean/packages/extension); grepped the downloaded VS Code test build's workbench JS; read /proc/meminfo, ps and systemctl listings.
+  * Home check against my baseline: home top-level unchanged; ~/.cache, ~/.npm, ~/.local, ~/.elan, ~/.pki, ~/.copilot and ~/.vscode had no changes. Only ~/.config/Code's directory mtime changed, from the user's running VS Code; I never started a VS Code instance, a browser or Xvfb.
+  * No network, downloads, npm install, sudo, global installs, pushes, messages or Claude CLI runs, and no credentials read.
+===== 2026-11-01T07:57:42 wf_548120eb-b04 final-check [a92a4086801f693fb] keys: ['verdict', 'what_i_ran', 'issues', 'strengths', 'effects_outside_repo']
+-- effects_outside_repo
+  * Wrote only in my scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/verify-final/ (1.3 GB). It holds the repo copy, including a copy of the VS Code 1.140 test build; test temp trees; the smoke and VS Code profiles; Lean .lake outputs in scratch model copies; logs; screenshots; esbuild bundles; and the earlier verifiers' scripts, which I copied read-only from their scratch dirs. Nothing under /home/zhengyew/telelean was written: `find -newer START_MARKER` printed nothing.
+  * /tmp: each of the 2 Playwright runs created /tmp/tl-pw-chrome-XXXXXX as Chrome's isolated HOME/TMPDIR, and the harness deleted it at teardown. Playwright's own artifacts went to my scratch TMPDIR. xvfb-run created transient /tmp/xvfb-run.* dirs (smoke runs) and the X server lock /tmp/.X99-lock and socket /tmp/.X11-unix/X99; all were removed (the /tmp and .X11-unix listings are unchanged).
+  * /run/user/1002: the VS Code test instances created transient IPC sockets; none are left.
+  * systemd --user transient scopes: telelean-* units from runLean (runner tests, smoke e2e, scenario scripts, my VS Code sessions), plus one scope of my own, tlverify-mmbuild-<pid>, for the `lake build` of the mental_model copy (MemoryMax=4G). None remain.
+  * Lean: I used the toolchain binaries in ~/.elan/toolchains/leanprover--lean4---v4.35.0 read-only. ~/.elan/known-projects is unchanged (37 lines, same mtime).
+  * Network: loopback only. CDP ports on 127.0.0.1 for the e2e instance and my two isolated VS Code launches, and Playwright's static server on 127.0.0.1:41739. No internet use, no downloads, no npm install. The only npx was the one inside smoke.mjs (local vscode-test bin; npm logs went to the run's profile; I set npm_config_update_notifier=false in the environment for that run).
+  * Real home: unchanged (names and mtimes) for ~/.config/google-chrome, ~/.cache/google-chrome, ~/.copilot, ~/.local/share/vitest, ~/.config/Code (entry list), Trash, ~/.cache/fontconfig, ~/.pki, ~/.local/share/pki, ~/.npm (including _logs), ~/.cache/ms-playwright and ~/.config/dconf. `find ~ -newer marker` shows only ~/.config/Code mtimes, which come from the user's own running VS Code; my instances used isolated user-data dirs. I never read ~/.local/share/vitest/.vitest-secret-token. Vitest may read it, and its mtime and size are unchanged.
+  * git ran only inside test suites and probes in scratch repositories: runner tests, smoke/e2e copies, and probe5's `git init` with GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM=1, a ceiling dir and the safe -c flags. No remotes, no pushes, no git in /home/zhengyew/telelean or mental_model.
+  * Process hygiene: all processes I started are gone. VS Code quit through Ctrl+Q; my first quit attempt through the palette did nothing, and the instance stayed up until I sent Ctrl+Q. My RAM watchdog ran from 15:33 to 15:55 and exited; it never warned (lowest MemAvailable logged: 36388 MB).
+===== 2026-11-01T06:32:54 wf_548120eb-b04 verify:ux [a9374160d277dfecb] keys: ['verdict', 'what_i_ran', 'issues', 'strengths', 'effects_outside_repo']
+-- effects_outside_repo
+  * Scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/verify-ux/ (about 39 MB): harness/, shots/ (86 PNGs), logs/, gen/genbig.py, and run1/. run1/ is the isolated VS Code profile (home, xdg-*, user-data, extensions, tmp) and its workspace: a copy of mental_model (now with .lake, .git and telelean private refs created through the UI), an initialized empty_folder (.lake), and the generated big_model (.lake).
+  * Ran the downloaded VS Code 1.140.0 test build in packages/extension/.vscode-test, read-only, once (with three in-app window reloads) under xvfb-run on display :99. The environment was cleared with env -i; HOME, XDG_CONFIG/CACHE/DATA_HOME and TMPDIR pointed into run1/; ulimit -c 0. The extension was loaded with --extensionDevelopmentPath, read-only. I stopped it with SIGTERM at the end; no process of mine is left.
+  * A Chromium DevTools endpoint on 127.0.0.1:47811 was open only while that instance ran. I attached to it with the installed playwright-core over loopback only.
+  * XDG_RUNTIME_DIR and DBUS_SESSION_BUS_ADDRESS were passed through, as the smoke harness does, because systemd-run --user needs them. VS Code's runtime sockets came and went: the /run/user/1002 listing was identical before and after.
+  * The extension's Lean refreshes ran lake build and the check file under runLean, in transient systemd --user scopes (telelean-*), on the scratch copies only. `systemctl --user list-units 'telelean-*'` is empty afterwards. The ~/.elan toolchain was only read.
+  * git ran only in the scratch copy run1/ws/mental_model: the extension's git init and private refs (triggered through the board), plus my read-only for-each-ref with GIT_CONFIG_GLOBAL=/dev/null and GIT_CONFIG_NOSYSTEM=1.
+  * Read-only: grep of /snap/code/current/usr/share/code/resources/app (the user's VS Code version and its webview code). Before/after listings of ~/.config/Code, ~/.copilot, ~/.config/google-chrome, ~/.local/share/Trash/files, ~/.vscode/extensions, ~/.cache, ~/.pki, ~/.local/share and ~ (top level): all unchanged.
+  * No file under /home/zhengyew/telelean was modified (find -newer my start marker found nothing outside node_modules; the node_modules/.vitest-cache entries come from other runs, as I ran no vitest). The real mental_model is unchanged: no .lake, .git or graph.json.
+  * No network use beyond loopback CDP, no downloads, no npm install, no Claude CLI, no git outside the scratch dir, nothing sent or published.
+===== 2026-11-01T07:29:12 wf_548120eb-b04 fix:extension+webview [ae248c28d7a091a44] keys: ['summary', 'files_changed', 'test_runs', 'resolved', 'open_issues', 'minor_decisions', 'effects_outside_repo']
+-- effects_outside_repo
+  * Playwright harness (2 runs): created /tmp/tl-pw-chrome-XXXXXX as Chrome's isolated TMPDIR/HOME/XDG (my scratch path is too long for Chrome's socket) and deleted it at teardown; none remain. The home guard reported ~/.config/google-chrome, ~/.cache/fontconfig and ~/.pki unchanged.
+  * VS Code smoke and e2e runs (3) and my manual reload instance (4 launches): the VS Code 1.140 test build in packages/extension/.vscode-test was run but not modified. Xvfb displays left transient /tmp/.X<n>-lock and /tmp/.X11-unix/X<n> files, removed on exit (none stale). The smoke isolation checks reported the real ~/.copilot, ~/.config/Code, ~/.config/google-chrome and ~/.local/share/Trash/files unchanged.
+  * Sandboxed Lean builds (runLean via systemd-run --user transient telelean-* units) ran in the smoke e2e copies and in my scratch copies of mental_model (they now contain .lake build output, in scratch only). 0 units and 0 processes were left afterwards (checked).
+  * One misconfigured launch of my manual VS Code instance (empty debugging-port argument) was stopped by killing only its own process group (setsid); all its processes were mine.
+  * Network: loopback only. Chrome DevTools ports on 127.0.0.1 for the e2e configuration and my manual instance, and Playwright's local static server on 127.0.0.1:41739. No internet access and no downloads.
+  * Git: only in scratch test repositories created by the test suites (smoke/e2e copies, GIT_CONFIG_GLOBAL=/dev/null, ceiling set to scratch). No git in /home/zhengyew/telelean or mental_model; mental_model was only copied (read).
+  * Inside the repo but outside my assigned paths: /home/zhengyew/telelean/node_modules/.vitest-cache/ got new module-cache entries from my vitest runs. That directory is vitest 5's default and existed since 06:45. I wrote no files elsewhere in the repo outside packages/extension and packages/webview.
+  * ~/.npm: no writes by me. My smoke runs sent npm's logs into their scratch profiles (3 logs found there). The ~/.npm/_logs entries from 07:17 to 07:22 UTC are `npm exec`/`npm test` runs in packages/core and packages/runner, plus `npm exec -- tsc --noEmit` checks run in packages/extension and packages/webview. I never ran npm/npx or tsc with --noEmit there, so they are not mine.
+  * Scratch content (all under /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/fix-ext-webview/): smoke profiles (smoke/), the reload harness with its VS Code profile and model copies (reload/), test logs (pw1.log, pw2.log, smoke1-3.log), the vitest temp dir (tt/), and backups of two files used for the regression proof.
+===== 2026-11-10T17:40:03 wf_8e6791a7-556 demo-driver [a0116ef265163947f] keys: ['summary', 'files_changed', 'test_runs', 'problems_found', 'fixes', 'needed_outside_my_paths', 'how_to_run', 'effects_outside_repo']
+-- needed_outside_my_paths
+  * Nothing is required.
+  * Optional convenience: add to /home/zhengyew/telelean/packages/extension/package.json scripts: "demo": "node scripts/demo-driver.mjs" (then `npm --prefix packages/extension run demo -- --dry-run`).
+  * Optional product hook (not needed; --rehearse covers the gap): an env-gated fake backend in Development mode (e.g. honoured only when TELELEAN_NO_REAL_CLAUDE=1) would let one dry-run instance go through the palette folder picker and the real git/consent dialogs as well.
+-- effects_outside_repo
+  * All test output written inside my scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn13/demo-driver/ (probe-*, dry1-dry7, reh1, reh-snap1, int1-int3, final-*, final2, final3: isolated profiles, model folders, screenshots, summary.json; probe-scripts/; stamp files).
+  * Transient, removed by the tools themselves (verified none left): xvfb-run's temporary Xauthority dir under /tmp and Xvfb's /tmp/.X<n>-lock and /tmp/.X11-unix/X<n> socket per run; VS Code IPC sockets in /run/user/1002 per instance; telelean-<runId>-<n> systemd user scopes of the Lean sandbox (none of mine left; other sessions' units were left alone).
+  * /tmp/playwright-artifacts-3QunlO: an empty dir left by my interrupted test int2 (exit race); I removed it with rmdir; the driver now keeps Playwright's temp folder in the work dir.
+  * /tmp/node-compile-cache/ may have been updated by my 3 runs of the repo's tsc (TypeScript enables Node's compile cache in os.tmpdir()).
+  * The snap rehearsal executed /snap/code/278/electron-launch (read-only) with SNAP_USER_DATA/SNAP_USER_COMMON inside my isolated home; nothing under ~/snap/code changed (listing).
+  * Real home: no change attributable to my runs (the driver's before/after listings of ~/.config/Code, ~/.vscode, ~/.copilot, ~/.config/google-chrome, Trash, ~/snap/code, ~/.pki, ~/.cache, ~/.claude/projects and ~/.elan/known-projects were unchanged in every run). A ctime scan of ~ showed only others' activity: the user's apps (snap discord/vivaldi/telegram, ~/.config/Code of the user's VS Code, gnome-shell, wireplumber, nautilus; ~/.local/share/recently-used.xbel rewritten at 09:23:03 with no new entry, newest entry dated Nov 5; ~/.gnupg dir ctime 09:22:52), the main session (~/.claude/projects, ~/.claude/skills/synced) and other agents (~/.npm/_logs from their vitest/tsc runs, repo edits, dist rebuild).
+  * Read-only accesses outside the repo: grep of the Claude Code binary for XDG/credentials path strings (no secrets read), listing of ~/.vscode/extensions, reading /snap/code/278/electron-launch, and a targeted read of only the newest entries' dates in ~/.local/share/recently-used.xbel to attribute its change.
+  * No network use except loopback CDP, no downloads, no npm install, no git state changes, no Claude CLI run (the rehearsal refusal confirms no binary was looked up).
+===== 2026-11-10T17:13:43 wf_8e6791a7-556 snap-vscode [a1b1851f487ee611c] keys: ['summary', 'files_changed', 'test_runs', 'problems_found', 'fixes', 'needed_outside_my_paths', 'how_to_run', 'effects_outside_repo']
+-- needed_outside_my_paths
+  * Optional (runner, packages/runner/src/lean/runLean.ts checkSandboxSupport): add a cached probe that bwrap can create its user namespace, e.g. spawn `/usr/bin/bwrap --unshare-all --ro-bind / / --die-with-parent -- /bin/true` once. On failure, refuse with a plain sentence such as: 'bwrap cannot create a user namespace here: AppArmor restricts unprivileged user namespaces (kernel.apparmor_restrict_unprivileged_userns=1) for this process; run telelean in the snap VS Code (its processes run as snap.code.code) or give bwrap an AppArmor profile'. Today such a machine passes preflight and fails at the first Lean job with 'bwrap could not set up the sandbox: bwrap: setting up uid map: Permission denied'. Not needed for the snap demo.
+  * Optional (docs, e.g. docs/m2-plan.md section 10 or the testing part of docs/project-report.md): mention `npm run test:smoke:snap`, run from a terminal of the snap VS Code, as the way to test in the user's own VS Code.
+  * For the integrator: the demo agent's packages/extension/scripts/demo-vscode.mjs imports findSnap, snapLaunch and snapTestEnv from my scripts/snap-env.mjs. Their signatures are unchanged: findSnap(root?) -> {ok, snap|reason}; snapLaunch(snap) -> {executable, prefixArgs:[electron,'--force-user-env']}; snapTestEnv(base, snap, {home, uid, euid}) -> {unset, set}.
+  * Demo instructions (main session): in the user's VS Code a fresh folder must be trusted, otherwise the extension (untrustedWorkspaces.supported=false) is disabled in Restricted Mode and 'telelean: Initialize Model Here' is unavailable.
+-- effects_outside_repo
+  * Transient systemd user units: telelean-* scopes started by the test instances (Lean refreshes and run checks). All ended; none left (checked by smoke.mjs and by me).
+  * Three transient user services from my manual bwrap-under-AppArmor probe: telelean-snapcheck-userns.service, telelean-snapcheck-userns2.service, telelean-snapcheck-userns3.service. Each ran /bin/sh plus bwrap with --ro-bind / / and /bin/true, writing only to my scratch dir. All ended and were reset-failed; none left.
+  * Likely AppArmor audit lines in the system journal/kernel log: allowed userns creation by bwrap under snap.code.code (complain), and the denial in my unconfined probe. Not verified; reading them needs the system log.
+  * /dev/shm/.org.chromium.Chromium.0dwpFI (256 KB), left by my snap test instance at shutdown in run 2: removed by me.
+  * Transient runtime files of the test instances, all gone afterwards (verified): xvfb-run's Xvfb display socket and lock in /tmp/.X11-unix and /tmp; the VS Code IPC sockets in /run/user/1002; a loopback CDP port (127.0.0.1) for the e2e instance.
+  * Each snap instance ran `/bin/bash -i -l -c …` once (VS Code's --force-user-env shell environment resolution, as the snap's desktop file does) with the isolated HOME; only system /etc/profile.d scripts ran. No writes outside scratch were observed.
+  * Real home folder: no writes. smoke.mjs listings of ~/.copilot, ~/.config/Code, ~/.config/google-chrome, ~/.local/share/Trash/files and ~/.vscode were unchanged, and ~/snap/code/278 and ~/snap/code/common were unchanged including mtime/ctime. A ctime scan of ~ (excluding ~/.claude, the repo, ~/.cache and ~/.config/Code) found nothing. The new ~/.npm/_logs files all come from other agents' runner/core runs; all of mine went to scratch. Changes in ~/.config/Code (GPU caches, User/globalStorage/agent-host-storage.json) belong to the user's own VS Code (pid 22052 holds those files open); my instances used scratch user-data dirs.
+  * /tmp/vscode-typescript1002 (mtime 09:00): touched by the user's own running VS Code's TypeScript server, presumably reacting to my repo file edits; not by the test instances, which ran with TMPDIR in scratch.
+  * Read-only access: /snap/code/278 files, the ~/.elan toolchain (binaries called directly), the names in ~/.vscode/extensions, my own process environment (names, plus values of non-secret snap/path variables only; SNAP_COOKIE was never printed or copied: the instances got a placeholder), and ~/.npm/_logs title/cwd lines to attribute them.
+  * All test artifacts are in /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn13/snap/ (97 MB: runs/vscode-39785, vscode-41742, vscode-55403, vscode-67942, plus logs). The RAM watchdog I started there is stopped. No process of mine is left.
+===== 2026-11-10T17:57:09 wf_8e6791a7-556 fresh-model [a43b4aeaaf2a5ca1d] keys: ['summary', 'files_changed', 'test_runs', 'problems_found', 'fixes', 'needed_outside_my_paths', 'how_to_run', 'effects_outside_repo']
+-- needed_outside_my_paths
+  * Required: docs/m2-plan.md section 5.1. Replace the fenced system-prompt block with the exact content of /home/zhengyew/telelean/packages/runner/test/run/fixtures/system-prompt-5.1.txt (4 lines differ: step 3, step 3's last line, step 5, the Vocabulary rule). A ready unified diff is at /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn13/fresh-model/docpatch/m2-plan-5.1.patch. Without it, runner test/run/prompts.test.ts 'still matches section 5.1 of docs/m2-plan.md' fails.
+  * Required for the demo: rebuild the extension (`cd packages/extension && npm run build`; it bundles @telelean/core and @telelean/runner from source through tsconfig paths) and reinstall it into the demo VS Code, so the fixes reach the board. No extension source change is needed.
+  * Optional docs: docs/m2-plan.md section 7.1 step 3, append: 'Turn 13: when that patch cannot be placed, the board's own edits made during the run (cards added at the end of a namespace with add-node; rationales written or changed) are taken out of the real text, the patch is applied to the rest, and they are put back by card id (runner proposal/files.ts boardEditsOf); every other edit within 3 lines is still a conflict.' docs/project-report.md: note the ilean `unlisted` declarations, the blank-line findings, that merge exception, and the 4 prompt lines.
+  * Optional (pre-existing wording, runner/core owners): the conflict sentence 'Discard, or Feedback to redo it on your current files' (runner proposal/files.ts conflictMessage and the RunManager's re-gate refusal) is inaccurate because Feedback does not rebase the shadow. Either rebase the shadow onto the user's files on Feedback, or say 'Discard, or undo your edit and Accept again'. Changing it means updating proposal/accept.test.ts and the m2-plan text.
+-- effects_outside_repo
+  * /tmp/telelean-ws-tests-*: 29 empty directories (each holding an empty tmp/), created by runner/test/workspace/helpers.ts during my test runs between 09:19 and 09:39 before I set TELELEAN_TEST_TMP. I removed them with rmdir; none are left. /tmp/telelean-run-tests-* trees made by the run-test helper were removed by the helper itself; none are left.
+  * Transient systemd user scopes telelean-<runId>-* for sandboxed Lean jobs during the tests: none of mine left (checked after the final run).
+  * ~/.elan/known-projects: 39 lines before and after the final runner run. Lean ran only through the toolchain binaries (~/.elan/toolchains/leanprover--lean4---v4.35.0/bin), never elan proxies.
+  * Scratch only: /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn13/fresh-model/. It holds the fixture generator gen/gen.py, test logs, a small Lean probe project leanprobe/ built with the toolchain's lake (source of the recorded .ilean), the docs patch in docpatch/, and testtmp/.
+  * Read-only: the main session's live-run transcript under the shared scratchpad (turn13/live-normative) to see how a real Claude edits; nothing modified there.
+  * No git state change (only `git status`/`git diff`), no network, no Claude CLI, no npm install, no writes to the VS Code settings, ~/.config, ~/.claude or ~/telelean_scripts.
+===== 2026-11-10T18:35:44 wf_8e6791a7-556 integrate [af57398dae3cc4610] keys: ['summary', 'files_changed', 'test_runs', 'problems_found', 'fixes', 'needed_outside_my_paths', 'how_to_run', 'effects_outside_repo']
+-- needed_outside_my_paths
+  * None required. verbatim_prompt_log/ (outside my paths) was not touched; any logging there is the main session's.
+-- effects_outside_repo
+  * Scratch only: /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn13/integrator/ (160 MB). It holds logs/, the npm logs, testtmp/ (the smoke profiles vscode-231280 and vscode-237811), demo-dry/, demo-reh-snap/ and demo-dry-snap2/ (isolated profiles, model folders, screenshots, summary.json), walk-dry/, env.sh, ramwatch.sh and ramwatch.log.
+  * My RAM watchdog (pid 188881, scratch script) ran during the work and is stopped; no process of mine is left. The main session's own ramwatch.sh (pid 152127) was left alone.
+  * Transient, all gone afterwards (checked):
+- telelean-* systemd user scopes of sandboxed Lean (0 loaded at the end);
+- xvfb-run displays, sockets and locks in /tmp;
+- the instances' VS Code IPC sockets in /run/user/1002;
+- loopback CDP ports;
+- Playwright's Chrome, with HOME, XDG and TMPDIR in scratch (home guard: unchanged);
+- no Chromium files in /dev/shm.
+  * bwrap probes (the new userns tests, and the run preflight in every test run): short-lived namespaces running /usr/bin/true; nothing written.
+  * Snap instances ran /snap/code/278/electron-launch (read-only) with SNAP_USER_DATA/SNAP_USER_COMMON inside the isolated homes. electron-launch writes only there; its REALHOME variable is unused.
+  * Real home folder:
+- a ctime scan of ~ since my start found no changes, excluding ~/.claude, the repo, ~/.cache, ~/.config/Code, ~/.mozilla and the user's discord/vivaldi/telegram snaps;
+- ~/.cache and ~/snap/code had no new entries (depth 2);
+- ~/.npm/_logs has no new files (mine went to scratch);
+- ~/.elan/known-projects had 39 lines before and after;
+- the drivers' own listings reported realHomeChanges = [] in all three runs.
+  * Read-only accesses:
+- string grep of the Claude Code 2.1.322 binary for how it finds its login and config (CLAUDE_CONFIG_DIR, else ~/.claude/.credentials.json); no secrets read;
+- ~/.vscode/extensions/extensions.json (telelean installed from /home/zhengyew/telelean/packages/extension; Claude Code 2.1.322);
+- /snap/code/278/electron-launch;
+- /proc/sys/kernel/apparmor_restrict_unprivileged_userns (1);
+- environment variable names only.
+  * No git state change (status and diff only), no network beyond loopback, no npm install, no Claude CLI run (the rehearsal and refusal checks confirm no binary was looked up), no writes to VS Code settings, ~/.config, ~/.claude or ~/telelean_scripts.
+===== 2026-11-01T10:26:41 wf_a60918ff-710 close-verify-2 [a5ea43cd070f8625b] keys: ['verdict', 'what_i_ran', 'issues', 'effects_outside_repo']
+-- effects_outside_repo
+  * Repo /home/zhengyew/telelean: not modified. Three fingerprints were identical before and after: every file outside node_modules, .vscode-test and verbatim_prompt_log (path, mtime, size); node_modules/.vitest-cache and packages/*/node_modules; and packages/extension/.vscode-test to depth 3. The VS Code test build was used read-only through a symlink.
+  * Real home: nothing written by my commands. The home snapshot (names and mtimes only) differs in 3 places:
+- ~/.config/Code: DIPS-wal at 18:06:42 (the same hourly pattern as 17:06:42), TransportSecurity at 18:05:04, and the folder's mtime. The user's own snap VS Code (pid 630165) wrote these. At those times none of my VS Code or Chrome processes was running: only the runner tests were, and my first test instance started at about 18:10.
+- ~/.claude.json: updated by the Claude Code harness.
+
+Unchanged: ~/.copilot, ~/.config/google-chrome, ~/.npm, ~/.cache/ms-playwright, ~/.vscode/extensions, Trash, and ~/.elan/known-projects (37 lines, same mtime). smoke.mjs reported 0 isolation failures in all 13 of its runs.
+  * Processes:
+- 27 VS Code 1.140 test-build instances, each under xvfb with HOME, XDG folders, user-data and extensions in my scratch dir, and `ulimit -c 0`: 2 per smoke.mjs run (13 runs), plus 1 for my scenario.
+- Google Chrome (Playwright) in the two webview suite runs, isolated by playwright.config.ts.
+- Lean ran in runLean's systemd --user telelean-* scopes during the tests and my scenario.
+
+None are left: no process mentions my scratch path and no telelean-* unit is loaded. My RAM watchdog has stopped.
+  * /tmp and /run/user/1002: the listings were identical before and after. xvfb lock files and VS Code sockets existed only while the runs lasted.
+  * Git: only inside the e2e tests' model copies under my scratch dir (GIT_CONFIG_GLOBAL=/dev/null). I ran no git command myself.
+
+No downloads, no npm install (npm offline), no Claude CLI. DevTools listened on 127.0.0.1 only. Nothing pushed, published or sent. Any network activity the test instances do on their own comes from the existing test settings (telemetry and updates off); I added nothing.
+  * Scratch: /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/closing-verifier-r2/ peaked at about 340 MB and is now about 18 MB. After copying the logs out, I deleted my own repo copy's node_modules, the VS Code test profiles and the npm cache.
+
+What is left: logs, screenshots, the scenario harness and model, the echo demo, home and repo snapshots, the repo copy's sources and build outputs, and the scripts env.sh, full-suite.sh, ext-loop.sh, smoke-run.sh, ramwatch.sh and snap.sh.
+===== 2026-11-01T08:44:28 wf_a60918ff-710 close-fix-1 [a756f55e72563ff32] keys: ['summary', 'files_changed', 'test_runs', 'resolved', 'open_issues', 'minor_decisions', 'effects_outside_repo']
+-- effects_outside_repo
+  * Scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/closing-fixer-r1/ (132 MB). It holds:
+- a backup tar of the files I could edit;
+- isolated VS Code profiles and model copies from 3 full smoke runs and 12 model-boards runs, including Lean .lake output and scratch git repos made by the suites;
+- runner test temp trees, the vitest module cache and npm logs;
+- logs, experiment and negative-control scripts, and the watchdog log.
+  * /tmp: each of the 3 full Playwright runs created /tmp/tl-pw-chrome-XXXXXX as Chrome's isolated HOME/TMPDIR, and the harness deleted it at teardown. xvfb-run made transient /tmp/xvfb-run.* and X lock/socket files, which were removed. The /tmp name listing is the same as before.
+  * /run/user/1002: transient IPC sockets of the VS Code test instances; the name listing is the same as before.
+  * systemd --user: transient telelean-* scopes from runLean during the two runner suites and the e2e/model suites; none remain.
+  * Lean: toolchain binaries in ~/.elan/toolchains/leanprover--lean4---v4.35.0 used read-only. ~/.elan/known-projects is unchanged (same size, mtime and line count).
+  * Network: loopback only (Playwright's static server on 127.0.0.1:41739; the CDP port of the e2e test instance on 127.0.0.1). No downloads, no npm install, no Claude CLI, no pushes or uploads.
+  * Real home: snapshots of ~/.config/google-chrome (and its Crash Reports), ~/.cache/google-chrome, ~/.copilot, ~/.local/share/vitest, ~/.config/Code (and its logs), the Trash, ~/.cache/fontconfig, ~/.pki, ~/.local/share/pki, ~/.npm/_logs, ~/.cache/ms-playwright, ~/.config/dconf and the home top level were unchanged in names and mtimes. The one exception: mtimes of DIPS-wal, Network Persistent State and TransportSecurity in ~/.config/Code (and of that directory). Your own running VS Code rewrites these periodically; my test instances used isolated user-data dirs, and their isolation checks report ~/.config/Code unchanged.
+  * Inside the repo but outside my assigned paths:
+- packages/core/dist/** was rewritten twice by the required root npm run build (core sources unchanged);
+- the directory mtimes of packages/core/node_modules/.vite-temp and packages/runner/node_modules/.vite-temp changed (vitest writes and deletes its compiled config there; both are empty afterwards).
+
+No writes to mental_model/ or test-fixtures/, and no git in the repo.
+  * Git ran only inside the suites' scratch repositories, with GIT_CONFIG_GLOBAL=/dev/null and GIT_CONFIG_NOSYSTEM=1.
+  * Your installed extension (registered at packages/extension) now has the rebuilt dist; it takes effect after 'Developer: Reload Window'.
+  * No processes of mine remain. I stopped my RAM watchdog at the end.
+===== 2026-11-01T09:27:09 wf_a60918ff-710 close-verify-1 [af0fd267f5802e42e] keys: ['verdict', 'what_i_ran', 'issues', 'effects_outside_repo']
+-- effects_outside_repo
+  * Scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/closing-verifier-r1/ (352 MB). It holds:
+- the repo copy with its own node_modules (208 MB), with packages/extension/.vscode-test containing only a symlink to the repo's VS Code build;
+- smoke/e2e profiles and model copies of 13 smoke runs under tt/ (114 MB), including Lean .lake outputs and the suites' scratch git repositories;
+- my real-VS-Code profile and workspace under vs/ (23 MB);
+- logs, screenshots, the SelfWrites demos, the CDP observer scripts, npm logs and cache, and the RAM watchdog log.
+  * Repo: nothing written. `find /home/zhengyew/telelean -newer START_MARKER` lists 0 entries, node_modules and packages/*/node_modules included.
+
+The repo's VS Code 1.140 test build (packages/extension/.vscode-test) was used read-only through the symlink. Its tree listing (names, mtimes, sizes, depth 3) is unchanged. Your installed extension is unchanged (its dist is byte-identical to my fresh build).
+  * /tmp:
+- each of my 2 Playwright runs created /tmp/tl-pw-chrome-XXXXXX (Chrome's isolated HOME/TMPDIR), and the harness deleted it at teardown;
+- xvfb-run made transient xvfb-run.* directories and X lock/socket files during the smoke runs and my VS Code session, and removed them;
+- the /tmp and /tmp/.X11-unix name listings are identical before and after.
+  * /run/user/1002: transient IPC sockets of the VS Code test instances; the name listing is identical before and after.
+  * systemd --user: transient telelean-* scopes from runLean (2 runner suites, 13 smoke/e2e runs, my VS Code session); none remain.
+  * Lean: toolchain binaries in ~/.elan/toolchains/leanprover--lean4---v4.35.0 used read-only. ~/.elan/known-projects is unchanged (37 lines, same mtime and size).
+  * Network: loopback only.
+- Playwright's static server on 127.0.0.1:41739.
+- DevTools ports on 127.0.0.1 for the e2e instances and my isolated VS Code instance. My read-only observer and my driver attached to those loopback ports.
+- npm ran with offline=true, logs and cache in scratch; the only npx was the one inside smoke.mjs.
+- No downloads, no npm install, no Claude CLI, no pushes or uploads, no messages.
+  * Git ran only inside the suites' scratch repositories, under TELELEAN_TEST_TMP and my VS Code workspace copy, with GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM=1 and a ceiling dir in scratch. No git in the repo or in mental_model.
+  * Real home: names and mtimes are unchanged for:
+- ~/.config/google-chrome (and Crash Reports), ~/.cache/google-chrome;
+- ~/.copilot, ~/.local/share/vitest, ~/.config/Code/logs;
+- Trash, ~/.cache/fontconfig, ~/.pki, ~/.local/share/pki;
+- ~/.npm (and _logs), ~/.cache/ms-playwright, ~/.config/dconf, ~/.vscode/extensions;
+- the home top level.
+
+The one exception: the mtimes of ~/.config/Code (the directory) and of its DIPS-wal, Network Persistent State and TransportSecurity changed. Your own running VS Code (snap) rewrites these. My instances used isolated user-data dirs, and every smoke isolation check reported ~/.config/Code unchanged.
+  * Processes: none of mine remain (pgrep on my scratch path finds nothing). My RAM watchdog stopped by itself; lowest MemAvailable 36038 MB, it never had to act.
+===== 2026-11-01T10:01:28 wf_a60918ff-710 close-fix-2 [af5fcae4d1145fca4] keys: ['summary', 'files_changed', 'test_runs', 'resolved', 'open_issues', 'minor_decisions', 'effects_outside_repo']
+-- effects_outside_repo
+  * Real home: nothing written by my commands. Home snapshots before and after (names and mtimes only: scratchpad/turn9/closing-fixer-r2/snap/before.txt and after.txt) differ only in: (1) ~/.config/Code 'Network Persistent State' and 'TransportSecurity' mtimes, written by the user's own running VS Code (snap, pid 630165), not by the test instances. Evidence: changes at 17:36:36 and 17:42:18, before my first VS Code instance (17:48:50), an hourly pattern (16:56:46, 17:56:46), and each test instance wrote its own copies inside its isolated user-data folder. (2) ~/.claude and ~/.claude.json, updated by the Claude Code harness itself. Unchanged: ~/.copilot, ~/.config/google-chrome, ~/.npm/_logs, ~/.local/share/vitest, ~/.cache/ms-playwright, ~/.elan/known-projects, ~/.vscode/extensions, Trash. smoke.mjs's own isolation checks reported 0 failures in all 7 runs.
+  * /tmp and /run/user/1002: no entries added or removed after the runs. During runs, xvfb-run.*, /tmp/.X99-lock, a playwright-artifacts-* folder and a VS Code main socket existed briefly; their owners removed them.
+  * systemd --user: transient telelean-tlws*.scope units (runLean sandboxes) existed during the Lean checks; none are left. No processes of mine are left (checked by process group and scratch path); my RAM watchdog has stopped.
+  * Inside the repo but outside my assigned paths, from running the suites as asked: the root node_modules/.vitest-cache (an existing cache; 33 files written or updated), and packages/runner/node_modules/.vite/vitest/<hash>/results.json plus packages/runner/node_modules/.vite-temp (vitest's results cache and temp folder). mental_model/, test-fixtures/, packages/extension/.vscode-test and verbatim_prompt_log/ were not modified.
+  * Git ran only inside the e2e tests' scratch model copies (with GIT_CONFIG_GLOBAL=/dev/null); I ran no git command myself. No downloads, no npm install, npm offline, no Claude CLI, no pushes, nothing sent or published. The VS Code test instances (2 per run, 7 runs) used the isolated profile; any network activity they do on their own was not added or changed by me.
+  * Scratch: about 85 MB in /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/closing-fixer-r2/: a backup of the original files, logs, snapshots, test profiles under tt/, npm logs and cache, and the helper scripts env.sh, full-suite.sh, ext-loop.sh, ramwatch.sh and snap.sh.
+===== 2026-11-01T03:10:18 wf_abd5d862-21b plan:architect [a0052a5923e92a38b] keys: ['plan_path', 'summary', 'work_packages', 'contracts', 'integration_plan', 'minor_decisions', 'major_decisions_needing_user', 'effects_outside_repo']
+-- effects_outside_repo
+  * Scratch dir writes: /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m1-architect/ holds:
+- a copy of test-fixtures/spyro (spyro/), with a `.lake/` build and a modified Model/Spyro/Main.lean used for probes;
+- check1.lean and check2.lean;
+- time1.txt;
+- an empty runner-tmp/ (the runner tests' temp root; the tests cleaned up after themselves).
+  * Ran the toolchain's lake/lean directly (unsandboxed) on that scratch copy of the trusted Spyro fixture: `lake build` three times, `lake env lean --stdin --json` twice, plus /usr/bin/time. These wrote only inside the scratch copy. ~/.elan/known-projects stayed at 37 lines (checked before and after).
+  * The runner test suite (sandboxed Lean via runLean) created transient systemd user scopes named telelean-t<pid>-N. All ended; `systemctl --user list-units 'telelean-*'` was empty afterwards, and no test processes were left running.
+  * npm (through npx and `npm test`) wrote 9 debug logs to ~/.npm/_logs, timestamped 10:53-10:57 +0800 on 2026-11-01. npm's own log rotation (logs-max) may have deleted older log files in that folder.
+  * The Claude Code harness wrote outside the repo: one oversized tool output (the research reference parser listing) under ~/.claude/projects/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/tool-results/, and a background-task output file under /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/tasks/.
+  * Inside the repo, beyond my owned paths: vitest refreshed its result caches (packages/*/node_modules/.vite/vitest/.../results.json and .vite-temp dirs). I deliberately changed packages/runner/tsconfig.json and packages/runner/vitest.config.ts; these are the minimal stubs listed in contracts.
+  * No downloads, no npm installs, no git commands, no network use, no Claude CLI runs, and no changes to the user's VS Code, ~/.config, ~/.claude settings, ~/.elan or git config. The two `lake serve` processes running on this machine (for ~/webring and test-fixtures/spyro) belong to the user's VS Code Lean extension and were not touched.
+===== 2026-11-01T03:54:21 wf_abd5d862-21b plan:review [a034647318bd77191] keys: ['plan_path', 'summary', 'work_packages', 'contracts', 'integration_plan', 'minor_decisions', 'major_decisions_needing_user', 'effects_outside_repo']
+-- effects_outside_repo
+  * Scratch dir writes in /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/m1-reviewer/:
+- spyro/: a copy of test-fixtures/spyro plus a probe module Model/Spyro/Extra.lean and a modified Model.lean, with a .lake/ build;
+- check.lean: the probe check file;
+- Extra.lean.good: a backup of the probe module;
+- scaffold/: a scaffold test project with a .lake/ build.
+  * Ran the toolchain's lake and lean directly (unsandboxed) on those scratch copies of the trusted fixture:
+- lake build 4 times: spyro three times, including one deliberate build error; scaffold once;
+- lake env lean --stdin --json once;
+- /usr/bin/time once.
+They wrote only inside the scratch copies. ~/.elan/known-projects stayed at 37 lines (checked before and after). No Lean processes of mine are left running; the lean --server processes on this machine belong to the user's VS Code.
+  * Ran one read-only git command in the scratch dir: git -C <scratch>/scaffold status, which reported 'not a git repository'. No other git commands; none in /home/zhengyew/telelean.
+  * npm wrote a debug log to ~/.npm/_logs for each of my npm/npx invocations (about 19 runs between 11:33 and 11:46 +0800, 2026-11-01): npm test, npx tsc, npx vitest and one npm config get logs-max. npm keeps only 10 logs (logs-max 10), so its rotation deleted older log files there, including logs from earlier agents' runs.
+  * Inside the repo, beyond the plan and the contract files: vitest refreshed its caches (packages/{core,runner,webview,extension}/node_modules/.vite and .vite-temp). I created and then deleted two temporary probe tests inside packages/core/test (zz-raw-probe.test.ts and zzprobe/raw.test.ts), to verify ?raw imports.
+  * Read-only access outside my paths: the architect's scratch files (check1.lean, check2.lean, time1.txt, its spyro/.lake/*.ilean), the main session's STATE.md, and the toolchain's Lake/Lean sources under ~/.elan/toolchains/leanprover--lean4---v4.35.0/src (read, not modified). python3 -I was used only to read JSON and compute line numbers.
+  * No downloads, no npm installs, no network use, no Claude CLI runs, no pushes or remotes, and no changes to the user's VS Code, ~/.config, ~/.claude, ~/.elan or git config. No systemd units were started (no runLean runs).
+===== 2026-11-01T04:46:51 wf_abd5d862-21b build:WP5 [a244c0e657ee53698] keys: ['summary', 'files', 'how_to_run_tests', 'test_output', 'acceptance', 'contract_changes', 'minor_decisions', 'open_issues', 'integration_notes', 'effects_outside_repo']
+-- effects_outside_repo
+  * Scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/wp5/ (allowed). It holds the run logs smoke-run1..5.log, mem-run3..5.log, summary-run1..4.json, run-smoke.sh and the last profile vscode-965209 (8.4 MB). That profile contains copies of the sample model with a .lake build and .git repositories made by the real workspace. The profiles of runs 1–4 were deleted. Unit tests created and removed temp folders there.
+  * ~/.npm/_logs, an UNINTENDED DELETION: smoke runs 1–4 (12:33–12:41) set npm_config_logs_max=0 for their `npx vscode-test`. npm then pruned every existing debug log in ~/.npm/_logs: npm's own throwaway logs of recent npm commands by me, other builders and possibly the user, at most about 10 at a time; not user data. Fixed: smoke.mjs now sets npm_config_logs_dir to the scratch profile. Run 5 verified it: its log landed in the profile, and the real folder was left alone apart from the normal keep-10 rotation caused by others' npm runs.
+  * ~/.npm/_logs, new files: my early npm/npx invocations (`npx tsc` twice, `npx vitest run` twice, `npm run build` once, `npm --version` once) wrote npm debug logs there, as npm always does, keeping the last 10. Later I called binaries directly (node_modules/.bin/tsc, node_modules/.bin/vitest, node scripts/build.mjs).
+  * Inside the repo but outside my assigned paths: vitest updated packages/extension/node_modules/.vite/vitest/<hash>/results.json (a cache M0 created) until I moved the cache to out/.vite. Vite briefly writes a bundled config file into packages/extension/node_modules/.vite-temp/ during each vitest run and deletes it.
+  * Short-lived, all gone afterwards (verified): xvfb-run temp dirs /tmp/xvfb-run.*; VS Code IPC sockets in /run/user/1002, none left from my runs (the remaining vscode-522f9df5-1.14-main.sock is from yesterday 22:50, not mine); the test VS Code processes; systemd --user transient scopes from runLean during the real Lean refreshes in runs 3–5.
+  * Lean ran only inside the scratch copies (lake build under runLean). The toolchain in ~/.elan was only read; ~/.elan/known-projects is unchanged (mtime 09:09).
+  * git ran only in scratch copies: git init and private refs under refs/telelean/* by the real workspace in ws/mental_model and ws/fresh_model, plus read-only for-each-ref, rev-parse and status calls from my test, all with GIT_CONFIG_GLOBAL=/dev/null. I never ran git in /home/zhengyew/telelean.
+  * Test VS Code isolation: HOME/XDG pointed into the scratch profile. Its ~/.vscode/argv.json, ~/.vscode/cli, nssdb and Trash were written there. The real ~/.copilot, ~/.config/Code, ~/.config/google-chrome and ~/.local/share/Trash were unchanged, checked after every run.
+  * Not touched by me: mental_model/ and test-fixtures/ (only copied from; their newer files are WP4's from 12:10 and WP3's), the user's VS Code settings and extensions, ~/.config, ~/.claude, ~/.elan, the npm config, global git config, packages/extension/.vscode-test (the 1.140.0 build was reused, no download). No network use, no installs, no pushes, nothing sent to anyone, no Claude CLI runs.
+===== 2026-11-01T04:49:58 wf_abd5d862-21b build:WP2 [a3e14d5b8ecad657e] keys: ['summary', 'files', 'how_to_run_tests', 'test_output', 'acceptance', 'contract_changes', 'minor_decisions', 'open_issues', 'integration_notes', 'effects_outside_repo']
+-- effects_outside_repo
+  * Wrote two scratch files: /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/wp2/zodprobe.mjs (a zod toJSONSchema probe, run once with node) and /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/wp2/tsconfig.wp2.json (a typecheck config limited to my files).
+  * Inside the repo but outside my assigned paths: vitest/vite wrote their normal caches during test runs, under /home/zhengyew/telelean/node_modules/.vitest-cache/ and /home/zhengyew/telelean/packages/core/node_modules/.vite-temp/. Other builders' test runs write these too, and they regenerate.
+  * Ran read-only `tsc -p tsconfig.json` (noEmit, no incremental) in packages/webview, packages/runner and packages/extension; it wrote nothing.
+  * No processes left running: every command ran in the foreground with a timeout.
+  * No network use, no downloads, no npm install, no git commands, no Claude CLI, no credentials read. Nothing was written to the user's VS Code settings, ~/.config, ~/.claude, ~/.elan or git config.
+===== 2026-11-01T04:49:47 wf_abd5d862-21b build:WP6 [abf5e0bc0d4ccf0b0] keys: ['summary', 'files', 'how_to_run_tests', 'test_output', 'acceptance', 'contract_changes', 'minor_decisions', 'open_issues', 'integration_notes', 'effects_outside_repo']
+-- effects_outside_repo
+  * Scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/wp6/ contains:
+- chrome-config-before.txt and chrome-config-after.txt (identical listings of ~/.config/google-chrome: names, sizes, mtimes only);
+- tmp-chrome-before.txt and tmp-chrome-after.txt (identical lists of /tmp entries matching com.google.Chrome|playwright|tl-pw);
+- npm-test.log (the final test log);
+- dragGuard.ts.bak and NodeCard.tsx.bak (copies used to restore the sources after the AT6.16 negative controls; both were restored and rebuilt).
+  * Each Playwright run created a short temp dir /tmp/tl-pw-chrome-XXXXXX holding Chrome's TMPDIR and the isolated HOME/XDG dirs. Chrome wrote its crash-report settings.dat, a fontconfig cache and an NSS db there. The global teardown deleted it after each run; no tl-pw-chrome-* dir remains.
+  * /tmp/playwright-transform-cache-1002 existed before my runs (from M0). Playwright's test runner wrote compiled copies of my test files into it (a cache). I left it in place because it was shared and pre-existing.
+  * During each run the test HTTP server (test/harness/serve.mjs) listened on 127.0.0.1:41739, loopback only. Playwright started and stopped it. pgrep afterwards found no leftover serve.mjs, playwright or Chrome processes from me.
+  * Real home folder unchanged: the home guard and my own diff found no change in ~/.config/google-chrome, ~/.cache/google-chrome (absent), ~/.cache/fontconfig, ~/.pki and ~/.local/share/pki. The /tmp com.google.Chrome* set is unchanged (35 entries before and after).
+  * Inside the repo but outside the source tree: packages/extension/dist/webview/** was rebuilt (my owned output). Screenshots went to packages/webview/test-results/ (gitignored). I wrote one home-guard.json there with a listing of the real home dirs and deleted it; the guard now prints only a summary. Vitest/Vite may have refreshed their caches under node_modules (gitignored).
+  * None of the following: network access, downloads, npm install, git commands, Claude CLI runs, sudo, credential reads, or changes to VS Code settings or extensions, ~/.config (other than read-only listing), ~/.claude, ~/.elan or global git config.
+===== 2026-11-01T04:51:22 wf_abd5d862-21b build:WP1 [ac3e2258b8241571c] keys: ['summary', 'files', 'how_to_run_tests', 'test_output', 'acceptance', 'contract_changes', 'minor_decisions', 'open_issues', 'integration_notes', 'effects_outside_repo']
+-- effects_outside_repo
+  * Scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/wp1/ holds:
+- explore1.mjs, explore2.mjs, perf.mjs, gen-escape.mjs, check-esc.mjs (my scripts);
+- out/ (a tsc --outDir build of packages/core/src);
+- probe/ (P1–P4, D1–D6, M1–M2, Esc.lean, Esc2.lean, single/S00–S16.lean, lean-out.txt).
+  * Ran ~/.elan/toolchains/leanprover--lean4---v4.35.0/bin/lean directly (no elan proxy, no lake) about 30 times on those probe files, from the scratch dir:
+- with ulimit -c 0 and LEAN_NUM_THREADS=4, each under 2 s;
+- peak RSS about 1.6 GB, for the one file with `import Lean`;
+- no -o flag, so Lean wrote no files; all processes exited, and a final ps check found none of mine running.
+  * Read, without modifying, Lean sources under ~/.elan/toolchains/leanprover--lean4---v4.35.0/src/lean/ (Lean/Parser/Basic.lean, Term.lean, Command.lean, Init/Meta/Defs.lean) to confirm the lexing rules.
+  * Inside the repo but outside my paths: vitest rewrote its results cache packages/core/node_modules/.vite/vitest/da39a3ee5e6b4b0d3255bfef95601890afd80709/results.json on each run. Other builders' vitest runs write it too.
+  * Ran python3 -I for small inline tasks (FNV-1a reference hashes, patching my own markup files and scratch probe files).
+  * No network access, downloads, npm install, git commands, sudo or global changes; nothing sent or published.
+===== 2026-11-01T04:41:21 wf_abd5d862-21b build:WP4 [ad3cbb1ca46510ebc] keys: ['summary', 'files', 'how_to_run_tests', 'test_output', 'acceptance', 'contract_changes', 'minor_decisions', 'open_issues', 'integration_notes', 'effects_outside_repo']
+-- effects_outside_repo
+  * Scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/wp4/ (3.1 MB left): git probe repositories in probe/, test scratch trees under tt/ (each test removes its own), and tmp/ (snapshot temp dirs plus Node's node-compile-cache, created there because TMPDIR pointed there).
+  * Inside the repo but outside my assigned paths: vitest updated its results cache, /home/zhengyew/telelean/packages/runner/node_modules/.vite/vitest/da39a3ee5e6b4b0d3255bfef95601890afd80709/results.json. This is vitest's default behaviour; other runner test runs write it too.
+  * npx (npm exec) wrote its rotating per-run debug logs to ~/.npm/_logs/ for each tsc/vitest invocation (npm's default, at most 10 files kept). No npm config was touched and nothing was installed or downloaded.
+  * Lean: three kinds of runLean builds ran on scratch copies only: the sample, the Initialize scaffold, and one real refresh through WP3's refreshLeanFacts (each about 1.2 to 1.9 s). They ran in transient systemd user scopes named telelean-wp4t<pid>-*, each checked for at least 12 GB MemAvailable first (it was about 36 GB), one at a time. Afterwards no wp4t units or processes remained. ~/.elan/known-projects was not modified (mtime 09:09, before my work); toolchain binaries were called directly.
+  * git: run only in scratch repositories (probes and tests), always with GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM=1, GIT_CEILING_DIRECTORIES=<scratch>, the safe -c flags and explicit authors. Never in /home/zhengyew/telelean or mental_model/. No remotes, push, fetch or gc. The tests' marker hook scripts were run directly with sh inside scratch repositories, as a positive control.
+  * No network use, no downloads, no npm install, no Claude CLI, no credentials read, nothing published or sent, no sudo or global installs. The user's VS Code settings and extensions, ~/telelean_scripts, ~/.config, ~/.claude and the global git config were not touched.
+===== 2026-11-01T04:35:52 wf_abd5d862-21b build:WP3 [aedc62ae7e38564bd] keys: ['summary', 'files', 'how_to_run_tests', 'test_output', 'acceptance', 'contract_changes', 'minor_decisions', 'open_issues', 'integration_notes', 'effects_outside_repo']
+-- effects_outside_repo
+  * Scratch dir /tmp/claude-1002/-home-zhengyew-telelean/03a29d54-7342-40e3-b5f0-2697a62c93ef/scratchpad/turn9/wp3/ (about 1 MB, left in place): probe1–probe5 (scratch copies of test-fixtures/spyro with overlays and their .lake builds), ov/ (draft overlays), Lake logs and check outputs from the probes, tsconfig.tests.json, test-run logs (refresh-run.txt, semantic-run.txt, full-run.txt, full-run2.txt, owned-run.txt), and testtmp/. The tests removed their own trees from testtmp/; an empty testtmp/tmp is left, created by WP4's workspace test helpers during the full-suite runs.
+  * Unsandboxed toolchain runs in those scratch copies of trusted fixtures, as the brief allows. Direct binaries under ~/.elan/toolchains/leanprover--lean4---v4.35.0/bin, never the elan proxies, with LEAN_NUM_THREADS=4 and ulimit -c 0: `lake build Model` 7 times and `lake env lean --stdin --json` 3 times. All exited.
+  * Sandboxed runs through runLean created transient systemd --user scopes: telelean-sem<pid>-N for my tests, plus the M0 and WP4 suites' own scopes while I ran the full suite twice and the lean+semantic+llm directories once. All ended; `systemctl --user list-units --all 'telelean-*'` was empty afterwards.
+  * Running the full suite also ran other packages' tests: M0's llm tests create and remove temp dirs under /tmp (telelean-llm-*), because they read TELELEAN_TEST_TMPDIR, not TELELEAN_TEST_TMP, and default to os.tmpdir(); none were left. M0's binary.test.ts ran the user's VS Code Claude Code binary with `--version` only. WP4's workspace tests used git in scratch repositories under my TELELEAN_TEST_TMP.
+  * ~/.elan/known-projects: 37 lines before and after.
+  * ~/telelean-sandbox-probe-escape.txt does not exist (checked).
+  * None of the following happened: downloads, npm installs, network use, git commands in /home/zhengyew/telelean, Claude CLI runs with a prompt, or writes outside my assigned paths and scratch dir. No process of mine is left running.

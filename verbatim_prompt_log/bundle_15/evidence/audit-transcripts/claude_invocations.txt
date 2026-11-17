@@ -1,0 +1,42 @@
+1 ('2026-11-01T06:16', 'verify:semantics [a70b1ea393bc') echo | echo "--- /tmp entries newer than my first marker (excluding claude scratch):"
+1 ('2026-11-01T14:34', 'verify:safety [afcf1f3075208bb') ls | ls -la ~/.vscode/extensions/anthropic.claude-code-*/resources/native-binary/claude 2>/dev/null
+1 ('2026-11-01T14:34', 'verify:safety [afcf1f3075208bb') type | type -a claude 2>/dev/null
+1 ('2026-11-01T14:34', 'verify:safety [afcf1f3075208bb') ls | ls -la ~/.local/bin/claude 2>/dev/null
+1 ('2026-11-01T14:40', 'verify:safety [afcf1f3075208bb') cp | cp $S/tripwire/fake-claude.sh $S/tripwire/bin/claude
+1 ('2026-11-01T14:40', 'verify:safety [afcf1f3075208bb') mkdir | mkdir -p $S/home/.local/bin $S/home/.vscode/extensions/anthropic.claude-code-2.1.314-linux-x64/resources/native-binary $S/home/.vscode-server/extensions/anthropic.claude-code-9.9.9-linux-x64/resources/native-binary
+1 ('2026-11-01T14:40', 'verify:safety [afcf1f3075208bb') cp | cp $S/tripwire/fake-claude.sh $S/home/.local/bin/claude
+1 ('2026-11-01T14:40', 'verify:safety [afcf1f3075208bb') cp | cp $S/tripwire/fake-claude.sh $S/home/.vscode/extensions/anthropic.claude-code-2.1.314-linux-x64/resources/native-binary/claude
+1 ('2026-11-01T14:40', 'verify:safety [afcf1f3075208bb') cp | cp $S/tripwire/fake-claude.sh $S/home/.vscode-server/extensions/anthropic.claude-code-9.9.9-linux-x64/resources/native-binary/claude
+2 ('2026-11-01T14:40', 'verify:safety [afcf1f3075208bb') claude | $S/tripwire/bin/claude --version
+2 ('2026-11-01T14:40', 'verify:safety [afcf1f3075208bb') claude | $S/tripwire/bin/claude -p --x
+1 ('2026-11-01T14:40', 'verify:safety [afcf1f3075208bb') for | for f in $S/tripwire/bin/claude $S/home/.local/bin/claude $S/home/.vscode/extensions/anthropic.claude-code-2.1.314-linux-x64/resources/native-binary/claude $S/home/.vscode-server/extensions/anthropic.claude-code-9.9.9-linux-x64/resources/native-binary/claude
+1 ('2026-11-01T14:55', 'verify:safety [afcf1f3075208bb') node | env HOME=$S/home ELAN_HOME=/home/zhengyew/.elan PATH=$S/tripwire/bin:$PATH TMPDIR=$S/tmp/walk LEAN_NUM_THREADS=4 GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 GIT_CEILING_DIRECTORIES=$S node scripts/walkthrough-claude.mjs --dry-run --binary-check --binary $S/tripwire/bin/claude --work-dir $W > $S/logs/walk.stdout 2> $S/logs/walk.stderr  &BG
+1 ('2026-11-01T15:40', 'fix-1:core+runner+docs [a954cc') printf | printf '#!/bin/sh\necho "$*" >> "%s/smoke/marker"\necho "2.1.400 (Claude Code)"\n' $S > $S/smoke/bin/claude
+1 ('2026-11-01T15:40', 'fix-1:core+runner+docs [a954cc') chmod | chmod +x $S/smoke/bin/claude
+1 ('2026-11-01T15:40', 'fix-1:core+runner+docs [a954cc') cat | cat $S/smoke/bin/claude
+1 ('2026-11-01T15:40', 'fix-1:core+runner+docs [a954cc') node | TELELEAN_NO_REAL_CLAUDE=1 timeout 120 node scripts/smoke-claude.mjs --dry-run --binary $S/smoke/bin/claude --work-dir $S/smoke/work1 > $S/smoke/dry1.out 2> $S/smoke/dry1.err
+1 ('2026-11-01T16:20', 'final-1 [a4a7839f1a4d1051a]') which | which lean lake elan claude 2>&1
+1 ('2026-11-01T16:41', 'final-1 [a4a7839f1a4d1051a]') echo | echo "--- any execve whose path or argv mentions claude (path shown):"
+1 ('2026-11-01T16:41', 'final-1 [a4a7839f1a4d1051a]') echo | echo "--- execve of a file named claude anywhere:"
+1 ('2026-11-01T16:41', 'final-1 [a4a7839f1a4d1051a]') grep | grep -o 'execve("[^"]*/claude"' $S/logs/runner.strace
+1 ('2026-11-01T16:41', 'final-1 [a4a7839f1a4d1051a]') grep | grep -c 'native-binary' $S/logs/runner.strace
+1 ('2026-11-01T16:50', 'final-1 [a4a7839f1a4d1051a]') grep | grep -o 'execve("[^"]*/claude"' $S/logs/walkthrough.strace
+1 ('2026-11-01T18:07', 'final-2 [ae5d429af17b8af6f]') pgrep | pgrep -af 'native-binary/claude'
+1 ('2026-11-01T18:30', 'final-2 [ae5d429af17b8af6f]') grep | grep -E 'native-binary/claude|@anthropic-ai/claude-code' $S/logs/runner.strace
+3 ('2026-11-01T20:00', 'final-3 [a0c73cbd13cd92a3f]') which | which -a claude 2>/dev/null
+1 ('2026-11-01T20:00', 'final-3 [a0c73cbd13cd92a3f]') grep | grep -n "native-binary\|\.vscode\|local/bin\|candidates\|realClaudeDisabled" binary.ts
+1 ('2026-11-01T20:10', 'final-3 [a0c73cbd13cd92a3f]') echo | echo "outside-scratch claude execs: $(…)"
+1 ('2026-11-01T20:32', 'final-3 [a0c73cbd13cd92a3f]') grep | grep -rhi "claude --version\|native-binary\|resolved the claude\|claude binary" $P/user-data/logs 2>/dev/null
+1 ('2026-11-02T00:28', 'm2close-fix-2 [a35f5a70e5feebf') echo | do echo "== $f: execve total $(…); claude-named: $(…); ENOENT claude lookups: $(…)"
+4 ('2026-11-02T00:29', 'm2close-fix-2 [a35f5a70e5feebf') grep | grep -E 'execve(at)?\("[^"]*/claude"' $f
+1 ('2026-11-02T00:57', 'm2close-fix-2 [a35f5a70e5feebf') echo | do echo "== $f: execve $(…); real-claude execs outside scratch: $(…); fake claude execs in scratch: $(…)"
+1 ('2026-11-02T00:57', 'm2close-fix-2 [a35f5a70e5feebf') grep | grep -E 'execve(at)?\("[^"]*/claude"' *.strace
+1 ('2026-11-02T01:27', 'm2close-verify-2 [a142a62f97c0') ls | ls -la $S/tmp/run-claude-bin-TepRxB/pathbin/claude 2>/dev/null
+1 ('2026-11-02T01:27', 'm2close-verify-2 [a142a62f97c0') head | head -c 300 $S/tmp/run-claude-bin-TepRxB/pathbin/claude
+1 ('2026-11-02T02:22', 'features:write [af310d426ec9a7') ls | ls -la /home/zhengyew/.vscode/extensions/anthropic.claude-code-2.1.314-linux-x64/resources/native-binary/ 2>&1
+1 ('2026-11-10T16:45', 'snap-vscode [a1b1851f487ee611c') ls | ls -la ~/.vscode/extensions/anthropic.claude-code-*/resources/native-binary/ 2>/dev/null
+1 ('2026-11-10T16:45', 'snap-vscode [a1b1851f487ee611c') which | which -a node claude 2>/dev/null
+1 ('2026-11-10T16:54', 'demo-driver [a0116ef265163947f') ls | ls -d ~/.vscode/extensions/anthropic.claude-code-2.1.322-linux-x64/resources/native-binary/claude
+1 ('2026-11-10T17:00', 'main') pgrep | pgrep -fa "native-binary/claude -p"
+1 ('2026-11-10T18:04', 'integrate [af57398dae3cc4610]') ls | ls -d /home/zhengyew/.vscode/extensions/anthropic.claude-code-2.1.322-linux-x64/resources/native-binary/claude 2>/dev/null
+1 ('2026-11-10T18:04', 'integrate [af57398dae3cc4610]') grep | grep -E "walkthrough-claude|demo-driver|smoke.mjs|native-binary/claude"

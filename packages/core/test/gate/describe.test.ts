@@ -66,6 +66,18 @@ describe('AT1.8 the A2 sentences of plan 3.5', () => {
     expect(attemptNotice(report.findings, 1, 3, CTX)).toBe("Attempt 1 didn't pass: it added an axiom (`shortcut`), and only you can add beliefs. Asking Claude to retry.");
   });
 
+  it('turn 13: a statement detached from its block by a blank line', () => {
+    const detached = model(edit(normative(), MAIN, 'stance: rule\nasserted: 2026-11-01\n-/\n/-- PG games', 'stance: rule\nasserted: 2026-11-01\n-/\n\n/-- PG games'));
+    const report = rules('freeze', 'formalise', B, detached);
+    const sentence = 'it left a blank line between “PG games cannot have characters with dark pasts” and its Lean statement';
+    for (const code of ['new-axiom', 'not-formalised']) {
+      const finding = report.findings.find((f) => f.code === code && f.token === 'detached');
+      expect(finding, code).toBeDefined();
+      expect(describeFinding(finding as GateFinding, CTX)).toBe(sentence);
+    }
+    expect(attemptNotice(report.findings, 1, 3, CTX)).toMatch(new RegExp(`^Attempt 1 didn't pass: ${sentence}`));
+  });
+
   it('the user\'s words changed', () => {
     const words = model(edit(normative(), MAIN, 'natural_name: Cynder is a character who has a dark past', 'natural_name: Cynder had a dark past'));
     const report = rules('check', 'formalise', B, words);

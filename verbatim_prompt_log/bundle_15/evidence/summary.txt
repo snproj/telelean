@@ -1,0 +1,168 @@
+.local/share/Steam	cW1=37341 cW2=0 cBetween=27 cAfter=0 | bW1=11219 bW2=0 bBetween=4 bAfter=0 bBefore=26145 | szAll=8902624133 szBornW1=6874036436 szBornW2=0 | W1:11-01T12:21..11-02T03:10
+snap/vivaldi	cW1=4563 cW2=368 cBetween=17958 cAfter=24922 | bW1=4441 bW2=366 bBetween=17479 bAfter=24208 bBefore=1317 | szAll=1980510071 szBornW1=48792198 szBornW2=7737191 | W1:11-01T02:16..11-02T03:42 W2:11-10T17:20..11-10T19:00
+telelean/node_modules	cW1=2198 cW2=60 cBetween=8670 cAfter=0 | bW1=2197 bW2=59 bBetween=0 bAfter=0 bBefore=8672 | szAll=245856112 szBornW1=79421250 szBornW2=3476766 | W1:11-01T02:54..11-02T00:52 W2:11-10T16:39..11-10T18:21
+telelean/packages/core	cW1=153 cW2=191 cBetween=0 cAfter=0 | bW1=315 bW2=3 bBetween=0 bAfter=0 bBefore=26 | szAll=2318281 szBornW1=2120045 szBornW2=54562 | W1:11-01T02:44..11-01T23:52 W2:11-10T17:09..11-10T18:05
+.cache/typescript	cW1=0 cW2=211 cBetween=0 cAfter=0 | bW1=0 bW2=209 bBetween=0 bAfter=0 bBefore=2 | szAll=7264162 szBornW1=0 szBornW2=7264003 | W2:11-10T16:55..11-10T16:55
+snap/discord	cW1=37 cW2=160 cBetween=27532 cAfter=2933 | bW1=26 bW2=149 bBetween=27516 bAfter=2643 bBefore=328 | szAll=676437074 szBornW1=17187791 szBornW2=718183 | W1:11-01T03:04..11-02T03:23 W2:11-10T17:20..11-10T18:21
+telelean/verbatim_prompt_log	cW1=174 cW2=12 cBetween=0 cAfter=36 | bW1=173 bW2=12 bBetween=0 bAfter=35 bBefore=2 | szAll=5350828 szBornW1=4506713 szBornW2=13746 | W1:11-01T02:18..11-02T03:39 W2:11-10T16:19..11-10T16:34
+.claude/projects/-home-zhengyew-telelean	cW1=160 cW2=17 cBetween=0 cAfter=12 | bW1=158 bW2=13 bBetween=0 bAfter=7 bBefore=11 | szAll=239437873 szBornW1=208982922 szBornW2=12893150 | W1:11-01T02:21..11-02T03:39 W2:11-10T16:42..11-10T18:39
+telelean/packages/webview	cW1=97 cW2=62 cBetween=0 cAfter=0 | bW1=132 bW2=3 bBetween=0 bAfter=0 bBefore=24 | szAll=8960055 szBornW1=8436556 szBornW2=861 | W1:11-01T04:07..11-01T22:07 W2:11-10T18:19..11-10T18:21
+telelean/packages/runner	cW1=120 cW2=24 cBetween=0 cAfter=0 | bW1=117 bW2=8 bBetween=0 bAfter=0 bBefore=19 | szAll=1460666 szBornW1=1260563 szBornW2=105141 | W1:11-01T02:56..11-02T00:28 W2:11-10T17:06..11-10T18:19
+telelean/packages/extension	cW1=67 cW2=54 cBetween=0 cAfter=0 | bW1=65 bW2=45 bBetween=0 bAfter=0 bBefore=11 | szAll=18964626 szBornW1=568267 szBornW2=18396359 | W1:11-01T04:07..11-01T21:42 W2:11-10T16:54..11-10T18:21
+telelean/test-fixtures	cW1=86 cW2=17 cBetween=0 cAfter=0 | bW1=88 bW2=14 bBetween=0 bAfter=0 bBefore=1 | szAll=357577 szBornW1=295008 szBornW2=62569 | W1:11-01T04:14..11-01T19:31 W2:11-10T16:45..11-10T17:25
+.npm/_cacache	cW1=0 cW2=51 cBetween=0 cAfter=0 | bW1=0 bW2=32 bBetween=0 bAfter=0 bBefore=19 | szAll=6426386 szBornW1=0 szBornW2=6426386 | W2:11-10T16:55..11-10T16:55
+.cache/mesa_shader_cache	cW1=37 cW2=0 cBetween=548 cAfter=14 | bW1=32 bW2=0 bBetween=358 bAfter=6 bBefore=203 | szAll=2661084 szBornW1=45420 szBornW2=0 | W1:11-01T12:21..11-01T13:34
+.config/Code/User	cW1=28 cW2=0 cBetween=133 cAfter=434 | bW1=26 bW2=0 bBetween=128 bAfter=407 bBefore=34 | szAll=32992051 szBornW1=294988 szBornW2=0 | W1:11-01T13:56..11-02T00:53
+telelean/mental_model	cW1=17 cW2=0 cBetween=0 cAfter=0 | bW1=16 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=2724 szBornW1=2724 szBornW2=0 | W1:11-01T04:10..11-01T05:04
+.local/share/icons	cW1=14 cW2=0 cBetween=0 cAfter=0 | bW1=8 bW2=0 bBetween=0 bAfter=0 bBefore=6 | szAll=36104 szBornW1=36104 szBornW2=0 | W1:11-01T12:22..11-01T12:22
+.npm/_logs	cW1=0 cW2=12 cBetween=0 cAfter=0 | bW1=0 bW2=11 bBetween=0 bAfter=0 bBefore=1 | szAll=12401 szBornW1=0 szBornW2=12401 | W2:11-10T17:20..11-10T17:39
+.steam	cW1=12 cW2=0 cBetween=0 cAfter=0 | bW1=10 bW2=0 bBetween=0 bAfter=0 bBefore=2 | szAll=616 szBornW1=608 szBornW2=0 | W1:11-01T12:21..11-01T12:21
+telelean/docs	cW1=2 cW2=6 cBetween=0 cAfter=0 | bW1=5 bW2=2 bBetween=0 bAfter=0 bBefore=1 | szAll=960592 szBornW1=753888 szBornW2=206704 | W1:11-01T10:27..11-02T00:02 W2:11-10T18:01..11-10T18:39
+.claude/file-history	cW1=3 cW2=4 cBetween=50 cAfter=31 | bW1=3 bW2=4 bBetween=50 bAfter=29 bBefore=2 | szAll=481468 szBornW1=15103 szBornW2=20733 | W1:11-01T13:55..11-01T13:55 W2:11-10T16:29..11-10T18:39
+telelean/scripts	cW1=4 cW2=0 cBetween=0 cAfter=0 | bW1=2 bW2=0 bBetween=0 bAfter=0 bBefore=2 | szAll=52900 szBornW1=21109 szBornW2=0 | W1:11-01T15:40..11-01T17:34
+.local/share/vulkan	cW1=4 cW2=0 cBetween=0 cAfter=0 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=4 | szAll=2202 szBornW1=0 szBornW2=0 | W1:11-01T12:21..11-01T12:21
+Pictures	cW1=3 cW2=0 cBetween=13 cAfter=12 | bW1=3 bW2=0 bBetween=12 bAfter=11 bBefore=2 | szAll=5304888 szBornW1=1110539 szBornW2=0 | W1:11-01T20:08..11-02T01:14
+.cache/claude-cli-nodejs/-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-literal-work-runs-literal-model-literal-17c3a02c-rmwax5aio7f7485-ws	cW1=0 cW2=3 cBetween=0 cAfter=0 | bW1=0 bW2=3 bBetween=0 bAfter=0 bBefore=0 | szAll=9257 szBornW1=0 szBornW2=9257 | W2:11-10T16:43..11-10T16:43
+.cache/claude-cli-nodejs/-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-normative-work-runs-normative-model-normative-0ecdacd5-rmwax39t7aaa9e9-ws	cW1=0 cW2=3 cBetween=0 cAfter=0 | bW1=0 bW2=3 bBetween=0 bAfter=0 bBefore=0 | szAll=8760 szBornW1=0 szBornW2=8760 | W2:11-10T16:41..11-10T16:42
+.cache/claude-cli-nodejs/-home-zhengyew-webring	cW1=3 cW2=0 cBetween=7 cAfter=0 | bW1=4 bW2=0 bBetween=4 bAfter=0 bBefore=2 | szAll=46910 szBornW1=10202 szBornW2=0 | W1:11-01T23:40..11-02T00:57
+.claude/session-env	cW1=2 cW2=0 cBetween=7 cAfter=10 | bW1=2 bW2=0 bBetween=7 bAfter=9 bBefore=1 | szAll=0 szBornW1=0 szBornW2=0 | W1:11-01T23:41..11-02T00:59
+.claude/projects/-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-literal-work-runs-literal-model-literal-17c3a02c-rmwax5aio7f7485-ws	cW1=0 cW2=2 cBetween=0 cAfter=0 | bW1=0 bW2=2 bBetween=0 bAfter=0 bBefore=0 | szAll=193338 szBornW1=0 szBornW2=193338 | W2:11-10T16:43..11-10T16:43
+.claude/projects/-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-demo-1-profile-user-data-User-globalStorage-telelean-telelean-runs-demo-65e9f7ec-rmwb174pbc2fbb9-ws	cW1=0 cW2=2 cBetween=0 cAfter=0 | bW1=0 bW2=2 bBetween=0 bAfter=0 bBefore=0 | szAll=134336 szBornW1=0 szBornW2=134336 | W2:11-10T18:36..11-10T18:36
+.claude/projects/-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-normative-work-runs-normative-model-normative-0ecdacd5-rmwax39t7aaa9e9-ws	cW1=0 cW2=2 cBetween=0 cAfter=0 | bW1=0 bW2=2 bBetween=0 bAfter=0 bBefore=0 | szAll=162611 szBornW1=0 szBornW2=162611 | W2:11-10T16:41..11-10T16:42
+.claude/projects/-tmp-claude-1002--home-zhengyew-telelean-03a29d54-7342-40e3-b5f0-2697a62c93ef-scratchpad-turn13-live-demo-2-profile-user-data-User-globalStorage-telelean-telelean-runs-demo-6cb3ab42-rmwb18qmg8e8eed-ws	cW1=0 cW2=2 cBetween=0 cAfter=0 | bW1=0 bW2=2 bBetween=0 bAfter=0 bBefore=0 | szAll=180316 szBornW1=0 szBornW2=180316 | W2:11-10T18:37..11-10T18:38
+.local/share/applications	cW1=2 cW2=0 cBetween=0 cAfter=0 | bW1=1 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=172 szBornW1=172 szBornW2=0 | W1:11-01T12:22..11-01T12:22
+.npm/_update-notifier-last-checked	cW1=0 cW2=1 cBetween=0 cAfter=0 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=0 szBornW1=0 szBornW2=0 | W2:11-10T16:39..11-10T16:39
+.steampid	cW1=1 cW2=0 cBetween=0 cAfter=0 | bW1=1 bW2=0 bBetween=0 bAfter=0 bBefore=0 | szAll=0 szBornW1=0 szBornW2=0 | W1:11-01T12:21..11-01T12:21
+.steampath	cW1=1 cW2=0 cBetween=0 cAfter=0 | bW1=1 bW2=0 bBetween=0 bAfter=0 bBefore=0 | szAll=0 szBornW1=0 szBornW2=0 | W1:11-01T12:21..11-01T12:21
+.cache/claude-cli-nodejs/-home-zhengyew-telelean-scripts	cW1=1 cW2=0 cBetween=0 cAfter=0 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=2420 szBornW1=0 szBornW2=0 | W1:11-01T13:56..11-01T13:56
+.claude/state	cW1=1 cW2=0 cBetween=0 cAfter=0 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=0 szBornW1=0 szBornW2=0 | W1:11-01T23:40..11-01T23:40
+.claude/projects/-home-zhengyew-webring	cW1=1 cW2=0 cBetween=2 cAfter=0 | bW1=2 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=866109 szBornW1=866109 szBornW2=0 | W1:11-02T00:59..11-02T00:59
+.claude/ide	cW1=1 cW2=0 cBetween=7 cAfter=5 | bW1=1 bW2=0 bBetween=8 bAfter=3 bBefore=1 | szAll=2195 szBornW1=184 szBornW2=0 | W1:11-01T23:22..11-01T23:22
+.local/state/wireplumber	cW1=1 cW2=0 cBetween=0 cAfter=4 | bW1=1 bW2=0 bBetween=0 bAfter=3 bBefore=1 | szAll=10274 szBornW1=1149 szBornW2=0 | W1:11-01T22:23..11-01T22:23
+	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=0 szBornW1=0 szBornW2=0 | 
+.config	cW1=0 cW2=0 cBetween=1 cAfter=0 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=0 szBornW1=0 szBornW2=0 | 
+.config/gtk-3.0	cW1=0 cW2=0 cBetween=0 cAfter=2 | bW1=0 bW2=0 bBetween=0 bAfter=1 bBefore=1 | szAll=152 szBornW1=0 szBornW2=0 | 
+.config/Code	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=0 szBornW1=0 szBornW2=0 | 
+.config/Code/CachedData	cW1=0 cW2=0 cBetween=32 cAfter=7 | bW1=0 bW2=0 bBetween=32 bAfter=3 bBefore=4 | szAll=15289537 szBornW1=0 szBornW2=0 | 
+.config/Code/languagepacks.json	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=2 szBornW1=0 szBornW2=0 | 
+.config/Code/.org.chromium.Chromium.uBMB8A	cW1=0 cW2=0 cBetween=1 cAfter=0 | bW1=0 bW2=0 bBetween=1 bAfter=0 bBefore=0 | szAll=2021 szBornW1=0 szBornW2=0 | 
+.config/Code/Cache	cW1=0 cW2=0 cBetween=35 cAfter=36 | bW1=0 bW2=0 bBetween=34 bAfter=11 bBefore=26 | szAll=2046937 szBornW1=0 szBornW2=0 | 
+.config/Code/TransportSecurity	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=1 bBefore=0 | szAll=1694 szBornW1=0 szBornW2=0 | 
+.config/Code/Preferences	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=1 bBefore=0 | szAll=1671 szBornW1=0 szBornW2=0 | 
+.config/Code/DawnWebGPUCache	cW1=0 cW2=0 cBetween=0 cAfter=2 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=2 | szAll=532848 szBornW1=0 szBornW2=0 | 
+.config/Code/agent-host	cW1=0 cW2=0 cBetween=8 cAfter=3 | bW1=0 bW2=0 bBetween=7 bAfter=1 bBefore=3 | szAll=2149 szBornW1=0 szBornW2=0 | 
+.config/Code/.org.chromium.Chromium.4uEaVa	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=1 bBefore=0 | szAll=2104 szBornW1=0 szBornW2=0 | 
+.config/Code/CachedExtensionVSIXs	cW1=0 cW2=0 cBetween=5 cAfter=7 | bW1=0 bW2=0 bBetween=5 bAfter=6 bBefore=1 | szAll=514511928 szBornW1=0 szBornW2=0 | 
+.config/Code/agentSessionData	cW1=0 cW2=0 cBetween=15 cAfter=15 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=30 | szAll=1904640 szBornW1=0 szBornW2=0 | 
+.config/Code/Crashpad	cW1=0 cW2=0 cBetween=0 cAfter=2 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=2 | szAll=40 szBornW1=0 szBornW2=0 | 
+.config/Code/WebStorage	cW1=0 cW2=0 cBetween=42 cAfter=32 | bW1=0 bW2=0 bBetween=39 bAfter=21 bBefore=14 | szAll=24347923 szBornW1=0 szBornW2=0 | 
+.config/Code/Network Persistent State	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=1 bBefore=0 | szAll=2104 szBornW1=0 szBornW2=0 | 
+.config/Code/Service Worker	cW1=0 cW2=0 cBetween=3 cAfter=8 | bW1=0 bW2=0 bBetween=3 bAfter=4 bBefore=4 | szAll=97361 szBornW1=0 szBornW2=0 | 
+.config/Code/DIPS	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=36864 szBornW1=0 szBornW2=0 | 
+.config/Code/CachedConfigurations	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=1669 szBornW1=0 szBornW2=0 | 
+.config/Code/Code Cache	cW1=0 cW2=0 cBetween=3 cAfter=0 | bW1=0 bW2=0 bBetween=2 bAfter=0 bBefore=1 | szAll=7704 szBornW1=0 szBornW2=0 | 
+.config/Code/.org.chromium.Chromium.7Wjkf6	cW1=0 cW2=0 cBetween=1 cAfter=0 | bW1=0 bW2=0 bBetween=1 bAfter=0 bBefore=0 | szAll=1945 szBornW1=0 szBornW2=0 | 
+.config/Code/SharedStorage-wal	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=1 bBefore=0 | szAll=0 szBornW1=0 szBornW2=0 | 
+.config/Code/Session Storage	cW1=0 cW2=0 cBetween=0 cAfter=4 | bW1=0 bW2=0 bBetween=0 bAfter=2 bBefore=2 | szAll=49219 szBornW1=0 szBornW2=0 | 
+.config/Code/CachedProfilesData	cW1=0 cW2=0 cBetween=2 cAfter=2 | bW1=0 bW2=0 bBetween=0 bAfter=1 bBefore=3 | szAll=3216073 szBornW1=0 szBornW2=0 | 
+.config/Code/.org.chromium.Chromium.RIGlOC	cW1=0 cW2=0 cBetween=1 cAfter=0 | bW1=0 bW2=0 bBetween=1 bAfter=0 bBefore=0 | szAll=2021 szBornW1=0 szBornW2=0 | 
+.config/Code/DawnGraphiteCache	cW1=0 cW2=0 cBetween=0 cAfter=2 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=2 | szAll=532848 szBornW1=0 szBornW2=0 | 
+.config/Code/code.lock	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=1 bBefore=0 | szAll=5 szBornW1=0 szBornW2=0 | 
+.config/Code/blob_storage	cW1=0 cW2=0 cBetween=0 cAfter=2 | bW1=0 bW2=0 bBetween=0 bAfter=1 bBefore=1 | szAll=0 szBornW1=0 szBornW2=0 | 
+.config/Code/.org.chromium.Chromium.L54WGd	cW1=0 cW2=0 cBetween=1 cAfter=0 | bW1=0 bW2=0 bBetween=1 bAfter=0 bBefore=0 | szAll=1945 szBornW1=0 szBornW2=0 | 
+.config/Code/DIPS-wal	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=1 bBefore=0 | szAll=0 szBornW1=0 szBornW2=0 | 
+.config/Code/logs	cW1=0 cW2=0 cBetween=0 cAfter=291 | bW1=0 bW2=0 bBetween=0 bAfter=290 bBefore=1 | szAll=3273557 szBornW1=0 szBornW2=0 | 
+.config/Code/GPUCache	cW1=0 cW2=0 cBetween=0 cAfter=2 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=2 | szAll=532848 szBornW1=0 szBornW2=0 | 
+.config/Code/Local Storage	cW1=0 cW2=0 cBetween=0 cAfter=4 | bW1=0 bW2=0 bBetween=0 bAfter=2 bBefore=2 | szAll=11581 szBornW1=0 szBornW2=0 | 
+.config/ibus	cW1=0 cW2=0 cBetween=0 cAfter=3 | bW1=0 bW2=0 bBetween=0 bAfter=2 bBefore=1 | szAll=756 szBornW1=0 szBornW2=0 | 
+.config/tiling-assistant	cW1=0 cW2=0 cBetween=0 cAfter=2 | bW1=0 bW2=0 bBetween=0 bAfter=1 bBefore=1 | szAll=30 szBornW1=0 szBornW2=0 | 
+.config/monitors.xml~	cW1=0 cW2=0 cBetween=1 cAfter=0 | bW1=0 bW2=0 bBetween=1 bAfter=0 bBefore=0 | szAll=10466 szBornW1=0 szBornW2=0 | 
+.config/dconf	cW1=0 cW2=0 cBetween=0 cAfter=2 | bW1=0 bW2=0 bBetween=0 bAfter=1 bBefore=1 | szAll=12936 szBornW1=0 szBornW2=0 | 
+.config/monitors.xml	cW1=0 cW2=0 cBetween=1 cAfter=0 | bW1=0 bW2=0 bBetween=1 bAfter=0 bBefore=0 | szAll=10468 szBornW1=0 szBornW2=0 | 
+telelean	cW1=0 cW2=0 cBetween=1 cAfter=0 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=0 szBornW1=0 szBornW2=0 | 
+telelean/.git	cW1=0 cW2=0 cBetween=1825 cAfter=1 | bW1=0 bW2=0 bBetween=1826 bAfter=0 bBefore=0 | szAll=7066417 szBornW1=0 szBornW2=0 | 
+spectec	cW1=0 cW2=0 cBetween=1416 cAfter=3721 | bW1=0 bW2=0 bBetween=1462 bAfter=3394 bBefore=281 | szAll=1047345155 szBornW1=0 szBornW2=0 | 
+.java	cW1=0 cW2=0 cBetween=0 cAfter=2 | bW1=0 bW2=0 bBetween=0 bAfter=1 bBefore=1 | szAll=165325 szBornW1=0 szBornW2=0 | 
+.elan/known-projects	cW1=0 cW2=0 cBetween=1 cAfter=0 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=4116 szBornW1=0 szBornW2=0 | 
+.GlobalProtect	cW1=0 cW2=0 cBetween=0 cAfter=4 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=4 | szAll=2455834 szBornW1=0 szBornW2=0 | 
+.vscode-shared	cW1=0 cW2=0 cBetween=0 cAfter=5 | bW1=0 bW2=0 bBetween=0 bAfter=2 bBefore=3 | szAll=69736 szBornW1=0 szBornW2=0 | 
+.rustup	cW1=0 cW2=0 cBetween=191 cAfter=0 | bW1=0 bW2=0 bBetween=191 bAfter=0 bBefore=0 | szAll=683975929 szBornW1=0 szBornW2=0 | 
+.cache	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=0 szBornW1=0 szBornW2=0 | 
+.cache/claude-cli-nodejs	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=0 szBornW1=0 szBornW2=0 | 
+.cache/claude-cli-nodejs/-home-zhengyew-telelean	cW1=0 cW2=0 cBetween=12 cAfter=21 | bW1=0 bW2=0 bBetween=10 bAfter=17 bBefore=6 | szAll=74758 szBornW1=0 szBornW2=0 | 
+.cache/claude-cli-nodejs/-home-zhengyew--config-Code-User-globalStorage-telelean-telelean-runs-telelean-demo-19e26f7b-rmwb7zmyeba3937-ws	cW1=0 cW2=0 cBetween=0 cAfter=3 | bW1=0 bW2=0 bBetween=0 bAfter=3 bBefore=0 | szAll=6158 szBornW1=0 szBornW2=0 | 
+.cache/claude-cli-nodejs/-home-zhengyew-spectec	cW1=0 cW2=0 cBetween=57 cAfter=42 | bW1=0 bW2=0 bBetween=54 bAfter=39 bBefore=6 | szAll=217891 szBornW1=0 szBornW2=0 | 
+.cache/claude-cli-nodejs/-home-zhengyew--config-Code-User-globalStorage-telelean-telelean-runs-telelean-demo-19e26f7b-rmwb8seauc02d67-ws	cW1=0 cW2=0 cBetween=0 cAfter=4 | bW1=0 bW2=0 bBetween=0 bAfter=4 bBefore=0 | szAll=10190 szBornW1=0 szBornW2=0 | 
+.cache/claude-cli-nodejs/-home-zhengyew-yolo	cW1=0 cW2=0 cBetween=5 cAfter=0 | bW1=0 bW2=0 bBetween=5 bAfter=0 bBefore=0 | szAll=5034 szBornW1=0 szBornW2=0 | 
+.cache/gstreamer-1.0	cW1=0 cW2=0 cBetween=0 cAfter=2 | bW1=0 bW2=0 bBetween=0 bAfter=1 bBefore=1 | szAll=1075309 szBornW1=0 szBornW2=0 | 
+.cache/update-manager-core	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=7125 szBornW1=0 szBornW2=0 | 
+.cache/tracker3	cW1=0 cW2=0 cBetween=0 cAfter=23 | bW1=0 bW2=0 bBetween=0 bAfter=15 bBefore=8 | szAll=14155538 szBornW1=0 szBornW2=0 | 
+.cache/wasmtime	cW1=0 cW2=0 cBetween=18 cAfter=0 | bW1=0 bW2=0 bBetween=16 bAfter=0 bBefore=2 | szAll=14213 szBornW1=0 szBornW2=0 | 
+.cache/ibus	cW1=0 cW2=0 cBetween=15 cAfter=3 | bW1=0 bW2=0 bBetween=15 bAfter=2 bBefore=1 | szAll=0 szBornW1=0 szBornW2=0 | 
+.cache/tombi	cW1=0 cW2=0 cBetween=0 cAfter=16 | bW1=0 bW2=0 bBetween=0 bAfter=16 bBefore=0 | szAll=615478 szBornW1=0 szBornW2=0 | 
+.cache/copilot	cW1=0 cW2=0 cBetween=1 cAfter=5 | bW1=0 bW2=0 bBetween=2 bAfter=3 bBefore=1 | szAll=3715 szBornW1=0 szBornW2=0 | 
+.cache/thumbnails	cW1=0 cW2=0 cBetween=169 cAfter=0 | bW1=0 bW2=0 bBetween=167 bAfter=0 bBefore=2 | szAll=27444072 szBornW1=0 szBornW2=0 | 
+.claude.json	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=1 bBefore=0 | szAll=81637 szBornW1=0 szBornW2=0 | 
+.vscode/extensions	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=0 szBornW1=0 szBornW2=0 | 
+.vscode/extensions/ryu1kn.partial-diff-1.4.6	cW1=0 cW2=0 cBetween=11 cAfter=0 | bW1=0 bW2=0 bBetween=11 bAfter=0 bBefore=0 | szAll=1116474 szBornW1=0 szBornW2=0 | 
+.vscode/extensions/tombi-toml.tombi-1.11.2-linux-x64	cW1=0 cW2=0 cBetween=0 cAfter=16 | bW1=0 bW2=0 bBetween=0 bAfter=16 bBefore=0 | szAll=26339494 szBornW1=0 szBornW2=0 | 
+.vscode/extensions/ms-python.vscode-pylance-2026.4.1	cW1=0 cW2=0 cBetween=107 cAfter=0 | bW1=0 bW2=0 bBetween=106 bAfter=0 bBefore=1 | szAll=261462 szBornW1=0 szBornW2=0 | 
+.vscode/extensions/anthropic.claude-code-2.1.322-linux-x64	cW1=0 cW2=0 cBetween=56 cAfter=0 | bW1=0 bW2=0 bBetween=56 bAfter=0 bBefore=0 | szAll=354484018 szBornW1=0 szBornW2=0 | 
+.vscode/extensions/.obsolete	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=1 bBefore=0 | szAll=48 szBornW1=0 szBornW2=0 | 
+.vscode/extensions/leanprover.lean4-0.0.242	cW1=0 cW2=0 cBetween=0 cAfter=1187 | bW1=0 bW2=0 bBetween=0 bAfter=1187 bBefore=0 | szAll=10584073 szBornW1=0 szBornW2=0 | 
+.vscode/extensions/extensions.json	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=1 bBefore=0 | szAll=12724 szBornW1=0 szBornW2=0 | 
+.vscode/extensions/anthropic.claude-code-2.1.323-linux-x64	cW1=0 cW2=0 cBetween=0 cAfter=56 | bW1=0 bW2=0 bBetween=0 bAfter=56 bBefore=0 | szAll=374988743 szBornW1=0 szBornW2=0 | 
+.vscode/extensions/ms-python.vscode-python-envs-1.42.0-linux-x64	cW1=0 cW2=0 cBetween=187 cAfter=0 | bW1=0 bW2=0 bBetween=187 bAfter=0 bBefore=0 | szAll=41554502 szBornW1=0 szBornW2=0 | 
+.vscode/extensions/ms-vscode.cpptools-1.35.6-linux-x64	cW1=0 cW2=0 cBetween=630 cAfter=0 | bW1=0 bW2=0 bBetween=630 bAfter=0 bBefore=0 | szAll=401083734 szBornW1=0 szBornW2=0 | 
+.vscode/extensions/ms-vscode.cmake-tools-1.25.10	cW1=0 cW2=0 cBetween=0 cAfter=395 | bW1=0 bW2=0 bBetween=0 bAfter=395 bBefore=0 | szAll=27815310 szBornW1=0 szBornW2=0 | 
+.vscode/extensions/dnut.rewrap-revived-18.4.1	cW1=0 cW2=0 cBetween=10 cAfter=0 | bW1=0 bW2=0 bBetween=10 bAfter=0 bBefore=0 | szAll=1047836 szBornW1=0 szBornW2=0 | 
+.vscode/argv.json	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=798 szBornW1=0 szBornW2=0 | 
+yolo	cW1=0 cW2=0 cBetween=613 cAfter=0 | bW1=0 bW2=0 bBetween=613 bAfter=0 bBefore=0 | szAll=227295625 szBornW1=0 szBornW2=0 | 
+.claude	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=0 szBornW1=0 szBornW2=0 | 
+.claude/plugins	cW1=0 cW2=0 cBetween=0 cAfter=7 | bW1=0 bW2=0 bBetween=0 bAfter=4 bBefore=3 | szAll=2805311 szBornW1=0 szBornW2=0 | 
+.claude/backups	cW1=0 cW2=0 cBetween=0 cAfter=6 | bW1=0 bW2=0 bBetween=0 bAfter=5 bBefore=1 | szAll=408027 szBornW1=0 szBornW2=0 | 
+.claude/shell-snapshots	cW1=0 cW2=0 cBetween=5 cAfter=2 | bW1=0 bW2=0 bBetween=5 bAfter=1 bBefore=1 | szAll=36182 szBornW1=0 szBornW2=0 | 
+.claude/sessions	cW1=0 cW2=0 cBetween=12 cAfter=5 | bW1=0 bW2=0 bBetween=12 bAfter=4 bBefore=1 | szAll=6430 szBornW1=0 szBornW2=0 | 
+.claude/skills	cW1=0 cW2=0 cBetween=17 cAfter=221 | bW1=0 bW2=0 bBetween=17 bAfter=220 bBefore=1 | szAll=3833688 szBornW1=0 szBornW2=0 | 
+.claude/.last-cleanup	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=24 szBornW1=0 szBornW2=0 | 
+.claude/settings.json	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=1 bBefore=0 | szAll=358 szBornW1=0 szBornW2=0 | 
+.claude/telemetry	cW1=0 cW2=0 cBetween=4 cAfter=1 | bW1=0 bW2=0 bBetween=4 bAfter=0 bBefore=1 | szAll=1460971 szBornW1=0 szBornW2=0 | 
+.claude/.credentials.json	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=1 bBefore=0 | szAll=559 szBornW1=0 szBornW2=0 | 
+.claude/cache	cW1=0 cW2=0 cBetween=0 cAfter=2 | bW1=0 bW2=0 bBetween=0 bAfter=1 bBefore=1 | szAll=16042 szBornW1=0 szBornW2=0 | 
+.claude/projects	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=0 szBornW1=0 szBornW2=0 | 
+.claude/projects/-home-zhengyew--config-Code-User-globalStorage-telelean-telelean-runs-telelean-demo-19e26f7b-rmwb7zmyeba3937-ws	cW1=0 cW2=0 cBetween=0 cAfter=2 | bW1=0 bW2=0 bBetween=0 bAfter=2 bBefore=0 | szAll=138097 szBornW1=0 szBornW2=0 | 
+.claude/projects/-home-zhengyew-spectec	cW1=0 cW2=0 cBetween=834 cAfter=106 | bW1=0 bW2=0 bBetween=837 bAfter=99 bBefore=4 | szAll=188068991 szBornW1=0 szBornW2=0 | 
+.claude/projects/-home-zhengyew--config-Code-User-globalStorage-telelean-telelean-runs-telelean-demo-19e26f7b-rmwb8seauc02d67-ws	cW1=0 cW2=0 cBetween=0 cAfter=2 | bW1=0 bW2=0 bBetween=0 bAfter=2 bBefore=0 | szAll=140537 szBornW1=0 szBornW2=0 | 
+.claude/projects/-home-zhengyew-yolo	cW1=0 cW2=0 cBetween=41 cAfter=0 | bW1=0 bW2=0 bBetween=41 bAfter=0 bBefore=0 | szAll=21767495 szBornW1=0 szBornW2=0 | 
+.opam	cW1=0 cW2=0 cBetween=21 cAfter=10 | bW1=0 bW2=0 bBetween=21 bAfter=9 bBefore=1 | szAll=313034 szBornW1=0 szBornW2=0 | 
+.gnupg	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=0 szBornW1=0 szBornW2=0 | 
+.cargo	cW1=0 cW2=0 cBetween=20 cAfter=0 | bW1=0 bW2=0 bBetween=20 bAfter=0 bBefore=0 | szAll=21404732 szBornW1=0 szBornW2=0 | 
+.dotnet	cW1=0 cW2=0 cBetween=4 cAfter=0 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=4 | szAll=258715 szBornW1=0 szBornW2=0 | 
+.copilot/ide	cW1=0 cW2=0 cBetween=0 cAfter=3 | bW1=0 bW2=0 bBetween=0 bAfter=2 bBefore=1 | szAll=625 szBornW1=0 szBornW2=0 | 
+.copilot/logs	cW1=0 cW2=0 cBetween=14 cAfter=8 | bW1=0 bW2=0 bBetween=15 bAfter=6 bBefore=1 | szAll=13761 szBornW1=0 szBornW2=0 | 
+.lesshst	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=1 bBefore=0 | szAll=20 szBornW1=0 szBornW2=0 | 
+telelean-demo	cW1=0 cW2=0 cBetween=0 cAfter=203 | bW1=0 bW2=0 bBetween=0 bAfter=203 bBefore=0 | szAll=91132 szBornW1=0 szBornW2=0 | 
+.bash_history	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=21803 szBornW1=0 szBornW2=0 | 
+webring	cW1=0 cW2=0 cBetween=1 cAfter=0 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=12189 szBornW1=0 szBornW2=0 | 
+Downloads	cW1=0 cW2=0 cBetween=18 cAfter=2 | bW1=0 bW2=0 bBetween=17 bAfter=1 bBefore=2 | szAll=2636780 szBornW1=0 szBornW2=0 | 
+snap	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=0 szBornW1=0 szBornW2=0 | 
+snap/telegram-desktop	cW1=0 cW2=0 cBetween=77 cAfter=8654 | bW1=0 bW2=0 bBetween=57 bAfter=8650 bBefore=24 | szAll=892854182 szBornW1=0 szBornW2=0 | 
+snap/snap-store	cW1=0 cW2=0 cBetween=49 cAfter=0 | bW1=0 bW2=0 bBetween=35 bAfter=0 bBefore=14 | szAll=8962 szBornW1=0 szBornW2=0 | 
+snap/firmware-updater	cW1=0 cW2=0 cBetween=0 cAfter=3 | bW1=0 bW2=0 bBetween=0 bAfter=1 bBefore=2 | szAll=0 szBornW1=0 szBornW2=0 | 
+snap/code	cW1=0 cW2=0 cBetween=1 cAfter=0 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=0 szBornW1=0 szBornW2=0 | 
+snap/code/278	cW1=0 cW2=0 cBetween=729 cAfter=1 | bW1=0 bW2=0 bBetween=730 bAfter=0 bBefore=0 | szAll=432522840 szBornW1=0 szBornW2=0 | 
+snap/code/current	cW1=0 cW2=0 cBetween=1 cAfter=0 | bW1=0 bW2=0 bBetween=1 bAfter=0 bBefore=0 | szAll=0 szBornW1=0 szBornW2=0 | 
+snap/code/267	cW1=0 cW2=0 cBetween=1 cAfter=0 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=0 szBornW1=0 szBornW2=0 | 
+snap/code/common	cW1=0 cW2=0 cBetween=24 cAfter=0 | bW1=0 bW2=0 bBetween=23 bAfter=0 bBefore=1 | szAll=6401 szBornW1=0 szBornW2=0 | 
+snap/snapd-desktop-integration	cW1=0 cW2=0 cBetween=136 cAfter=3 | bW1=0 bW2=0 bBetween=115 bAfter=1 bBefore=23 | szAll=3437902 szBornW1=0 szBornW2=0 | 
+GP_HTML	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=0 szBornW1=0 szBornW2=0 | 
+.local/share	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=1 | szAll=0 szBornW1=0 szBornW2=0 | 
+.local/share/recently-used.xbel	cW1=0 cW2=0 cBetween=0 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=1 bBefore=0 | szAll=235625 szBornW1=0 szBornW2=0 | 
+.local/share/gnome-shell	cW1=0 cW2=0 cBetween=0 cAfter=2 | bW1=0 bW2=0 bBetween=0 bAfter=1 bBefore=1 | szAll=898 szBornW1=0 szBornW2=0 | 
+.local/share/Trash	cW1=0 cW2=0 cBetween=14 cAfter=14 | bW1=0 bW2=0 bBetween=15 bAfter=9 bBefore=4 | szAll=15880105 szBornW1=0 szBornW2=0 | 
+.local/share/icc	cW1=0 cW2=0 cBetween=3 cAfter=2 | bW1=0 bW2=0 bBetween=3 bAfter=1 bBefore=1 | szAll=6388 szBornW1=0 szBornW2=0 | 
+.local/share/evolution	cW1=0 cW2=0 cBetween=0 cAfter=2 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=2 | szAll=94208 szBornW1=0 szBornW2=0 | 
+.local/share/org.gnome.TextEditor	cW1=0 cW2=0 cBetween=6 cAfter=0 | bW1=0 bW2=0 bBetween=4 bAfter=0 bBefore=2 | szAll=13843 szBornW1=0 szBornW2=0 | 
+.local/share/gvfs-metadata	cW1=0 cW2=0 cBetween=0 cAfter=3 | bW1=0 bW2=0 bBetween=0 bAfter=2 bBefore=1 | szAll=32832 szBornW1=0 szBornW2=0 | 
+.local/share/nautilus	cW1=0 cW2=0 cBetween=1 cAfter=1 | bW1=0 bW2=0 bBetween=0 bAfter=0 bBefore=2 | szAll=0 szBornW1=0 szBornW2=0 | 
+.local/share/keyrings	cW1=0 cW2=0 cBetween=0 cAfter=2 | bW1=0 bW2=0 bBetween=0 bAfter=1 bBefore=1 | szAll=2717 szBornW1=0 szBornW2=0 | 

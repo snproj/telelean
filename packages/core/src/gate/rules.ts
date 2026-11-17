@@ -117,6 +117,24 @@ export function evaluate(input: RuleInput): RuleReport {
   const targetStatements = new Set([baseTarget?.lean.statement, curTarget?.lean.statement, freeze?.targetStatement].filter((s): s is string => s !== undefined));
   const ghosts = [...new Set(selection.adoptedGhosts)];
   const chosen = new Set<string>([selection.target, ...selection.premises, ...ghosts]);
+  /**
+   * A chosen card left code-less only because a blank line separates its block from the declaration below it (TL013):
+   * that declaration's full name. Turn 13: on a fresh model the agent formalises code-less cards, and one stray blank
+   * line made the gate call the card unformalised and the assumption's `.holds` a belief, which told Claude to remove
+   * it; the findings now name the blank line instead (the verdicts are unchanged).
+   */
+  const detachedStatementOf = (id: string): string | undefined => {
+    const entry = current.nodes.get(id);
+    if (entry === undefined || entry.node.lean.binding !== 'none') return undefined;
+    const gap = entry.block.binding.gapDecl;
+    return gap === undefined ? undefined : current.files.get(entry.file)?.decls[gap]?.fullName;
+  };
+  /** `.holds` of a detached statement of a chosen card -> that card. */
+  const detachedHolds = new Map<string, string>();
+  for (const id of chosen) {
+    const statement = detachedStatementOf(id);
+    if (statement !== undefined) detachedHolds.set(holdsName(statement), id);
+  }
 
   const short = (name: string) => relativeName(name, [subject]);
   const at = (entry: DeclEntry | undefined): { file?: string; range?: Range } => (entry ? { file: entry.file.path, range: entry.decl.range } : {});
@@ -299,6 +317,19 @@ export function evaluate(input: RuleInput): RuleReport {
     } else if (why === 'statement') {
       what = `is an axiom${type} directly below the block of the card ${owner} (${quote(sentence(owner ?? ''))}), so it would be that card's statement: a card's statement is \`abbrev <name> : Prop := …\`, never an axiom, and the only axioms you may add are the .holds of the selected ASSUMPTION cards and vocabulary (in Vocabulary.lean, not directly below a block)`;
       token = belief ? 'belief' : 'statement';
+    } else if (why === 'belief' && detachedHolds.has(name)) {
+      const id = detachedHolds.get(name) ?? '';
+      const statement = statementOfHolds(name) ?? name;
+      push({
+        step: 'G3',
+        code: 'new-axiom',
+        message: `${loc(entry)}${name} would be the .holds of ${statement}, but a blank line separates ${statement} from the block of the card ${id} (${quote(sentence(id))}), so the card has no statement and this axiom asserts nothing the person holds: remove the blank line between the block and the statement (the statement goes directly below the block), and keep the axiom.`,
+        names: [name],
+        token: 'detached',
+        nodeId: id,
+        ...at(entry),
+      });
+      continue;
     } else if (why === 'belief') {
       what = `is a Prop-valued axiom (a belief${type}): only the person adds beliefs; propose a missing premise with propose_assumption instead`;
       token = 'belief';
@@ -596,6 +627,20 @@ export function evaluate(input: RuleInput): RuleReport {
       const assumption = id !== selection.target;
       if (!formalised(current, n)) {
         const now = bound(n);
+        const detached = now === undefined ? detachedStatementOf(id) : undefined;
+        if (detached !== undefined) {
+          push({
+            step: 'G3',
+            code: 'not-formalised',
+            message: `${where(entry.file, entry.block.range)}: the card ${id} (${quote(n.naturalName)}) has no Lean statement: ${detached} follows its block after a blank line, so it is not attached; remove the blank line (the statement goes directly below the block).`,
+            nodeId: id,
+            names: [detached],
+            token: 'detached',
+            file: entry.file,
+            range: entry.block.range,
+          });
+          continue;
+        }
         const what = now !== undefined ? `is bound to ${now}, which is not a Prop statement (${malformedReason(current, n)})` : 'has no Lean statement';
         push({
           step: 'G3',

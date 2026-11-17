@@ -7,10 +7,27 @@
  * as a `diff` 9.0.0 structured patch with exactly 3 context lines, applied to the user's real text with no fuzz.
  * Because of the context lines, a user's edit within 3 lines of a change of Claude's makes the hunk unplaceable,
  * which is reported as a conflict naming the file. (diff 9.0.0's own default is 4 context lines; the plan fixes 3.)
+ *
+ * Turn 13 (fresh models, the demo path): the board's own edits are taken out first and put back afterwards (see
+ * `boardEditsOf`): cards the person added at the end of a namespace and rationales they wrote. On a freshly typed
+ * Inbox every card is within 3 lines of Claude's formalisation, so before this any card added or reason given while
+ * Claude worked made Accept a conflict. Everything else keeps the 3-line rule; Accept re-gates whatever it merges.
  */
 import { applyPatch, structuredPatch } from 'diff';
 
-import type { FileChange, FileChangeKind, ProposalFile } from '@telelean/core';
+import {
+  applyTextEdits,
+  insertBlockEdits,
+  parseLeanFile,
+  removeBlockEdits,
+  setBlockField,
+  type FileChange,
+  type FileChangeKind,
+  type MarkupBlock,
+  type ParsedFile,
+  type ProposalFile,
+  type TextEdit,
+} from '@telelean/core';
 
 import { isModelOrProjectFile } from '../workspace/files.js';
 
@@ -69,7 +86,117 @@ export function mergeFile(path: string, base: string | null, shown: string | nul
   if (base === null || shown === null || real === null) return { ok: false };
   const patch = structuredPatch(path, path, base, shown, undefined, undefined, { context: MERGE_CONTEXT_LINES });
   const merged = applyPatch(real, patch, { fuzzFactor: 0 });
-  return merged === false ? { ok: false } : { ok: true, text: merged };
+  if (merged !== false) return { ok: true, text: merged };
+  // Turn 13: the board's own edits are placed by card id instead of by line, so they never overlap Claude's.
+  const board = path.endsWith('.lean') ? boardEditsOf(path, base, real) : undefined;
+  if (board === undefined) return { ok: false };
+  const onRest = board.rest === base ? shown : applyPatch(board.rest, patch, { fuzzFactor: 0 });
+  if (onRest === false) return { ok: false };
+  const restored = board.restore(onRest);
+  return restored === undefined ? { ok: false } : { ok: true, text: restored };
+}
+
+/** The board's edits of one file, taken out of the user's text (`rest`) and put back into a merged text. */
+export interface BoardEdits {
+  /** The user's text without those edits (the 3-line patch is applied to it). */
+  rest: string;
+  /** The merged text with the edits put back by card id, or undefined when they no longer fit. */
+  restore(merged: string): string | undefined;
+}
+
+const blockText = (file: ParsedFile, block: MarkupBlock): string => file.text.slice(block.span.start, block.span.end);
+const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * The edits the board makes while a run works (turn 13), when they are ALL the user changed in `real` apart from
+ * text the 3-line patch can still place:
+ *  - a card added by the A|D|G box: a new block (an id the base does not have, `id:` written, no `lean:` field,
+ *    bound to nothing) followed by nothing but blank space and other such blocks up to the `end <namespace>` line
+ *    of its (single) namespace, exactly where `add-node` puts it; it goes back to the end of that namespace;
+ *  - a rationale written or changed on an existing card (the board asks for one on every assumption): the block
+ *    reads exactly as in the base once its `rationale:` field is set back; the field goes back on that card. A
+ *    rationale has no formal effect; every other field (the sentence above all) keeps the 3-line rule, so a
+ *    sentence changed next to Claude's formalisation of it stays a conflict.
+ * Undefined when there is no such edit, or when the file cannot be read as telelean text.
+ */
+export function boardEditsOf(path: string, base: string, real: string): BoardEdits | undefined {
+  const b = parseLeanFile(path, base);
+  const r = parseLeanFile(path, real);
+  const baseBlocks = new Map(b.blocks.map((block) => [block.id, block]));
+  if (baseBlocks.size !== b.blocks.length || new Set(r.blocks.map((block) => block.id)).size !== r.blocks.length) return undefined;
+
+  // Rationales: set back to the base's value, after which the block must read exactly as in the base.
+  const rationales: Array<{ id: string; value: string | null }> = [];
+  const rationaleEdits: TextEdit[] = [];
+  for (const block of r.blocks) {
+    const was = baseBlocks.get(block.id);
+    if (was === undefined || blockText(r, block) === blockText(b, was)) continue;
+    if ((block.fields.rationale ?? null) === (was.fields.rationale ?? null)) continue;
+    rationales.push({ id: block.id, value: block.fields.rationale ?? null });
+    rationaleEdits.push(...setBlockField(r, block, 'rationale', was.fields.rationale ?? null));
+  }
+  let rest = rationaleEdits.length > 0 ? applyTextEdits(real, rationaleEdits) : real;
+  if (rationales.length > 0) {
+    const restFile = parseLeanFile(path, rest);
+    for (const { id } of rationales) {
+      const now = restFile.blocks.find((block) => block.id === id);
+      const was = baseBlocks.get(id);
+      if (now === undefined || was === undefined || blockText(restFile, now) !== blockText(b, was)) return undefined;
+    }
+  }
+
+  // Added cards: the run of new blocks that ends the file's namespace (only blank space between them and after the
+  // last one before `end <namespace>`), in file order.
+  const eligible = (block: MarkupBlock): boolean =>
+    !baseBlocks.has(block.id) && block.idWritten && block.fields.lean === undefined && block.binding.mode === 'none' && block.namespace?.length === 1;
+  const cards: Array<{ id: string; text: string; namespace: string }> = [];
+  let after: { start: number; namespace: string } | undefined;
+  for (let i = r.blocks.length - 1; i >= 0; i--) {
+    const block = r.blocks[i] as MarkupBlock;
+    if (!eligible(block)) break;
+    const namespace = (block.namespace as string[])[0] as string;
+    const following = real.slice(block.span.end, after?.start ?? real.length);
+    const fits =
+      after === undefined ? new RegExp(`^\\s*end\\s+${escapeRegExp(namespace)}(?![\\w.'!?])`).test(following) : after.namespace === namespace && /^\s*$/.test(following);
+    if (!fits) break;
+    cards.unshift({ id: block.id, text: blockText(r, block), namespace });
+    after = { start: block.span.start, namespace };
+  }
+  for (const card of cards) {
+    const file = parseLeanFile(path, rest);
+    const block = file.blocks.find((x) => x.id === card.id);
+    if (block === undefined) return undefined;
+    rest = applyTextEdits(rest, removeBlockEdits(file, block));
+  }
+  if (rationales.length === 0 && cards.length === 0) return undefined;
+
+  return {
+    rest,
+    restore(merged: string): string | undefined {
+      let text = merged;
+      for (const { id, value } of rationales) {
+        const file = parseLeanFile(path, text);
+        const block = file.blocks.find((x) => x.id === id);
+        if (block === undefined) return undefined;
+        text = applyTextEdits(text, setBlockField(file, block, 'rationale', value));
+      }
+      for (const card of cards) {
+        const file = parseLeanFile(path, text);
+        if (file.blocks.some((x) => x.id === card.id)) return undefined;
+        text = applyTextEdits(text, insertBlockEdits(file, card.text, { kind: 'end-of-namespace', namespace: card.namespace }));
+      }
+      // What was put back reads as the user wrote it.
+      const out = parseLeanFile(path, text);
+      for (const card of cards) {
+        const block = out.blocks.find((x) => x.id === card.id);
+        if (block === undefined || blockText(out, block) !== card.text || block.binding.mode !== 'none') return undefined;
+      }
+      for (const { id, value } of rationales) {
+        if ((out.blocks.find((x) => x.id === id)?.fields.rationale ?? null) !== value) return undefined;
+      }
+      return text;
+    },
+  };
 }
 
 /** "a", "a and b", "a, b and c". */
@@ -78,7 +205,11 @@ export function listing(items: readonly string[]): string {
   return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1] ?? ''}`;
 }
 
-/** The refusal sentence of a rebase conflict (docs/m2-plan.md section 7.1 step 3). */
+/**
+ * The refusal sentence of a rebase conflict (docs/m2-plan.md section 7.1 step 3). Turn 13: it used to offer "Feedback to
+ * redo it on your current files", but Feedback continues on the run's working copy (it never rebases onto the person's
+ * files), so the same Accept met the same conflict; undoing the overlapping edits is what makes the patch fit.
+ */
 export function conflictMessage(files: readonly string[]): string {
-  return `Your edits to ${listing(files)} since the run started overlap Claude's; Discard, or Feedback to redo it on your current files.`;
+  return `Your edits to ${listing(files)} since the run started overlap Claude's; Discard, or undo those edits and Accept again.`;
 }

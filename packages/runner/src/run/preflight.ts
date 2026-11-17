@@ -6,14 +6,15 @@
  *                the target is not among the premises
  *   3 workspace  the ModelWorkspace implements the M2 members and the subject loads
  *   4 toolchain  lean-toolchain pins leanprover/lean4:v4.35.0 (D-7), a lakefile exists, the manifest lists no packages
- *   5 sandbox    lean.checkSandboxSupport()
+ *   5 sandbox    lean.checkSandboxSupport(), then lean.checkUserNamespaces() (turn 13: bwrap can create its namespaces,
+ *                which a kernel's AppArmor userns restriction prevents outside the VS Code snap)
  *   6 memory     MemAvailable >= the guard
  * The CLI's own checks (guard self-test, subscription login, hooks listing) come at session start, also before the
  * first prompt.
  */
 import { PINNED_TOOLCHAIN_NAME, type TlGraph } from '@telelean/core';
 
-import { checkSandboxSupport } from '../lean/runLean.js';
+import { checkSandboxSupport, checkUserNamespaces } from '../lean/runLean.js';
 import { readMemAvailableBytes } from '../semantic/index.js';
 import type { ModelWorkspace } from '../workspace/types.js';
 import type { PreflightInput, PreflightOutcome, PreflightProblem } from './types.js';
@@ -101,7 +102,7 @@ export async function preflight(input: PreflightInput): Promise<PreflightOutcome
   const toolchain = await toolchainProblem(input);
   if (toolchain !== undefined) return refuse('toolchain', toolchain);
   // 5. sandbox
-  const sandbox = await (input.checkSandbox ?? (() => checkSandboxSupport()))();
+  const sandbox = await (input.checkSandbox ?? (async () => (await checkSandboxSupport()) ?? (await checkUserNamespaces())))();
   if (sandbox !== undefined) return refuse('sandbox', `Lean's sandbox is not available, so telelean cannot check Claude's work: ${sandbox}.`);
   // 6. memory
   const available = (input.readMemAvailable ?? readMemAvailableBytes)();

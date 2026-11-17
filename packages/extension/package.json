@@ -223,6 +223,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "test:unit": "vitest run",
     "test:smoke": "node scripts/smoke.mjs",
+    "test:smoke:snap": "node scripts/smoke.mjs --snap",
+    "demo": "node scripts/demo-driver.mjs",
     "test": "npm run typecheck && npm run build:all && npm run test:unit && npm run test:smoke"
   }
 }
