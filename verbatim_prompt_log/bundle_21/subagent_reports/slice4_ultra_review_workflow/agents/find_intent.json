@@ -1,0 +1,173 @@
+{
+  "summary": "I checked the slice-4 plan (/tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/plans/slice4-plan.md) clause by clause against the user's own words, then against the spec §8 clauses it implements:\n- prompt20: TRANSFORM 1–10, DECLINE OPTIONS 2–3, REVIEW 2/4/8, FROZEN 2–5, INITIATING 2;\n- prompt21 ¶11;\n- the mid-turn messages: D1, D3, D6 and message 3 (undo, a base that never changes).\n\nEvery slice-4 row of the coverage audit's checklist has a home in the plan, and most narrowings are logged. Ten problems are still major:\n- **F1. The direct path skips the end-of-session confirmation.** The provisional session ends without the popup that REVIEW 8 and EN-2 require. Freeze changes made in the window are dropped with no keep ticks, although Cancel with the same changes gets a dialog.\n- **F2. A typed field set to \"open\" is still frozen for Claude.** The typed write gives it a TransformFreeze anyway, so Claude is told it may change the field, is refused, and the whole transform is rolled back.\n- **F3. A \"frozen for this transform\" chip expires on its own mid-session.** That goes against FROZEN 3. D4-10's reasoning covers only the starting states, not a chip the user sets.\n- **F4. TW-1 blocks status-changing freeze actions in the window.** This goes against FROZEN 4 (\"At ALL times … in all interfaces\"), and it leaves the plan's own \"unfreeze it, or type it\" message with no working Unfreeze.\n- **F5. D4-15 narrows TRANSFORM 4 without listing the user's reading.** A new card cannot have typed fields or typed arrows while its sentence is left to Claude, and the log lists neither the user's reading nor a reason.\n- **F6. D4-14 narrows TRANSFORM 9 and REVIEW 4 for suggested premises while saying it honours them.** A premise window takes no instructions, no fuzzy fields, no new cards, no trash, and no place in a group window.\n- **F7. With \"Claude may add cards\" off, Claude may still add definitions and instances.** That goes beyond TR-7's \"plain vocabulary\", beyond TRANSFORM 6's \"strictly stick\", and beyond the hint the user sees.\n- **F8. D4-12 keeps Shaky splits and removals out permanently, with no reason given.** This drops the user's own DECLINE OPTIONS 3 example, and no later slice builds it.\n- **F9. The window has no undo for its own edits.** Ctrl+Z there can undo an unseen freeze made before the window opened (message 3).\n- **F10. The Kind control lets an axiom become a proposition with no dependency.** The user's turn-21 text forbids exactly that move, and the window blocks the route the user described: an axiom's Dependencies are struck through.\n\nThere are also eight minor findings (F11–F18) and three nits (F19–F21). They cover:\n- the direct path not freezing new cards' fields while its text says otherwise;\n- a lock text that tells the user to edit their files mid-session;\n- whole-model Formalize in a transform-started session;\n- the misleading \"Leave it to Claude\" for proof dependents;\n- frozen dependents blocking a direct transform;\n- labels for typed items;\n- lemma cards;\n- queue order;\n- unlogged caps, the user guide's coverage, and one ambiguous phrase.\n\nNone of the findings breaks a mechanical safety property: in each case Claude's changes still reach the user only as reviewed items, so no blocker is raised.",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "major",
+      "where": "§3.6 steps 1–3 (direct path); §4.6 outcome 'direct'; §3.1 'Cancel is Exit'; D4-3, D4-16",
+      "problem": "The direct path ends a real session (D4-2 calls it one) with no confirmation popup. Freezes made in the window are dropped and the typed fields become standing freezes; the window's OutcomeLine sentence names neither. The user's words: \"There should be a warning/confirmation popup before an edit session ends, successfully or not. This window should also tell him which cards / card fields will be automatically frozen / unfrozen after the session ends (see FROZEN).\" EN-2 allows one exception only: Cancel when no freezes changed. No AUTOPILOT DECISION narrows this.",
+      "scenario": "With no session, the user opens Transform cards… on A and B. In the window's Context Menu they Unfreeze a standing freeze on A's Why and Freeze card C, to keep it frozen. They then edit A's sentence and press Submit, which gives outcome `direct`. The runner ends the session and drops both freeze changes. A's sentence silently becomes a standing freeze. No popup or list appears, and nothing can be kept. Pressing Cancel with the same freeze changes would have opened slice 3's Exit dialog with keep ticks, so Submit is the less protected path.",
+      "fix": "In §3.6, before the runner ends the provisional session, show a confirmation dialog (EN-2's exception covers only Cancel without freeze changes). It lists:\n- the changes, as links;\n- what the user typed;\n- the fields that become standing freezes (D4-16);\n- each freeze change made in the window, with a keep tick (as Exit offers for content in the files).\n\nIts Back button returns to the window. `submitTransform` with `direct` then requires `confirmed.outcome` from that dialog. If the dialog is to be skipped when no freeze changed, log that as a D4 decision narrowing REVIEW 8 and EN-2."
+    },
+    {
+      "id": "F2",
+      "severity": "major",
+      "where": "§2.1 `typedKeys`; §3.2 'States are the transform's own'; §3.11 'Transform'; §3.9 step 4 (frozen and held); §2.8 Turns ('open: you may change it')",
+      "problem": "`typedKeys` holds \"every target whose value the typed write changes\", and each one gets a TransformFreeze. A field the user typed and then set to **open** with the chip therefore still gets a session freeze. Meanwhile the chip, the scope's `open` list (computed before the freeze exists) and Claude's turn all say Claude may change it. The user's words: \"The user can manually fill in a card's fields, which would make that field FROZEN\". FROZEN 4 lets the user unfreeze it, and TR-4 defines open as \"Claude may change it if the transform needs it\". The plan does not honour that unfreeze.",
+      "scenario": "In a stage, the user types a draft sentence for C, sets its chip to \"open: Claude may change it\", writes \"polish the wording\" and submits (`queue-claude`). At Submit review the typed write writes the sentence and adds a TransformFreeze for it. Claude's turn says \"you may change it\", so Claude rewrites it. The gate compares the key with the TransformFreeze, never excused by S₀, and refuses. After 3 attempts the whole transform is rolled back (D4-4) with `lastFailure`, and the user's chip was never respected.",
+      "fix": "In §2.1 and §3.11:\n- `typedKeys`, and so the TransformFreezes, cover only fields whose final draft state is frozen or kept empty, plus follow-on edits.\n- A changed field left open is still written by telelean as a starting value. It is a typed unit, so it stays the user's if Claude leaves it (D4-1). It stays in `TransformScope.open` and gets no session freeze.\n- Add tests to 4e and 4h for this case.\n\nAlternative: disable 'open' on a typed field, with the text \"You typed it: it stays frozen (TR-5)\"."
+    },
+    {
+      "id": "F3",
+      "severity": "major",
+      "where": "D4-10; §3.2; §4.3 state chip ('frozen for this transform', 'kept empty'); §3.11 'In the window'",
+      "problem": "The window shows a field state labelled \"frozen\" that is not a FROZEN status. It is a limit for this transform only, and it disappears automatically when the transform step ends, while the session goes on. The user's words: \"Claude can *never* edit a frozen card under any circumstances\" and \"The only time frozen status can be removed automatically is if a card was frozen during an EDIT SESSION and that same session has ended.\" D4-10's reason (\"would block a later Formalize from filling a statement kept empty\") covers the starting states, not a chip the user clicks to frozen or kept empty.",
+      "scenario": "In a stage, the user opens a window on C. They see C's Lean statement as \"frozen for this transform\", set C's Why chip to frozen as well, and add instructions. The transform runs. In the next stage they decline C's Change item as Shaky, or run a whole-model Formalize, and Claude changes C's Lean statement and Why. The \"frozen\" the user saw ended without any action of theirs, mid-session, and the board never showed an aura for it.",
+      "fix": "Stop calling the transform-only limit \"frozen\":\n- rename the chip states, e.g. \"kept as is in this transform\" and \"left empty in this transform\", with no lock and no aura;\n- keep \"frozen\" for real freezes: the typed fields' `transform` reason and the Context Menu's Freeze.\n\nAlternative (D4-10's own): when the user changes a chip to frozen or kept empty, make it an own session freeze at queueing, and keep only the starting states transform-only. Either way, D4-10 should name FROZEN 3 as the clause it bears on."
+    },
+    {
+      "id": "F4",
+      "severity": "major",
+      "where": "§2.7 TW-1; D4-18; §3.2 problem 'unfreeze it, or type it'; §4.2 row 3 (the window's Context Menu)",
+      "problem": "While a window is open, TW-1 refuses \"a freeze action that changes an item's status\": an Unfreeze of accepted content, Unfreeze all other cards with \"also un-accept\", and FZ-10's \"your version\". The user's words: \"At ALL times (at all stages in all interfaces) where a card or its fields are visible, a user should be able to select a card or its fields and click a 'freeze' or 'unfreeze' option in the CONTEXT MENU at any time.\" D4-18 cites RV-3, RV-9 and ES-9, never FZ-9 or FROZEN 4. Its reason (keeping the draft from going stale) does not hold for status-only changes, because Submit transform recomputes the analysis anyway (§3.7).",
+      "scenario": "C's Formalize item is accepted. The user opens Transform cards… on C and clears its Lean statement so Claude can reformalise it. The panel says \"You asked Claude to fill it, but it is frozen in this session (accepted): unfreeze it, or type it.\" The user selects the field and clicks Unfreeze in the window's Context Menu. TW-1 refuses it: \"A transform window is open: finish or cancel it first.\" The only route left is to Cancel (losing the draft), Unfreeze, reopen the window and redo the draft.",
+      "fix": "In TW-1:\n- allow freeze actions whose only effect is on statuses: Unfreeze with RV-5's list, and Unfreeze all other cards with \"also un-accept\";\n- recompute the window's analysis after them (outcome, choices, cascade preview);\n- refuse only actions that change the working copy (FZ-10's \"your version\", which rejects an item), with a text naming that reason.\n\nRecord that remaining narrowing in D4-18 against FROZEN 4 and FZ-9."
+    },
+    {
+      "id": "F5",
+      "severity": "major",
+      "where": "§3.2 problems ('a new card with a typed field but a fuzzy sentence…', 'a typed arrow from or into a slot'); D4-15; §4.4 CardSearch excludes slots",
+      "problem": "The user's words: \"When a new card is created, all fields are left 'fuzzy', meaning if the user doesn't specify a value, Claude will try and autofill it\". Each field is independent. D4-15 forbids typing any field of a new card unless its sentence is typed, and forbids typed arrows to or from such a card. The log gives no reason. Its only alternative (\"require every new card's sentence\") is narrower still, and the user's own reading is not listed.",
+      "scenario": "The user thinks a step is missing between A and B. They add a new proposition, type its Lean statement or its Why, enter A → new in its Dependencies and new → B in B's Dependencies, and leave the sentence to Claude. Submit is blocked: \"Type the sentence of a new card whose other fields you fill, or clear them to let Claude make the whole card.\" The arrows are refused too. This natural transform cannot be expressed.",
+      "fix": "Let a slot carry typed fields and typed arrows. When `add_card` fills the slot and the card gets its id, telelean writes the slot's typed fields and arrows itself, as typed units (frozen, owned by its typed item), so only the fuzzy fields are Claude's.\n\nAlternative: give new cards an id that does not depend on the sentence (`newCardId` from a placeholder; slice 5's allocator replaces it anyway, §3.12).\n\nIf D4-15 is kept, rewrite it as a narrowing of TRANSFORM 4, with the user's reading as the alternative and the actual reason."
+    },
+    {
+      "id": "F6",
+      "severity": "major",
+      "where": "D4-14; D4-26; §3.7 'A premise window' and the group rule ('Transform a suggested premise on its own.'); §3.2 Outcome",
+      "problem": "The user's words: \"The user must be able to do this for any card, including 'CLAUDE SUGGESTS' or Vocabulary cards\". \"Do this\" means the whole transform. The user also wrote: \"This is also how the user would effect a multi-card TRANSFORM, by declining multiple cards together and choosing the TRANSFORM option.\" A premise window allows only sentence, Why and Lean edits:\n- no fuzzy fields, instructions or \"Claude may add cards\";\n- no new cards, no trash;\n- no place in a group window.\n\nD4-14 lists \"not offered\" as the alternative that narrows TRANSFORM 9, which implies D4-14 itself does not. It does.",
+      "scenario": "Claude suggests premise P for target T. The user wants to ask Claude to weaken P (instructions), or to split P into two cards, or to decline P together with their own axiom X and merge them. All of these are refused. Instructions and fuzzy fields are refused in a premise window, and a group decline that includes P leaves P out.",
+      "fix": "Rewrite D4-14 to state that it narrows TRANSFORM 9 and REVIEW 4 for suggested premises, listing what is missing, and give the full transform as its alternative.\n\nBetter, close part of the gap:\n- route a premise window's instructions as the premise's Shaky note (D2-13's mechanism), re-proposed by its inference's step;\n- in a group window, show the premise as its own row, carried out by its own no-Claude step."
+    },
+    {
+      "id": "F7",
+      "severity": "major",
+      "where": "§3.9 step 4, step limits ('new declarations (vocabulary, definitions and instances: items like any)'); §9 row TR-7 (b); §4.2 hint; §2.8 system prompt",
+      "problem": "With \"Claude may add cards\" off, a transform step may still add new definitions and instances. The user's words: \"whether Claude will generate more cards to fill gaps if it sees fit, or if it will strictly stick to the current set of cards\". TRANSFORM 9 counts vocabulary cards as cards. TR-7 makes an exception only for \"New plain vocabulary\". Definitions and instances are Definitions-column cards, not plain vocabulary. No D4 decision logs this widening, and the hint shown to the user (\"Off: Claude sticks to the cards here. New plain vocabulary is always allowed.\") does not match.",
+      "scenario": "The user leaves the box unticked and asks \"make the Why clearer\". In the step, Claude adds `def InGame …` and a new `instance`. Both pass the step limits and come back as new Definitions-column items. The user had been told only plain vocabulary could appear.",
+      "fix": "Without the tick, a transform step may add only:\n- plain vocabulary (the shape rule);\n- definitions of names listed in MUST DEFINE (log this exception as a D4 decision).\n\nRefuse other new definitions and instances with a `CLAUDE_TRANSFORM_TEXTS` refusal. With the tick on, allow them as items. Correct §9's TR-7 (b) row, and make the hint and the stage banner say exactly what is allowed."
+    },
+    {
+      "id": "F8",
+      "severity": "major",
+      "where": "D4-12; header 'Not in slice 4' (Shaky splits); §3.9 step 7",
+      "problem": "The user's words: \"Mark the card as 'shaky'; i.e. Claude can do what it wishes with the card. This is useful when you want to, say, accept 2/5 cards and then ask Claude to reshuffle the other 3; some might be the same but others could change or be removed / split into more cards etc.\" TR-7 (c) (\"Splitting a Shaky card is always allowed\") is a §8 clause. D4-12 keeps D2-15 (no new cards, splits, merges or removals in any Shaky rework) and gives no reason. The slice-5 plan does not build it either, so this narrowing becomes permanent.",
+      "scenario": "The user accepts 2 of 5 cards and declines 3 as Shaky, hoping for a reshuffle. Claude can only re-propose their content: no card removed, none split, no new card. The plan's answer is \"split your cards yourself with Decline → Transform\", which is the opposite of \"Claude can do what it wishes\".",
+      "fix": "Either build Shaky splits and removals in slice 4:\n- `add_card` and slice 3's `delete_card` in rework steps;\n- DO-3's not-identical check over the new set;\n- new cards as Add items.\n\nOr keep D4-12, state its real reason, and mark it in the AP entry as a permanent narrowing of the user's own DECLINE OPTIONS 3 example, so the user sees it."
+    },
+    {
+      "id": "F9",
+      "severity": "major",
+      "where": "§4.5 'Undo'; §5.1; §2.7 TW-1",
+      "problem": "The user's words: \"try to have an undo / redo system, so that I can undo / redo things. Be careful that undos … should never accidentally have bad interactions with each other.\" In the window only text fields have undo. Trash and Restore, new cards, Kind, chips, dependency chips and \"Use this\" cannot be undone. Ctrl+Z outside a text field goes to the session stack's newest freeze action, even one made before the window opened and not visible in it.",
+      "scenario": "In a stage the user freezes card X, then opens a decline-Transform window and drags card Y to the trash by mistake. They click outside a text field and press Ctrl+Z. Y stays in the trash, and the Freeze of X is silently undone instead.",
+      "fix": "Give the window its own draft-edit undo stack:\n- webview-local, discarded at Submit or Cancel;\n- never on the board or session stack, so UN-1's two stacks still never share a step;\n- Ctrl+Z inside the window, outside text fields, goes to it first.\n\nLet the window reach the session stack only for freeze actions made since `openedAtAction`. Refuse older steps with \"Close the window to undo what you did before opening it.\""
+    },
+    {
+      "id": "F10",
+      "severity": "major",
+      "where": "§4.3 Kind control [Axiom | Proposition]; §3.4 'TR-11 with G6'; §4.4 ('struck through while Kind is Axiom'); §3.5 step 5",
+      "problem": "The user's words (turn 21): \"However, a user cannot just drag an AXIOM to the PROPOSITION canvas; he needs to draw dependencies from at least one other axiom to the desired axiom, and that axiom will automatically be transferred to the proposition canvas.\" The window's Kind control turns an axiom into a proposition with no dependency at all, whether its Dependencies are kept empty or left fuzzy for Claude. Meanwhile the user's own route is blocked, because an axiom's Dependencies are struck through in the window. Neither the spec's TR-11 nor any D4 decision logs this departure.",
+      "scenario": "The user opens a transform on axiom X, switches Kind to Proposition, sets Dependencies to kept empty and submits. Outcome `direct`: X moves to the canvas as a pending proposition with no stated basis, which is exactly the move the user said cannot be made.",
+      "fix": "In the window, an axiom becomes a proposition only through its Dependencies, as on the board (AR-6):\n- the axiom's Dependencies editor stays live;\n- adding a typed source, or \"Follows from nothing\", switches Kind to Proposition and keeps its pending claim;\n- an Axiom → Proposition change with neither is refused: \"An axiom becomes a proposition only through what it follows from: add an arrow into it, or mark it Follows from nothing.\"\n\nIf fuzzy Dependencies (Claude proposes the basis) are to count, log that as a narrowing of the user's ¶11."
+    },
+    {
+      "id": "F11",
+      "severity": "minor",
+      "where": "D4-16; §3.6 (standing freezes 'for the typed fields of existing cards and vocabulary'); §4.6 'direct' text",
+      "problem": "The user's words: \"The user can manually fill in a card's fields, which would make that field FROZEN.\" On the direct path, a new card's typed fields and typed Dependencies are not frozen, while the same transform inside a session freezes them (TransformFreeze). The outcome text claims \"The fields you typed stay frozen, as board edits do\", which is false for these fields.",
+      "scenario": "In the provisional window the user adds a new axiom with a typed sentence and Why, and types a dependency for card C. The outcome is direct. Neither is frozen, and a later whole-model Formalize may reword the new axiom's sentence, although the user was told the typed fields stay frozen.",
+      "fix": "Either freeze new cards' typed fields (and typed Dependencies) on the direct path too, as TRANSFORM 5 and the session path do, or keep D4-16 and correct the text: \"The fields you typed on existing cards stay frozen, as board edits do; new cards and arrows are not frozen.\" Add the first option to D4-16's alternatives."
+    },
+    {
+      "id": "F12",
+      "severity": "minor",
+      "where": "§2.1 `draftFromModel` lock text ('Edit this statement in its file: it is not a plain abbrev.')",
+      "problem": "The user's words (message 3): \"when an edit session is in play, the basis that it will diff from should be concrete and unchanging\". The lock text tells the user to edit their files while a session, or a provisional one, is running.",
+      "scenario": "In a stage, the user meets this lock and edits the file as told. ES-7 then disables Apply until the file matches the base again. In a provisional session, the drift check refuses Submit instead.",
+      "fix": "Inside a session or a provisional session, the lock reads: \"This statement is not a plain abbrev: change it in its file after the session; your files must not change while a session runs.\""
+    },
+    {
+      "id": "F13",
+      "severity": "minor",
+      "where": "§3.11 Session-start; D4-17; §4.5 banner; §2.4 SessionFreezesView.mode",
+      "problem": "The user's words (D3): \"there should be an easy way to make the entire model unfrozen, because I anticipate that oftentimes 'formalize for dependencies' is meant to implement subsystems throughout the entire model\". In a session started by Transform cards…, the session-start freezes still bind under Open the whole model. Nothing says so. The plan does not define which banner shows when both apply, and the whole-model banner (\"only your own freezes and the selected arrows are kept\") would then be false.",
+      "scenario": "The user uses Transform cards… unchanged to start a session, then runs Formalize with the whole model open to add a notion of time everywhere. Every card outside the first selection is still session-start frozen, so Claude cannot change them and keeps asking for unfreezes. Nothing pointed the user to Unfreeze all other cards.",
+      "fix": "In a transform-started session, Formalize's ▾ \"Open the whole model\" says that the cards frozen at the session's start stay frozen, and offers \"Unfreeze them too\" (an Unfreeze of the session-start keys). Define the banner for when both apply, e.g. \"Whole model open, but everything except the selected cards is still frozen\"."
+    },
+    {
+      "id": "F14",
+      "severity": "minor",
+      "where": "§3.4 Choices ('A proof left to Claude becomes a Proof broken item'); §4.6 dependents panel ('Leave it to Claude')",
+      "problem": "Spec TR-13 offers to \"leave the unfrozen ones to Claude\", and TR-14 says Claude writes no proofs. For a proof dependent, \"Leave it to Claude\" therefore always ends with the card losing its proof (Proof broken). The label suggests Claude will fix the proof.",
+      "scenario": "The user changes a card's statement and leaves dependent D's proof \"to Claude\", expecting a repair. Claude must call `mark_proof_broken` (cheat T10 otherwise), and a Proof broken item appears that the user has to accept, which loses D's proof.",
+      "fix": "For proof dependents inside a session, label the choice \"Mark its proof broken (Claude writes no proofs; re-prove it after the session)\". Keep \"Leave it to Claude\" for statement and definition dependents."
+    },
+    {
+      "id": "F15",
+      "severity": "minor",
+      "where": "§3.4 'A dependent frozen by any other reason is a problem'; §3.6",
+      "problem": "In the provisional session, every card outside the window is frozen by the session start (INITIATING 2), so every outside dependent is \"frozen\". §3.4 makes a frozen dependent a problem without limiting that to the `claude` choice. Read that way, it blocks the direct path, although FZ-1 says \"Frozen binds Claude only\", D1 says direct edits are fine outside a session, and the board's Delete with \"Delete anyway\" needs no unfreeze.",
+      "scenario": "In the provisional window the user trashes A, whose `.holds` the proof of D (outside the window) uses. They choose \"Leave it broken (Delete anyway)\" and the outcome is direct. Submit is still blocked: \"“D” relies on A and is frozen (session start): unfreeze it…\". The user has to unfreeze D, a freeze change that the direct path then drops.",
+      "fix": "State in §3.4 that a frozen dependent is a problem only when its choice would be `claude`. With a direct outcome, frozen dependents (the provisional session's session-start freezes included) take Delete it too, Rewrite or Leave it broken without unfreezing (FZ-1), as the board's Delete does. Add a 4b test for this."
+    },
+    {
+      "id": "F16",
+      "severity": "minor",
+      "where": "§2.2 ItemKind 'typed'; §4.5 review UI; D4-1",
+      "problem": "The user's words: \"labeled as 'Add <name of card>', 'Change <name of card>', 'Delete <name of card>', etc\". The plan never says how typed items are labelled in the list. A card can now carry three items (typed, Claude's field item, proof), against RV-1's \"A card has at most two items\", and D4-1 does not say so.",
+      "scenario": "After a transform, card C shows `typed:C`, a Change item and a Result. The builders invent a label for the typed item, and the list no longer reads as Add, Change or Delete of a card.",
+      "fix": "Label typed items with REVIEW 2's verbs plus the marker: \"Change ‹card› · you typed it\", \"Add ‹card› · you typed it\", \"Delete ‹card› · you typed it\", \"Change vocabulary ‹name› · you typed it\". Record in D4-1 that a card can carry a typed item beside RV-1's two."
+    },
+    {
+      "id": "F17",
+      "severity": "minor",
+      "where": "§2.1 `typedLeanProblems` ('never a theorem (TR-14)'); `draftFromModel` starting states",
+      "problem": "The user's words: \"The user must be able to do this for any card, including … Vocabulary cards\". A lemma (a vocabulary card in BD-1's Lemmas section) is a theorem. Any declaration typed for it is refused, and setting it open does nothing, since transform steps write no proofs. This narrowing is unlogged, and the window gives no reason.",
+      "scenario": "The user opens a transform on a lemma card to fix its statement. Every edit is refused with \"never a theorem\", and the lock never explains why.",
+      "fix": "Lock a lemma's declaration in `draftFromModel` with the text \"A lemma is a proof, and a transform writes no proofs: trash it, or change it after the session\". Log it as a D4 narrowing of TRANSFORM 9 and TR-10."
+    },
+    {
+      "id": "F18",
+      "severity": "minor",
+      "where": "§3.8 step 4 (`transformSteps` order); §3.9 step 5 ('a failure ends the queue… the rest not run')",
+      "problem": "Spec RV-12: \"Queued transforms that need no Claude are carried out first\". The plan runs \"each queued transform\" in queue order, and a failure stops the rest. No decision logs this departure.",
+      "scenario": "The queue holds T1 (needs Claude), then T2 (no Claude). T1's step fails, so T2, which needs nothing from Claude, is not carried out at that Submit.",
+      "fix": "Order `transformSteps` with the no-Claude transforms first (RV-12 b1), or log queue order as a D4 decision with its reason."
+    },
+    {
+      "id": "F19",
+      "severity": "nit",
+      "where": "§2.5 LIMITS (`transformCards: 50`, `draftCards: 60`); §4.5 `transformCardsState`",
+      "problem": "The user's words: \"starting with an exact copy of the set of cards he selected\". TR-10 says \"Any card can be transformed\". The new caps are unlogged, and the plan says no UI reason is shown when a selection exceeds them.",
+      "scenario": "The user selects 70 cards of a subject and chooses Transform cards…. The protocol validator refuses the message with no explanation.",
+      "fix": "Have `transformCardsState` disable the action with \"Transform at most 50 cards at a time\", and log the caps as a D4 decision."
+    },
+    {
+      "id": "F20",
+      "severity": "nit",
+      "where": "§4.5 'User guide' ('the narrowings of D4-11–D4-20 in plain words')",
+      "problem": "Several narrowings the user will meet fall outside D4-11–D4-20, so the guide would not explain them:\n- D4-4 (all or nothing);\n- D4-5 (an extra stage);\n- D4-8 (no Back to review while queued);\n- D4-10 (chip scope);\n- D4-18 (modal window, TW-1);\n- D4-21, D4-22, D4-26, D4-30.",
+      "scenario": "The user finds Back to review disabled on a Transform-declined item, or a transform refused with \"needs a new look\", and the guide says nothing about either.",
+      "fix": "List every user-visible narrowing among D4-1–D4-30 in the guide's \"Transform cards…\" section."
+    },
+    {
+      "id": "F21",
+      "severity": "nit",
+      "where": "§4.2 row 4 ('Restore, Delete on a focused card')",
+      "problem": "The phrase can be read as a Delete action in the trash. The user's ★D4 (a) answer and TR-3 (c) rule out \"delete permanently\".",
+      "scenario": "A builder adds a Delete button that removes a trashed draft card outright.",
+      "fix": "Write it as: \"the Delete key on a focused draft card moves it to the trash (never a permanent delete, TR-3 c)\"."
+    }
+  ]
+}

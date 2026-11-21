@@ -1,12 +1,15 @@
 /**
  * "subject: [Spyro ▾]" (D-10, docs/m1-plan.md 7.3): the model's subjects with their card counts, and "New
  * subject…" with an inline name field (a capitalised Lean identifier, not taken). Choosing a subject posts
- * `selectSubject`; creating one posts `createSubject` (the host then switches the board to it).
+ * `selectSubject`; creating one posts `createSubject` (the host then switches the board to it). Spec v4 ES-9 (slice
+ * 1f): a new subject changes Model.lean, so "New subject…" is disabled, with the reason, during an edit session;
+ * switching subjects stays.
  */
 import { isSubjectName, type ActionOutcome } from '@telelean/core';
 import { useState, type FormEvent } from 'react';
 import { Popover } from '../common/Popover';
 import { useBoard, useBoardActions } from '../state/context';
+import { editLock } from '../state/store';
 
 export function subjectNameProblem(name: string, taken: readonly string[]): string | null {
   if (name === '') return null;
@@ -18,6 +21,7 @@ export function subjectNameProblem(name: string, taken: readonly string[]): stri
 export function SubjectPicker() {
   const subject = useBoard((s) => s.subject);
   const workspace = useBoard((s) => s.workspace);
+  const lock = useBoard((s) => editLock(s));
   const actions = useBoardActions();
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const [creating, setCreating] = useState(false);
@@ -105,7 +109,7 @@ export function SubjectPicker() {
                 setError(null);
               }}
             />
-            <button type="submit" className="tl-button tl-button--small" disabled={!name || problem !== null || busy}>
+            <button type="submit" className="tl-button tl-button--small" disabled={!name || problem !== null || busy || lock !== null} title={lock ?? undefined}>
               Create
             </button>
             {problem || error ? (
@@ -115,7 +119,7 @@ export function SubjectPicker() {
             ) : null}
           </form>
         ) : (
-          <button type="button" className="tl-menu__item" onClick={() => setCreating(true)}>
+          <button type="button" className="tl-menu__item" data-testid="new-subject" disabled={lock !== null} title={lock ?? undefined} onClick={() => setCreating(true)}>
             <span className="codicon codicon-add" aria-hidden="true" />
             <span className="tl-menu__text">New subject…</span>
           </button>

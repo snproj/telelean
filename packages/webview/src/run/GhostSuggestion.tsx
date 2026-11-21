@@ -5,7 +5,7 @@
  *
  * "I hold this" asks for an optional reason (one line, D-6: encouraged, not required) and posts `adoptGhost`; "No"
  * posts `rejectGhost`. Both work only while the run is in review (adoption starts a new round, decision 12).
- * Shown as a card in the Assumptions column of the proposed view, and in the report card of the review.
+ * Shown as a card in the Axioms column of the proposed view, and in the report card of the review.
  */
 import type { GhostView } from '@telelean/core';
 import { useLayoutEffect, useRef, useState, type MouseEvent } from 'react';
@@ -39,8 +39,6 @@ export function GhostSuggestion({ ghost, variant }: { ghost: GhostView; variant:
       data-variant={variant}
       data-testid="ghost"
       data-agent-scope
-      // On the board the card is opaque to the arrows like any block that is not a card.
-      {...(variant === 'board' ? { 'data-edge-obstacle': '' } : {})}
       onClick={stop}
     >
       <div className="tl-ghost__marker tl-agent__marker">
@@ -64,7 +62,7 @@ export function GhostSuggestion({ ghost, variant }: { ghost: GhostView; variant:
             gives the goal on its own: it may simply restate it
           </span>
         ) : null}
-        <span className="tl-chip tl-chip--subtle" title="The Lean name the new assumption would get">
+        <span className="tl-chip tl-chip--subtle" title="The Lean name the new axiom would get">
           {ghost.leanName}
         </span>
       </div>
@@ -107,7 +105,7 @@ export function GhostSuggestion({ ghost, variant }: { ghost: GhostView; variant:
             type="button"
             className="tl-button tl-button--small"
             disabled={!decidable}
-            title="Adopt it as your assumption (worded by Claude; it stays marked as Claude's wording). Claude then proves the goal with it."
+            title="Adopt it as your axiom (worded by Claude; it stays marked as Claude's wording). Claude then proves the target with it."
             onClick={() => setAsking(true)}
           >
             {busy === 'adopt' ? 'Adopting…' : 'I hold this'}

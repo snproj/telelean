@@ -69,21 +69,20 @@ for (const [label, parse] of PARSERS) {
       expect(graph.edges.some((e) => e.mismatch)).toBe(false);
       expect(sortedUsedBy(graph)).toEqual(sortedUsedBy(sample));
       expect(proofDependents(graph, 'pg-no-dark-past')).toEqual(['cynder-not-good']);
-      expect(graph.diagnostics.map((d) => [d.code, d.nodeId])).toEqual([
-        ['TL011', 'pg-no-dark-past'],
-        ['TL105', 'cynder-not-good'],
-      ]);
+      // Spec v4: no TL105 any more; the proved proposition rests only on axiom cards, so it is established.
+      expect(goal?.status.flags).toEqual(['established']);
+      expect(graph.diagnostics.map((d) => [d.code, d.nodeId])).toEqual([['TL011', 'pg-no-dark-past']]);
     });
 
-    it('AT2.11 on Spyro: a goal proved through a derivation gets the arrow from the derivation; D->G on it needs a confirmation', () => {
+    it('AT2.11 on Spyro: a proposition proved through another gets the arrow from it; P->A on the inner one keeps that proof valid', () => {
       const model = buildProjectModel(spyroDerivedInput(parse));
       const graph = subjectGraph(model, 'Spyro', { version: 3, semantic: SPYRO_SEMANTIC });
       const derivation = graph.nodes.find((n) => n.id === 'dark-and-pg');
       const goal = graph.nodes.find((n) => n.id === 'pg-again');
       const footprint = ['cynder-dark-past', 'new-spyro-pg', 'presup:Spyro.Character.exists', 'presup:Spyro.Game.exists'];
-      expect(derivation?.status).toMatchObject({ formal: 'formalized', proof: { kind: 'proved', footprint }, flags: [] });
+      expect(derivation?.status).toMatchObject({ formal: 'formalized', proof: { kind: 'proved', footprint }, flags: ['established'] });
       expect(derivation?.lean.uses).toEqual(['Spyro.HasDarkPast', 'Spyro.cynder', 'Spyro.IsPG', 'Spyro.newSpyro']);
-      expect(goal?.status).toMatchObject({ proof: { kind: 'proved', footprint }, flags: ['proved-goal'] });
+      expect(goal?.status).toMatchObject({ proof: { kind: 'proved', footprint }, flags: ['established'] });
       expect(goal?.lean.refs?.map((r) => [r.name, r.nodeId ?? null])).toEqual([
         ['Spyro.IsPG', null],
         ['Spyro.newSpyro', null],
@@ -94,14 +93,12 @@ for (const [label, parse] of PARSERS) {
       expect(graph.edges.filter((e) => e.type === 'lean-ref').map((e) => e.id)).toEqual(['lean-ref:cynder-dark-past->dark-and-pg', 'lean-ref:new-spyro-pg->dark-and-pg']);
       expect(graph.edges.some((e) => e.mismatch)).toBe(false);
       expect(proofDependents(graph, 'dark-and-pg')).toEqual(['pg-again']);
-      expect(kindChangeImpact(graph, 'dark-and-pg', 'GOAL')).toMatchObject({ needsConfirmation: true, dependents: ['pg-again'] });
-      try {
-        planKindChange(model, { id: 'dark-and-pg', to: 'GOAL' });
-        throw new Error('expected a refusal');
-      } catch (error) {
-        expect(error).toBeInstanceOf(ActionError);
-        expect(error).toMatchObject({ code: 'needs-confirmation', dependents: ['pg-again'] });
-      }
+      expect(kindChangeImpact(graph, 'dark-and-pg', 'AXIOM')).toMatchObject({ needsConfirmation: false, dependents: ['pg-again'], leanChange: 'theorem-to-axiom' });
+      expect(kindChangeImpact(graph, 'dark-and-pg', 'AXIOM').detail).toContain('1 proof that uses it stays valid.');
+      const plan = planKindChange(model, { id: 'dark-and-pg', to: 'AXIOM' });
+      expect(plan.leanOps.flatMap((g) => g.ops.map((op) => op.op))).toEqual(['holds-theorem-to-axiom']);
+      // A->P is never a kind change (AR-6).
+      expect(() => planKindChange(model, { id: 'cynder-dark-past', to: 'PROPOSITION' })).toThrow(ActionError);
     });
 
     it('AT2.4: every ref of the Spyro cards names the identifier it covers (a suffix of its name)', () => {

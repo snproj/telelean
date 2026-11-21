@@ -49,7 +49,7 @@ export const PREVIEW_LABEL_MAX = 40;
 
 /**
  * The diff editor's tab title, kept short so the board's tab keeps its place in the tab strip:
- * `History: Add assumption: Cynder can fly (14:05)`, with ` vs now` when it compares the entry with the files now.
+ * `History: Add axiom: Cynder can fly (14:05)`, with ` vs now` when it compares the entry with the files now.
  */
 export function previewTitle(diff: HistoryDiff, now: Date = new Date()): string {
   const label = diff.entry.label.length > PREVIEW_LABEL_MAX ? `${diff.entry.label.slice(0, PREVIEW_LABEL_MAX - 1).trimEnd()}…` : diff.entry.label;

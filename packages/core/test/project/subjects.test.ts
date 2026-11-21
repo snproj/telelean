@@ -123,7 +123,7 @@ describe('AT2.9 two subjects', () => {
 
   it('orders a subject\'s nodes by its layout first, then file order', () => {
     const current = orderByLayout(subjectGraph(model, 'Spyro', { version: 1, semantic: SPYRO_SEMANTIC }).nodes);
-    const layout = moveInLayout(emptyLayout(), current, 'new-spyro-pg', 'ASSUMPTION', 'pg-no-dark-past');
+    const layout = moveInLayout(emptyLayout(), current, 'new-spyro-pg', 'AXIOM', 'pg-no-dark-past');
     const graph = subjectGraph(model, 'Spyro', { version: 1, semantic: SPYRO_SEMANTIC, layout });
     expect(graph.nodes.map((n) => n.id)).toEqual(['new-spyro-pg', 'pg-no-dark-past', 'cynder-dark-past', 'cynder-not-good']);
   });

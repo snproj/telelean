@@ -1,0 +1,501 @@
+[
+  {
+    "label": "verify:2a:spec",
+    "agentId": "ae1e96904b4c107ad",
+    "file": "agents/verify_2a_spec.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "verify:2a:code",
+    "agentId": "a7504453447292440",
+    "file": "agents/verify_2a_code.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "verify:2a:adv",
+    "agentId": "a53f5fad55294e21f",
+    "file": "agents/verify_2a_adv.json",
+    "toolsUsed": [
+      "Read",
+      "Bash",
+      "Write",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "fix:2a:r1",
+    "agentId": "afb171c21abce1b74",
+    "file": "agents/fix_2a_r1.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Edit",
+      "Write",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "reverify:2a:r1",
+    "agentId": "a107c156ce23f0af5",
+    "file": "agents/reverify_2a_r1.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Write",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "integrate:2a",
+    "agentId": "aee0f7a0357e18ab5",
+    "file": "agents/integrate_2a.json",
+    "toolsUsed": [
+      "Read",
+      "Bash",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "build:2b1a",
+    "agentId": "a4cc08a9a1954564a",
+    "file": "agents/build_2b1a.json",
+    "toolsUsed": [
+      "Read",
+      "Bash",
+      "Edit",
+      "Write",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "verify:2b1a:spec",
+    "agentId": "aaa26cfa8bb3c000f",
+    "file": "agents/verify_2b1a_spec.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "verify:2b1a:adv",
+    "agentId": "a503f8f7db27ccd47",
+    "file": "agents/verify_2b1a_adv.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Write",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "verify:2b1a:code",
+    "agentId": "a96696db6dedfb062",
+    "file": "agents/verify_2b1a_code.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "fix:2b1a:r1",
+    "agentId": "a1ab542f4b469a2df",
+    "file": "agents/fix_2b1a_r1.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Edit",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "reverify:2b1a:r1",
+    "agentId": "a5f91fc8e366e4500",
+    "file": "agents/reverify_2b1a_r1.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "integrate:2b1a",
+    "agentId": "a300bba1305d39ed9",
+    "file": "agents/integrate_2b1a.json",
+    "toolsUsed": [
+      "Read",
+      "Bash",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "build:2b1b",
+    "agentId": "a3f913dc54747d082",
+    "file": "agents/build_2b1b.json",
+    "toolsUsed": [
+      "Read",
+      "Bash",
+      "Edit",
+      "Write",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "verify:2b1b:spec",
+    "agentId": "ab105f9f7b04b9ee7",
+    "file": "agents/verify_2b1b_spec.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "verify:2b1b:code",
+    "agentId": "ac23bf2ad12b71ca2",
+    "file": "agents/verify_2b1b_code.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "verify:2b1b:adv",
+    "agentId": "af73be53a8eb4926e",
+    "file": "agents/verify_2b1b_adv.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Write",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "fix:2b1b:r1",
+    "agentId": "a19465eeaa179ae78",
+    "file": "agents/fix_2b1b_r1.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Edit",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "reverify:2b1b:r1",
+    "agentId": "a95ed944016b203c6",
+    "file": "agents/reverify_2b1b_r1.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "fix:2b1b:r2",
+    "agentId": "a4994eeda7940d897",
+    "file": "agents/fix_2b1b_r2.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Edit",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "reverify:2b1b:r2",
+    "agentId": "ac54eaabf581189c9",
+    "file": "agents/reverify_2b1b_r2.json",
+    "toolsUsed": [
+      "Bash",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "integrate:2b1b",
+    "agentId": "a1b8bb082cbdad582",
+    "file": "agents/integrate_2b1b.json",
+    "toolsUsed": [
+      "Read",
+      "Bash",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "build:2b2",
+    "agentId": "aca996f40471d0d95",
+    "file": "agents/build_2b2.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Edit",
+      "Write",
+      "ToolSearch",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "verify:2b2:spec",
+    "agentId": "ae67560f9b1790c29",
+    "file": "agents/verify_2b2_spec.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "verify:2b2:code",
+    "agentId": "a2d52344c3ef00d92",
+    "file": "agents/verify_2b2_code.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Write",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "verify:2b2:adv",
+    "agentId": "a534a998b97fed4b2",
+    "file": "agents/verify_2b2_adv.json",
+    "toolsUsed": [
+      "Bash",
+      "Write",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "fix:2b2:r1",
+    "agentId": "abf7f81418d143f25",
+    "file": "agents/fix_2b2_r1.json",
+    "toolsUsed": [
+      "Bash",
+      "Edit",
+      "Read",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "reverify:2b2:r1",
+    "agentId": "a143d6d4fc759cfe5",
+    "file": "agents/reverify_2b2_r1.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Write",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "fix:2b2:r2",
+    "agentId": "a79f72fefcfb6b75f",
+    "file": "agents/fix_2b2_r2.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Edit",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "reverify:2b2:r2",
+    "agentId": "a1ae75e2a3ae83b0f",
+    "file": "agents/reverify_2b2_r2.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Write",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "integrate:2b2",
+    "agentId": "a9266af40f1674aab",
+    "file": "agents/integrate_2b2.json",
+    "toolsUsed": [
+      "Read",
+      "Bash",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "build:2c1",
+    "agentId": "a390b549c77f955ed",
+    "file": "agents/build_2c1.json",
+    "toolsUsed": [
+      "Read",
+      "Bash",
+      "Edit",
+      "Write",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "verify:2c1:code",
+    "agentId": "abfcfef12ff68ce53",
+    "file": "agents/verify_2c1_code.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "verify:2c1:spec",
+    "agentId": "a3d49709cf1377c6a",
+    "file": "agents/verify_2c1_spec.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "verify:2c1:adv",
+    "agentId": "aec13fc834f1d228b",
+    "file": "agents/verify_2c1_adv.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "fix:2c1:r1",
+    "agentId": "a704d6154e8ecca90",
+    "file": "agents/fix_2c1_r1.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Edit",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "reverify:2c1:r1",
+    "agentId": "a2da21a06782e2c31",
+    "file": "agents/reverify_2c1_r1.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Write",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "fix:2c1:r2",
+    "agentId": "aa54329f83d1bae61",
+    "file": "agents/fix_2c1_r2.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Edit",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "reverify:2c1:r2",
+    "agentId": "af9911955570986c7",
+    "file": "agents/reverify_2c1_r2.json",
+    "toolsUsed": [
+      "Bash",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "integrate:2c1",
+    "agentId": "a0aef55040f40dd11",
+    "file": "agents/integrate_2c1.json",
+    "toolsUsed": [
+      "Read",
+      "Bash",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "build:2c2",
+    "agentId": "a4514b31037ca7add",
+    "file": "agents/build_2c2.json",
+    "toolsUsed": [
+      "Read",
+      "Bash",
+      "Edit",
+      "Write",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "verify:2c2:spec",
+    "agentId": "aed5886146b10a7e2",
+    "file": "agents/verify_2c2_spec.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "verify:2c2:code",
+    "agentId": "ae75d533d204e25ab",
+    "file": "agents/verify_2c2_code.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Write",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "verify:2c2:adv",
+    "agentId": "a70399a97c3538338",
+    "file": "agents/verify_2c2_adv.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Write",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "fix:2c2:r1",
+    "agentId": "a7b435eb76709b813",
+    "file": "agents/fix_2c2_r1.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Edit",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "reverify:2c2:r1",
+    "agentId": "ae1838dc70242690a",
+    "file": "agents/reverify_2c2_r1.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "integrate:2c2",
+    "agentId": "a7cede909d91fead8",
+    "file": "agents/integrate_2c2.json",
+    "toolsUsed": [
+      "Read",
+      "Bash",
+      "StructuredOutput"
+    ]
+  }
+]

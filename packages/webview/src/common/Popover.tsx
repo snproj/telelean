@@ -25,6 +25,11 @@ export interface PopoverProps {
   role?: string;
   label?: string;
   testId?: string;
+  /**
+   * Where the focus goes when the dropdown closes with the focus inside (default: the anchor). The board's right-click
+   * menu hangs from a 1-pixel anchor at the pointer and gives the focus back to the card it was about (slice 1c).
+   */
+  returnFocus?: HTMLElement | null;
   children: ReactNode;
 }
 
@@ -47,15 +52,23 @@ function ownsArrowKeys(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && (target.matches('input, textarea, select') || target.isContentEditable);
 }
 
-/** Whether the anchor can still be seen: in the viewport and inside the scroll box (column) that holds it. */
+/**
+ * Whether the anchor can still be seen: in the viewport and inside the box that clips it (a column's list, or the
+ * canvas, which pans and zooms: spec v4 slice 1c).
+ */
 function anchorVisible(anchor: HTMLElement): boolean {
   if (!anchor.isConnected) return false;
   const a = anchor.getBoundingClientRect();
-  const box = anchor.closest<HTMLElement>('.tl-col__list')?.getBoundingClientRect();
+  const box = anchor.closest<HTMLElement>('.tl-col__list, .tl-vcol__list, .tl-canvas')?.getBoundingClientRect();
   const top = Math.max(0, box?.top ?? 0);
   const bottom = Math.min(document.documentElement.clientHeight, box?.bottom ?? Infinity);
-  return a.height > 0 && a.bottom > top && a.top < bottom;
+  const left = Math.max(0, box?.left ?? 0);
+  const right = Math.min(document.documentElement.clientWidth, box?.right ?? Infinity);
+  return a.height > 0 && a.bottom > top && a.top < bottom && a.right > left && a.left < right;
 }
+
+/** The canvas's view changed (pan, zoom): board/canvas/CanvasView.ts dispatches it on the canvas, bubbling. */
+const CANVAS_VIEW_EVENT = 'tl-canvas-view';
 
 /** Places `element` below `anchor` (above when there is no room), inside the viewport. */
 function place(element: HTMLElement, anchor: HTMLElement, align: 'start' | 'end'): void {
@@ -74,7 +87,7 @@ function place(element: HTMLElement, anchor: HTMLElement, align: 'start' | 'end'
   element.style.setProperty('max-height', `${Math.max(80, Math.round(vh - Math.max(MARGIN, top) - MARGIN))}px`);
 }
 
-export function Popover({ anchor, open, onClose, tooltip = false, align = 'start', className, role, label, testId, children }: PopoverProps) {
+export function Popover({ anchor, open, onClose, tooltip = false, align = 'start', className, role, label, testId, returnFocus = null, children }: PopoverProps) {
   const ref = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
@@ -97,7 +110,7 @@ export function Popover({ anchor, open, onClose, tooltip = false, align = 'start
       if (event.key !== 'Escape') return;
       event.stopPropagation();
       close();
-      if (element.contains(document.activeElement)) anchor.focus();
+      if (element.contains(document.activeElement)) (returnFocus ?? anchor).focus({ preventScroll: true });
     };
     // Scrolling or resizing moves the anchor: follow it, and close once it is out of sight. (Scroll events arrive a
     // frame late, so a scroll that brought the anchor into view may land after the popover opened.)
@@ -109,11 +122,13 @@ export function Popover({ anchor, open, onClose, tooltip = false, align = 'start
     document.addEventListener('pointerdown', onPointerDown, true);
     document.addEventListener('keydown', onKeyDown, true);
     document.addEventListener('scroll', follow, true);
+    document.addEventListener(CANVAS_VIEW_EVENT, follow, true);
     window.addEventListener('resize', follow);
     return () => {
       document.removeEventListener('pointerdown', onPointerDown, true);
       document.removeEventListener('keydown', onKeyDown, true);
       document.removeEventListener('scroll', follow, true);
+      document.removeEventListener(CANVAS_VIEW_EVENT, follow, true);
       window.removeEventListener('resize', follow);
     };
   });
@@ -137,16 +152,17 @@ export function Popover({ anchor, open, onClose, tooltip = false, align = 'start
       focusInside.current = false;
       if (!had) return;
       // A focus that was inside falls back to the document body when the dropdown's elements go; give it to the
-      // anchor instead, unless something else took it meanwhile (a dialog the chosen item opened, say).
+      // anchor (or `returnFocus`) instead, unless something else took it meanwhile (a dialog the chosen item opened).
+      const back = returnFocus?.isConnected ? returnFocus : anchor;
       const restore = () => {
         const now = document.activeElement;
         const lost = now === null || now === document.body || !now.isConnected || element.contains(now);
-        if (lost && anchor.isConnected) anchor.focus({ preventScroll: true });
+        if (lost && back.isConnected) back.focus({ preventScroll: true });
       };
       if (element.isConnected) queueMicrotask(restore);
       else restore();
     };
-  }, [open, tooltip, anchor]);
+  }, [open, tooltip, anchor, returnFocus]);
 
   if (!open || !anchor) return null;
 
@@ -163,7 +179,7 @@ export function Popover({ anchor, open, onClose, tooltip = false, align = 'start
       event.preventDefault();
       focusInside.current = false;
       if (leavingBack) {
-        anchor.focus();
+        (returnFocus ?? anchor).focus();
       } else {
         // The element after the anchor, as if the dropdown sat right after it in the page.
         const page = focusables(document).filter((el) => !element.contains(el));

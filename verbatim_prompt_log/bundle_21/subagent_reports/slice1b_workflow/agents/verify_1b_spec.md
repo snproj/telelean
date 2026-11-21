@@ -1,0 +1,69 @@
+# verify:1b:spec
+
+Agent `a0f56b45e048804c2` of workflow `wf_28f0bd61-9bc`. Verbatim output (JSON alongside).
+
+- **summary:** I read all of 1b against the brief (items A–H and the V4.1 updates), plan §2.4–2.8 and §8, and the cited spec clauses (AR-1..8, CF-4, A15, A16, A19, A22, B.3–B.6, UN-2). I worked read-only: diffs against the builder's pre-1b copies in b1b/orig, a check of which repo files changed since 1b started (exactly the reported set; nothing in extension dist/out, mental_model or test-fixtures), and greps. I ran no builds or tests.
+
+Every brief item is implemented as contracted:
+- **The five BoardActions** each make one plan (one Undo step). add-arrows, remove-arrows, set-from-nothing and claim-pending also make one History entry; move-cards is layout only, like reorder, so it has no History entry of its own.
+- **Cycle check (AR-3)** runs over drawn arrows plus verified edges. It names the shortest cycle by the cards' sentences, and a TL015 cycle does not block unrelated arrows.
+- **Refusals:** another subject, a self-arrow, an unknown id, vocabulary, and an arrow already drawn.
+- **Axiom to proposition (AR-6)** changes only the `type:` line, by D-11's old A→D row; an `axiom .holds` stays and becomes pending. The host asks for confirmation when established cards would lose their glow (A15), using the same count as 1a's `kindChangeImpact`. The board always shows the impact dialog first.
+- **A16:** removing an arrow a proof uses asks for confirmation.
+- **The mark** is the `follows_from: nothing` line, written and removed; `premises: []` is never written, and add-arrows removes the mark in the same plan (AR-5, A22).
+- **claim-pending** uses D-11's add-holds-axiom.
+- **move-cards** writes the layout only, within ±1e6.
+- **Protocol and routing:** the validators are bounded and drop extra properties; host and runner routing is generic.
+- **Webview:** the store is optimistic with exact rollback and the arrows dialog; the selection model, Esc and Delete follow AR-1; the minimal UI and the ∅ chip are there.
+- **Diagnostics:** TL102 "The proof rests on pending: ‹ids›." (B.5), and TL122 with the two A19 actions; both are unit-tested.
+
+The safety properties hold:
+- Only the board's own messages reach the new actions, so Claude has no path to change kinds, arrows or the mark.
+- No planner computes or raises a status.
+- `type:` aliases are rewritten only by the A→P kind change; the other edits keep the text byte-identical (the tests check exact text).
+- Old files load: TL122 is info, and the edges into old axioms are hidden from the board while graph.json keeps them.
+- No test was deleted; the two replaced expectations are listed in the report.
+
+I found no blocker or major problem. There are three minor ones: TL015 and the planner disagree about an old axiom's undrawn premises; one Delete of arrows plus marks becomes several plans (latent until 1c); and the upgrade of saved pre-v4 proposals does not follow 1b's graph changes. There are two nits: the list of e2e tests to update is incomplete, and the dialog wording says "Make Axiom".
+- **findings:**
+  - [1]
+    - **id:** F1
+    - **severity:** minor
+    - **where:** packages/core/src/project/build.ts:707 (TL015 DFS) vs packages/core/src/edit/planArrows.ts:42-56 (arrowGraph) and packages/core/src/project/subjectGraph.ts:66
+    - **problem:** 1b treats an old axiom's `premises:` as not being arrows: subjectGraph hides them and the planner's cycle graph skips them. TL015 still walks every card's `premises:`, axioms included. So the planner accepts an arrow that core then immediately reports as a premise cycle, through an arrow the board does not draw and the user cannot select (A19). In 1e a TL015 cycle blocks Formalize (AR-3). Scenario: ASSUMPTION X has `premises: p`, and proposition p has no arrows. The user selects X and clicks "Draw arrow from the selection" on p. add-arrows(p, [X]) is planned, because arrowGraph has no path p→X. The file then holds p.premises=[X] and X.premises=[p]; build.ts flags TL015 on both X and p, while the board shows only X→p.
+    - **fix:** Make TL015 follow the same arrows as the planner and the board: in build.ts's cycle DFS, skip the premises of AXIOM cards. They become arrows only through "Make it a proposition (pending)", and planAddArrows already checks them then. Add a core unit test: an old axiom's premise points at a card, the user draws an arrow from the axiom into that card, and the result has no TL015. The alternative, counting old-axiom premises in arrowGraph, would make the refusal name an arrow the board does not show.
+    - **evidence:** planArrows.ts:51 `if (node.type !== 'PROPOSITION') continue;` (an axiom's premises are not edges); build.ts:707 `for (const premise of byId.get(id)?.block.fields.premises ?? [])` runs for every draft, AXIOM included; subjectGraph.ts:66 drops `premise` edges whose target is an AXIOM.
+  - [2]
+    - **id:** F2
+    - **severity:** minor
+    - **where:** packages/webview/src/state/store.ts:1920-1928 (deleteSelectedArrows), with confirmsFirst at :1029-1032
+    - **problem:** One Delete with arrows and "follows from nothing" marks selected becomes one removeArrows message plus one setFromNothing(off) per mark. That is several plans, several Undo steps and several History entries, while AR-1 and UN-2 make deleting arrows and the mark one board step. Also, when a removed arrow is used by a proof, removeArrows waits in the A16 dialog but the marks are sent at once, because confirmsFirst returns false for a mark removal. Cancelling the dialog then leaves the marks removed and the arrows in place, and one Ctrl+Z undoes only the last mark. This is latent in 1b, whose UI cannot select arrows and marks together, nor two marks (selectIncomingArrows replaces the selection). 1c's clickable arrows and ∅ stubs, with Ctrl adding, will expose it. The builder followed the brief's V4.1 wording.
+    - **fix:** Plan one Delete as one action. Give `remove-arrows` an optional `marks: string[]` (validated like ids in protocol.ts). Plan the marks in the same EditSession by removing each target's `follows_from:` line. Let the A16 confirmation cover the whole set, and send a single message from deleteSelectedArrows. At the least, hold the mark removals until the arrows' dialog is confirmed, and send nothing on Cancel. This is the integrator's call, since the brief prescribed the split.
+    - **evidence:** store.ts:1925-1926 `if (s.selectedArrows.length > 0) get().removeArrows(s.selectedArrows); for (const id of s.selectedMarks) get().setFromNothing(id, false);`. Builder report: "That is one Undo step plus one per mark, not one in total." Spec UN-2 lists "drawing or deleting arrows, and 'follows from nothing'" as one step each.
+  - [3]
+    - **id:** F3
+    - **severity:** minor
+    - **where:** packages/core/src/run.ts:462-521 (upgradeLegacyProposal); packages/webview/src/model/run.ts:604 (buildOverlay)
+    - **problem:** 1b changed the board graph in two ways that a recovered pre-v4 proposal does not get. (a) TL102: upgradeLegacyProposal drops the old variant ("rests on a goal asserted as an axiom") and adds the `rests-on-pending` flag, but adds no new TL102 "The proof rests on pending: ‹ids›.". That proposed view shows the flag without the B.5 warning; the builder reported this. (b) Edges into old axioms: subjectGraph now hides `premise` edges into AXIOM cards, but a stored pre-v4 proposal graph keeps the edges into its ASSUMPTION cards, now read as AXIOM. buildOverlay draws `proposal.graph.edges`, so the Proposed view draws arrows into old axioms that the Current view hides (A19).
+    - **fix:** In upgradeLegacyProposal: replace each dropped legacy TL102 with `{ code: 'TL102', severity: 'warning', message: 'The proof rests on pending: ‹ids›.' }`, with nodeId, file and range kept, for every node that has or gains `rests-on-pending`. After the kind mapping, drop the `premise` edges whose target is an AXIOM node. Extend test/proposal/legacy.test.ts for both.
+    - **evidence:** run.ts:521 filters out the legacy TL102 and adds nothing; run.ts never touches `graph.edges`; webview run.ts:604 `... : proposal.graph.edges`.
+  - [4]
+    - **id:** F4
+    - **severity:** nit
+    - **where:** docs/slice1-plan.md §8 "E2E tests not updated" (builder 1b) / builder report
+    - **problem:** The list of e2e tests needing updates leaves out specs that click the expanded card's kind button, which is now "Move to axioms" (data-testid still make-axiom): packages/webview/test/e2e/m1-fixes.spec.ts:251, packages/webview/test/e2e/m2-carryover.spec.ts:87 and :100. They were already out of date after 1a ("Make Assumption"), but 1g needs the full list.
+    - **fix:** Add these three locations to the §8 list for 1g.
+  - [5]
+    - **id:** F5
+    - **severity:** nit
+    - **where:** packages/webview/src/dialogs/Dialogs.tsx:131,158 (RationaleDialog), opened by store.moveToAxioms
+    - **problem:** "Move to axioms" (AR-7, CM-4) opens a dialog whose title and confirm button both say "Make Axiom", and the drop-zone and undo labels say "Make Axiom: …". The user's action and the dialog are worded differently.
+    - **fix:** When moveToAxioms opens the rationale dialog, title the dialog and its button "Move to axioms", for example with a `via: 'move'` field on the dialog state. The drop flow keeps its current wording until 1c revisits the drop zones.
+- **checks_run:**
+  - diff -u b1b/orig/<file> <repo file> for every file the builder saved (actions.ts, planAction.ts, kindChange.ts, model.ts, build.ts, subjectGraph.ts, protocol.ts, status.test.ts, actionMapping.ts(+test), boardSession.ts(+test), history.ts, fakeCore.ts, CardDetails.tsx, NodeCard.tsx, Dialogs.tsx, labels.ts, main.tsx, cardData.ts(+test), format.ts(+test), store.ts, board.css, SelectionTray.tsx, slice1-plan.md): every change is a reported 1b change; edit/index.ts is unchanged
+  - find packages docs test-fixtures mental_model -newer b1b/save.sh (node_modules pruned): 33 files, exactly the report's list; no writes to packages/extension/dist or out, test-fixtures or mental_model
+  - Read in full: planArrows.ts, planShared.ts, kindChange.ts, core test/edit/arrows.test.ts, core test/protocol.arrows.test.ts, runner test/workspace/arrows.test.ts, webview test/unit/store-arrows.test.ts
+  - grep for every place that lists action or message types (actionMapping, protocol, HISTORY_ACTIONS), for TL-code-keyed UI (none for TL102 or TL122), and for gate uses of diagnostics (TL101/TL113/TL118/TL111 only), so the new TL102/TL122 do not change any gate verdict
+  - Read build.ts TL015 and the premise checks, upgradeLegacyProposal (run.ts), buildOverlay (webview model/run.ts), parseHostToWebview's graph case (accepts the additive positions), and the runner's ModelWorkspace.performNow/step (generic routing, layoutOnly means no snapshot)
+  - grep of e2e specs for the kind-button and hint-d13 texts: found m1-fixes.spec.ts:251 and m2-carryover.spec.ts:87,100 in addition to the builder's list
+  - No tsc, vitest or Lean run (this verifier's lens is read-only)

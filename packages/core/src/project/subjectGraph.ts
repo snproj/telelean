@@ -1,7 +1,8 @@
 /**
  * One subject's board (docs/m1-plan.md sections 5.3 and 6.3): its nodes in column order (layout.json first, then file
  * order), the edges with both ends in the subject, its Vocabulary group and its diagnostics. M2: each card's
- * `lean.externalUsers` (users that are not cards of this board, ./users.ts).
+ * `lean.externalUsers` (users that are not cards of this board, ./users.ts). Spec v4 (slice 1b): no declared edge into
+ * an axiom (A19), and the stored canvas positions of its propositions (`positions`).
  */
 import { orderByLayout } from '../layout.js';
 import type { BoardDiagnostic, TlGraph, TlNode, VocabItem } from '../model.js';
@@ -60,7 +61,11 @@ export function buildSubjectGraph(model: ProjectModel, subject: string, options:
     }),
   );
 
-  const edges = edgesOf(model).edges.filter((e) => byId.has(e.source) && byId.has(e.target));
+  // Spec v4 A19 (slice 1b): only a proposition has arrows into it. An old axiom's `premises:` (written before v4) is not
+  // drawn; build.ts reports it (TL122) and the card offers to make it a proposition or to drop those arrows.
+  const edges = edgesOf(model).edges.filter((e) => byId.has(e.source) && byId.has(e.target) && !(e.type === 'premise' && byId.get(e.target)?.type === 'AXIOM'));
+  // Spec v4 BD-3: the stored canvas positions of this board's propositions (layout only; the board places the others).
+  const positions = Object.entries(options.layout?.positions ?? {}).filter(([id]) => byId.get(id)?.type === 'PROPOSITION');
 
   const own = model.vocabulary.filter((item) => item.subject === subject).map((item) => ({ ...item, usedBy: item.usedBy.filter((id) => byId.has(id)) }));
   const vocabulary = [...own, ...foreignVocabulary(model, subject, subjectNodes)];
@@ -74,5 +79,14 @@ export function buildSubjectGraph(model: ProjectModel, subject: string, options:
     return owner === undefined || owner === subject;
   });
 
-  return { version: options.version, subject, nodes, edges, vocabulary, diagnostics, semantic: options.semantic };
+  return {
+    version: options.version,
+    subject,
+    nodes,
+    edges,
+    vocabulary,
+    diagnostics,
+    semantic: options.semantic,
+    ...(positions.length > 0 ? { positions: Object.fromEntries(positions.map(([id, p]) => [id, { x: p.x, y: p.y }])) } : {}),
+  };
 }

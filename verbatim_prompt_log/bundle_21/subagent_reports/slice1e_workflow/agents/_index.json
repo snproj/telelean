@@ -1,0 +1,46 @@
+[
+  {
+    "label": "build:1e",
+    "agentId": "a0c1b0fbc546e8ac7",
+    "file": "agents/build_1e.json",
+    "toolsUsed": [
+      "Read",
+      "Bash",
+      "Write",
+      "Edit",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "verify:1e:spec",
+    "agentId": "aac6cffd30d66c3bf",
+    "file": "agents/verify_1e_spec.json",
+    "toolsUsed": [
+      "Read",
+      "Bash",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "verify:1e:code",
+    "agentId": "a9c0d6e8908d44df7",
+    "file": "agents/verify_1e_code.json",
+    "toolsUsed": [
+      "Read",
+      "Bash",
+      "Write",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "fix:1e",
+    "agentId": "a2bfd95580691b5a9",
+    "file": "agents/fix_1e.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Edit",
+      "SubagentHandback"
+    ]
+  }
+]

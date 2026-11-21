@@ -1,5 +1,6 @@
 /**
- * Claude's clarifying questions (ask_user, D-20), answered in place so the A|D|G box keeps working (D-16):
+ * Claude's clarifying questions (ask_user, D-20), answered in place in the run panel (D-16; the board stays viewable
+ * meanwhile, but not editable, spec v4 ES-9):
  *  - each question carries its phenomenon tag, Claude's options with their plain consequences, and the board's own
  *    choices: free text ("In my own words"), "Leave it open" (keep it uninterpreted; recorded) and "Decide for me"
  *    (an explicit delegation);

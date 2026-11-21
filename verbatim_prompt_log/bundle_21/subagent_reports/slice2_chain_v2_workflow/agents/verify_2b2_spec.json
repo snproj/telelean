@@ -1,0 +1,48 @@
+{
+  "summary": "I checked 2b2 against the plan's §1.1 entry, the §2.9 contracts, §§3.7, 3.8, 4.9–4.12, the §6.1 tests and the §8 log. I also checked it against spec §14 and Appendix B (the backstop rules, B.2–B.4) and AP-24 to AP-30. I compared it to the builder's snapshot from before 2b2 started (scratchpad/b2b2/orig). I ran no builds or tests: my brief said read only.\n\nEvery bullet of the plan entry is built as written: the backstop, taking content out with `replace-decl`, the start checks and their order, Submit's plan, `holdAs`, the core half of the failed probe, the G0 `init` attribute rule with AP30-1 r3, and check 6 in both paths. R2-1 and R2-2 are fixed as the brief describes. The §8 line \"left as is\" is replaced. The contract additions are additive and logged. Every §6.1 test listed for 2b2 exists and asserts what it claims.\n\nThe safety properties I traced hold:\n- **Individual Accept:** the backstop refuses what lacks an individual Accept (`own-accept`, `class`, `not-accepted`, `not-written`), and restates B.2–B.4 on F.\n- **Hidden results:** check 2 stops all later checks while the results are hidden.\n- **Failed probe:** it fails closed at every purpose.\n\nOne real gap: taking content out refuses outright a Result whose `.holds`, present in B, was moved by its step. The step rules allow that move, so the person can get stuck: they cannot reject that Result, and nothing that must take it out works either. Three smaller doc and edge-case notes follow.",
+  "findings": [
+    {
+      "id": "V2B2-S1",
+      "severity": "major",
+      "where": "packages/core/src/review/revert.ts:118 (takeDecl), with packages/core/src/gate/sessionRules.ts:270 (stepLimitFindings)",
+      "problem": "planItemRevert throws `unsafe` (\"… moved since the session started … edit it by hand\") for any declaration B has that `compareTexts` reports as moved. This case is reachable for a Result.\n\n- The step limits skip the target's `.holds` entirely under `openProof` (`if (isHolds && scope.openProof) continue;`).\n- So a step may rewrite B's `axiom T.holds` (pending target) or the person's own proof, and place it after its new lemma further down the file, past another B unit (a block, declaration or line).\n- `compareTexts` keys declarations by name and keeps a longest common subsequence, so such a `.holds` is `moved`. computeItems then gives it to `proof:T`, with no stage problem.\n\nAfter that, every path that must take that Result out fails:\n- a Reject;\n- a DO-0 or Reject cascade that makes it to be redone and reverted;\n- Submit's take-out (D2-57);\n- the judge's reverts (§3.6: \"a judged inference that fails B.1, B.2 or its footprint makes its Result to be redone (reverted)\", and no-longer-builds).\n\nThe person cannot edit ws/ by hand during a session. §4.11 requires \"a Result: T.holds as in B (a theorem, a pending axiom, or none), with its proof material removed\", and §2.9's contract has no failure mode for this. Fail closed, so nothing is assumed, but the decision is blocked and a judge-apply write could fail repeatedly. The tests only cover a moved vocabulary declaration (\"a declaration the step moved\"), which the step limits already refuse, so this case is untested.",
+      "fix": "Choose one of two fixes.\n\n(a) In planItemRevert, treat a moved declaration that B has like a missing one. Remove it at its current place, then put B's text back. For a `.holds`, use the existing `insert` path, right after its statement. In `verify()`, check B's text, not absence, for names that are both removed and inserted.\n\n(b) Close it at the source. In `stepLimitFindings`, report a move of S₀'s target `.holds` even under `openProof` (\"It was moved: a declaration stays where it is.\"). The step may still rewrite it in place, with lemmas inserted above it. With (b), no stage ever holds a moved B `.holds`.\n\nEither way, add a revert test: a pending target's `axiom T.holds` turned into a theorem placed after the next card's block. The Reject's revert must give B's text back."
+    },
+    {
+      "id": "V2B2-S2",
+      "severity": "minor",
+      "where": "packages/core/src/gate/adoption.ts:85 (adoptionPlan), packages/core/src/gate/types.ts (GhostAdoptionRequest.holdAs?)",
+      "problem": "`holdAs` silently defaults to `axiom` when absent. §2.2 and §3.8 require the premise write, and its replay after a crash, to read the person's hold-as choice from the record, \"never a default\".\n\nThe default exists so M2's `adoptGhost` keeps working until 2h. It also means a later session write that forgets to pass the field would write an AXIOM card when the person chose \"pending\". Nothing would refuse it, so the person's decision would be lost. This risk is latent: today no session caller exists.",
+      "fix": "Record in 2h's brief, which retires `adoptGhost`, that `GhostAdoptionRequest.holdAs` becomes required, and add a test there. Alternatively, give the session's premise write its own entry point that requires `holdAs` now and refuses `undefined` with `invalid`."
+    },
+    {
+      "id": "V2B2-S3",
+      "severity": "nit",
+      "where": "docs/user-guide.md:103 and :237; packages/extension/src/logic/boardSession.ts:381; packages/core/src/protocol.ts:191",
+      "problem": "After AP-29 G2, any cycle of arrows in the subject now refuses Formalize, with the new text \"The arrows of this subject form a cycle (…): remove one arrow first.\".\n\n- The user guide still says Formalize is refused only when \"no selected card lies on a cycle\" (l.237), and lists only slice 1's cycle text (l.103).\n- The host's doc comment (boardSession.ts:381) and the protocol's doc comment (protocol.ts:191) still say \"neither the target nor a premise on a cycle of arrows\".\n\nThe user-visible behaviour changed in 2b2, but the guide is not updated until 2h or 2i.",
+      "fix": "Update these lines now: any cycle of drawn and solid arrows in the subject blocks Formalize, named, with the new text. Or add them explicitly to 2h's guide list."
+    },
+    {
+      "id": "V2B2-S4",
+      "severity": "nit",
+      "where": "packages/core/src/formalize.ts:67 (arrowsOf, `if (from === to) return;`) used by subjectCycle and formalizeCycleProblem",
+      "problem": "Check 6 ignores a self-arrow: a card that lists itself in `premises:`. build.ts marks that card as TL015, a premise cycle. AP-29 G2 and §4.12 check 6 say any cycle blocks Formalize, so §4.12's consequence, \"no session starts over a cycle already in B\", has this one exception. The behaviour comes from slice 1's `arrowCycleThrough` and has low impact.",
+      "fix": "In `subjectCycle`, or in `arrowsOf` for cycle purposes, count a proposition whose `premises` contains its own id as the cycle `[x, x]`, named like any other. Add a formalize test for it."
+    }
+  ],
+  "checks_run": [
+    "Read verify_common.md, builder_rules.md, the 2b2 brief (carry-overs R2-1 and R2-2, AP-29 G2, AP-30 D2-75)",
+    "Read the plan: §0, §1 and the full 2b2 entry in §1.1, §2.1 (the probe, failed-probe rules, AP30-1 r3), §2.2, §2.7, §2.9 contracts, §3.2, §3.7, §3.8, §4.1–4.12, §6.1 (2b2), §6.2, and §8 (the fixer 2b1b r2 lines, the orchestrator's AP30-1 r3 line, the builder 2b2 entry)",
+    "Read spec §14 and Appendix B (the backstop rules, B.1–B.6), RV-1, RV-9, RV-12, AR-8; and autopilot decisions AP-24 to AP-30",
+    "Diffed the builder's snapshot from before 2b2 (scratchpad/b2b2/orig) against the working tree: core src, core test, the webview's contextActions.ts, the plan; confirmed the §1.1, §2.1 and §6.1 plan changes are the orchestrator's AP30-1 r3 amendment (backup/slice2-plan.before_ap30r3.md is identical to orig)",
+    "Read in full: review/backstop.ts, revert.ts, submit.ts, formalize.ts, core formalize.ts, gate/g0.ts; read the diff hunks in sessionRules.ts (R2-1, R2-2), items.ts, judge.ts, classify.ts, reducer.ts, texts.ts, types.ts, facts.ts, adoption.ts, leanOps.ts, markup/types.ts, edit/session.ts, describe.ts",
+    "Traced compareTexts and commonSubsequence (moved = name-keyed LCS) and stepLimitFindings (`.holds` skipped under openProof) to confirm that a moved B `.holds` in a Result is reachable and that planItemRevert refuses it",
+    "Checked each backstop code against §4.10 and Appendix B (a)–(c), including the exemptions, D2-24, AF2, F13, D2-59",
+    "Checked formalizeStartProblems checks 1–6, their order and texts against §4.12, D2-20, D2-50, D2-53, D2-65 and AR-8; formalizeOrder; AP-29 G2 in the host, webview and core paths",
+    "Checked planSubmit against §3.7, D2-54, D2-57 and §4.5 (partlyAccepted)",
+    "Checked the failed probe's core half against §2.1 and AP30-5 (probeFailure sentences, factsMissing, the facts problem text, ok=false, ItemClass.probeFailure, acceptProbeFailed)",
+    "Checked G0's init rule and AP30-1 r3 (eraseMacroScopes semantics, hygienic names, whole-list judging) against §2.1 and §6.1",
+    "Read the new and changed tests (backstop, revert, formalize, submit, probe, judge R2-1/R2-2, g0, adoption, leanOps, describeSession, core formalize, webview contextActions) against §6.1's 2b2 list; checked for added skips or deleted tests (none)",
+    "Searched sources and docs for stale cycle-rule wording and callers of the formalize cycle checks"
+  ]
+}

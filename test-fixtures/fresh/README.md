@@ -16,10 +16,13 @@ test needs to build the fresh model:
 
 - `subject` (always `Demo`) and `today`: the date the board writes into `asserted:` (the test fixes the workspace's
   clock to it, so the scripts' edits can quote the blocks exactly);
-- `cards`: the cards typed in the A|D|G box, in order, each `{ type, naturalName, id }`; `id` is the id the board
-  derives (the test checks it, since the edits rely on it);
-- `target`, `premises`: what the person selects before pressing "These suffice" (the start declares the premises on
-  the target's block, so the target's block gains a `premises:` line before Claude reads it);
+- `cards`: the cards typed in the A|P box, in order, each `{ type, naturalName, id }`; `type` keeps the old names
+  (ASSUMPTION, DERIVATION, GOAL), which the test sends as their spec v4 kinds (AXIOM, PROPOSITION), as the markup reads
+  them; `id` is the id the board derives (the test checks it, since the edits rely on it);
+- `target`, `premises`: the question: the person draws arrows from `premises` into `target` and runs "Formalize for
+  dependencies" on them (spec v4.1; M2's "These suffice"), so the target's block has its `premises:` line before
+  Claude reads it. The round-1 turn matches the bundle's first line, `Run: "Formalize for dependencies"`, or, with no
+  premises (`arith.json`, `self-evident-not.json`), `Run: "Follows from nothing?"`;
 - `after` (only `plato.json`): the script runs in the model where the named script's proposal was accepted.
 
 `expect` holds `verdict` (or `round1`/`round2` for an adoption), `definitions` (the names of the definition

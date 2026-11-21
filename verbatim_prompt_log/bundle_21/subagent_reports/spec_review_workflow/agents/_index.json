@@ -1,0 +1,32 @@
+[
+  {
+    "label": "review:implementability",
+    "agentId": "a1b3b1911b3148ce2",
+    "file": "agents/review_implementability.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "review:fidelity-consistency",
+    "agentId": "acf46a1d07287126d",
+    "file": "agents/review_fidelity-consistency.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "review:soundness",
+    "agentId": "aefdb00c18603e297",
+    "file": "agents/review_soundness.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  }
+]

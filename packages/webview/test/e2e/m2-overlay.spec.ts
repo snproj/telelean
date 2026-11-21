@@ -59,11 +59,12 @@ test('AT6.5 the overlay: Current | Proposed; diff marks with glyph, word, colour
   // D-19: the target's result stays hidden (no proof chip, no verified arrows into it) until the review reveals it.
   const goal = card(page, TARGET);
   await expect(goal.locator('[data-chip="result-hidden"]')).toHaveText('result after the review');
-  await expect(goal.locator('[data-chip="proved-goal"]')).toHaveCount(0);
+  await expect(goal.locator('[data-chip="established"]')).toHaveCount(0);
+  await expect(goal).not.toHaveAttribute('data-glow', 'established'); // RV-6: no green glow before the reveal either
   await expect(goal.getByTestId('diff-badge')).toHaveAttribute('title', 'Changed in the proposal');
   await expect(page.locator(`path[data-target="${TARGET}"][data-pattern="verified"]`)).toHaveCount(0);
 
-  // "+1 new": the Vocabulary group is open in the proposed view and marks the new item.
+  // "+1 new": the Vocabulary band is open in the proposed view and marks the new item.
   const vocabulary = page.getByTestId('vocabulary');
   await expect(vocabulary).not.toHaveAttribute('data-collapsed', /.*/);
   await expect(vocabulary.getByTestId('vocab-new')).toHaveText('+1 new');
@@ -91,7 +92,7 @@ test('AT6.5 the overlay: Current | Proposed; diff marks with glyph, word, colour
   // Revealing the result (the review's "Show result") shows the target's proof in the proposed view.
   await page.getByTestId('show-result').click();
   await toggle.getByRole('radio', { name: 'Proposed' }).click();
-  await expect(goal.locator('[data-chip="proved-goal"]')).toContainText('proved');
+  await expect(goal.locator('[data-chip="established"]')).toHaveText('✓ established');
   await expect(goal.locator('[data-chip="result-hidden"]')).toHaveCount(0);
   await expect(page.locator(`path[data-target="${TARGET}"][data-pattern="verified"]`)).not.toHaveCount(0);
   await page.screenshot({ path: shotPath('m2-overlay-revealed.png') });
@@ -101,7 +102,7 @@ test('AT6.5 "Claude suggests": translucent ghost cards, "I hold this" with an op
   const alone = literalGhost({ id: 'ghost-2', naturalName: 'Cynder would not be a good addition to it', leanStatement: '¬ GoodAddition cynder newSpyro', leanName: 'cynder_not_good_2', aloneEntails: true });
   await openProposal(page, literalProposal({ ghosts: [literalGhost(), alone] }));
   await send(page, hostMessage('run', { run: reviewRun(literalProposal(), { ghosts: [literalGhost(), alone] }) }));
-  const column = list(page, 'ASSUMPTION');
+  const column = list(page, 'AXIOM');
   const ghost = column.locator('[data-ghost-id="ghost-1"]');
   await expect(ghost).toBeVisible();
   await expect(ghost.locator('.tl-ghost__marker')).toHaveText('Claude suggests');
@@ -182,6 +183,6 @@ test('AT6.6 the expanded card lists its attempts: date, verdict, premises, resol
   const rule = card(page, 'pg-no-dark-past');
   await rule.locator('.tl-card__chevron').click();
   await expect(rule.getByTestId('attempt')).toHaveCount(1);
-  await expect(rule.getByTestId('attempt-premises')).toHaveText('from no premises (self-evident?)');
+  await expect(rule.getByTestId('attempt-premises')).toHaveText('from no premises (follows from nothing?)');
   await expect(card(page, 'new-spyro-pg').getByTestId('attempts')).toHaveCount(0);
 });

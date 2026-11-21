@@ -1,0 +1,42 @@
+[
+  {
+    "label": "propose:user-first",
+    "agentId": "a0d38a505628d5624",
+    "file": "agents/propose_user-first.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "propose:refuse-first",
+    "agentId": "aca47332fb3fb4b62",
+    "file": "agents/propose_refuse-first.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "propose:reuse-first",
+    "agentId": "a52c41a69f43c6ee5",
+    "file": "agents/propose_reuse-first.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "judge",
+    "agentId": "a5ff4e013447d458a",
+    "file": "agents/judge.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  }
+]

@@ -6,11 +6,13 @@ describe('parseWebviewToHost', () => {
   it('accepts every message type the webview sends', () => {
     const messages = [
       webviewMessage('ready', { lastVersion: null }),
-      webviewMessage('kindChange', { id: 'a', from: 'ASSUMPTION', to: 'GOAL', beforeId: null }),
-      webviewMessage('kindChange', { id: 'a', from: 'DERIVATION', to: 'GOAL', beforeId: 'b', requestId: 'r-1', dependents: 'rewrite' }),
-      webviewMessage('kindChange', { id: 'a', from: 'GOAL', to: 'ASSUMPTION', beforeId: null, rationale: 'known from the news' }),
-      webviewMessage('addNode', { clientId: 'x', type: 'DERIVATION', naturalName: 'Something follows' }),
-      webviewMessage('addNode', { clientId: 'y', type: 'ASSUMPTION', naturalName: 'Cats purr', requestId: 'r2', rationale: 'heard it', stance: 'believe', source: 'observed' }),
+      webviewMessage('kindChange', { id: 'a', from: 'AXIOM', to: 'PROPOSITION', beforeId: null }),
+      webviewMessage('kindChange', { id: 'a', from: 'PROPOSITION', to: 'AXIOM', beforeId: 'b', requestId: 'r-1', dependents: 'rewrite' }),
+      webviewMessage('kindChange', { id: 'a', from: 'PROPOSITION', to: 'AXIOM', beforeId: null, rationale: 'known from the news' }),
+      webviewMessage('addNode', { clientId: 'x', type: 'PROPOSITION', naturalName: 'Something follows' }),
+      webviewMessage('addNode', { clientId: 'y', type: 'AXIOM', naturalName: 'Cats purr', requestId: 'r2', rationale: 'heard it', stance: 'believe', source: 'observed' }),
+      // Spec v4 slice 1c: a new proposition's place on the canvas.
+      webviewMessage('addNode', { clientId: 'z', type: 'PROPOSITION', naturalName: 'It follows', position: { x: -120.5, y: LIMITS.coordinate } }),
       webviewMessage('select', { ids: ['a', 'b'] }),
       webviewMessage('theseSuffice', { premises: ['a', 'b'], target: 'g' }),
       webviewMessage('theseSuffice', { premises: [], target: 'g', requestId: 'r3' }),
@@ -21,7 +23,7 @@ describe('parseWebviewToHost', () => {
       webviewMessage('editNode', { id: 'a', field: 'source', value: null }),
       webviewMessage('deleteNode', { id: 'a', keepLean: false }),
       webviewMessage('deleteNode', { id: 'a', keepLean: false, confirmed: true, requestId: 'r7' }),
-      webviewMessage('reorder', { id: 'a', column: 'ASSUMPTION', beforeId: 'b' }),
+      webviewMessage('reorder', { id: 'a', column: 'AXIOM', beforeId: 'b' }),
       webviewMessage('undo', {}),
       webviewMessage('redo', { requestId: 'r5' }),
       webviewMessage('selectSubject', { subject: 'Spyro' }),
@@ -46,21 +48,31 @@ describe('parseWebviewToHost', () => {
       null,
       { v: 2, type: 'ready', payload: { lastVersion: null } },
       { v: 1, type: 'launchMissiles', payload: {} },
-      { v: 1, type: 'kindChange', payload: { id: 'a', from: 'ASSUMPTION', to: 'LEMMA', beforeId: null } },
-      { v: 1, type: 'kindChange', payload: { id: 'a', from: 'ASSUMPTION', to: 'GOAL', beforeId: null, dependents: 'delete-them' } },
+      { v: 1, type: 'kindChange', payload: { id: 'a', from: 'AXIOM', to: 'LEMMA', beforeId: null } },
+      { v: 1, type: 'kindChange', payload: { id: 'a', from: 'PROPOSITION', to: 'AXIOM', beforeId: null, dependents: 'delete-them' } },
+      // Spec v4: the webview sends the new kind names only (the old ones are aliases in the markup, not in messages).
+      { v: 1, type: 'kindChange', payload: { id: 'a', from: 'ASSUMPTION', to: 'GOAL', beforeId: null } },
+      { v: 1, type: 'kindChange', payload: { id: 'a', from: 'PROPOSITION', to: 'ASSUMPTION', beforeId: null } },
+      { v: 1, type: 'addNode', payload: { clientId: 'x', type: 'DERIVATION', naturalName: 'x' } },
+      { v: 1, type: 'addNode', payload: { clientId: 'x', type: 'axiom', naturalName: 'x' } },
+      { v: 1, type: 'reorder', payload: { id: 'a', column: 'GOAL', beforeId: null } },
       { v: 1, type: 'select', payload: { ids: 'a' } },
       { v: 1, type: 'theseSuffice', payload: { premises: ['g'], target: 'g' } },
-      { v: 1, type: 'addNode', payload: { clientId: 'x', type: 'GOAL', naturalName: 'x'.repeat(LIMITS.textLength + 1) } },
-      { v: 1, type: 'addNode', payload: { clientId: 'x', type: 'GOAL', naturalName: 'two\nlines' } },
-      { v: 1, type: 'addNode', payload: { clientId: 'x', type: 'GOAL', naturalName: '   ' } },
-      { v: 1, type: 'addNode', payload: { clientId: 'x', type: 'GOAL', naturalName: 'x', stance: 'certain' } },
+      { v: 1, type: 'addNode', payload: { clientId: 'x', type: 'PROPOSITION', naturalName: 'x'.repeat(LIMITS.textLength + 1) } },
+      { v: 1, type: 'addNode', payload: { clientId: 'x', type: 'PROPOSITION', naturalName: 'two\nlines' } },
+      { v: 1, type: 'addNode', payload: { clientId: 'x', type: 'PROPOSITION', naturalName: '   ' } },
+      { v: 1, type: 'addNode', payload: { clientId: 'x', type: 'PROPOSITION', naturalName: 'x', stance: 'certain' } },
+      { v: 1, type: 'addNode', payload: { clientId: 'x', type: 'PROPOSITION', naturalName: 'x', position: { x: 1 } } },
+      { v: 1, type: 'addNode', payload: { clientId: 'x', type: 'PROPOSITION', naturalName: 'x', position: { x: 1, y: LIMITS.coordinate + 1 } } },
+      { v: 1, type: 'addNode', payload: { clientId: 'x', type: 'PROPOSITION', naturalName: 'x', position: { x: '1', y: 2 } } },
+      { v: 1, type: 'addNode', payload: { clientId: 'x', type: 'PROPOSITION', naturalName: 'x', position: [1, 2] } },
       { v: 1, type: 'diagnostic', payload: { level: 'fatal', code: 'x', message: '' } },
       { v: 1, type: 'editNode', payload: { id: 'a', field: 'premises', value: 'b' } },
       { v: 1, type: 'editNode', payload: { id: 'a', field: 'naturalName', value: null } },
       { v: 1, type: 'editNode', payload: { id: 'a', field: 'source', value: 'rumour' } },
       { v: 1, type: 'deleteNode', payload: { id: 'a', keepLean: 'yes' } },
       { v: 1, type: 'deleteNode', payload: { id: 'a', keepLean: false, confirmed: 'yes' } },
-      { v: 1, type: 'reorder', payload: { id: 'a', column: 'ASSUMPTION', beforeId: 'a' } },
+      { v: 1, type: 'reorder', payload: { id: 'a', column: 'AXIOM', beforeId: 'a' } },
       { v: 1, type: 'undo', payload: { requestId: 'has spaces' } },
       { v: 1, type: 'selectSubject', payload: { subject: 'spyro' } },
       { v: 1, type: 'createSubject', payload: { name: '../Evil' } },
@@ -82,8 +94,9 @@ describe('parseWebviewToHost', () => {
 
   it('rejects messages the host must not act on: no-op kind changes, repeated ids, reserved data keys', () => {
     const cases: Array<[unknown, RegExp]> = [
-      [{ v: 1, type: 'kindChange', payload: { id: 'a', from: 'GOAL', to: 'GOAL', beforeId: null } }, /must differ from payload\.from/],
-      [{ v: 1, type: 'kindChange', payload: { id: 'a', from: 'ASSUMPTION', to: 'GOAL', beforeId: 'a' } }, /must not be the moved card/],
+      [{ v: 1, type: 'kindChange', payload: { id: 'a', from: 'PROPOSITION', to: 'PROPOSITION', beforeId: null } }, /must differ from payload\.from/],
+      [{ v: 1, type: 'kindChange', payload: { id: 'a', from: 'PROPOSITION', to: 'AXIOM', beforeId: 'a' } }, /must not be the moved card/],
+      [{ v: 1, type: 'addNode', payload: { clientId: 'x', type: 'GOAL', naturalName: 'G' } }, /payload\.type must be AXIOM or PROPOSITION/],
       [{ v: 1, type: 'theseSuffice', payload: { premises: ['a', 'b', 'a'], target: 'g' } }, /lists "a" more than once/],
       [{ v: 1, type: 'select', payload: { ids: ['a', 'a'] } }, /lists "a" more than once/],
       // JSON.parse makes "__proto__" an own key (as the webview channel's structured clone does).
@@ -102,14 +115,22 @@ describe('parseWebviewToHost', () => {
     const result = parseWebviewToHost({ v: 1, type: 'select', payload: { ids: ['a'], evil: true }, extra: 1 });
     expect(result).toEqual({ ok: true, value: { v: 1, type: 'select', payload: { ids: ['a'] } } });
     // A blank rationale is no rationale; a whitespace-only rationale edit removes the field.
-    expect(parseWebviewToHost({ v: 1, type: 'addNode', payload: { clientId: 'x', type: 'GOAL', naturalName: 'G', rationale: '  ' } })).toEqual({
+    expect(parseWebviewToHost({ v: 1, type: 'addNode', payload: { clientId: 'x', type: 'PROPOSITION', naturalName: 'G', rationale: '  ' } })).toEqual({
       ok: true,
-      value: { v: 1, type: 'addNode', payload: { clientId: 'x', type: 'GOAL', naturalName: 'G' } },
+      value: { v: 1, type: 'addNode', payload: { clientId: 'x', type: 'PROPOSITION', naturalName: 'G' } },
     });
     expect(parseWebviewToHost({ v: 1, type: 'editNode', payload: { id: 'a', field: 'rationale', value: ' ' } })).toEqual({
       ok: true,
       value: { v: 1, type: 'editNode', payload: { id: 'a', field: 'rationale', value: null } },
     });
+    // Spec v4 slice 1c: addNode's position keeps exactly x and y.
+    expect(parseWebviewToHost({ v: 1, type: 'addNode', payload: { clientId: 'x', type: 'PROPOSITION', naturalName: 'G', position: { x: 3, y: -4, z: 9 } } })).toEqual({
+      ok: true,
+      value: { v: 1, type: 'addNode', payload: { clientId: 'x', type: 'PROPOSITION', naturalName: 'G', position: { x: 3, y: -4 } } },
+    });
+    const outside = parseWebviewToHost({ v: 1, type: 'addNode', payload: { clientId: 'x', type: 'PROPOSITION', naturalName: 'G', position: { x: Number.NaN, y: 0 } } });
+    expect(outside.ok).toBe(false);
+    if (!outside.ok) expect(outside.error).toMatch(/payload\.position\.x must be a finite number/);
   });
 });
 
@@ -163,15 +184,15 @@ describe('graph helpers', () => {
   });
 
   it('createUserNode builds a comment-only, informal node', () => {
-    const node = createUserNode({ id: 'x', type: 'GOAL', naturalName: 'X', subject: 'S' });
+    const node = createUserNode({ id: 'x', type: 'PROPOSITION', naturalName: 'X', subject: 'S' });
     expect(node.status.formal).toBe('informal');
     expect(node.lean.binding).toBe('none');
     expect(node.provenance.wordedBy).toBe('user');
   });
 
   it('validateGraph finds dangling premises and cycles', () => {
-    const a = { ...createUserNode({ id: 'a', type: 'DERIVATION', naturalName: 'A', subject: 'S' }), premises: ['b'] };
-    const b = { ...createUserNode({ id: 'b', type: 'DERIVATION', naturalName: 'B', subject: 'S' }), premises: ['a', 'zzz'] };
+    const a = { ...createUserNode({ id: 'a', type: 'PROPOSITION', naturalName: 'A', subject: 'S' }), premises: ['b'] };
+    const b = { ...createUserNode({ id: 'b', type: 'PROPOSITION', naturalName: 'B', subject: 'S' }), premises: ['a', 'zzz'] };
     const codes = validateGraph(buildGraph({ subject: 'S', version: 1, nodes: [a, b] })).map((p) => p.code);
     expect(codes).toContain('dangling-premise');
     expect(codes).toContain('premise-cycle');

@@ -40,26 +40,26 @@ describe('AT4.3 perform', () => {
   it('add-node: the Inbox change plus a created layout.json, the new id in the outcome', async () => {
     const w = await open();
     const layoutBefore = read(root, '.telelean/subjects/Spyro/layout.json');
-    const outcome = await w.perform({ kind: 'add-node', subject: 'Spyro', type: 'ASSUMPTION', naturalName: 'Spyro is a dragon' });
-    expect(outcome).toEqual({ ok: true, label: 'Add assumption: Spyro is a dragon', undoable: true, nodeId: 'spyro-is-a-dragon' });
+    const outcome = await w.perform({ kind: 'add-node', subject: 'Spyro', type: 'AXIOM', naturalName: 'Spyro is a dragon' });
+    expect(outcome).toEqual({ ok: true, label: 'Add axiom: Spyro is a dragon', undoable: true, nodeId: 'spyro-is-a-dragon' });
     expect(applier.calls).toHaveLength(1);
     const [call] = applier.calls;
-    expect(call?.label).toBe('Add assumption: Spyro is a dragon');
+    expect(call?.label).toBe('Add axiom: Spyro is a dragon');
     expect(call?.changes.map((c) => c.path)).toEqual(['Model/Spyro/Inbox.lean', '.telelean/subjects/Spyro/layout.json']);
     expect(call?.changes[1]).toEqual({
       path: '.telelean/subjects/Spyro/layout.json',
       before: layoutBefore,
-      after: serializeLayout({ ...emptyLayout(), columns: { ASSUMPTION: ['spyro-is-a-dragon'], DERIVATION: [], GOAL: [] } }),
+      after: serializeLayout({ ...emptyLayout(), columns: { AXIOM: ['spyro-is-a-dragon'], PROPOSITION: [] } }),
     });
-    expect(read(root, 'Model/Spyro/Inbox.lean')).toContain('id: spyro-is-a-dragon\ntype: ASSUMPTION\nnatural_name: Spyro is a dragon\nasserted: 2026-11-01\n');
+    expect(read(root, 'Model/Spyro/Inbox.lean')).toContain('id: spyro-is-a-dragon\ntype: AXIOM\nnatural_name: Spyro is a dragon\nasserted: 2026-11-01\n');
     expect(w.graph('Spyro').nodes.map((n) => n.id)).toContain('spyro-is-a-dragon');
-    expect((await w.workspaceState('Spyro')).undo).toBe('Add assumption: Spyro is a dragon');
+    expect((await w.workspaceState('Spyro')).undo).toBe('Add axiom: Spyro is a dragon');
   });
 
   it('delete-node: the Lean change, the layout and an attic file with the archive header', async () => {
     const w = await open();
     // Pin the column order first (a layout that lists every card), so the delete changes the layout too.
-    await w.perform({ kind: 'reorder', id: 'cynder-dark-past', column: 'ASSUMPTION', beforeId: null });
+    await w.perform({ kind: 'reorder', id: 'cynder-dark-past', column: 'AXIOM', beforeId: null });
     const layoutBefore = read(root, '.telelean/subjects/Spyro/layout.json');
     expect(layoutBefore).toContain('new-spyro-pg');
     const mainBefore = read(root, 'Model/Spyro/Main.lean');
@@ -78,9 +78,9 @@ describe('AT4.3 perform', () => {
   });
 
   it('appends attic entries to an existing attic file, a blank line apart', () => {
-    const entry = { subject: 'Spyro', nodeId: 'x', declName: 'Spyro.x.holds', text: 'theorem x.holds : x := trivial', reason: 'Derivation\n-> Assumption' };
+    const entry = { subject: 'Spyro', nodeId: 'x', declName: 'Spyro.x.holds', text: 'theorem x.holds : x := trivial', reason: 'Proposition\n-> Axiom' };
     const first = appendToAttic(null, [entry], '2026-11-01T09:30:00.000Z');
-    expect(first).toBe('-- archived 2026-11-01T09:30:00.000Z (Derivation -> Assumption): Spyro.x.holds\ntheorem x.holds : x := trivial\n');
+    expect(first).toBe('-- archived 2026-11-01T09:30:00.000Z (Proposition -> Axiom): Spyro.x.holds\ntheorem x.holds : x := trivial\n');
     const second = appendToAttic(first, [{ ...entry, reason: 'deleted' }, { ...entry, declName: 'Spyro.y', text: 'abbrev y : Prop := True\n', reason: 'deleted' }], 'T2');
     expect(second).toBe(`${first}\n-- archived T2 (deleted): Spyro.x.holds\ntheorem x.holds : x := trivial\n\n-- archived T2 (deleted): Spyro.y\nabbrev y : Prop := True\n`);
   });
@@ -92,7 +92,7 @@ describe('AT4.3 perform', () => {
     const before = (await w.listHistory('Spyro')).entries.map((e) => e.id);
     expect(before).toHaveLength(1); // "Initial state"
     const layoutBefore = read(root, '.telelean/subjects/Spyro/layout.json');
-    const outcome = await w.perform({ kind: 'reorder', id: 'new-spyro-pg', column: 'ASSUMPTION', beforeId: 'pg-no-dark-past' });
+    const outcome = await w.perform({ kind: 'reorder', id: 'new-spyro-pg', column: 'AXIOM', beforeId: 'pg-no-dark-past' });
     expect(outcome).toMatchObject({ ok: true, label: 'Move: The new Spyro game is PG', undoable: true });
     expect(applier.calls[0]?.changes.map((c) => c.path)).toEqual(['.telelean/subjects/Spyro/layout.json']);
     expect(w.graph('Spyro').nodes.map((n) => n.id)).toEqual(['new-spyro-pg', 'pg-no-dark-past', 'cynder-dark-past', 'cynder-not-good']);
@@ -101,7 +101,7 @@ describe('AT4.3 perform', () => {
     expect(read(root, '.telelean/subjects/Spyro/layout.json')).toBe(layoutBefore);
     expect((await w.listHistory('Spyro')).entries.map((e) => e.id)).toEqual(before);
     // The layout rides along in the next real snapshot.
-    await w.perform({ kind: 'reorder', id: 'new-spyro-pg', column: 'ASSUMPTION', beforeId: 'pg-no-dark-past' });
+    await w.perform({ kind: 'reorder', id: 'new-spyro-pg', column: 'AXIOM', beforeId: 'pg-no-dark-past' });
     await w.perform({ kind: 'edit-node', id: 'cynder-dark-past', field: 'naturalName', value: 'Cynder has a dark past' });
     const after = await w.listHistory('Spyro');
     expect(after.entries.map((e) => e.label)).toEqual(['Edit sentence: Cynder has a dark past', 'Initial state']);
@@ -111,10 +111,10 @@ describe('AT4.3 perform', () => {
 
   it('refusals become ok:false outcomes with their dependents, never throws', async () => {
     const w = await open();
-    expect(await w.perform({ kind: 'change-kind', id: 'cynder-dark-past', to: 'GOAL', beforeId: null })).toEqual({
+    expect(await w.perform({ kind: 'change-kind', id: 'cynder-not-good', to: 'AXIOM', beforeId: null })).toEqual({
       ok: false,
       code: 'needs-confirmation',
-      error: 'Make Goal: 2 declarations use this .holds.',
+      error: 'Make Axiom: 2 declarations apply this .holds to arguments.',
       dependents: ['cynder-not-good', 'Spyro.helper_lemma'],
     });
     expect(await w.perform({ kind: 'set-premises', target: 'cynder-not-good', premises: [] })).toEqual({ ok: false, code: 'not-yet', error: 'Proving from no premises is available from M2.' });
@@ -132,7 +132,7 @@ describe('AT4.3 perform', () => {
         },
       },
     });
-    expect(await broken.perform({ kind: 'reorder', id: 'x', column: 'GOAL', beforeId: null })).toMatchObject({ ok: false, code: 'internal' });
+    expect(await broken.perform({ kind: 'reorder', id: 'x', column: 'PROPOSITION', beforeId: null })).toMatchObject({ ok: false, code: 'internal' });
   });
 
   it('never rejects: a failure after a successful apply still reports (and records) the applied action', async () => {

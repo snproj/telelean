@@ -1,8 +1,7 @@
 /**
  * The proposal banner (03 section 7, docs/m2-plan.md section 6.4): what Claude's proposal changes ("1 new · 2 changed
  * · +1 vocabulary"), the Current | Proposed toggle of the board, and Review… · Accept · Feedback · Discard · Raw Lean
- * diff…. Accept follows the same rule as in the review (every definition question answered yes; the ticked lifecycle
- * items). A proof result is not named here: the review shows meaning before proof status (D-19). How the round ended
+ * diff…. Accept follows the same rule as in the review (every definition question answered yes). A proof result is not named here: the review shows meaning before proof status (D-19). How the round ended
  * when it ended without one (Claude gave up, a limit, no finish: A2 says the board tells the user) is not a proof
  * result, so the banner says it at once, and Accept is then not the primary button.
  */
@@ -57,7 +56,7 @@ export function ProposalBanner() {
         className={outcome ? 'tl-button tl-button--secondary tl-button--small' : 'tl-button tl-button--small'}
         data-testid="banner-accept"
         disabled={!approved || busy}
-        title={approved ? acceptTitle(proposal, review.lifecycle) : 'Answer every definition question with yes first (in the review)'}
+        title={approved ? acceptTitle(proposal) : 'Answer every definition question with yes first (in the review)'}
         onClick={() => actions.acceptProposal()}
       >
         Accept

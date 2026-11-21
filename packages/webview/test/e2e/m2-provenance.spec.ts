@@ -139,7 +139,8 @@ test('AT6.10 the proposal: board, statements, vocabulary, definitions, report ca
   await expect(card(page, ADOPTED_ID)).toBeVisible();
   await expect(page.locator('[data-ghost-id="ghost-1"]')).toBeVisible();
   await expectClean(page, 4);
-  const steps = ['statement', 'statement', 'vocabulary', 'definitions', 'result', 'lifecycle'];
+  // Spec v4 (slice 1a): the review ends with the result (no "Card changes" step any more).
+  const steps = ['statement', 'statement', 'vocabulary', 'definitions', 'result'];
   for (let i = 1; i < steps.length; i++) {
     await review.getByTestId('review-next').click();
     await expect(review.getByTestId('review-step')).toHaveAttribute('data-step', steps[i] as string);

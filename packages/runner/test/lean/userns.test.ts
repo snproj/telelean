@@ -69,7 +69,7 @@ describe('checkUserNamespaces', () => {
       root: tmp,
       request: { subject: 'S', target: 't', premises: [] },
       workspace: {
-        graph: () => ({ nodes: [{ id: 't', type: 'GOAL', naturalName: 'T' }] }),
+        graph: () => ({ nodes: [{ id: 't', type: 'PROPOSITION', naturalName: 'T' }] }),
         applyChanges: () => undefined,
         readText: async (rel: string) => (rel === 'lean-toolchain' ? 'leanprover/lean4:v4.35.0\n' : rel === 'lake-manifest.json' ? '{"packages":[]}' : rel === 'lakefile.toml' ? '' : null),
         modelFiles: () => [],

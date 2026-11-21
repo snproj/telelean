@@ -7,7 +7,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import type { DeclFacts, LeanFacts } from '@telelean/core';
+import { UNSEEN_PROOF, type DeclFacts, type GateFinding, type LeanFacts } from '@telelean/core';
 
 import {
   buildErrorFindings,
@@ -18,14 +18,19 @@ import {
   filesKey,
   ghostScratchSource,
   parseNamedAxiomsMessage,
+  PROBE_OUT_OF_MEMORY,
+  probeOomEnvironment,
   projectModulesOf,
   readGhostScratch,
   readRenderScratch,
   removalClosure,
   renderScratchSource,
+  unseenProofEnvironment,
 } from '../../src/gate/index.js';
+import { ghostDirectProblems } from '../../src/gate/engine.js';
 import { removeDeclarations, type ComparatorVerdict, type RejectionReason } from '../../src/lean/comparator.js';
 import type { LeanMessage } from '../../src/lean/footprint.js';
+import { valueProbeLines } from '../../src/semantic/checkFile.js';
 import { cleanupTempRoot, makeTempRoot } from './helpers.js';
 
 const range = (line: number, character: number) => ({ start: { line, character }, end: { line, character } });
@@ -114,6 +119,15 @@ describe('facts statuses (plan 3.6)', () => {
     expect(timeout.kind === 'budget' ? [timeout.finding.step, timeout.finding.code] : []).toEqual(['G1', 'budget']);
     expect(timeout.kind === 'budget' ? timeout.finding.message : '').toContain('3 s');
     expect(classifyFacts(facts({ status: 'oom' }), 1).kind).toBe('budget');
+    // Fixer 2b3a r1 (S-V2B3A-S1, AP-33): the isolated probe's own job ran out of memory (refresh's `oom` with the probe's
+    // marker `oom`): telelean's environment, not counted; the probe's timeout, and an oom without that marker, stay budget.
+    const probeOom = facts({ status: 'oom', detail: 'probe: memory cap 1024M exceeded', probe: { status: 'oom', durationMs: 5 } });
+    expect(classifyFacts(probeOom, 1)).toEqual({ kind: 'environment', message: `${PROBE_OUT_OF_MEMORY} (probe: memory cap 1024M exceeded)` });
+    expect(probeOomEnvironment(probeOom)).toBe("telelean's probe ran out of memory, so telelean could not read what the declarations of this state use in Lean (probe: memory cap 1024M exceeded)");
+    expect(classifyFacts(facts({ status: 'oom', detail: '  ', probe: { status: 'oom', durationMs: 5 } }), 1)).toEqual({ kind: 'environment', message: PROBE_OUT_OF_MEMORY });
+    expect(classifyFacts(facts({ status: 'timeout', probe: { status: 'timeout', durationMs: 5 } }), 1).kind).toBe('budget');
+    for (const probe of ['ok', 'cut', 'failed'] as const) expect(classifyFacts(facts({ status: 'oom', probe: { status: probe, durationMs: 5 } }), 1).kind, probe).toBe('budget');
+    expect(probeOomEnvironment(facts({ status: 'check-errors', probe: { status: 'oom', durationMs: 5 } }))).toBeUndefined();
     const env = (status: LeanFacts['status'], detail?: string): string => {
       const out = classifyFacts(facts({ status, ...(detail !== undefined ? { detail } : {}) }), 1);
       return out.kind === 'environment' ? out.message : `not environment: ${out.kind}`;
@@ -123,6 +137,20 @@ describe('facts statuses (plan 3.6)', () => {
     expect(env('cancelled')).toBe('the Lean job was cancelled');
     expect(env('unsupported-toolchain', 'x')).toBe('telelean cannot check this project: x');
     expect(env('unsupported-project')).toBe('telelean cannot check this project');
+  });
+
+  it('slice 1e fixer: B.2 refusing only because the proof could not be seen is an environment outcome (not counted), never with other findings', () => {
+    const sourceOnly: GateFinding = { step: 'G3', code: 'undeclared-premise', message: UNSEEN_PROOF, names: ['Spyro.t.holds'], nodeId: 't', token: 'source-only' };
+    const probe = 'check: the value probe could not run: importing Lean.CoreM and Lean.Util.FoldConsts failed (1:0: x)';
+    expect(unseenProofEnvironment([sourceOnly])).toBe(UNSEEN_PROOF);
+    expect(unseenProofEnvironment([sourceOnly, { ...sourceOnly }], probe)).toBe(`${UNSEEN_PROOF} (${probe})`);
+    expect(unseenProofEnvironment([sourceOnly], `${'x'.repeat(400)}\n`)).toBe(`${UNSEEN_PROOF} (${'x'.repeat(299)}…)`);
+    // Anything Claude can fix keeps the attempt Claude's: a failed build (which also leaves the facts stale), a card
+    // the proof uses without its arrow (B.2's other tokens), or nothing at all.
+    const build: GateFinding = { step: 'G1', code: 'build', message: 'Model/Spyro/Main.lean:3:0: error: x' };
+    expect(unseenProofEnvironment([build, sourceOnly], probe)).toBeUndefined();
+    expect(unseenProofEnvironment([{ ...sourceOnly, token: 'unselected', nodeId: 'l' }])).toBeUndefined();
+    expect(unseenProofEnvironment([])).toBeUndefined();
   });
 
   it('keeps whole Lean messages as diagnostics, filtered to the requested files', () => {
@@ -274,6 +302,91 @@ describe('the ghost check file (facts 7 and 8)', () => {
     ]);
     expect(parseNamedAxiomsMessage("'A.b' depends on axioms: [x, y]")).toEqual({ name: 'A.b', axioms: ['x', 'y'] });
     expect(parseNamedAxiomsMessage('something else')).toBeUndefined();
+  });
+});
+
+describe('the ghost check file with the value probe (spec v4.1 RV-1 "the check includes B.2", slice 1e)', () => {
+  const names = ['Spyro.cynder_dark_past.holds', 'Spyro.Character', 'Spyro.telelean_ghost_check', 'odd name', 'Spyro.«x»'];
+  const probed = ghostScratchSource({
+    library: 'Model',
+    namespace: 'Spyro',
+    targetStatement: 'Spyro.cynder_not_good',
+    statement: '¬ GoodAddition cynder newSpyro',
+    proof: 'fun h => h',
+    probe: { names },
+  });
+  const msg = (line: number, severity: string, data: string): LeanMessage => ({ severity, data, line, column: 0 });
+
+  it('imports what the probe needs after the library, keeps the check where it was, and ends with the probe (the check theorem first)', () => {
+    const lines = probed.source.split('\n');
+    expect(lines.slice(0, 9)).toEqual([
+      'import Model',
+      'import Lean.CoreM',
+      'import Lean.Util.FoldConsts',
+      'namespace Spyro',
+      'abbrev telelean_ghost_stmt : Prop := ¬ GoodAddition cynder newSpyro',
+      'theorem telelean_ghost_check : telelean_ghost_stmt → Spyro.cynder_not_good :=',
+      '  fun h => h',
+      'end Spyro',
+      '#print axioms Spyro.telelean_ghost_check',
+    ]);
+    expect(probed).toMatchObject({ statementLine: 5, proofLines: [6, 7], printLine: 9 });
+    // Names the probe cannot pass are left out; the check theorem is listed once, first.
+    expect(probed.valueProbe?.probed).toEqual(['Spyro.telelean_ghost_check', 'Spyro.cynder_dark_past.holds', 'Spyro.Character']);
+    const probe = valueProbeLines(probed.valueProbe?.probed ?? [], 'Model', { followMain: true });
+    expect(probed.valueProbe).toMatchObject({ firstLine: 10, lastLine: 9 + probe.length });
+    expect(lines.slice(9, -1)).toEqual(probe);
+    // It follows the constants this file declares (the pinned statement, the theorem's auxiliaries); refresh's does not.
+    expect(probe).toContain('    | none => true');
+    expect(valueProbeLines(['A.b'], 'Model')).toContain('    | none => false');
+  });
+
+  it('reads the check theorem\'s constants from the probe\'s line; an error in the probe voids it, never the suggestion\'s check', () => {
+    const line = probed.valueProbe?.firstLine ?? 0;
+    const axioms = "'Spyro.telelean_ghost_check' depends on axioms: [Spyro.cynder_dark_past.holds]";
+    const ok = readGhostScratch(probed, [msg(9, 'information', axioms), msg(line, 'information', '{"telelean-value-consts":[["Spyro.cynder_dark_past.holds"],[],[]]}')]);
+    expect(ok).toEqual({ errors: [], axioms: ['Spyro.cynder_dark_past.holds'], valueConsts: ['Spyro.cynder_dark_past.holds'], valueProblems: [] });
+    const failed = readGhostScratch(probed, [msg(9, 'information', axioms), msg(line + 3, 'error', 'unknown constant')]);
+    expect(failed.errors).toEqual([]);
+    expect(failed.valueConsts).toBeUndefined();
+    expect(failed.valueProblems).toEqual([`the value probe failed: ${line + 3}:0: unknown constant`]);
+    expect(readGhostScratch(probed, [msg(9, 'information', axioms)]).valueProblems).toEqual(['Lean printed nothing for the value probe']);
+    expect(readGhostScratch(probed, [msg(line, 'information', '{"telelean-value-consts":[[]]}')]).valueProblems).toEqual(['the value probe listed 1 entries for 3 declarations']);
+    // Without the probe (as before slice 1e) nothing about values is read.
+    expect(readGhostScratch(ghostScratchSource({ library: 'Model', namespace: 'Spyro', targetStatement: 'Spyro.t', statement: 'True', proof: 'fun h => h' }), []).valueProblems).toEqual([]);
+  });
+
+  it('slice 2b3a: the in-file probe keeps its place in the ghost file, now with the type walk; the check theorem\'s type constants come from the same line', () => {
+    const lines = probed.source.split('\n');
+    expect(lines.join('\n')).toContain('      types := types.push (walk (typeOf ci) (fun cj => typeOf cj ++ valueOf cj))');
+    // In-file: the file's own environment, never importModules (its theorem is in no built module).
+    expect(lines).toContain('  let env ← Lean.getEnv');
+    expect(probed.source).not.toContain('importModules');
+    const line = probed.valueProbe?.firstLine ?? 0;
+    const axioms = "'Spyro.telelean_ghost_check' depends on axioms: [Spyro.cynder_dark_past.holds]";
+    const both = '{"telelean-value-consts":[["Spyro.cynder_dark_past.holds"],[],[]],"telelean-type-consts":[["Spyro.cynder_dark_past","Spyro.Character"],[],[]]}';
+    expect(readGhostScratch(probed, [msg(9, 'information', axioms), msg(line, 'information', both)])).toEqual({
+      errors: [],
+      axioms: ['Spyro.cynder_dark_past.holds'],
+      valueConsts: ['Spyro.cynder_dark_past.holds'],
+      typeConsts: ['Spyro.cynder_dark_past', 'Spyro.Character'],
+      valueProblems: [],
+    });
+    // A malformed type key voids the whole line, values included (fail closed).
+    const badType = '{"telelean-value-consts":[["Spyro.cynder_dark_past.holds"],[],[]],"telelean-type-consts":[[]]}';
+    const bad = readGhostScratch(probed, [msg(9, 'information', axioms), msg(line, 'information', badType)]);
+    expect(bad).toMatchObject({ valueProblems: ['the type probe listed 1 entries for 3 declarations'] });
+    expect(bad).not.toHaveProperty('valueConsts');
+    expect(bad).not.toHaveProperty('typeConsts');
+    // A line without the check theorem (null): neither.
+    const missing = readGhostScratch(probed, [msg(9, 'information', axioms), msg(line, 'information', '{"telelean-value-consts":[null,[],[]],"telelean-type-consts":[["X.y"],[],[]]}')]);
+    expect(missing.valueProblems).toEqual(['the value probe found no Spyro.telelean_ghost_check']);
+    expect(missing).not.toHaveProperty('typeConsts');
+  });
+
+  it('ghostDirectProblems refuses rather than guess without checked facts or a usable probe', () => {
+    const ctx = { selection: { subject: 'Spyro', target: 'cynder-not-good', premises: ['cynder-dark-past'], adoptedGhosts: [] } };
+    expect(ghostDirectProblems(ctx, undefined, { valueProblems: [] }, [])).toEqual([`${UNSEEN_PROOF} (no checked facts of the files).`]);
   });
 });
 

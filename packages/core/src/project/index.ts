@@ -8,6 +8,8 @@ import { buildSubjectGraph } from './subjectGraph.js';
 import type { ProjectInput, ProjectModel, SubjectGraphOptions } from './types.js';
 
 export * from './types.js';
+/** Spec v4.1 B.2 (slice 1e): direct() of a proof checked outside the files (the runner's "Claude suggests" scratch check). */
+export { directWalkOfConsts, type ConstsWalk } from './edges.js';
 
 /**
  * Steps 2-5 of 03 section 2: bind blocks to declarations, merge the Lean facts, add vocabulary / presupposition /

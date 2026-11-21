@@ -2,8 +2,9 @@
 //
 // A script file lists the turns a scripted "Claude" plays, in order. Each send() takes the next
 // unplayed turn; a turn with `match` is only played for a user turn whose text contains it (the
-// round-1 context bundle starts with `Run: "These suffice"`, an adoption turn with `The person
-// adopted`, a nudge with `You ended your turn without calling finish`), so a script stays in step
+// round-1 context bundle starts with `Run: "Formalize for dependencies"`, or `Run: "Follows from
+// nothing?"` for an empty question, an adoption turn with `The person adopted`, a nudge with `You
+// ended your turn without calling finish`), so a script stays in step
 // even when the host sends a turn the script did not plan for (that turn gets no steps and ends at
 // once). The played-turn cursor lives in the returned FakeScript, so a session resumed with
 // `--resume` (a new FakeSession of the same FakeBackend) continues where the old one stopped.

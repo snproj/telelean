@@ -25,7 +25,7 @@ describe('AT2.3 stale files keep previous facts by name', () => {
     expect(model.freshFiles.has('Model/Spyro/Main.lean')).toBe(false);
     const goal = nodeOf(model, 'cynder-not-good');
     expect(goal.status.proof.kind).toBe('proved');
-    expect(goal.status.flags).toEqual(['proved-goal', 'stale']);
+    expect(goal.status.flags).toEqual(['stale']);
     expect(goal.lean.refs).toBeUndefined();
     expect(goal.lean.uses).toEqual(['Spyro.GoodAddition', 'Spyro.cynder', 'Spyro.newSpyro']);
     expect(goal.lean.presupposes).toEqual(['Spyro.Character.exists', 'Spyro.Game.exists']);

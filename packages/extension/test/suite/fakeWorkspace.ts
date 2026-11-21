@@ -325,10 +325,11 @@ export class FakeModelWorkspace implements ModelWorkspace {
     for (const name of this.names) {
       const text = (await this.options.text.read(`Model/${name}/Inbox.lean`)) ?? '';
       const nodes: TlNode[] = [];
-      for (const block of text.matchAll(/@@ telelean v1\nid: (.+)\ntype: (ASSUMPTION|DERIVATION|GOAL)\nnatural_name: (.+)\n/g)) {
+      // Spec v4: AXIOM and PROPOSITION, with the old kinds read as their aliases (as core's parseNodeType does).
+      for (const block of text.matchAll(/@@ telelean v1\nid: (.+)\ntype: (AXIOM|PROPOSITION|ASSUMPTION|DERIVATION|GOAL)\nnatural_name: (.+)\n/g)) {
         nodes.push({
           id: block[1] ?? 'x',
-          type: (block[2] ?? 'ASSUMPTION') as NodeType,
+          type: (block[2] === 'AXIOM' || block[2] === 'ASSUMPTION' ? 'AXIOM' : 'PROPOSITION') as NodeType,
           role: 'node',
           subject: name,
           naturalName: block[3] ?? '',

@@ -24,7 +24,7 @@ export interface KindChangePlan {
   to: NodeType;
   /** The same impact the webview previewed, recomputed with the facts (dependents may include untracked declarations). */
   impact: KindChangeImpact;
-  /** Block field changes (`type`, optionally `rationale`). */
+  /** Block field changes: `type`; for P->A also the removal of `premises:` and `follows_from:` (AR-7); optionally `rationale`. */
   fieldChanges: Array<{ key: KnownFieldKey; value: string | null }>;
   /** Lean text operations, grouped by file. */
   leanOps: Array<{ file: string; ops: LeanOp[] }>;

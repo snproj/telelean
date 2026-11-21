@@ -1,0 +1,444 @@
+# fix:r1
+
+Agent `ac4c7beaf6086a655` of workflow `wf_67531371-ae0`. Verbatim output (JSON alongside).
+
+- **summary:** I applied ultra review round 1 to /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/plans/slice4-plan.md. No other file was touched, and nothing was built or run; only read-only greps of core sources were used to confirm `isProof`, COMMAND_WORDS and `EditSession.mapOffset`. All 3 blockers, all major findings and every minor/nit finding are addressed: most fixed as proposed, a few in a simpler or narrower form, explained per finding. None was rejected outright.
+
+**The blockers**
+- **S4M-1:** every transform step now has a step 1 plan (new-card ids before the scope), a recorded typed write, and a typed judgement of the `typed` commit with a build before any Claude turn. Typed freezes take their full value (meaningKey and held map) from that judgement. Confirmed typed Lean must also elaborate to the scratch's constants, or the step fails with `typed-meaning`. Typed Lean that could not be confirmed takes the person's own Accept and is shown in fully explicit form (D4-32, which narrows RV-7). D4-23 is replaced by its old alternative.
+- **S4M-2:** written typed units must hold at every judged state. G5, B.4, new-axiom and no-proofs compare against the typed commit (S₀ᵗ). New-axiom's allowance 1 now requires the `.holds` to still be bound to its card. A typed item's content key covers its units' values in the state (D4-33).
+- **LC-1:** Edit… re-bases the queued draft with provenance stored per field (`rebaseDraft`), so a value Claude wrote never becomes the person's.
+
+**Other contract changes**
+- `DraftField.kept` replaces `frozen`, and the chip states are renamed so they are not called frozen.
+- New fields:
+  - `TypedUnit.soft`, and `TransformFreeze.typed`, which separates typed fields from follow-on edits that only revalue.
+  - `FreezeDelta.transform`, `TransformWindowView.analysis`, `masked`, provenance values, `QueuedTransform.scratch`.
+  - `PersistedStep.typedCommit`, `submitting`, SealBy `transform`, the `premise:` draft key, `originalKey` and `keep` on apply-transform, and `planSubmit`'s `analyses`.
+- `transformScopeOf` now takes the plan's ids.
+
+**Bookkeeping**
+- New decisions D4-31 to D4-43; D4-1, D4-3, D4-4, D4-6, D4-10, D4-12, D4-14 to D4-16, D4-18, D4-20 to D4-24, D4-29 and D4-30 revised.
+- Tests extended per sub-slice, with new cheats T11 to T14.
+- The coverage table is updated, and one dated "ultra review round 1" line is added to §8.
+- **dispositions:**
+  - [1]
+    - **id:** checks-S4M-1
+    - **action:** fixed
+    - **note:** Added §3.9 step 4, the typed judgement: the typed commit is built before any Claude turn, and TransformFreezes are valued from it (text, meaningKey, held map; the held map leaves out open/fuzzy content, dependents left to Claude and MUST DEFINE names). Confirmed pieces must elaborate to the scratch's constants (the scratch gains the in-file probe), else `typed-meaning`. Unconfirmed pieces take their own Accept, marked typed-unconfirmed and shown in fully explicit form (D4-32, a narrowing of RV-7's last bullet). D4-23 rewritten as its old alternative. Cheats T11 (the coercion) and T12 (`axiom True : Prop` shadowing).
+  - [2]
+    - **id:** checks-S4M-2
+    - **action:** fixed
+    - **note:** Added 'typed units hold' at step, stage, final and backstop (code frozen, token typed, never excused by S₀). It exempts soft units and units whose transform freeze the person removed. Also added: S₀ᵗ for G5, B.4, new-axiom and no-proofs; new-axiom's allowance 1 requires the binding; the typed item's content key over its units' values in the state (D4-33). The cheats are numbered T13 (a trashed `.holds` re-added) and T14 (`worded_by` restored), because S4M-1's cheats took T11 and T12.
+  - [3]
+    - **id:** checks-S4M-3
+    - **action:** fixed
+    - **note:** The `block` unit now records existence only. Every line telelean writes is its own `line` unit (`Exclude<KnownFieldKey,'premises'>`), and each declaration its own `decl` unit. Ownership is per line: Claude's lines and declarations in a person's new block go to card:<c> (Formalize/Change) or arrow items, which depend on the typed item. G5 lets only open-key fields and pins appear in such blocks. 4c and 4d tests added.
+  - [4]
+    - **id:** checks-S4M-4
+    - **action:** fixed
+    - **note:** RV-5 rule 3 extended: a typed item depends on the item that adds the card its units sit on and on the items adding either end of a typed entry. The fixpoint keeps it in review, and the Add's Reject lists it and withdraws it. 4d test added.
+  - [5]
+    - **id:** checks-S4M-5
+    - **action:** fixed
+    - **note:** The §3.8 cascade now includes accepted items whose acceptCovers contain one of the transform's typedKeys. §3.9's 'compared with that value only' is replaced by the revalue rule: accepted expectations are never revalued, and the cascade clears them first. 4f test added.
+  - [6]
+    - **id:** checks-S4M-6
+    - **action:** fixed
+    - **note:** Took the first option, restricted to proofs (new decision D4-39). A 'may break' walk from open and fuzzy Lean finds the card's own kept proof and the proofs that use its `.holds` or reach the declaration. Unfrozen non-target ones join `dependents.proofs`, so mark_proof_broken accepts them with no choice to make; frozen ones and targets' Results are listed only. The simpler refusal option was not taken: it misses proofs that use the axiom's `.holds`.
+  - [7]
+    - **id:** checks-S4M-7
+    - **action:** fixed
+    - **note:** §3.5 step 3 no longer updates the mirror when the window leaves the statement open or fuzzy. A mirror change is a follow-on edit, never a typed field (D4-29 extended). Tests in 4c and 4h.
+  - [8]
+    - **id:** checks-S4M-8
+    - **action:** fixed
+    - **note:** `TransformFreeze.typed` added: only typed fields get the `transform` reason, and follow-on edits only revalue (D4-34); D4-33 still holds them in place. A proof cleared by a transform is re-proved after Apply: formalizeStartProblems gets `clearedProofs` and a refusal text. D4-20's text reworded.
+  - [9]
+    - **id:** checks-S4M-9
+    - **action:** fixed
+    - **note:** Took the second option. Unknown names in sessionNames, or declared by a typed declaration of the same draft, are allowed in declarations as in statements and checked when carried out; that Lean then takes its own Accept (D4-32). A name nothing defines is a problem in a declaration (D4-6 revised). 4g test added.
+  - [10]
+    - **id:** checks-S4M-10
+    - **action:** partly
+    - **note:** Adopted the 'at minimum' part: pieces are ordered by mentions in both the scratch and the write, and a visibility rule requires every elaborated constant to be visible where the piece is written (destination imports, above it in its module, or typed earlier). In-place elaboration is not adopted: a build on the direct path would conflict with TR-15. The changed structure or inductive case is logged as a residual in D4-6. 4g tests added.
+  - [11]
+    - **id:** checks-S4M-11
+    - **action:** fixed
+    - **note:** (a) runs on every typed field before any Lean job. Statements are wrapped in brackets inside the scratch abbrev. 4a extends COMMAND_WORDS and GHOST_COMMAND_WORDS from a toolchain-derived fixture, with a test; seal, unseal and register_simp_attr cheats added.
+  - [12]
+    - **id:** checks-S4M-12
+    - **action:** fixed
+    - **note:** Took the stale option (D4-42). A queued transform whose typed Lean names content this Submit reworks needs a new look. The keep-set option would deadlock against the typed freezes' held maps.
+  - [13]
+    - **id:** checks-S4M-13
+    - **action:** fixed
+    - **note:** Merged with LC-2 and IMP-15. A typed item's Reject, or a cascade withdrawal of it, removes its TransformFreezes in the same recorded action; Undo restores them, and frozenChangesOf leaves them out.
+  - [14]
+    - **id:** checks-S4M-14
+    - **action:** fixed
+    - **note:** A rework step's open, arrowsInto and dependents are limited to what its openItems own; no slots; mayAddCards false (transformScopeOf takes a `rework` argument). D4-24 updated.
+  - [15]
+    - **id:** checks-S4M-15
+    - **action:** fixed
+    - **note:** apply-transform carries `originalKey`, and the planner refuses when its re-copied original hashes differently (merged with LC-4).
+  - [16]
+    - **id:** checks-S4M-16
+    - **action:** fixed
+    - **note:** Another subject's dependents are listed, and in a session they are a problem with the other-subject text. A typed instance or coercion that frozen or accepted content's class uses gets a session-only warning (merged with IMP-22). 4b tests added.
+  - [17]
+    - **id:** checks-S4M-17
+    - **action:** fixed
+    - **note:** 'The step's new cards' now means cards add_card made in this step, slots included; a person's new card takes Claude's arrows only through arrowsInto. The Dependencies pending text is the sorted entries plus the mark. add_card refuses a slot already filled, with a text.
+  - [18]
+    - **id:** checks-S4M-18
+    - **action:** fixed
+    - **note:** Took the logging option. A lemma's declaration is locked with a reason, and D4-37 records it as a narrowing of TRANSFORM 9, TR-10 and CF-1; the alternative (a typed theorem as the person's own proof) is logged.
+  - [19]
+    - **id:** checks-S4M-19
+    - **action:** fixed
+    - **note:** no-proofs is defined over core `isProof` (checked in gate/decls.ts), which covers Prop-valued defs. 4e test added.
+  - [20]
+    - **id:** lifecycle-LC-1
+    - **action:** fixed
+    - **note:** Provenance is stored per field with its value. Edit… rebuilds through the new `rebaseDraft`: untyped fields take the new copy's value, state and owner; typed fields stay the person's; gone cards go to `left`. Provenance is never recomputed. 4a and 4i tests added; D4-30 updated.
+  - [21]
+    - **id:** lifecycle-LC-2
+    - **action:** partly
+    - **note:** Done as proposed: FreezeDelta gains `transform` (and `startCleared`); Unfreeze in any form, including the decline dialog's, removes and records TransformFreezes; a Reject or person-made withdrawal of a typed item removes its freezes, restorable by Undo; madeAt is set for every reason. Not adopted: judge reverts still remove no reason, to keep slice 3's invariant that only the person unfreezes. A typed item a judge reverts leaves a fail-closed stage problem the person can Unfreeze. Tests in 4e.
+  - [22]
+    - **id:** lifecycle-LC-3
+    - **action:** fixed
+    - **note:** Used the refuter's simpler form. Per key, the newest TransformFreeze gives the value and the reason lasts while a typed one remains; a rollback drops only its own step's. Revalue now lists earlier transforms. 4e test added.
+  - [23]
+    - **id:** lifecycle-LC-4
+    - **action:** partly
+    - **note:** Adopted the originalKey check, so a hand edit is never written over, and the host holds the folder busy from submit until the board step. The crash-in-that-instant loss is logged as D4-3's residual. A recorded direct step replayed by recover() is listed as the alternative but not built (minor severity).
+  - [24]
+    - **id:** lifecycle-LC-5
+    - **action:** fixed
+    - **note:** The typed write is recorded with `typedCommit`. recover() takes a step without it back to step-start. A no-Claude step's Resume re-runs its check, and a Claude step whose first turn was never sent is started, not resumed. 4h crash tests added (merged with IMP-20).
+  - [25]
+    - **id:** lifecycle-LC-6
+    - **action:** fixed
+    - **note:** D4-43. Cascades that reach a Transform-declined source ask to drop the transform in the same recorded action (`dropTransforms`/`drops`), and a judge revert makes the transform stale. Drop is never refused: sources still in ws/ return to review, and taken-out ones stay to be redone, so the person is never stuck. Undos that would give a source a status its content no longer has are refused. 4f tests added.
+  - [26]
+    - **id:** lifecycle-LC-7
+    - **action:** fixed
+    - **note:** `masked` is recorded on the window and the queued transform. Staleness skips masked fields, which reworkResults handles. 4f twin test added.
+  - [27]
+    - **id:** lifecycle-LC-8
+    - **action:** fixed
+    - **note:** Retry of a transform step first runs §3.8 steps 2–3 (stale refusal, cascade confirmation through retry's new `confirmed`) and re-scopes from the transform as queued now; it is refused if the transform is gone. Drop and replace take the step out of `retry`, recorded for Undo. 4h tests added.
+  - [28]
+    - **id:** lifecycle-LC-9
+    - **action:** fixed
+    - **note:** Used the refuter's simplest form: the premise rewrite happens only in the run.json write that ends the step as passed. 4h test added.
+  - [29]
+    - **id:** lifecycle-LC-10
+    - **action:** fixed
+    - **note:** An absent claudeStarted reads as true; transform-started sessions write false, and the write that opens the conversation sets true with its id (merged with IMP-19). 4h test added.
+  - [30]
+    - **id:** lifecycle-LC-11
+    - **action:** fixed
+    - **note:** The cascade is part of the submit-take-out write, which records `submitting`; recover() makes a missing queue-start. The stage report lists accepted items returned for a transform that was not carried out.
+  - [31]
+    - **id:** lifecycle-LC-12
+    - **action:** partly
+    - **note:** (a) TW-1 now refuses dropTransform. (b) Superseded by F4: TW-1 refuses Undo/Redo only of actions that would change the working copy or come from before the window. (c) Resolved by letting a normal Unfreeze run in the window (F4) rather than a partial Unfreeze, because FZ-7 has no partial Unfreeze.
+  - [32]
+    - **id:** lifecycle-LC-13
+    - **action:** fixed
+    - **note:** The `transform` SessionAction gains takenOut, endedForce, startedForce, commits and retry ids; queue and drop outcomes carry `write`. Undo restores records, ws/ and the force. 4f tests added (merged with IMP-7).
+  - [33]
+    - **id:** lifecycle-LC-14
+    - **action:** fixed
+    - **note:** In edit mode, `nothing` answers needs-confirmation ('Nothing is left to change: drop …?'), and confirming sends drop-transform.
+  - [34]
+    - **id:** lifecycle-LC-15
+    - **action:** fixed
+    - **note:** Un-reject of an Add that a transform trashed is refused, with a text. 4d test added.
+  - [35]
+    - **id:** lifecycle-LC-16
+    - **action:** fixed
+    - **note:** TransformFreezes are valued only from judgements with a meaningKey for every covered declaration; otherwise they stay pending until a later judge-apply with keys.
+  - [36]
+    - **id:** lifecycle-LC-17
+    - **action:** fixed
+    - **note:** claude-step's queue-start write (SealBy 'transform') clears the window, adds the QueuedTransform, and sets claudeStarted and the conversation id. start-session runs checkBase first, then one write. recover() of a stage with no `judged` runs the judge (merged with IMP-18 and IMP-24).
+  - [37]
+    - **id:** lifecycle-LC-18
+    - **action:** fixed
+    - **note:** Restoring a 'Delete it too' card removes it from the draft; it returns to the dependents list with no choice. 4j test added.
+  - [38]
+    - **id:** lifecycle-LC-19
+    - **action:** fixed
+    - **note:** Transform steps write no AttemptRecord; their outcomes appear in the stage reports and the run panel's Transforms list.
+  - [39]
+    - **id:** lifecycle-LC-20
+    - **action:** fixed
+    - **note:** SessionTransforms.start removed; the selection lives only in SessionFreezes.start.transform, which the view reads.
+  - [40]
+    - **id:** intent-F1
+    - **action:** fixed
+    - **note:** The direct path always opens a confirmation (EN-2, REVIEW 8). It lists the changes, the typed fields that become standing freezes, and the window's freeze changes with keep ticks; kept rows join apply-transform's step. No narrowing needed (§3.6, §4.6, D4-3, D4-16).
+  - [41]
+    - **id:** intent-F2
+    - **action:** fixed
+    - **note:** Took the finding's alternative, the simplest sound option (D4-31): a typed non-empty value is always kept and never open. Cleared fields left fuzzy are written as soft units, with no freeze and exempt from 'hold'. The soft-unit design for typed text is logged as the alternative.
+  - [42]
+    - **id:** intent-F3
+    - **action:** fixed
+    - **note:** Chip states renamed: 'kept as it is (this transform)' and 'left empty (this transform)', with no lock. Only real freezes and typed fields say 'frozen' (D4-10 revised to cite FROZEN 3).
+  - [43]
+    - **id:** intent-F4
+    - **action:** fixed
+    - **note:** TW-1 now allows status-only freeze actions (Unfreeze with RV-5's list, 'also un-accept') and recomputes the analysis after them. It refuses only working-copy changes ('your version', an un-accept that takes a written premise out). D4-18 records the remaining narrowing against FROZEN 4 and FZ-9.
+  - [44]
+    - **id:** intent-F5
+    - **action:** fixed
+    - **note:** D4-15 rewritten as a narrowing of TRANSFORM 4, giving its reason (ids and blocks come from the sentence) and the user's reading as the alternative. Behaviour unchanged (minor; the refuter judged this a logging gap).
+  - [45]
+    - **id:** intent-F6
+    - **action:** fixed
+    - **note:** D4-14 relabelled as a narrowing of TRANSFORM 9, TR-10 a and REVIEW 4, listing what is missing, with the full transform as the alternative. The premise window hides the controls it cannot use (UI-18).
+  - [46]
+    - **id:** intent-F7
+    - **action:** fixed
+    - **note:** New decision D4-35. Without the tick, a transform step adds only plain vocabulary and MUST DEFINE definitions; other definitions, instances, coercions and presuppositions get the `new-definition` refusal. The hint, banner, system prompt and §9 TR-7 (b) row are corrected.
+  - [47]
+    - **id:** intent-F8
+    - **action:** fixed
+    - **note:** D4-12 now states its reason (AP-24: one rework mechanism) and that it is a lasting narrowing of the user's DECLINE OPTIONS 3 example, which slice 5 does not lift.
+  - [48]
+    - **id:** intent-F9
+    - **action:** fixed
+    - **note:** Merged with UI-3. The window gets its own Undo timeline (draft edits plus freeze actions since openedAtAction), and Undo never reaches a session step from before the window (D4-41).
+  - [49]
+    - **id:** intent-F10
+    - **action:** fixed
+    - **note:** D4-36. A→P in the window only through typed Dependencies (a source or the mark), and the axiom's Dependencies editor stays live. A change to Proposition with neither is a problem, and fuzzy Dependencies do not count.
+  - [50]
+    - **id:** intent-F11
+    - **action:** fixed
+    - **note:** Took the first option. On the direct path, new cards' typed fields are frozen too (D4-16), and the outcome text says arrows and kinds are not frozen.
+  - [51]
+    - **id:** intent-F12
+    - **action:** fixed
+    - **note:** The non-abbrev lock text no longer tells the person to edit files during a session ('change it in its file once no edit session runs …').
+  - [52]
+    - **id:** intent-F13
+    - **action:** fixed
+    - **note:** Banner for both cases: 'Whole model open, but everything except the selected cards is still frozen'. In a transform-started session, Formalize's ▾ adds the note with [Unfreeze all other cards…], which runs FZ-9's action.
+  - [53]
+    - **id:** intent-F14
+    - **action:** fixed
+    - **note:** In a session, the `claude` choice on a proof dependent reads 'Mark its proof broken (Claude writes no proofs; re-prove it after the session)'.
+  - [54]
+    - **id:** intent-F15
+    - **action:** fixed
+    - **note:** Merged with IMP-10. A frozen dependent is a problem only when left to Claude. With a direct outcome, frozen dependents take Delete it too, Rewrite or Leave it broken with no Unfreeze; the planner analyses with `frozen: {}`. 4b test added.
+  - [55]
+    - **id:** intent-F16
+    - **action:** fixed
+    - **note:** Typed item labels use REVIEW 2's verbs plus '· you typed it'. D4-1 records that a card carries a typed item beside RV-1's two.
+  - [56]
+    - **id:** intent-F17
+    - **action:** fixed
+    - **note:** Merged with S4M-18: a lock text and the D4-37 narrowing.
+  - [57]
+    - **id:** intent-F18
+    - **action:** fixed
+    - **note:** transformSteps runs no-Claude transforms first, then Claude transforms (D4-40, RV-12 b1).
+  - [58]
+    - **id:** intent-F19
+    - **action:** fixed
+    - **note:** Caps logged as D4-38; transformCardsState disables the button with 'Transform at most 50 cards at a time.' (merged with IMP-16).
+  - [59]
+    - **id:** intent-F20
+    - **action:** fixed
+    - **note:** The user guide must explain every user-visible narrowing among D4-1–D4-43.
+  - [60]
+    - **id:** intent-F21
+    - **action:** fixed
+    - **note:** Reworded: the Delete key on a focused draft card moves it to the trash, never a permanent delete.
+  - [61]
+    - **id:** build-IMP-1
+    - **action:** fixed
+    - **note:** 4g now comes after 4f; the 'beside 4b–4f' wording is removed and the reason (core in flux) stated.
+  - [62]
+    - **id:** build-IMP-2
+    - **action:** fixed
+    - **note:** Merged with UI-1. The host's analysis is authoritative: TransformWindowView.analysis, returned by each save. The webview computes locally only typedLeanProblems, transformLabel, field states, the cycle check and kindChangeImpact; expect comes from the analysis. Tests updated in 4f, 4j, 4k and 4m.
+  - [63]
+    - **id:** build-IMP-4
+    - **action:** fixed
+    - **note:** Sessions with no inference use an empty selection that validateContext accepts (4h); RunView and PersistedRun likewise (4i). Transform steps are never computeItems' `active` step, their `created` entries give vocab:/decl: items whose origin is the transform, and they have no Result draft.
+  - [64]
+    - **id:** build-IMP-5
+    - **action:** fixed
+    - **note:** gate/normalise.ts assigned to 4e: card kind and slot, pins for open statements (new cards included), and worded_by compared with the typed commit. 4h only passes the scope and the live entries.
+  - [65]
+    - **id:** build-IMP-6
+    - **action:** fixed
+    - **note:** Merged with LC-2: FreezeDelta.transform and FreezeTableEntry.expect's transform variant. 4e test: Unfreeze → Undo → Redo.
+  - [66]
+    - **id:** build-IMP-7
+    - **action:** fixed
+    - **note:** Merged with LC-13.
+  - [67]
+    - **id:** build-IMP-8
+    - **action:** fixed
+    - **note:** The `premise:<item id>` DraftKey is added, limited to sentence, why and statement and never trashed; planTypedWrite maps it to the `premise` unit. draftFromModel reads it through the existing `drafts` input (no new parameter, as the refuter noted).
+  - [68]
+    - **id:** build-IMP-9
+    - **action:** fixed
+    - **note:** A session target whose proof is its Result's is exempt from D4-20 and joins reworkResults instead (§3.2, §3.4, D4-20). 4b test, shown and hidden.
+  - [69]
+    - **id:** build-IMP-10
+    - **action:** fixed
+    - **note:** Merged with F15.
+  - [70]
+    - **id:** build-IMP-11
+    - **action:** fixed
+    - **note:** QueuedTransform stores its scratch, and Submit's re-analysis uses it (mustDefine less what is now defined). planSubmit takes the runner's `analyses`. 4f test: a mustDefine transform is not stale.
+  - [71]
+    - **id:** build-IMP-12
+    - **action:** fixed
+    - **note:** The plan runs first (§3.9 step 1). transformScopeOf takes the plan's ids, and TypedWritePlan.keys gives the TransformFreezes. 4e and 4h tests added.
+  - [72]
+    - **id:** build-IMP-13
+    - **action:** fixed
+    - **note:** Errors on no typed line, or a missing end sentinel, fail closed. Instead of a scratch per destination, a destination-visibility check refuses names the place cannot see (shared with S4M-10). 4g tests: a broken module in B, a cross-module reference.
+  - [73]
+    - **id:** build-IMP-14
+    - **action:** fixed
+    - **note:** no-proofs allows an AXIOM card's `axiom c.holds : c` for a statement Claude wrote (allowance 4), and the backstop wording is fixed. A transform's `card` entries are skipped by intermediateInferences (4e), the mask and the kind rule (4d); mask.ts added to 4d.
+  - [74]
+    - **id:** build-IMP-15
+    - **action:** fixed
+    - **note:** Merged with LC-2 and S4M-13. The decline dialog's `unfreeze` removes transform reasons, and `yours` is not offered on such keys.
+  - [75]
+    - **id:** build-IMP-16
+    - **action:** fixed
+    - **note:** transformCards (50) counts cards and vocabulary together; draftCards raised to 200 (D4-38).
+  - [76]
+    - **id:** build-IMP-17
+    - **action:** fixed
+    - **note:** Merged with UI-2: keydown preventDefault, Modal `escape: 'ignore'` with closedby='none', and showModal() again on `close`. Playwright check in 4m.
+  - [77]
+    - **id:** build-IMP-18
+    - **action:** fixed
+    - **note:** Merged with LC-17. outcome ≠ expect, and claude-step without consent, answer needs-confirmation in every context; QueuedTransform.action is optional.
+  - [78]
+    - **id:** build-IMP-19
+    - **action:** fixed
+    - **note:** Merged with LC-10.
+  - [79]
+    - **id:** build-IMP-20
+    - **action:** fixed
+    - **note:** Merged with LC-5 (`typedCommit`, recovery back to step-start).
+  - [80]
+    - **id:** build-IMP-21
+    - **action:** fixed
+    - **note:** Took the lock option (D4-31): a typed field's chip cannot be set open, so no TransformFreeze conflicts with the scope.
+  - [81]
+    - **id:** build-IMP-22
+    - **action:** fixed
+    - **note:** Merged with S4M-16 (an in-window problem in a session); 4b test.
+  - [82]
+    - **id:** build-IMP-23
+    - **action:** fixed
+    - **note:** D-11 spans are mapped through EditSession.mapOffset (it exists in edit/session.ts); a replaced span refuses as unsafe. 4c test.
+  - [83]
+    - **id:** build-IMP-24
+    - **action:** fixed
+    - **note:** start-session runs checkBase inside submitTransform before its write, and the window stays on failure.
+  - [84]
+    - **id:** build-IMP-25
+    - **action:** fixed
+    - **note:** The crash or reload case is named in D4-3's residual; the host keeps the folder busy until the board step is done (see LC-4).
+  - [85]
+    - **id:** build-IMP-26
+    - **action:** fixed
+    - **note:** Added: FieldChangeView.field + declaration, gloss, kind, proof; FormalizeSession.transformTargets and clearedProofs; GroupItem.kind; GroupLeftReason 'not-transformable' with its texts.
+  - [86]
+    - **id:** build-IMP-27
+    - **action:** fixed
+    - **note:** typedLeanProblems checks the shape rule's textual part; the scratch checks 'over sorts' on elaborated facts. 4g test added.
+  - [87]
+    - **id:** build-IMP-28
+    - **action:** fixed
+    - **note:** transformDraft() checks shape only; window-dependent rules moved to the runner's checks (§3.7). 4a's scope is aligned with §0, review/judge.ts is named in 4e, and 4h's tests seed transform.queued through the reducer. The selection is kept in one place.
+  - [88]
+    - **id:** ui-UI-1
+    - **action:** fixed
+    - **note:** Merged with IMP-2.
+  - [89]
+    - **id:** ui-UI-2
+    - **action:** fixed
+    - **note:** The window handles Escape itself, Popover's Escape handler calls preventDefault, and Modal gets `escape: 'ignore'` with showModal() again on close. main.tsx excludes the window only in its undo/redo branch. 4m test: three Escapes with a menu open.
+  - [90]
+    - **id:** ui-UI-3
+    - **action:** fixed
+    - **note:** The window's timeline (draft-local history plus freeze actions since openedAtAction) gets Undo/Redo buttons that name the step. TW-1 refuses older steps (D4-41). 4j test: a trash move undone before an earlier freeze.
+  - [91]
+    - **id:** ui-UI-4
+    - **action:** fixed
+    - **note:** Selection gestures in the window: card header, existing chips and the ∅ chip, KindImpact and dependent rows, PreviousVersion, lock slots. Draft-only items are left with 'Not in your files yet…'. Queued-transform chips, typed detail rows and end-confirmation typed rows are selectable as session subjects.
+  - [92]
+    - **id:** ui-UI-5
+    - **action:** fixed
+    - **note:** Chips show the effective state: session reasons force kept, with the rose lock. The window's Freeze and Unfreeze also set chips, and Unfreeze on a field kept only by its chip is a draft edit with a tooltip. The TR-13 b2 button is renamed 'Let Claude redo its Lean statement'.
+  - [93]
+    - **id:** ui-UI-6
+    - **action:** fixed
+    - **note:** cardFreezeLook leaves session-start reasons out of the aura, frost and locks; the banner is their board mark. model/freezeLook.ts assigned to 4l, with a test.
+  - [94]
+    - **id:** ui-UI-7
+    - **action:** fixed
+    - **note:** Merged with F1. The confirmation is always shown rather than only after freeze actions, so EN-2 is not narrowed; kept rows join the board step.
+  - [95]
+    - **id:** ui-UI-8
+    - **action:** fixed
+    - **note:** Added the outcome-changed dialog, with text and [Submit for Claude's step] / [Back to the window]. The egress consent is asked only after confirming.
+  - [96]
+    - **id:** ui-UI-9
+    - **action:** fixed
+    - **note:** Submit is never disabled by an autosave: it waits for the save in flight and shows a spinner. It is disabled only by problems (tooltip, 'Go to the first problem') or stale facts. 'Checking your Lean…' shows while it runs, and Cancel aborts the check.
+  - [97]
+    - **id:** ui-UI-10
+    - **action:** fixed
+    - **note:** Added §4.7 The look: chips with codicon and words; trashed cards never translucent; problem and warning icons; the axiom's Dependencies text; high-contrast outlines. s4-look checks them.
+  - [98]
+    - **id:** ui-UI-11
+    - **action:** fixed
+    - **note:** A field edited back to its original value takes its original state back; clearing makes a field fuzzy only when its original was not empty. 4j tests cover text fields and ChipChoice.
+  - [99]
+    - **id:** ui-UI-12
+    - **action:** fixed
+    - **note:** A PopoverContainer React context, provided by the window, which Popover uses by default. Unit and Playwright checks added.
+  - [100]
+    - **id:** ui-UI-13
+    - **action:** partly
+    - **note:** Adjusted to F4. Status-only choices (Unfreeze of accepted content, 'also un-accept') stay enabled in the window; only working-copy-changing choices (Versions' 'your version') are disabled, with the given text. Select buttons select inside the window or are hidden, as proposed.
+  - [101]
+    - **id:** ui-UI-14
+    - **action:** fixed
+    - **note:** Lock slots in the Tab order; Space, Ctrl+Space, Delete and Shift+F10 on draft cards; CardSearch as an ARIA combobox; LeanField never captures Tab; a cross-group drop is refused with a text; auto-scroll while dragging. 4m keyboard path.
+  - [102]
+    - **id:** ui-UI-15
+    - **action:** fixed
+    - **note:** The labelled button sits right of Formalize and never overflows; its reason shows on hover and focus. The right-click entry acts on the menu's target per slice 3 §4.3 and names it; fields count as their card; arrows and marks are left out and named.
+  - [103]
+    - **id:** ui-UI-16
+    - **action:** fixed
+    - **note:** Session bar text for transform-started sessions; RunView.transforms list; stage report lines (outcome, gap, items returned); stale rows with [Edit…]; Drop never asks (one Undo step); '✓ Accepted (you typed it)' row.
+  - [104]
+    - **id:** ui-UI-17
+    - **action:** fixed
+    - **note:** Kept §3.8's cascade lead-in; §4.5 now points to it. Added the decline menu's Transform description. The `left` text drops 'referenced' until slice 5. The window's row is labelled 'Context Menu' with CM-1's empty text.
+  - [105]
+    - **id:** ui-UI-18
+    - **action:** fixed
+    - **note:** The premise window hides New card, Trash, the tick and Instructions; its chips offer typed values only, with the emptied-field text.

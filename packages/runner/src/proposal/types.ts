@@ -4,12 +4,16 @@
  *   build       the end-of-round ProposalView: the proposed subject graph (core project model of the shadow + the
  *               mirror's facts -> subjectGraph), its diff against the current board (core diffGraphs), the changed
  *               files with line counts (`diff` 9.0.0), review items (statements with sentence + Lean pretty/explicit +
- *               closure; new pure-signature vocabulary), definition questions, lifecycle items (G->D of a proved GOAL),
- *               ghosts and the report card
+ *               closure; new pure-signature vocabulary), definition questions, ghosts and the report card (spec v4
+ *               removed the lifecycle items, G->D of a proved GOAL: docs/slice1-plan.md 2.6)
  *   baseDrift   which model files the user changed (open buffers first) since the run's base
  *   planAccept  the whole-file changes Accept applies: the shadow's changes rebased onto the real files (3-way:
- *               the base->shadow patch applied to the real text with no fuzz, as M1's undo does), then the confirmed
- *               lifecycle items; a patch that does not apply is a `conflict` (nothing is applied)
+ *               the base->shadow patch applied to the real text with no fuzz, as M1's undo does); a patch that does
+ *               not apply is a `conflict` (nothing is applied). Spec v4 ES-7 (slice 1f): the RunManager refuses
+ *               Accept while `baseDrift` finds changed files, so it calls planAccept only when the real files equal
+ *               the base (the patch then applies as it is); the rebase is kept, unreachable, until slice 2
+ *   planApply   (slice 2b3b) an edit session's Apply: planAccept's no-merge path, exactly F onto real files that equal
+ *               the base; any real file that differs from it refuses the plan (docs/slice2-plan.md 3.10 step 4)
  *   apply       ModelWorkspace.applyChanges: "Manual edits" snapshot first, EditApplier (WorkspaceEdit + save),
  *               undo entry, the action's snapshot (history kind `accept-proposal`), re-read, Lean refresh
  *   sidecars    attempts.jsonl (append-only) and decisions.json (atomic replace), inside `.telelean/subjects/<S>/`
@@ -30,8 +34,6 @@ import type {
   FlaggedDefinition,
   GateAttemptView,
   GhostView,
-  LeanFacts,
-  lifecycleChanges,
   parseAttemptLines,
   parseDecisionsFile,
   parseLeanFile,
@@ -91,20 +93,18 @@ export interface ProposalBuildInput {
 export interface AcceptRequest {
   proposal: ProposalView;
   shadow: ShadowWorkspace;
-  /** Ids of the lifecycle items the user ticked (unknown ids: `not-found`). */
-  lifecycle: readonly string[];
   readReal: ReadRealText;
-  /** `YYYY-MM-DD` (not used by M2's lifecycle items; reserved). */
+  /** `YYYY-MM-DD` (reserved). */
   today: string;
   /**
-   * Fixer round 1 (optional): how many premises the user selected for the run (0 = a "Self-evident?" run), for the
-   * history label (core `proposalLabel`). Absent: labelled as "These suffice".
+   * Fixer round 1 (optional): how many premises the user selected for the run (0 = its question was a "follows from
+   * nothing" mark), for the history label (core `proposalLabel`). Absent: labelled as "Formalize".
    */
   premises?: number;
   /**
    * Reviewer addition (docs/m2-plan.md section 7.1 step 4): after a rebase that passed its re-freeze and re-gate, the
-   * exact files to apply (ws/ as re-gated: path -> text, every model file). The plan is then `real -> shownState`
-   * plus the ticked lifecycle items, with no patching; absent = patch base -> shown onto the real text.
+   * exact files to apply (ws/ as re-gated: path -> text, every model file). The plan is then `real -> shownState`,
+   * with no patching; absent = patch base -> shown onto the real text.
    */
   shownState?: ReadonlyMap<string, string>;
   /**
@@ -113,18 +113,33 @@ export interface AcceptRequest {
    * disk (`<library>.lean`, `<library>/**.lean`) plus the project files, each read through `readReal`.
    */
   realFiles?: readonly string[];
+}
+
+/**
+ * Slice 2 (docs/slice2-plan.md 3.10 step 4; 2b3b): an edit session's Apply, exactly F. The base never moves (ES-7), so
+ * there is nothing to merge: the real files must equal B, and the plan is B -> F for every model and project file.
+ */
+export interface ApplyRequest {
+  shadow: ShadowWorkspace;
+  readReal: ReadRealText;
   /**
-   * WP4 addition (optional): the Lean facts of the state being accepted (after a re-gate: the re-gate's check
-   * facts). `lifecycleChanges` needs them to see that the target is proved. Absent: the facts `build` kept for this
-   * proposal (in memory, else `<runDir>/proposal-facts.json`, so Accept after a window reload still has them).
+   * F: the files of the state the final check passed (the `filesAt` of the commit its judgement names). Required
+   * (fixer 2b3b r1, A-V2B3B-ADV-6; it was optional, with ws/ as the default): Apply writes exactly the state that was
+   * checked, which only the caller knows; a request without it is refused (TypeError).
    */
-  facts?: LeanFacts;
+  finalState: ReadonlyMap<string, string>;
+  /** The targets' sentences, for the history label (core `REVIEW_TEXTS.applyLabel`: "Apply: Formalize for dependencies → …"). */
+  targets: readonly string[];
+  /** The cards the history entry names. */
+  nodes: readonly string[];
+  /** As AcceptRequest.realFiles: the real model files now, so a file the person added counts as drift. */
+  realFiles?: readonly string[];
 }
 
 export type AcceptPlan =
   | {
       ok: true;
-      /** Whole-file changes against the REAL files (`before` = real text now), lifecycle items included. */
+      /** Whole-file changes against the REAL files (`before` = real text now). */
       changes: FileChange[];
       /** History / undo label (core proposalLabel). */
       label: string;
@@ -132,7 +147,7 @@ export type AcceptPlan =
       /** Real files that differ from the run's base (they were rebased). */
       drift: string[];
       /**
-       * The merged model files WITHOUT the lifecycle items (path -> text, every model file): when `drift` is not
+       * The merged model files (path -> text, every model file): when `drift` is not
        * empty, the RunManager writes this into ws/, re-freezes and re-runs the gate before applying (D-21).
        */
       shadowState: Map<string, string>;
@@ -148,6 +163,14 @@ export interface ProposalService {
    */
   baseDrift(shadow: ShadowWorkspace, readReal: ReadRealText, realFiles?: readonly string[]): Promise<string[]>;
   planAccept(request: AcceptRequest): Promise<AcceptPlan>;
+  /**
+   * Slice 2 (2b3b; §3.10 step 4): planAccept's no-merge path. The real files are read once; when any differs from B
+   * (`drift`, from that very read, authoritative), the plan is refused (`conflict`, core `REVIEW_TEXTS.drift`, the files
+   * in `files`) and nothing is planned. Otherwise its changes are exactly B -> F (`request.finalState`) against the real
+   * files, `drift` empty, `shadowState` F's model files. Reads only; changes nothing. Rejects with a TypeError when
+   * `finalState` is not a file map.
+   */
+  planApply(request: ApplyRequest): Promise<AcceptPlan>;
   /** Requires `ModelWorkspace.applyChanges` (M2 member); never throws for refusals. */
   apply(plan: Extract<AcceptPlan, { ok: true }>, workspace: ModelWorkspace, subject: string): Promise<ActionOutcome>;
   /** base -> the shadow state the proposal shows, for the raw diff (`vscode.changes`). */
@@ -161,7 +184,6 @@ export interface ProposalService {
 export interface ProposalCore {
   diffGraphs: typeof diffGraphs;
   proposalLabel: typeof proposalLabel;
-  lifecycleChanges: typeof lifecycleChanges;
   parseLeanFile: typeof parseLeanFile;
   buildProjectModel: typeof buildProjectModel;
   subjectGraph: typeof subjectGraph;

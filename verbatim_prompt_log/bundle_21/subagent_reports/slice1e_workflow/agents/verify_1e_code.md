@@ -1,0 +1,84 @@
+# verify:1e:code
+
+Agent `a9c0d6e8908d44df7` of workflow `wf_e822c12a-f8e`. Verbatim output (JSON alongside).
+
+- **summary:** I found no blocker or major problem in 1e. I built the pre-1e tree in scratch (HEAD plus after_slice_1d.patch) and diffed it against the working tree: 69 files changed, which matches the builder's file list. Reviewing that diff, the main paths are correct:
+- **Host start check:** the order (busy, queued edits, check, consent, start) and the refusal texts are right.
+- **Run start:** the run no longer writes `premises:`; ghost adoption still adds the arrow.
+- **Gate rule B.2 (`undeclared-premise`):** it reads 1d's elaborated walk, refuses with `source-only` when the values are missing or stale, and judges gate-other only for a proof the run added or changed. That condition matches the spec's B.2 ("proof changed in the session") and ES-2 (an unproved step leaves the target's proof as it was).
+- **Ghost scratch check:** it runs B.2 through the value probe with `followMain`; its line numbers are shifted correctly for the extra imports.
+- **Carry-over 1:** Accept now refuses on the plan's own drift. The drift has the same meaning as `baseDrift`'s, so a valid Accept is not refused.
+- **Carry-over 2:** the host numbers messages as they arrive, so edits that reached it before the start are applied and later ones are locked. The new test would fail on the old counter.
+- **Webview:** the section and the right-click menu share one action model; the AR-8 flow is right (a source without a Lean statement is asked about before any mark; the marks are sent after the last answer; the run starts only once all marks are ok); the codicon names exist.
+- **Removed names:** nothing in `packages/*/src` or the unit tests still uses `trayModel`, `TARGET_CHOICE_BLOCK`, `AXIOM_TARGET_BLOCK`, `setTarget`, `SelectionTray`, `cardEntries` or `tl-tray`/`tl-chipcard`.
+
+Every verification claim reproduced, with identical numbers:
+- tsc is clean for core, runner and webview; the 6 webview e2e errors and 9 extension suite errors are the same as in 1f's logs.
+- vitest: core 55/595, webview 19/311, extension 22/203 (run with `--no-cache`).
+- Runner, one file group at a time under the cap: all touched files pass, including the real-Lean ones (rules, engine, m2flow, fresh, walkthrough, session). I also ran escapes, fixes, refresh and llm, which the builder did not; all pass.
+
+Side effects:
+- extension `dist` and `out` have no file newer than the 1e brief, and the git index is clean (`git diff --cached` is empty), so the blocked `git rm --cached` changed nothing.
+- My runner runs created 19 empty `/tmp/telelean-ws-tests-*` folders (each holding an empty `tmp/`). I removed them with `rmdir` on their literal paths; 0 remain. The builder's 18 folders were already gone when I started.
+- No processes of mine are left. The Lean server and workers on `~/webring` and VS Code are the user's.
+
+Not re-run: the scratch webview build (`vite build` is off-limits for me under the rules; its output predates only comment-only edits) and the e2e suites.
+
+The four findings below are three minor problems and one nit.
+- **findings:**
+  - [1]
+    - **id:** F1
+    - **severity:** minor
+    - **where:** packages/runner/src/proposal/service.ts:252 (shown by packages/webview/src/run/ReportCard.tsx:110)
+    - **problem:** The report card's flag reads 'Proved from nothing: check what the statement says (the proof uses none of your arrows)'. It only fires when the question was empty (`selected.length === 0`). Spec v4.1 S18 and A9 ask for the flag on any result proved without using a single arrow, including when arrows were selected but the proof uses none of them. In that case the stage report shows only the 'unused premises' list and no S18 warning before Accept. The board's own chip (core build.ts:659 'self-evident' flag) does show 'proved from nothing' after 'Show result', so the impact is limited.
+    - **evidence:** service.ts:252: `selfEvident: proved && proof?.kind === 'proved' && selected.length === 0 && footprint.every((x) => x.startsWith('presup:'))`. The 1e builder renamed the text and lists S18 as done but did not widen this condition.
+    - **fix:** Drop `selected.length === 0`. Instead require that the proof uses no card: `footprint.every(presup)` and no verified edge into `selection.target`. (`used` already collects those edges; a footprint check alone would wrongly flag a proof that goes through a selected card proved from nothing.) Add a proposal build test with selected-but-unused premises.
+  - [2]
+    - **id:** F2
+    - **severity:** minor
+    - **where:** docs/slice1-plan.md:541 (and the builder's 'E2E specs and scripts needing updates' list)
+    - **problem:** The list of e2e assertions that 1e breaks is incomplete. Three assertions on renamed strings are missing, so 1g will meet failures nobody listed: (1) packages/webview/test/e2e/m2-review.spec.ts:177 expects run-target to contain 'Self-evident?', but RunPanel now shows 'Follows from nothing?'; (2) packages/webview/test/e2e/m2-overlay.spec.ts:185 expects attempt-premises 'from no premises (self-evident?)', now '(follows from nothing?)'; (3) packages/extension/test/suite/e2e-runs.test.ts:389 matches the history label `/ · accept · These suffice → proved: …/`, now 'Formalize → proved: …'.
+    - **evidence:** grep of webview/test/e2e and extension/test/suite for 'These suffice|Self-evident|self-evident' outside the listed line ranges finds these three assertions. The other hits at m2-review.spec.ts 197–225 are host labels sent by the test itself, so they are fine.
+    - **fix:** Add the three lines to §8's 'E2E tests and scripts not updated' bullet for 1g, with their new texts.
+  - [3]
+    - **id:** F3
+    - **severity:** minor
+    - **where:** packages/webview/src/board/contextActions.ts:197
+    - **problem:** When more than one card is selected, the Context Menu section shows no card actions at all: no Select incoming arrows, Move to axioms, Show on board, etc. CM-3 and brief A say that an action fitting only part of the selection is shown disabled, with the reason on hover. For two selected cards the section offers only the summary and a disabled Formalize, with no hint why the card actions are missing. The builder documented this as a decision ('each acts on one card').
+    - **evidence:** `if (cards.length === 1) { for (const entry of cardActions(...)) … }`. With selected ['a','u'] the contextActions test expects `entries` to be `[]`.
+    - **fix:** For more than one selected card, list the section's card actions disabled with a reason such as 'Select one card for this action.' Alternatively, implement the multi-card forms (Select incoming arrows of every selected card; Move to axioms for every selected proposition). Update contextActions.test.ts to match.
+  - [4]
+    - **id:** F4
+    - **severity:** nit
+    - **where:** packages/webview/src/model/run.ts:524
+    - **problem:** The new A10 block (`MissingArrowHint`, `missingArrowHints`) was inserted between `suggestedGhosts`'s doc comment and the function itself. That comment now sits stacked on top of `MissingArrowHint`'s own JSDoc, and `suggestedGhosts` (line 583) has no doc.
+    - **evidence:** Line 524: `/** The suggestions waiting for a decision ("Claude suggests"): the run's live list, else the proposal's. */`, immediately followed by line 525: `/** Spec v4.1 A10 (slice 1e): what the report offers … */ export interface MissingArrowHint`.
+    - **fix:** Move the line-524 comment back directly above `export function suggestedGhosts`.
+- **checks_run:**
+  - Pre-1e baseline: git archive HEAD + git apply bundle_21/evidence/patches/after_slice_1d.patch into scratch v1e_corr/before; diff -ruN against the working tree -> 69 files (matches the report's file list)
+  - core: capped.sh 1600 tsc --noEmit -p tsconfig.test.json -> exit 0, 0 errors
+  - runner: capped.sh 1600 tsc --noEmit -p tsconfig.test.json -> exit 0, 0 errors
+  - webview: capped.sh 1600 tsc --noEmit -p tsconfig.json -> exit 0, 0 errors
+  - webview: capped.sh 1600 tsc --noEmit -p tsconfig.node.json -> 6 errors (test/e2e m1-edits x3, m2-layout x1, m2-review x2), identical to v1f/logs/tsc_webview_node.log
+  - extension: capped.sh 1600 tsc --noEmit -p tsconfig.json -> 9 errors (test/suite e2e-runs x2, e2e x1, model x1, runs x5), identical to v1f/logs/tsc_extension.log
+  - core: capped.sh 1800 vitest run --maxWorkers=1 -> 'Test Files  55 passed (55)', 'Tests  595 passed (595)'
+  - webview: capped.sh 1800 vitest run --maxWorkers=1 -> 'Test Files  19 passed (19)', 'Tests  311 passed (311)'
+  - extension: capped.sh 1800 vitest run --maxWorkers=1 --no-cache -> 'Test Files  22 passed (22)', 'Tests  203 passed (203)'
+  - runner (each: capped.sh 3000 timeout 900 vitest run --maxWorkers=1): test/run non-e2e (12 files) -> 'Test Files  12 passed (12)', 'Tests  87 passed (87)'
+  - runner test/proposal -> 'Test Files  6 passed (6)', 'Tests  44 passed (44)'
+  - runner test/workspace -> 'Test Files  11 passed (11)', 'Tests  100 passed (100)'
+  - runner test/gate/pure.test.ts test/semantic/checkFile.test.ts -> 'Test Files  2 passed (2)', 'Tests  23 passed (23)'
+  - runner test/gate/rules.test.ts (real Lean) -> 'Tests  26 passed (26)', 54.7 s
+  - runner test/gate/engine.test.ts (real Lean, incl. the new checkGhost B.2 case) -> 'Tests  29 passed (29)', 34.1 s
+  - runner test/integration/m2flow.test.ts -> 'Tests  5 passed (5)', 49.2 s
+  - runner test/run/fresh.e2e.test.ts -> 'Tests  9 passed (9)', 100.7 s
+  - runner test/run/walkthrough.e2e.test.ts -> 'Tests  22 passed (22)', 184.1 s
+  - runner test/semantic/valueProbe.test.ts test/integration/session.test.ts -> 'Test Files  2 passed (2)', 'Tests  10 passed (10)'
+  - runner test/integration/escapes.test.ts -> 'Tests  1 passed (1)'; test/integration/fixes.test.ts -> 'Tests  5 passed (5)'; test/semantic/refresh.test.ts -> 'Tests  9 passed (9)'
+  - runner test/llm -> 'Test Files  9 passed (9)', 'Tests  105 passed | 1 skipped (106)'
+  - grep across packages/*/src and test/unit for removed names (trayModel, TrayModel, AXIOM_TARGET_BLOCK, TARGET_CHOICE_BLOCK, setTarget, SelectionTray, cardEntries, tl-tray, tl-chipcard) -> no hits
+  - grep of e2e suites for old labels outside the builder's list -> m2-review.spec.ts:177, m2-overlay.spec.ts:185, e2e-runs.test.ts:389 (finding F2)
+  - codicon check against node_modules/@vscode/codicons/dist/codicon.css -> all 20 names used by the section exist
+  - git diff --cached -> empty (index untouched); HEAD 187673d unchanged
+  - find packages/extension/out packages/extension/dist -newer briefs/1e.md -> 0 files; newer than my own stamp -> 0
+  - Cleanup: rmdir on the 19 empty /tmp/telelean-ws-tests-* folders my runner runs created (literal paths) -> 0 remain; no telelean systemd units; no processes of mine left

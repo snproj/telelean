@@ -92,6 +92,8 @@
   var MUTATIONS = {
     addNode: true, kindChange: true, theseSuffice: true, editNode: true, deleteNode: true, reorder: true, undo: true, redo: true,
     createSubject: true, historyRevert: true, historyPrune: true, initGit: true,
+    // Spec v4 slice 1b: the arrow edits and canvas moves (slice 1e: Formalize's AR-8 marks are claimPending).
+    addArrows: true, removeArrows: true, setFromNothing: true, claimPending: true, moveCards: true,
     // M2 run messages that carry a requestId (openProposalDiff and dismissRun get no actionResult).
     startRun: true, answerQuestions: true, cancelRun: true, resumeRun: true, acceptProposal: true, feedback: true,
     discardProposal: true, adoptGhost: true, rejectGhost: true,

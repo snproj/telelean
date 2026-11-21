@@ -17,7 +17,7 @@ const position = z.looseObject({
   character: z.number().int().min(0).describe('0-based UTF-16 code unit'),
 });
 const range = z.looseObject({ start: position, end: position });
-const nodeType = z.enum(['ASSUMPTION', 'DERIVATION', 'GOAL']);
+const nodeType = z.enum(['AXIOM', 'PROPOSITION']);
 
 const node = z.looseObject({
   id: z.string().min(1),
@@ -42,7 +42,7 @@ const node = z.looseObject({
   }),
   status: z.looseObject({
     formal: z.enum(['informal', 'formalized', 'ill-formed']),
-    proof: z.enum(['none', 'assumed', 'pending-promotion', 'conditional', 'proved']),
+    proof: z.enum(['none', 'assumed', 'pending', 'conditional', 'proved']),
     footprint: z
       .array(z.string())
       .describe('Proved or conditional: what the proof rests on (node ids, `presup:<name>` and `axiom:<name>` entries); format 1.0 listed a conditional node\'s hypotheses here'),

@@ -142,7 +142,7 @@ describe('AT1.8 the A2 sentences of plan 3.5', () => {
     expect(sample('vocabulary-shape', { names: ['Spyro.spyro'], file: 'Model/Spyro/Vocabulary.lean' })).toBe('it added vocabulary of a kind telelean does not allow (`spyro`)');
     expect(sample('not-formalised', { nodeId: 'pg-no-dark-past' })).toBe('it did not formalise “PG games cannot have characters with dark pasts”');
     expect(sample('missing-holds', { nodeId: 'pg-no-dark-past', names: ['Spyro.pg_no_dark_past.holds'], file: MAIN })).toBe(
-      'it did not state “PG games cannot have characters with dark pasts” as an assumption (`pg_no_dark_past.holds` is missing)',
+      'it did not state “PG games cannot have characters with dark pasts” as an axiom (`pg_no_dark_past.holds` is missing)',
     );
     expect(sample('proof-before-freeze', { names: ['Spyro.cynder_not_good.holds'], file: MAIN })).toBe('it wrote a proof before freezing the statements (`cynder_not_good.holds`)');
     expect(sample('sorry-axiom', { names: ['Spyro.helper'], file: MAIN })).toBe('it left a gap (`sorry`) in `helper`');

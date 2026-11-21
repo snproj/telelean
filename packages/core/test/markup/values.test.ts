@@ -133,7 +133,7 @@ describe('AT1.4 property: renderBlock then parseLeanFile round-trips every value
       const naturalName = randomValue(random);
       const rationale = randomValue(random);
       const body = random() < 0.3 ? randomValue(random) : undefined;
-      const rendered = renderBlock({ id: 'x', type: 'GOAL', naturalName, rationale, ...(body !== undefined ? { body } : {}) }, random() < 0.5 ? '\n' : '\r\n');
+      const rendered = renderBlock({ id: 'x', type: 'PROPOSITION', naturalName, rationale, ...(body !== undefined ? { body } : {}) }, random() < 0.5 ? '\n' : '\r\n');
       const lex = lexLean(rendered);
       expect(lex.comments.map((c) => [c.kind, c.span.start, c.span.end, c.unterminated])).toEqual([['block', 0, rendered.length, false]]);
       expect(lex.tokens).toEqual([]);
@@ -153,7 +153,7 @@ describe('AT1.4 property: renderBlock then parseLeanFile round-trips every value
 
   it('the fixed hard cases: both delimiters, `/-/`, `-/-`, a leading quote, leading spaces, a newline', () => {
     for (const value of ['-/', '/-', '/-/', '-/-', '"', '"quoted', '  leading', 'trailing  ', 'a\nb', 'x -/ y /- z', '\\', '\\"', '-', '/']) {
-      const file = parseLeanFile('T.lean', renderBlock({ id: 'x', type: 'GOAL', naturalName: value, rationale: value }));
+      const file = parseLeanFile('T.lean', renderBlock({ id: 'x', type: 'PROPOSITION', naturalName: value, rationale: value }));
       expect(file.blocks[0]?.fields.naturalName).toBe(value);
       expect(file.blocks[0]?.fields.rationale).toBe(value);
     }
@@ -163,7 +163,7 @@ describe('AT1.4 property: renderBlock then parseLeanFile round-trips every value
     const lean = ['Spyro.«a, b»', 'Spyro.c'];
     const tags = ['a-/b', 'plain', 'x/-y'];
     const premises = ['cynder-dark-past', 'new-spyro-pg'];
-    const file = parseLeanFile('T.lean', renderBlock({ id: 'x', type: 'GOAL', naturalName: 'n', premises, lean, extra: [['tags', formatFieldValue('tags', tags)]] }));
+    const file = parseLeanFile('T.lean', renderBlock({ id: 'x', type: 'PROPOSITION', naturalName: 'n', premises, lean, extra: [['tags', formatFieldValue('tags', tags)]] }));
     expect(file.blocks[0]?.fields).toMatchObject({ premises, lean, tags });
     expect(file.diagnostics).toEqual([]);
   });

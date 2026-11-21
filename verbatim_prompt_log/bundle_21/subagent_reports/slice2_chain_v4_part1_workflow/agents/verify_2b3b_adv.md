@@ -1,0 +1,131 @@
+# verify:2b3b:adv
+
+Agent `aa4ef545246bcd6b4` of workflow `wf_4dd05c42-199`. Verbatim output (JSON alongside).
+
+- **summary:** Adversarial verification of sub-slice 2b3b, the runner engine. The builder's own claims hold. The 36 session tests pass when I re-run them with real Lean (`test/gate/session.test.ts` and `test/gate/sessionPure.test.ts`). Core's `judgeState` never gives ok=false without a global finding or a facts problem, so `finalCheck` cannot pass while ok is false. G0 runs before every Lean job on ws/. `planApply` refuses drift. R1-1 is fixed: the comment now names the test that checks the lowered cap, and that test exists.
+
+The weak point is `judge`'s premise re-checks (§3.8, RV-1). I confirmed three defects there with real Lean in scratch tests:
+1. **The reliance key is incomplete.** It misses a source statement that is reworded with the same constants, a lemma the gap proof uses, and the closure of T's statement. A draft therefore keeps "closes the gap (checked)" after it has stopped closing the gap.
+2. **A resource failure counts as "no longer closes the gap".** If telelean's own scratch job runs out of memory or time, the result is closesGap false. Reconcile then makes the item "to be redone" and deletes an Accept.
+3. **A re-check result can be lost.** The result is memoised when the judge runs. If that judge's judge-apply is dropped (§2.6/F8), the result never reaches reconcile and no later judge reports it again.
+
+Smaller issues:
+- G0 is not run before the engine builds S₀ or the adopt state, and the re-check skips the single-term text rule.
+- `complete`'s refusals on its gate findings and on its comparator findings have no test.
+- `finalCheck` and `planApply` do not tie the judged commit to ws/.
+- `complete` does not check that `ctx.freeze` belongs to the target.
+
+The repository was not modified. One side effect outside my scratch dir: vite created and deleted a temp file in the existing, empty `packages/runner/node_modules/.vite-temp`, which updated that folder's modified time. No telelean systemd units are left running.
+- **findings:**
+  - [1]
+    - **id:** V2B3B-ADV-1
+    - **severity:** major
+    - **where:** packages/runner/src/gate/session.ts:215-230 (relianceKey, meaningOf at 200-206); used at packages/runner/src/gate/engine.ts:1430-1431
+    - **problem:** RV-1 requires a re-check "whenever something it relies on changes". The reliance key misses three things the gap check relies on.
+(a) **The proposition behind a `.holds` in the footprint.** The key reads only the facts of the `.holds` axiom itself, and its type is just the abbrev's name (`Spyro.cynder_dark_past`, typeConsts [that name]). Rewording a source's statement while keeping the same constants and axioms changes nothing in the key, for example negating it, swapping its arguments, or changing a connective. That is the common case of a Shaky Formalize item reworked by a Submit step, or one reverted by a decline.
+(b) **The non-axiom constants the gap proof uses**, such as a lemma Claude wrote in T's proof phase. Lemmas are part of T's Result, so rejecting the Result takes them out, and they are never in `#print axioms`.
+(c) **The closure of T's statement.** Only T's own printed value and constants are in the key.
+In each case `judge` skips the draft. The item keeps "closes the gap (checked)" with no "updated" marker, and the person may Accept a premise that no longer closes the gap. The completion then fails.
+    - **fix:** Build the key from core's exported `reach(model, [...draft.footprint, targetStatement, ...proofConsts], 'meaning')`. Hash `meaningOf(model, n, true)` for every name reached, not just for the starting names.
+- `proofConsts` are the check theorem's `valueConsts` from the draft's last scratch check. Keep them in the engine's memo beside the key; after a reload the memo is empty and every draft is re-checked anyway.
+- Add tests where each change leads the next `judge` to report `closesGap: false`:
+  1. A source statement reworded with the same constants (`abbrev cynder_dark_past : Prop := ¬ HasDarkPast cynder`).
+  2. A lemma the gap proof uses, taken out.
+  3. A definition that only T's statement uses, changed.
+    - **evidence:** Scratch tests, real Lean, files under /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/v2b3b-adv/vt/.
+- source.test.ts, case (a), output in source-out.json: the draft `HasDarkPast cynder → ¬ GoodAddition cynder newSpyro` with proof `fun h => h cynder_dark_past.holds` gives closesGap true at B. After the statement is reworded to `¬ HasDarkPast cynder` and committed as `decision`, the same engine's judge returns premiseChecks undefined, with an identical relianceKey (434c0ba7…) and identical B.1. A fresh engine returns closesGap false.
+- recheck.test.ts, test 2, case (b): with a lemma `helper_l`, the draft with proof `fun h => helper_l h` gives closesGap true. After the lemma is removed, the same engine gives premiseChecks undefined and a fresh engine gives closesGap false.
+- reliance.test.ts (pure): the key is equal with the lemma present, removed or changed. It is also equal after a definition that only T's statement reaches changes.
+  - [2]
+    - **id:** V2B3B-ADV-2
+    - **severity:** major
+    - **where:** packages/runner/src/gate/engine.ts:1446-1451 (premiseRechecks: everything except `environment` becomes `closesGap: false` and is memoised); ghostScratchCheck 1278-1290 and 1307; effect in packages/core/src/review/reconcile.ts:396-406
+    - **problem:** A re-check that fails for telelean's own reasons is recorded as "no longer closes the gap". These reasons are:
+- a budget outcome: the scratch job, which also imports Lean.CoreM, runs out of memory under the lowered MemoryMax, or times out;
+- a run that failed with no messages;
+- "Lean printed no axioms";
+- B.2's UNSEEN_PROOF from a failed in-file probe.
+
+The result is memoised. Reconcile then makes an in-review or accepted, unwritten Add premise "to be redone", deletes its `accepted` record (holdAs and rationale included), and marks it "no-longer-closes-gap". After a reload the memo is empty, so the first judge re-checks every unwritten draft, including an accepted premise whose write failed for lack of memory. On a machine short of memory this removes the person's Accept and wrongly says the premise fails, which is (e) and (g). AP-33 made the probe's out-of-memory failure an environment outcome for the same reason. The builder's own rule says "a check telelean could not run … is left out and tried at the next judge".
+    - **fix:** In premiseRechecks, treat `budget` like `environment`: `continue`, with no memo entry. Make ghostScratchCheck tell telelean-side failures apart, by a distinct kind or by returning `environment`: a run that failed with no messages, no axioms message, and UNSEEN_PROOF caused by missing or failed value-probe output. Only Lean errors in the statement or proof, sorry, a footprint outside the permitted set, or an unselected or unseen card should give `closesGap: false`.
+
+Test: a fresh engine whose job is starved (leanJobMs 300, or memoryMax 60M) leaves the draft out of `premiseChecks`, and the next judge with normal limits checks it and reports `closesGap: true`.
+    - **evidence:** recheck.test.ts, test 1, outcomes in /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/v2b3b-adv/outcomes.json. The draft `¬ GoodAddition cynder newSpyro` with proof `fun h => h` gives closesGap true with normal limits. On fresh engines, over the same built mirror and the same facts, it gives `{"60M":false,"30M":false,"1 ms":false,"300 ms":false}`. Reconcile (reconcile.ts:400-405) then applies `status = 'to-be-redone'; delete r.accepted; … addMarker(r, 'no-longer-closes-gap')` to records that are in-review or accepted.
+  - [3]
+    - **id:** V2B3B-ADV-3
+    - **severity:** major
+    - **where:** packages/runner/src/gate/engine.ts:1419-1452 (`memo.set(key, reliance)` during the judge; `memo.get(key) === reliance` skips later)
+    - **problem:** The re-check memo is written when the judge runs, not when its outcome is applied. A judge runs outside the write queue, and the plan expects that "a Reject made while a judge runs … the judge-apply is dropped, the judge runs again on the new head, and nothing is lost" (§2.6, F8). The sequence that loses a result:
+1. A judge on head H1 re-checks a draft whose reliance changed and gets `closesGap: false`.
+2. A decision unrelated to the draft moves the head to H2 while the judge runs.
+3. The judge-apply is dropped.
+4. The judge runs again on H2. The reliance there is unchanged, so the draft is skipped and `premiseChecks` lacks it.
+
+The "no longer closes the gap" result never reaches reconcile, and the item keeps "closes the gap (checked)" until its reliance changes again.
+    - **fix:** Memoise the outcome together with the key (premise key → { reliance, closesGap, facts }). When the reliance matches, emit the memoised outcome in `premiseChecks` without a Lean job. Reconcile's step 5 is idempotent for it: an item already to be redone is skipped, and the facts are replaced with the same facts.
+
+Test: two judges on heads that differ by an unrelated change. The second still reports the first's `closesGap: false`, with no extra scratch job.
+    - **evidence:** source.test.ts, output in /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/v2b3b-adv/source-out.json. A fresh engine's judge reports closesGap false (key "3"). A comment is then added to Vocabulary.lean and committed as `decision`, and the same engine judges the new head. Its `premiseChecks` is undefined (key "4": "none (not reported again)"). If the first judge's judge-apply had been dropped, the result would be lost.
+  - [4]
+    - **id:** V2B3B-ADV-4
+    - **severity:** minor
+    - **where:** packages/runner/src/gate/engine.ts:673-691 (stepStartModel builds S₀, called at 751 after G0 checked only ws/ at 742-745); 1663-1668 (completeNow builds the adopt state; G0 only on ws/ at 1647); 1438-1445 (premiseRechecks runs the draft's text in Lean without core's ghostTextProblems, which checkGhost applies at 1181)
+    - **problem:** The rule in §1.1 and §2.1 is that G0 runs before any Lean job and that "text G0 refuses never reaches the mirror" (AP30-1 r2). It holds for ws/, but not for other states the engine builds.
+
+The plan's own `judge` path expects a stage whose files G0 refuses. Such a stage is judged without facts, so the engine keeps no facts for it. One way it arises: a v1 run that 2d converts, whose content passed slice 1's G0 before 2b2 added the `init` rule. When that stage is the next step's S₀:
+1. Claude's first check_lean is refused by G0.
+2. Claude removes the refused line, and G0 then passes on ws/.
+3. stepStartModel finds no facts for S₀ and builds it in the mirror, so its `@[init]` code runs. That is exactly the AP30-1 r2 case: an `.olean` rewritten there would stay for later probe jobs.
+
+`complete` likewise builds the adopt state without running G0 on its files. The premise re-check elaborates Claude's draft text without the single-term and forbidden-token rule.
+    - **fix:** - In stepStartModel, run `g0Of(ctx, baseFiles, s0Files)` before building S₀. If it finds anything, return an environment outcome ("the state this step started from holds text G0 refuses: …") with no sync and no build.
+- In completeNow, run G0 on `adoptFiles` before `factsFor`.
+- In premiseRechecks, apply `this.core.ghostTextProblems(draft.leanStatement, draft.proof)` before the scratch job. A finding leaves the draft out, or counts it as not closing the gap.
+- Extend the G0 test's spies (refreshFacts, syncMirror) to a step-start commit that holds `@[init] def x : IO Unit := pure ()` while ws/ does not.
+    - **evidence:** By reading the code. runCheck returns on G0 findings in ws/ (742-745) and only then calls stepStartModel (751). stepStartModel calls `this.build(shadow, ctx.job, files, key)` on the step-start commit's files when neither `stepStarts` nor `recent` holds facts for them (680-682). judgeNow's G0 path (1381-1382) builds nothing, so no facts of such a stage are kept.
+  - [5]
+    - **id:** V2B3B-ADV-5
+    - **severity:** minor
+    - **where:** packages/runner/test/gate/session.test.ts (no test reaches engine.ts:1704, 1707 or 1239)
+    - **problem:** Some key refusals have no test that would fail if they were dropped:
+- `complete`'s refusal when its `gate-proved` judgement has step findings (1704). This is the only check that the completion changes nothing outside T's proof; G4 sees only T.holds and the definitions its statement uses.
+- `complete`'s refusal when the comparator rejects (1707).
+- The session ghost check's fail-closed when the statement's explicit form or facts cannot be read (1239).
+
+The builder's 49 mutations include none of them. The only `complete` tests are early refusals, a stale freeze and a good completion.
+    - **fix:** Add three tests:
+1. A completion whose ws/ also changes something outside T's proof, such as an extra `axiom extra : True` or an edited unrelated definition, gives `{ ok: false }`, with no `completion` commit.
+2. With a lenient judgeState, as in the re-export cheat test, a definition changed after the `adopt` commit makes the comparator answer definition-mismatch, which gives `{ ok: false }` with no commit.
+3. A session checkGhost whose scratch output has no line from the statement's probe is refused with "telelean could not read the suggested statement back…".
+    - **evidence:** I reasoned through each mutation. Removing line 1704 or 1707 leaves every existing test green, because the only completion that reaches them is a good one. Removing 1239 leaves them green too, because every session ghost check in the tests reads the explicit form and facts successfully. mutation-results.jsonl lists M13, M14, M15 and M48 for `complete`, and none for these lines.
+  - [6]
+    - **id:** V2B3B-ADV-6
+    - **severity:** minor
+    - **where:** packages/runner/src/gate/engine.ts:1469-1471 (finalCheckNow judges `commits().at(-1)`); packages/runner/src/proposal/service.ts:357 and packages/runner/src/proposal/types.ts:126 (`finalState ?? currentFiles()`)
+    - **problem:** `finalCheck` judges the shadow's newest commit and never checks that it is F, meaning ws/ at the end. `planApply` defaults F to ws/.
+
+No write is in flight at the end (Submit waits for the queue), so the two must be equal. They can still diverge in some cases:
+- writePremise left an `adopt` commit after a meaning mismatch, and the take-out restored ws/ without a commit.
+- Recovery found ws/ equal to `head`, so it made no revert commit, while a newer commit exists.
+
+Then the final check judges a state that is not F, and Apply writes either ws/ (by default), which no final check judged, or the stray commit's state, if 2f passes `filesAt(judgement.commit)`. That is case (c).
+    - **fix:** In finalCheckNow, return an environment outcome (not passed) unless `sameFiles(await shadow.currentFiles(), files)`. Make `ApplyRequest.finalState` required, so that 2f passes the files of the commit the passed final check judged. Test: a commit newer than ws/ makes finalCheck refuse.
+    - **evidence:** By reading the code. headOf at 1343-1347 returns the newest commit, and finalCheckNow never compares it with `currentFiles()`. In the passing planApply test (accept.test.ts:413), the plan without `finalState` takes ws/.
+  - [7]
+    - **id:** V2B3B-ADV-7
+    - **severity:** nit
+    - **where:** packages/runner/src/gate/engine.ts:1640-1674 (completeNow uses `ctx.freeze` as "T's last freeze")
+    - **problem:** `complete` does not check that `ctx.freeze` is a freeze of the target it completes. If a caller passes another target's freeze, the `statement-changed` check compares T's state with that target's snapshot and can pass even though T's statements changed.
+    - **fix:** Refuse with an error when `ctx.freeze.selection.target !== premise.draft.target`, and add an early-refusal test case.
+    - **evidence:** By reading the code. `lastFreeze` is used only for `frozenCheck`'s `freeze: lastFreeze.snapshot` at 1672. Nothing compares it with `target`.
+- **checks_run:**
+  - Read verify_common.md, the 2b3b brief, builder_rules.md, plan §1.1 (2b3b), §2.1, §2.6, §2.7, §2.9 (the runner gate block), §3.8, §3.10, §6.1's 2b3b list and the §8 entries for 2b3b and earlier, and spec RV-1
+  - Diffed every changed runner source against the builder's saved originals (b2b3b/orig): engine.ts, types.ts, index.ts, scratch.ts, shadow types and workspace, proposal service and types, fakeShadow. Read session.ts, session.test.ts and the relianceKey and planApply tests in full
+  - Traced core: judgeState's `ok` and buildFindings (review/judge.ts:339, 498), reconcile's premiseChecks step (reconcile.ts:396-406), draftReach and reach (closure.ts), computeItems' ownership of proof-phase lemmas (items.ts:930-946), and classifyFacts / probeFailedEnvironment (gate/findings.ts)
+  - R1-1 carry-over: the comment at probe.test.ts:175 now names the test "refresh's probe job (fixer 2b3a r1, S-V2B3A-S2)", and that test exists (line 404)
+  - Scratch pure vitest (v2b3b-adv/vt/reliance.test.ts): 2 passed. The relianceKey is unchanged when the gap proof's lemma is removed or changed, and when a definition only T's statement uses changes
+  - Scratch real-Lean vitest (v2b3b-adv/vt/recheck.test.ts; capped 3000, one worker, TELELEAN_TEST_TMP and TMPDIR in scratch): after the lemma is removed, the same engine does not re-check and a fresh engine gives closesGap false. With a starved scratch job (60M, 30M, leanJobMs 1 and 300) a draft that closes the gap reads closesGap false
+  - Scratch real-Lean vitest (v2b3b-adv/vt/source.test.ts): a source statement reworded with the same constants leaves the reliance key and B.1 identical, so there is no re-check, while a fresh engine gives closesGap false. A later head with an unrelated change does not report that result again
+  - Re-ran the builder's tests from packages/runner: `capped.sh 3000 timeout 900 vitest run --no-cache --fsModuleCachePath=<scratch>/fsmc --maxWorkers=1 test/gate/session.test.ts test/gate/sessionPure.test.ts`, giving Test Files 2 passed (2), Tests 36 passed (36)
+  - Mutation-coverage review: checked the builder's mutation-results.jsonl against each key rule; the gaps are listed in finding V2B3B-ADV-5
+  - Afterwards: `systemctl --user list-units 'telelean-*'` lists nothing; no repo file is new or changed. The only side effect outside my scratch dir is the modified time of the pre-existing empty packages/runner/node_modules/.vite-temp, from vite's config bundling. The running lake and lean processes belong to the user's webring project, not to me

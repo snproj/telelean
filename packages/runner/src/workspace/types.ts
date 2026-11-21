@@ -132,7 +132,7 @@ export interface WorkspaceCore {
  * refresh when model files changed.
  */
 export interface ExternalChangeSet {
-  /** History and Undo label (one line), e.g. `These suffice → proved: Cynder would not be a good addition…`. */
+  /** History and Undo label (one line), e.g. `Formalize → proved: Cynder would not be a good addition…`. */
   label: string;
   action: HistoryActionKind | AcceptProposalAction;
   /** The subject whose undo stack records it (never ''). */

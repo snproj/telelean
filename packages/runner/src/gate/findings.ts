@@ -5,11 +5,16 @@
  *   runLean / facts status          outcome
  *   ok, build-errors, check-errors  the rules decide (G1 `build` findings come from core, with a fallback here)
  *   timeout, oom                    a `budget` finding (counted against the attempt)
+ *   oom of the probe job            `environment` (fixer 2b3a r1, S-V2B3A-S1, AP-33: telelean's own job, which loads
+ *                                   Lean's library a second time; not counted)
  *   could-not-start, low-memory,    `environment` (not the agent's fault, not counted)
  *   cancelled, unsupported-*
  *   ShadowLayoutError (unsyncable)  `environment`
+ *   B.2 `source-only` alone (gate)  `environment` (slice 1e fixer: telelean could not see which cards the proof uses)
+ *   a failed probe (2b3a, §2.1)     `environment` with `probeFailure`'s sentence when the rules find nothing or only
+ *                                   B.2's `source-only`, at check, freeze and gate; at the start (checkBase) always
  */
-import type { GateFinding, GateFindingCode, LeanFacts, LeanMessageFact } from '@telelean/core';
+import { probeFailure, UNSEEN_PROOF, type GateFinding, type GateFindingCode, type LeanFacts, type LeanMessageFact } from '@telelean/core';
 
 import type { ComparatorVerdict, RejectionReason } from '../lean/comparator.js';
 import type { ShadowLayoutError } from '../shadow/types.js';
@@ -63,7 +68,25 @@ export type FactsOutcome =
   | { kind: 'budget'; finding: GateFinding }
   | { kind: 'environment'; message: string };
 
-/** What a refresh's status means for a check (docs/m2-plan.md section 3.6). */
+/** The start of `probeOomEnvironment`'s sentence. */
+export const PROBE_OUT_OF_MEMORY = "telelean's probe ran out of memory, so telelean could not read what the declarations of this state use in Lean";
+
+/**
+ * Fixer 2b3a r1 (S-V2B3A-S1, AP-33): the isolated probe's job ran out of memory (refresh ended with `oom`, the probe's
+ * marker `oom`: a build or check job that is killed ends the refresh before the probe, with no marker). The probe loads
+ * Lean's own library a second time (§2.1's Cost: about 390 MB more than the check), so it is the job most likely to pass
+ * a memory cap lowered on a machine short of memory, and its kill is telelean's own overhead far more often than Claude's
+ * proof or the person's files. So it is an `environment` outcome (not counted; the gate tries again once, and the start
+ * refuses with the environment notice, nothing sent to Claude), never a budget finding. Nothing passes either way.
+ * Undefined for any other facts (a probe's timeout stays a budget finding, as the check's: the probe adds little time).
+ */
+export function probeOomEnvironment(facts: LeanFacts): string | undefined {
+  if (facts.status !== 'oom' || facts.probe?.status !== 'oom') return undefined;
+  const detail = facts.detail?.trim() ?? '';
+  return detail === '' ? PROBE_OUT_OF_MEMORY : `${PROBE_OUT_OF_MEMORY} (${detail})`;
+}
+
+/** What a refresh's status means for a check (docs/m2-plan.md section 3.6; the probe's `oom` since fixer 2b3a r1). */
 export function classifyFacts(facts: LeanFacts, leanJobMs: number): FactsOutcome {
   switch (facts.status) {
     case 'ok':
@@ -71,8 +94,11 @@ export function classifyFacts(facts: LeanFacts, leanJobMs: number): FactsOutcome
     case 'check-errors':
       return { kind: 'ok' };
     case 'timeout':
-    case 'oom':
+    case 'oom': {
+      const probe = probeOomEnvironment(facts);
+      if (probe !== undefined) return { kind: 'environment', message: probe };
       return { kind: 'budget', finding: budgetFinding(facts.status, facts.detail, leanJobMs) };
+    }
     default:
       return { kind: 'environment', message: environmentMessage(facts.status, facts.detail) };
   }
@@ -125,6 +151,49 @@ export function buildErrorFindings(facts: LeanFacts): GateFinding[] {
     findings.push({ step: 'G1', code: 'build', message: `The Lean build failed: ${facts.detail ?? `modules ${facts.build.failedModules.join(', ')} failed`}` });
   }
   return findings;
+}
+
+/**
+ * Slice 1e fixer (spec v4.1 B.2 with AP-13 and A2): B.2's `source-only` refusal says that telelean could not see which
+ * cards the proof uses (the facts have no elaborated values for it: a declaration the check file could not write, or
+ * facts without the probe's marker; since 2b3a a probe that was cut or failed has its own rule, `probeFailedEnvironment`,
+ * which runs first, and no model name can make the isolated probe's imports fail). Claude cannot fix that, so when it is
+ * the gate's only problem the gate reports an `environment` outcome instead (not counted as an attempt; the run stops
+ * after one retry with this text and the facts' detail), rather than spending every attempt of the round on it. With any
+ * other finding the attempt is Claude's to fix as usual (a failed build, for instance, also leaves the target without
+ * fresh facts). Undefined when the findings are not exactly that.
+ */
+export function unseenProofEnvironment(findings: readonly GateFinding[], detail?: string): string | undefined {
+  if (findings.length === 0 || !findings.every((f) => f.code === 'undeclared-premise' && f.token === 'source-only')) return undefined;
+  const why = detail?.replace(/\s+/g, ' ').trim() ?? '';
+  return why === '' ? UNSEEN_PROOF : `${UNSEEN_PROOF} (${why.length > 300 ? `${why.slice(0, 299)}…` : why})`;
+}
+
+/**
+ * Slice 2b3a (docs/slice2-plan.md 2.1, D2-75, "A failed probe never passes"): the facts' isolated probe was `cut` or
+ * `failed` (`probeFailure`), so no declaration has constants. At check, freeze and gate the rules still run: when they
+ * find nothing, or only B.2's `source-only` (which the missing constants cause), the check is an `environment` outcome
+ * with `probeFailure`'s sentence (Claude reads the cause and can take out what caused it; not counted as an attempt);
+ * otherwise their findings fail it as usual. Either way nothing passes. Undefined when the probe did not fail, or when
+ * the rules found something else.
+ */
+export function probeFailedEnvironment(findings: readonly GateFinding[], facts: LeanFacts | undefined): string | undefined {
+  const failure = probeFailure(facts);
+  if (failure === undefined) return undefined;
+  return findings.every((f) => f.code === 'undeclared-premise' && f.token === 'source-only') ? failure : undefined;
+}
+
+/** Slice 2b3a (§2.1, AP30-2): what the start adds to `probeFailure`'s sentence when B's own probe failed. */
+export const BASE_PROBE_FAILED = "Claude's work on this model cannot be checked.";
+
+/**
+ * Slice 2b3a (§2.1, AP30-2): B's probe failed (its size, or an error of the walk on the person's own files), so every
+ * state of the session would fail the same way: the start refuses before anything is sent to Claude, with
+ * `probeFailure`'s sentence and BASE_PROBE_FAILED. Undefined when B's probe did not fail.
+ */
+export function baseProbeEnvironment(facts: LeanFacts | undefined): string | undefined {
+  const failure = probeFailure(facts);
+  return failure === undefined ? undefined : `${failure} ${BASE_PROBE_FAILED}`;
 }
 
 export interface ComparatorOutcome {

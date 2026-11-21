@@ -1,0 +1,92 @@
+# check:gaps
+
+Agent `a6085f95b30ef1850` of workflow `wf_169472df-2f5`. Verbatim output (JSON alongside).
+
+- **verdicts:**
+  - [1]
+    - **clause:** CF-6 (your edit makes it yours)
+    - **real_gap:** True
+    - **recommended_slice:** 3
+    - **reason:** Confirmed. core/src/edit/planAction.ts planEditNode (85-124) sets only the edited field (line 115) and never touches worded_by. So a sentence Claude wrote (worded_by: agent, written by gate/adoption.ts:133 for 'I hold this', and by slice 2's Add premise writes) still renders italic as Claude's after the person rewrites it (webview NodeCard.tsx:168), and stays unendorsed (build.ts:765). No AP or D decision records this. Slice-3 §3.10 (line 716) covers only the converse: normalise writes worded_by: agent when Claude rewords. docs/user-guide.md:304 already claims the mark goes 'until you edit its sentence', which is false today. Fix in 3b, which already changes the edit-node plan for D3-44: an edit of naturalName on a block with worded_by: agent also writes worded_by: user (or drops the line), in the same plan and Undo step. Slice 4 must do the same for a sentence typed in the transform window.
+  - [2]
+    - **clause:** BD-3 Placement (A|P box card not stored) / B.7
+    - **real_gap:** True
+    - **recommended_slice:** decision
+    - **reason:** Confirmed and unlogged. The slice-1 integrator contract (slice1-plan §2.4 'add-node gains an optional position') stores the position. Builder 1c1 and fixer 1c1 made the A|P box send one with every proposition, and core/src/edit/planAction.ts:72-80 writes it to layout.json in the add's own Undo step. BD-3 lists 'a new card from the A|P box' among unstored placements, and B.7/AP-12 name only moves and Tidy layout. The spec contradicts itself here: BD-8 ('in view, next to the selected card') and CM-7 ('placed at the clicked point') cannot survive a reopen unless the position is stored, so storing is the right resolution. Log one AP entry: a proposition added from the A|P box (or New proposition here) has its position stored with the add, in one Undo step; opening a board still writes nothing; kind changes and deletes drop a stored position. The same entry should correct AP-19 ('Placement is computed and stored only when you move a card') and docs/user-guide.md:66 ('Nothing is written until you move it or press Tidy layout').
+  - [3]
+    - **clause:** BD-7 bullet 6 (definitions chip)
+    - **real_gap:** True
+    - **recommended_slice:** 3
+    - **reason:** Confirmed and unlogged. webview/src/board/band.ts:98-104 puts 'also by definition: …' and 'also presupposes: …' in the band's tooltip, not a chip, as slice1-plan §4 chose. It takes definitions from node.lean.uses, which is the target's own statement closure (core/src/project/build.ts:486-509), not what the inference relies on. So it misses the spec's own example: in S5's InGame cheat the goal never mentions InGame, only the premise's statement does. Presuppositions do come correctly from the footprint. Recommended fix in slice 3's 3f, which already adds EdgeEngine badges. Draw a chip on the band, and take definitions from the statement closures of v and of every card in direct(v), plus what the proof's own non-card lemmas reach (slice 2's review/closure.ts reach in 'uses' mode, stopping at cards' .holds). Slice 2's stage report and Result reuse bandsOf (slice2-plan §5.4), so they gain it too. If the integrator keeps the tooltip, log that as a decision, but still widen the source.
+  - [4]
+    - **clause:** AR-6 bullet 1 (next to its source)
+    - **real_gap:** True
+    - **recommended_slice:** decision
+    - **reason:** Confirmed and unlogged. When an arrow or the mark makes an axiom a proposition, core/src/edit/planArrows.ts:126-130 appends it last in the propositions' order and drops any stored position. The generic layered placement (webview/src/board/canvas/placement.ts:103-140) then puts it one layer right of its sources, stacked below every other unplaced card of that layer, so it can land far from its source. 'Next to its new source' is the spec's elaboration: T21 ¶11 says only that the axiom is 'transferred to the proposition canvas'. The generic rule still keeps BD-3's sources-left-of-targets, and no slice 2–5 touches board placement. So log an AP decision. Alternative fix: the board sends a position beside the source with add-arrows or set-from-nothing on an axiom, stored in the same plan, as BD-8's add does. That would join the BD-3/B.7 decision on which gestures store positions.
+  - [5]
+    - **clause:** AR-7 bullet 4 (naming frozen arrows)
+    - **real_gap:** True
+    - **recommended_slice:** 3
+    - **reason:** Confirmed. It needs FROZEN, and the slice-3 plan never mentions the drop zone, Move to axioms or kindChangeImpact. The built P→A text gives only a count: 'Its N incoming arrows are removed.' (core/src/kindChange.ts:139-144). Add to 3f: the AXIOMS drop zone and the Move to axioms dialog name the incoming arrows that will be removed, marking the frozen ones from graph.freezes. Only standing freezes apply here, since ES-9 forbids P→A in a session. A related gap for 3b: slice-3 §2.6's A6 (line 453) drops freeze records only on delete-node and remove-arrows. A change-kind P→A, and an add-arrows that replaces a frozen mark (A22), should drop the records of the arrows and mark they remove. Otherwise those records linger as 'Frozen items not found' and silently re-freeze an arrow drawn again later. Slice 4's TR-11 kind change must show the same impact.
+  - [6]
+    - **clause:** A19 (old axiom premises shown)
+    - **real_gap:** True
+    - **recommended_slice:** decision
+    - **reason:** Confirmed and unlogged. It is a builder 1b choice in the slice1-plan §8 change log, not an AP or D decision. core/src/project/subjectGraph.ts:64-66 drops every declared edge into an AXIOM card, so an old axiom's premises are not drawn at all; TL122 (build.ts:56) says 'the board does not draw them'. The only trace is the card chip (webview/src/model/cardData.ts:210-217), whose tooltip gives just the count. 'Depends on' is empty because it reads edges, so the person chooses 'Make it a proposition (pending)' or 'Drop these arrows' without seeing which cards. This is an old-files edge case, BD-5 has no look for an arrow into an axiom, and no slice 2–5 touches it, so log an AP decision. The same decision should cheaply name the sources in the chip's tooltip or the details row, so the choice is not made blind.
+  - [7]
+    - **clause:** CM-3 sentence 1 (built menus)
+    - **real_gap:** True
+    - **recommended_slice:** decision
+    - **reason:** Confirmed and unlogged. webview/src/board/contextActions.ts disables card actions only when several cards are selected (228-236). One card's actions stay enabled beside selected arrows or marks (223-226). formalizeState (78-97) ignores selected cards, which slice1-plan §5 and builder 1e chose ('Selected cards neither block Formalize nor add a source', line 505). slice2-plan §5.11's disabled list keeps it. CM-3 is tagged (new): it is the spec author's rule, not the user's words. The risk is low: the summary shows every selected item, and Formalize's tooltip names its exact question. The literal rule would disable Formalize whenever a selection rectangle also takes cards, and CM-7 itself keeps a card's own actions beside a multi-card selection. Log an AP decision: an action applies to the part of a mixed selection it fits and says so in its label or tooltip (Delete per AR-1). Slice 3's 3f, which rebuilds the same contextActions and menu code, should apply the same rule to the freeze actions.
+  - [8]
+    - **clause:** CM-3 sentence 1 (freeze actions)
+    - **real_gap:** True
+    - **recommended_slice:** 3
+    - **reason:** Confirmed in the plan. Slice-3 §4.3 shows the four actions whenever anything selected is freezable and disables them only when planFreeze has nothing to do. Otherwise it freezes the freezable part and returns the rest as `left` (§2.9 FreezePlan.left, line 528; the ok branch's freeze.left, §2.4 line 418). Only two cases of partial application are logged: D3-6 (a hidden or queued target's Proof, Dependencies and mark, 'the rest of its card can') and D3-30/R2-11 (a Delete or Remove arrow among several items). A provisional card, or an unaccepted draft (D3-45), mixed into a selection is frozen around silently. §4 never says how `left` reaches the person, so they may believe something is frozen that is not. Fix in the slice-3 plan now, by one of two routes. Follow CM-3: disable with left's reasons on hover whenever `left` is non-empty outside the D3-6 and D3-30 cases. Or log a D3 decision for partial freezing that requires the result (toast or dialog) to name every left item and why.
+  - [9]
+    - **clause:** CM-7 bullet 4b
+    - **real_gap:** True
+    - **recommended_slice:** 3
+    - **reason:** Confirmed. The contextmenu listener sits on the board element only (webview/src/board/BoardInput.ts:668-686, 791), and builder 1c1 recorded that 'the band above keeps VS Code's menu'; no AP or D decision covers this. BD-1 makes the Vocabulary/Definitions band part of the board, and vocabulary cards are cards (Terms, CM-2). Slice-3 §4.2 adds menus on vocabulary items but leaves everything else 'as today'. So the band's background, headers, collapsed line and divider still open VS Code's Cut/Copy/Paste. 3f already edits BoardInput.ts and adds the band's item menus, so have it extend the same suppression to the band: VS Code's menu only over text fields and selected text, as on the column. If no telelean menu is wanted on the band's background, log a one-line decision instead.
+  - [10]
+    - **clause:** ES-9 bullet 5 (card-only Delete, S9)
+    - **real_gap:** True
+    - **recommended_slice:** 3
+    - **reason:** Confirmed and unlogged. 'Delete card only, keep Lean' is still offered end to end: webview/src/dialogs/Dialogs.tsx:187, 227, 280; core/src/edit/planDelete.ts:23-35 (keepLean); core/src/actions.ts:62; core/src/protocol.ts:145, 674. docs/user-guide.md:122 documents it. ES-9, S9 and Part 4's table say it goes, because it leaves `axiom ….holds` behind as an unmarked axiom, a hidden belief; S9 is a safety fix. No plan removes it (slice 2's 2h retirement list in §2.4 does not include it), and no decision keeps it. Slice 3 is the natural home: 3b already changes delete-node (A6 drops the deleted card's freeze records), and 3f already edits Dialogs.tsx (§4.4). Remove the button and its warning, make delete-node always remove the Lean (refuse or drop keepLean), and update the guide. The board's 'Delete anyway', which marks dependents broken, stays (ES-9, TR-13).
+  - [11]
+    - **clause:** §14 item 2 bullet 1 (History provenance)
+    - **real_gap:** True
+    - **recommended_slice:** 2
+    - **reason:** Confirmed. Once Apply has run, nothing durable says an arrow came from Claude. Apply's history entry is M2's accept-proposal with a label only (D2-67; slice2-plan §3.10 step 4). Attempt records keep the question, not Claude's arrows E(T): AttemptRecord.premises is the question (core/src/run.ts:590-612; slice2-plan §2.6). The ledger lives in run.json, in a run directory that pruneRunDirs deletes once keepRuns newer runs exist (runner/src/shadow/index.ts:231-244). This must go into slice 2 now. Slice 2 is the first slice that writes Claude's arrows into the person's files, and 2f (Apply, attempt records) is not built yet: §8 stops at 2b1a. In 2f, have Apply write each accepted Add arrow, and each Add premise's arrow, with its run and step. One option is an optional arrows field on the attempt records written at the end (D2-11); another is the Apply's history entry. Slice 3's whole-model Remove arrow can extend it later.
+  - [12]
+    - **clause:** §14 item 2 bullet 4 (signature)
+    - **real_gap:** True
+    - **recommended_slice:** decision
+    - **reason:** Confirmed; stricter than the spec, and unlogged as a v4 decision. core/src/gate/permitted.ts:35-47 (signatureAxioms) permits library-root non-Prop axioms whatever their kind. It excludes subject-module axioms of vocabulary kind `other`, such as `axiom weird : Empty`. A Claude proof that uses one is therefore refused (footprint), although §14.2 counts 'any of yours that break the vocabulary shape rule' in the signature. This is an M2 fixer choice (see the module comment), and slice2-plan §4.8 reuses it unchanged. It fails closed, since such an axiom proves anything through Empty.elim, so keep it and log it as an AP decision. To reverse it, add `other` to SIGNATURE_KINDS for subject modules. The board and report would then name such axioms as `axiom:` entries with TL103.
+  - [13]
+    - **clause:** §14 item 2 bullet 4 (named in report)
+    - **real_gap:** False
+    - **recommended_slice:** none
+    - **reason:** Covered in effect; the mapper missed the footprint path. Core marks every footprint axiom that is not a card's .holds, a presupposition, or a plain sort, predicate, function or constant as an `axiom:‹name›` entry, with TL103 'The proof uses ‹name›, which is neither an assumption … nor vocabulary.' (core/src/project/build.ts:607-634). The report card's Rests on shows each one by name, as 'axiom ‹name›' with an attention chip (webview/src/run/ReportCard.tsx:95-98; the same in CardDetails.tsx:206). The band and the verdict add 'a hidden assumption' and 'proved, but uses a hidden assumption' (band.ts:89, model/cardData.ts:276). Library-root declarations are never vocabulary (project/vocabulary.ts covers subject modules only), so a library-root `weird : Empty` is named, not permitted silently. Constants and functions declared with `axiom` are named too, which is more than the spec asks. PermittedSummary.signature is the permitted set, not what the proof used, so leaving it unshown is harmless. One thing to keep in slice 2: InferenceJudgement.restsOn (review/types.ts:378, computed in 2b1b, not yet built) should keep that footprint convention (card ids, presup:, axiom:), so the Result's Rests on names them too.
+    - **where_if_covered:** core/src/project/build.ts:607-634 (axiom: entries, TL103); webview/src/run/ReportCard.tsx:95-98 (report's Rests on names each); webview/src/board/band.ts:89 and webview/src/model/cardData.ts:276 (hidden-assumption band reason and chip)
+  - [14]
+    - **clause:** §14 item 9 (apply)
+    - **real_gap:** True
+    - **recommended_slice:** 2
+    - **reason:** Confirmed. Slice 1's start check refuses only cycles through the question's own cards: formalizeCycleProblem is called with [target, ...sources] (core/src/formalize.ts:108-114, 141; webview contextActions.ts:89). Slice 2's §4.9 B.3 (line 1815) and §4.10 `cycle` never count a cycle already in B, and §4.12 check 6 (line 1914) states no scope. So a session can start, and Apply go ahead, over a hand-written TL015 cycle elsewhere in the subject, although AR-3 and §14.9 say such a cycle blocks Formalize and Apply. Apply cannot sensibly refuse it mid-session: the base never changes (ES-7) and the board is locked (ES-9), so only Exit would get past it. The fix belongs in the start check. State check 6 in slice 2's plan as 'any cycle of drawn and solid arrows in the session's subject blocks Formalize, naming it'. Then Apply can never meet one, and 'a cycle already in B is never counted' stays correct. formalizeStartProblems (core/src/review/formalize.ts) is still a 2b2 stub, so the scope can be set now. The alternative is to log the question-only scope as an AP decision.
+  - [15]
+    - **clause:** B.7 writers
+    - **real_gap:** True
+    - **recommended_slice:** decision
+    - **reason:** Same departure as BD-3's placement clause. add-node.position is a third writer of positions: core/src/edit/planAction.ts:72-80, in the add's own Undo step. Kind changes also write layout.json, by dropping a stored position: AR-6 in planArrows.ts:126-130, and P→A per fixer 1a. So do deletes (builder 1a). AP-12 and B.7 list only moves and Tidy layout, and AP-19 states 'stored only when you move a card'. The behaviour is benign and is what makes BD-8 and CM-7's placements stick. Log one AP decision covering BD-3 and B.7 together, with AR-6's placement if the integrator also stores a position beside the source. Correct AP-19 and docs/user-guide.md:66 with it.
+  - [16]
+    - **clause:** S9 fix (card-only Delete gone)
+    - **real_gap:** True
+    - **recommended_slice:** 3
+    - **reason:** Same gap as ES-9 bullet 5. The card-only Delete still exists end to end: Dialogs.tsx:227, 280; planDelete.ts keepLean; actions.ts:62; protocol.ts:145, 674; user-guide.md:122. It leaves `axiom ….holds` as an unmarked axiom, which is exactly the hidden belief S9 names. No plan removes it and no AP or D decision keeps it. Remove it in slice 3 (3b's delete-node, 3f's Dialogs.tsx). S9's other half, 'dependents are handled (TR-13)', is slice 4's inside sessions; the board keeps 'Delete anyway'.
+  - [17]
+    - **clause:** S20 (future work)
+    - **real_gap:** False
+    - **recommended_slice:** none
+    - **reason:** Not a v4 obligation. S20's 'Fix for now' asks that 'consistency unchecked' keep being said, and that is built and planned: the band tooltip (webview/src/board/band.ts:46, BAND_COMPLETE_TITLE), the report card (core/src/run.ts:446, consistency: 'unchecked'), and slice 2's stage report, which says 'Consistency unchecked' always (slice2-plan §5.4, line 1960). The model finder is explicitly M3 future work in the spec, and both slice2-plan (line 44) and slice3-plan (line 22) list consistency checking as outside their slice.
+    - **where_if_covered:** spec S20 'Fix for now'; webview/src/board/band.ts:46; core/src/run.ts:446; slice2-plan §5.4 (line 1960); slice2-plan line 44 and slice3-plan line 22 defer the model finder to M3

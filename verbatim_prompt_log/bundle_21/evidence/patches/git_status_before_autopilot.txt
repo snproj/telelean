@@ -1,0 +1,9 @@
+ M package-lock.json
+?? node_modules/
+?? packages/extension/dist/
+?? packages/extension/out/
+?? scraps.md
+?? scraps2.md
+?? verbatim_prompt_log/bundle_20/
+?? verbatim_prompt_log/bundle_21/
+187673d96fe0f76aa1c66759457b1d0f3e3ee56c

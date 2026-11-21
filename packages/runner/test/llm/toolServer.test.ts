@@ -47,11 +47,15 @@ const text = (r: unknown): string => {
 };
 
 describe('tool server (MCP over loopback HTTP)', () => {
-  it('lists the five agent tools with schemas and the always-load meta', async () => {
+  it('lists the six agent tools with schemas and the always-load meta (slice 2d: propose_arrow)', async () => {
     const { client: c } = await connect(new StubToolHost());
     const { tools } = await c.listTools();
-    expect(tools.map((t) => t.name).sort()).toEqual(['ask_user', 'check_lean', 'finish', 'freeze_statements', 'propose_assumption']);
+    expect(tools.map((t) => t.name).sort()).toEqual(['ask_user', 'check_lean', 'finish', 'freeze_statements', 'propose_arrow', 'propose_assumption']);
+    const arrow = tools.find((t) => t.name === 'propose_arrow');
+    expect(arrow?.inputSchema.required).toEqual(['source', 'target', 'why']);
+    expect(arrow?._meta?.['anthropic/alwaysLoad']).toBe(true);
     const finish = tools.find((t) => t.name === 'finish');
+    expect((finish?.inputSchema.properties as Record<string, { type?: string }>)['no_alternative']?.type).toBe('boolean');
     expect(finish?.inputSchema.required).toEqual(expect.arrayContaining(['status', 'summary', 'assumed_without_asking']));
     expect(finish?._meta?.['anthropic/alwaysLoad']).toBe(true);
     const ask = tools.find((t) => t.name === 'ask_user');
@@ -188,6 +192,31 @@ describe('tool server (MCP over loopback HTTP)', () => {
     expect(text(broken)).toContain('lake build crashed');
     const invalid = await c.callTool({ name: 'freeze_statements', arguments: { targets: [] } });
     expect(invalid.isError).toBe(true);
+  });
+
+  it('slice 2d: propose_arrow reaches the host and comes back as "Arrow recorded: …" or "Arrow refused: …"; invalid arguments are a tool error', async () => {
+    const host = new StubToolHost();
+    let refuse = false;
+    const switching: AgentToolHost = Object.assign(Object.create(host) as AgentToolHost, {
+      propose_arrow: async (a: Parameters<AgentToolHost['propose_arrow']>[0]) =>
+        refuse ? { status: 'rejected' as const, message: 'cynder-dark-past is already a premise of cynder-not-good.' } : host.propose_arrow(a),
+    });
+    const { client: c } = await connect(switching);
+    const args = { source: 'cynder-dark-past', target: 'cynder-not-good', why: 'The proof needs her past.' };
+    const recorded = await c.callTool({ name: 'propose_arrow', arguments: args });
+    expect(recorded.isError).toBeFalsy();
+    expect(text(recorded)).toBe('Arrow recorded: M0 stub: recorded without a check');
+    expect(host.calls.filter((call) => call.tool === 'propose_arrow').map((call) => call.args)).toEqual([args]);
+    refuse = true;
+    const refused = await c.callTool({ name: 'propose_arrow', arguments: args });
+    expect(refused.isError).toBeFalsy();
+    expect(text(refused)).toBe('Arrow refused: cynder-dark-past is already a premise of cynder-not-good.');
+    refuse = false;
+    for (const bad of [{ source: 'a', target: 'b' }, { ...args, why: '' }, { ...args, source: 'x'.repeat(201) }]) {
+      const invalid = await c.callTool({ name: 'propose_arrow', arguments: bad });
+      expect(invalid.isError, JSON.stringify(bad)).toBe(true);
+    }
+    expect(host.calls.filter((call) => call.tool === 'propose_arrow')).toHaveLength(1); // invalid arguments never reach the host
   });
 
   it('refuses requests without the right token, with a foreign Host, or from a browser origin', async () => {

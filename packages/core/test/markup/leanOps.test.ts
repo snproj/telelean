@@ -250,3 +250,71 @@ describe('column-0 comments inside a declaration: removal and replacement take t
     expect(result.problems.join(' ')).toMatch(/Where `Spyro\.d_col0\.holds` ends is unclear/);
   });
 });
+
+describe('2b2 (§4.11) replace-decl: another version of a declaration put back in place', () => {
+  const declText = (file: ParsedFile, name: string) => {
+    const decl = findDecl(file, name);
+    if (!decl) throw new Error(`no ${name}`);
+    return file.text.slice(decl.span.start, decl.span.end);
+  };
+
+  it('replaces the declaration from its docstring with the given text; putting the old text back round-trips byte for byte', () => {
+    const before = declText(MAIN, 'Spyro.cynder_dark_past');
+    expect(before).toBe('/-- Cynder is a character who has a dark past -/\nabbrev cynder_dark_past : Prop := HasDarkPast cynder');
+    const other = '/-- Cynder may have a dark past -/\nabbrev cynder_dark_past : Prop :=\n  HasDarkPast cynder ∨ True';
+    const { text, archived } = run(MAIN, [{ op: 'replace-decl', name: 'Spyro.cynder_dark_past', text: other }]);
+    expect(archived).toEqual([]);
+    expect(text).toBe(mainLean.replace(before, other));
+    const changed = parseLeanFile('Model/Spyro/Main.lean', text);
+    expect(declText(changed, 'Spyro.cynder_dark_past')).toBe(other);
+    expect(changed.blocks.map((b) => [b.id, b.binding.statement])).toEqual(MAIN.blocks.map((b) => [b.id, b.binding.statement]));
+    const { text: back } = run(changed, [{ op: 'replace-decl', name: 'Spyro.cynder_dark_past', text: before }]);
+    expect(back).toBe(mainLean);
+  });
+
+  it('a theorem back to a pending claim and back again; several declarations of one file in one call', () => {
+    const theorem = declText(PROVED, 'Spyro.cynder_not_good.holds');
+    expect(theorem.startsWith('theorem cynder_not_good.holds')).toBe(true);
+    const { text } = run(PROVED, [
+      { op: 'replace-decl', name: 'Spyro.cynder_not_good.holds', text: 'axiom cynder_not_good.holds : cynder_not_good' },
+      { op: 'replace-decl', name: 'Spyro.new_spyro_pg', text: '/-- The new Spyro game is rated PG -/\nabbrev new_spyro_pg : Prop := IsPG newSpyro' },
+    ]);
+    const changed = parseLeanFile('Model/Spyro/Main.lean', text);
+    expect(findDecl(changed, 'Spyro.cynder_not_good.holds')?.keyword).toBe('axiom');
+    expect(findDecl(changed, 'Spyro.new_spyro_pg')?.docstring).toBe('The new Spyro game is rated PG');
+    const { text: back } = run(changed, [
+      { op: 'replace-decl', name: 'Spyro.cynder_not_good.holds', text: theorem },
+      { op: 'replace-decl', name: 'Spyro.new_spyro_pg', text: declText(PROVED, 'Spyro.new_spyro_pg') },
+    ]);
+    expect(back).toBe(provedLean);
+  });
+
+  it('writes the file’s line breaks (CRLF)', () => {
+    const crlf = parseLeanFile('C.lean', 'namespace S\r\n/-- a -/\r\ndef a : Nat := 1\r\nend S\r\n');
+    const { text } = run(crlf, [{ op: 'replace-decl', name: 'S.a', text: '/-- a -/\ndef a : Nat :=\n  2' }]);
+    expect(text).toBe('namespace S\r\n/-- a -/\r\ndef a : Nat :=\r\n  2\r\nend S\r\n');
+  });
+
+  it('refuses a missing declaration, an empty text, an unterminated comment, a telelean block in the text, and a declaration holding a block: all or nothing', () => {
+    const problems = (ops: LeanOp[], file: ParsedFile = MAIN) => {
+      const result = applyLeanOps(file, ops);
+      expect(result.edits).toEqual([]);
+      return result.problems;
+    };
+    expect(problems([{ op: 'replace-decl', name: 'Spyro.nope', text: 'def nope : Nat := 1' }])).toEqual(['The declaration `Spyro.nope` is not declared in Model/Spyro/Main.lean.']);
+    expect(problems([{ op: 'replace-decl', name: 'Spyro.cynder_dark_past', text: '  \n' }])).toEqual(['The text to put back for `Spyro.cynder_dark_past` is empty.']);
+    expect(problems([{ op: 'replace-decl', name: 'Spyro.cynder_dark_past', text: '/- open\nabbrev cynder_dark_past : Prop := True' }])[0]).toMatch(/not one complete declaration/);
+    expect(problems([{ op: 'replace-decl', name: 'Spyro.cynder_dark_past', text: '/-\n@@ telelean v1\nid: z\n-/\nabbrev cynder_dark_past : Prop := True' }])[0]).toMatch(/not one complete declaration/);
+    // One bad op refuses the call: the good one is not applied either.
+    expect(
+      problems([
+        { op: 'replace-decl', name: 'Spyro.new_spyro_pg', text: 'abbrev new_spyro_pg : Prop := True' },
+        { op: 'replace-decl', name: 'Spyro.nope', text: 'def nope : Nat := 1' },
+      ]),
+    ).toHaveLength(1);
+    const holding = parseLeanFile('E.lean', '/-- Docstring for e. -/\n/-\n@@ telelean v1\nid: e\ntype: GOAL\nnatural_name: e\n-/\ndef e : Prop := True\n');
+    expect(problems([{ op: 'replace-decl', name: 'e', text: 'def e : Prop := False' }], holding)[0]).toMatch(/contains the telelean block `e`/);
+    // Replacing and removing the same declaration overlaps.
+    expect(problems([{ op: 'replace-decl', name: 'Spyro.new_spyro_pg', text: 'abbrev new_spyro_pg : Prop := True' }, { op: 'remove-decl', name: 'Spyro.new_spyro_pg', archive: false }])[0]).toMatch(/overlapping/);
+  });
+});

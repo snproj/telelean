@@ -48,35 +48,33 @@ export function makeNode(id: string, type: TlNode['type'], naturalName: string, 
 
 /**
  * Every ProofStatus kind and the M1 flags on one board (Spyro's vocabulary and four nodes, plus status nodes), with
- * diagnostics for the attention badge and an ASSUMPTION with declared premises (the D-13 hint).
+ * diagnostics for the attention badge and an AXIOM whose `premises:` line was written before v4 (A19). As the host
+ * sends it: its `premises` drive the "declared before v4" chip and "Drop these arrows", but no edge is sent for them
+ * (core's subjectGraph leaves out arrows into an axiom), so none is drawn.
  */
 export function statusGallery(version = 5): TlGraph {
   const base = spyroProvedGraph(version);
   const extra: TlNode[] = [
-    makeNode('d-pending', 'DERIVATION', 'Cynder is not PG material', { proof: { kind: 'pending-promotion' }, flags: ['claimed'] }, { lean: { binding: 'pinned', statement: 'Spyro.d_pending', justification: 'Spyro.d_pending.holds', justificationKind: 'axiom', code: 'abbrev d_pending : Prop := True\naxiom d_pending.holds : d_pending' } }),
-    makeNode('d-conditional', 'DERIVATION', 'Spyro games avoid dark characters', { proof: { kind: 'conditional', on: ['d-pending'], footprint: ['cynder-dark-past'] } }),
-    makeNode('g-sorry', 'GOAL', 'The sequel will be rated PG', { flags: ['uses-sorry'] }),
-    makeNode('g-unchecked', 'GOAL', 'Fans will accept the change', { flags: ['not-checked'] }),
-    makeNode('a-stale', 'ASSUMPTION', 'Critics notice ratings', { proof: { kind: 'assumed' }, flags: ['stale'] }),
-    makeNode('a-missing', 'ASSUMPTION', 'Ratings are public', { flags: ['missing-holds'] }),
-    makeNode('a-premised', 'ASSUMPTION', 'Ratings follow content', { proof: { kind: 'assumed' } }, { premises: ['cynder-dark-past'] }),
+    makeNode('d-pending', 'PROPOSITION', 'Cynder is not PG material', { proof: { kind: 'pending' } }, { lean: { binding: 'pinned', statement: 'Spyro.d_pending', justification: 'Spyro.d_pending.holds', justificationKind: 'axiom', code: 'abbrev d_pending : Prop := True\naxiom d_pending.holds : d_pending' } }),
+    makeNode('d-conditional', 'PROPOSITION', 'Spyro games avoid dark characters', { proof: { kind: 'conditional', on: ['d-pending'], footprint: ['cynder-dark-past'] } }),
+    makeNode('g-sorry', 'PROPOSITION', 'The sequel will be rated PG', { flags: ['uses-sorry'] }),
+    makeNode('g-unchecked', 'PROPOSITION', 'Fans will accept the change', { flags: ['not-checked'] }),
+    makeNode('a-stale', 'AXIOM', 'Critics notice ratings', { proof: { kind: 'assumed' }, flags: ['stale'] }),
+    makeNode('a-missing', 'AXIOM', 'Ratings are public', { flags: ['missing-holds'] }),
+    makeNode('a-premised', 'AXIOM', 'Ratings follow content', { proof: { kind: 'assumed' } }, { premises: ['cynder-dark-past'] }),
   ];
   const nodes = [...base.nodes, ...extra];
   const diagnostics: BoardDiagnostic[] = [
     { code: 'TL115', severity: 'warning', message: 'declaration uses sorry', nodeId: 'g-sorry', file: 'Model/Spyro/Main.lean', range: { start: { line: 60, character: 0 }, end: { line: 60, character: 0 } } },
     { code: 'LEAN', severity: 'error', message: 'unknown identifier', nodeId: 'g-sorry', file: 'Model/Spyro/Main.lean', range: { start: { line: 61, character: 2 }, end: { line: 61, character: 2 } } },
-    { code: 'TL011', severity: 'info', message: 'ASSUMPTION without rationale', nodeId: 'a-missing' },
-    { code: 'TL117', severity: 'warning', message: 'assumption without .holds', nodeId: 'a-missing' },
+    { code: 'TL011', severity: 'info', message: 'AXIOM without rationale', nodeId: 'a-missing' },
+    { code: 'TL117', severity: 'warning', message: 'axiom without .holds', nodeId: 'a-missing' },
   ];
-  const edges: TlEdge[] = [
-    ...base.edges,
-    { id: edgeId('premise', 'cynder-dark-past', 'a-premised'), type: 'premise', source: 'cynder-dark-past', target: 'a-premised', origin: 'declared' },
-  ];
-  return { ...base, nodes, edges, diagnostics };
+  return { ...base, nodes, edges: base.edges, diagnostics };
 }
 
 /**
- * The proved Spyro board plus the M1 edge kinds the samples do not have, around a derivation d-hyp whose proof is
+ * The proved Spyro board plus the M1 edge kinds the samples do not have, around a proposition d-hyp whose proof is
  * conditional on pg-no-dark-past:
  *  - pg-no-dark-past -> d-hyp: verified, conditional (taken as a hypothesis);
  *  - new-spyro-pg -> d-hyp: declared but unused by the proof (mismatch, dashed);
@@ -85,7 +83,7 @@ export function statusGallery(version = 5): TlGraph {
  */
 export function edgeKindsGraph(version = 6): TlGraph {
   const base = spyroProvedGraph(version);
-  const extra = makeNode('d-hyp', 'DERIVATION', 'A PG game has no dark-past characters', { proof: { kind: 'conditional', on: ['pg-no-dark-past'] } }, { premises: ['new-spyro-pg'] });
+  const extra = makeNode('d-hyp', 'PROPOSITION', 'A PG game has no dark-past characters', { proof: { kind: 'conditional', on: ['pg-no-dark-past'] } }, { premises: ['new-spyro-pg'] });
   const edges: TlEdge[] = [
     ...base.edges,
     { id: edgeId('premise', 'new-spyro-pg', 'd-hyp'), type: 'premise', source: 'new-spyro-pg', target: 'd-hyp', origin: 'declared', mismatch: 'declared-unused' },
@@ -97,15 +95,15 @@ export function edgeKindsGraph(version = 6): TlGraph {
 }
 
 /**
- * spyroGraph plus d1, a derivation proved conditionally (its `theorem d1.holds` takes the hypothesis
- * `h_cynder_dark_past`, as an earlier A->G rewrite leaves it), and g1, a goal whose proof applies `d1.holds`: D->A of d1
- * makes `.holds` an axiom without the hypothesis, so g1 must drop the argument (core's needs-confirmation for D->A).
+ * spyroGraph plus d1, a proposition proved conditionally (its `theorem d1.holds` takes the hypothesis
+ * `h_cynder_dark_past`), and g1, a proposition whose proof applies `d1.holds`: P->A of d1 makes `.holds` an axiom
+ * without the hypothesis, so g1 must drop the argument (core's needs-confirmation for P->A).
  */
 export function conditionalGraph(version = 1): TlGraph {
   const base = spyroGraph(version);
   const d1 = makeNode(
     'd1',
-    'DERIVATION',
+    'PROPOSITION',
     'Cynder is too dark for a PG game',
     { proof: { kind: 'conditional', on: ['cynder-dark-past'] } },
     {
@@ -118,7 +116,7 @@ export function conditionalGraph(version = 1): TlGraph {
       },
     },
   );
-  const g1 = makeNode('g1', 'GOAL', 'Cynder stays out of the game', { proof: { kind: 'conditional', on: ['cynder-dark-past'] } });
+  const g1 = makeNode('g1', 'PROPOSITION', 'Cynder stays out of the game', { proof: { kind: 'conditional', on: ['cynder-dark-past'] } });
   const edges: TlEdge[] = [...base.edges, { id: edgeId('verified', 'd1', 'g1'), type: 'verified', source: 'd1', target: 'g1', origin: 'lean', where: 'proof' }];
   return { ...base, nodes: [...base.nodes, d1, g1], edges };
 }

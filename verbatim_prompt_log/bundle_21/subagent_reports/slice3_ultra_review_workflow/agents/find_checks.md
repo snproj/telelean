@@ -1,0 +1,135 @@
+# find:checks
+
+Agent `acd79eb5e98caeaab` of workflow `wf_84d1f5cb-1a7`. Verbatim output (JSON alongside).
+
+- **summary:** I reviewed the slice-3 plan through one lens: whether its mechanical checks are sound. I acted as Claude trying to get forbidden changes counted. I checked the plan against spec §5 and Appendix B, the user's FROZEN 1–5, REVIEW 3 and 7 and D3, the round-1 and round-2 findings and fixes, and the built code the checks rest on: runner `semantic/checkFile.ts` and `refresh.ts`, core `gate/g0.ts`, `gate/rules.ts`, `review/closure.ts` and `review/items.ts`, and the gate engine's check path.
+
+**What holds.** Most sequences end refused, or as stage problems that keep Apply disabled:
+- editing frozen content and restoring it between checks;
+- a freeze made during the gate's Lean job (the finish re-checks);
+- Undo of an Unfreeze during a step (`madeAt` makes it fresh, and a give-up rolls back to S₀);
+- a freeze of content an earlier step of the same queue had changed (the two-value rule);
+- the judge's own reverts;
+- accepted items, checked by content key plus held map;
+- `open`, `attribute` and `variable` lines (unowned, refused as stray commands);
+- an instance or attribute placed before a frozen statement, caught by meaningKey as long as the key is honest.
+
+Round 2's R2-1, R2-2, R2-5 and R2-7 trace soundly.
+
+**What does not hold.**
+- **Blocker: the meaning comparison can be forged.** It rests on meaningKey, which 3p computes inside the value probe's `#eval`. That `#eval` runs in a check file that imports the model, so the model's own instances on Lean's types can change what the probe prints. Through this, Claude can make a frozen statement mean something else and still reach Apply. The same forgery reaches the constant facts that held closures are built from.
+- **Major: steps judge by printed text when keys are missing.** Claude can strip every meaningKey from a state at will (a name clash with the probe's imports, or output over the 32 MB cap). Steps then go on comparing printed text, which a G0-allowed `@[app_unexpander]` can keep unchanged. Steps pass and the stage shows nothing; only the final check refuses, with advice to reload that never helps. Separately, the base re-check repeats a full base build at every judge whenever the base legitimately lacks some keys.
+- **Minor, four:**
+  - R2-9's rule for leaving out held names lets a held problem vanish when the person freezes the held declaration's new version.
+  - R2-17's item-based `frozenChangesOf`, and Submit's keep set, miss changes that come from where instances sit or whether they exist, so a decision can change frozen meaning without asking.
+  - A premise write fails, with a misleading message, whenever any unrelated frozen problem stands.
+  - meaningKey hashes raw auxiliary names generated with macro scopes, which gives false refusals.
+- **findings:**
+  - [1]
+    - **id:** S3-1
+    - **severity:** blocker
+    - **where:** §2.1 'The probe (3p)' and the meaningKey doc (D3-2); §1.1 3p; §3.5 (statement-changed, existing-changed and other-subject with meaningKey; Apply's backstop); §6.1 3p tests; §6.2 (no cheat covers it)
+    - **problem:** Every exact meaning comparison in the slice uses meaningKey: frozen statements and vocabulary, held values, statement-changed, existing-changed, other-subject and the backstop. 3p computes the key inside the value probe's `#eval` in the generated check file. That file imports the model, so the `#eval`'s own code is elaborated with the model's instances in scope. That code calls IO.println (ToString String), uses String ++ (HAppend/Append String), loops with `while`/`for` (ForIn m Lean.Loop Unit, ForIn over Array Lean.Name) and, for the Repr text, may call toString on a Std.Format.
+
+These are Lean's own types, all nameable from a model that imports only Init. A model instance of one of them with high priority is selected instead of core's. G0 does not forbid such instances. So model text can forge the probe's output: meaningKey, and also typeConsts/valueConsts, from which held closures and the held maps of own and accepted freezes are built.
+    - **fix:** §2.1 and 3p: compute meaningKey, and typeConsts/valueConsts with it, by code that is never elaborated in an environment that contains the model. Two options:
+- hash the kernel export of `lake env leanexport` (the tool G4 already runs under runLean) in the runner;
+- or run a probe program compiled once outside the model, which loads the model's .olean files with Lean.importModules.
+
+Add to §3.5, at every purpose and in the backstop (defense in depth, and the stopgap if isolation is deferred): a new or changed instance (`instance`, `@[instance]`, `deriving instance`) whose class arguments mention no constant of the model library is refused, with a text such as "instances on Lean's own types are not allowed in the model".
+
+Add cheat 24 to §6.2, covering both variants, built by hand in cheats.test.ts and once with real Lean in 3p. Log the choice as a D3 decision.
+    - **scenario:** Setup: frozen (standing) statement S elaborates using instance instGood of a vocabulary class on Character. In any step, narrow or whole-model, Claude adds two new declarations, as proof material in the proof phase or as `decl:` items:
+- `instance (priority := high) evilStr : ToString String := ⟨fun s => s.replace "instEvil" "instGood"⟩`;
+- `instance (priority := high) instEvil : <the same class> Character := …`, placed before S.
+
+Lean re-elaborates S with instEvil; S's text is unchanged. In the check file, IO.println resolves its ToString String to evilStr, so the Repr text and the constant lists name instGood. Consequences:
+- S's meaningKey and constants equal B's;
+- no `meaning` finding, no existing-changed, no item for S;
+- no statement closure reaches instEvil, so RV-7 and the backstop's (b) exempt it.
+
+The person accepts the two instances among the items. The final check and the backstop on F read the same forged output, and Apply writes S with a changed meaning that was never unfrozen (FZ-3, FROZEN 2). The board's next refresh is forged the same way.
+
+Variant: a ForIn m Lean.Loop Unit instance that ends the constant walk early. A later own freeze or Accept then stores a held map without definition D; a later step edits D's text, and nothing compares it.
+  - [2]
+    - **id:** S3-2
+    - **severity:** major
+    - **where:** §2.1 'Missing meaningKey fails closed … steps go on' and 'Base facts: when base-facts.json lacks meaningKey … the next judge runs checkBase once more'; §3.5 (`final` refuses inexact); D3-2
+    - **problem:** The plan treats a missing meaningKey as rare (old facts, a Repr over 2 MB) and lets steps and stages compare by `approx`. Claude can remove every key of a state at will, in two ways:
+- refresh re-runs the check file without the value probe when the probe's imports fail (the 1d fixer's fallback; for example, the model declares a name that `Lean.CoreM`'s imports also declare);
+- the probe's line is printed last, so it is lost when the check output passes runLean's 32 MB cap.
+
+With the probe gone there are no constant sets either, so approx is only the printed type and value, which a G0-allowed `@[app_unexpander]` def can make print as before. Checks, the freeze and the finish then accept states that change frozen meaning, and the stage shows no problem. Only the final check refuses, and its text ("reload the window to check the base again") can never help.
+
+Separately, the re-check of the base reruns a full base build at every judge whenever B legitimately lacks some keys: an unwritable name, a large Repr, or a name clash in the person's own model.
+    - **fix:** §2.1:
+- Replace "steps go on" with: a judged state whose facts lack the meaning probe because of the state itself (the check ran without the probe after an import failure, the output was truncated, or a new or changed declaration is over the size limit) is refused at every purpose with a `facts` finding naming the cause and the declaration, e.g. "‹name› is also declared by Lean's own library, which telelean needs to read meanings: rename it". Approx stays only for B and for records made before 3p.
+- Re-run checkBase only when base-facts.json predates the probe (a facts version marker), never because some names lack keys.
+- The inexact texts of the final check and the backstop name the declaration and why its key is missing.
+
+Tests in 3a and 3p: the import clash and the truncation are each refused at a check.
+    - **scenario:** In a step, Claude adds:
+- `class Lean.MonadEnv (m : Type) where x : Nat`, legal in a model that imports only Init but clashing with the probe's imports;
+- an instance before frozen statement S;
+- an app_unexpander for S's head symbol.
+
+The check file's imports fail, and refresh retries without the probe: no meaningKey, typeConsts or valueConsts anywhere. S is compared by printed text, which the unexpander keeps equal. Every check and the gate pass, Claude's Result counts, and the stage shows no frozen problem.
+
+The person decides every item and presses Apply. They get "could not compare what S means: reload the window to check the base again". Reloading changes nothing; the cause is a declaration inside an item they accepted.
+  - [3]
+    - **id:** S3-3
+    - **severity:** minor
+    - **where:** §3.4 step 3 ("Only names that an entry compares through its own AddressValue (the roots of standing and own entries) are left out"; "Two different expectations for one name give held (conflict)"), as reworded by R2-9
+    - **problem:** The wording drops every held expectation of a name that is the root of a standing or own entry. So another holder's different expectation for that name is never compared, and the conflict rule never sees it. The person can make a held problem disappear without unfreezing the holder, which D3-9 makes the only way. Whether the problem comes back once the name also enters an accepted item's `frozen.held` ("always compared") depends on a detail the text leaves open.
+    - **fix:** §3.4 step 3: "Every held expectation of a name is compared, roots of standing and own entries included. A root's own entry replaces another holder's expectation only when the two are equal (one message); when they differ, the name gives `held` (`conflict`)." Test in 3a: the sequence in the scenario keeps a problem until A is unfrozen.
+    - **scenario:** Whole model (3c1 and later):
+1. Step k of a queue changes vocabulary definition D from D₁ to D₂; card A's statement uses D.
+2. During step k+1, the person freezes A at J (D₁), stored as { from: 'base' }.
+3. At the stage there is a `held` problem: D, held by A, changed.
+4. The person freezes D's vocabulary card and picks Claude's proposal in the Versions dialog (own freeze, D₂). D is now a root of an own entry, so A's expectation D₁ is left out, and the problem disappears while D's item is in review.
+5. If the builder drops A's expectation also when D's accepted item makes D "always compared", accepting D's item gives no `conflict`, and Apply writes D₂ under A's standing freeze.
+  - [4]
+    - **id:** S3-4
+    - **severity:** minor
+    - **where:** §3.7 "Decisions that would change frozen content" ("…follows from the items it takes out and brings back, by meaning"); §2.9 frozenChangesOf; §3.10 Submit's keep set; D3-48; D3-49; §6.2 lead-in to paths 19–23 ("none may change frozen content without the person's answer")
+    - **problem:** R2-17's item rule sees only what an item owns and the frozen targets' held closures. A take-out or bring-back that adds, removes or moves an instance changes how later declarations elaborate, and that instance need not be in any frozen closure. D3-39 also keeps position out of every value, so a moved instance's held value equals B's and is not listed. Such declines, un-rejects and Undos, and Submit's take-out, change frozen meaning without asking, against D3-48, D3-49 and §6.2. The next judge turns it into a stage problem, so it fails closed.
+    - **fix:** Choose one of:
+- (a) Widen ownership conservatively: an item whose content adds, removes or moves an instance, a coercion or an attributed declaration also counts, for frozenChangesOf and for planSubmit's keep set, as owning every frozen or held declaration elaborated after it (later in its file, or in a file that imports it).
+- (b) Reword D3-48, D3-49 and §6.2 to state the residual: such changes show as stage problems at the next judge, as the judge's reverts do.
+
+Either way, add the instOld case as a 3b/3c1 test.
+    - **scenario:** Whole model:
+1. A step removes the existing anonymous instance instOld (item `decl:instOld`, absent content). Card A's statement now elaborates with instBar: a `card:A` Change with the same text and a new meaningKey.
+2. The person freezes A at Claude's proposal (own freeze at state; its held map has instBar, not instOld).
+3. The person Rejects `decl:instOld`. frozenChangesOf lists nothing, since instOld is neither A's target nor in A's held map, so no dialog appears.
+4. The revert restores instOld, A means B's version again, and the next judge shows A as a frozen stage problem.
+
+The same happens for a decline that moves an instance back behind a frozen statement, and for Submit's take-out of such a Shaky item, which is not kept.
+  - [5]
+    - **id:** S3-5
+    - **severity:** minor
+    - **where:** §3.7 last bullet ("A due premise write or completion whose own judgement (writePremise, complete, both with the freezes) has a frozen or held finding fails like a write that could not be made"); §3.5 gives the two-value rule only to complete's gate (S₀ = the adopt commit)
+    - **problem:** writePremise judges the written state as a stage judgement. Its frozen findings therefore include every unresolved frozen stage problem, not only what the write itself changes. So a premise write is taken back out, and reported as changing frozen ‹x›, whenever any unrelated frozen problem stands. This is a false refusal with a wrong attribution.
+    - **fix:** §3.7: "A premise write or a completion fails only on a frozen or held finding its write introduces: one that the judgement of its parent commit does not have (the two-value rule with S₀ = the write's parent commit, as §3.5 gives complete's gate)." Test in 3d.
+    - **scenario:** 1. A queue ends with §3.8's stage problem: the person froze card X during the queue, and an earlier step had already changed X.
+2. In that stage, the person accepts Add premise P into target T. T's Dependencies, mark and Proof are not frozen.
+3. The judgement of P's write still has X's finding, so the write fails and the stage reads "“P” was accepted, but writing it would change frozen X".
+4. Every premise Accept fails the same way until X is resolved.
+  - [6]
+    - **id:** S3-6
+    - **severity:** minor
+    - **where:** §2.1 meaningKey doc (D3-2: "…and the same, sorted by name, for every model-library constant the value walk reaches that is not probed itself"); §6.1 3p tests ("an identical rebuild gives identical keys")
+    - **problem:** The key hashes the raw names of the unprobed auxiliaries it reaches. Some of those names are generated with macro scopes (`…._hyg.N`, shown with ✝), for example a deriving handler's auxiliary function. Such names depend on how many macro scopes earlier declarations of the same module used, so they change when Claude adds an unrelated declaration above. A frozen or held declaration that reaches such an auxiliary then gets a false `meaning` or `held changed` refusal, which Claude cannot fix by restoring anything.
+
+Also unclear: whether "the value walk" follows a theorem's value. The 1d walk (`valueOf`) does, which would make a definition's key depend on its nested proofs.
+    - **fix:** §2.1 and D3-2:
+- Before hashing, rename each unprobed auxiliary canonically (by its order in the walk, macro scopes erased); never hash its raw name.
+- The walk follows types, definitions' values and constructors only, never a theorem's value.
+
+3p tests:
+- an unrelated declaration with a deriving clause, added earlier in the module, leaves every other key unchanged;
+- a change to a nested proof inside a definition leaves that definition's key unchanged.
+    - **scenario:** 1. Vocabulary `inductive Character … deriving DecidableEq` (an inductive with arguments, so the handler makes an auxiliary `decEq…✝`). A frozen card's statement relies on `def isVillain (c : Character) : Bool := decide (c = malefor)`, so isVillain is held.
+2. A whole-model step adds `inductive Era | … deriving DecidableEq, Repr` above Character in the same file.
+3. The derived auxiliary for Character gets a new `_hyg` number, so the key of isVillain (or of the derived instance) changes.
+4. The check refuses with "isVillain is held … restore it", although nothing it means changed.

@@ -43,7 +43,7 @@ describe('needs-confirmation across subjects (real workspace and core)', () => {
       '/-',
       '@@ telelean v1',
       'id: rival-dark-past',
-      'type: DERIVATION',
+      'type: PROPOSITION',
       "natural_name: Bayonetta's rival has a dark past too",
       'lean: Bayonetta.rival_dark_past',
       '-/',
@@ -75,7 +75,7 @@ describe('needs-confirmation across subjects (real workspace and core)', () => {
     if (!outcome || outcome.ok) throw new Error('expected a refusal');
     expect(outcome.dependents).toEqual(['rival-dark-past', 'Bayonetta.dark_lemma']);
     expect(outcome.dependentCards).toEqual({
-      'rival-dark-past': { subject: 'Bayonetta', type: 'DERIVATION', naturalName: "Bayonetta's rival has a dark past too" },
+      'rival-dark-past': { subject: 'Bayonetta', type: 'PROPOSITION', naturalName: "Bayonetta's rival has a dark past too" },
     });
     expect(readFileSync(path.join(root, 'Model', 'Spyro', 'Main.lean'), 'utf8')).toBe(before);
   });

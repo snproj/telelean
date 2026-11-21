@@ -7,15 +7,15 @@ import type { NodeDiff } from '@telelean/core';
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { InlineEdit } from '../common/OneLineInput';
 import { KIND_GLYPH, KIND_NOUN } from '../labels';
-import { attentionDiagnostics, cardChips, type Chip } from '../model/cardData';
+import { attentionDiagnostics, cardChips, cardGlow, type Chip } from '../model/cardData';
 import { plainText } from '../model/format';
 import { DIFF_GLYPH, DIFF_WORD, diffTitle, RESULT_CHIP_KEYS } from '../model/run';
 import { useBoard, useBoardActions, useBoardStore } from '../state/context';
-import { boardView, flashTarget, proposedOverlay } from '../state/store';
+import { boardView, editLock, flashTarget, gestureGateOf, proposedOverlay } from '../state/store';
 import { CardDetails } from './CardDetails';
 import { cardDragData, cardTargetData, isCardDragData } from './dnd';
 import { guardCardDrag } from './dragGuard';
-import { revealInColumn } from './reveal';
+import { revealCard, revealInColumn } from './reveal';
 import { UsesLine } from './UsesLine';
 
 /** The chip that stands for a proof result the overlay hides until the review reveals it (D-19). */
@@ -41,7 +41,16 @@ export function DiffBadge({ diff, hideResult = false }: { diff: Pick<NodeDiff, '
   );
 }
 
-function ChipView({ chip, onAction }: { chip: Chip; onAction?: ((action: NonNullable<Chip['action']>) => void) | undefined }) {
+function ChipView({
+  chip,
+  onAction,
+  locked = null,
+}: {
+  chip: Chip;
+  onAction?: ((action: NonNullable<Chip['action']>) => void) | undefined;
+  /** Slice 1f (ES-9): an action chip is disabled, with this reason as its tooltip. */
+  locked?: string | null;
+}) {
   const className = `tl-chip tl-chip--${chip.tone}${chip.action && onAction ? ' tl-chip--action' : ''}`;
   if (chip.action && onAction) {
     const action = chip.action;
@@ -51,7 +60,8 @@ function ChipView({ chip, onAction }: { chip: Chip; onAction?: ((action: NonNull
         className={className}
         data-chip={chip.key}
         data-dim={chip.dim || undefined}
-        title={plainText(chip.title)}
+        title={locked ?? plainText(chip.title)}
+        disabled={locked !== null}
         onClick={(event) => {
           event.stopPropagation();
           onAction(action);
@@ -68,7 +78,20 @@ function ChipView({ chip, onAction }: { chip: Chip; onAction?: ((action: NonNull
   );
 }
 
-export const NodeCard = memo(function NodeCard({ id }: { id: string }) {
+/**
+ * A card of the board. `place` (spec v4 slice 1c): in the AXIOMS `column` it is dragged to re-order it
+ * (pragmatic-drag-and-drop, as before) and Alt+↑/↓ moves it; on the `canvas` the board's pointer handlers move it
+ * (board/BoardInput.ts), so it registers no HTML drag.
+ *
+ * Slice 1c2 (AR-1): the arrow handle at its right edge, shown while the card is hovered: dragging it to another card
+ * draws an arrow (BoardInput). While the board is locked (ES-9) and in the Proposed view it is shown disabled, with the
+ * reason as its tooltip (slice 1d); it is not there on a card the host has not written yet. Delete removes the selected
+ * arrows and marks first; the card's delete dialog opens only when none is selected (`pressDelete`).
+ *
+ * Slice 1d (BD-6): its glow (`data-glow`): green when established, else blue when formalised, dimmed when its facts are
+ * out of date (`data-glow-dim`), never green while the Proposed view hides its result.
+ */
+export const NodeCard = memo(function NodeCard({ id, place = 'column' }: { id: string; place?: 'column' | 'canvas' }) {
   const node = useBoard((s) => boardView(s).nodes[id]);
   const nodes = useBoard((s) => boardView(s).nodes);
   const diagnostics = useBoard((s) => s.diagnostics);
@@ -82,6 +105,16 @@ export const NodeCard = memo(function NodeCard({ id }: { id: string }) {
   const hideResult = useBoard((s) => proposedOverlay(s)?.hidden.has(id) === true);
   const editing = useBoard((s) => (s.editing?.id === id && proposedOverlay(s) === null ? s.editing.field : null));
   const checking = useBoard((s) => s.semantic.state === 'checking');
+  /** Slice 1f (ES-9): the Current board is read-only while an edit session (a run) is active. */
+  const lock = useBoard((s) => editLock(s));
+  /**
+   * AR-1: the arrow handle (slice 1c2). Slice 1d (ES-9, the 1c2 verification's carry-over): where no arrow can be drawn
+   * now, in the Proposed view or during an edit session, it is shown disabled with the reason as its tooltip, never
+   * hidden; it is not a handle then (no `data-handle`), so a press on it draws nothing. None on a card the host has not
+   * written yet. The reason is the drawing gesture's own rule (1c2's `gestureGateOf(…).draw`; 1d fixer), so the handle
+   * and the gesture always agree.
+   */
+  const handleBlocked = useBoard((s) => gestureGateOf(s).draw);
   const actions = useBoardActions();
   const store = useBoardStore();
   const ref = useRef<HTMLDivElement>(null);
@@ -89,7 +122,8 @@ export const NodeCard = memo(function NodeCard({ id }: { id: string }) {
 
   useEffect(() => {
     const element = ref.current;
-    if (!element) return;
+    // On the canvas a card moves with pointer events (BoardInput.ts), never with an HTML drag.
+    if (!element || place === 'canvas') return;
     const guard = guardCardDrag(element);
     return combine(
       () => guard.dispose(),
@@ -97,13 +131,14 @@ export const NodeCard = memo(function NodeCard({ id }: { id: string }) {
         element,
         getInitialData: () => cardDragData(id),
         // A press in the code, a field or a button never drags the card (request 1); neither does a card the host
-        // has not confirmed yet, nor any card of the proposed view (read-only: it is not the user's files).
-        canDrag: () => !guard.blocked() && !actions.isProvisional(id) && proposedOverlay(store.getState()) === null,
+        // has not confirmed yet, nor any card of the proposed view (read-only: it is not the user's files), nor any
+        // card while an edit session is active (slice 1f, ES-9: no re-order, no kind change by a drop).
+        canDrag: () => !guard.blocked() && !actions.isProvisional(id) && proposedOverlay(store.getState()) === null && editLock(store.getState()) === null,
       }),
       dropTargetForElements({
         element,
         // The card itself is a target too, so dropping it where it was is recognised as "no move".
-        canDrop: ({ source }) => isCardDragData(source.data) && proposedOverlay(store.getState()) === null,
+        canDrop: ({ source }) => isCardDragData(source.data) && proposedOverlay(store.getState()) === null && editLock(store.getState()) === null,
         getData: ({ input, element: el }) => attachClosestEdge(cardTargetData(id), { input, element: el, allowedEdges: ['top', 'bottom'] }),
         onDrag: ({ self, source }) => {
           const edge = isCardDragData(source.data) && source.data.id !== id ? extractClosestEdge(self.data) : null;
@@ -113,10 +148,11 @@ export const NodeCard = memo(function NodeCard({ id }: { id: string }) {
         onDrop: () => setDropEdge(null),
       }),
     );
-  }, [id, actions, store]);
+  }, [id, actions, store, place]);
 
+  // A highlight scrolls the column to the card, or pans and zooms the canvas to it (BD-3).
   useLayoutEffect(() => {
-    if (flashed && ref.current) revealInColumn(ref.current);
+    if (flashed && ref.current) revealCard(ref.current);
   }, [flashed]);
 
   const chips = useMemo(() => {
@@ -130,12 +166,15 @@ export const NodeCard = memo(function NodeCard({ id }: { id: string }) {
 
   if (!node) return null;
   const agentWorded = node.provenance.wordedBy === 'agent';
+  // Spec v4.1 BD-6 (slice 1d): green when established, else blue when formalised; dimmed when the facts are out of date.
+  // While the Proposed view hides the result, never green (RV-6).
+  const glow = cardGlow(node, hideResult);
 
   const onChipAction = (action: NonNullable<Chip['action']>) => {
-    if (action === 'make-derivation') actions.requestKindChange(id, 'DERIVATION', null);
-    else actions.startEdit(id, 'rationale');
+    if (action === 'edit-rationale') actions.startEdit(id, 'rationale');
   };
-  // The proposed view is read-only: a click neither selects nor changes the selection.
+  // The proposed view is read-only: a click neither selects nor changes the selection. (A locked Current board still
+  // selects: viewing stays, slice 1f.)
   const onClick = (event: MouseEvent) => {
     if (!proposed) actions.clickCard(id, event.ctrlKey || event.metaKey);
   };
@@ -151,8 +190,9 @@ export const NodeCard = memo(function NodeCard({ id }: { id: string }) {
       }
       return;
     }
-    if (event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
-      // The keyboard re-order: one place up or down in the column (layout only, like a drag within it).
+    if (place === 'column' && event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+      // The keyboard re-order: one place up or down in the column (layout only, like a drag within it). While the
+      // board is locked (slice 1f) the store moves nothing and says why; so do F2 and Delete below.
       event.preventDefault();
       if (actions.moveCard(id, event.key === 'ArrowUp' ? -1 : 1)) {
         // React moves the card's element, which drops its focus: give it back once the column re-rendered.
@@ -176,7 +216,9 @@ export const NodeCard = memo(function NodeCard({ id }: { id: string }) {
       actions.startEdit(id, 'naturalName');
     } else if (event.key === 'Delete') {
       event.preventDefault();
-      actions.openDelete(id);
+      // Spec v4 AR-1: with arrows or marks selected, Delete removes them; it opens the card's delete dialog only when
+      // none is selected (cards are never deleted together with arrows). Locked: the reason, nothing sent.
+      actions.pressDelete(id);
     }
   };
   const problems = attention.length;
@@ -189,16 +231,21 @@ export const NodeCard = memo(function NodeCard({ id }: { id: string }) {
       tabIndex={0}
       data-node-id={id}
       data-kind={node.type}
+      data-place={place}
       data-formal={node.status.formal}
+      data-glow={glow.glow ?? undefined}
+      data-glow-dim={glow.dim || undefined}
       data-selected={selected || undefined}
+      data-expanded={expanded || undefined}
       data-dragging={dragging || undefined}
       data-drop-edge={dropEdge ?? undefined}
       data-provisional={provisional || undefined}
       data-highlight={flashed ? 'true' : undefined}
       data-proposed={proposed || undefined}
+      data-locked={(!proposed && lock !== null) || undefined}
       data-diff={diff?.change}
       aria-label={`${KIND_NOUN[node.type]}: ${node.naturalName}${selected ? ' (selected)' : ''}${diff ? ` (${DIFF_WORD[diff.change]} in the proposal)` : ''}`}
-      aria-keyshortcuts={proposed ? 'Enter' : 'Enter Space F2 Delete Alt+ArrowUp Alt+ArrowDown'}
+      aria-keyshortcuts={proposed ? 'Enter' : lock !== null ? 'Enter Space' : place === 'column' ? 'Enter Space F2 Delete Alt+ArrowUp Alt+ArrowDown' : 'Enter Space F2 Delete'}
       onClick={onClick}
       onKeyDown={onKeyDown}
       onMouseEnter={() => actions.setHover(id)}
@@ -265,7 +312,7 @@ export const NodeCard = memo(function NodeCard({ id }: { id: string }) {
       ) : null}
       <div className="tl-card__meta">
         {chips.map((chip) => (
-          <ChipView key={chip.key} chip={chip} onAction={proposed ? undefined : onChipAction} />
+          <ChipView key={chip.key} chip={chip} onAction={proposed ? undefined : onChipAction} locked={proposed ? null : lock} />
         ))}
         {problems > 0 ? (
           <button
@@ -291,6 +338,11 @@ export const NodeCard = memo(function NodeCard({ id }: { id: string }) {
       </div>
       {node.lean.uses ? <UsesLine node={node} /> : null}
       {expanded ? <CardDetails node={node} /> : null}
+      {provisional ? null : handleBlocked === null ? (
+        <span className="tl-handle" data-handle="" data-nodrag="" aria-hidden="true" title="Drag to another card to draw an arrow from this one" />
+      ) : (
+        <span className="tl-handle" data-handle-disabled="" data-nodrag="" aria-hidden="true" title={handleBlocked} />
+      )}
     </div>
   );
 });

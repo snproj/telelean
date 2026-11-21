@@ -2,7 +2,7 @@
 import type { LeanFacts } from '../../../src/facts.js';
 import type { Layout } from '../../../src/layout.js';
 import type { ParsedFile } from '../../../src/markup/types.js';
-import type { TlGraph, TlNode } from '../../../src/model.js';
+import type { NodeType, NodeTypeAlias, TlGraph, TlNode } from '../../../src/model.js';
 import { buildProjectModel, subjectGraph, type ProjectModel } from '../../../src/project/index.js';
 import { fakeFacts, freshHashes, type FakeFactsOptions } from './fakeFacts.js';
 import { parseFixture } from './parseFixture.js';
@@ -27,10 +27,13 @@ end S
 
 export interface BlockSpec {
   id?: string;
-  type: 'ASSUMPTION' | 'DERIVATION' | 'GOAL';
+  /** AXIOM or PROPOSITION; the old ASSUMPTION, DERIVATION and GOAL still parse, as aliases (spec v4 B.6). */
+  type: NodeType | NodeTypeAlias;
   name: string;
   rationale?: string;
   premises?: string[];
+  /** Written as `follows_from: <value>` (spec v4 AR-5: `nothing` is the only valid value). */
+  followsFrom?: string;
   lean?: string;
 }
 
@@ -44,6 +47,7 @@ export function block(spec: BlockSpec): string {
     `natural_name: ${spec.name}`,
     ...(spec.rationale ? [`rationale: ${spec.rationale}`] : []),
     ...(spec.premises ? [`premises: ${spec.premises.join(', ')}`] : []),
+    ...(spec.followsFrom !== undefined ? [`follows_from: ${spec.followsFrom}`] : []),
     ...(spec.lean ? [`lean: ${spec.lean}`] : []),
     '-/',
   ].join('\n');

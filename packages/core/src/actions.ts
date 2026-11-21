@@ -9,7 +9,8 @@
  *     --(runner)--> history snapshot (git private ref) + undo entry + re-parse + Lean refresh
  */
 import type { Evidential, NodeType, Stance } from './model.js';
-import type { Layout } from './layout.js';
+import type { CanvasPosition, Layout } from './layout.js';
+import type { CascadeEntry } from './review/types.js';
 
 // ---------------------------------------------------------------------------------------------
 // Actions
@@ -17,7 +18,19 @@ import type { Layout } from './layout.js';
 /** Fields the board can edit in place (D-17 "edit text/rationale"; D-14 chips). */
 export type EditableField = 'naturalName' | 'rationale' | 'stance' | 'source';
 
-/** What to do with Lean dependents when a kind change removes `n.holds` (D-11 A->G, D->G). */
+/**
+ * Spec v4 AR-1, AR-4 (slice 1b): one drawn arrow `source -> target`, i.e. one entry of the target's `premises:` (its
+ * Dependencies field). Both ends are axiom or proposition cards of one subject, never vocabulary.
+ */
+export interface ArrowEnds {
+  source: string;
+  target: string;
+}
+
+/**
+ * What to do with Lean dependents when a kind change breaks them (D-11): today only P->A of a conditional proof, whose
+ * `.holds` becomes an axiom that takes no arguments.
+ */
 export type DependentsChoice = 'rewrite' | 'mark-broken';
 
 export type BoardAction =
@@ -32,6 +45,12 @@ export type BoardAction =
       source?: Evidential;
       /** Id the webview proposed (used when valid and unused across the workspace). */
       preferredId?: string;
+      /**
+       * Spec v4 BD-3, BD-8, CM-7 (slice 1c): a new proposition's place on the canvas (its top-left corner, canvas
+       * coordinates within ±LIMITS.coordinate), stored in layout.json by the same plan (one Undo step). Ignored for an
+       * axiom (axioms keep their column order).
+       */
+      position?: CanvasPosition;
     }
   /** `value: null` removes the field (not allowed for naturalName). */
   | { kind: 'edit-node'; id: string; field: EditableField; value: string | null }
@@ -41,13 +60,16 @@ export type BoardAction =
    * `needs-confirmation` listing them, unless `confirmed` is set (the user saw the list and still deletes).
    */
   | { kind: 'delete-node'; id: string; keepLean: boolean; confirmed?: boolean }
-  /** D-11 kind change (the card moves to `to`, above `beforeId`). */
+  /**
+   * D-11 kind change (the card moves to `to`, above `beforeId`). Spec v4 (docs/slice1-plan.md 2.4): `to: 'AXIOM'` also
+   * removes the card's `premises:` and `follows_from:` (AR-7); `to: 'PROPOSITION'` is refused (`invalid`, AR-6).
+   */
   | {
       kind: 'change-kind';
       id: string;
       to: NodeType;
       beforeId: string | null;
-      /** Required when the change removes a `.holds` that others use (KindChangeImpact.needsConfirmation). */
+      /** Required when the change breaks dependents (KindChangeImpact.needsConfirmation). */
       dependents?: DependentsChoice;
       /**
        * M2 (carry-over 3, docs/m2-plan.md section 9 WP1): the dependents (node ids or fully-qualified names) the
@@ -56,15 +78,48 @@ export type BoardAction =
        * dependent the dialog did not show. With `dependents` set and this absent, the planner treats it as `[]`.
        */
       confirmedDependents?: string[];
-      /** G->A: "you supply the reason" (optional, never blocking: D-14). */
+      /** P->A: "you supply the reason" (optional, never blocking: D-14). */
       rationale?: string;
     }
   /** D-17 drag within a column: layout only. */
   | { kind: 'reorder'; id: string; column: NodeType; beforeId: string | null }
-  /** M1 "These suffice": declare `premises` as the target's joint support (replaces `premises:`, D-13). */
+  /**
+   * M1 "These suffice": declare `premises` as the target's joint support (replaces `premises:`, D-13). Spec v4: kept
+   * for the old History entries and the run's start until slice 1e; the board draws arrows instead (`add-arrows`).
+   */
   | { kind: 'set-premises'; target: string; premises: string[] }
   /** D-10: a new subject (module subtree + namespace), with the scaffold files. */
-  | { kind: 'create-subject'; name: string };
+  | { kind: 'create-subject'; name: string }
+  /**
+   * Spec v4 AR-1, AR-5, AR-6 (docs/slice1-plan.md 2.4, slice 1b): draws arrows from `sources` into `target`. They are
+   * appended to its `premises:` (the existing order is kept; an arrow already there is ignored) and its "follows from
+   * nothing" mark goes, in the same plan. Into an axiom the plan also makes it a proposition by D-11's old A->D row
+   * (only `type:` changes; an `axiom n.holds` stays, now pending proof); when established cards rest on that axiom the
+   * planner answers `needs-confirmation` (they lose their green glow) unless `confirmed`. Refused (`invalid`): an
+   * arrow that would close a cycle over the drawn arrows and the verified edges of checked proofs (AR-3), a source in
+   * another subject, an arrow into itself, an unknown source.
+   */
+  | { kind: 'add-arrows'; target: string; sources: string[]; confirmed?: boolean }
+  /**
+   * Spec v4 AR-1, A16: removes the arrows (entries of their targets' `premises:`; an emptied line goes). When a
+   * target's proof uses a removed source (a verified edge), the planner answers `needs-confirmation` unless `confirmed`.
+   * Slice 1f (UN-2, carry-over 2): `marks` are cards whose "follows from nothing" mark (`follows_from:` line) goes in
+   * the same plan, so one Delete of arrows and marks is one Undo step, and its A16 confirmation covers all of it.
+   * `arrows` may then be empty; one of the two lists is not.
+   */
+  | { kind: 'remove-arrows'; arrows: ArrowEnds[]; marks?: string[]; confirmed?: boolean }
+  /**
+   * Spec v4 AR-5, B.6: `on` writes `follows_from: nothing` (refused on a card with arrows into it); on an axiom it also
+   * makes it a proposition, as `add-arrows` does, with the same confirmation. `on: false` removes the `follows_from:` line.
+   */
+  | { kind: 'set-from-nothing'; id: string; on: boolean; confirmed?: boolean }
+  /**
+   * Spec v4 AR-8 (★D7 (b)): "Mark pending": a proposition with a Lean statement and no `.holds` gets
+   * `axiom n.holds : n` (D-11 `add-holds-axiom`), assumed until a run proves it. Refused (`invalid`) otherwise.
+   */
+  | { kind: 'claim-pending'; id: string }
+  /** Spec v4 BD-3: moves propositions on the canvas (layout only, like `reorder`; one Undo step). */
+  | { kind: 'move-cards'; positions: Record<string, CanvasPosition> };
 
 export type BoardActionKind = BoardAction['kind'];
 
@@ -101,7 +156,7 @@ export interface FileChange {
   after: string | null;
 }
 
-/** A declaration removed from a model file and kept in the subject's attic (D-11 D->A, D-18 delete). */
+/** A declaration removed from a model file and kept in the subject's attic (D-11 P->A, D-18 delete). */
 export interface ArchiveEntry {
   subject: string;
   nodeId: string;
@@ -109,7 +164,7 @@ export interface ArchiveEntry {
   declName: string;
   /** Its source text, verbatim. */
   text: string;
-  /** e.g. `Derivation -> Assumption`, `deleted`. */
+  /** e.g. `Proposition -> Axiom`, `deleted`. */
   reason: string;
 }
 
@@ -142,7 +197,11 @@ export type ActionErrorCode =
   | 'not-found'
   /** The request is invalid (e.g. empty sentence, premise cycle, subject name taken). */
   | 'invalid'
-  /** The change removes a `.holds` that others use and no DependentsChoice was given (show the confirm dialog). */
+  /**
+   * The change removes a `.holds` that others use and no DependentsChoice was given (show the confirm dialog); spec v4
+   * (slice 1b): an arrow change whose impact the user confirms first (an axiom becomes pending and established cards
+   * lose their green glow, AR-6; a removed arrow is used by a proof, A16). The message is that impact.
+   */
   | 'needs-confirmation'
   /** The Lean facts needed for a mechanical rewrite are stale or missing: refresh first. */
   | 'facts-stale'
@@ -154,6 +213,11 @@ export type ActionErrorCode =
   | 'not-yet'
   /** History is unavailable (no git repository, git missing). */
   | 'no-history'
+  /**
+   * Slice 2 (docs/slice2-plan.md 2.3, D2-62, AF9): an edit session's review action while Claude's step runs, with
+   * "Claude's step is running: you can review when it ends." (`REVIEW_TEXTS.stepRunning`).
+   */
+  | 'refused'
   | 'internal';
 
 /** A user-facing refusal. `message` is shown on the board as is. */
@@ -178,7 +242,18 @@ export interface DependentCard {
 
 /** The result of performing an action, undo, redo or revert (runner -> extension -> webview `actionResult`). */
 export type ActionOutcome =
-  | { ok: true; label: string; undoable: boolean; nodeId?: string }
+  | {
+      ok: true;
+      label: string;
+      undoable: boolean;
+      nodeId?: string;
+      /**
+       * Slice 2 (docs/slice2-plan.md 2.3, additive): a review decision's effect. `taken`: the items it decided; `left`:
+       * the items a group decision left, with why (RV-8); `cascade`: the other items whose status it changed (RV-5,
+       * D2-28). While the results are hidden, a Result or a Result's part is never named (D2-64).
+       */
+      review?: { taken: string[]; left: Array<{ item: string; reason: string }>; cascade: CascadeEntry[] };
+    }
   | {
       ok: false;
       code: ActionErrorCode;
@@ -190,6 +265,15 @@ export type ActionOutcome =
        * card by its sentence rather than its id. Entries not listed here are fully-qualified Lean names.
        */
       dependentCards?: Record<string, DependentCard>;
+      /** Slice 2, `needs-confirmation` of a review decision: the accepted items it would change, and how (§3.6). */
+      cascade?: CascadeEntry[];
+      /**
+       * Slice 2, `needs-confirmation` while the results are hidden (D2-64): the dialog adds that a hidden result that
+       * rests on these loses its Accept too (`REVIEW_TEXTS.cascadeHiddenResults`).
+       */
+      hiddenResults?: true;
+      /** Slice 2, `needs-confirmation` of `openSessionDiff` while the results are hidden: opening it shows them (§2.4). */
+      reveal?: true;
     };
 
 // ---------------------------------------------------------------------------------------------

@@ -136,7 +136,7 @@ describe('parseLeanFile never throws and keeps its invariants', () => {
   });
 
   it('on every prefix of the Spyro-style text (as while typing)', () => {
-    const text = `namespace S\n\n${renderBlock({ id: 'a', type: 'GOAL', naturalName: 'A -/ b', lean: ['S.a'] })}\n/-- A -/\nabbrev a : Prop := True\naxiom a.holds : a\n\nend S\n`;
+    const text = `namespace S\n\n${renderBlock({ id: 'a', type: 'PROPOSITION', naturalName: 'A -/ b', lean: ['S.a'] })}\n/-- A -/\nabbrev a : Prop := True\naxiom a.holds : a\n\nend S\n`;
     for (let n = 0; n <= text.length; n++) checkInvariants(parseLeanFile('S.lean', text.slice(0, n)));
   });
 });
@@ -165,7 +165,7 @@ describe('performance', () => {
   it('parses a 30 000-line model file well within a second or two', () => {
     const parts: string[] = ['import Model.Big.Vocabulary', '', 'namespace Big', ''];
     for (let i = 0; i < 2500; i++) {
-      parts.push(renderBlock({ id: `node-${i}`, type: 'ASSUMPTION', naturalName: `Fact number ${i} holds`, rationale: 'r', lean: [`Big.f${i}`] }));
+      parts.push(renderBlock({ id: `node-${i}`, type: 'AXIOM', naturalName: `Fact number ${i} holds`, rationale: 'r', lean: [`Big.f${i}`] }));
       parts.push(`/-- Fact number ${i} holds -/`, `abbrev f${i} : Prop := P${i % 7} c${i % 11}`, `axiom f${i}.holds : f${i}`, '');
     }
     parts.push('end Big', '');

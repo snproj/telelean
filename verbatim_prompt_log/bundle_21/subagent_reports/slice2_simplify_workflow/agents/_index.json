@@ -1,0 +1,35 @@
+[
+  {
+    "label": "simplify:plan",
+    "agentId": "a9484a54880b3afa2",
+    "file": "agents/simplify_plan.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Write",
+      "Edit",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "recheck:simplified",
+    "agentId": "a6cae00711ada9ff7",
+    "file": "agents/recheck_simplified.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "fix:simplified",
+    "agentId": "ab5d7131d8f719e37",
+    "file": "agents/fix_simplified.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Edit",
+      "SubagentHandback"
+    ]
+  }
+]

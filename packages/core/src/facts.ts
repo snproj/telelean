@@ -150,6 +150,28 @@ export interface DeclFacts {
   refs: DeclRef[];
   /** For auxiliary names that `.ilean` attributes to another declaration (e.g. structure fields): that declaration. */
   parent?: string;
+  /**
+   * Spec v4.1 B.2 (slice 1d, the review's S-1): the constants of the declaration's ELABORATED value (a definition's,
+   * theorem's or opaque's; `[]` for an axiom, an inductive, a constructor …), from the value probe
+   * (`Expr.getUsedConstants`; since slice 2b3a the isolated probe, its own Lean job that reads the built modules as
+   * data, docs/slice2-plan.md 2.1, D2-75; before it, an `#eval` at the end of the check file). Only declarations of the
+   * facts are listed: an auxiliary of the model library that is not
+   * a declaration of the facts (`_proof_1`, `match_1`, an equation lemma …) is replaced by its own value's constants,
+   * and constants from outside the library are left out. Unlike `refs`, it includes what elaboration inserted: a
+   * `@[simp]` lemma `simp` used without the source naming it, an instance found by type-class search. Absent in facts
+   * from before slice 1d, or when the probe failed: core then falls back to `refs` (and no band gets its ✓).
+   */
+  valueConsts?: string[];
+  /**
+   * Slice 2 (docs/slice2-plan.md 2.1, D2-30; the field in 2a1, the isolated probe in 2b3a): the constants of the
+   * declaration's ELABORATED type, plus, for an inductive type (a structure or class too), those of every constructor's
+   * type. Same
+   * rules as `valueConsts`: only declarations of the facts are listed, a model-library constant that is not probed is
+   * replaced by its own type and value constants (transitively), and constants from outside the library are left out.
+   * Absent in facts from before slice 2 (old recordings, a failed probe): closures then report `complete: false`, RV-7
+   * counts every new or changed definition and instance as a belief, and Apply is refused (D2-25, fail closed).
+   */
+  typeConsts?: string[];
 }
 
 export interface LeanFacts {
@@ -168,6 +190,55 @@ export interface LeanFacts {
   modules: ModuleFacts[];
   /** Declarations of the fresh modules, in module then source order. */
   decls: DeclFacts[];
+  /**
+   * Slice 2 (docs/slice2-plan.md 2.1, D2-75; the field in 2b2, the job in 2b3a; additive): the isolated probe's run,
+   * present whenever the probe job ran on these facts, whatever it gave (the facts' marker). Absent in facts from before
+   * 2b3a (old recordings, a converted v1 run's base-facts.json). When it is `cut` or `failed`, no declaration of these
+   * facts has constants (`probeFailure`).
+   */
+  probe?: ProbeRunFacts;
+}
+
+/** The isolated probe's run (`LeanFacts.probe`, docs/slice2-plan.md 2.1). */
+export interface ProbeRunFacts {
+  /**
+   * `ok`: its line was read. `cut`: Lean's output passed runLean's 32 MB cap. `failed`: an error in its `#eval` or its
+   * imports, no line, or a line `parseValueProbe` cannot read. The sandbox's statuses end the refresh with the same
+   * status, as the check's do, so facts that have declarations only ever carry the first three.
+   */
+  status: 'ok' | 'cut' | 'failed' | 'oom' | 'timeout' | 'cancelled' | 'could-not-start';
+  durationMs: number;
+  peakMemoryBytes?: number;
+  /** For `failed`: Lean's first error, with its line, or what could not be read. */
+  detail?: string;
+}
+
+/**
+ * The cause of a failed probe as a sentence (docs/slice2-plan.md 2.1, D2-75): "telelean could not read what the
+ * declarations of this state use in Lean: ‹cause›.", ‹cause› "Lean's answer was over 32 MB" (`cut`) or "the probe
+ * failed: ‹detail›" (`failed`; the detail on one line, without a final period; "the probe failed" without one).
+ * Undefined when the probe gave its line (`ok`), for the sandbox's statuses (`oom`, `timeout`, `cancelled`,
+ * `could-not-start`: such facts carry no declarations, and their status already says why; AP30-5), or when the facts
+ * have no marker (facts from before 2b3a keep D2-25's fallbacks) or are absent.
+ * `detail: false` (fixer 2b2 r1, A-V2B2-ADV-7; additive): "the probe failed" without its detail, for what may be shown
+ * while the results are hidden (§4.7): Lean's error can name or quote a declaration of hidden proof material.
+ */
+export function probeFailure(facts: LeanFacts | undefined, options: { detail?: boolean } = {}): string | undefined {
+  const probe = facts?.probe;
+  if (probe === undefined) return undefined;
+  if (probe.status === 'cut') return "telelean could not read what the declarations of this state use in Lean: Lean's answer was over 32 MB.";
+  if (probe.status !== 'failed') return undefined;
+  const detail = options.detail === false ? '' : (probe.detail ?? '').replace(/\s+/g, ' ').trim().replace(/[.\s]+$/, '');
+  return `telelean could not read what the declarations of this state use in Lean: the probe failed${detail !== '' ? `: ${detail}` : ''}.`;
+}
+
+/**
+ * The time of a refresh's Lean jobs (fixer 2b3a r1, C-V2B3A-C2; additive): the build's, the check's and, since slice
+ * 2b3a, the isolated probe's, its own job (before 2b3a the probe ran inside the check job, so its time was the check's).
+ * Every reported Lean duration of a check or a session view is this sum.
+ */
+export function leanDurationMs(facts: LeanFacts): number {
+  return facts.build.durationMs + facts.check.durationMs + (facts.probe?.durationMs ?? 0);
 }
 
 /** `n.holds` for statement `n`. */

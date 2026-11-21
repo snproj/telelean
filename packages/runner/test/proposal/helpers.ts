@@ -114,6 +114,10 @@ export function fakeShadow(options: {
     },
     commits: async () => [...commits],
     lastCommit: async (kinds = PASSING_COMMIT_KINDS) => [...commits].reverse().find((c) => kinds.includes(c.kind)),
+    async lastCommitSince(since, kinds) {
+      const start = commits.findIndex((c) => c.id === since);
+      return start < 0 ? undefined : commits.slice(start).reverse().find((c) => kinds.includes(c.kind));
+    },
     filesAt: async (id) => snapshot(id),
     async revertTo(id, label, round) {
       const target = snapshot(id);
@@ -185,7 +189,7 @@ export function adoptedState(base: ReadonlyMap<string, string>): Map<string, str
   const out = literalState(base);
   const block =
     '/-\n@@ telelean v1\n' +
-    `id: ${GHOST_NODE}\ntype: ASSUMPTION\nnatural_name: A character who cannot be in a game would not be a good addition to it\n` +
+    `id: ${GHOST_NODE}\ntype: AXIOM\nnatural_name: A character who cannot be in a game would not be a good addition to it\n` +
     'rationale: it seems obvious to me\nasserted: 2026-11-01\nlean: Spyro.not_in_game_not_good\norigin: agent\nsession: r1\nworded_by: agent\n-/\n' +
     '/-- A character who cannot be in a game would not be a good addition to it -/\n' +
     'abbrev not_in_game_not_good : Prop := ∀ (c : Character) (g : Game), ¬ InGame c g → ¬ GoodAddition c g\n' +

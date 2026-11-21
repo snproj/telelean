@@ -88,7 +88,7 @@ describe('MCP tools declare no readOnlyHint (section 3.7)', () => {
     try {
       await client.connect(new StreamableHTTPClientTransport(new URL(server.url), { requestInit: { headers: { Authorization: `Bearer ${server.token}` } } }));
       const { tools } = await client.listTools();
-      expect(tools).toHaveLength(5);
+      expect(tools).toHaveLength(6); // slice 2d: propose_arrow
       for (const tool of tools) {
         expect(tool.annotations?.readOnlyHint).toBeUndefined();
         expect(tool._meta?.['anthropic/alwaysLoad']).toBe(true);

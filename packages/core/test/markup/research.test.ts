@@ -45,7 +45,8 @@ describe('AT1.2 research tests: Lexing', () => {
   it('CRLF', () => {
     const file = parse(B('c').replaceAll('\n', '\r\n') + 'axiom c : True\r\n');
     expect(file.eol).toBe('\r\n');
-    expect(file.blocks[0]?.fields.type).toBe('ASSUMPTION');
+    // `kind: ASSUMPTION`: the old kind, read as an alias of AXIOM (spec v4).
+    expect(file.blocks[0]?.fields.type).toBe('AXIOM');
     expect(file.blocks[0]?.fields.naturalName).toBe('n c');
     expect(file.blocks[0]?.binding.statement).toBe('c');
   });
@@ -83,7 +84,8 @@ describe('AT1.2 research tests: Values', () => {
   it('alias, lower case, unknown field, extension, missing version (02/03: no TL016, no TL018)', () => {
     const file = parse('/-\n@@ telelean\nid: i\ntype: goal\nnatural_name: x\nfoo: 1\nmytool.prio: 3\n-/\n');
     const found = codes(file);
-    expect(file.blocks[0]?.fields.type).toBe('GOAL');
+    // `goal` is the old GOAL (an alias of PROPOSITION, spec v4), in lower case: TL019 says so.
+    expect(file.blocks[0]?.fields.type).toBe('PROPOSITION');
     expect(file.blocks[0]?.version).toBe(1);
     expect(file.blocks[0]?.extensions).toEqual({ foo: ['1'], 'mytool.prio': ['3'] });
     expect(found).toContain('TL002');
@@ -92,7 +94,7 @@ describe('AT1.2 research tests: Values', () => {
     expect(found).not.toContain('TL018');
     // `kind:` is a silent alias of `type:`, normalised in the field lines.
     const aliased = parse('/-\n@@ telelean\nid: i\nkind: goal\nnatural_name: x\n-/\n');
-    expect(aliased.blocks[0]?.fields.type).toBe('GOAL');
+    expect(aliased.blocks[0]?.fields.type).toBe('PROPOSITION');
     expect(aliased.blocks[0]?.lines.find((l) => l.writtenKey === 'kind')?.key).toBe('type');
     expect(codes(aliased)).toEqual(['TL019']);
   });
@@ -105,7 +107,8 @@ describe('AT1.2 research tests: Values', () => {
   });
 
   it('missing required fields and bad values (TL003, TL004; no DEFINITION kind)', () => {
-    const file = parse('/-\n@@ telelean v1\nid: Bad_ID\nkind: AXIOM\n-/\n');
+    // (AXIOM is one of spec v4's two kinds; LEMMA is no kind.)
+    const file = parse('/-\n@@ telelean v1\nid: Bad_ID\nkind: LEMMA\n-/\n');
     const found = codes(file);
     expect(found.filter((c) => c === 'TL004').length).toBeGreaterThanOrEqual(2);
     expect(found).toContain('TL003');

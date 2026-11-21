@@ -345,6 +345,96 @@ describe('history and telelean writes (AT2.4)', () => {
   });
 });
 
+describe('slice 2 (docs/slice2-plan.md 2.6; 2b3b): the session\'s commit kinds, lastCommitSince, and syncMirror from given files', () => {
+  let tmp: string;
+  let shadow: ShadowWorkspace;
+  let tick = 0;
+  beforeAll(async () => {
+    tmp = makeTempRoot('shadow-session');
+    shadow = await createRunShadow({
+      root: spyroRoot(tmp, 'root'),
+      runsDir: path.join(tmp, 'runs'),
+      runId: 'r_session',
+      library: 'Model',
+      files: spyroModelFiles(),
+      now: () => new Date(Date.UTC(2026, 10, 20, 12, 0, tick++)),
+    });
+  });
+  afterAll(() => cleanupTempRoot(tmp));
+
+  const ws = (rel: string): string => path.join(shadow.paths.ws, rel);
+  const main = 'Model/Spyro/Main.lean';
+  const edit = (line: string): void => writeFileSync(ws(main), `${readFileSync(ws(main), 'utf8')}${line}\n`);
+
+  it('step-start, decision and completion are commit kinds, read back from the history (also by a shadow opened again)', async () => {
+    edit('-- a decision');
+    const decision = await shadow.commit('decision', 'Reject “x”', 2);
+    const start = await shadow.commit('step-start', 'Step 1 of 2 starts', 2);
+    edit('-- a completion');
+    const completion = await shadow.commit('completion', 'Completed “t”', 2);
+    expect((await shadow.commits()).map((c) => c.kind)).toEqual(['base', 'decision', 'step-start', 'completion']);
+    const reopened = await openRunShadow(shadow.paths.runDir, { root: shadow.root, library: 'Model' });
+    expect((await reopened.commits()).map((c) => [c.id, c.kind])).toEqual([
+      [(await shadow.commits())[0]?.id, 'base'],
+      [decision.id, 'decision'],
+      [start.id, 'step-start'],
+      [completion.id, 'completion'],
+    ]);
+    // None of them is a passing kind of slice 1 (a run's "last state that passed" is unchanged).
+    for (const kind of ['step-start', 'decision', 'completion'] as const) expect(PASSING_COMMIT_KINDS).not.toContain(kind);
+  });
+
+  it('lastCommitSince: the newest commit of the kinds at or after `since`, never an older one; the step-start itself when nothing newer is; undefined for an unknown commit', async () => {
+    const kinds = ['gate-pass', 'freeze', 'step-start'] as const;
+    const before = await shadow.commit('gate-pass', 'An earlier step passed', 2);
+    const start = await shadow.commit('step-start', 'Step 2 of 2 starts', 2);
+    // Nothing newer: the step's start itself, never the earlier step's gate-pass.
+    expect((await shadow.lastCommitSince(start.id, kinds))?.id).toBe(start.id);
+    edit('-- checked');
+    await shadow.commit('checkpoint', 'State judged by the gate', 2);
+    expect((await shadow.lastCommitSince(start.id, kinds))?.id).toBe(start.id);
+    const freeze = await shadow.commit('freeze', 'Statements frozen', 2);
+    edit('-- proved');
+    await shadow.commit('normalise', 'Normalised', 2);
+    expect((await shadow.lastCommitSince(start.id, kinds))?.id).toBe(freeze.id);
+    const pass = await shadow.commit('gate-pass', 'The gate passed', 2);
+    await shadow.commit('revert', 'Rolled back', 2);
+    expect((await shadow.lastCommitSince(start.id, kinds))?.id).toBe(pass.id);
+    // Kinds that occur only before `since` give nothing: the earlier gate-pass is behind the step's start.
+    expect(await shadow.lastCommitSince(start.id, ['decision'])).toBeUndefined();
+    expect((await shadow.lastCommitSince(before.id, ['gate-pass']))?.id).toBe(pass.id);
+    expect(await shadow.lastCommitSince('0'.repeat(40), kinds)).toBeUndefined();
+    expect(await shadow.lastCommitSince(start.id, [])).toBeUndefined();
+  });
+
+  it('syncMirror(files) makes build/ hold exactly those files\' model files, never reading ws/ (which may hold a write in progress)', async () => {
+    const head = (await shadow.commits()).at(-1);
+    if (head === undefined) throw new Error('no commit');
+    const files = await shadow.filesAt(head.id);
+    await shadow.syncMirror();
+    // ws/ moves on (a write in progress), with an entry that would refuse a sync of ws/.
+    writeFileSync(ws(main), 'half written\n');
+    writeFileSync(ws('Model/Spyro/Extra.lean'), 'namespace Spyro\nend Spyro\n');
+    symlinkSync('/etc/hostname', ws('Model/Spyro/Link.lean'));
+    const synced = await shadow.syncMirror(files);
+    expect(synced).toEqual({ copied: [], removed: [] });
+    expect(readFileSync(path.join(shadow.paths.build, main), 'utf8')).toBe(files.get(main));
+    // A file the given state lacks is removed from build/, one it holds is written; non-model files never reach it.
+    const without = new Map(files);
+    without.delete('Model/Spyro/Vocabulary.lean');
+    without.set('Model/Spyro/Other.lean', 'namespace Spyro\nend Spyro\n');
+    without.set('Model/Spyro/notes.md', 'notes\n');
+    expect(await shadow.syncMirror(without)).toEqual({ copied: ['Model/Spyro/Other.lean'], removed: ['Model/Spyro/Vocabulary.lean'] });
+    expect(existsSync(path.join(shadow.paths.build, 'Model/Spyro/notes.md'))).toBe(false);
+    expect(await shadow.syncMirror(new Map())).toMatchObject({ copied: [] });
+    expect(existsSync(path.join(shadow.paths.build, main))).toBe(false);
+    rmSync(ws('Model/Spyro/Link.lean'));
+    rmSync(ws('Model/Spyro/Extra.lean'));
+    await shadow.revertTo(head.id, 'back', 2);
+    expect((await shadow.syncMirror()).copied).toContain(main);
+  });
+});
+
 describe('run directories (AT2.5)', () => {
   let tmp: string;
   beforeAll(() => {

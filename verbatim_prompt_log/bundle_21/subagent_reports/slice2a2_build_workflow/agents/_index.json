@@ -1,0 +1,14 @@
+[
+  {
+    "label": "build:2a2",
+    "agentId": "acfbe605016904511",
+    "file": "agents/build_2a2.json",
+    "toolsUsed": [
+      "Read",
+      "Bash",
+      "Edit",
+      "Write",
+      "SubagentHandback"
+    ]
+  }
+]

@@ -1,0 +1,63 @@
+[
+  {
+    "label": "map:board",
+    "agentId": "a30dece96d537b4e0",
+    "file": "agents/map_board.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "map:frozen-menu-undo",
+    "agentId": "afcab284337acd6ba",
+    "file": "agents/map_frozen-menu-undo.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "map:sessions-review",
+    "agentId": "a6e54f09a66868c49",
+    "file": "agents/map_sessions-review.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "map:transform-refs-guarantees",
+    "agentId": "aa0f7489d10d14ff0",
+    "file": "agents/map_transform-refs-guarantees.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "check:gaps",
+    "agentId": "a6085f95b30ef1850",
+    "file": "agents/check_gaps.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "report",
+    "agentId": "af5b2eb266f562781",
+    "file": "agents/report.json",
+    "toolsUsed": [
+      "Bash",
+      "Write",
+      "Edit",
+      "SubagentHandback"
+    ]
+  }
+]

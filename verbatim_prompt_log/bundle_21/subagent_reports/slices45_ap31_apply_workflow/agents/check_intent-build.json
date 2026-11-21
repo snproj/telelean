@@ -1,0 +1,93 @@
+{
+  "summary": "Both rewritten plans carry AP-31 through faithfully. R1–R8 are the design in each. The judge's open items are handled: D4-46 and D4-47 (hidden results and a crash during the decision write), D4-50 (the \"wholly yours\" comparison), and §2.10's A1–A20 amendments. Every loss AP-31 lists is logged with a reversal (D4-45–D4-60, D5-24, D5-25, D5-7 with D4-56, D5-10). The sub-slices are ordered sensibly, with fallback splits for the large ones. The # picker includes the S5R2-08 fix with pickerReduce cases for both arrow-key behaviours. The window, badges and dialogs are specified and have tests.\n\nFour major problems remain:\n1. **The session's subject is never passed to the judge in slice 4.** The built judgeState (`packages/core/src/review/judge.ts:242-248`) and the backstop (`packages/core/src/review/backstop.ts:268-269`) take the subject from the first target. That target is `transform:<id>` in a Claude part's step, and there is none in a transform-started session with no inference. So slice 3's `other-subject` check, which D4-57 and T21 rely on, runs against an empty subject until slice 5's 5a fixes it. That fix comes too late, and slice 4 also never says how judgeState treats a `transform:<id>` scope.\n2. **Shaky is refused by the ledger test, not by freezes.** Even after you unfreeze your typed fields, you cannot decline your own transformed card as Shaky (DECLINE OPTIONS 3, FZ-6). The loss is not logged.\n3. **Some session freezes end silently.** A `follow` own freeze that replaced a freeze you made gets no end row, so that field is unfrozen when the session ends without the end window telling you (REVIEW 8).\n4. **The shared hold-index inputs are undefined, and the plans disagree about them.** `OtherSubjectHolds` is defined nowhere. The `held` type cannot name an accepted item as a holder. Slice 4 and slice 5 disagree about who calls `heldFields`.\n\nMinor problems: the meaning of \"a dependent with no choice\"; a second hidden-result channel through in-place elaboration; no identity rule for which take-back failures the parent already had; slice 5's mirror resolution and its \"new or changed since B\" normalise rule; Redo burning the ids of cards a transform made, once slice 5 is built. Nits: `ReviewState.phase`, `dropTransform.confirmed`, and a 4j/4k citation.",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "major",
+      "plan": "both",
+      "where": "slice4 §1.1 4d (review/judge.ts), §2.9 JudgeInput, §2.10 A9, §3.1 IMP-4, §3.9 step 3; slice5 §0, §1.1 5a, §2.4 'The subject'; built code packages/core/src/review/judge.ts:242-248 and packages/core/src/review/backstop.ts:268-269",
+      "problem": "The built judgeState and applyBackstop take the session's subject from the first target. Slice 4 adds Claude-part steps (scope.target = transform:<id>) and transform-started sessions with no inference, but never amends this. A9 covers only computeItems; IMP-4 covers only the runner's CheckContext. So the decision judgements and Claude-part steps of a transform-started session, and Apply's backstop there, run with subject ''. Slice 3's other-subject rule then either checks nothing or refuses every meaning change of the session's own subject, depending on how it reads ''. D4-57's forced-case take-back (T21) and R1's 'no check is weakened' rely on that rule. Slice 5 found this (its IMP-1) and fixes it in 5a, but only after slice 4 is verified and installed (AP-8). The built judgeState also adds the active scope's target as a pseudo-inference and runs the active-target and footprint rules on it. Slice 4 never says what judgeState does with a transform:<id> scope.",
+      "fix": "Move slice 5's subject change into slice 4, as §2.10 A21:\n- 4a adds required JudgeInput.subject and BackstopInput.subject.\n- 4d makes judgeState, applyBackstop and the other-subject rule read them.\n- 4g passes the run's subject to every judge, to finalCheck and to Apply.\n- Bring 5a's tests along: a Claude-part step and a session with no inference are judged with the given subject. Mutation: deriving it from the first target lets an other-subject change through.\n\nIn 4d, also state what a StepScope with `transform` does in judgeState:\n- it adds no inference to `ordered`;\n- it runs none of the active target's rules (not-proved, status-mismatch, readiness, malformed-binding, not-frozen, proof-before-freeze, target footprint, no-hidden-edge);\n- it judges the part's new declarations against the vocabulary layer, as declsOf.get(undefined) does;\n- global rules, the per-key step limits, frozen/held and rejected-repeat run as usual.\n\nSlice 5's 5a then keeps only frozenFindings' `subject` and drops 'passes the run's subject into every judge'."
+    },
+    {
+      "id": "F2",
+      "severity": "major",
+      "plan": "slice4",
+      "where": "§3.9 step 7; §7.2 D4-60; §6.1 4e ('Shaky refused on a wholly-yours item')",
+      "problem": "Shaky is refused on any item that whollyYours reads as 'wholly'. That test reads the ledger, not the freezes. After you unfreeze your typed fields, the item is still wholly yours: FZ-6 / FROZEN 2 say Claude may then change them 'because they are no longer frozen', yet Shaky stays refused. The refusal text is then false ('it is frozen: Claude could change none of it'). You can never hand your own transformed card to Claude with DECLINE OPTIONS 3. D4-60 says 'You lose: nothing beyond D4-12', so the loss is unlogged. R8 does not ask for this refusal.",
+      "fix": "Refuse Shaky only when the rework part D4-60 would queue has an empty scope: every key the item owns is frozen, or refused by claudeMayChange. Use the text 'Every field of it is frozen (‹reasons›): unfreeze the fields Claude may redo, then decline it Shaky.' Drop the whollyYours condition and correct D4-60. Add a 4e/4g test: unfreeze one typed field of a wholly-yours item; Shaky passes, and the rework part's scope is that field only."
+    },
+    {
+      "id": "F3",
+      "severity": "major",
+      "plan": "slice4",
+      "where": "§2.10 A3; §3.11 'End rows'; §2.4 SessionFreezesView.changes; §7.2 D4-52",
+      "problem": "A `follow` own freeze gets no end row, and `changes` leaves it out. When it replaced one of your own reasons on that key, the field ends unfrozen at the session's end with no row, no keep tick and no mention. The replaced reason can be `yours`, or `typed` from an earlier transform. Example: you froze card X, then a transform trashed a source of X, so X's Dependencies became `follow`. Under slice 3's whole-state rows that key had a 'keep frozen' row. The same happens at Exit for `yours` freezes from base that a `deleted` freeze replaced. REVIEW 8 requires the end window to say which fields will be unfrozen, and FZ-8's exception is the keep tick. D4-52's 'You lose' does not mention this.",
+      "fix": "Leave out of the end rows only:\n- `deleted` own freezes, at Apply (the card goes);\n- keys marked `replaced`.\nA `follow` own freeze keeps slice 3's whole-state row: 'keep frozen' at its new value, and at Exit only when it is { from: 'base' }. At minimum, a `follow` or `deleted` freeze that replaced one of your own reasons keeps that reason's row. Update A3 and D4-52. Add a 4d rows test: freeze X, trash a source of X; Apply lists X › Dependencies with a keep tick."
+    },
+    {
+      "id": "F4",
+      "severity": "major",
+      "plan": "both",
+      "where": "slice4 §2.9 AnalyseInput.freezes and claudeMayChange; §2.10 A5, A7; §3.12 bullets 3–4; slice5 §0 (5a 'updates its one call site'), §2.5 'The hold index', §2.6 holder and claudeMayChange bullets",
+      "problem": "The inputs that every holder decision and every Claude scope depend on are not specified, and the two plans disagree about them.\n- `OtherSubjectHolds` appears in two slice-4 signatures but is defined in neither plan, nor in slice 3, which has only the internal other-subject rule. The window's `locks` text also needs it.\n- `held: Record<string, FreezeKey[]>` cannot name an accepted item as a holder. `acceptedReturn` and `cascade` must tell accepted holders from others, and the type has no `via` for slice 5's 'through ‹B›' texts.\n- No core function or sub-slice assembles the index. Yet 4h (window analysis), 4g (Submit review, Retry, the turn's HELD list) and 5d all need the same one; slice 5 asks a builder to 'name the one place' later.\n- Slice 4's A5 and §3.12 say the analysis reads slice 3's heldFields hook. Slice 5 §2.5 says the index has no heldFields source until 5d, and 5a changes the hook's signature while updating 'its one call site, in frozenFindings'.",
+      "fix": "In slice 4 (types in 4a, functions in 4b), define:\n- `HoldIndex = ReadonlyMap<HeldKey, { holders: Array<{ key: FreezeKey } | { item: string }>; via?: Record<string, string> }>`;\n- `OtherSubjectHolds = ReadonlyMap<string, { by: Array<{ name: string; card?: string; subject: string }> }>`;\n- the core builders `holdIndexOf({ table, items, base, subject })` and `otherSubjectHoldsOf(B, subject)`, which every runner site in 4g and 4h calls.\n\nState in A5 and §3.12 that slice 4 calls no heldFields (only Lean holders until slice 5). In slice 5, 5d adds heldFields' keys, the planned typed holds and otherSubjectRefHolds inside those two functions. Replace §2.6's 'the builder names in §8 the one place that assembles the input' and 5a's 'one call site' wording accordingly."
+    },
+    {
+      "id": "F5",
+      "severity": "minor",
+      "plan": "slice4",
+      "where": "§3.2 Problems ('a dependent with no choice'); §2.1 TransformDependent; §3.4 Choices",
+      "problem": "'A dependent with no choice' is undefined. Arrow dependents and may-break proofs have no choice to make, slice 5's reference dependents have `choices: []`, and a session target offers only `keep`. Read literally, the rule either blocks Submit on all of them or makes you click Keep on every target. Slice 5 §2.6 then needs an exemption that slice 4 never states.",
+      "fix": "Define the problem as `choices.length > 1 && !(key in draft.dependents)`. A dependent with exactly one choice (a target's keep) takes it by default; one with `choices: []` is listed only. Add 4b tests for each case. Slice 5's reference dependents then need no special exemption."
+    },
+    {
+      "id": "F6",
+      "severity": "minor",
+      "plan": "slice4",
+      "where": "§3.8 step 5.5 and 'Hidden results'; §7.2 D4-46; §6.2 T15",
+      "problem": "The take-back counts failures located on visible content. The judge's open item 1 asked for failures caused by visible content. A typed statement may be written where hidden proof material is in scope, for example a new card appended to Inbox after a hidden Result's proof-phase instance or coercion. It then elaborates differently or fails to build. The typed-meaning problem lists the hidden constants, and the outcome differs between twin states. D4-46 says D2-69's name clash is the only remaining channel, and T15 claims the same window outcome for both twins; neither holds here.",
+      "fix": "While the results are hidden, keep take-back texts from naming any constant or declaration the masked model lacks ('…elaborates differently where telelean wrote it'). Log the remaining one-bit channel beside D2-69 in D4-46, and add this twin to T15 as a logged exception. Or adopt D4-46's own alternative: no Submit transform while the results are hidden."
+    },
+    {
+      "id": "F7",
+      "severity": "minor",
+      "plan": "slice4",
+      "where": "§2.9 transformTakeBack; §3.8 step 5.5 ('A failure the parent already had never counts')",
+      "problem": "Nothing says how a failure of `next` is matched with the parent's. Build findings carry positions in their text (buildFindings writes 'file:line: error: …'). Consider a stage that did not pass: B plus the accepted items fail to build, which slice 2 allows and which does not stop a window from opening. Any write that shifts lines makes the old errors look new. Every transform is then taken back, in exactly the stage where a transform is the way out.",
+      "fix": "Specify the identity: code, token, file and declaration name, with build errors keyed by the declaration that owns their range; never position or message text. Add a 4c test: the parent's build error moves down a line, and the decision stands."
+    },
+    {
+      "id": "F8",
+      "severity": "minor",
+      "plan": "slice5",
+      "where": "slice5 §2.6 'Mirrors'; §3.4 'Docstrings'; §1.1 5c1 (normalise)",
+      "problem": "There are two problems with mirrors.\n(a) A typed statement's mirror is computed 'on the model the write plans on'. When the same window retypes the sentence of a card that the statement's sentence refers to, the new mirror carries the old name. S5R2-05 fixed exactly this for board plans ('names on the plan's result').\n(b) normalise requires mirrorText of every docstring new or changed since B. So a mirror written earlier in the session fails, or is rewritten, once a name it refers to changes. That contradicts D5-7/D4-56's 'left as it is', and in a later Claude step it would refuse the state or change a typed statement, which then loses its 'you typed it' badge.",
+      "fix": "Resolve the typed statement's mirror on the plan's result: the window's new sentences, new cards included. Require mirrorText only of docstrings that the running step, or the decision write itself, made new or changed (compared with S₀, not B). Add 5c1 tests for both cases."
+    },
+    {
+      "id": "F9",
+      "severity": "minor",
+      "plan": "slice5",
+      "where": "slice5 §3.2 'Monotonic'; §2.2 'A premise item keeps its id'; D5-20; slice4 §5.1 Redo",
+      "problem": "Slice 4's Redo plans the recorded window again as a new decision write. Without slice 5 it gets the same derived id back, since Undo removed the ledger entry. With slice 5's registry that first id is burned, so the Redo makes `x-2`. Every later Redo that names `x` is then refused: a freeze action on the new card, or a later transform whose keys or tokens name it. D5-20's reason (moves, freezes and references survive Undo/Redo) applies equally to cards a transform made, but only premise items keep their id.",
+      "fix": "As D5-20 does for premises, make a decision's Redo reuse the ids recorded in its stack action's ledger `transform` entry (`ids`) when no card holds them. Those ids are already in the registry. Add a 5b test: a decision makes a new card; freeze it; Undo×2 then Redo×2 keeps `x` and the freeze."
+    },
+    {
+      "id": "F10",
+      "severity": "nit",
+      "plan": "slice4",
+      "where": "§2.2 'ReviewState + transforms …; phase'",
+      "problem": "`phase: 'transform' | 'stage'` is added to ReviewState as a required field. But slice 3's freeze actions, and their Undo and Redo, go through the same reducer in `confirming` and while a step runs (FZ-9, FZ-10), where neither value is true.",
+      "fix": "Type it as slice 2's SessionPhase (with 'transform'), or make it optional, defaulting to 'stage'."
+    },
+    {
+      "id": "F11",
+      "severity": "nit",
+      "plan": "both",
+      "where": "slice4 §2.5 and §2.7 dropTransform vs §3.7 ('Drop never asks'); slice5 §0 and §4.2 ('its 4k tests stand')",
+      "problem": "(a) dropTransform carries `confirmed`, but the plan says Drop never asks. (b) Slice 5 says slice 4's CardSearch tests are 4k's; slice 4's §6.1 puts them in 4j.",
+      "fix": "Remove `confirmed` from the dropTransform message and the RunManager method, or say what it confirms. Cite 4j in slice 5's §0 and §4.2."
+    }
+  ]
+}

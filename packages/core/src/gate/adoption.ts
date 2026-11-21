@@ -1,10 +1,15 @@
 /**
- * D-6 ghost adoption ("I hold this", docs/m2-plan.md section 4.9): the new ASSUMPTION card Claude suggested, written
+ * D-6 ghost adoption ("I hold this", docs/m2-plan.md section 4.9): the new AXIOM card Claude suggested, written
  * by telelean right before the target's block, with exactly the statement text the ghost check elaborated, and its id
  * appended to the target's `premises:` (fixer round 1: the user adopted it for this target, so it joins the declared
- * selection, as "These suffice" declares the selected premises; otherwise the accepted proof shows TL107). The plan
+ * selection, as "These suffice" declares the selected premises; otherwise the accepted proof shows TL107), replacing
+ * the target's "follows from nothing" mark if it has one (spec v4 AR-5). The plan
  * re-parses what it would write and refuses unless the result is exactly the expected card, bound to the new
  * statement, the target declares it, and every other card's binding is unchanged.
+ *
+ * Slice 2 (docs/slice2-plan.md 3.8; 2b2): an accepted Add premise is written the same way, held as the person chose
+ * (`holdAs`): as an axiom, an AXIOM card (the default, M2's adoption); as a proposition pending proof, a PROPOSITION
+ * card with the same `axiom P.holds`, never green (A26). Any other choice is refused.
  */
 import { ActionError, type FileChange } from '../actions.js';
 import { holdsName } from '../facts.js';
@@ -77,6 +82,11 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const SESSION = /^[A-Za-z0-9][A-Za-z0-9_.:+-]*$/;
 
 export function adoptionPlan(model: ProjectModel, request: GhostAdoptionRequest): GhostAdoptionPlan {
+  const holdAs: unknown = request.holdAs ?? 'axiom';
+  if (holdAs !== 'axiom' && holdAs !== 'pending') {
+    throw new ActionError('invalid', `A premise is held as an axiom or as a proposition pending proof, not ${JSON.stringify(holdAs)}.`);
+  }
+  const type = holdAs === 'pending' ? 'PROPOSITION' : 'AXIOM';
   const target = model.nodes.get(request.target);
   if (!target || target.node.subject !== request.subject) throw new ActionError('not-found', `No card "${request.target}" in the subject ${request.subject}.`);
   const statement = collapseWhitespace(request.leanStatement);
@@ -121,7 +131,7 @@ export function adoptionPlan(model: ProjectModel, request: GhostAdoptionRequest)
   const blockText = renderBlock(
     {
       id: nodeId,
-      type: 'ASSUMPTION',
+      type,
       naturalName: sentence,
       ...(rationale ? { rationale } : {}),
       asserted: request.today,
@@ -141,7 +151,13 @@ export function adoptionPlan(model: ProjectModel, request: GhostAdoptionRequest)
   const lines = new Lines(file.text);
   const offset = lines.start(lines.lineOf(target.block.span.start));
   const premises = [...new Set([...(target.block.fields.premises ?? []), nodeId])];
-  const declare = setBlockFields(file, { ...target.block, id: request.target }, [{ key: 'premises', value: premises }]);
+  // Spec v4 AR-5 / B.3: a premise accepted into a card marked "follows from nothing" replaces the mark (telelean's
+  // follow-on edit; G5 accepts exactly this removal on the target, docs/slice1-plan.md section 8).
+  const dropsMark = target.block.lines.some((line) => line.key === 'follows_from');
+  const declare = setBlockFields(file, { ...target.block, id: request.target }, [
+    { key: 'premises', value: premises },
+    ...(dropsMark ? [{ key: 'follows_from' as const, value: null }] : []),
+  ]);
   const after = applyTextEdits(file.text, [insertionEdit(file.text, eol, offset, `${blockText}${eol}${code}`, lines), ...declare]);
 
   // The result must parse to exactly the new card, pinned to the new statement, with every other binding unchanged.
@@ -152,7 +168,7 @@ export function adoptionPlan(model: ProjectModel, request: GhostAdoptionRequest)
     added.length === 1 &&
     block !== undefined &&
     block.idWritten &&
-    block.fields.type === 'ASSUMPTION' &&
+    block.fields.type === type &&
     block.fields.naturalName === sentence &&
     block.fields.wordedBy === 'agent' &&
     block.fields.origin === 'agent' &&
@@ -163,11 +179,12 @@ export function adoptionPlan(model: ProjectModel, request: GhostAdoptionRequest)
     parsed.decls.some((d) => d.fullName === holdsName(qualified) && d.keyword === 'axiom') &&
     parsed.blocks.length === file.blocks.length + 1 &&
     JSON.stringify(parsed.blocks.find((b) => b !== block && b.id === request.target)?.fields.premises) === JSON.stringify(premises) &&
+    !parsed.blocks.some((b) => b !== block && b.id === request.target && b.lines.some((line) => line.key === 'follows_from')) &&
     file.blocks.every((b) => {
       const now = parsed.blocks.find((x) => x.id === b.id && x !== block);
       return now !== undefined && now.binding.mode === b.binding.mode && now.binding.statement === b.binding.statement;
     });
-  if (!ok) throw new ActionError('unsafe', `telelean could not insert the suggested assumption into ${path} without changing other cards; nothing was written.`);
+  if (!ok) throw new ActionError('unsafe', `telelean could not insert the suggested axiom into ${path} without changing other cards; nothing was written.`);
   const change: FileChange = { path, before: file.text, after };
   return { changes: [change], nodeId, leanName: qualified };
 }

@@ -1,8 +1,9 @@
 /**
- * M2 layout and wording fixes from the round-1 UX review:
- *  - a narrow board (the run panel below it) during a run: the selection tray folds to one line and the A|D|G box to
- *    its first row, so the board and the panel get the room; the panel's edge resizes it (drag, arrow keys, double
- *    click for the default size), kept per layout in the webview state;
+ * M2 layout and wording fixes from the round-1 UX review (on the spec v4 board):
+ *  - a narrow board (the run panel below it) during a run: the Context Menu section (which replaced the tray) keeps its
+ *    one line, and the A|P box (read-only during a run, ES-9) folds to its first row, so the board and the panel get
+ *    the room; the panel's edge resizes it (drag, arrow keys, double click for the default size), kept per layout in
+ *    the webview state;
  *  - new content in the panel comes into view: a question set, the review, the next review step;
  *  - a proposal's diff mark sits on its own line, so the card's sentence keeps the card's width;
  *  - the review's statement step: the sentence above the proposition alone (no `#print` header), the Lean name as
@@ -14,7 +15,8 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { hostMessage, spyroGraph, type ProposalView, type QuestionView, type RunNotice } from '@telelean/core';
 import { workspaceState } from '../shared/graphs';
 import { answeredModality, GENERIC_QUESTION, MODALITY_QUESTION, normativeProposal, reviewRun, runView, TARGET, UPDATED, waitingRun } from '../shared/runs';
-import { card, openBoard, replyNext, send, settle, shotPath, type OpenedBoard } from './helpers';
+import { EDIT_SESSION_ACTIVE } from '@telelean/core';
+import { boardMenu, card, cardPoint, menuItem, openBoard, replyNext, rightClick, send, settle, shotPath, type OpenedBoard } from './helpers';
 
 let board: OpenedBoard | undefined;
 
@@ -56,37 +58,33 @@ async function selectAll(page: Page) {
 
 const webviewState = (page: Page) => page.evaluate(() => JSON.parse(sessionStorage.getItem('tl-harness-webview-state') ?? '{}') as Record<string, unknown>);
 
-test('a narrow board during a run: the tray folds to one line, the A|D|G box to its first row, the panel gets the room', async ({ page }) => {
+test('a narrow board during a run: the Context Menu section keeps its one line, the A|P box folds to its first row, the panel gets the room', async ({ page }) => {
   await page.setViewportSize(NARROW);
   board = await openBoard(page, spyroGraph(), 'light', { workspace: workspaceState(), clock: UPDATED });
   await selectAll(page);
-  const tray = page.getByTestId('tray');
-  await expect(tray.getByTestId('tray-target')).toBeVisible();
+  const section = page.getByTestId('context-menu');
+  await expect(page.getByTestId('context-summary')).toHaveText('4 cards');
   const extra = page.locator('.tl-prompt__row--extra');
   await expect(extra).toBeVisible();
 
   await send(page, hostMessage('run', { run: waitingRun([MODALITY_QUESTION, GENERIC_QUESTION, SCOPE_QUESTION]) }));
-  // The tray: one line with the selection summed up, the disabled button and the reason.
-  await expect(tray).toHaveAttribute('data-folded', 'true');
-  await expect(tray.getByTestId('tray-summary')).toHaveText('3 premises ⊢ “Cynder would not be a good addition to the new Spyro game”');
-  await expect(tray.getByTestId('tray-these-suffice')).toBeDisabled();
-  await expect(tray.getByTestId('tray-blocked')).toHaveText('Claude is waiting for your answer: answer it or cancel that run first.');
-  expect((await box(tray)).height).toBeLessThanOrEqual(34);
-  // The A|D|G box keeps working (D-16); its optional row shows once it has the focus.
+  // The Context Menu section: one line, the selection summed up, Formalize disabled with the run's reason.
+  await expect(page.getByTestId('formalize')).toBeDisabled();
+  await expect(page.getByTestId('formalize-reason')).toHaveText('A run is active. Claude is waiting for your answer: answer it or cancel that run first.');
+  expect((await box(section)).height).toBeLessThanOrEqual(34);
+  // The A|P box folds to its first row; it is read-only during the run (ES-9) and says why.
   await expect(extra).toBeHidden();
-  const input = page.getByRole('textbox', { name: 'New assumption' });
-  await input.focus();
-  await expect(extra).toBeVisible();
-  await input.blur();
-  await expect(extra).toBeHidden();
+  const input = page.getByRole('textbox', { name: 'New axiom' });
+  await expect(input).toBeDisabled();
+  await expect(input).toHaveAttribute('placeholder', EDIT_SESSION_ACTIVE);
 
   // The panel gets most of the room (up to 60%), the board keeps the rest; the first question shows its options.
   const workspace = await box(page.locator('.tl-workspace'));
   const panel = await box(page.getByTestId('run-panel'));
-  const columns = await box(page.locator('.tl-board-scroll'));
+  const area = await box(page.locator('.tl-board-area'));
   expect(panel.height).toBeGreaterThan(workspace.height * 0.58);
-  expect(columns.height).toBeGreaterThan(workspace.height * 0.38);
-  expect(columns.height).toBeGreaterThan(250);
+  expect(area.height).toBeGreaterThan(workspace.height * 0.38);
+  expect(area.height).toBeGreaterThan(250);
   const body = page.locator('.tl-run__body');
   const firstOptions = page.getByTestId('question').first().getByTestId('option');
   const last = await box(firstOptions.last());
@@ -94,16 +92,10 @@ test('a narrow board during a run: the tray folds to one line, the A|D|G box to 
   expect(last.y + last.height).toBeLessThanOrEqual(view.y + view.height + 1);
   await page.screenshot({ path: shotPath('m2-narrow-questions.png') });
 
-  // The whole tray once more, for this run; and folded again.
-  await tray.getByTestId('tray-unfold').click();
-  await expect(tray.getByTestId('tray-target')).toBeVisible();
-  await expect(tray).not.toHaveAttribute('data-folded', /.*/);
-  await tray.getByTestId('tray-fold').click();
-  await expect(tray).toHaveAttribute('data-folded', 'true');
-  // No run: the whole tray and the whole box again.
+  // No run: the whole box again, and it can be used.
   await send(page, hostMessage('run', { run: null }));
-  await expect(tray.getByTestId('tray-target')).toBeVisible();
   await expect(extra).toBeVisible();
+  await expect(input).toBeEnabled();
 });
 
 test('half an editor (the raw Lean diff open beside the board): the review’s statement step still shows in the panel', async ({ page }) => {
@@ -207,11 +199,14 @@ test('new content in the run panel comes into view: a question set, the review, 
   const review = page.getByTestId('review');
   await expect.poll(() => topInView(review, body)).toBe(true);
 
-  // The long result step, its Next button at the bottom: the next (short) step shows from the review's top.
-  await review.locator('.tl-review__step[data-step-kind="result"]').click();
-  await expect(page.getByTestId('report-card')).toBeVisible();
+  // Scrolled down below the statement step, its Next button at the bottom: the next step (the result) shows from the
+  // review's top. (Spec v4 has no "Card changes" step after it any more.)
+  await body.evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
   await review.getByTestId('review-next').click();
-  await expect(review.getByTestId('review-step')).toHaveAttribute('data-step', 'lifecycle');
+  await expect(review.getByTestId('review-step')).toHaveAttribute('data-step', 'result');
+  await expect(page.getByTestId('report-card')).toBeVisible();
   await expect.poll(() => topInView(review, body)).toBe(true);
   await page.screenshot({ path: shotPath('m2-narrow-review-next.png') });
 });
@@ -274,7 +269,6 @@ test('a round that gave up says so at once (badge, state, banner; Accept not pri
   const base = normativeProposal();
   const proposal: ProposalView = {
     ...base,
-    lifecycle: [],
     report: {
       ...base.report,
       verdict: 'gave-up',
@@ -328,12 +322,17 @@ test('a round that gave up says so at once (badge, state, banner; Accept not pri
 
 test('declining the consent is an info toast (the user’s own choice), cleared by the next start', async ({ page }) => {
   board = await openBoard(page, spyroGraph(), 'dark', { workspace: workspaceState() });
-  await selectAll(page);
+  // The question: the arrows into the goal (its right-click menu's "Select incoming arrows").
+  await rightClick(page, await cardPoint(page, TARGET));
+  await menuItem(page, 'select-incoming').click();
+  await expect(boardMenu(page)).toHaveCount(0);
   const declined = 'Not started: telelean sends nothing to Claude until you allow it ("Run with Claude").';
   await replyNext(page, 'startRun', { ok: false, code: 'not-yet', error: declined });
-  await page.getByRole('button', { name: 'These suffice ▶' }).click();
+  const formalize = page.getByTestId('formalize');
+  await formalize.click();
   const toast = page.getByTestId('toast').filter({ hasText: 'Not started:' });
   await expect(toast).toHaveAttribute('data-level', 'info');
-  await page.getByRole('button', { name: 'These suffice ▶' }).click();
+  await expect(formalize).toBeEnabled();
+  await formalize.click();
   await expect(toast).toHaveCount(0);
 });

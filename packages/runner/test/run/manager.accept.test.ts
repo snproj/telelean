@@ -1,11 +1,18 @@
 /**
- * AT3.10 (docs/m2-plan.md section 7.1): Accept's orchestration with fakes. No drift -> plan + apply. Drift ->
- * `accept-base` and `rebase` commits; normalise/freeze/gate with baseCommit = accept-base and roundStartCommit =
- * rebase; planAccept again with shownState; apply. A failed re-gate is refused with the described findings and ws/
- * restored to the shown state. A missing definition approval -> invalid.
+ * AT3.10 (docs/m2-plan.md section 7.1): Accept's orchestration with fakes. No drift -> plan + apply. A missing
+ * definition approval -> invalid. Spec v4 ES-7 (slice 1f): drift -> Accept is refused with the changed files (up to 5,
+ * then "…"); nothing is settled (no plan, no `accept-base` or `rebase` commit, no re-check, no apply), the run stays in
+ * review, and once the files match the run's base again the same Accept goes through. (Before 1f, drift led to D-21's
+ * rebase and re-gate; that path is kept, unreachable, until slice 2.)
+ *
+ * Slice 2d: every start is an edit session, which ends with Apply (one history entry, the final check and the backstop,
+ * drift refusing it) or Exit, not with Accept or Discard of a proposal: these tests move to 2f (Apply, drift, Exit) and
+ * 2e (the session's raw Lean diff), docs/slice2-plan.md 0.
  */
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { driftRefusal } from '../../src/run/manager.js';
+import { createProposalService } from '../../src/proposal/index.js';
 import { finding } from './helpers/fakeEngine.js';
 import { makeHarness, round1, START, state, step, waitForRun, type Harness } from './helpers/harness.js';
 
@@ -29,13 +36,13 @@ async function provedRun(): Promise<{ harness: Harness; runId: string }> {
 }
 
 describe('Accept (AT3.10)', () => {
-  it('without drift: plans, applies, resolves the attempt as accepted and ends the run', async () => {
+  it.skip('moves to 2f: Accept (AT3.10) without drift: plans, applies, resolves the attempt as accepted and ends the run', async () => {
     const { harness, runId } = await provedRun();
     h = harness;
-    const outcome = await h.manager.accept(runId, 'p1', ['l1'], []);
+    const outcome = await h.manager.accept(runId, 'p1', []);
     expect(outcome).toMatchObject({ ok: true });
     expect(h.proposals.plans).toHaveLength(1);
-    expect(h.proposals.plans[0]?.lifecycle).toEqual(['l1']);
+    expect(h.proposals.plans[0]).not.toHaveProperty('lifecycle');
     expect(h.proposals.plans[0]?.shownState).toBeUndefined();
     expect(h.proposals.applied).toHaveLength(1);
     expect(h.log.filter((l) => l.startsWith('proposals.'))).toEqual(['proposals.baseDrift', 'proposals.build', 'proposals.baseDrift', 'proposals.planAccept', 'proposals.apply']);
@@ -51,11 +58,11 @@ describe('Accept (AT3.10)', () => {
     expect(v?.accepted).toEqual({ changedFiles: true });
   });
 
-  it('an Accept that changes no file is worded as recorded, with no Undo hint (fixer round 1)', async () => {
+  it.skip('moves to 2f: Accept (AT3.10) an Accept that changes no file is worded as recorded, with no Undo hint (fixer round 1)', async () => {
     const { harness, runId } = await provedRun();
     h = harness;
     h.proposals.applyOutcome = { ok: true, label: 'FAKE label', undoable: false };
-    const outcome = await h.manager.accept(runId, 'p1', [], []);
+    const outcome = await h.manager.accept(runId, 'p1', []);
     expect(outcome).toEqual({ ok: true, label: 'Recorded: FAKE label (no file changed)', undoable: false });
     const v = h.manager.current();
     expect(v).toMatchObject({ state: 'accepted' });
@@ -64,68 +71,65 @@ describe('Accept (AT3.10)', () => {
     expect(v?.accepted).toEqual({ changedFiles: false });
   });
 
-  it('refuses a stale proposal id, unknown lifecycle items and missing definition approvals', async () => {
+  it.skip('moves to 2f: Accept (AT3.10) refuses a stale proposal id and missing definition approvals', async () => {
     h = makeHarness({ script: [round1(step.freeze(), step.edit(TARGET_LINE, TARGET_LINE + PROOF), step.finish(), step.result())] });
     h.proposals.definitions = [{ id: 'd1', name: 'Spyro.InGame', kind: 'definition', code: 'def InGame (c : Character) (g : Game) : Prop := GoodAddition c g', usedByStatementsOf: ['pg-no-dark-past'] }];
     await h.manager.start(START);
     const review = await waitForRun(h.manager, state('review'));
-    expect(await h.manager.accept(review.runId, 'p9', [], ['d1'])).toMatchObject({ ok: false, code: 'not-found' });
-    expect(await h.manager.accept(review.runId, 'p1', ['l7'], ['d1'])).toMatchObject({ ok: false, code: 'not-found' });
-    const missing = await h.manager.accept(review.runId, 'p1', ['l1'], []);
+    expect(await h.manager.accept(review.runId, 'p9', ['d1'])).toMatchObject({ ok: false, code: 'not-found' });
+    const missing = await h.manager.accept(review.runId, 'p1', []);
     expect(missing).toEqual({ ok: false, code: 'invalid', error: 'Answer every definition question: a “no” is feedback.' });
     expect(h.proposals.plans).toHaveLength(0);
-    expect(await h.manager.accept(review.runId, 'p1', ['l1'], ['d1'])).toMatchObject({ ok: true });
+    expect(await h.manager.accept(review.runId, 'p1', ['d1'])).toMatchObject({ ok: true });
   });
 
-  it('with drift: commits accept-base and rebase, re-freezes and re-gates against them, then applies exactly the re-gated files', async () => {
+  it.skip('moves to 2f: Accept (AT3.10) with drift (ES-7, slice 1f): refused with the changed files; no plan, no accept-base or rebase commit, no re-check, no apply', async () => {
     const { harness, runId } = await provedRun();
     h = harness;
     const shadow = h.shadow();
-    // The user edited a rationale in their real files during the run.
+    const shownFiles = await shadow.currentFiles();
+    const commitsBefore = (await shadow.commits()).map((c) => c.kind);
+    // The user edited a rationale in their real files during the run (by hand: the board refuses edits meanwhile).
     const real = h.workspace.texts.get(MAIN) ?? '';
     h.workspace.texts.set(MAIN, real.replace(USER_EDIT_OLD, USER_EDIT_NEW));
     h.proposals.drift = [MAIN];
-    h.proposals.onPlan = async (request) => {
-      const merged = new Map(request.shownState ?? (await request.shadow.currentFiles()));
-      if (request.shownState === undefined) merged.set(MAIN, (merged.get(MAIN) ?? '').replace(USER_EDIT_OLD, USER_EDIT_NEW));
-      return { ok: true, changes: [{ path: MAIN, before: h?.workspace.texts.get(MAIN) ?? null, after: merged.get(MAIN) ?? null }], label: 'These suffice → proved', nodes: ['cynder-not-good'], drift: [MAIN], shadowState: merged };
+    h.proposals.onPlan = () => {
+      throw new Error('planAccept must not be reached while the files differ from the base');
     };
-    const before = h.engine.calls.length;
-    const outcome = await h.manager.accept(runId, 'p1', ['l1'], []);
-    expect(outcome).toMatchObject({ ok: true });
-    const commits = await shadow.commits();
-    const acceptBase = commits.find((c) => c.kind === 'accept-base');
-    const rebase = commits.find((c) => c.kind === 'rebase');
-    expect(acceptBase).toBeDefined();
-    expect(rebase).toBeDefined();
-    // accept-base = the user's real files; rebase = Claude's changes merged onto them.
-    expect((await shadow.filesAt(acceptBase?.id ?? '')).get(MAIN)).toBe(real.replace(USER_EDIT_OLD, USER_EDIT_NEW));
-    const rebased = (await shadow.filesAt(rebase?.id ?? '')).get(MAIN) ?? '';
-    expect(rebased).toContain(USER_EDIT_NEW);
-    expect(rebased).toContain('theorem cynder_not_good.holds');
-    const recheck = h.engine.calls.slice(before);
-    expect(recheck.map((c) => c.method)).toEqual(['normalise', 'freeze', 'gate']);
-    for (const c of recheck) expect(c).toMatchObject({ baseCommit: acceptBase?.id, roundStartCommit: rebase?.id });
-    expect(recheck[1]).toMatchObject({ frozen: false });
-    expect(recheck[2]).toMatchObject({ status: 'proved', frozen: true, stage: 'prove' });
-    expect(h.proposals.plans).toHaveLength(2);
-    expect(h.proposals.plans[1]?.shownState?.get(MAIN)).toBe(rebased);
-    expect(h.proposals.applied[0]?.changes[0]?.after).toBe(rebased);
-    expect(h.log.filter((l) => l.startsWith('proposals.')).slice(-4)).toEqual(['proposals.baseDrift', 'proposals.planAccept', 'proposals.planAccept(shownState)', 'proposals.apply']);
-    expect(h.manager.current()?.state).toBe('accepted');
+    const engineCalls = h.engine.calls.length;
+    const outcome = await h.manager.accept(runId, 'p1', []);
+    expect(outcome).toEqual({ ok: false, code: 'conflict', error: 'Your files changed since this run started (Model/Spyro/Main.lean). Undo those edits in the editor, or discard the run.' });
+    // Nothing is settled: the working copy, its commits, the checks and the user's files are as they were.
+    expect((await shadow.commits()).map((c) => c.kind)).toEqual(commitsBefore);
+    expect((await shadow.commits()).some((c) => c.kind === 'accept-base' || c.kind === 'rebase')).toBe(false);
+    expect(await shadow.currentFiles()).toEqual(shownFiles);
+    expect(h.engine.calls.length).toBe(engineCalls);
+    expect(h.proposals.plans).toHaveLength(0);
+    expect(h.proposals.applied).toHaveLength(0);
+    expect(h.workspace.texts.get(MAIN)).toBe(real.replace(USER_EDIT_OLD, USER_EDIT_NEW));
+    expect(h.log.filter((l) => l.startsWith('proposals.')).slice(-1)).toEqual(['proposals.baseDrift']);
+    // The run stays in review with the same proposal.
+    expect(h.manager.current()).toMatchObject({ state: 'review', proposalId: 'p1' });
+    expect(h.manager.proposal()?.proposalId).toBe('p1');
+    expect(h.sidecars.resolutions).toEqual([]);
   });
 
-  it('a failed re-gate after drift is refused with the described findings, and ws/ is restored to the shown state', async () => {
+  it.skip('moves to 2f: Accept (AT3.10) a failed re-gate cannot happen after drift any more: the refusal comes first, ws/ is untouched (ES-7, slice 1f)', async () => {
     const { harness, runId } = await provedRun();
     h = harness;
     const shadow = h.shadow();
     const shownFiles = await shadow.currentFiles();
     h.workspace.texts.set(MAIN, (h.workspace.texts.get(MAIN) ?? '').replace(USER_EDIT_OLD, USER_EDIT_NEW));
     h.proposals.drift = [MAIN];
-    h.engine.onGate = (ctx) => (ctx.baseCommit !== undefined ? { findings: [finding('existing-changed', 'Spyro.new_spyro_pg changed')] } : undefined);
-    const outcome = await h.manager.accept(runId, 'p1', ['l1'], []);
+    let regated = false;
+    h.engine.onGate = (ctx) => {
+      if (ctx.baseCommit !== undefined) regated = true;
+      return ctx.baseCommit !== undefined ? { findings: [finding('existing-changed', 'Spyro.new_spyro_pg changed')] } : undefined;
+    };
+    const outcome = await h.manager.accept(runId, 'p1', []);
     expect(outcome).toMatchObject({ ok: false, code: 'conflict' });
-    expect(outcome.ok ? '' : outcome.error).toContain('described existing-changed');
+    expect(outcome.ok ? '' : outcome.error).toBe(driftRefusal([MAIN]));
+    expect(regated).toBe(false);
     expect(await shadow.currentFiles()).toEqual(shownFiles);
     expect(h.proposals.applied).toHaveLength(0);
     expect(h.manager.current()).toMatchObject({ state: 'review', proposalId: 'p1' });
@@ -133,15 +137,95 @@ describe('Accept (AT3.10)', () => {
     expect(h.sidecars.resolutions).toEqual([]);
   });
 
-  it('a refused apply leaves the proposal open', async () => {
+  it.skip('moves to 2f: Accept (AT3.10) ES-7 with the real drift check: a hand edit refuses Accept; once it is undone, the same Accept goes through', async () => {
     const { harness, runId } = await provedRun();
     h = harness;
-    h.proposals.applyOutcome = { ok: false, code: 'conflict', error: 'Model/Spyro/Main.lean changed since the edit was planned; nothing was written.' };
-    expect(await h.manager.accept(runId, 'p1', [], [])).toMatchObject({ ok: false, code: 'conflict' });
+    // The proposal service's own baseDrift (real files, open buffers first, against the run's base commit).
+    const service = createProposalService();
+    h.proposals.baseDrift = async (shadow, readReal, realFiles) => {
+      h?.log.push('proposals.baseDrift');
+      return service.baseDrift(shadow, readReal, realFiles);
+    };
+    const base = await h.shadow().baseFiles();
+    const original = h.workspace.texts.get(MAIN) ?? '';
+    expect(base.get(MAIN)).toBe(original); // the base is the user's files at the start
+    h.workspace.texts.set(MAIN, original.replace(USER_EDIT_OLD, USER_EDIT_NEW));
+    const refusedOutcome = await h.manager.accept(runId, 'p1', []);
+    expect(refusedOutcome).toEqual({ ok: false, code: 'conflict', error: driftRefusal([MAIN]) });
+    expect(h.manager.current()).toMatchObject({ state: 'review', proposalId: 'p1' });
+    expect(h.proposals.plans).toHaveLength(0);
+    // The base did not move: it still holds the text from the start, not the hand edit.
+    expect((await h.shadow().baseFiles()).get(MAIN)).toBe(original);
+    // The user undoes the edit in the editor: Accept settles the run.
+    h.workspace.texts.set(MAIN, original);
+    const accepted = await h.manager.accept(runId, 'p1', []);
+    expect(accepted).toMatchObject({ ok: true });
+    expect(h.proposals.plans).toHaveLength(1);
+    expect(h.proposals.plans[0]?.shownState).toBeUndefined();
+    expect(h.proposals.applied).toHaveLength(1);
+    expect(h.manager.current()?.state).toBe('accepted');
+    expect(h.sidecars.resolutions).toEqual([expect.objectContaining({ round: 1, resolution: 'accepted' })]);
+  });
+
+  it.skip('moves to 2f: Accept (AT3.10) slice 1e (1f carry-over): a hand edit landing between the drift check and the plan\'s own read is refused, never merged', async () => {
+    const { harness, runId } = await provedRun();
+    h = harness;
+    // The real proposal service for both reads; the user's edit lands right after baseDrift read the files.
+    const service = createProposalService();
+    const original = h.workspace.texts.get(MAIN) ?? '';
+    const edited = original.replace(USER_EDIT_OLD, USER_EDIT_NEW);
+    expect(edited).not.toBe(original);
+    h.proposals.baseDrift = async (shadow, readReal, realFiles) => {
+      const drift = await service.baseDrift(shadow, readReal, realFiles);
+      h?.workspace.texts.set(MAIN, edited);
+      return drift;
+    };
+    h.proposals.planAccept = async (request) => {
+      h?.proposals.plans.push(request);
+      return service.planAccept(request);
+    };
+    const outcome = await h.manager.accept(runId, 'p1', []);
+    // The plan's own drift (from the read it would apply) is authoritative: nothing is applied, nothing merged.
+    expect(outcome).toEqual({ ok: false, code: 'conflict', error: driftRefusal([MAIN]) });
+    expect(h.proposals.plans).toHaveLength(1);
+    expect(h.proposals.applied).toEqual([]);
+    expect(h.workspace.texts.get(MAIN)).toBe(edited);
+    expect(h.manager.current()).toMatchObject({ state: 'review', proposalId: 'p1' });
+    expect(h.sidecars.resolutions).toEqual([]);
+    // Once the edit is undone, the same Accept goes through.
+    h.workspace.texts.set(MAIN, original);
+    h.proposals.baseDrift = async (shadow, readReal, realFiles) => service.baseDrift(shadow, readReal, realFiles);
+    expect(await h.manager.accept(runId, 'p1', [])).toMatchObject({ ok: true });
+    expect(h.proposals.applied).toHaveLength(1);
+  });
+
+  it.skip('moves to 2f: Accept (AT3.10) the drift refusal names up to 5 files, then "…"', async () => {
+    const files = ['Model/Spyro/A.lean', 'Model/Spyro/B.lean', 'Model/Spyro/C.lean', 'Model/Spyro/D.lean', 'Model/Spyro/E.lean', 'Model/Spyro/F.lean', 'lakefile.toml'];
+    expect(driftRefusal(files.slice(0, 2))).toBe('Your files changed since this run started (Model/Spyro/A.lean, Model/Spyro/B.lean). Undo those edits in the editor, or discard the run.');
+    expect(driftRefusal(files.slice(0, 5))).toBe(
+      'Your files changed since this run started (Model/Spyro/A.lean, Model/Spyro/B.lean, Model/Spyro/C.lean, Model/Spyro/D.lean, Model/Spyro/E.lean). Undo those edits in the editor, or discard the run.',
+    );
+    const { harness, runId } = await provedRun();
+    h = harness;
+    h.proposals.drift = files;
+    const outcome = await h.manager.accept(runId, 'p1', []);
+    expect(outcome).toEqual({
+      ok: false,
+      code: 'conflict',
+      error: 'Your files changed since this run started (Model/Spyro/A.lean, Model/Spyro/B.lean, Model/Spyro/C.lean, Model/Spyro/D.lean, Model/Spyro/E.lean, …). Undo those edits in the editor, or discard the run.',
+    });
     expect(h.manager.current()?.state).toBe('review');
   });
 
-  it('Discard ends the round; the raw diff covers base -> shown state', async () => {
+  it.skip('moves to 2f: Accept (AT3.10) a refused apply leaves the proposal open', async () => {
+    const { harness, runId } = await provedRun();
+    h = harness;
+    h.proposals.applyOutcome = { ok: false, code: 'conflict', error: 'Model/Spyro/Main.lean changed since the edit was planned; nothing was written.' };
+    expect(await h.manager.accept(runId, 'p1', [])).toMatchObject({ ok: false, code: 'conflict' });
+    expect(h.manager.current()?.state).toBe('review');
+  });
+
+  it.skip('moves to 2e/2f: Accept (AT3.10) Discard ends the round; the raw diff covers base -> shown state', async () => {
     const { harness, runId } = await provedRun();
     h = harness;
     const diff = await h.manager.proposalDiff(runId, 'p1');
@@ -150,6 +234,6 @@ describe('Accept (AT3.10)', () => {
     expect(await h.manager.discard(runId)).toMatchObject({ ok: true });
     expect(h.manager.current()?.state).toBe('discarded');
     expect(h.sidecars.resolutions).toEqual([expect.objectContaining({ resolution: 'discarded' })]);
-    expect(await h.manager.accept(runId, 'p1', [], [])).toMatchObject({ ok: false, code: 'conflict' });
+    expect(await h.manager.accept(runId, 'p1', [])).toMatchObject({ ok: false, code: 'conflict' });
   });
 });

@@ -116,9 +116,8 @@
           "type": {
             "type": "string",
             "enum": [
-              "ASSUMPTION",
-              "DERIVATION",
-              "GOAL"
+              "AXIOM",
+              "PROPOSITION"
             ]
           },
           "natural_name": {
@@ -332,7 +331,7 @@
                 "enum": [
                   "none",
                   "assumed",
-                  "pending-promotion",
+                  "pending",
                   "conditional",
                   "proved"
                 ]

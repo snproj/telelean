@@ -21,12 +21,14 @@ export function diffGraphs(current: TlGraph, proposed: TlGraph): GraphDiff {
 
 /**
  * One line for the history dropdown, the Undo toast and the attempt (m1 plan 6.2 style, sentences cut to 60
- * characters): `These suffice → proved: <target sentence>`, `These suffice → not proved: <target sentence>`, with
- * ` (+ Make Derivation)` when a lifecycle item was confirmed and ` (+ 1 adopted assumption)` / `(+ n adopted
- * assumptions)` when ghosts were adopted. Fixer round 1: `extras.premises` (optional) = the number of premises the user
- * selected; with 0 (a "Self-evident?" run) the line starts `Self-evident? → …` instead of `These suffice → …`.
+ * characters): `Formalize → proved: <target sentence>`, `Formalize → not proved: <target sentence>`, with
+ * ` (+ 1 adopted axiom)` / `(+ n adopted axioms)` when ghosts were adopted. Fixer round 1: `extras.premises`
+ * (optional) = the number of premises the user selected; with 0 (the target's "follows from nothing" mark was the
+ * question) the line starts `Follows from nothing? → …` instead. (Spec v4 removed the ` (+ Make Derivation)` lifecycle
+ * suffix. Slice 1e renamed the action, spec v4.1 ES-2: entries written before say `These suffice → …` and
+ * `Self-evident? → …`, and are shown as they were written.)
  */
-export function proposalLabel(verdict: RunVerdict, targetSentence: string, extras: { lifecycle: number; adoptedGhosts: number; premises?: number }): string {
+export function proposalLabel(verdict: RunVerdict, targetSentence: string, extras: { adoptedGhosts: number; premises?: number }): string {
   return label(verdict, targetSentence, extras);
 }
 

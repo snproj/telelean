@@ -17,14 +17,35 @@
 
 import type { AttemptSummary } from './run.js';
 
-/** The three kinds of the markup `type:` field, in column order. */
-export type NodeType = 'ASSUMPTION' | 'DERIVATION' | 'GOAL';
+/**
+ * The two kinds of the markup `type:` field (spec v4, Terms), in column order: an AXIOM is something you hold (its
+ * `.holds` is a Lean `axiom`), a PROPOSITION is derived or to be derived (its `.holds` is a theorem, an axiom while it
+ * is pending proof, or missing).
+ */
+export type NodeType = 'AXIOM' | 'PROPOSITION';
 
-/** Column order of the board: Assumptions | Derivations | Goals. */
-export const NODE_TYPES: readonly NodeType[] = ['ASSUMPTION', 'DERIVATION', 'GOAL'];
+/** Column order of the board: Axioms | Propositions. */
+export const NODE_TYPES: readonly NodeType[] = ['AXIOM', 'PROPOSITION'];
 
 export function isNodeType(value: unknown): value is NodeType {
-  return value === 'ASSUMPTION' || value === 'DERIVATION' || value === 'GOAL';
+  return value === 'AXIOM' || value === 'PROPOSITION';
+}
+
+/** The kinds before spec v4, still read as aliases (B.6, A19): never rewritten except by a kind change. */
+export type NodeTypeAlias = 'ASSUMPTION' | 'DERIVATION' | 'GOAL';
+
+const KIND_OF_ALIAS: Readonly<Record<NodeTypeAlias, NodeType>> = { ASSUMPTION: 'AXIOM', DERIVATION: 'PROPOSITION', GOAL: 'PROPOSITION' };
+
+/**
+ * Reads a `type:` value (docs/slice1-plan.md 2.1): AXIOM or PROPOSITION, or an old kind as an alias (ASSUMPTION ->
+ * AXIOM; DERIVATION and GOAL -> PROPOSITION), with `alias` naming the old kind. Case-insensitive, as the parser has
+ * always been (it reports a value that is not upper case with the TL019 hint); undefined for anything else.
+ */
+export function parseNodeType(raw: string): { type: NodeType; alias?: NodeTypeAlias } | undefined {
+  const upper = raw.toUpperCase();
+  if (isNodeType(upper)) return { type: upper };
+  if (upper === 'ASSUMPTION' || upper === 'DERIVATION' || upper === 'GOAL') return { type: KIND_OF_ALIAS[upper], alias: upper };
+  return undefined;
 }
 
 /** Computed from Lean, never written by the user. */
@@ -86,7 +107,7 @@ export interface LeanBinding {
   statement?: string;
   /** Fully-qualified Lean name `n.holds`, when that declaration exists (an axiom, or a theorem once proved). */
   justification?: string;
-  /** Kind of the `n.holds` declaration: `axiom` (assumed, or claimed while promotion is pending) or `theorem`. */
+  /** Kind of the `n.holds` declaration: `axiom` (an axiom card's assumption, or a proposition pending proof) or `theorem`. */
   justificationKind?: 'axiom' | 'theorem' | 'other';
   /** Source text of the bound declarations (docstring mirror, statement, `.holds`), shown when a card is expanded. */
   code?: string;
@@ -135,7 +156,6 @@ export type Cert = 'none' | 'ok' | 'refuted';
 export type StatusFlag =
   | 'self-evident'
   | 'unselected-used'
-  | 'claimed'
   | 'stale'
   | 'broken'
   | 'depends-on-removed'
@@ -144,30 +164,59 @@ export type StatusFlag =
   | 'definitional-choice'
   | 'existence-commitment'
   // M1 additions (docs/m1-plan.md section 6.3)
-  /** A proof uses the `.holds` axiom of a DERIVATION whose promotion is pending (D-11 A->D). */
-  | 'rests-on-claimed'
-  /** A GOAL whose `.holds` is proved: offer "Make Derivation" (TL105). */
-  | 'proved-goal'
-  /** An ASSUMPTION whose `.holds` is a theorem (TL106). */
+  /** A proof uses the `.holds` axiom of a PROPOSITION that is pending proof (spec v4 AR-6; was `rests-on-claimed`). */
+  | 'rests-on-pending'
+  /** An AXIOM whose `.holds` is a theorem: "has a proof" (TL106). */
   | 'provable-assumption'
-  /** A formalised ASSUMPTION without `axiom n.holds` (TL117). */
+  /** A formalised AXIOM without `axiom n.holds` (TL117). */
   | 'missing-holds'
   /** The justification's footprint contains `sorryAx` (TL115). */
   | 'uses-sorry'
   /** `n.holds` does not state `n` (nor `h1 -> ... -> n`) (TL114). */
   | 'holds-mismatch'
   /** Lean has not checked this node: its module failed or is not imported, or there are no facts yet. */
-  | 'not-checked';
+  | 'not-checked'
+  /**
+   * Spec v4 B.5 / BD-6 (the green glow): a PROPOSITION proved with no hypotheses, no `sorry` and no hidden axiom
+   * (TL103), resting only on AXIOM cards (and presuppositions), never on a pending proposition; with fresh facts and
+   * no mismatched `.holds` (TL114) on it, on the cards it rests on, or on the cards its proof reaches (docs/slice1-plan.md
+   * section 8, S-3 and S-9).
+   */
+  | 'established'
+  /**
+   * Spec v4.1 B.2's cross-check (slice 1d): the footprint holds a card's `.holds` that neither direct(v) nor what the
+   * cards in direct(v) rest on explains, so the proof uses that card in a way the arrows do not show (TL123; the
+   * card's band gets no ✓). `DerivedStatus.direct.unseen` names the cards.
+   */
+  | 'uses-unseen';
 
 /**
- * `footprint` (proved, and optionally conditional) = the nodes whose `.holds` AXIOM the proof rests on, from
- * `#print axioms` (transitively, so a derivation proved by a theorem never appears in it: its own assumptions do),
+ * Spec v4.1 B.2 and BD-7 (slice 1d): what the board knows of direct(v), the cards a proved or conditional card's proof
+ * uses directly (the solid arrows into it, and the band's members).
+ */
+export interface DirectUses {
+  /** direct(v), every subject's cards (the board's verified edges keep only its own subject's), in the walk's order. */
+  ids: string[];
+  /**
+   * `proof`: from the elaborated proof (`DeclFacts.valueConsts`); `source`: from the source text's `.ilean` references
+   * only (facts from before slice 1d, or a failed value probe), which miss a `@[simp]` lemma or an instance that
+   * elaboration inserted, so no band gets its ✓ (BD-7).
+   */
+  from: 'proof' | 'source';
+  /** B.2's cross-check: the cards behind the `uses-unseen` flag. */
+  unseen?: string[];
+}
+
+/**
+ * `footprint` (proved, and optionally conditional) = the nodes whose `.holds` axiom the proof rests on, from
+ * `#print axioms` (transitively, so a proposition proved by a theorem never appears in it: what it rests on does),
  * plus `presup:<Lean name>` entries (docs/m1-plan.md section 6.3). `on` = the unproved nodes taken as hypotheses.
+ * `assumed` = an AXIOM card's `axiom n.holds`; `pending` = a PROPOSITION's `axiom n.holds` (pending proof, AR-6).
  */
 export type ProofStatus =
   | { kind: 'none' }
   | { kind: 'assumed' }
-  | { kind: 'pending-promotion' }
+  | { kind: 'pending' }
   | { kind: 'conditional'; on: string[]; footprint?: string[] }
   | { kind: 'proved'; footprint: string[] };
 
@@ -177,6 +226,8 @@ export interface DerivedStatus {
   proof: ProofStatus;
   certificates: { consistency: Cert; nonVacuity: Cert; independence?: Cert };
   flags: StatusFlag[];
+  /** Slice 1d (optional, additive): direct(v), for a proved or conditional card only (see `DirectUses`). */
+  direct?: DirectUses;
 }
 
 export interface TlNode {
@@ -192,8 +243,13 @@ export interface TlNode {
   asserted?: string;
   stance?: Stance;
   source?: Evidential;
-  /** Declared joint support (D-13): drawn as dashed arrows into this node. */
+  /** Declared joint support (D-13): drawn as dashed arrows into this node (spec v4: the Dependencies field, AR-4). */
   premises: string[];
+  /**
+   * Spec v4 AR-5: the card is marked "follows from nothing" (`follows_from: nothing`, B.6). Set only when true, and
+   * never together with `premises` (TL023: the arrows win).
+   */
+  fromNothing?: boolean;
   supersedes?: string;
   refines?: string;
   provenance: Provenance;
@@ -206,11 +262,12 @@ export interface TlNode {
 export type EdgeType = 'premise' | 'verified' | 'lean-ref';
 
 /**
- * `premise` = declared support (`premises:`, dashed). `verified` = the target's `.holds` proof uses the source's
- * `.holds` (or takes the source's statement as a hypothesis: `conditional`), found from the `.ilean` references of
- * the proof, following untracked lemmas until the first node: so a goal proved through a derivation gets the edge
- * from that derivation, not from the derivation's assumptions (docs/m1-plan.md section 6.3). `lean-ref` = the
- * target's statement mentions the source's statement.
+ * `premise` = declared support (`premises:`, dotted). `verified` = the target's `.holds` proof uses the source's
+ * `.holds` (or takes the source's statement as a hypothesis: `conditional`), found from the constants of the
+ * elaborated proof (slice 1d, spec v4.1 B.2; the `.ilean` references of the proof while those facts are missing),
+ * following untracked lemmas until the first node: so a proposition proved through another proposition gets the edge
+ * from that proposition, not from what that one rests on (docs/m1-plan.md section 6.3). `lean-ref` = the target's
+ * statement mentions the source's statement.
  */
 export interface TlEdge {
   /** Stable key, `${type}:${source}->${target}`. */
@@ -273,7 +330,7 @@ export type VocabFlag =
   /** Added by a proposal (M2 "+3 new"). */
   | 'new';
 
-/** One item of the computed Vocabulary group at the top of the Assumptions column (D-3). */
+/** One item of the computed Vocabulary group at the top of the Axioms column (D-3). */
 export interface VocabItem {
   /** Fully-qualified Lean name, e.g. `Spyro.HasDarkPast`. Unique within a graph. */
   name: string;
@@ -360,4 +417,9 @@ export interface TlGraph {
    * after `subjectGraph` (core never reads sidecars); the expanded card lists those whose `target` is the card.
    */
   attempts?: AttemptSummary[];
+  /**
+   * Spec v4 BD-3 (slice 1b; optional, additive): the canvas positions the user stored for this board's propositions
+   * (`layout.json`, by card id). Absent when none is stored; the board places the other propositions itself (1c).
+   */
+  positions?: Record<string, { x: number; y: number }>;
 }

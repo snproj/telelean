@@ -5,7 +5,8 @@
  * repository it offers "Initialize git"; other unavailable states explain themselves.
  *
  * The listing is requested while the dropdown is open: when it opens, when history becomes available (e.g. right
- * after "Initialize git"), and when the subject or its undo/redo state changes.
+ * after "Initialize git"), and when the subject or its undo/redo state changes. Spec v4 ES-9 (slice 1f): while an edit
+ * session (a run) is active, "Revert to this" is disabled with the reason; the list and Preview stay.
  */
 import type { HistoryAvailability } from '@telelean/core';
 import { useEffect, useRef, useState } from 'react';
@@ -13,6 +14,7 @@ import { Popover } from '../common/Popover';
 import { HISTORY_ACTION_LABEL } from '../labels';
 import { formatBytes, formatTime } from '../model/format';
 import { useBoard, useBoardActions, useBoardStore } from '../state/context';
+import { editLock } from '../state/store';
 
 const PAGE = 50;
 
@@ -60,6 +62,7 @@ export function HistoryMenu() {
   const subject = useBoard((s) => s.subject);
   const listing = useBoard((s) => s.history);
   const loading = useBoard((s) => s.historyLoading);
+  const lock = useBoard((s) => editLock(s));
   const actions = useBoardActions();
   const store = useBoardStore(); // stable (the actions object above is the current state: not an effect dependency)
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
@@ -138,7 +141,9 @@ export function HistoryMenu() {
                       <button
                         type="button"
                         className="tl-icon-button"
-                        title="Make this subject look like this again (the current state is kept in the history; undoable)"
+                        data-testid="history-revert"
+                        disabled={lock !== null}
+                        title={lock ?? 'Make this subject look like this again (the current state is kept in the history; undoable)'}
                         onClick={() => {
                           close();
                           actions.openRevert(entry);

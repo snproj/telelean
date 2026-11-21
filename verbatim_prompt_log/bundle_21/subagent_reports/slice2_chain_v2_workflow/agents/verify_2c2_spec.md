@@ -1,0 +1,127 @@
+# verify:2c2:spec
+
+Agent `aed5886146b10a7e2` of workflow `wf_ae5f1188-533`. Verbatim output (JSON alongside).
+
+- **summary:** Fidelity verdict on 2c2: no blocker and no major. The diff does what the plan's §1.1 entry asks.
+- `buildSessionView` matches the §2.3 types field for field, which 2a1 wrote and 2c2 left unchanged.
+- It applies §4.7's withholding rules: a neutral Result row, Results' parts left out, the base-masked board, Claude's words withheld, and the latest ended step's question.
+- Its gates follow D2-62, D2-65, D2-27, AF4 and §3.7 through the reducer's own rules (`itemGates`).
+- The host's `not-yet` answers were already added by 2c1. 2c2 adds one test for them.
+
+I traced every read in `buildSessionView` that could carry a hidden outcome while the results are hidden: the judgement, `words`, `current`, ledger, events, labels, the stack and `latestEnded`. Each is either masked, filtered to listed items, gated on `shown` or `outcomes`, or independent of outcomes. Nothing hidden reaches the hidden view.
+- Gates are closed by phase first; Undo and Redo exist only in phase `stage`.
+- Submit's plan, the board's arrows and premises, the report's verdicts, notes and reason chips all appear only while the results are shown.
+
+Carry-over R2-1 is fully done:
+- §4.7 has the new residual bullet.
+- The fixer 2c1 r2 §8 entry has the correction.
+- The message is reworded, matching §4.9's quote and the judge test's `toContain`.
+- No old text remains anywhere in the repo.
+
+The additive contract fields and the decisions are logged in §8 with alternatives. All §6.1 tests for 2c2 exist; no test was skipped or focused.
+
+What remains is minor:
+1. The builder's F1 is real (confirmed in `reconcile.ts` `endsForce`). It is outside 2c2's diff and needs the orchestrator's decision.
+2. The non-interference pair "a re-ask proved or not" is built by hand: one shared judgement, and no user force, though D2-65 requires one before a mid-stage Formalize. It cannot see F1 or a leak through the judgement.
+3. The stage's problems have no path into SessionView, though the plan says the stage reports them and quotes texts for them.
+4. The new `queue` and `reusedFileChecks` record fields have no persisted counterpart in §2.6, so they are lost on reload.
+5. The hidden-board test's "no stale files" assertion passes trivially: no fixture file is ever stale.
+6. Nit: §8's "never the envelope's status" wording does not match the code's mapping of sandbox statuses.
+- **findings:**
+  - [1]
+    - **id:** F1-confirmed
+    - **severity:** minor
+    - **where:** packages/core/src/review/reconcile.ts:434-441 (2a2's endsForce; outside 2c2's diff); docs/slice2-plan.md §4.7 'Residual channels' and the §8 builder 2c2 entry ('Seen while testing, not fixed here')
+    - **problem:** The builder's finding F1 is real.
+- A mid-stage Formalize needs the results shown (D2-65). With a meaning item still undecided, they can only be shown by the user's force.
+- At the re-ask queue's end, `endsForce` is true when the re-ask proved T: the Result gets new content (`newContent`), so the results are hidden again.
+- It is false when the re-ask did not prove T: the old Result stands unchanged (§3.2), so the results stay shown.
+- So whether the stage is hidden tells the re-ask's outcome before the meaning item is decided.
+- §4.7's pairs compare two hidden views, so no test sees this. It is not yet among §4.7's accepted residuals.
+    - **fix:** Orchestrator decision, recorded in §4.7 and §8. Either:
+(a) adopt the builder's fix: reconcile ends the user's force at every queue's end, with a pair test in 2c2's file showing both twins hidden; or
+(b) list it in §4.7's accepted residuals, noting that the spec's own RV-11 ('with its result hidden again') gives the same signal per Result once the user has pressed Show result.
+    - **evidence:** In `reconcile.ts:436`, a Result's `newContent` or `rechecked` ends the force. §3.2: 'Without one ... T's old question and Result stay on the record, with their statuses.' The builder confirmed it with a throwaway test: proved gives `forced: null, shown: false`; not proved keeps the force with `shown: true`.
+  - [2]
+    - **id:** TEST-REASK-PAIR
+    - **severity:** minor
+    - **where:** packages/core/test/review/view.test.ts:1318-1336 (non-interference: 'a re-ask proved or not')
+    - **problem:** The §4.7 pair 'a re-ask proved or not' is not built from two judged working copies.
+- Both twins reuse `provedStage()`'s judgement, the proved one, and only the `current` texts and hand-edited records differ. A leak through the judgement in the re-ask case (`deps`, `classesBeforeReveal`, `reach`, which the view reads for listed items while hidden) would go unseen.
+- No reconcile of the re-ask queue runs, so the records are not what the pipeline would produce.
+- The twins carry no force and no new meaning item from the re-ask. The pipeline cannot reach that state: D2-65 requires the results shown before a mid-stage Formalize.
+- So the pair passes regardless of F1, and checks only the record-level question rule.
+- The other pairs (a proof or none, the arrow, the lemma, the chain, the Retry queue) do judge each twin separately.
+    - **fix:** Build the re-ask twins as the other pairs are built.
+1. Start from a stage-1 state that has the user's Show results force and a decided or undecided meaning item.
+2. Add a re-ask step s2 (queue 2) with the new question that also writes a new statement-phase item, so both twins must hide.
+3. Run `judgeState` on each twin's own working copy (proved or not), then `reconcile` with `queueSteps: ['s2']`.
+4. Assert byte-identical views.
+5. Add the variant without the new statement item as the check of F1's resolution: today it would show one twin and hide the other.
+    - **evidence:** view.test.ts:1321 `const base = provedStage();` and :1331 `return { ...base, current: model(proved ? PROVED : STATEMENTS), records: {...} }`: the judgement is the same object in both twins. The records lack `forced`.
+  - [3]
+    - **id:** STAGE-PROBLEMS-NO-PATH
+    - **severity:** minor
+    - **where:** packages/core/src/review/view.ts buildSessionView (no use of judgement.problems); SessionViewInput (packages/core/src/review/types.ts) has no field for the persisted `judged.problems`; docs/slice2-plan.md §8 'builder 2c2 decided (problems)'
+    - **problem:** The plan says the stage reports its problems:
+- §2.1: 'The stage has the `facts` problem, with that sentence and "Apply stays disabled until telelean can read it."'
+- §3.5: '“‹item›” disappeared, and no decision removed it'.
+- §3.8: a failed premise write 'leaves the stage the problem “‹item›” was accepted, but telelean could not write it: ‹error›. Reload the window to try again, or decline it.'
+- §4.2: 'the stage reports it and Apply is disabled'.
+
+The view never shows `judgement.problems`. These are produced at judge.ts:461 (`factsProbeFailed`) and items.ts:702 (`unowned`). Reconcile's problems (reconcile.ts:336, `disappeared`) and premise-write failures live only in the persisted `judged.problems`, which `SessionViewInput` does not carry. These quoted texts therefore reach the person only indirectly at the final check, with the backstop's equivalents. Builder decision 10 notes the texts have no display path but leaves them that way. No misleading green results (the final check still refuses), but the early report the plan describes is missing.
+    - **fix:** The orchestrator decides one of:
+(a) Add an additive `SessionView.problems: Array<{ text: string; items: string[] }>` (logged in §8 and §2.3).
+  - Fill it from `judgement.problems` plus a new `SessionViewInput.problems` (the persisted `judged.problems`, which 2d/2f pass).
+  - Filter its `items` to listed ones while hidden.
+  - Drop or neutralise problems that name only hidden content while hidden, as events are filtered.
+  - 2g shows it in the session bar's second lines.
+(b) State in §2.3 and §8 exactly which channel 2d–2f use instead (events or notices) for each of these texts.
+    - **evidence:** grep: `premiseWriteFailed` and `factsProbeFailed` are referenced only where they are defined or put into `problems`. view.ts never reads `judgement.problems`. §2.3 SessionView has no problems field.
+  - [4]
+    - **id:** PERSIST-NEW-RECORD-FIELDS
+    - **severity:** minor
+    - **where:** docs/slice2-plan.md §2.6 PersistedStep (lines ~806-826) and PersistedSession.confirmation (~797-798), vs §2.9 SessionRecords additions (~1247-1266) and the §8 builder 2c2 'Contracts' bullet
+    - **problem:** Builder 2c2 added `SessionRecords.steps[].queue?` (2d sets it 'at each `queue-start`') and `SessionRecords.confirmation.reusedFileChecks?` (2f sets it). §2.6, the run.json contract that `toSessionRecords` maps from, has no field for either: PersistedStep has no `queue`, and PersistedSession.confirmation has no `reusedFileChecks`.
+
+A 2d or 2f builder following §2.6 would not persist them. After a reload (D2-72), the effects are:
+- StepView's `index`/`of` fall back to the stage-and-kind runs. A mid-stage Formalize queue and a Retry queue in the same stage then merge into one 'i of n', so numbering changes across the reload.
+- 'file checks reused the last result' reads false.
+    - **fix:** Amend §2.6 additively:
+- PersistedStep gains `queue?: number` (the queue it runs in, set at its `queue-start` write).
+- PersistedSession.confirmation gains `reusedFileChecks?: boolean`.
+
+Then name both in the §8 hand-off ('2d persists `queue` on each PersistedStep; 2f persists `reusedFileChecks`'), so `toSessionRecords` can map them after a reload.
+    - **evidence:** §2.6 PersistedStep lists: id, kind, target, stage, scope, retryOf?, state, startCommit?, freezeCommit?, endCommit?, freezes, gateAttempts, lastFinish?, counters, agentMs, attempt?. There is no queue. view.ts:505-530 `stepNumbers` falls back when `queue` is undefined.
+  - [5]
+    - **id:** STALEFILES-VACUOUS
+    - **severity:** minor
+    - **where:** packages/core/test/review/view.test.ts:422-459 (assert at :448); view.ts:400
+    - **problem:** §6.1 (2c2) requires the hidden graph to have no `semantic.staleFiles`, and the test checks this with `not.toMatch(/staleFiles/)`. Every fixture model is built with `freshHashes` (test/review/helpers/session.ts:19), so no file is ever stale, hidden or shown, and the assertion passes trivially. No mutation targets view.ts:400 (`const stale = hidden ? [] : ...`) on its own.
+    - **fix:** In that test, build the working copy with one model file's hash not matching its facts (or a module state 'stale').
+- Hidden: assert no `staleFiles` and a state other than 'stale'.
+- Shown: assert `staleFiles` lists that file.
+- Add a mutation that drops the `hidden ? [] :` guard.
+    - **evidence:** helpers/session.ts:19: `return buildProjectModel({ files, fileHashes: freshHashes(files), facts, library: 'Model' });`. The mutation list's V35 replaces the whole `semanticOf(model, hidden)` call; none targets stale files alone.
+  - [6]
+    - **id:** HIDDEN-SUMMARY-ENVELOPE
+    - **severity:** nit
+    - **where:** packages/core/src/review/view.ts:379-402 (SANDBOX_STATES[facts.status] applies while hidden); docs/slice2-plan.md §8 'builder 2c2 decided (the board)' (~line 3354)
+    - **problem:** §8 says the hidden summary's state reads only the masked facts, 'never the envelope's status'. Yet `semanticOf` maps the envelope's sandbox statuses even while hidden: timeout, oom and cancelled become 'failed', low-memory becomes 'paused-low-memory', and so on. A decision's judge build that times out or runs out of memory because of hidden proof content would then show 'failed' only in that twin. This channel is the same kind as the accepted failed-probe residual, but §4.7 does not list it. Every Accept refusal for missing facts shows it too.
+    - **fix:** Correct §8's wording to say that the sandbox statuses, which come with no declarations, still map as the runner maps them. Add a §4.7 residual line: a judge build that times out or runs out of memory on hidden content shows on the hidden board and in the Accept refusals, like a failed probe.
+    - **evidence:** view.ts:402: `const state = SANDBOX_STATES[facts.status] ?? (failed ? 'failed' : ...)`. mask.ts:256 keeps the working copy's envelope (status included) without `detail`.
+- **checks_run:**
+  - Read verify_common.md, the 2c2 brief, builder_rules.md, plan §0, §1, §1.1, §2.2, §2.3, §2.4, §2.6, §2.9, §3.1-§3.13, §4.1-§4.12, §5.1-§5.13, §6.1 (2c1 and 2c2), and the §8 entries for 2a2, 2b1b, fixer 2b2 r1, 2c1, fixer 2c1 r2 and builder 2c2
+  - Read spec RV-1 to RV-13, BD-6, EN-1 to EN-4, and autopilot decisions AP-24 to AP-31
+  - Diffed every changed file against the builder's pre-2c2 backups (b2c2/orig): view.ts, reducer.ts, types.ts, texts.ts, judge.test.ts, runRouting.test.ts, slice2-plan.md. Confirmed with a timestamp scan that no other repo file changed
+  - Read all of view.ts (1404 lines), checking each SessionView, ItemView, Detail, Board, Report and Confirmation field against §2.3 and §4.7
+  - Traced every read of hidden data in buildSessionView (`judgement.inferences`, `deps`, `reach`, `classes`; `words`; `input.current`; ledger; events; stack; labels; `latestEnded`) for whether it is gated on `shown`/`outcomes`, filtered to listed items, or masked
+  - Checked `itemGates`, `acceptGateIn`, the decline and back-to-review refusals against the reducer's `decide`, `backToReview`, `blockedBy`, `dependencyGate` and `leftText` texts and order
+  - Checked the gate texts against the plan's quotes: D2-62, D2-65, AF4's Submit text, 'Accept or reject all of … together.', 'Back to review first.', 'Re-checking the working copy…', the drift text
+  - Read all of view.test.ts (43 tests): mapped each §6.1 2c2 bullet and each §4.7 non-interference pair to a test; checked whether the twins have separate judgements and whether assertions are vacuous; checked for skipped or focused tests
+  - Checked R2-1: the §4.7 residual bullet, the fixer 2c1 r2 §8 correction, the texts.ts rewording matching §4.9's quote verbatim, the judge test's `toContain`, and a repo-wide grep for the old text (none)
+  - Checked the host: `boardSession.ts` `dispatchRun` answers the ten session messages `not-yet` (2c1), and 2c2's runRouting test (active run, toast without a request id)
+  - Confirmed F1 by reading reconcile.ts `endsForce` (lines 434-441, 481-489) against §3.2 and §4.7
+  - Checked the review index exports (view.ts through `export *`; `itemGates` imported by path only) and runtime import cycles (none)
+  - Compared `semanticOf` with the runner's `summarize` (workspace/semanticSummary.ts), and checked the masked-facts envelope in mask.ts:254-262
+  - Read-only throughout: wrote nothing in the repo, ran no build or test

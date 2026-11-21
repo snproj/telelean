@@ -14,7 +14,8 @@
  *
  * Provenance (D-15): every string marked "Claude's words" is shown in italics with a marker, never in the user's style.
  */
-import type { NodeType, TlGraph } from './model.js';
+import { parseNodeType, type BoardDiagnostic, type StatusFlag, type TlGraph, type TlNode } from './model.js';
+import type { SessionPhase, StepView } from './review/view.js';
 
 // ---------------------------------------------------------------------------------------------
 // Questions (ask_user, D-20)
@@ -127,6 +128,20 @@ export const TERMINAL_RUN_STATES: readonly RunState[] = ['accepted', 'discarded'
 
 export function isTerminalRunState(state: RunState): boolean {
   return TERMINAL_RUN_STATES.includes(state);
+}
+
+/**
+ * Spec v4 ES-7, ES-9, UN-3 (slice 1f; docs/slice1-plan.md 2.7 and 2.8). In slice 1 an edit session is a run: from its
+ * start until Accept, Discard or an end that stops it. While a run of the model folder is active, its base (the
+ * user's files when it started) must not change, so no board of that folder can be edited: no field edit, arrow, kind
+ * change, add, delete, move, new subject, Undo, Redo or History revert. The extension host refuses each such message
+ * with this text (`conflict`), and the board shows it on every control it disables.
+ */
+export const EDIT_SESSION_ACTIVE = "An edit session is active: the board can't be edited until you accept or discard it.";
+
+/** Whether `run` locks the boards of its model folder (ES-9): it exists and has not ended. */
+export function runLocksBoard(run: Pick<RunView, 'state'> | null | undefined): boolean {
+  return run !== null && run !== undefined && !isTerminalRunState(run.state);
 }
 
 /** D-19: before freeze_statements Claude formalises (proof bodies are rejected); after it, it proves the frozen statements. */
@@ -248,7 +263,7 @@ export interface GhostView {
   /** D-6: the proof that it closes the gap uses none of the selected premises: it alone gives the target (flagged). */
   aloneEntails: boolean;
   state: 'suggested' | 'adopted' | 'rejected';
-  /** The new ASSUMPTION card's id once adopted. */
+  /** The new AXIOM card's id once adopted. */
   nodeId?: string;
   round: number;
 }
@@ -277,7 +292,7 @@ export interface RunView {
   subject: string;
   /** Target node id. */
   target: string;
-  /** Selected premise ids (may be empty: "Self-evident?"). */
+  /** Selected premise ids: the sources of the selected arrows (may be empty: a "follows from nothing" mark, slice 1e). */
   premises: string[];
   state: RunState;
   /** While working: formalising or proving. */
@@ -315,6 +330,19 @@ export interface RunView {
    * Absent on runs accepted before this field existed.
    */
   accepted?: { changedFiles: boolean };
+  /**
+   * Slice 2 (docs/slice2-plan.md 2.3 and 3.12, additive): present when the run is an edit session. In a session the
+   * runner never sets `verdict` to a proof outcome, sends `activity` and `notices` as empty arrays while a step runs
+   * and while the results are hidden, leaves `frozen` out (D2-68), keeps `ghosts` empty and `proposalId` absent.
+   */
+  session?: { stage: number; phase: SessionPhase };
+  /**
+   * Slice 2: every inference of the session (`target` and `premises` above are the first one's, for old readers). While
+   * the results are hidden, a target's premises are the sources of the question its latest ended step asked (AF5).
+   */
+  inferences?: Array<{ target: string; premises: string[] }>;
+  /** Slice 2: the step that runs or ran last; `statementsFixed` tells the panel what M2's `frozen` told it (D2-68). */
+  step?: { index: number; of: number; target: string; kind: StepView['kind']; statementsFixed: boolean };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -392,20 +420,6 @@ export interface DefinitionQuestion {
   gloss?: string;
 }
 
-/** A lifecycle change proposed as a separate confirmed item (D-21: a proved GOAL -> DERIVATION is never silent). */
-export interface LifecycleItem {
-  /** Host-generated, stable within the proposal (`l1`, …; `[A-Za-z0-9_.-]{1,64}`). */
-  id: string;
-  kind: 'change-kind';
-  nodeId: string;
-  from: NodeType;
-  to: NodeType;
-  /** Pre-ticked in the review. */
-  recommended: boolean;
-  /** telelean's words, e.g. "Lean proved it from the selected premises". */
-  reason: string;
-}
-
 export type GateStepId = 'G0' | 'G1' | 'G3' | 'G4' | 'G5';
 
 /** One finish call and its gate outcome. */
@@ -430,7 +444,10 @@ export interface ReportCard {
   unusedPremises: string[];
   /** D-6: until the M3 model finder runs. */
   consistency: 'unchecked';
-  /** Proved with zero premises and no card in the footprint ("Self-evident?"). */
+  /**
+   * Proved without using a single arrow (the report says "proved from nothing", S18): no card in the footprint and no
+   * verified edge into the target, whether or not premises were selected (A9; slice 1e fixer: it required zero premises).
+   */
   selfEvident: boolean;
   /** Claude's words. */
   claudeSummary?: string;
@@ -461,13 +478,105 @@ export interface ProposalView {
   files: ProposalFile[];
   review: ReviewItem[];
   definitions: DefinitionQuestion[];
-  lifecycle: LifecycleItem[];
   ghosts: GhostView[];
   report: ReportCard;
-  /** Model files changed (on disk or in editors) since the run started: Accept rebases and re-checks first (D-21). */
+  /**
+   * Model files changed (on disk or in editors) since the run started, when the proposal was built. Spec v4 ES-7 (slice
+   * 1f): Accept then refuses, naming the files, until they match the run's base again (D-21's rebase is no longer taken).
+   */
   baseChanged: boolean;
   /** The round changed no file: Accept only records the outcome. */
   empty: boolean;
+}
+
+/** Status flags of builds before spec v4: what each one is now (`null`: gone). */
+const LEGACY_FLAGS: Readonly<Record<string, StatusFlag | null>> = { claimed: null, 'proved-goal': null, 'rests-on-claimed': 'rests-on-pending' };
+
+/** TL102's variant that spec v4 removed (B.5; GOAL is gone): a proof resting on it now carries `rests-on-pending`. */
+const LEGACY_TL102 = 'The proof rests on a goal asserted as an axiom';
+/** The start of TL102's spec v4 variant (B.5; core `project/build.ts`): "The proof rests on pending: ‹ids›." */
+const RESTS_ON_PENDING_TL102 = 'The proof rests on pending:';
+
+/**
+ * A proposal saved (run.json) by a build before spec v4, read in the two kinds as the markup reads old files (spec v4
+ * A19; slice 1a fixer). A run still in review when telelean is updated keeps its proposal, and the board builds its
+ * proposed view from it, so its graph must hold only kinds and statuses this build knows:
+ *  - ASSUMPTION -> AXIOM, DERIVATION and GOAL -> PROPOSITION (`parseNodeType`);
+ *  - a proposition's `axiom n.holds` is `pending`: the old `pending-promotion`, and `assumed` on an old GOAL;
+ *  - the flags `claimed` and `proved-goal` go, `rests-on-claimed` becomes `rests-on-pending`, and a proof that rests on
+ *    a now pending card gets `rests-on-pending` too (it had TL102 "rests on a goal asserted as an axiom");
+ *  - the diagnostics spec v4 removed go (TL105, TL116 and that TL102), and so do the lifecycle items (spec v4 has none);
+ *  - (slice 1f, carry-over 3) a proof that rests on pending cards gets the TL102 warning a fresh build gives it (B.5):
+ *    "The proof rests on pending: ‹ids›." (the pending cards of its footprint, in footprint order), at the card's block.
+ * `established` is not computed (it needs the facts): such a proposal shows no green glow. Changes `proposal` in place
+ * and returns whether anything changed (a proposal of this build is left as it is).
+ */
+export function upgradeLegacyProposal(proposal: ProposalView): boolean {
+  let changed = false;
+  const legacy = proposal as ProposalView & { lifecycle?: unknown };
+  if ('lifecycle' in legacy) {
+    delete legacy.lifecycle;
+    changed = true;
+  }
+  const graph = proposal.graph as TlGraph | undefined;
+  if (graph === undefined || !Array.isArray(graph.nodes)) return changed;
+  const pending = new Set<string>();
+  for (const node of graph.nodes) {
+    const kind = parseNodeType(String(node.type))?.type;
+    if (kind !== undefined && kind !== node.type) {
+      node.type = kind;
+      changed = true;
+    }
+    const status = node.status as TlNode['status'] | undefined;
+    if (status === undefined) continue;
+    const proof = (status.proof as { kind: string } | undefined)?.kind;
+    if (proof === 'pending-promotion' || (proof === 'assumed' && node.type === 'PROPOSITION')) {
+      status.proof = { kind: 'pending' };
+      changed = true;
+    }
+    if (status.proof?.kind === 'pending') pending.add(node.id);
+    if (!Array.isArray(status.flags)) continue;
+    const flags: StatusFlag[] = [];
+    for (const flag of status.flags as string[]) {
+      const now = Object.hasOwn(LEGACY_FLAGS, flag) ? LEGACY_FLAGS[flag] : (flag as StatusFlag);
+      if (now !== null && now !== undefined && !flags.includes(now)) flags.push(now);
+    }
+    if (flags.length !== status.flags.length || flags.some((flag, i) => flag !== status.flags[i])) {
+      status.flags = flags;
+      changed = true;
+    }
+  }
+  /** The new TL102 warnings to add: one per proof that rests on pending cards (B.5, as `build.ts` gives it). */
+  const restsOnPending: BoardDiagnostic[] = [];
+  for (const node of graph.nodes) {
+    const proof = node.status?.proof;
+    if (proof === undefined || (proof.kind !== 'proved' && proof.kind !== 'conditional')) continue;
+    const footprint = proof.kind === 'proved' ? proof.footprint : (proof.footprint ?? []);
+    if (!Array.isArray(node.status.flags) || !Array.isArray(footprint)) continue;
+    const resting = footprint.filter((id) => pending.has(id));
+    if (resting.length === 0) continue;
+    if (!node.status.flags.includes('rests-on-pending')) {
+      node.status.flags.push('rests-on-pending');
+      changed = true;
+    }
+    restsOnPending.push({
+      code: 'TL102',
+      severity: 'warning',
+      message: `${RESTS_ON_PENDING_TL102} ${[...new Set(resting)].join(', ')}.`,
+      ...(node.loc !== undefined ? { file: node.loc.file, range: node.loc.range } : {}),
+      nodeId: node.id,
+    });
+  }
+  const before = Array.isArray(graph.diagnostics) ? graph.diagnostics : [];
+  const kept = before.filter((d) => d.code !== 'TL105' && d.code !== 'TL116' && !(d.code === 'TL102' && String(d.message).startsWith(LEGACY_TL102)));
+  // A card that has its "rests on pending" warning already (a proposal of this build, or one upgraded before) keeps it.
+  const has = new Set(kept.filter((d) => d.code === 'TL102' && String(d.message).startsWith(RESTS_ON_PENDING_TL102)).map((d) => d.nodeId));
+  const added = restsOnPending.filter((d) => !has.has(d.nodeId));
+  if (kept.length !== before.length || added.length > 0) {
+    graph.diagnostics = [...kept, ...added];
+    changed = true;
+  }
+  return changed;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -548,3 +657,6 @@ export interface DecisionsFile {
   version: 1;
   decisions: DecisionRecord[];
 }
+
+// Spec v4.1 ES-2, AR-8, AP-13 (slice 1e): the question of Formalize for dependencies and the host's start check.
+export * from './formalize.js';

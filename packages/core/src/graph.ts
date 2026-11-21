@@ -3,7 +3,7 @@
  * Owned by WP-model after the M1 freeze (docs/m1-plan.md section 9); signatures are relied on by the webview.
  */
 import type { BoardDiagnostic, EdgeType, NodeType, SemanticSummary, TlEdge, TlGraph, TlNode, VocabItem } from './model.js';
-import { NODE_TYPES } from './model.js';
+import { isNodeType, NODE_TYPES } from './model.js';
 
 /** Prefix of footprint entries that name a Lean presupposition rather than a node (03 section 2). */
 export const PRESUPPOSITION_PREFIX = 'presup:';
@@ -33,8 +33,8 @@ export function declaredEdges(nodes: readonly TlNode[]): TlEdge[] {
  * Verified dependencies approximated from footprints: one solid `verified` edge per node in a proved node's
  * footprint. Used by the samples and tests (where proofs use assumptions directly). The M1 graph builder
  * (`subjectGraph`, docs/m1-plan.md section 6.3) computes verified edges from the `.ilean` references of each proof
- * instead, because a footprint only lists axioms: a goal proved through a derivation (a theorem) must get the edge
- * from that derivation, which no footprint mentions.
+ * instead, because a footprint only lists axioms: a proposition proved through another proved proposition (a
+ * theorem) must get the edge from that proposition, which no footprint mentions.
  */
 export function verifiedEdges(nodes: readonly TlNode[]): TlEdge[] {
   const ids = new Set(nodes.map((n) => n.id));
@@ -84,10 +84,13 @@ export function nodesOfType(graph: Pick<TlGraph, 'nodes'>, type: NodeType): TlNo
   return graph.nodes.filter((n) => n.type === type);
 }
 
-/** Column order derived from the node array: `{ ASSUMPTION: [...ids], DERIVATION: [...], GOAL: [...] }`. */
+/**
+ * Column order derived from the node array: `{ AXIOM: [...ids], PROPOSITION: [...] }`. A node of no known kind (data
+ * from an older build that was not upgraded, e.g. a proposal saved before spec v4) has no column, instead of throwing.
+ */
 export function columnOrder(nodes: readonly TlNode[]): Record<NodeType, string[]> {
   const order = Object.fromEntries(NODE_TYPES.map((t) => [t, [] as string[]])) as Record<NodeType, string[]>;
-  for (const node of nodes) order[node.type].push(node.id);
+  for (const node of nodes) if (isNodeType(node.type)) order[node.type].push(node.id);
   return order;
 }
 
@@ -201,7 +204,7 @@ export function createUserNode(args: {
       formal: 'informal',
       proof: { kind: 'none' },
       certificates: { consistency: 'none', nonVacuity: 'none' },
-      flags: args.type === 'ASSUMPTION' ? ['no-rationale'] : [],
+      flags: args.type === 'AXIOM' ? ['no-rationale'] : [],
     },
   };
 }

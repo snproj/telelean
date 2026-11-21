@@ -1,0 +1,76 @@
+# recheck:r1
+
+Agent `a8dcb0e372f2cde9b` of workflow `wf_16a1ea15-88d`. Verbatim output (JSON alongside).
+
+- **summary:** I checked both plans' text against the six findings, the runner and core code, and the pinned 4.35 toolchain sources (read-only; nothing was built or run).
+
+AP30-2 to AP30-6 are fixed as described, in both plans:
+- **AP30-2:** using `environment` instead of a "problem" is right. The start path's text for problems blames Lean errors in the person's files.
+- **AP30-3:** the premise holds. In core `review/judge.ts`, `ok` is `!buildFailed && no global finding && no 'facts' problem`, and build findings go into `global`. So the probe's `facts` problem is the only case where `ok` and `stepFindings` disagree.
+
+AP30-1 is only partly fixed:
+- **What is right:** the `init` rule and the explicit `importModules` arguments are correct. On 4.35:
+  - `importModules` defaults to `loadExts := false` and `level := .private`;
+  - `processHeaderCore` imports with `loadExts := true`;
+  - only `regularInitAttr` runs after an import, so `builtin_init` never does;
+  - `IO.RealWorld` is opaque, so with a model that imports only Init, Claude's safe code reaches IO only through `[init]`.
+- **What is missing:** the fix's soundness sentence, "G0 runs before any Lean job (slice 1's runCheck), so no state holding such text is ever built", is true only of `runCheck` today. Slice 2's own 2b3b text says the session engine merges G0's findings into the judgement at every purpose, step purposes included. Producing that judgement means building the very state G0 refuses, and no test pins the order. The `attribute […]` list scope is also loose.
+
+New problems: none blocking or major.
+- **AP30-7 (minor):** the AP30-1 claim is stated without condition but holds only for models whose files import nothing of Lean's beyond Init.
+- **AP30-8 (minor):** predates AP-30, but AP30-2's new slice-3 text relies on it. Slice 3 re-runs `checkBase` mid-session on the base commit, which today's engine cannot do.
+
+Files: /home/zhengyew/telelean/docs/slice2-plan.md, /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/plans/slice3-plan.md, /home/zhengyew/telelean/packages/runner/src/gate/engine.ts, /home/zhengyew/telelean/packages/core/src/gate/g0.ts, /home/zhengyew/telelean/packages/core/src/review/judge.ts.
+- **findings:**
+  - [1]
+    - **id:** AP30-1
+    - **severity:** major
+    - **plan:** both
+    - **where:** slice2-plan §1.1 2b3b, first bullet: 'The engine merges checkFileChanges' findings into the judgement's global, at every purpose (step purposes, stage and final): so ok is false and stepFindings holds them'. The same is in §8, in builder 2b1b's G0 entry and in 'G0's hand-off (S-F6)'. §2.9: LeanCheckEngine judge, finalCheck, writePremise and complete. §6.1 2b3b: no ordering test. §2.1 'No Claude code runs at import': 'G0 runs before any Lean job (slice 1's runCheck), so no state holding such text is ever built', and the list scope 'first in @[…], after a comma, scoped or local inside it, and in attribute […] x'. §6.1 2b2's G0 tests. slice3-plan §2.1 'The meaning walk rides…' and D3-52 ('so no build, check job or scratch file before it runs Claude's IO'). Cheat 24's AP30-1 variant ('before any Lean job runs, so nothing of it is built').
+    - **problem:** The new G0 rule and the explicit importModules arguments are correct on 4.35. But the fix's soundness rests on G0 running before every Lean job, and that is true only of slice 1's runCheck. runCheck returns before syncing the mirror when G0 finds anything, and buildProposal renders only when g0 is empty.
+
+Slice 2's own 2b3b scope tells the session engine to merge G0's findings 'into the judgement's global, at every purpose (step purposes, stage and final): so ok is false and stepFindings holds them'. A judgement needs judgeState over built facts. Read literally, the session path builds, checks and probes the very state G0 refuses. From 2d on, every Formalize is a session.
+
+So a step's check on ws/ holding `@[init] def x : IO Unit := …` would run Claude's IO in the downstream module builds and in the check job, with `<shadow>/.lake` writable. The G0 finding fails that attempt. But IO can rewrite, at that moment, the .olean of a module whose source never changes again, with its trace if needed. That file survives in the mirror, and later probe and check jobs load it after Claude has removed the attribute. That is exactly the attack AP30-1 meant to close. No 2b3b test pins the order.
+
+Smaller gap: the rule applies 'after a comma, scoped or local' to `@[…]` only, and says just 'in `attribute […] x`'. 2b2's tests list only `attribute [init] x`. A scanner that checks only the first name after `attribute [` passes `attribute [simp, init] x` and `attribute [local init] x`.
+    - **fix:** Slice 2, the 2b3b G0 bullet. Put the same text in builder 2b1b's G0 amendment and in §2.1's 'No Claude code runs at import': "G0 runs first, before any Lean job, at every purpose, as runCheck does today. When it finds anything, the engine syncs no mirror and runs no build, check, probe, render or challenge. At step purposes it returns G0's findings as today (`outcome: 'problems'`, counted), with no judgement. At `stage` and `final`, and in `writePremise` and `complete`, it judges the files without facts (`current.facts` undefined, so the judgement has the `facts` problem), with G0's findings merged into `global`, so `ok` is false. Merging G0's findings never builds the state G0 refused."
+
+2b3b test, with the fake refreshFacts as a spy: ws/ holding `@[init] def x : IO Unit := pure ()` at check, freeze, gate-proved, judge, finalCheck, writePremise and complete gives G0's `metaprogramming` finding, and refreshFacts and renderStatements are never called.
+
+§2.1's rule should read: "in `@[…]` and in `attribute […] x` alike: first in the list, or after a comma, `scoped` or `local`". 2b2's tests add `attribute [simp, init] x`, `attribute [local init] x` and `attribute [builtin_init] x`.
+
+Slice 3: D3-52 cites 2b3b's ordering beside the G0 rule. Cheat 24's `@[init]` variant also runs in 3d through the runner: a FakeBackend step that writes it gets G0's finding, and the same spy sees no Lean job.
+  - [2]
+    - **id:** AP30-7
+    - **severity:** minor
+    - **plan:** both
+    - **where:** slice2-plan §2.1: the probe-file paragraph ('so no earlier Lean job of a refresh runs Claude's IO') and 'No Claude code runs at import'. D2-75 ('That rests on two more things (AP30-1)'). slice3-plan §2.1 'The meaning walk rides…' and D3-52 ('Nor can model code run at import'). runner semantic/project.ts, which keeps external header imports and filters only for ordering.
+    - **problem:** The guarantee is stated without conditions, but it holds only while the model's own files import nothing of Lean's beyond Init. G0 refuses non-project imports only in Claude's lines. The person's lines may `import Lean`: refresh keeps such header imports, and Lean imports are transitive.
+
+Every model module downstream of such a file then has access to:
+- Lean's builtin elaborator attributes `command_elab`, `term_elab`, `tactic` and `delab`, usable on a plain `def` with no `elab` or `macro` token;
+- macro commands that expand to `initialize`, such as `register_option` and `register_simp_attr`.
+
+G0 lists none of them. For example, `@[command_elab Lean.Parser.Command.check] def e : Lean.Elab.Command.CommandElab := fun _ => do IO.FS.writeFile … ; Lean.Elab.throwUnsupportedSyntax` runs at every later `#check`, in downstream builds and in the check job, with `.lake` writable. The same code can print forged JSON lines into the check's stdout.
+
+The person's model today imports only its own modules, so none of this is reachable now.
+    - **fix:** Smallest fix: state the condition and log the residual. Add to §2.1's AP30-1 bullet, D2-75 and D3-52: "This holds for a model whose files import only its own modules (Init is always there). A person's file that imports one of Lean's modules gives Claude's modules Lean's elaborator attributes (`command_elab`, `term_elab`, `tactic`, `delab`) and the `register_*` commands, which run code in later Lean jobs. This is logged, not closed: telelean's models import nothing but their own modules."
+
+Or close it in 2b3a: `checkBase` refuses, before anything is sent to Claude, a B whose files import a module outside the project, with the notice "your files import ‹module›: telelean checks Claude's work only on models that import nothing but their own modules". Add a test.
+  - [3]
+    - **id:** AP30-8
+    - **severity:** minor
+    - **plan:** slice3
+    - **where:** slice3-plan §2.1 'Base facts' ('the first judge after a window load runs checkBase once more on the base commit … The file is replaced whatever checkBase answers about B's probe'). §5.2 'The upgrade' ('it runs checkBase at once, in every phase'). §1.1 3p's gate/engine.ts bullet. runner gate/engine.ts checkBaseNow (lines 501-510). shadow/workspace.ts syncMirror(), which takes no commit.
+    - **problem:** This predates AP-30, but AP30-2's new slice-3 text relies on it.
+
+Today's checkBaseNow refuses whenever ws/ differs from the base commit, with "the working copy changed before telelean built your files; start the run again". It also builds whatever `shadow.syncMirror()` copies, which is always ws/. Slice 3 re-runs it in a stage, during a queue and in confirming, and in all of them ws/ ≠ B.
+
+So, as built, the re-check never replaces base-facts.json. Comparisons with B stay keyless and approximate, the final check refuses them as inexact, and an upgraded session can never apply (3d's upgrade test would fail). A builder who only drops the guard would instead store the head's facts as B's. A `{ from: 'base' }` freeze would then compare the head with itself and pass. No sub-slice is given the mirror change.
+    - **fix:** 3p's scope (runner): `checkBase` gets a base-commit mode, used by the re-check and by `recover()`'s upgrade. In that mode it:
+- syncs the mirror from `shadow.filesAt(baseCommit)` (shadow/workspace.ts: `syncMirror(files?)`), with no working-copy refusal;
+- builds, probes and writes base-facts.json for that commit;
+- drops the run's clean-mirror cache, so the next judge syncs ws/ and rebuilds the head.
+
+Test in 3p (fake refresh, real shadow): a re-check in a stage whose head differs from B writes facts with B's keys and the `meaning` marker, and the next judge builds the head's files.

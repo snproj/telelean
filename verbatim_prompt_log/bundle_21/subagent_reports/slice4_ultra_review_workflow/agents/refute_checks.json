@@ -1,0 +1,64 @@
+{
+  "verdicts": [
+    {
+      "id": "S4M-1",
+      "real": true,
+      "severity": "blocker",
+      "reason": "Confirmed in the plan text. While its queue runs, a TransformFreeze stores only the unit's text (§2.3, §3.11). The step limits, G5, B.4 and new-axiom read S₀, which is taken before the typed write, and they excuse typed units (§3.9). Pending values are then filled from the queue-end judgement (§3.10 step 4), which Claude has already shaped. So typed Lean has no reference meaning when Claude acts. I checked the Lean side in Lean 4.35's Lean/Meta/Coe.lean: expandCoe unfolds coe_decl projections under withReducibleAndInstances and head-betas the result. A user Coe instance therefore disappears from the elaborated term. That means no RV-5 mention edge, no place in R_stmt (so no b4 belief, and a group Accept can take it), and the backstop's (b) exempts it. D4-23's residual claim (\"its own item, on which your typed item depends\") is false for coercions. It does hold for ordinary instances and for shadowing names, which do show up in the term. One limit the critic misstates: no S₀ declaration may elaborate through the same coercion, or the step limits' meaningKey comparison refuses the step. That limit makes the attack narrower, not impossible. FZ-3 requires refusing a meaning change to frozen content, and typed content is frozen by TR-5. App B defines the baseline as \"committed by telelean with Lean facts rebuilt\", and the plan dropped that. This is the same structure as slice 3's F1 blocker (frozen content the table never really held). The person must still accept a visible instance item, but RV-7 lets them do that in bulk."
+    },
+    {
+      "id": "S4M-2",
+      "real": true,
+      "severity": "blocker",
+      "reason": "I checked the trash case against built code and found nothing that catches it. The built new-axiom rule (packages/core/src/gate/sessionRules.ts, sessionNewAxiomFindings, allowance 1) lets through any axiom that B had with the same name and type, whether or not a card binds it. holdsKindFindings iterates only current.nodes, so an unbound .holds is never examined. The step limits and G5 compare with S₀, taken before the write, where both declarations exist. computeItems and the backstop compare B with W and with F, where the declarations are unchanged, so they produce no item, no unowned difference and no own-accept. B.2 (noHiddenEdgeFindings, which uses direct.ids) never sees an axiom that no card binds. T10 assumes the build fails, but restoring the deleted declarations verbatim makes it build. That is a plausible LLM reading of \"fix or mark broken\", not only an adversarial one. The spec's backstop lists declarations \"relative to the session's baseline\" (B plus what was typed), and D4-1 replaced that with B. The result is S9's hidden Prop axiom, with a proof resting on it, reaching Apply with no item and no refusal (RV-1, §14.5). The worded_by sub-case is also real, since G5 compares with S₀ and the backstop compares B with F. But wordedBy only drives the italic mark and `endorsed`, so that sub-case alone would be minor. The severity comes from the trash case."
+    },
+    {
+      "id": "S4M-3",
+      "real": true,
+      "severity": "major",
+      "reason": "Real contradiction in the §2/§3 contracts. Per §2.2, a block unit is only {card, present}, and the line unit's field list has no id or asserted lines. §3.10 says a new block unit owns \"all its lines and bound declarations\" when it has W's value. Read literally, the block exists in W, so Claude's Why, stance, source, pin, statement with its .holds axiom, and arrow entries in the person's new card all become typed-owned and accepted as yours. That happens in the default TR-4 new-card flow, where the fields start fuzzy, and it would let Claude's axiom statement skip its own Accept. Read as exact equality instead, any line Claude adds makes the block unowned and the flow fails. Slices 2–3 would also leave a new block that no ledger premise or card wrote unowned. The prose (\"owned field by field\") and the 4h test (\"Formalize item plus the typed item\") show that per-field ownership is intended. The tests would probably push a builder away from the unsafe reading, so this is not a blocker. Even so, no rule says which item owns Claude's non-statement lines in a block the person created."
+    },
+    {
+      "id": "S4M-4",
+      "real": true,
+      "severity": "major",
+      "reason": "Confirmed. RV-5 rule 3 (slice 2 §4.5) covers only arrow items. A typed Why line has no Lean, so rule 1 gives it no edge. §3.10's auto-accept fixpoint reads only RV-5 dependencies. D4-26 lets the person decline Claude's Add with Transform. typed:N is then accepted as yours at the queue end while the Add has gone back to review, which breaks §14.4. A later Reject of the Add reverts the block without listing typed:N, against RV-5 bullet 3's confirmation. That leaves slice 2's \"disappeared\" problem, which blocks Apply (fail-closed but confusing). For a typed entry into the person's own card, it can leave a premises id naming a removed card, which the backstop's typed-arrow rule passes. No hidden belief results, but a core guarantee of the review model fails in a natural flow."
+    },
+    {
+      "id": "S4M-5",
+      "real": true,
+      "severity": "major",
+      "reason": "The gap is real, with one correction. Accepting a Formalize or Change freezes the card's sentence at B's value (slice 3 §3.3/§3.7, RV-4). D4-29 leaves Claude's statement and mirror untouched, so `touched` (content replaced) is empty. frozen.held is keyed by declaration names, so §3.8's cascade misses the item, and §3.11 never revalues accepted reasons. Correction: §3.9's \"compared with that value only\" applies at step purposes, so the step most likely passes rather than failing every time. The queue-end stage judge then compares B's accepted value with the typed value and reports a frozen problem on the person's own sentence. That problem blocks Apply until they unfreeze, which also removes their own transform reason, or decline. So it is not silent, but RV-5 bullet 3's confirm-first cascade is skipped in a very natural flow: accept Claude's formalisation, then reword the sentence."
+    },
+    {
+      "id": "S4M-6",
+      "real": true,
+      "severity": "major",
+      "reason": "Confirmed. §2.8 limits mark_proof_broken to dependents.proofs, and §3.4 derives dependents only from the person's changes. D4-20 refuses only a typed statement change, not an open one. Proof 'keep' has no field state, so the step limits fix C.holds. When Claude reformalises an open statement, as invited by the TR-15 reason and the [Unfreeze its Lean statement] button in TR-13 bullet 2's warning, the card's kept proof and any proof that uses its .holds break, and Claude has no permitted remedy. This also covers rewording any axiom that a proof uses. The critic overstates one point: Claude can undo its change and finish `cannot`, so the transform can pass. But the requested reformalisation is then impossible, and TR-14's \"a proof that stops building because of the transform becomes Proof broken\" is narrowed with no logged decision."
+    },
+    {
+      "id": "S4M-7",
+      "real": true,
+      "severity": "major",
+      "reason": "Confirmed. §3.5 step 3 updates the docstring mirror of the person's own statement whenever it equals the old sentence. That is the normal D-9 convention, as in the Spyro fixture. Slice 3 §3.2's statement value includes the abbrev text with its docstring, so the statement lands in typedKeys and gets a pending TransformFreeze on the whole declaration's text. TransformScope.open is computed at step start, before that freeze exists, but frozen findings win over open. Every reformalisation then fails `frozen` on every attempt. This breaks exactly the combination the plan names as a needs-Claude reason and recommends in TR-13 bullet 2's warning, and for the common case of a statement the person wrote."
+    },
+    {
+      "id": "S4M-8",
+      "real": true,
+      "severity": "major",
+      "reason": "Confirmed. typedKeys explicitly includes follow-on edits, and §3.11 gives each one a TransformFreeze that lasts until Unfreeze or the session's end. TR-5 and FZ-7 freeze only fields the person filled, and D4-16's direct path freezes no arrows or kinds, so the plan is inconsistent with itself. Besides the later-Formalize, keep-row and D4-20 effects the critic lists, there is a same-step effect. If the person trashes a source of T while T's Dependencies are open or fuzzy, the typed write freezes T.dependencies. propose_arrow into T is then refused (or the gate reports `frozen`), and Claude can continue only through request_unfreeze, so the 'replace this premise' flow stalls. Over-freezing errs on the safe side and Unfreeze recovers, but it departs from the spec and adds real friction in natural flows."
+    },
+    {
+      "id": "S4M-9",
+      "real": true,
+      "severity": "major",
+      "reason": "Confirmed. §3.3 (b) sends only unknown names in statements to `unknown`/sessionNames. Any error in a typed declaration is a problem, and the scratch runs against B. A declaration that names Claude's vocabulary or statements from the same session therefore fails with 'unknown identifier'. D4-6 logs a narrowing only for names not yet defined. It does not say that D4-26's Transform of Claude's Declaration and Vocabulary items, which is TRANSFORM 9 in the user's own words, is refused whenever the definition builds on Claude's vocabulary from the same session, which is common. The workaround, also retyping every referenced declaration in the same window so it joins the scratch in draft order, is obscure."
+    },
+    {
+      "id": "S4M-10",
+      "real": true,
+      "severity": "minor",
+      "reason": "The fidelity gaps are real. Whole-library imports let a changed declaration see declarations that come later in its module or downstream. A changed structure or inductive is declared again beside B's. Vocabulary is checked in draft order. Downgraded because: on the direct path TR-15 explicitly runs no build or gate, so a false pass gives a visibly broken build that one board Undo removes, never a hidden belief or a false proof. In a session, the transform step's build fails closed. The false refusals involve rare operations here: changing an existing type, where this model style mostly declares vocabulary as axioms, and new vocabulary in reverse dependency order, which the draft-order write would break in place too."
+    }
+  ]
+}

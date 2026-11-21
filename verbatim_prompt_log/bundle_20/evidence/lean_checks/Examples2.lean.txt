@@ -1,0 +1,51 @@
+namespace Spyro
+axiom Character : Type
+axiom Game : Type
+axiom Character.exists : Nonempty Character
+axiom Game.exists : Nonempty Game
+instance : Nonempty Character := Character.exists
+instance : Nonempty Game := Game.exists
+axiom IsPG : Game → Prop
+axiom GoodAddition : Character → Game → Prop
+noncomputable opaque cynder : Character
+noncomputable opaque newSpyro : Game
+def HasDarkPast (_ : Character) : Prop := False
+abbrev cynder_dark_past : Prop := HasDarkPast cynder
+axiom cynder_dark_past.holds : cynder_dark_past
+abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro
+-- (b) the explicit form:
+theorem s2_explicit : cynder_not_good := False.elim cynder_dark_past.holds
+#print axioms s2_explicit
+end Spyro
+
+namespace Spyro2
+/-! S5: the turn-1 "belief tucked into a definition" cheat. -/
+axiom Character : Type
+axiom Game : Type
+axiom Character.exists : Nonempty Character
+axiom Game.exists : Nonempty Game
+instance : Nonempty Character := Character.exists
+instance : Nonempty Game := Game.exists
+axiom HasDarkPast : Character → Prop
+axiom IsPG : Game → Prop
+axiom GoodAddition : Character → Game → Prop
+noncomputable opaque cynder : Character
+noncomputable opaque newSpyro : Game
+abbrev cynder_dark_past : Prop := HasDarkPast cynder
+axiom cynder_dark_past.holds : cynder_dark_past
+abbrev new_spyro_pg : Prop := IsPG newSpyro
+axiom new_spyro_pg.holds : new_spyro_pg
+/-- c is in game g -/
+def InGame (c : Character) (g : Game) : Prop := GoodAddition c g   -- the smuggled belief
+abbrev pg_no_dark_past : Prop := ∀ (g : Game) (c : Character), IsPG g → HasDarkPast c → ¬ InGame c g
+axiom pg_no_dark_past.holds : pg_no_dark_past
+abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro
+theorem cynder_not_good.holds : cynder_not_good :=
+  pg_no_dark_past.holds newSpyro cynder new_spyro_pg.holds cynder_dark_past.holds
+#print axioms cynder_not_good.holds
+
+/-! S1: a weakened goal is trivially provable. -/
+abbrev cynder_not_good_weak : Prop := ¬ GoodAddition cynder newSpyro ∨ True
+theorem cynder_not_good_weak.holds : cynder_not_good_weak := Or.inr trivial
+#print axioms cynder_not_good_weak.holds
+end Spyro2

@@ -1,12 +1,20 @@
 /**
- * M2 runs on the board (docs/m2-plan.md section 6.4): the tray's run buttons (AT6.1), the run panel's status line,
- * notices, activity and states (AT6.2), and another subject's run as one compact line (AT6.11).
+ * M2 runs on the board (docs/m2-plan.md section 6.4): starting a run, now "Formalize for dependencies" in the Context
+ * Menu section that replaced the tray (AT6.1; spec v4.1 ES-2, CM-3), the run panel's status line, notices, activity and
+ * states (AT6.2), and another subject's run as one compact line (AT6.11).
  */
 import { expect, test } from '@playwright/test';
-import { hostMessage, spyroGraph, type RunNotice } from '@telelean/core';
-import { workspaceState } from '../shared/graphs';
+import { hostMessage, spyroGraph, type RunNotice, type TlGraph } from '@telelean/core';
+import { makeNode, workspaceState } from '../shared/graphs';
 import { ALL_PREMISES, RUN_ID, runView, TARGET, UPDATED, waitingRun } from '../shared/runs';
-import { card, openBoard, posted, postedOfType, send, shotPath, type OpenedBoard } from './helpers';
+import { boardMenu, card, cardPoint, clickArrow, menuItem, openBoard, posted, postedOfType, rightClick, send, shotPath, type OpenedBoard } from './helpers';
+
+/** Spyro plus a proposition marked "follows from nothing" (its ∅ mark is an empty question, AR-5). */
+function markedGraph(version = 1): TlGraph {
+  const base = spyroGraph(version);
+  const marked = makeNode('side-claim', 'PROPOSITION', 'Spyro games avoid dark characters', { proof: { kind: 'none' } }, { fromNothing: true });
+  return { ...base, nodes: [...base.nodes, marked], positions: { 'side-claim': { x: 760, y: 60 } } };
+}
 
 let board: OpenedBoard | undefined;
 
@@ -37,45 +45,53 @@ const NOTICES: RunNotice[] = [
   { id: 'n5', at: '2026-11-01T10:03:50.000Z', level: 'error', kind: 'environment', text: 'telelean could not run Lean (low memory): not Claude’s fault, and not counted as an attempt.' },
 ];
 
-test('AT6.1 the tray: "These suffice ▶", "Add to its premises ▶" and "Self-evident?" post startRun; disabled during a run and for an assumption target', async ({ page }) => {
-  board = await openBoard(page, spyroGraph(), 'dark', { workspace: workspaceState() });
-  // These suffice ▶: exactly the selected premises and the target.
-  await card(page, 'cynder-dark-past').click();
-  await card(page, 'new-spyro-pg').click({ modifiers: ['ControlOrMeta'] });
-  await card(page, 'cynder-not-good').click({ modifiers: ['ControlOrMeta'] });
-  await page.getByRole('button', { name: 'These suffice ▶' }).click();
-  // The goal declares three premises; two are selected: "Add to its premises ▶" proves it from the union.
-  await page.getByRole('button', { name: 'Add to its premises ▶' }).click();
-  // Only the target: "Self-evident?" replaces "These suffice" and proves from no premises.
-  await card(page, 'cynder-not-good').click();
-  await expect(page.getByRole('button', { name: /These suffice/ })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Self-evident?' }).click();
+test('AT6.1 Formalize for dependencies posts startRun for the selected arrows, or for a ∅ mark from no premises; disabled during a run, with the reason', async ({ page }) => {
+  board = await openBoard(page, markedGraph(), 'dark', { workspace: workspaceState() });
+  const formalize = page.getByTestId('formalize');
+  // Two of the goal's arrows: exactly their sources.
+  await clickArrow(page, 'cynder-dark-past', TARGET);
+  await clickArrow(page, 'new-spyro-pg', TARGET, true);
+  await formalize.click();
+  await expect(formalize).toBeEnabled(); // the host answered the start (no run follows here)
+  // All of its arrows ("Select incoming arrows" in its right-click menu).
+  await rightClick(page, await cardPoint(page, TARGET));
+  await menuItem(page, 'select-incoming').click();
+  await expect(boardMenu(page)).toHaveCount(0);
+  await formalize.click();
+  await expect(formalize).toBeEnabled();
+  // A "follows from nothing" mark: the empty question, from no premises at all (M2's "Self-evident?").
+  const stub = await page.locator('[data-mark-id="side-claim"] .tl-mark__hit').boundingBox();
+  if (!stub) throw new Error('no ∅ stub');
+  await page.mouse.click(stub.x + stub.width / 2, stub.y + stub.height / 2);
+  await expect(page.getByTestId('context-summary')).toHaveText('the "follows from nothing" mark of “Spyro games avoid dark characters”');
+  await formalize.click();
   expect((await postedOfType(page, 'startRun')).map((m) => m.payload)).toEqual([
     { target: TARGET, premises: ['cynder-dark-past', 'new-spyro-pg'], requestId: 'r1' },
     { target: TARGET, premises: [...ALL_PREMISES], requestId: 'r2' },
-    { target: TARGET, premises: [], requestId: 'r3' },
+    { target: 'side-claim', premises: [], requestId: 'r3' },
   ]);
   expect(await postedOfType(page, 'theseSuffice')).toEqual([]);
 
-  // A run of this model folder is active (here: another subject's): the buttons are disabled, with the reason.
+  // A run of this model folder is active (here: another subject's): Formalize is disabled, with the reason.
   await send(page, hostMessage('run', { run: runView({ subject: 'Bayonetta', target: 'bayo-not-good', premises: [] }) }));
-  await expect(page.getByRole('button', { name: 'Self-evident?' })).toBeDisabled();
-  await expect(page.getByTestId('tray-blocked')).toHaveText('Claude is already working on Bayonetta: wait for it to finish, or cancel it.');
-  await card(page, 'cynder-dark-past').click({ modifiers: ['ControlOrMeta'] });
-  await expect(page.getByRole('button', { name: 'These suffice ▶' })).toBeDisabled();
+  await expect(formalize).toBeDisabled();
+  await expect(page.getByTestId('formalize-reason')).toHaveText('A run is active. Claude is already working on Bayonetta: wait for it to finish, or cancel it.');
   // A run of this subject waiting in review blocks too.
   await send(page, hostMessage('run', { run: runView({ state: 'review', proposalId: 'p1' }) }));
-  await expect(page.getByTestId('tray-blocked')).toContainText('waiting for your review');
-  await page.screenshot({ path: shotPath('m2-tray-blocked.png') });
+  await expect(page.getByTestId('formalize-reason')).toContainText('waiting for your review');
+  await page.screenshot({ path: shotPath('m2-formalize-blocked.png') });
 
-  // No run: an assumption as the target (chosen with ⊢) is refused: make it a Derivation first.
+  // No run: arrows into two propositions are not one question (AP-9); the disabled button sends nothing.
   await send(page, hostMessage('run', { run: null }));
-  await card(page, 'new-spyro-pg').click();
-  await card(page, 'cynder-dark-past').click({ modifiers: ['ControlOrMeta'] });
-  await page.getByRole('button', { name: 'Make "Cynder is a character who has a dark past" the target' }).click();
-  await expect(page.getByRole('button', { name: 'These suffice ▶' })).toBeDisabled();
-  await expect(page.getByTestId('tray-blocked')).toHaveText('An assumption is something you hold: make it a Derivation first, then prove it.');
-  await page.getByRole('button', { name: 'These suffice ▶' }).click({ force: true });
+  await expect(formalize).toBeEnabled();
+  await clickArrow(page, 'cynder-dark-past', TARGET);
+  await page.keyboard.down('ControlOrMeta');
+  await page.mouse.click(stub.x + stub.width / 2, stub.y + stub.height / 2);
+  await page.keyboard.up('ControlOrMeta');
+  await expect(page.getByTestId('context-summary')).toHaveText('1 arrow into “Cynder would not be a good addition to …” · the "follows from nothing" mark of “Spyro games avoid dark characters”');
+  await expect(formalize).toBeDisabled();
+  await expect(page.getByTestId('formalize-reason')).toHaveText('Select arrows into one card: several targets come with the review list.');
+  await formalize.click({ force: true });
   expect(await postedOfType(page, 'startRun')).toHaveLength(3);
 });
 
@@ -184,15 +200,16 @@ test('AT6.2 the run states: starting, proving, waiting (clock paused), checking,
   await expect(page.getByTestId('run-badge')).toHaveCount(0);
 });
 
-test('on a narrow board the run panel goes below the board, which keeps its three readable columns; toasts stay above the panel', async ({ page }) => {
+test('on a narrow board the run panel goes below the board, which keeps a readable AXIOMS column and its canvas; toasts stay above the panel', async ({ page }) => {
   await page.setViewportSize({ width: 900, height: 800 });
   board = await openBoard(page, spyroGraph(), 'dark', { workspace: workspaceState(), run: waitingRun(), clock: UPDATED });
   const panel = await page.getByTestId('run-panel').boundingBox();
-  const columns = await page.locator('.tl-board-scroll').boundingBox();
-  if (!panel || !columns) throw new Error('missing boxes');
-  expect(panel.y).toBeGreaterThanOrEqual(columns.y + columns.height - 1);
-  expect(panel.width).toBeGreaterThan(columns.width - 2);
-  for (const width of await page.locator('.tl-col').evaluateAll((cols) => cols.map((c) => c.getBoundingClientRect().width))) expect(width).toBeGreaterThanOrEqual(219.5);
+  const area = await page.locator('.tl-board-area').boundingBox();
+  if (!panel || !area) throw new Error('missing boxes');
+  expect(panel.y).toBeGreaterThanOrEqual(area.y + area.height - 1);
+  expect(panel.width).toBeGreaterThan(area.width - 2);
+  expect((await page.locator('.tl-axioms').boundingBox())?.width).toBeGreaterThanOrEqual(219.5);
+  expect((await page.locator('.tl-canvas').boundingBox())?.width).toBeGreaterThan(300);
   await send(page, hostMessage('notice', { id: 't1', level: 'info', text: 'A notice', undoable: false }));
   const toast = await page.getByTestId('toasts').boundingBox();
   if (!toast) throw new Error('no toasts');

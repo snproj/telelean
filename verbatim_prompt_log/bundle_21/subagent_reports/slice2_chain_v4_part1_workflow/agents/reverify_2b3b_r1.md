@@ -1,0 +1,134 @@
+# reverify:2b3b:r1
+
+Agent `ab0a127d611778c44` of workflow `wf_4dd05c42-199`. Verbatim output (JSON alongside).
+
+- **summary:** Re-verification of fix round 1 for 2b3b. All 12 findings are resolved; I judged none of them wrongly rejected. Three small new problems remain: two minor and one nit.
+
+How I checked:
+- I traced every change against the plan (§2.6, §2.9, §3.5, §3.8, §3.10) and against core's reconcile, closure and judge code. The fixer changed exactly the 11 files it listed; I compared before.diff and after.diff to confirm this.
+- I undid each fix in a scratch mirror of the runner (copies only; the repo's node_modules linked read-only) and ran the new tests: 20 runs in all. The 17 valid runs that undo a fix all fail, and every mirror file was restored and checked with cmp.
+- With real Lean, I re-ran ADV-2's original starvation evidence (memory caps 60M and 30M, time limits 1 ms and 300 ms). Each draft is now left out, and the next judge with normal limits reports closesGap true. In the original evidence all four were false.
+
+Typecheck and tests:
+- tsc: clean for all five configs.
+- vitest core: Test Files 76 passed (76), Tests 1133 passed (1133).
+- vitest webview: 19 passed (19), 314 passed (314).
+- vitest extension (--no-cache): 22 passed (22), 205 passed (205).
+- runner, with real Lean:
+  - gate/sessionPure, gate/pure and proposal/accept: 3 files, 55 passed.
+  - gate/session: 1 file, 26 passed.
+  - gate/engine, gate/rules and run/manager.rounds: 3 files, 64 passed.
+  - proposal/ and integration/m2flow: 7 files, 45 passed | 7 skipped. proposal/build skips its own real-Lean tests below 12 GiB available; about 11.5 GiB was available then. That file is untouched by the fix.
+
+New problems:
+- R1-1 (minor): no test covers a completion that becomes due after a decision. That is the case the fixer chose the newest-commit rule for. A narrower rule that breaks it passes all 26 session tests.
+- R1-2 (minor): the plan still says a failed completion is taken out by returning ws/ to the adopt commit. Under the new contract the completion's parent can be a later commit, so 2f could discard later decisions.
+- R1-3 (nit): one real-Lean assertion no longer proves the re-check its comment claims.
+
+Effects outside my scratch dir:
+- vitest's config loader rewrote the existing, empty node_modules/.vite-temp folders at the repo root and in core, webview and runner. Only their modification times changed.
+- capped.sh and runLean created transient systemd user scopes; none is left.
+- git status is unchanged, and nothing in packages/extension/dist or packages/extension/out was written.
+- **resolved:**
+  - [1]
+    - **id:** F-FC-1
+    - **how:** premiseRechecks now keeps a PremiseCheckMemo { reliance, closesGap, facts, consts } per draft (engine.ts:370-375, 1485-1495). When the reliance key is unchanged, `judge` reports the last outcome again with no Lean job, so a judge whose judge-apply was dropped loses nothing. Reconcile step 5 handles a repeat safely: it skips a to-be-redone record that is already reverted (reconcile.ts:396-406). Tests: the canned re-check test (an unrelated decision commit gives the same closesGap false with no extra leanStdin call) and the real-Lean judge tests. Undoing the re-emission in the mirror (V01) fails the canned test ('expected undefined to deeply equal …').
+  - [2]
+    - **id:** A-V2B3B-ADV-3
+    - **how:** Same defect and same fix as F-FC-1: the memo keeps the outcome and re-emits it when the reliance key matches. Verified by V01, and by the real-Lean reliance test, where draft B keeps its outcome across two decision commits with no scratch job.
+  - [3]
+    - **id:** F-FC-2
+    - **how:** completeNow takes the newest commit as the state the completion is written on and checks what it holds, never its kind: a ledger `premise` entry for the item, the premise's card in that state, and T not a `theorem` there (engine.ts:1751-1761). The new freeze, challenge and gate all come from that state. The real-Lean test plays recover(): revertTo(adopt) makes the newest commit `revert`, and the replayed completion passes. Putting the strict adopt-head rule back (V02) fails it with "…must start from its premise's adopt commit (the newest commit is revert)". The due-later case is handled by the same code but has no test of its own: see R1-1.
+  - [4]
+    - **id:** F-FC-3
+    - **how:** Each cleanModels entry now stores sessionContextKey(ctx.session), a hash of inferences, ledger, items, premises, ended, rejectedArrows, scope, stepStartCommit and noAlternative. checkGhostNow reuses a cached judgement only under the same key; otherwise it runs the clean check again (engine.ts:1235-1251, session.ts:258-261). The real-Lean test runs a ghost check right after a ledger-only arrow and passes using Spyro.new_spyro_pg.holds. Ignoring the key (V03) reproduces the original refusal: 'outside the permitted set: `Spyro.new_spyro_pg.holds`'.
+  - [5]
+    - **id:** F-FC-4
+    - **how:** stepStartModel runs G0 on S₀'s files before it reuses or builds them (engine.ts:704-708). When G0 finds anything, nothing is synced or built, and the step's check is an environment outcome. The G0-first test now covers an S₀ holding `@[init]` with a clean ws/: the outcome is environment, and refreshFacts and syncMirror are never called. Disabling the check (V04) fails it.
+  - [6]
+    - **id:** F-FC-5
+    - **how:** checkGhost throws a TypeError in a session when ghost.leanName is missing or empty (engine.ts:1212-1214); without a session nothing changes. The only existing caller passes no session (manager.ts:2128), so it is unaffected. The validation test covers a missing name, an empty name and the no-session path. Removing the check (V05) fails it.
+  - [7]
+    - **id:** A-V2B3B-ADV-1
+    - **how:** relianceKey now walks core's reach(…, 'uses') from four starting points: the footprint, draftReach's names, T's statement, and proofConsts (the check theorem's value and type constants, kept in the memo). It hashes the meaning, with axioms, of every name the walk reaches (session.ts:226-249). Pure tests cover a reworded source behind a footprint `.holds`, a lemma removed or changed (including what its proof uses), and a definition only T's statement reaches. The real-Lean test rewords a source, then removes a lemma, and checks the re-check counts. Putting the old name set back fails both: V07 fails 3 pure tests, and V06 fails the real-Lean test.
+  - [8]
+    - **id:** A-V2B3B-ADV-2
+    - **how:** There is a new ScratchOutcome, `unchecked`, for what telelean could not judge:
+- a run that failed with no message;
+- errors only in telelean's own lines or in the header (GhostScratchResult.errorsAt);
+- no #print axioms answer;
+- B.2 problems that are all UNSEEN_PROOF.
+
+premiseCheck maps environment, budget and unchecked to undefined: the draft is left out and nothing is remembered (engine.ts:1527-1537). The ghost check still refuses with the same problems. The canned test covers each case; V08 (budget counted as failure), V09 (UNSEEN_PROOF counted as the suggestion's) and V18 (header errors ignored) each fail it. My real-Lean probe in the mirror reruns the original evidence with fresh engines: memory caps 60M and 30M, time limits 1 ms and 300 ms. Each gives 'left out' and then closesGap true with normal limits (file rv2b3br1/starve-outcomes.json).
+  - [9]
+    - **id:** A-V2B3B-ADV-4
+    - **how:** Three changes:
+- G0 runs on S₀ (above).
+- complete runs G0 on the state it starts from as well as on the completion (engine.ts:1767).
+- A premise re-check applies core's ghostTextProblems (which includes scanForbidden) before any Lean job (engine.ts:1518).
+
+Tests: the G0-first test (S₀ and the completion's starting state) and the single-term re-check test. Undoing each change fails a test (V04, V15, V14).
+  - [10]
+    - **id:** A-V2B3B-ADV-5
+    - **how:** Three new tests:
+- A completion that also adds `axiom extra_fact : True` is refused by the gate's step findings, with no commit. V12 (step findings ignored) fails it.
+- With a lenient judgeState, a completion that weakens the target's statement is refused by the comparator (definition-mismatch). The fixer's M29 log shows the comparator check is needed.
+- A session ghost check whose statement-probe line is removed from Lean's real answer is refused. V13 fails it.
+  - [11]
+    - **id:** A-V2B3B-ADV-6
+    - **how:** finalCheckNow returns an environment outcome, with nothing built, unless ws/ equals the newest commit's files (engine.ts:1568-1579). ApplyRequest.finalState is now required, with a runtime TypeError before anything is read (service.ts:356). Tests: ws/ ahead of the newest commit, and a stray commit ws/ is not at; planApply without finalState rejects with no read. V10 (ws/ check dropped) and V17 (TypeError dropped) fail them. V16 only re-adds the `?? currentFiles()` default; that code sits behind the TypeError and never runs, so the mutation changes nothing.
+  - [12]
+    - **id:** A-V2B3B-ADV-7
+    - **how:** completeNow refuses when ctx.freeze.selection.target is not the premise's target (engine.ts:1743-1745). The early-refusal test checks the exact message. Removing the check (V11) fails it.
+- **findings:**
+  - [1]
+    - **id:** R1-1
+    - **severity:** minor
+    - **where:** packages/runner/test/gate/session.test.ts: complete tests at 699-727 and 1170-1272, for engine.ts:1751 (completeNow's starting state)
+    - **problem:** No test covers a completion that becomes due after a decision. That is F-FC-2's second case; the finding asked for a test of it, and the fixer's decision 5 (the newest commit, checked by content) was chosen over the narrower rule to handle exactly this case.
+- Every passing completion in the tests starts from the adopt state or a `revert` copy of it.
+- The only test with a decision-commit parent is a refusal ("already proved").
+
+So a regression to the narrower rule would go unnoticed, and a premise written while T was proved would never be completed once T's Result is taken out.
+    - **fix:** Add a real-Lean test. Start from the adopt state of the premise flow and commit a `decision` that also changes something unrelated, so its files differ from the adopt commit's (for example another card's docstring). Write the completion on that head and assert that complete passes: commit kind `completion`, and the newest frozen copy holds the decision's change.
+    - **evidence:** In my scratch mirror I added the narrow alternative after the three precondition checks: a parent that is not an adopt commit must have exactly the last adopt commit's files, else refuse. All 26 tests of session.test.ts still passed (V20 in /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/rv2b3br1/mutation-results.jsonl; log at …/rv2b3br1/logs/mut-V20.log).
+  - [2]
+    - **id:** R1-2
+    - **severity:** minor
+    - **where:** docs/slice2-plan.md §3.8 lines 1693 and 1699, and §6.1 (2f tests) line 2570
+    - **problem:** The plan still says a failed completion is taken out by returning ws/ to the `adopt` commit (1693, and 2570: "ws/ at the adopt commit"). It also says the completion "always starts from the `adopt` commit" (1699).
+
+The fixer's new complete contract, written into §3.8's completion bullet and §2.9's note, lets the completion be written on a later commit: after a crash replay's `revert`, or when it becomes due after a decision. In the due-later case, a 2f that follows the failure bullet literally would revert ws/ to the old adopt commit. That would discard every decision made after it (for example the person's Reject of T's Result), and ws/ would no longer match the records.
+    - **fix:** In §3.8's failed-completion bullet and in §6.1's 2f test line, say "ws/ returns to the write's parent (the head the completion was written on; the adopt commit when it runs right after its premise write), as a `revert` commit". In the due-writes paragraph, limit "so that the completion always starts from the adopt commit" to the completion that the premise write's step 4 enqueues.
+    - **evidence:** Line 1691 (with the fixer's note) says "from the state the completion is written on, … the adopt commit or a later one after a crash replay or a decision". Lines 1693, 1699 and 2570 are unchanged from before the fix.
+  - [3]
+    - **id:** R1-3
+    - **severity:** nit
+    - **where:** packages/runner/test/gate/session.test.ts:1163-1167 (test 'judge checks a draft again when its reliance changed…')
+    - **problem:** The comment says that once the written premise joins E(T), the other draft "is checked again". Since outcomes are now re-emitted, the assertion `Object.keys(written.judgement.premiseChecks ?? {})).toEqual([otherItem])` holds whether or not the draft was re-checked. Before the fix, the key's presence alone proved a re-check, so this part of the test is now weaker.
+    - **fix:** After the `written` judge, add `expect(scratch).toHaveBeenCalledTimes(2);`. The spy is still active at that point.
+    - **evidence:** A probe in my mirror read the spy at that point: `scratch` had been called 2 times. So the behaviour holds, but nothing asserts it (log at /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/rv2b3br1/probe-p1.log).
+- **checks_run:**
+  - Diffed each of the 11 changed files against /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/f2b3br1/backup and compared before.diff with after.diff by file: exactly these 11 files changed, and nothing in the repo is newer than after.diff.
+  - capped.sh 1800 tsc --noEmit -p packages/core/tsconfig.test.json: exit 0, no output.
+  - capped.sh 1800 tsc --noEmit -p packages/runner/tsconfig.test.json: exit 0, no output.
+  - capped.sh 1800 tsc --noEmit -p packages/webview/tsconfig.json: exit 0, no output.
+  - capped.sh 1800 tsc --noEmit -p packages/webview/tsconfig.node.json: exit 0, no output.
+  - capped.sh 1800 tsc --noEmit -p packages/extension/tsconfig.json: exit 0, no output.
+  - core, with TMPDIR=<scratch>/tmp: capped.sh 1800 timeout 900 vitest run --no-cache --fsModuleCachePath=<scratch>/fsmc --maxWorkers=1. Result: 'Test Files  76 passed (76)', 'Tests  1133 passed (1133)'.
+  - webview, same command: 'Test Files  19 passed (19)', 'Tests  314 passed (314)'.
+  - extension, same command (--no-cache): 'Test Files  22 passed (22)', 'Tests  205 passed (205)'. Nothing under packages/extension/out or dist is newer than my start.
+  - runner, with TMPDIR and TELELEAN_TEST_TMP in scratch, capped 3000, timeout 900: test/gate/sessionPure, test/gate/pure and test/proposal/accept. Result: 'Test Files  3 passed (3)', 'Tests  55 passed (55)'.
+  - runner, test/gate/session.test.ts (real Lean): 'Test Files  1 passed (1)', 'Tests  26 passed (26)', 63.6 s.
+  - runner, test/gate/engine, test/gate/rules and test/run/manager.rounds: 'Test Files  3 passed (3)', 'Tests  64 passed (64)'.
+  - runner, test/proposal/ and test/integration/m2flow: 'Test Files  7 passed (7)', 'Tests  45 passed | 7 skipped (52)'. The 7 skipped are proposal/build's own real-Lean tests, which skip below 12 GiB available (about 11.5 GiB then); that file is untouched by the fix.
+  - Undid each fix in a scratch mirror of the runner (copied sources, tests, fixtures and mental_model; the repo's node_modules linked read-only), using a script in my scratch dir. 20 runs:
+- V01–V15, V17 and V18 each fail at least one test.
+- V16 only re-adds the `?? currentFiles()` default, which never runs behind the new TypeError.
+- V19 is caught only by the second-completion assertion.
+- V20 (the narrow alternative for F-FC-2) is not caught (see R1-1).
+
+Each mirror file was restored and checked with cmp. Results are in …/rv2b3br1/mutation-results.jsonl; the first V16 and V17 entries are invalid runs (mental_model was missing from the mirror) and were re-run.
+  - Real-Lean starvation probe for ADV-2 in the mirror (zzRvStarve.test.ts): memory caps 60M and 30M and time limits 1 ms and 300 ms each give 'left out', then closesGap true with normal limits. 'Tests  1 passed (1)'.
+  - Probe P1 in the mirror: after the written premise joins E(T), the scratch check had been called 2 times, so the other draft is re-checked (see R1-3).
+  - systemctl --user list-units 'telelean-*': none left. git status --porcelain is unchanged from my start. The repo's existing empty .vite-temp folders had only their modification times changed.

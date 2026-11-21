@@ -165,7 +165,10 @@ export function runBackendFactory(deps: RunBackendDeps): () => Promise<LlmBacken
 // ---------------------------------------------------------------------------------------------
 // Starting a run
 
-/** Why a start is refused while `run` (the root's current run) is active; undefined when there is none. */
+/**
+ * Why a start is refused while `run` (the root's current run) is active; undefined when there is none. Slice 2d: a
+ * mid-stage `formalize` (with `runId` and `stage`) is no start, so the board never asks this for it.
+ */
 export function busyRefusal(run: RunView | null | undefined): string | undefined {
   if (!run || isTerminalRunState(run.state)) return undefined;
   switch (run.state) {
@@ -183,6 +186,8 @@ export function busyRefusal(run: RunView | null | undefined): string | undefined
 /** Run messages whose success the board also shows as a toast (an answer or a dismissal shows in the run panel itself). */
 export const RUN_SUCCESS_NOTICES: ReadonlySet<RunRequestType> = new Set<RunRequestType>([
   'startRun',
+  'formalize',
+  'retryStep',
   'cancelRun',
   'resumeRun',
   'acceptProposal',

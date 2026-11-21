@@ -153,16 +153,15 @@ describe('AT1.10 decisions.json', () => {
 describe('proposalLabel', () => {
   const TARGET = 'Cynder would not be a good addition to the new Spyro game';
   it('names the verdict, the target sentence (cut to 60 characters) and the extras', () => {
-    expect(proposalLabel('proved', TARGET, { lifecycle: 0, adoptedGhosts: 0 })).toBe(`These suffice → proved: ${TARGET}`);
-    expect(proposalLabel('proved', TARGET, { lifecycle: 1, adoptedGhosts: 0 })).toBe(`These suffice → proved: ${TARGET} (+ Make Derivation)`);
-    expect(proposalLabel('proved', TARGET, { lifecycle: 1, adoptedGhosts: 1 })).toBe(`These suffice → proved: ${TARGET} (+ Make Derivation) (+ 1 adopted assumption)`);
-    expect(proposalLabel('not-proved', TARGET, { lifecycle: 0, adoptedGhosts: 2 })).toBe(`These suffice → not proved: ${TARGET} (+ 2 adopted assumptions)`);
-    expect(proposalLabel('gave-up', TARGET, { lifecycle: 0, adoptedGhosts: 0 })).toBe(`These suffice → not proved: ${TARGET}`);
-    // Fixer round 1: a run with no premises is a "Self-evident?" run.
-    expect(proposalLabel('not-proved', TARGET, { lifecycle: 0, adoptedGhosts: 0, premises: 0 })).toBe(`Self-evident? → not proved: ${TARGET}`);
-    expect(proposalLabel('proved', TARGET, { lifecycle: 1, adoptedGhosts: 1, premises: 0 })).toBe(`Self-evident? → proved: ${TARGET} (+ Make Derivation) (+ 1 adopted assumption)`);
-    expect(proposalLabel('proved', TARGET, { lifecycle: 0, adoptedGhosts: 0, premises: 2 })).toBe(`These suffice → proved: ${TARGET}`);
+    expect(proposalLabel('proved', TARGET, { adoptedGhosts: 0 })).toBe(`Formalize → proved: ${TARGET}`);
+    expect(proposalLabel('proved', TARGET, { adoptedGhosts: 1 })).toBe(`Formalize → proved: ${TARGET} (+ 1 adopted axiom)`);
+    expect(proposalLabel('not-proved', TARGET, { adoptedGhosts: 2 })).toBe(`Formalize → not proved: ${TARGET} (+ 2 adopted axioms)`);
+    expect(proposalLabel('gave-up', TARGET, { adoptedGhosts: 0 })).toBe(`Formalize → not proved: ${TARGET}`);
+    // Fixer round 1: a run with no premises; spec v4.1 (slice 1e): its question was the "follows from nothing" mark.
+    expect(proposalLabel('not-proved', TARGET, { adoptedGhosts: 0, premises: 0 })).toBe(`Follows from nothing? → not proved: ${TARGET}`);
+    expect(proposalLabel('proved', TARGET, { adoptedGhosts: 1, premises: 0 })).toBe(`Follows from nothing? → proved: ${TARGET} (+ 1 adopted axiom)`);
+    expect(proposalLabel('proved', TARGET, { adoptedGhosts: 0, premises: 2 })).toBe(`Formalize → proved: ${TARGET}`);
     const long = 'A sentence that is very much longer than sixty characters, so it must be cut';
-    expect(proposalLabel('proved', long, { lifecycle: 0, adoptedGhosts: 0 })).toBe('These suffice → proved: A sentence that is very much longer than sixty characters, …');
+    expect(proposalLabel('proved', long, { adoptedGhosts: 0 })).toBe('Formalize → proved: A sentence that is very much longer than sixty characters, …');
   });
 });

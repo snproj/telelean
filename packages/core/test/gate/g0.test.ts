@@ -3,6 +3,7 @@
  * rules over a change set, and the single-term rule for ghost text.
  */
 import { describe, expect, it } from 'vitest';
+import { eraseMacroScopes, isHygienicName } from '../../src/gate/g0.js';
 import { checkFileChanges, ghostTextProblems, scanForbidden, type G0Context } from '../../src/gate/index.js';
 import { BASE, MAIN, normative, proved } from './helpers/spyroRun.js';
 
@@ -118,6 +119,119 @@ describe('AT1.1 G0 token denylist', () => {
     expect(copied.split('\n').indexOf('set_option maxHeartbeats 400000 in')).toBe(2);
     // An edited version of the user's line is Claude's line.
     expect(scan(base.replace('400000', '0'), base).map((f) => f.code)).toEqual(['set-option']);
+  });
+});
+
+describe('2b2 (AP30-1, AP30-1 r2): G0 refuses the `init` attribute in any attribute list', () => {
+  const wrapped = (text: string) => `namespace Spyro\n\n${text}\n\nend Spyro\n`;
+  it('refuses `init` and `builtin_init` as `metaprogramming`, first in a list or after a comma, `scoped` or `local`, in `@[…]` and `attribute […] x` alike', () => {
+    const cases: Array<[string, string]> = [
+      ['@[init] def x : IO Unit := pure ()', '@[init]'],
+      ['@[init f] opaque y : Nat', '@[init]'],
+      ['@[simp, init] def z : IO Unit := pure ()', '@[init]'],
+      ['@[local init] def z : IO Unit := pure ()', '@[init]'],
+      ['@[scoped init] def z : IO Unit := pure ()', '@[init]'],
+      ['@[«init»] def z : IO Unit := pure ()', '@[«init»]'],
+      ['@[builtin_init] def z : IO Unit := pure ()', '@[builtin_init]'],
+      ['@[simp,\n  init] def z : IO Unit := pure ()', '@[init]'],
+      ['attribute [init] x', 'attribute [init]'],
+      ['attribute [simp, init] x', 'attribute [init]'],
+      ['attribute [local init] x', 'attribute [init]'],
+      ['attribute [builtin_init] x', 'attribute [builtin_init]'],
+      ['attribute [instance 100, init] x', 'attribute [init]'],
+      ['@[aesop safe [constructors], init] def z : IO Unit := pure ()', '@[init]'],
+    ];
+    for (const [text, token] of cases) {
+      const findings = scan(wrapped(text));
+      expect(findings.map((f) => [f.code, f.token]), text).toEqual([['metaprogramming', token]]);
+      const finding = findings[0];
+      expect(finding?.message, text).toMatch(new RegExp(`^${FILE}:\\d+:\\d+: \`${token.replace(/[[\]]/g, '\\$&')}\` is metaprogramming, which is not allowed in the model files: remove it`));
+      expect(finding?.step).toBe('G0');
+    }
+    // The range is the attribute's name, on its own line.
+    const [split] = scan(wrapped('@[simp,\n  init] def z : IO Unit := pure ()'));
+    expect(split?.range).toEqual({ start: { line: 3, character: 2 }, end: { line: 3, character: 6 } });
+  });
+
+  it('the identifier `init` anywhere else passes: a named argument, a binder, a simp lemma, a declaration named `init`, `attribute [simp] init`, an argument of another attribute', () => {
+    for (const text of [
+      'def s (l : List Nat) : Nat := l.foldl (init := 0) (· + ·)',
+      'def k : Nat → Nat := fun init => init',
+      'theorem t : True := by simp [init]',
+      'def init : Nat := 0',
+      'attribute [simp] init',
+      '@[simp] theorem init_ok : True := trivial',
+      '@[deprecated init] def old : Nat := 0',
+      '-- @[init] in a comment',
+      'def str : String := "@[init]"',
+      'attribute [-simp] init',
+    ]) {
+      expect(scan(wrapped(text)), text).toEqual([]);
+    }
+  });
+
+  it('a line B already has is not judged; a copy Claude adds is', () => {
+    const base = wrapped('@[init] def mine : IO Unit := pure ()');
+    expect(scan(base, base)).toEqual([]);
+    const claude = base.replace('end Spyro', 'theorem t : True := trivial\n\nend Spyro');
+    expect(scan(claude, base)).toEqual([]);
+    const copied = base.replace('end Spyro', '@[init] def mine2 : IO Unit := pure ()\n\nend Spyro');
+    expect(scan(copied, base).map((f) => f.token)).toEqual(['@[init]']);
+  });
+
+  it('several lists in one text: each is scanned, none twice; an unclosed list is scanned once to the end', () => {
+    expect(scan(wrapped('@[init] def a : IO Unit := pure ()\n@[simp] theorem b : True := trivial\nattribute [local init] a')).map((f) => f.token)).toEqual(['@[init]', 'attribute [init]']);
+    expect(scan(wrapped('@[simp, init')).map((f) => f.token)).toEqual(['@[init]']);
+    expect(scan(wrapped(''))).toEqual([]);
+  });
+
+  it('AP30-1 r3: an attribute name is read as Lean reads it, after `eraseMacroScopes`; any hand-written hygienic name is refused', () => {
+    expect(eraseMacroScopes('init.«_@».x._hyg')).toBe('init');
+    expect(eraseMacroScopes('«init».«_@».M._hyg')).toBe('«init»');
+    expect(eraseMacroScopes('a.«_@».b.«_@».c._hyg')).toBe('a.«_@».b');
+    expect(eraseMacroScopes('x._hyg')).toBe('');
+    expect(eraseMacroScopes('init')).toBe('init');
+    expect(eraseMacroScopes('a.«_@».b')).toBe('a.«_@».b');
+    for (const name of ['init.«_@».x._hyg', 'x._hyg', 'a.«_@».b', '«_@»']) expect(isHygienicName(name), name).toBe(true);
+    for (const name of ['x_hyg', 'hyg', 'a.b', 'init', '_hyg_x', 'a._hyg.b']) expect(isHygienicName(name), name).toBe(false);
+    // The attribute rule: one finding, the attribute's (its hygienic name is no second one).
+    const cases: Array<[string, string]> = [
+      ['@[init.«_@».x._hyg] def x : IO Unit := pure ()', '@[init.«_@».x._hyg]'],
+      ['@[simp, «init».«_@».M._hyg] def x : IO Unit := pure ()', '@[«init».«_@».M._hyg]'],
+      ['attribute [local builtin_init.«_@».a._hyg] x', 'attribute [builtin_init.«_@».a._hyg]'],
+    ];
+    for (const [text, token] of cases) expect(scan(wrapped(text)).map((f) => [f.code, f.token]), text).toEqual([['metaprogramming', token]]);
+    // Any other hygienic name: refused as one, whatever word it spells (here `macro`, which WORD_CODES compares whole).
+    const macro = scan(wrapped('@[macro.«_@».x._hyg Lean.Parser.Command.check] def m : Lean.Macro := fun s => pure s'));
+    expect(macro.map((f) => [f.code, f.token])).toEqual([['metaprogramming', 'macro.«_@».x._hyg']]);
+    expect(macro[0]?.message).toMatch(/: `macro\.«_@»\.x\._hyg` is a hygienic name, which is not allowed in the model files: rename it \(in m\)\.$/);
+    for (const text of ['theorem t : True := csimp.«_@».y._hyg', 'def v : Nat := foo._hyg', 'def w : Nat := a.«_@».b']) {
+      expect(scan(wrapped(text)).map((f) => f.code), text).toEqual(['metaprogramming']);
+    }
+    // Passing: `x_hyg`, a binder named `hyg`, `a.b`.
+    for (const text of ['def x_hyg : Nat := 0', 'def k : Nat → Nat := fun hyg => hyg', 'def a.b : Nat := 0']) expect(scan(wrapped(text)), text).toEqual([]);
+  });
+
+  it('AP30-1 r3: an attribute list is judged as a whole: an `init` on a line B has is refused when another line of its list is Claude’s', () => {
+    const base = wrapped('  init] def mine : IO Unit := pure ()');
+    expect(scan(base, base)).toEqual([]);
+    // Claude opens the list on a line of its own: the person's line now holds an attribute of Claude's list.
+    const opened = base.replace('  init] def mine', '@[simp,\n  init] def mine');
+    expect(scan(opened, base).map((f) => [f.code, f.token, f.range?.start.line])).toEqual([['metaprogramming', '@[init]', 3]]);
+    // Claude's line closes the list: the `init` on the person's first line is refused too.
+    const personal = wrapped('@[init,\n  simp] def mine : IO Unit := pure ()');
+    const closed = personal.replace('  simp] def mine', '  inline] def mine');
+    expect(scan(closed, personal).map((f) => [f.token, f.range?.start.line])).toEqual([['@[init]', 2]]);
+    // A list all of whose lines B has stays the person's.
+    const whole = wrapped('@[simp,\n  init] def mine : IO Unit := pure ()');
+    expect(scan(whole, whole)).toEqual([]);
+    // Another rule's token on a line B has stays the person's, inside a list or not.
+    const other = wrapped('@[simp,\n  implemented_by foo] def mine : Nat := 0');
+    expect(scan(other.replace('@[simp,', '@[simp, inline,'), other)).toEqual([]);
+  });
+
+  it('ghost text with an `init` attribute is refused by the single-term rule too', () => {
+    expect(ghostTextProblems('True', '@[init] fun _ => trivial').some((p) => p.includes('@[init]'))).toBe(true);
   });
 });
 

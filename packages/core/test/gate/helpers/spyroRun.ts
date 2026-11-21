@@ -45,7 +45,11 @@ export const literal = (texts: Texts = BASE) =>
 export const pinned = (texts: Texts) => edit(texts, MAIN, 'stance: rule\nasserted: 2026-11-01\n-/', 'stance: rule\nasserted: 2026-11-01\nlean: Spyro.pg_no_dark_past\n-/');
 
 export interface ModelOptions {
-  /** `false`: no facts at all. */
+  /**
+   * `false`: no facts at all. Slice 1e: the facts carry the value probe's `valueConsts` unless these options say
+   * `valueConsts: false` (the gate's facts always come from a refresh that runs the probe since slice 1d, and B.2's
+   * `undeclared-premise` refuses a proof whose direct uses it cannot see).
+   */
   facts?: false | FakeFactsOptions;
   mutate?: (facts: LeanFacts) => void;
 }
@@ -53,7 +57,7 @@ export interface ModelOptions {
 export function model(texts: Texts, options: ModelOptions = {}): ProjectModel {
   const files = Object.entries(texts).map(([path, text]) => parseLeanFile(path, text));
   if (options.facts === false) return buildProjectModel({ files, fileHashes: freshHashes(files), library: 'Model' });
-  const facts = fakeFacts(files, options.facts ?? {});
+  const facts = fakeFacts(files, { valueConsts: true, ...(options.facts ?? {}) });
   options.mutate?.(facts);
   return buildProjectModel({ files, fileHashes: freshHashes(files), facts, library: 'Model' });
 }

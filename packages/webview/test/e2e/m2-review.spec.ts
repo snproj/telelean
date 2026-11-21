@@ -2,8 +2,9 @@
  * M2 end-of-round review (D-19; AT6.4): statements first (the sentence beside its Lean, the explicit toggle, the
  * closure), then new vocabulary (revocable: prefilled Feedback), definition questions (Accept disabled until every
  * one is "yes"; "no" opens Feedback), the report card (revealed after the statements, or on "Show result"; each
- * assumption made without asking has "Ask me instead"), lifecycle ticks (recommended ones pre-ticked); Accept,
- * Feedback, Discard and Raw Lean diff post their messages.
+ * assumption made without asking has "Ask me instead"); Accept, Feedback, Discard and Raw Lean diff post their
+ * messages. Spec v4 (slice 1a) removed the last step, the lifecycle ticks ("Make Derivation"): a run never changes a
+ * card's kind, so the review ends with the result and Accept sends no lifecycle ids.
  */
 import { expect, test, type Page } from '@playwright/test';
 import { hostMessage, spyroGraph, type ProposalView, type RunNotice } from '@telelean/core';
@@ -26,11 +27,11 @@ async function openReview(page: Page, proposal: ProposalView, theme: 'dark' | 'l
   return page.getByTestId('review');
 }
 
-test('AT6.4 the review runs statements -> vocabulary -> definitions -> report card -> lifecycle; Accept waits for every definition', async ({ page }) => {
+test('AT6.4 the review runs statements -> vocabulary -> definitions -> report card; Accept waits for every definition', async ({ page }) => {
   const review = await openReview(page, definitionProposal());
   const step = review.getByTestId('review-step');
-  await expect(review.getByTestId('review-progress')).toHaveText('Step 1 of 6: Statement 1');
-  await expect(review.locator('.tl-review__step')).toHaveText(['Statement 1', 'Statement 2', 'New vocabulary', 'Definitions (2)', 'Result', 'Card changes']);
+  await expect(review.getByTestId('review-progress')).toHaveText('Step 1 of 5: Statement 1');
+  await expect(review.locator('.tl-review__step')).toHaveText(['Statement 1', 'Statement 2', 'New vocabulary', 'Definitions (2)', 'Result']);
   await expect(review.locator('.tl-review__step[data-step-kind="result"]')).toHaveAttribute('data-locked', 'true');
 
   // 1. The statement: the user's sentence beside the Lean, the explicit form on request, the closure.
@@ -50,7 +51,7 @@ test('AT6.4 the review runs statements -> vocabulary -> definitions -> report ca
 
   // 2. The second statement is the adopted suggestion: Claude's wording.
   await review.getByTestId('review-next').click();
-  await expect(review.getByTestId('review-progress')).toHaveText('Step 2 of 6: Statement 2');
+  await expect(review.getByTestId('review-progress')).toHaveText('Step 2 of 5: Statement 2');
   await expect(step.getByTestId('statement-sentence').locator('[data-provenance="agent"]')).toContainText('A character who cannot be in a game');
   await expect(step.getByTestId('statement-lean')).toHaveText('∀ (c : Character) (g : Game), ¬InGame c g → ¬GoodAddition c g'); // explicit is per statement
 
@@ -90,7 +91,7 @@ test('AT6.4 the review runs statements -> vocabulary -> definitions -> report ca
   // 5. The report card: verdict, footprint, Claude's words, gate attempts; "Ask me instead" per unasked choice.
   await review.getByTestId('review-next').click();
   const card = page.getByTestId('report-card');
-  await expect(card.getByTestId('report-verdict')).toHaveText('proved: GCynder would not be a good addition to the new Spyro game');
+  await expect(card.getByTestId('report-verdict')).toHaveText('proved: PCynder would not be a good addition to the new Spyro game');
   await expect(card.getByTestId('report-footprint').locator('li')).toHaveCount(6);
   await expect(card.getByTestId('report-footprint').locator('.tl-presup')).toHaveText(['assumes characters exist', 'assumes games exist']);
   await expect(card.getByTestId('report-consistency')).toContainText('Consistency unchecked');
@@ -105,25 +106,18 @@ test('AT6.4 the review runs statements -> vocabulary -> definitions -> report ca
   await expect(card.getByTestId('report-gate-attempts')).toContainText('it left a gap (sorry) in cynder_not_good.holds');
   await page.screenshot({ path: shotPath('m2-review-report.png') });
 
-  // 6. Lifecycle: the recommended item starts ticked, the other does not.
-  await review.getByTestId('review-next').click();
-  await expect(step).toHaveAttribute('data-step', 'lifecycle');
-  await expect(step.locator('[data-lifecycle-id="l1"] input')).toBeChecked();
-  await expect(step.locator('[data-lifecycle-id="l2"] input')).not.toBeChecked();
-  await expect(step.locator('[data-lifecycle-id="l1"]')).toContainText('Make “Cynder would not be a good addition to the new Spyro game” a Derivation (Lean proved it from the selected premises; recommended)');
-  await step.locator('[data-lifecycle-id="l2"] input').check();
+  // The result is the last step (spec v4: no card changes to tick after it).
   await expect(review.getByTestId('review-next')).toBeDisabled();
+  await expect(review.locator('[data-step-kind="lifecycle"]')).toHaveCount(0);
 
   await accept.click();
-  expect((await postedOfType(page, 'acceptProposal')).map((m) => m.payload)).toEqual([
-    { runId: RUN_ID, proposalId: 'p3', lifecycle: ['l1', 'l2'], definitions: ['d1', 'd2'], requestId: 'r1' },
-  ]);
+  expect((await postedOfType(page, 'acceptProposal')).map((m) => m.payload)).toEqual([{ runId: RUN_ID, proposalId: 'p3', definitions: ['d1', 'd2'], requestId: 'r1' }]);
   expect(await postedOfType(page, 'feedback')).toEqual([]);
 });
 
-test('AT6.4 "Show result" reveals the report card early; Feedback, Discard and Raw Lean diff post their messages; an unticked item is left out', async ({ page }) => {
+test('AT6.4 "Show result" reveals the report card early; Feedback, Accept, Discard and Raw Lean diff post their messages', async ({ page }) => {
   const review = await openReview(page, normativeProposal(), 'light');
-  await expect(review.getByTestId('review-progress')).toHaveText('Step 1 of 3: Statement');
+  await expect(review.getByTestId('review-progress')).toHaveText('Step 1 of 2: Statement');
   await review.getByTestId('show-result').click();
   await expect(review.getByTestId('show-result')).toHaveCount(0);
   await expect(review.getByTestId('review-step')).toHaveAttribute('data-step', 'statement'); // still on the statement
@@ -149,12 +143,10 @@ test('AT6.4 "Show result" reveals the report card early; Feedback, Discard and R
   await page.getByTestId('send-feedback').click();
   expect((await postedOfType(page, 'feedback')).map((m) => m.payload)).toEqual([{ runId: RUN_ID, text: 'Keep the rule general.\nAnd say why it applies to Cynder.', requestId: 'r1' }]);
 
-  // Accept with the recommended item unticked sends no lifecycle id.
-  await review.locator('.tl-review__step[data-step-kind="lifecycle"]').click();
-  await review.locator('[data-lifecycle-id="l1"] input').uncheck();
+  // Accept (from the banner) and Discard.
   await page.getByTestId('banner-accept').click();
   await review.getByTestId('discard').click();
-  expect((await postedOfType(page, 'acceptProposal')).map((m) => m.payload)).toEqual([{ runId: RUN_ID, proposalId: 'p1', lifecycle: [], definitions: [], requestId: 'r2' }]);
+  expect((await postedOfType(page, 'acceptProposal')).map((m) => m.payload)).toEqual([{ runId: RUN_ID, proposalId: 'p1', definitions: [], requestId: 'r2' }]);
   expect((await postedOfType(page, 'discardProposal')).map((m) => m.payload)).toEqual([{ runId: RUN_ID, requestId: 'r3' }]);
 
   // The host withdraws the proposal (e.g. after Feedback): the review and the banner go away.
@@ -174,14 +166,14 @@ test('fixer round 2: an Accept of a round that changed no file says "Recorded" i
   await send(page, hostMessage('run', { run: reviewRun(proposal, { premises: [] }) }));
   await send(page, hostMessage('proposal', { proposal }));
   const review = page.getByTestId('review');
-  await expect(page.getByTestId('run-target')).toContainText('Self-evident?');
+  await expect(page.getByTestId('run-target')).toContainText('Follows from nothing?');
   await expect(review.getByTestId('review-empty')).toHaveText('This round changed no file: Accept only records the outcome.');
   await expect(page.getByTestId('proposal-counts')).toHaveText('no file changes');
   for (const accept of [review.getByTestId('accept'), page.getByTestId('banner-accept')]) {
     await expect(accept).toHaveAttribute('title', 'Record the outcome: this round changed no file, so there is no Undo step and no history entry');
   }
   await review.getByTestId('accept').click();
-  expect((await postedOfType(page, 'acceptProposal')).map((m) => m.payload)).toEqual([{ runId: RUN_ID, proposalId: 'p1', lifecycle: [], definitions: [], requestId: 'r1' }]);
+  expect((await postedOfType(page, 'acceptProposal')).map((m) => m.payload)).toEqual([{ runId: RUN_ID, proposalId: 'p1', definitions: [], requestId: 'r1' }]);
 
   // The host ends the run and withdraws the proposal (here without the runner's notice, so only the board's own
   // Accept tells the panel what it changed).
@@ -194,8 +186,8 @@ test('fixer round 2: an Accept of a round that changed no file says "Recorded" i
   await expect(page.getByTestId('run-state')).toHaveText('Accepted');
 
   // Then the Accept's answer and the host's toast: no Undo anywhere, and no contradicting sentence on the board.
-  await send(page, hostMessage('actionResult', { requestId: 'r1', outcome: { ok: true, label: 'Recorded: Self-evident? → not proved (no file changed)', undoable: false } }));
-  await send(page, hostMessage('notice', { id: 't1', level: 'info', text: 'Recorded: Self-evident? → not proved: Cynder would not be a good addition to the new Spyro game (no file changed)', undoable: false }));
+  await send(page, hostMessage('actionResult', { requestId: 'r1', outcome: { ok: true, label: 'Recorded: Follows from nothing? → not proved (no file changed)', undoable: false } }));
+  await send(page, hostMessage('notice', { id: 't1', level: 'info', text: 'Recorded: Follows from nothing? → not proved: Cynder would not be a good addition to the new Spyro game (no file changed)', undoable: false }));
   await send(page, hostMessage('run', { run: runView({ state: 'accepted', premises: [], verdict: 'not-proved', endedAt: UPDATED, notices: [acceptNotice(RECORDED_NOTICE)], accepted: { changedFiles: false } }) }));
   await expect(ended).toHaveAttribute('data-outcome', 'recorded');
   await expect(page.getByTestId('toast')).toHaveCount(1);
@@ -211,10 +203,10 @@ test('fixer round 2: an Accept that changed files keeps the Undo hint; a board t
   await send(page, hostMessage('proposal', { proposal }));
   await expect(page.getByTestId('banner-accept')).toHaveAttribute('title', 'Apply the proposal to your files (one Undo step; a history entry)');
   await page.getByTestId('banner-accept').click();
-  expect((await postedOfType(page, 'acceptProposal')).map((m) => m.payload)).toEqual([{ runId: RUN_ID, proposalId: 'p1', lifecycle: ['l1'], definitions: [], requestId: 'r1' }]);
+  expect((await postedOfType(page, 'acceptProposal')).map((m) => m.payload)).toEqual([{ runId: RUN_ID, proposalId: 'p1', definitions: [], requestId: 'r1' }]);
   await send(page, hostMessage('run', { run: runView({ state: 'accepted', verdict: 'proved', endedAt: UPDATED, notices: [acceptNotice(ACCEPTED_NOTICE)], accepted: { changedFiles: true } }) }));
   await send(page, hostMessage('proposal', { proposal: null }));
-  await send(page, hostMessage('actionResult', { requestId: 'r1', outcome: { ok: true, label: 'These suffice → proved: Cynder would not be a good addition to the new Spyro game', undoable: true } }));
+  await send(page, hostMessage('actionResult', { requestId: 'r1', outcome: { ok: true, label: 'Formalize → proved: Cynder would not be a good addition to the new Spyro game', undoable: true } }));
   const ended = page.getByTestId('run-ended');
   await expect(ended).toHaveAttribute('data-outcome', 'accepted');
   await expect(ended.locator('p').first()).toHaveText('Accepted: Claude’s changes are in your files. Undo (Ctrl+Z) or History reverts them.');
@@ -222,22 +214,9 @@ test('fixer round 2: an Accept that changed files keeps the Undo hint; a board t
   // Another run, accepted where this board did not see it (e.g. the board was opened afterwards): the runner's record
   // on the run says whether files changed. The notices deliberately say the opposite (a text starting with "Accepted",
   // then the "Recorded … (no file changed)" wording): their wording is not read.
-  await send(page, hostMessage('run', { run: runView({ runId: 'run_20261101_2', state: 'accepted', premises: [], verdict: 'not-proved', endedAt: UPDATED, notices: [acceptNotice('Accepted: Self-evident? → not proved: Cynder would not be a good addition to the new Spyro game.')], accepted: { changedFiles: false } }) }));
+  await send(page, hostMessage('run', { run: runView({ runId: 'run_20261101_2', state: 'accepted', premises: [], verdict: 'not-proved', endedAt: UPDATED, notices: [acceptNotice('Accepted: Follows from nothing? → not proved: Cynder would not be a good addition to the new Spyro game.')], accepted: { changedFiles: false } }) }));
   await expect(ended).toHaveAttribute('data-outcome', 'recorded');
   await expect(page.getByTestId('run-panel')).not.toContainText('Undo');
   await send(page, hostMessage('run', { run: runView({ runId: 'run_20261101_3', state: 'accepted', verdict: 'proved', endedAt: UPDATED, notices: [acceptNotice(RECORDED_NOTICE)], accepted: { changedFiles: true } }) }));
   await expect(ended).toHaveAttribute('data-outcome', 'accepted');
-});
-
-test('fixer round 2: a round that changed no file but proved the goal: the ticked Goal -> Derivation is what Accept writes, and the tooltip says so', async ({ page }) => {
-  // The user's files already proved the goal: the round changed nothing, Lean proved it, G->D is proposed.
-  const proposal = emptyProposal({ lifecycle: normativeProposal().lifecycle, report: normativeProposal().report });
-  const review = await openReview(page, proposal);
-  await expect(review.getByTestId('review-empty')).toHaveText('This round changed no file: Accept records the outcome and makes only the card changes you tick.');
-  const accept = review.getByTestId('accept');
-  await expect(accept).toHaveAttribute('title', 'Make the ticked card changes in your files (one Undo step; a history entry)');
-  await review.locator('.tl-review__step[data-step-kind="lifecycle"]').click();
-  await review.locator('[data-lifecycle-id="l1"] input').uncheck();
-  await expect(accept).toHaveAttribute('title', 'Record the outcome: this round changed no file, so there is no Undo step and no history entry');
-  await expect(page.getByTestId('banner-accept')).toHaveAttribute('title', 'Record the outcome: this round changed no file, so there is no Undo step and no history entry');
 });

@@ -1,0 +1,85 @@
+[
+  {
+    "label": "apply:slice4",
+    "agentId": "a2186036ef36194c0",
+    "file": "agents/apply_slice4.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Write",
+      "Edit",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "apply:slice5",
+    "agentId": "ae396cad97010de29",
+    "file": "agents/apply_slice5.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "check:intent-build",
+    "agentId": "aff98a25a8e7929b9",
+    "file": "agents/check_intent-build.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "check:sound",
+    "agentId": "a0ca63ad8443bfede",
+    "file": "agents/check_sound.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "fix:r1",
+    "agentId": "a5c0b49d9929b52b5",
+    "file": "agents/fix_r1.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Edit",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "recheck:r1",
+    "agentId": "a721699773a8a6e20",
+    "file": "agents/recheck_r1.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "fix:r2",
+    "agentId": "a7d2ecf3aa9ccb327",
+    "file": "agents/fix_r2.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Edit",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "recheck:r2",
+    "agentId": "af1a421939fa3fbf2",
+    "file": "agents/recheck_r2.json",
+    "toolsUsed": [
+      "Bash",
+      "StructuredOutput"
+    ]
+  }
+]

@@ -1,0 +1,89 @@
+# verify:2b3a:spec
+
+Agent `a3c761a32995e835c` of workflow `wf_dbef5745-55f`. Verbatim output (JSON alongside).
+
+- **summary:** I found no blocker or major problem; there are 2 minor findings and 3 nits. I only read the code and did not run any build or test.
+
+**What 2b3a was asked to do, and what I found.** Each item of the plan's 2b3a entry (§1.1), its contract in §2.1 and its tests in §6.1 is in the diff and matches the text:
+- **The probe file.** `semantic/probeFile.ts` imports only `Lean.CoreM` and `Lean.Util.FoldConsts`. It loads the model with `importModules mods {} (loadExts := false) (level := .private)`, passes the names and modules as JSON string literals, reads its line at the `#eval`'s line (line 3), and fails closed.
+- **The check file.** It now holds only the four probes per declaration and imports only the model's modules. 1d's second check run (AP-21) is gone.
+- **The type walk.** It lists a declaration's type constants and, for an inductive, every constructor type's. An unprobed library constant is replaced by its own type and value constants. The same code serves both the isolated form and the ghost check's in-file form; `followMain` together with `modules`, or an empty `modules`, throws a TypeError.
+- **Refresh.** The memory guard runs again before the probe, and the probe runs with the check's argv and timeout and a lowered memory cap. A `cut` or `failed` probe gives no constants and a `check-errors` problem; a killed probe ends the refresh with its status.
+- **The engine.** `probeFailedEnvironment` in `runCheck` covers check, freeze, both gates and the ghost check. A failed probe gives an `environment` outcome when the rules find nothing or only `source-only`, and the rules' findings otherwise, so it never passes. `checkBase` saves the base facts and then refuses the start, which the manager turns into "telelean could not run Lean on your files (…); nothing was sent to Claude".
+- **The ghost check** keeps its in-file probe, now with the type walk (`GhostScratchResult.typeConsts`).
+
+**Tests and fixtures.**
+- The new overlays `probe-forge` and `probe-init` and their README rows match §6.1. The cheat test has its control and a ToString-only variant. The `[init]` test covers both the plain and the hygienic spelling.
+- The clash model now runs exactly one check job and one probe job.
+- I checked the regenerated `spyro-facts.json` and `extras-facts.json` and core's three hand-written Spyro facts with a script: each declaration only gains `typeConsts`, placed right after `valueConsts`, and each file gains the `probe` marker. Nothing else changed.
+- The doc changes in core `facts.ts` and `project/edges.ts` are comments only. I confirmed this against the saved `after_slice_2c2.patch`.
+
+**Carry-overs R1-1 to R1-5.**
+- R1-1 relies on every queue after the first starting with exactly one seal. That holds: a `queue-start` write carries its seal, a seal is never undone, and un-reject does not put a source back into the question. The not-shown note is only computed when outcomes are shown.
+- R1-2 filters the ledger only while a step runs. Keeping the base mask on the whole ledger leaks nothing: the board while a queue runs is the working copy from the queue's start.
+- R1-3, R1-4 and R1-5 are done as the review proposed, each with a test that matches its claim.
+
+**Safety properties.**
+- A failed probe never passes.
+- Nothing is shown before the meaning check: the hidden twins stay identical.
+- No core decision path was weakened.
+- G0 still runs first.
+
+**Your decision.** The cost above 1.5 times 1d's is already decided: AP-33 accepts it. §2.1's note still calls it "the integrator's decision" and could point to AP-33 instead.
+- **findings:**
+  - [1]
+    - **id:** V2B3A-S1
+    - **severity:** minor
+    - **where:** verbatim_prompt_log/bundle_21/user_requested_documents/02_autopilot_decisions.md:484 (AP-33) vs packages/runner/src/semantic/refresh.ts:534-536, packages/runner/src/gate/findings.ts:70-81 (classifyFacts), packages/runner/src/gate/engine.ts:526-531 (checkBaseNow); also the builder report's 'a cut, failed or killed probe gives no constants and a check problem naming the cause'
+    - **problem:** AP-33 tells you that when the probe runs out of memory, 'a Formalize step reports that telelean could not read the Lean. It retries fine once memory frees up.' The code does something else, and the code is what the plan asks for (ProbeRunFacts: 'as the check's do').
+- **In refresh:** a probe killed for memory or time ends the refresh with that status (`oom` or `timeout`) and no declarations. It is not a check problem, contrary to the builder's report.
+- **At a step:** `classifyFacts` turns that into a counted `budget` finding: 'The Lean build ran out of memory (probe: memory cap … exceeded …). Simplify the proof … and check again.' Claude is blamed and an attempt is used up.
+- **At the start:** `checkBase` refuses with 'your files have Lean errors (Your files took too long or too much memory to build (probe: …)); fix or save them'. AP30-2 judged exactly this text wrong for a probe failure.
+
+This case can really happen. The isolated probe needs about 390 MB more than the check (a second copy of Init), so it is the job most likely to exceed a cap that has been lowered on a machine short of memory.
+    - **fix:** Either:
+- correct AP-33's bullet and the builder's report line: a probe killed for memory or time is handled like the check's own kill, which is a counted budget finding at a step and the 'your files…' refusal at the start; or
+- if AP-33's behaviour is the one wanted, change `classifyFacts` and `checkBaseNow` so that facts whose `probe.status` is `oom` give an `environment` outcome naming telelean's probe and its cap, not counted against Claude. Note this in §8 as a change to the §2.1 contract, and add tests at check, gate and checkBase.
+  - [2]
+    - **id:** V2B3A-S2
+    - **severity:** minor
+    - **where:** packages/runner/test/semantic/probe.test.ts:165-167 (comment 'its (lowered) cap'); packages/runner/src/semantic/refresh.ts:514-531
+    - **problem:** Three of refresh's new rules for the probe job have no test, so a mutation of any of them would go unnoticed.
+- **The lowered memory cap (§2.1).** The probe job's cap should be lowered by `spawnMemoryMax` from the memory read just before it. The test's comment says it compares 'its (lowered) cap', but it asserts only `argv` and `timeoutMs`. Running the probe under the full `options.memoryMax`, or reading the memory value taken before the check, passes every test. This is a RAM-safety rule, and memory is tight on this machine.
+- **The probe also runs after the check's imports failed** (a decision logged in §8). No test covers it.
+- **No probe job and no marker when the check file probed nothing** (also logged in §8). No test covers it.
+    - **fix:** Add refresh tests that use the `RefreshHooks.runLean` seam:
+- make `readMemAvailable` return the cap plus the reserve for the first reads and a smaller value at the third read. Assert that the probe job's `memoryMax` equals `spawnMemoryMax(cap, third read, min)` and differs from the check's;
+- give a fake check job an import error. Assert that the probe job still runs, that `probe` is recorded, and that the detail holds both problems;
+- use a model whose only declaration cannot be written into the check file. Assert that only the build and check jobs run and there is no `probe` marker.
+  - [3]
+    - **id:** V2B3A-S3
+    - **severity:** nit
+    - **where:** docs/slice2-plan.md:3425 (builder 2b3a entry, 'The probe file and its reading'); packages/runner/src/semantic/probeFile.ts:100; packages/runner/test/semantic/probeFile.test.ts:106-107
+    - **problem:** §8 and the report say the probe fails 'for a line with the key at any other line (a forged placement)'. The code only reads keyed lines at the `#eval`'s line and ignores a keyed line anywhere else. The probe fails in that case only when there is no line at the `#eval`'s line ('Lean printed nothing for the probe'), which is what the test asserts. When the real line is present, a stray keyed line elsewhere is silently ignored. This is harmless, because no model code runs in the isolated job, but the log claims more than the code does.
+    - **fix:** Reword the §8 entry, for example: 'a line with the key at any other line is not read as the probe's'. Alternatively, count keyed information lines at every line and fail when there is more than one.
+  - [4]
+    - **id:** V2B3A-S4
+    - **severity:** nit
+    - **where:** packages/runner/src/gate/engine.ts:434 and :523 (CheckReport.build.durationMs); packages/runner/src/proposal/service.ts:393 (last.durationMs); packages/core/src/review/view.ts:428 (shown semantic.durationMs)
+    - **problem:** These four places still add up only the build and the check durations. Before 2b3a the probe's time was inside `check.durationMs`. It is now a separate job: 0.61 s of 1.48 s on Spyro. The durations reported to Claude, the Proposed board and the session view therefore come out too low. The board's own refresh measures wall time and is unaffected.
+    - **fix:** Add `(facts.probe?.durationMs ?? 0)` to each of these sums.
+  - [5]
+    - **id:** V2B3A-S5
+    - **severity:** nit
+    - **where:** docs/slice2-plan.md:287 (§2.1 Cost parenthetical) and §7.2 D2-75
+    - **problem:** §2.1 says 'The limit is logged in D2-75 (AP30-2)', but D2-75 still has only its general sentence. §2.1's new note gives only the optimistic figure, 'near 500,000 such declarations'. The realistic bound measured in §8, 'near 13,000 for declarations listing about 100 constants each', appears in neither D2-75 nor AP-33. D2-75 is what gets copied into the decisions log at the slice end. §2.1 also still calls the cost 'the integrator's decision', although AP-33 has since accepted it.
+    - **fix:** Add the measured cost and both size-limit figures to D2-75. Add the 13,000-declaration caveat to §2.1's note, and point that note to AP-33.
+- **checks_run:**
+  - Read verify_common.md, builder_rules.md, the 2b3a brief, plan §0, §1/§1.1 (2b3a, 2b3b), §2.1 in full, §4.6, §4.7 force rule, §6.1 2b3a tests, §7.2 D2-75, §7.4, §8 (AP-30 entries, fixer 2c2 r1, builder 2b3a), and the 2b3a-relevant spec lines (B.2 / direct(v)).
+  - Read 02_autopilot_decisions.md AP-24 through AP-33 (including AP-33, written after the build).
+  - Diffed every builder-backed-up file against the current tree: checkFile.ts, refresh.ts, gate findings.ts/engine.ts/scratch.ts/index.ts, semantic index.ts, core review/view.ts and review/types.ts, the plan, the README, and all changed tests.
+  - Confirmed the new files: probeFile.ts, probe.test.ts, probeFile.test.ts, the probe-forge and probe-init overlays, probe-spyro.lean and probe-spyro.jsonl.
+  - Rebuilt core facts.ts and project/edges.ts as they stood after 2c2 (HEAD plus after_slice_2c2.patch, in my scratch dir); 2b3a's changes to both are doc comments only. semantic/types.ts: doc comment only.
+  - Python check of the 2 recorded and 3 core hand-written facts files: only `typeConsts` (placed after `valueConsts`) and the `probe` marker were added; nothing else changed.
+  - Traced the engine paths for a failed probe (runCheck, freeze, gate, checkGhost, checkBaseNow), classifyFacts and buildErrorFindings for every status, and the manager's start notice and gate retry for environment outcomes.
+  - Traced refresh's probe job: memory guard, options, readProbeOutput, the marker, problems and status, and the sandbox statuses.
+  - Checked the reducer's seal, undo and un-reject semantics and the queue-start contract (one seal per later queue; un-reject leaves questions unchanged) behind R1-1.
+  - Checked that the base mask reading the whole ledger leaks nothing while a step runs (R1-2).
+  - Looked for leftover uses of the removed CheckFile, CheckOutput and ProbeResult fields and of the old parseValueProbe signature across packages, and for stale doc text about AP-21's second run in user-facing docs.
+  - Did not run any build, tsc, vitest or Lean, per the read-only lens.

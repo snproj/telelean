@@ -348,7 +348,7 @@ export function buildVocabulary(candidates: readonly VocabCandidate[], subjects:
       diagnostics.push({
         code: 'TL104',
         severity: 'warning',
-        message: `${item.name} is a Prop-valued axiom without a card: a hidden assumption. Give it a block (an Assumption) or remove it.`,
+        message: `${item.name} is a Prop-valued axiom without a card: a hidden assumption. Give it a block (an Axiom) or remove it.`,
         file: c.file.path,
         ...(range ? { range } : {}),
         vocab: item.name,

@@ -8,7 +8,7 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { defaultProjectConfig, emptyLayout, parseLeanFile, serializeLayout, serializeProjectConfig, subjectScaffold } from '@telelean/core';
+import { defaultProjectConfig, emptyLayout, parseLayout, parseLeanFile, serializeLayout, serializeProjectConfig, subjectScaffold } from '@telelean/core';
 
 import { runLean } from '../../src/lean/runLean.js';
 import { resolveToolchain, toolchainExe } from '../../src/lean/toolchain.js';
@@ -18,6 +18,8 @@ import { cleanup, copyMentalModel, exists, listFiles, makeTempDir, MENTAL_MODEL,
 
 const bytes = (file: string): Buffer => readFileSync(file);
 const SPYRO_FILES = ['Model/Spyro.lean', 'Model/Spyro/Inbox.lean', 'Model/Spyro/Main.lean', 'Model/Spyro/Vocabulary.lean'];
+/** The empty layout as telelean wrote it before spec v4 (three columns). */
+const PRE_V4_EMPTY_LAYOUT = `${JSON.stringify({ format: 'telelean-layout', version: 1, columns: { ASSUMPTION: [], DERIVATION: [], GOAL: [] } }, null, 2)}\n`;
 
 describe('AT4.7 the sample mental_model/', () => {
   it('holds exactly the files of plan 7.4, and no .lake or .git', () => {
@@ -45,7 +47,12 @@ describe('AT4.7 the sample mental_model/', () => {
     expect(read(MENTAL_MODEL, '.gitignore')).toBe(`${GITIGNORE_LINES.join('\n')}\n`);
     expect(read(MENTAL_MODEL, 'Model.lean')).toBe('import Model.Spyro\n');
     expect(read(MENTAL_MODEL, '.telelean/config.json')).toBe(serializeProjectConfig(defaultProjectConfig()));
-    expect(read(MENTAL_MODEL, '.telelean/subjects/Spyro/layout.json')).toBe(serializeLayout(emptyLayout()));
+    // Spec v4 (docs/slice1-plan.md 2.3): the sample was written with the column keys of before v4, which read as the
+    // empty layout; telelean writes AXIOM and PROPOSITION from its next layout change on (mental_model/ is not
+    // rewritten by slice 1a). Either form of the empty layout is the sample's.
+    const layout = read(MENTAL_MODEL, '.telelean/subjects/Spyro/layout.json');
+    expect(parseLayout(layout)).toEqual(emptyLayout());
+    expect([serializeLayout(emptyLayout()), PRE_V4_EMPTY_LAYOUT]).toContain(layout);
   });
 
   it('has the scaffold root and Inbox, the fixture Vocabulary, and the fixture Main plus one import line', () => {
@@ -61,12 +68,14 @@ describe('AT4.7 the sample mental_model/', () => {
 
   it("is the walkthrough's starting state: three assumptions and one goal in Spyro", () => {
     const blocks = SPYRO_FILES.flatMap((rel) => fakeParseLeanFile(rel, read(MENTAL_MODEL, rel)).blocks);
+    // The sample still says ASSUMPTION and GOAL: read as the aliases of AXIOM and PROPOSITION (spec v4).
     expect(blocks.map((b) => [b.id, b.fields.type])).toEqual([
-      ['pg-no-dark-past', 'ASSUMPTION'],
-      ['cynder-dark-past', 'ASSUMPTION'],
-      ['new-spyro-pg', 'ASSUMPTION'],
-      ['cynder-not-good', 'GOAL'],
+      ['pg-no-dark-past', 'AXIOM'],
+      ['cynder-dark-past', 'AXIOM'],
+      ['new-spyro-pg', 'AXIOM'],
+      ['cynder-not-good', 'PROPOSITION'],
     ]);
+    expect(read(MENTAL_MODEL, 'Model/Spyro/Main.lean')).toContain('id: cynder-not-good\ntype: GOAL\n');
     const main = read(MENTAL_MODEL, 'Model/Spyro/Main.lean');
     expect(main).not.toMatch(/cynder_not_good\.holds/); // the goal is unproved
   });
@@ -84,7 +93,7 @@ describe('AT4.7 the sample mental_model/', () => {
         const blocks = SPYRO_FILES.flatMap((rel) => parseLeanFile(rel, read(root, rel)).blocks);
         expect(blocks.map((b) => b.id)).toEqual(['pg-no-dark-past', 'cynder-dark-past', 'new-spyro-pg', 'cynder-not-good']);
         expect(blocks.map((b) => b.binding.mode)).toEqual(['none', 'pinned', 'pinned', 'pinned']);
-        expect(blocks.map((b) => b.fields.type)).toEqual(['ASSUMPTION', 'ASSUMPTION', 'ASSUMPTION', 'GOAL']);
+        expect(blocks.map((b) => b.fields.type)).toEqual(['AXIOM', 'AXIOM', 'AXIOM', 'PROPOSITION']);
       } finally {
         cleanup(tmp);
       }

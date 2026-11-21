@@ -5,29 +5,26 @@
 import type { Evidential, HistoryActionKind, NodeType, Phenomenon, RunNoticeKind, SemanticSummary, Stance, VocabKind } from '@telelean/core';
 import { plainText, sentences } from './model/format';
 
+/** Spec v4: the AXIOMS column's title, and the PROPOSITIONS canvas's name (slice 1c). */
 export const COLUMN_TITLE: Readonly<Record<NodeType, string>> = {
-  ASSUMPTION: 'Assumptions',
-  DERIVATION: 'Derivations',
-  GOAL: 'Goals',
+  AXIOM: 'Axioms',
+  PROPOSITION: 'Propositions',
 };
 
 export const KIND_NOUN: Readonly<Record<NodeType, string>> = {
-  ASSUMPTION: 'Assumption',
-  DERIVATION: 'Derivation',
-  GOAL: 'Goal',
+  AXIOM: 'Axiom',
+  PROPOSITION: 'Proposition',
 };
 
 /** The kind glyph on every card (paired with colour and column, never colour alone: D-15). */
 export const KIND_GLYPH: Readonly<Record<NodeType, string>> = {
-  ASSUMPTION: 'A',
-  DERIVATION: 'D',
-  GOAL: 'G',
+  AXIOM: 'A',
+  PROPOSITION: 'P',
 };
 
 export const PROMPT_PLACEHOLDER: Readonly<Record<NodeType, string>> = {
-  ASSUMPTION: 'State something you believe is true…',
-  DERIVATION: 'State something that should follow from your assumptions…',
-  GOAL: 'State something you want to show…',
+  AXIOM: 'State something you believe is true…',
+  PROPOSITION: 'State something that follows, or that you want to show…',
 };
 
 /** D-14 stance chips. */
@@ -46,12 +43,11 @@ export const SOURCE_LABEL: Readonly<Record<Evidential, string>> = {
 };
 
 /**
- * The "why" field's prompt (D-14: the prompt adapts to the stance). Assumptions without a chosen stance get the
- * "believe" wording, the default reading of an assumption.
+ * The "why" field's prompt (D-14: the prompt adapts to the stance). Axioms without a chosen stance get the
+ * "believe" wording, the default reading of an axiom.
  */
 export function whyPlaceholder(kind: NodeType, stance: Stance | undefined): string {
-  if (kind === 'DERIVATION') return 'Why do you think it follows?';
-  if (kind === 'GOAL') return 'Why do you care?';
+  if (kind === 'PROPOSITION') return 'Why do you think it follows?';
   if (stance === 'rule') return 'Where does the rule come from?';
   if (stance === 'supposing') return 'What are you exploring?';
   return 'Why do you believe it?';
@@ -92,6 +88,12 @@ export const HISTORY_ACTION_LABEL: Readonly<Record<HistoryActionKind, string>> =
   reorder: 'move',
   'set-premises': 'premises',
   'create-subject': 'new subject',
+  // Spec v4 slice 1b.
+  'add-arrows': 'arrows',
+  'remove-arrows': 'arrows',
+  'set-from-nothing': 'from nothing',
+  'claim-pending': 'pending',
+  'move-cards': 'move',
   initial: 'start',
   manual: 'manual edits',
   undo: 'undo',

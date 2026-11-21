@@ -136,7 +136,7 @@ async function acceptRun(s: Setup, core: Partial<ProposalCore>) {
   write(s.root, MAIN, mainEdited);
   const readReal = (rel: string) => ws.readText?.(rel) ?? Promise.resolve(null);
   const drift = await service.baseDrift(shadow, readReal, ws.modelFiles?.());
-  const plan = await service.planAccept({ proposal, shadow, lifecycle: [], readReal, today: '2026-11-01', realFiles: ws.modelFiles?.() ?? [] });
+  const plan = await service.planAccept({ proposal, shadow, readReal, today: '2026-11-01', realFiles: ws.modelFiles?.() ?? [] });
   if (!plan.ok) throw new Error(`plan refused: ${JSON.stringify(plan)}`);
   const refreshesBefore = s.refreshes.length;
   const outcome = await service.apply(plan, ws, 'Spyro');
@@ -253,7 +253,8 @@ describe('AT4.6 apply on a real ModelWorkspace in a scratch git repository', () 
     it('the history entry carries the real label', async () => {
       const s = (setup = await setUp('proposal-apply-label'));
       const run = await acceptRun(s, { diffGraphs: () => fakeDiff() });
-      const label = 'These suffice → proved: Cynder would not be a good addition to the new Spyro game';
+      // Slice 1e: the action is Formalize for dependencies (spec v4.1 ES-2).
+      const label = 'Formalize → proved: Cynder would not be a good addition to the new Spyro game';
       expect(run.outcome).toEqual({ ok: true, label, undoable: true });
       expect((await s.ws.listHistory('Spyro')).entries[0]).toMatchObject({ action: 'accept-proposal', label });
       expect(repoState(s.repo)).toEqual(s.before);

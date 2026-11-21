@@ -1,12 +1,12 @@
 /**
- * M1 edits from the board: the A|D|G box with stance, why and source (AT6.5), in-place edits (AT6.6), the delete
- * dialog (AT6.7), Undo/Redo keys and the Undo toast (AT6.10), the tray's presuppositions and "Self-evident?"
- * (AT6.11).
+ * M1 edits from the board: the A|P box with stance, why and source (AT6.5; spec v4 BD-8), in-place edits (AT6.6), the
+ * delete dialog (AT6.7), Undo/Redo keys and the Undo toast (AT6.10), and the question's presuppositions in the Context
+ * Menu section, which replaced the tray (AT6.11; CM-5, D-3b).
  */
 import { expect, test, type Page } from '@playwright/test';
 import { hostMessage, spyroGraph, spyroProvedGraph } from '@telelean/core';
 import { mentionGraph, workspaceState } from '../shared/graphs';
-import { card, list, openBoard, posted, postedOfType, replyNext, send, settle, shotPath, type OpenedBoard } from './helpers';
+import { card, clickArrow, list, openBoard, posted, postedOfType, replyNext, send, settle, shotPath, type OpenedBoard } from './helpers';
 
 let board: OpenedBoard | undefined;
 
@@ -25,7 +25,7 @@ async function paste(page: Page, text: string): Promise<void> {
   await settle(page);
 }
 
-test('AT6.5 the A|D|G box: stance chips for an Assumption, a why prompt per stance and kind, source chips; Enter posts addNode', async ({ page }) => {
+test('AT6.5 the A|P box: stance chips for an axiom, a why prompt per stance and kind, source chips; Enter posts addNode', async ({ page }) => {
   board = await openBoard(page, spyroGraph(), 'dark');
   const why = page.getByRole('textbox', { name: 'Why (optional)' });
   const stance = page.getByRole('group', { name: 'Stance' });
@@ -37,16 +37,15 @@ test('AT6.5 the A|D|G box: stance chips for an Assumption, a why prompt per stan
   await expect(why).toHaveAttribute('placeholder', 'Where does the rule come from?');
   await stance.getByRole('button', { name: 'Supposing, for argument' }).click();
   await expect(why).toHaveAttribute('placeholder', 'What are you exploring?');
-  await page.getByRole('radio', { name: 'Derivation' }).click();
+  // A proposition has no stance; spec v4 CF-2: both kinds have a source.
+  await page.getByRole('radio', { name: 'Proposition' }).click();
   await expect(stance).toHaveCount(0);
   await expect(why).toHaveAttribute('placeholder', 'Why do you think it follows?');
-  await page.getByRole('radio', { name: 'Goal' }).click();
-  await expect(why).toHaveAttribute('placeholder', 'Why do you care?');
-  await expect(source).toHaveCount(0);
-  await page.getByRole('radio', { name: 'Assumption' }).click();
+  await expect(source.getByRole('button')).toHaveText(['observed', 'reported', 'inferred', 'common knowledge']);
+  await page.getByRole('radio', { name: 'Axiom' }).click();
 
   // A sentence with inner spaces is kept verbatim (trimmed only); pasted line breaks become spaces.
-  const input = page.getByRole('textbox', { name: 'New assumption' });
+  const input = page.getByRole('textbox', { name: 'New axiom' });
   await input.fill('  Spyro is   purple ');
   await input.press('End');
   await paste(page, '\nand\r\nbrave');
@@ -57,13 +56,13 @@ test('AT6.5 the A|D|G box: stance chips for an Assumption, a why prompt per stan
   await why.fill('seen it in the game');
   await page.screenshot({ path: shotPath('m1-prompt-box.png') });
   // The host derives the final id itself (here a different one) and names it in the actionResult.
-  await replyNext(page, 'addNode', { ok: true, label: 'Add assumption: Spyro is purple and brave', undoable: true, nodeId: 'spyro-is-purple' });
+  await replyNext(page, 'addNode', { ok: true, label: 'Add axiom: Spyro is purple and brave', undoable: true, nodeId: 'spyro-is-purple' });
   await why.press('Enter');
 
   expect((await postedOfType(page, 'addNode')).map((m) => m.payload)).toEqual([
     {
       clientId: 'spyro-is-purple-and-brave',
-      type: 'ASSUMPTION',
+      type: 'AXIOM',
       naturalName: 'Spyro is   purple  and brave',
       requestId: 'r1',
       rationale: 'seen it in the game',
@@ -79,11 +78,14 @@ test('AT6.5 the A|D|G box: stance chips for an Assumption, a why prompt per stan
   await expect(why).toHaveValue('');
   await expect(stance.getByRole('button', { name: 'I believe it' })).toHaveAttribute('aria-pressed', 'false');
 
-  // Enter in the sentence field posts too; without a stance or source nothing extra is sent.
-  await page.getByRole('radio', { name: 'Goal' }).click();
-  await page.getByRole('textbox', { name: 'New goal' }).fill('Cynder gets a spin-off');
-  await page.getByRole('textbox', { name: 'New goal' }).press('Enter');
-  expect((await postedOfType(page, 'addNode')).at(-1)?.payload).toEqual({ clientId: 'cynder-gets-a-spin-off', type: 'GOAL', naturalName: 'Cynder gets a spin-off', requestId: 'r2' });
+  // Enter in the sentence field posts too; without a stance or source nothing extra is sent (a proposition goes with
+  // its place on the canvas, BD-8: here right of the card selected last).
+  await page.getByRole('radio', { name: 'Proposition' }).click();
+  await page.getByRole('textbox', { name: 'New proposition' }).fill('Cynder gets a spin-off');
+  await page.getByRole('textbox', { name: 'New proposition' }).press('Enter');
+  const proposition = (await postedOfType(page, 'addNode')).at(-1)?.payload;
+  expect(proposition).toMatchObject({ clientId: 'cynder-gets-a-spin-off', type: 'PROPOSITION', naturalName: 'Cynder gets a spin-off', requestId: 'r2' });
+  expect(Object.keys(proposition ?? {}).sort()).toEqual(['clientId', 'naturalName', 'position', 'requestId', 'type']);
 
   // The host's graph replaces the provisional card (under the id the host named) and keeps it selected.
   await added.click();
@@ -209,7 +211,7 @@ test('AT6.7 when other declarations use its Lean code the host asks first: the d
   const dark = card(page, 'cynder-dark-past');
   await dark.locator('.tl-card__chevron').click();
   const dialog = page.getByTestId('dialog-delete');
-  const refusal = (dependents: string[], dependentCards?: Record<string, { subject: string; type: 'GOAL'; naturalName: string }>) => ({
+  const refusal = (dependents: string[], dependentCards?: Record<string, { subject: string; type: 'PROPOSITION'; naturalName: string }>) => ({
     ok: false as const,
     code: 'needs-confirmation' as const,
     error: `Deleting its Lean code breaks ${dependents.length} declarations that use it: they stop compiling. Delete anyway, or keep its Lean.`,
@@ -218,7 +220,7 @@ test('AT6.7 when other declarations use its Lean code the host asks first: the d
   });
   // The host's facts know a lemma without a card and another subject's card that use the axiom; the graph shows
   // only the goal. The host describes the cards among them (any subject).
-  const otherGoal = { subject: 'Bayonetta', type: 'GOAL' as const, naturalName: 'Bayonetta would be a good addition' };
+  const otherGoal = { subject: 'Bayonetta', type: 'PROPOSITION' as const, naturalName: 'Bayonetta would be a good addition' };
   await replyNext(page, 'deleteNode', refusal(['cynder-not-good', 'other-goal', 'Spyro.helper_lemma'], { 'other-goal': otherGoal }));
   await dark.getByRole('button', { name: 'Delete' }).click();
   await dialog.getByRole('button', { name: 'Delete card and its Lean code' }).click();
@@ -228,12 +230,12 @@ test('AT6.7 when other declarations use its Lean code the host asks first: the d
   await expect(dialog.getByRole('heading')).toHaveText('Delete its Lean code too?');
   await expect(dialog.getByTestId('delete-breaks-explanation')).toHaveText('These 3 declarations use its Lean code. They stop compiling if the code is deleted:');
   await expect(dialog.getByTestId('delete-breaks').locator('li')).toHaveText([
-    'GCynder would not be a good addition to the new Spyro game',
-    'GBayonetta would be a good addition (subject Bayonetta)',
+    'PCynder would not be a good addition to the new Spyro game',
+    'PBayonetta would be a good addition (subject Bayonetta)',
     'Spyro.helper_lemma',
   ]);
   await expect(dialog.getByTestId('delete-breaks').locator('code')).toHaveText(['Spyro.helper_lemma']);
-  await expect(dialog.locator('[data-dependent="other-goal"] .tl-glyph')).toHaveAttribute('data-kind', 'GOAL');
+  await expect(dialog.locator('[data-dependent="other-goal"] .tl-glyph')).toHaveAttribute('data-kind', 'PROPOSITION');
   await expect(dialog.locator('[data-dependent="other-goal"]')).toHaveAttribute('data-subject', 'Bayonetta');
   await expect(dialog.getByRole('button')).toHaveText(['Delete anyway', 'Delete card only, keep Lean', 'Cancel']);
   await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
@@ -281,8 +283,8 @@ test('AT6.10 Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y post undo/redo, but not while typing
     ['redo', 'r3'],
   ]);
   // Typing in a field: the field's own undo, not the board's.
-  await page.getByRole('textbox', { name: 'New assumption' }).fill('abc');
-  await page.getByRole('textbox', { name: 'New assumption' }).press('Control+z');
+  await page.getByRole('textbox', { name: 'New axiom' }).fill('abc');
+  await page.getByRole('textbox', { name: 'New axiom' }).press('Control+z');
   await page.getByRole('textbox', { name: 'Why (optional)' }).press('Control+Shift+z');
   expect(await kinds()).toHaveLength(3);
   // The header buttons name what they undo and redo.
@@ -321,25 +323,36 @@ test('AT6.10 Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y post undo/redo, but not while typing
   await expect(one.getByRole('button', { name: 'Undo' })).toHaveCount(0);
 });
 
-test('AT6.11 the tray shows the selection’s presuppositions; These suffice posts; zero premises offers Self-evident? (M2: enabled)', async ({ page }) => {
+test('AT6.11 the Context Menu section shows what the question’s statements presuppose; Formalize posts the selected arrows; no "follows from nothing" for a card with arrows', async ({ page }) => {
   board = await openBoard(page, spyroGraph(), 'dark');
+  // A proposition alone: its presuppositions on the summary's hover (D-3b; the tray's "+ presupposes" chips before v4).
   await card(page, 'cynder-not-good').click();
-  // Zero premises: "Self-evident?" takes the place of "These suffice" (M2: it asks Claude, docs/m2-plan.md AT6.1).
-  await expect(page.getByRole('button', { name: 'Self-evident?' })).toBeEnabled();
-  await expect(page.getByRole('button', { name: /These suffice/ })).toHaveCount(0);
-  await expect(page.getByTestId('tray-presuppositions').locator('.tl-presup')).toHaveText(['assumes characters exist', 'assumes games exist']);
+  const summary = page.getByTestId('context-summary');
+  await expect(summary).toHaveAttribute('title', /\+ presupposes: assumes characters exist, assumes games exist$/);
+  // It has arrows into it: "follows from nothing" is not offered (AR-5: only for a card with no incoming arrows).
+  await expect(page.getByTestId('context-actions').locator('[data-action="from-nothing"]')).toHaveCount(0);
 
-  await card(page, 'cynder-dark-past').click({ modifiers: ['ControlOrMeta'] });
-  await card(page, 'new-spyro-pg').click({ modifiers: ['ControlOrMeta'] });
-  await expect(page.getByRole('button', { name: 'Self-evident?' })).toHaveCount(0);
-  await expect(page.getByTestId('tray-presuppositions')).toContainText('+ presupposes:');
-  await page.screenshot({ path: shotPath('m1-tray.png') });
-  await page.getByRole('button', { name: /These suffice/ }).click();
+  // Two of its three arrows: the question; its cards' presuppositions on hover; Formalize asks about exactly those.
+  await clickArrow(page, 'cynder-dark-past', 'cynder-not-good');
+  await clickArrow(page, 'new-spyro-pg', 'cynder-not-good', true);
+  await expect(summary).toHaveText('2 arrows into “Cynder would not be a good addition to …”');
+  await expect(summary).toHaveAttribute('title', /\+ presupposes: assumes characters exist, assumes games exist$/);
+  await page.screenshot({ path: shotPath('m1-context-presupposes.png') });
+  await page.getByTestId('formalize').click();
   expect((await postedOfType(page, 'startRun')).map((m) => m.payload)).toEqual([
     { target: 'cynder-not-good', premises: ['cynder-dark-past', 'new-spyro-pg'], requestId: 'r1' },
   ]);
-  // A presupposition chip in the tray highlights it in the Vocabulary group.
-  await page.getByTestId('tray-presuppositions').locator('.tl-presup').first().click();
-  await expect(page.locator('.tl-presup[data-vocab="Spyro.Character.exists"]')).toHaveAttribute('data-highlight', 'true');
-  await expect(list(page, 'ASSUMPTION').getByTestId('vocabulary')).not.toHaveAttribute('data-collapsed', /.*/);
+  expect(await postedOfType(page, 'theseSuffice')).toEqual([]);
+  // The presuppositions themselves are in the Vocabulary band, above the board (no longer inside the column). A
+  // presupposition chip of the card (its details) opens the band and highlights it there, as the tray's chips did.
+  const vocabulary = page.getByTestId('vocabulary');
+  await expect(vocabulary).toHaveAttribute('data-collapsed', 'true');
+  const goal = card(page, 'cynder-not-good');
+  await goal.locator('.tl-card__chevron').click();
+  await expect(goal.getByTestId('presuppositions').locator('.tl-presup')).toHaveText(['assumes characters exist', 'assumes games exist']);
+  await goal.getByTestId('presuppositions').locator('.tl-presup').first().click();
+  await expect(vocabulary).not.toHaveAttribute('data-collapsed', /.*/);
+  await expect(page.getByTestId('vocabulary-column').locator('.tl-presup')).toHaveText(['assumes characters exist', 'assumes games exist']);
+  await expect(page.getByTestId('vocabulary-column').locator('.tl-presup[data-vocab="Spyro.Character.exists"]')).toHaveAttribute('data-highlight', 'true');
+  await expect(list(page, 'AXIOM').getByTestId('vocabulary')).toHaveCount(0);
 });

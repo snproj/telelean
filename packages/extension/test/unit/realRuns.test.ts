@@ -135,6 +135,10 @@ const FAKE_ENGINE: LeanCheckEngine = {
   gate: unused('gate'),
   checkGhost: unused('checkGhost'),
   renderStatements: unused('renderStatements'),
+  judge: unused('judge'),
+  finalCheck: unused('finalCheck'),
+  writePremise: unused('writePremise'),
+  complete: unused('complete'),
 };
 
 interface PersistedView {

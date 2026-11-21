@@ -9,6 +9,13 @@
  * Finding conventions (WP1-internal, read by `describeFinding`): `file`/`range` point at the declaration or block in S
  * (in B for something removed), `names` holds fully-qualified Lean names, `nodeId` the card concerned, and `token` a
  * short marker of the variant where the board's sentence depends on it (see each rule).
+ *
+ * Slice 2, builder 2b1a (docs/slice2-plan.md section 1.1): each rule is its own helper on one `RuleContext`
+ * (`ruleContext`), returning its findings in the order it finds them (`buildFindings`, `newAxiomFindings`, …,
+ * `notFrozenFindings`, with `footprintFindings` also giving the footprints, `readyCards` the readiness rules' cards,
+ * `formalisedThisRunOf` the run's new statements, and `orderFindings` the report's order). `evaluate` runs them in the
+ * order the former single function did, so `evaluateRules` keeps its signature and behaviour; 2b1b's `judgeState`
+ * builds on the same helpers.
  */
 import { holdsName, SORRY_AXIOM, STANDARD_AXIOM_NAMES, statementOfHolds, type DeclFacts } from '../facts.js';
 import { relativeName } from '../markup/names.js';
@@ -19,10 +26,30 @@ import { LineMap, normalizeWhitespace } from '../project/text.js';
 import { axiomNames, declTables, factsOf, isAxiom, isProof, type DeclEntry, type DeclTables } from './decls.js';
 import { where } from './g0.js';
 import { permittedAxioms, signatureAxioms } from './permitted.js';
-import type { FlaggedDefinition, GateFinding, GateFindingCode, PermittedAxioms, RuleInput, RuleReport } from './types.js';
+import type { FlaggedDefinition, FrozenSnapshot, GateFinding, GateFindingCode, PermittedAxioms, RuleInput, RulePurpose, RuleReport, Selection } from './types.js';
 
 /** Order of the G3 codes in a report: root causes before their consequences. */
-const G3_ORDER: readonly GateFindingCode[] = ['new-axiom', 'existing-changed', 'not-proved', 'status-mismatch', 'statement-changed', 'footprint', 'sorry-axiom', 'vocabulary-shape'];
+const G3_ORDER: readonly GateFindingCode[] = [
+  'new-axiom',
+  // Slice 2 (2b1b): the session codes, which evaluateRules never reports, so its order is unchanged.
+  'holds-kind',
+  'existing-changed',
+  'stray-command',
+  'not-proved',
+  'status-mismatch',
+  'statement-changed',
+  'footprint',
+  'undeclared-premise',
+  'sorry-axiom',
+  'vocabulary-shape',
+  'rejected-repeat',
+];
+
+/**
+ * Spec v4.1 B.2 (slice 1e): the rule's text when the facts have no elaborated values for the target's proof (the walk
+ * would rest on the `.ilean` references, which miss what elaboration inserts): the gate refuses rather than guess.
+ */
+export const UNSEEN_PROOF = 'telelean could not see which cards the proof uses; this check needs the elaborated facts';
 /** Readiness and stage codes come after G5. */
 const LATE_ORDER: readonly GateFindingCode[] = ['not-formalised', 'missing-holds', 'proof-before-freeze', 'not-frozen'];
 
@@ -37,7 +64,7 @@ const LATE_ORDER: readonly GateFindingCode[] = ['not-formalised', 'missing-holds
 const SOURCE_REF_KINDS: ReadonlySet<string> = new Set(['structure', 'class']);
 
 /** A declaration the footprint rules judge: the parser's entry, or a name only Lean reports (`entry` absent). */
-interface Judged {
+export interface Judged {
   name: string;
   entry?: DeclEntry;
   facts?: DeclFacts;
@@ -46,7 +73,7 @@ interface Judged {
 }
 
 /** A name Lean reports that the header parser does not list (a structure's field, a `where`/`let rec` declaration, …). */
-interface FactsOnly {
+export interface FactsOnly {
   name: string;
   facts: DeclFacts;
   /** The parser's declaration whose source contains it, if any. */
@@ -57,7 +84,7 @@ const notAfter = (a: Position, b: Position) => a.line < b.line || (a.line === b.
 const contains = (range: Range, at: Position) => notAfter(range.start, at) && notAfter(at, range.end);
 
 /** Block fields compared raw between B and S (G5); `id` and `lean` have their own rules. */
-const COMPARED_FIELDS = ['natural_name', 'rationale', 'type', 'premises', 'stance', 'source', 'asserted', 'supersedes', 'refines', 'tags', 'origin', 'session', 'worded_by'] as const;
+const COMPARED_FIELDS = ['natural_name', 'rationale', 'type', 'premises', 'follows_from', 'stance', 'source', 'asserted', 'supersedes', 'refines', 'tags', 'origin', 'session', 'worded_by'] as const;
 
 const sameList = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
 const norm = (text: string | undefined) => (text === undefined ? undefined : normalizeWhitespace(text));
@@ -93,7 +120,95 @@ function malformedReason(model: ProjectModel, node: TlNode): string {
   return 'it is not an `abbrev`/`def` of type `Prop`';
 }
 
-export function evaluate(input: RuleInput): RuleReport {
+/**
+ * What the rules read of one evaluation (builder 2b1a: the rules taken out of `evaluate` into per-rule helpers, their
+ * behaviour unchanged): the input, the declaration tables of B, S and the round's start R, the target and the
+ * selection, the declaration diff since B, the names only Lean reports, and the texts the findings use. `ruleContext`
+ * builds it once per evaluation from the input alone, so the helpers below read it in any order; 2b1b's `judgeState`
+ * builds one per judged inference.
+ */
+export interface RuleContext {
+  readonly input: RuleInput;
+  readonly purpose: RulePurpose;
+  readonly selection: Selection;
+  readonly stage: RuleInput['stage'];
+  /** B, S (the shadow now) and R (the round's start, B by default), with their declaration tables. */
+  readonly base: ProjectModel;
+  readonly current: ProjectModel;
+  readonly roundStart: ProjectModel;
+  readonly B: DeclTables;
+  readonly S: DeclTables;
+  readonly R: DeclTables;
+  readonly freeze: FrozenSnapshot | undefined;
+  readonly subject: string;
+  /** check_lean in stage prove; check_lean in stage formalise; a finish (gate-proved or gate-other). */
+  readonly checkProve: boolean;
+  readonly checkFormalise: boolean;
+  readonly gate: boolean;
+  /** The target's card now and in B, its statement (S's, else B's, else the freeze's) and that statement's `.holds`. */
+  readonly curTarget: TlNode | undefined;
+  readonly baseTarget: TlNode | undefined;
+  readonly targetStatement: string | undefined;
+  readonly targetHolds: string | undefined;
+  /** T's `.holds` (of B's, S's and the freeze's statement) may be added, changed or turned from axiom into theorem (D-11 pending promotion). */
+  readonly exempt: ReadonlySet<string>;
+  readonly targetStatements: ReadonlySet<string>;
+  readonly ghosts: readonly string[];
+  /** The target, the selected premises and the adopted ghosts. */
+  readonly chosen: ReadonlySet<string>;
+  /**
+   * A chosen card left code-less only because a blank line separates its block from the declaration below it (TL013):
+   * that declaration's full name. Turn 13: on a fresh model the agent formalises code-less cards, and one stray blank
+   * line made the gate call the card unformalised and the assumption's `.holds` a belief, which told Claude to remove
+   * it; the findings now name the blank line instead (the verdicts are unchanged).
+   */
+  readonly detachedStatementOf: (id: string) => string | undefined;
+  /** `.holds` of a detached statement of a chosen card -> that card. */
+  readonly detachedHolds: ReadonlyMap<string, string>;
+  readonly short: (name: string) => string;
+  readonly at: (entry: DeclEntry | undefined) => { file?: string; range?: Range };
+  readonly loc: (entry: DeclEntry | undefined) => string;
+  /** The same for a judged declaration, which may be a name only Lean reports (its facts' range). */
+  readonly locOf: (j: Judged) => string;
+  readonly atOf: (j: Judged) => { file?: string; range?: Range };
+  readonly sentence: (id: string) => string;
+  readonly ownerOf: (model: ProjectModel, name: string) => string | undefined;
+  readonly node: (id: string | undefined) => { nodeId?: string };
+  /** The declaration diff since B (syntactic, by name and text). */
+  readonly added: readonly string[];
+  readonly changed: readonly string[];
+  readonly removed: readonly string[];
+  readonly addedOrChanged: ReadonlySet<string>;
+  readonly inBase: (name: string) => boolean;
+  /** Paths whose text differs from B's. */
+  readonly changedFiles: ReadonlySet<string>;
+  /** Names only Lean reports, each with the parser's declaration that contains it (computed once, on first use). */
+  readonly factsOnly: () => FactsOnly[];
+  /**
+   * Names only Lean reports that are new or changed relative to `refModel` (tables `ref`): the declaration holding one
+   * was added or changed; without such a declaration, a name `refModel` does not know. A reference without facts (a
+   * round start, Accept's base) knows only the parser's names, so there such a name is new only if its source is not
+   * already in the reference's version of its file.
+   */
+  readonly factsOnlySince: (refModel: ProjectModel, ref: DeclTables) => FactsOnly[];
+  /**
+   * The axioms a declaration rests on: Lean's `#print axioms`, and for a structure or class also what the constants
+   * its source mentions rest on (`SOURCE_REF_KINDS`: field defaults). Undefined when Lean listed no axioms.
+   */
+  readonly footprintOf: (f: DeclFacts | undefined) => string[] | undefined;
+  /** The vocabulary's existence presuppositions (`axiom T.exists : Nonempty T`). */
+  readonly presuppositions: ReadonlySet<string>;
+  /** The run added or changed a proof of the target (a `theorem T.holds` that B did not hold as it is now). */
+  readonly targetProofNew: boolean;
+  /**
+   * What a finish without status proved does with the target's `.holds` (status-mismatch): a proof the run added goes;
+   * the `.holds` B had (the person's proof, or a pending claim's axiom) goes back exactly as it was.
+   */
+  readonly undoTargetProof: string;
+}
+
+/** The context of one evaluation (see `RuleContext`); pure, and it never throws for a malformed model. */
+export function ruleContext(input: RuleInput): RuleContext {
   const { purpose, selection, stage, base, current } = input;
   const roundStart = input.roundStart ?? base;
   const freeze = input.freeze;
@@ -110,26 +225,18 @@ export function evaluate(input: RuleInput): RuleReport {
   const baseTarget = nodeIn(base, selection.target)?.node;
   const targetStatement = curTarget?.lean.statement ?? baseTarget?.lean.statement ?? freeze?.targetStatement;
   const targetHolds = targetStatement !== undefined ? holdsName(targetStatement) : undefined;
-  /** T's `.holds` may be added, changed or turned from axiom into theorem (D-11 pending promotion). */
   const exempt = new Set<string>(
     [baseTarget?.lean.statement, curTarget?.lean.statement, freeze?.targetStatement].filter((s): s is string => s !== undefined).map(holdsName),
   );
   const targetStatements = new Set([baseTarget?.lean.statement, curTarget?.lean.statement, freeze?.targetStatement].filter((s): s is string => s !== undefined));
   const ghosts = [...new Set(selection.adoptedGhosts)];
   const chosen = new Set<string>([selection.target, ...selection.premises, ...ghosts]);
-  /**
-   * A chosen card left code-less only because a blank line separates its block from the declaration below it (TL013):
-   * that declaration's full name. Turn 13: on a fresh model the agent formalises code-less cards, and one stray blank
-   * line made the gate call the card unformalised and the assumption's `.holds` a belief, which told Claude to remove
-   * it; the findings now name the blank line instead (the verdicts are unchanged).
-   */
   const detachedStatementOf = (id: string): string | undefined => {
     const entry = current.nodes.get(id);
     if (entry === undefined || entry.node.lean.binding !== 'none') return undefined;
     const gap = entry.block.binding.gapDecl;
     return gap === undefined ? undefined : current.files.get(entry.file)?.decls[gap]?.fullName;
   };
-  /** `.holds` of a detached statement of a chosen card -> that card. */
   const detachedHolds = new Map<string, string>();
   for (const id of chosen) {
     const statement = detachedStatementOf(id);
@@ -139,7 +246,6 @@ export function evaluate(input: RuleInput): RuleReport {
   const short = (name: string) => relativeName(name, [subject]);
   const at = (entry: DeclEntry | undefined): { file?: string; range?: Range } => (entry ? { file: entry.file.path, range: entry.decl.range } : {});
   const loc = (entry: DeclEntry | undefined) => (entry ? `${where(entry.file.path, entry.decl.range)}: ` : '');
-  /** The same for a judged declaration, which may be a name only Lean reports (its facts' range). */
   const locOf = (j: Judged) => (j.entry ? loc(j.entry) : j.facts ? `${where(j.facts.file, j.facts.range)}: ` : '');
   const atOf = (j: Judged) => (j.entry ? at(j.entry) : j.facts ? { file: j.facts.file, range: j.facts.range } : {});
   const sentence = (id: string) => current.nodes.get(id)?.node.naturalName ?? base.nodes.get(id)?.node.naturalName ?? id;
@@ -184,12 +290,6 @@ export function evaluate(input: RuleInput): RuleReport {
     factsOnlyCache = out;
     return out;
   };
-  /**
-   * Names only Lean reports that are new or changed relative to `refModel` (tables `ref`): the declaration holding one
-   * was added or changed; without such a declaration, a name `refModel` does not know. A reference without facts (a
-   * round start, Accept's base) knows only the parser's names, so there such a name is new only if its source is not
-   * already in the reference's version of its file.
-   */
   const factsOnlySince = (refModel: ProjectModel, ref: DeclTables): FactsOnly[] =>
     factsOnly().filter(({ name, facts: f, owner }) => {
       if (owner !== undefined) return ref.byName.get(owner.name)?.text !== owner.text;
@@ -203,10 +303,6 @@ export function evaluate(input: RuleInput): RuleReport {
       const source = now.slice(lines.offsetAt(f.range.start), lines.offsetAt(f.range.end));
       return source.trim() === '' || !was.includes(source);
     });
-  /**
-   * The axioms a declaration rests on: Lean's `#print axioms`, and for a structure or class also what the constants
-   * its source mentions rest on (`SOURCE_REF_KINDS`: field defaults). Undefined when Lean listed no axioms.
-   */
   const footprintOf = (f: DeclFacts | undefined): string[] | undefined => {
     if (f?.axioms === undefined) return undefined;
     const out = new Set(f.axioms);
@@ -220,24 +316,141 @@ export function evaluate(input: RuleInput): RuleReport {
     }
     return [...out];
   };
-  /** The vocabulary's existence presuppositions (`axiom T.exists : Nonempty T`). */
   const presuppositions = new Set(current.vocabulary.filter((item) => item.kind === 'presupposition').map((item) => item.name));
-
-  const findings = new Map<GateFindingCode, GateFinding[]>();
-  const push = (finding: GateFinding) => {
-    const list = findings.get(finding.code) ?? [];
-    list.push(finding);
-    findings.set(finding.code, list);
-  };
   const ownerOf = (model: ProjectModel, name: string) => model.ownerOfDecl.get(name);
   const node = (id: string | undefined) => (id === undefined ? {} : { nodeId: id });
 
-  // ---- G1: Lean errors, and changed files Lean never builds
+  const targetProofNew = ((): boolean => {
+    if (targetHolds === undefined) return false;
+    const entry = S.byName.get(targetHolds);
+    if (!entry || isAxiom(entry, factsOf(current, targetHolds, entry))) return false;
+    const before = B.byName.get(targetHolds);
+    const baseTheorem = before !== undefined && !isAxiom(before, factsOf(base, targetHolds, before));
+    return !before || !baseTheorem || before.text !== entry.text;
+  })();
+  const undoTargetProof = targetHolds !== undefined && B.byName.has(targetHolds) ? `restore ${targetHolds} exactly as it was before the run` : 'remove the proof of the target';
+
+  return {
+    input,
+    purpose,
+    selection,
+    stage,
+    base,
+    current,
+    roundStart,
+    B,
+    S,
+    R,
+    freeze,
+    subject,
+    checkProve,
+    checkFormalise,
+    gate,
+    curTarget,
+    baseTarget,
+    targetStatement,
+    targetHolds,
+    exempt,
+    targetStatements,
+    ghosts,
+    chosen,
+    detachedStatementOf,
+    detachedHolds,
+    short,
+    at,
+    loc,
+    locOf,
+    atOf,
+    sentence,
+    ownerOf,
+    node,
+    added,
+    changed,
+    removed,
+    addedOrChanged,
+    inBase,
+    changedFiles,
+    factsOnly,
+    factsOnlySince,
+    footprintOf,
+    presuppositions,
+    targetProofNew,
+    undoTargetProof,
+  };
+}
+
+/**
+ * `evaluateRules` (gate/index.ts): every rule for the input's purpose, through the helpers below, each of which applies
+ * only to the purposes it names; the report's findings in `orderFindings`' order.
+ */
+export function evaluate(input: RuleInput): RuleReport {
+  const ctx = ruleContext(input);
+  // Every rule, in the order the single function ran them (builder 2b1a); `orderFindings` groups them by code.
+  const built = buildFindings(ctx);
+  const footprint = footprintFindings(ctx, built.length > 0);
+  const ready = readyCards(ctx);
+  const findings = [
+    ...built,
+    ...newAxiomFindings(ctx),
+    ...existingChangedFindings(ctx),
+    ...adoptedGhostFindings(ctx),
+    ...notProvedFindings(ctx),
+    ...statusMismatchFindings(ctx),
+    ...statementChangedFindings(ctx),
+    ...footprint.findings,
+    ...undeclaredPremiseFindings(ctx),
+    ...sorryAxiomFindings(ctx),
+    ...vocabularyShapeFindings(ctx),
+    ...markupFindings(input, ctx.chosen, ctx.sentence),
+    ...readinessFindings(ctx, ready),
+    ...malformedBindingFindings(ctx, ready),
+    ...proofBeforeFreezeFindings(ctx),
+    ...exampleFindings(ctx),
+    ...notFrozenFindings(ctx),
+  ];
+  return {
+    findings: orderFindings(findings),
+    flaggedDefinitions: flagged(input, ctx.chosen, ctx.inBase),
+    footprints: footprint.footprints,
+    formalisedThisRun: formalisedThisRunOf(ctx),
+    declarations: { added: [...ctx.added], changed: [...ctx.changed], removed: [...ctx.removed] },
+  };
+}
+
+/**
+ * A report's findings in order (`RuleReport.findings`): grouped by code, G1 first, then G3 (`G3_ORDER`: root causes
+ * before their consequences), G5 (`markup`), B.3 (`arrow`, slice 2's sessions), then the readiness and stage codes
+ * (`LATE_ORDER`); within a code, in the order the rules found them. A code in none of these lists is left out.
+ */
+export function orderFindings(findings: readonly GateFinding[]): GateFinding[] {
+  const byCode = new Map<GateFindingCode, GateFinding[]>();
+  for (const finding of findings) {
+    const list = byCode.get(finding.code) ?? [];
+    list.push(finding);
+    byCode.set(finding.code, list);
+  }
+  return [
+    ...(byCode.get('build') ?? []),
+    ...G3_ORDER.flatMap((c) => byCode.get(c) ?? []),
+    ...(byCode.get('markup') ?? []),
+    // Slice 2 (2b1b): B.3's arrows, after the markup rule (sessions only).
+    ...(byCode.get('arrow') ?? []),
+    ...LATE_ORDER.flatMap((c) => byCode.get(c) ?? []),
+  ];
+}
+
+/**
+ * G1 (`build`): each Lean error with its whole message and position; when the build reported no error at all, each
+ * module Lean could not build; and each changed file Lean never builds (not imported by the library, token `not-built`).
+ */
+export function buildFindings(ctx: RuleContext): GateFinding[] {
+  const { current, subject, changedFiles } = ctx;
+  const out: GateFinding[] = [];
   const facts = current.facts;
   if (facts) {
     const errors = facts.build.messages.filter((m) => m.severity === 'error');
     for (const m of errors) {
-      push({
+      out.push({
         step: 'G1',
         code: 'build',
         message: `${m.file ? `${where(m.file, m.range)}: ` : ''}error: ${m.text}`,
@@ -247,7 +460,7 @@ export function evaluate(input: RuleInput): RuleReport {
     }
     if (errors.length === 0) {
       for (const module of facts.build.failedModules) {
-        push({ step: 'G1', code: 'build', message: `Lean could not build ${module}${facts.build.detail ? ` (${facts.build.detail})` : ''}.` });
+        out.push({ step: 'G1', code: 'build', message: `Lean could not build ${module}${facts.build.detail ? ` (${facts.build.detail})` : ''}.` });
       }
     }
   }
@@ -255,7 +468,7 @@ export function evaluate(input: RuleInput): RuleReport {
   for (const module of facts?.modules ?? []) if (module.state === 'not-built' && changedFiles.has(module.file)) unbuilt.add(module.file);
   for (const d of current.diagnostics) if (d.code === 'TL118' && d.file !== undefined && changedFiles.has(d.file)) unbuilt.add(d.file);
   for (const file of [...unbuilt].sort()) {
-    push({
+    out.push({
       step: 'G1',
       code: 'build',
       message: `${file} is not imported by the library, so Lean never checks it: import it from the subject's root module (${current.library}/${subject}.lean) or from a module the library already imports.`,
@@ -263,9 +476,18 @@ export function evaluate(input: RuleInput): RuleReport {
       token: 'not-built',
     });
   }
+  return out;
+}
 
-  // ---- new-axiom
-  // Before the freeze, an axiom added since B is allowed only as the `.holds` of a selected ASSUMPTION or ghost, or as
+/**
+ * `new-axiom`: after the freeze, every axiom the freeze did not hold; before it, every axiom added since B that is
+ * neither the `.holds` of a selected AXIOM or ghost nor vocabulary of its own (tokens `belief`, `statement`,
+ * `unclassified`, `after-freeze`, and `detached` for a statement a blank line separates from its block).
+ */
+export function newAxiomFindings(ctx: RuleContext): GateFinding[] {
+  const { selection, current, S, freeze, ghosts, detachedHolds, at, loc, sentence, ownerOf, node, inBase } = ctx;
+  const out: GateFinding[] = [];
+  // Before the freeze, an axiom added since B is allowed only as the `.holds` of a selected AXIOM or ghost, or as
   // vocabulary of its own (a declaration bound to no card; its shape is judged by `vocabulary-shape`). Everything else
   // is a finding, whatever its type (fixer round 1): a belief, a card's "statement" written as an axiom directly below
   // its block (bound to the card, so it is not vocabulary and would otherwise escape every rule; `axiom x : Empty`
@@ -273,7 +495,7 @@ export function evaluate(input: RuleInput): RuleReport {
   const allowedHolds = new Set<string>();
   for (const id of [...selection.premises, ...ghosts]) {
     const n = current.nodes.get(id)?.node;
-    if (n && n.lean.statement !== undefined && (n.type === 'ASSUMPTION' || ghosts.includes(id))) allowedHolds.add(holdsName(n.lean.statement));
+    if (n && n.lean.statement !== undefined && (n.type === 'AXIOM' || ghosts.includes(id))) allowedHolds.add(holdsName(n.lean.statement));
   }
   const vocabKind = new Map(current.vocabulary.map((item) => [item.name, item.kind]));
   const isPropValued = (f: DeclFacts | undefined) => f?.typeSort !== undefined && normalizeWhitespace(f.typeSort) === 'Prop';
@@ -296,7 +518,7 @@ export function evaluate(input: RuleInput): RuleReport {
     const belief = why === 'holds' || why === 'belief' || (why !== undefined && isPropValued(f));
     if (frozenAxioms) {
       if (frozenAxioms.has(name)) continue;
-      push({
+      out.push({
         step: 'G3',
         code: 'new-axiom',
         message: `${loc(entry)}${name} is an axiom added after freeze_statements: no axiom may be added after the freeze${belief ? ', and only the person adds beliefs (propose a missing premise with propose_assumption)' : ''}; remove it.`,
@@ -312,15 +534,15 @@ export function evaluate(input: RuleInput): RuleReport {
     let what: string;
     let token: string;
     if (why === 'holds') {
-      what = `asserts the card ${owner} (${quote(sentence(owner ?? ''))}), which is not a selected assumption: only the .holds of the selected ASSUMPTION cards may be axioms`;
+      what = `asserts the card ${owner} (${quote(sentence(owner ?? ''))}), which is not a selected axiom: only the .holds of the selected AXIOM cards may be axioms`;
       token = 'belief';
     } else if (why === 'statement') {
-      what = `is an axiom${type} directly below the block of the card ${owner} (${quote(sentence(owner ?? ''))}), so it would be that card's statement: a card's statement is \`abbrev <name> : Prop := …\`, never an axiom, and the only axioms you may add are the .holds of the selected ASSUMPTION cards and vocabulary (in Vocabulary.lean, not directly below a block)`;
+      what = `is an axiom${type} directly below the block of the card ${owner} (${quote(sentence(owner ?? ''))}), so it would be that card's statement: a card's statement is \`abbrev <name> : Prop := …\`, never an axiom, and the only axioms you may add are the .holds of the selected AXIOM cards and vocabulary (in Vocabulary.lean, not directly below a block)`;
       token = belief ? 'belief' : 'statement';
     } else if (why === 'belief' && detachedHolds.has(name)) {
       const id = detachedHolds.get(name) ?? '';
       const statement = statementOfHolds(name) ?? name;
-      push({
+      out.push({
         step: 'G3',
         code: 'new-axiom',
         message: `${loc(entry)}${name} would be the .holds of ${statement}, but a blank line separates ${statement} from the block of the card ${id} (${quote(sentence(id))}), so the card has no statement and this axiom asserts nothing the person holds: remove the blank line between the block and the statement (the statement goes directly below the block), and keep the axiom.`,
@@ -334,13 +556,21 @@ export function evaluate(input: RuleInput): RuleReport {
       what = `is a Prop-valued axiom (a belief${type}): only the person adds beliefs; propose a missing premise with propose_assumption instead`;
       token = 'belief';
     } else {
-      what = `is an axiom${type} that is neither vocabulary telelean can classify (sorts \`axiom T : Type\`, predicates \`axiom P : T₁ → … → Prop\`, presuppositions \`axiom T.exists : Nonempty T\`) nor the .holds of a selected ASSUMPTION card`;
+      what = `is an axiom${type} that is neither vocabulary telelean can classify (sorts \`axiom T : Type\`, predicates \`axiom P : T₁ → … → Prop\`, presuppositions \`axiom T.exists : Nonempty T\`) nor the .holds of a selected AXIOM card`;
       token = 'unclassified';
     }
-    push({ step: 'G3', code: 'new-axiom', message: `${loc(entry)}${name} ${what}; remove it.`, names: [name], token, ...node(owner), ...at(entry) });
+    out.push({ step: 'G3', code: 'new-axiom', message: `${loc(entry)}${name} ${what}; remove it.`, names: [name], token, ...node(owner), ...at(entry) });
   }
+  return out;
+}
 
-  // ---- existing-changed: every declaration of B keeps its text (docstring included) and, with B's facts, its meaning
+/**
+ * `existing-changed`: every declaration of B but the target's `.holds` keeps its text, docstring included, and, with B's
+ * facts, its meaning (its type and value): tokens `removed`, `changed`, `meaning`, and `target` for the target's statement.
+ */
+export function existingChangedFindings(ctx: RuleContext): GateFinding[] {
+  const { base, current, B, S, exempt, targetStatements, at, loc, ownerOf, node } = ctx;
+  const out: GateFinding[] = [];
   for (const [name, before] of B.byName) {
     if (exempt.has(name)) continue;
     const entry = S.byName.get(name);
@@ -348,7 +578,7 @@ export function evaluate(input: RuleInput): RuleReport {
     const isTarget = targetStatements.has(name);
     const common = { step: 'G3' as const, code: 'existing-changed' as const, names: [name], ...node(owner) };
     if (!entry) {
-      push({
+      out.push({
         ...common,
         message: `${loc(before)}${name} existed before the run and was removed: never change or remove a declaration that existed before the run (except the target's .holds); restore it.`,
         token: isTarget ? 'target' : 'removed',
@@ -358,7 +588,7 @@ export function evaluate(input: RuleInput): RuleReport {
       continue;
     }
     if (entry.text !== before.text) {
-      push({
+      out.push({
         ...common,
         message: `${loc(entry)}${name} existed before the run and was changed (its text, docstring included, must stay exactly as it was; only the target's .holds may change): restore it.`,
         token: isTarget ? 'target' : 'changed',
@@ -373,7 +603,7 @@ export function evaluate(input: RuleInput): RuleReport {
     const typeChanged = norm(bf.type) !== norm(cf.type);
     if (typeChanged || norm(bf.value) !== norm(cf.value)) {
       const [was, now] = typeChanged ? [norm(bf.type), norm(cf.type)] : [norm(bf.value), norm(cf.value)];
-      push({
+      out.push({
         ...common,
         message: `${loc(entry)}${name}'s text is unchanged but its meaning changed (its ${typeChanged ? 'type' : 'value'} was \`${was ?? '(none)'}\`, now \`${now ?? '(none)'}\`), e.g. through an \`open … in\` or a new declaration it now refers to: restore what it meant.`,
         token: isTarget ? 'target' : 'meaning',
@@ -381,7 +611,16 @@ export function evaluate(input: RuleInput): RuleReport {
       });
     }
   }
-  // telelean's adopted ghosts: their statement and `.holds` stay as written at adoption (A)
+  return out;
+}
+
+/**
+ * `existing-changed` for telelean's adopted ghosts (token `ghost`): their statement and `.holds` stay exactly as telelean
+ * wrote them at the newest `adopt` commit (A).
+ */
+export function adoptedGhostFindings(ctx: RuleContext): GateFinding[] {
+  const { input, S, at, loc } = ctx;
+  const out: GateFinding[] = [];
   if (input.adopted) {
     const A = declTables(input.adopted);
     for (const id of input.teleleanBlocks) {
@@ -393,7 +632,7 @@ export function evaluate(input: RuleInput): RuleReport {
         if (!was) continue;
         const entry = S.byName.get(name);
         if (entry?.text === was.text) continue;
-        push({
+        out.push({
           step: 'G3',
           code: 'existing-changed',
           message: `${loc(entry ?? was)}${name}, which telelean wrote for the adopted suggestion ${id}, was ${entry ? 'changed' : 'removed'}: leave it exactly as telelean wrote it.`,
@@ -405,8 +644,16 @@ export function evaluate(input: RuleInput): RuleReport {
       }
     }
   }
+  return out;
+}
 
-  // ---- not-proved (gate-proved): T.holds exists, is a theorem stating exactly T, no sorry, not conditional
+/**
+ * `not-proved` (gate-proved): the target's `.holds` exists and is a theorem stating exactly its statement, with no sorry
+ * and no hypotheses (tokens `missing`, `axiom`, `sorry`, `mismatch`, `conditional`, `unchecked`).
+ */
+export function notProvedFindings(ctx: RuleContext): GateFinding[] {
+  const { purpose, selection, current, B, S, curTarget, targetStatement, targetHolds, short, at, loc } = ctx;
+  const out: GateFinding[] = [];
   if (purpose === 'gate-proved') {
     const t = curTarget;
     const proof = t?.status.proof;
@@ -422,7 +669,9 @@ export function evaluate(input: RuleInput): RuleReport {
         why = `the target ${selection.target} has no statement, so there is nothing proved`;
       } else if (t.lean.justification === undefined) {
         token = 'missing';
-        why = `${holds} does not exist: prove \`theorem ${s}.holds : ${s} := …\`, or remove every proof of the target and finish with status not_proved`;
+        // Slice 1e fixer: a `.holds` the person had goes back as it was in a not-proved finish (status-mismatch).
+        const undo = B.byName.has(holds) ? `restore ${holds} exactly as it was before the run` : 'remove every proof of the target';
+        why = `${holds} does not exist: prove \`theorem ${s}.holds : ${s} := …\`, or ${undo} and finish with status not_proved`;
       } else if (t.lean.justificationKind === 'axiom') {
         token = 'axiom';
         why = `${holds} is an axiom, not a proof: replace it by \`theorem ${s}.holds : ${s} := …\``;
@@ -439,31 +688,66 @@ export function evaluate(input: RuleInput): RuleReport {
         token = 'unchecked';
         why = `Lean could not check ${holds} (no facts for it): make sure the files build`;
       }
-      push({ step: 'G3', code: 'not-proved', message: `${loc(entry)}${why}.`, names: [holds], nodeId: selection.target, token, ...at(entry) });
+      out.push({ step: 'G3', code: 'not-proved', message: `${loc(entry)}${why}.`, names: [holds], nodeId: selection.target, token, ...at(entry) });
     }
   }
+  return out;
+}
 
-  // ---- status-mismatch (gate-other): no theorem T.holds added or changed in the run
-  if (purpose === 'gate-other' && targetHolds !== undefined) {
-    const entry = S.byName.get(targetHolds);
-    const cf = factsOf(current, targetHolds, entry);
-    if (entry && !isAxiom(entry, cf)) {
-      const before = B.byName.get(targetHolds);
-      const baseTheorem = before !== undefined && !isAxiom(before, factsOf(base, targetHolds, before));
-      if (!before || !baseTheorem || before.text !== entry.text) {
-        push({
+/**
+ * `status-mismatch` (gate-other): a finish without status proved adds or changes no proof of the target, and leaves the
+ * `.holds` B had exactly as it was (tokens `changed`, `removed`).
+ */
+export function statusMismatchFindings(ctx: RuleContext): GateFinding[] {
+  const { purpose, selection, base, B, S, targetHolds, exempt, at, loc, targetProofNew } = ctx;
+  const out: GateFinding[] = [];
+  // A finish without status proved leaves the target's `.holds` exactly as it was in B
+  // (spec v4.1 ES-2 "in a step that does not end in a proof, it stays exactly as it was", A11, and Appendix B "today's
+  // status-mismatch rule, extended to removals and changed theorems"; slice 1e fixer). So no theorem T.holds is added,
+  // and the `.holds` B had (the person's proof, or a pending claim's axiom) is neither changed nor removed: a not-proved
+  // proposal can never take away a proof the person had. `existing-changed` leaves the target's `.holds` to this rule,
+  // because a proved finish may replace it (A11, "replaces your proof").
+  if (purpose === 'gate-other') {
+    for (const name of exempt) {
+      const before = B.byName.get(name);
+      const entry = S.byName.get(name);
+      if (before === undefined) {
+        if (name !== targetHolds || !targetProofNew) continue;
+        out.push({
           step: 'G3',
           code: 'status-mismatch',
-          message: `${loc(entry)}you finished without status proved, but ${targetHolds} is a proof added or changed in this run: either finish with status proved (after freeze_statements), or remove the proof of the target before finishing.`,
-          names: [targetHolds],
+          message: `${loc(entry)}you finished without status proved, but ${name} is a proof added or changed in this run: either finish with status proved (after freeze_statements), or remove the proof of the target before finishing.`,
+          names: [name],
           nodeId: selection.target,
           ...at(entry),
         });
+        continue;
       }
+      if (entry !== undefined && entry.text === before.text) continue;
+      const was = isAxiom(before, factsOf(base, name, before)) ? 'the pending claim of the target, an axiom' : 'the existing proof of the target';
+      out.push({
+        step: 'G3',
+        code: 'status-mismatch',
+        message: entry
+          ? `${loc(entry)}you finished without status proved, but ${name} (${was}) was changed in this run: a finish that is not proved leaves the target's .holds exactly as it was before the run. Either finish with status proved (after freeze_statements), or restore ${name} exactly as it was before finishing.`
+          : `${loc(before)}you finished without status proved, but ${name} (${was}) was removed in this run: a finish that is not proved leaves the target's .holds exactly as it was before the run. Restore ${name} exactly as it was before finishing.`,
+        names: [name],
+        nodeId: selection.target,
+        token: entry ? 'changed' : 'removed',
+        ...(entry ? at(entry) : { file: before.file.path, range: before.decl.range }),
+      });
     }
   }
+  return out;
+}
 
-  // ---- statement-changed: after the freeze, every frozen declaration but T.holds keeps its kind, type and value
+/**
+ * `statement-changed` (check in stage prove, and a finish, after the freeze): every frozen declaration but the target's
+ * `.holds` keeps its kind, type and value (tokens `removed`, and `target` for the target's statement).
+ */
+export function statementChangedFindings(ctx: RuleContext): GateFinding[] {
+  const { current, S, freeze, checkProve, gate, exempt, targetStatements, at, loc, ownerOf, node } = ctx;
+  const out: GateFinding[] = [];
   if (freeze && (checkProve || gate)) {
     for (const [name, frozen] of Object.entries(freeze.declarations)) {
       if (exempt.has(name)) continue;
@@ -471,7 +755,7 @@ export function evaluate(input: RuleInput): RuleReport {
       const cf = factsOf(current, name, entry);
       if (!cf) {
         if (!entry && !current.declFacts.has(name)) {
-          push({ step: 'G3', code: 'statement-changed', message: `${name} was frozen by freeze_statements and has been removed: restore it exactly as frozen.`, names: [name], token: 'removed', ...node(ownerOf(current, name)) });
+          out.push({ step: 'G3', code: 'statement-changed', message: `${name} was frozen by freeze_statements and has been removed: restore it exactly as frozen.`, names: [name], token: 'removed', ...node(ownerOf(current, name)) });
         }
         continue;
       }
@@ -484,7 +768,7 @@ export function evaluate(input: RuleInput): RuleReport {
         : typeChanged
           ? `its type was \`${frozen.type ?? '(none)'}\`, now \`${norm(cf.type) ?? '(none)'}\``
           : `its value was \`${frozen.value ?? '(none)'}\`, now \`${norm(cf.value) ?? '(none)'}\``;
-      push({
+      out.push({
         step: 'G3',
         code: 'statement-changed',
         message: `${loc(entry)}${name} changed after freeze_statements (${detail}): the frozen statements, vocabulary and definitions must stay exactly as frozen.`,
@@ -495,8 +779,24 @@ export function evaluate(input: RuleInput): RuleReport {
       });
     }
   }
+  return out;
+}
 
-  // ---- footprint: T.holds (gate-proved, check in stage prove) and every declaration added or changed in the run
+/**
+ * `footprint`: the target's proof (gate-proved; check in stage prove and gate-other when the run added or changed it)
+ * and every declaration added or changed since B, with the names only Lean reports inside one, rest within the permitted
+ * set (anything but a proof also on the existence presuppositions); one Lean reports nothing about fails closed (token
+ * `no-facts`). `buildFailed`: G1 found something, so a file Lean did not build is G1's to report. Also gives the
+ * report's `footprints`: `#print axioms` of the target's `.holds` and of every proof judged.
+ */
+export function footprintFindings(ctx: RuleContext, buildFailed: boolean): { findings: GateFinding[]; footprints: Record<string, string[]> } {
+  const { purpose, selection, base, current, B, S, freeze, checkProve, gate, targetHolds, at, loc, locOf, atOf, sentence, ownerOf, node, added, changed, addedOrChanged, changedFiles, factsOnlySince, footprintOf, presuppositions, targetProofNew } = ctx;
+  const out: GateFinding[] = [];
+  const facts = current.facts;
+  // T.holds (gate-proved; check in stage prove and gate-other when the run added or changed it) and every
+  // declaration added or changed in the run. Slice 1e fixer: check_lean no longer judges the person's own proof of the
+  // target while it is unchanged (A11: a target that is already proved). It is not Claude's work, and a finding on it
+  // kept the files from ever being clean for "Claude suggests" (`checkGhost`); a proved finish still has it judged.
   // Without a freeze (gate-other) the set is computed from the files as they are, with derivation footprints only from
   // the user's own unchanged proofs in B: a proof Claude wrote for a selected premise never permits its own axioms.
   // Fixer round 2 (P12 by another route): not only proofs. A declaration whose type is not a Prop can carry a proof
@@ -515,7 +815,7 @@ export function evaluate(input: RuleInput): RuleReport {
     judgedNames.add(item.name);
     judged.push(item);
   };
-  if (targetHolds !== undefined && S.byName.has(targetHolds) && (purpose === 'gate-proved' || checkProve || addedOrChanged.has(targetHolds))) {
+  if (targetHolds !== undefined && S.byName.has(targetHolds) && (purpose === 'gate-proved' || addedOrChanged.has(targetHolds))) {
     const entry = S.byName.get(targetHolds);
     const f = factsOf(current, targetHolds, entry);
     if (isProof(current, entry, f)) judge({ name: targetHolds, ...(entry ? { entry } : {}), ...(f ? { facts: f } : {}), proof: true });
@@ -534,12 +834,12 @@ export function evaluate(input: RuleInput): RuleReport {
   // has no facts for (Lean's index skips `private` declarations; a name telelean resolves differently) cannot be
   // checked, in every purpose. Files Lean did not build are G1's to report.
   if (facts) {
-    const g1 = (findings.get('build') ?? []).length > 0;
+    const g1 = buildFailed;
     for (const j of judged) {
       if (j.facts !== undefined || j.entry === undefined) continue;
       if (g1 && !current.freshFiles.has(j.entry.file.path)) continue;
       const isPrivate = j.entry.decl.modifiers.includes('private');
-      push({
+      out.push({
         step: 'G3',
         code: 'footprint',
         message: `${loc(j.entry)}Lean reported nothing about ${j.name}${isPrivate ? ' (Lean does not report `private` declarations)' : ''}, so telelean cannot check what it rests on: ${isPrivate ? 'remove `private`' : 'make sure it is a plain top-level declaration of a module the library builds'}, or delete the declaration.`,
@@ -558,7 +858,7 @@ export function evaluate(input: RuleInput): RuleReport {
     if (!permitted || !f) continue;
     const axioms = footprintOf(f);
     if (axioms === undefined) {
-      push({ step: 'G3', code: 'footprint', message: `${locOf(j)}Lean could not list the axioms of ${name}, so it cannot be checked: make sure the files build.`, names: [name], token: 'no-facts', ...node(ownerOf(current, name)), ...atOf(j) });
+      out.push({ step: 'G3', code: 'footprint', message: `${locOf(j)}Lean could not list the axioms of ${name}, so it cannot be checked: make sure the files build.`, names: [name], token: 'no-facts', ...node(ownerOf(current, name)), ...atOf(j) });
       continue;
     }
     const allowed = j.proof ? allowedForProofs : allowedForOthers;
@@ -570,10 +870,15 @@ export function evaluate(input: RuleInput): RuleReport {
     });
     const selected = [...permitted.selected, ...permitted.derivationFootprints.filter((a) => statementOfHolds(a) !== undefined)];
     const premises = `the selected premises${selected.length > 0 ? ` (${[...new Set(selected)].join(', ')})` : ''}`;
-    push({
+    // Slice 1e fixer (A11): the person's own proof of the target, unchanged (judged at gate-proved only): Claude may
+    // replace it, or leave it as it is with a not-proved finish, never remove it.
+    const existingProof = j.proof && name === targetHolds && !targetProofNew;
+    out.push({
       step: 'G3',
       code: 'footprint',
-      message: j.proof
+      message: existingProof
+        ? `${locOf(j)}${name} is the existing proof of the target, unchanged in this run, and it rests on ${described.join(', ')}, outside the permitted set: a proof of the target may use only ${premises}, the vocabulary, the existence presuppositions of the statements and Lean's standard axioms. Write a new proof of the target from the selected premises (it replaces the existing one), or finish with status not_proved and leave the existing proof exactly as it is.`
+        : j.proof
         ? `${locOf(j)}${name} rests on ${described.join(', ')}, outside the permitted set: every proof may use only ${premises}, the vocabulary, the existence presuppositions of the statements and Lean's standard axioms.`
         : `${locOf(j)}${name} is not a theorem but carries a proof resting on ${described.join(', ')}, outside the permitted set: everything you add (a definition, instance or structure too, and what it holds inside, e.g. a field's default value) may use only ${premises}, the vocabulary, existence presuppositions and Lean's standard axioms; remove it or rest it on the selected premises.`,
       names: extra,
@@ -585,8 +890,81 @@ export function evaluate(input: RuleInput): RuleReport {
     const f = factsOf(current, targetHolds, S.byName.get(targetHolds));
     if (f?.axioms !== undefined && f.kind !== 'axiom') footprints[targetHolds] = [...f.axioms];
   }
+  return { findings: out, footprints };
+}
 
-  // ---- sorry-axiom: no sorryAx in a declaration of a changed file (the user's own unchanged sorry stays theirs)
+/**
+ * `undeclared-premise` (B.2, no hidden edges): every card the target's proof uses directly, direct(T), is a selected
+ * premise or an adopted ghost (token `unselected`); every card in its footprint is explained by one it uses (`unseen`);
+ * without the elaborated values the gate refuses rather than guess (`source-only`).
+ */
+export function undeclaredPremiseFindings(ctx: RuleContext): GateFinding[] {
+  const { purpose, selection, current, S, checkProve, curTarget, targetHolds, ghosts, at, loc, sentence, targetProofNew, undoTargetProof } = ctx;
+  const out: GateFinding[] = [];
+  // Spec v4.1 B.2 "no hidden edges" (slice 1e): every card the target's proof uses directly is
+  // a selected premise (the source of a selected arrow) or an adopted ghost. Today's footprint rule lets a proof use an
+  // unselected proved card whose basis the selection covers (S14); this rule does not. direct(T) is the board's own
+  // walk (project/edges.ts `directWalk`: from T.holds through the elaborated values, `DeclFacts.valueConsts`, of the
+  // declarations that belong to no card, up to the cards' `.holds`), with B.2's cross-check (`unseen`: a card in the
+  // footprint that no card the walk reached rests on), as buildProjectModel stored it on the target's status. The gate
+  // never falls back to the `.ilean` references: without the elaborated values, or on out-of-date facts, it refuses
+  // (`source-only`) rather than guess. Judged at gate-proved, and at gate-other and by check_lean in stage prove when the
+  // run added or changed a proof of the target. Slice 1e fixer: the person's own proof, unchanged (A11: a target that is
+  // already proved), is judged only by a proved finish, which claims the target follows from the selection; a finding
+  // on it at check_lean would keep the files from ever being clean for "Claude suggests" (`checkGhost`), and a
+  // not-proved finish leaves it exactly as it was (status-mismatch). Its message says so: replace it, or leave it.
+  const targetProof = curTarget !== undefined && (curTarget.status.proof.kind === 'proved' || curTarget.status.proof.kind === 'conditional');
+  if (targetProof && curTarget !== undefined && (purpose === 'gate-proved' || ((checkProve || purpose === 'gate-other') && targetProofNew))) {
+    const entry = targetHolds !== undefined ? S.byName.get(targetHolds) : undefined;
+    const proof = targetHolds ?? `${selection.target}.holds`;
+    /** The person's own proof of the target, unchanged in the run (gate-proved only, see above). */
+    const existing = !targetProofNew;
+    const direct = curTarget.status.direct;
+    const holdsOf = (id: string) => {
+      const statement = current.nodes.get(id)?.node.lean.statement;
+      return statement !== undefined ? holdsName(statement) : `${id}.holds`;
+    };
+    const common = { step: 'G3' as const, code: 'undeclared-premise' as const, ...at(entry) };
+    if (direct === undefined || direct.from !== 'proof' || curTarget.status.flags.includes('stale')) {
+      out.push({ ...common, message: UNSEEN_PROOF, names: [proof], nodeId: selection.target, token: 'source-only' });
+    } else {
+      const allowed = new Set<string>([...selection.premises, ...ghosts]);
+      const usable = `the selected premises' .holds${ghosts.length > 0 ? ' and the adopted suggestions' : ''}`;
+      for (const id of direct.ids) {
+        if (allowed.has(id) || id === selection.target) continue;
+        const holds = holdsOf(id);
+        out.push({
+          ...common,
+          message: existing
+            ? `${loc(entry)}${proof} is the existing proof of the target, unchanged in this run, and it uses ${holds} directly: the card ${id} (${quote(sentence(id))}) is not one of the selected premises. The person drew arrows from the selected premises and asks for a proof from exactly these: write a new proof of the target that (with every lemma it uses) uses only ${usable} (it replaces the existing one), or finish with status not_proved and leave the existing proof exactly as it is, naming ${id} in gap (never propose an existing card with propose_assumption).`
+            : `${loc(entry)}${proof} uses ${holds} directly: the card ${id} (${quote(sentence(id))}) is not one of the selected premises. The person drew arrows from the selected premises and asks for a proof from exactly these, so the proof (and every lemma it uses) may use only ${usable}. Prove the target without that card; if it cannot be done without it, ${undoTargetProof} and finish with status not_proved, naming ${id} in gap (never propose an existing card with propose_assumption).`,
+          names: [holds],
+          nodeId: id,
+          token: 'unselected',
+        });
+      }
+      for (const id of direct.unseen ?? []) {
+        if (id === selection.target) continue;
+        const holds = holdsOf(id);
+        out.push({
+          ...common,
+          message: existing
+            ? `${loc(entry)}${proof} is the existing proof of the target, unchanged in this run, and it rests on ${holds} (the card ${id}, ${quote(sentence(id))}) in a way the arrows do not show: no card it uses directly rests on it. Write a new proof of the target that uses only ${usable}, directly (it replaces the existing one), or finish with status not_proved and leave the existing proof exactly as it is.`
+            : `${loc(entry)}${proof} rests on ${holds} (the card ${id}, ${quote(sentence(id))}) in a way the arrows do not show: no card the proof uses directly rests on it (for example it is reached through another card's statement). Use only ${usable}, directly.`,
+          names: [holds],
+          nodeId: id,
+          token: 'unseen',
+        });
+      }
+    }
+  }
+  return out;
+}
+
+/** `sorry-axiom` (token `sorry`): no declaration of a changed file reaches `sorryAx`; the user's own unchanged sorry stays theirs. */
+export function sorryAxiomFindings(ctx: RuleContext): GateFinding[] {
+  const { base, current, B, S, at, loc, ownerOf, node, changedFiles } = ctx;
+  const out: GateFinding[] = [];
   for (const [name, f] of current.declFacts) {
     if (!changedFiles.has(f.file) || !(f.usesSorry === true || (f.axioms ?? []).includes(SORRY_AXIOM))) continue;
     const entry = S.byName.get(name);
@@ -595,16 +973,21 @@ export function evaluate(input: RuleInput): RuleReport {
       const bf = base.facts === undefined ? undefined : factsOf(base, name, before);
       if (base.facts === undefined || bf?.usesSorry === true || (bf?.axioms ?? []).includes(SORRY_AXIOM)) continue;
     }
-    push({ step: 'G3', code: 'sorry-axiom', message: `${loc(entry)}${name} depends on sorry (sorryAx): give a complete proof, or remove it.`, names: [name], token: 'sorry', ...node(ownerOf(current, name)), ...at(entry) });
+    out.push({ step: 'G3', code: 'sorry-axiom', message: `${loc(entry)}${name} depends on sorry (sorryAx): give a complete proof, or remove it.`, names: [name], token: 'sorry', ...node(ownerOf(current, name)), ...at(entry) });
   }
+  return out;
+}
 
-  // ---- vocabulary-shape: new vocabulary passes the simple D-3 shape rule
+/** `vocabulary-shape`: new vocabulary passes the simple D-3 shape rule (sorts, predicates over sorts, `noncomputable opaque` constants). */
+export function vocabularyShapeFindings(ctx: RuleContext): GateFinding[] {
+  const { current, S, at, loc, inBase } = ctx;
+  const out: GateFinding[] = [];
   for (const item of current.vocabulary) {
     if (inBase(item.name) || item.kind === 'unmarked-axiom') continue;
     if (!item.flags.includes('shape-violation') && item.kind !== 'other') continue;
     const entry = S.byName.get(item.name);
     const reason = current.diagnostics.find((d) => d.code === 'TL111' && d.vocab === item.name)?.message;
-    push({
+    out.push({
       step: 'G3',
       code: 'vocabulary-shape',
       message: `${loc(entry)}${reason ?? `${item.name} is not a vocabulary shape telelean accepts`} Vocabulary may only be sorts \`axiom T : Type\`, predicates \`axiom P : T₁ → … → Prop\` over sorts, and constants or functions as \`noncomputable opaque\`.`,
@@ -612,13 +995,28 @@ export function evaluate(input: RuleInput): RuleReport {
       ...(item.loc ? { file: item.loc.file, range: item.loc.range } : at(entry)),
     });
   }
+  return out;
+}
 
-  // ---- G5 markup
-  for (const finding of markupFindings(input, chosen, sentence)) push(finding);
-
-  // ---- readiness (freeze, gate-proved): the target and the selected assumptions and ghosts are formalised
+/**
+ * The cards the readiness rules judge (freeze and gate-proved; none otherwise): the target, the selected AXIOM premises
+ * and the adopted ghosts.
+ */
+export function readyCards(ctx: RuleContext): string[] {
+  const { purpose, selection, current, ghosts } = ctx;
   const readiness = purpose === 'freeze' || purpose === 'gate-proved';
-  const ready = readiness ? [...new Set([selection.target, ...selection.premises.filter((id) => current.nodes.get(id)?.node.type === 'ASSUMPTION' || ghosts.includes(id)), ...ghosts])] : [];
+  return readiness ? [...new Set([selection.target, ...selection.premises.filter((id) => current.nodes.get(id)?.node.type === 'AXIOM' || ghosts.includes(id)), ...ghosts])] : [];
+}
+
+/**
+ * Readiness (freeze, gate-proved), on `ready` (`readyCards`): each card is formalised (`not-formalised`, tokens
+ * `malformed` and `detached`), and each selected AXIOM and ghost has `axiom n.holds : n` (`missing-holds`, tokens
+ * `missing` and `mismatch`).
+ */
+export function readinessFindings(ctx: RuleContext, ready: readonly string[]): GateFinding[] {
+  const { purpose, selection, current, detachedStatementOf, short } = ctx;
+  const out: GateFinding[] = [];
+  const readiness = purpose === 'freeze' || purpose === 'gate-proved';
   if (readiness) {
     for (const id of ready) {
       const entry = current.nodes.get(id);
@@ -629,7 +1027,7 @@ export function evaluate(input: RuleInput): RuleReport {
         const now = bound(n);
         const detached = now === undefined ? detachedStatementOf(id) : undefined;
         if (detached !== undefined) {
-          push({
+          out.push({
             step: 'G3',
             code: 'not-formalised',
             message: `${where(entry.file, entry.block.range)}: the card ${id} (${quote(n.naturalName)}) has no Lean statement: ${detached} follows its block after a blank line, so it is not attached; remove the blank line (the statement goes directly below the block).`,
@@ -642,7 +1040,7 @@ export function evaluate(input: RuleInput): RuleReport {
           continue;
         }
         const what = now !== undefined ? `is bound to ${now}, which is not a Prop statement (${malformedReason(current, n)})` : 'has no Lean statement';
-        push({
+        out.push({
           step: 'G3',
           code: 'not-formalised',
           message: `${where(entry.file, entry.block.range)}: the card ${id} (${quote(n.naturalName)}) ${what}: write \`/-- <its sentence> -/\` and \`abbrev <name> : Prop := <statement>\`${assumption ? ' and `axiom <name>.holds : <name>`' : ''} directly below its block.`,
@@ -657,10 +1055,10 @@ export function evaluate(input: RuleInput): RuleReport {
       const statement = n.lean.statement as string;
       const s = short(statement);
       if (n.lean.justification === undefined) {
-        push({
+        out.push({
           step: 'G3',
           code: 'missing-holds',
-          message: `${where(entry.file, entry.block.range)}: the selected assumption ${id} (${quote(n.naturalName)}) has no \`axiom ${s}.holds : ${s}\`: add it right after \`abbrev ${s}\`.`,
+          message: `${where(entry.file, entry.block.range)}: the selected axiom ${id} (${quote(n.naturalName)}) has no \`axiom ${s}.holds : ${s}\`: add it right after \`abbrev ${s}\`.`,
           names: [holdsName(statement)],
           nodeId: id,
           token: 'missing',
@@ -668,7 +1066,7 @@ export function evaluate(input: RuleInput): RuleReport {
           range: entry.block.range,
         });
       } else if (n.status.flags.includes('holds-mismatch')) {
-        push({
+        out.push({
           step: 'G3',
           code: 'missing-holds',
           message: `${where(entry.file, entry.block.range)}: ${holdsName(statement)} does not state ${statement}: write exactly \`axiom ${s}.holds : ${s}\`.`,
@@ -681,11 +1079,20 @@ export function evaluate(input: RuleInput): RuleReport {
       }
     }
   }
+  return out;
+}
 
-  // ---- not-formalised in every purpose (fixer round 1): a selected card (any type) bound in this run to something
+/**
+ * `not-formalised` in every purpose (token `malformed`): a chosen card the readiness rules did not judge (`ready`) is
+ * not bound in this run to something that is not a Prop statement.
+ */
+export function malformedBindingFindings(ctx: RuleContext, ready: readonly string[]): GateFinding[] {
+  const { base, current, chosen } = ctx;
+  const out: GateFinding[] = [];
+  // Fixer round 1: a selected card (any type) bound in this run to something
   // that is not a Prop statement (TL101: not found; TL113: not a Prop abbrev/def, e.g. an axiom or a non-Prop def
-  // directly below its block). The readiness rules above cover the target and the selected assumptions at the freeze
-  // and finish(proved) only; without this, a GOAL or DERIVATION premise, or any finish, could carry a malformed
+  // directly below its block). The readiness rules above cover the target and the selected axioms at the freeze
+  // and finish(proved) only; without this, a PROPOSITION premise, or any finish, could carry a malformed
   // statement into the proposal. A card left code-less is still fine ("could not formalise" is honest).
   const readyChecked = new Set(ready);
   for (const id of chosen) {
@@ -695,10 +1102,10 @@ export function evaluate(input: RuleInput): RuleReport {
     const n = entry.node;
     const now = bound(n);
     if (now === undefined || bound(base.nodes.get(id)?.node) !== undefined || formalised(current, n)) continue;
-    push({
+    out.push({
       step: 'G3',
       code: 'not-formalised',
-      message: `${where(entry.file, entry.block.range)}: the card ${id} (${quote(n.naturalName)}) is now bound to ${now}, which is not a Prop statement (${malformedReason(current, n)}): a card's statement is \`abbrev <name> : Prop := …\` directly below its block (only a selected ASSUMPTION also gets \`axiom <name>.holds\`); fix it, or leave a blank line between the block and that declaration.`,
+      message: `${where(entry.file, entry.block.range)}: the card ${id} (${quote(n.naturalName)}) is now bound to ${now}, which is not a Prop statement (${malformedReason(current, n)}): a card's statement is \`abbrev <name> : Prop := …\` directly below its block (only a selected AXIOM also gets \`axiom <name>.holds\`); fix it, or leave a blank line between the block and that declaration.`,
       names: [now],
       nodeId: id,
       token: 'malformed',
@@ -706,8 +1113,17 @@ export function evaluate(input: RuleInput): RuleReport {
       range: entry.block.range,
     });
   }
+  return out;
+}
 
-  // ---- proof-before-freeze (check in stage formalise, freeze): no proof added or changed since the round started
+/**
+ * `proof-before-freeze` (check in stage formalise, and freeze, before the round's freeze): no proof added or changed since
+ * the round started, also not one carried inside a declaration that is not a proof (token `carrier`).
+ */
+export function proofBeforeFreezeFindings(ctx: RuleContext): GateFinding[] {
+  const { purpose, current, roundStart, S, R, freeze, checkFormalise, at, loc, locOf, atOf, ownerOf, node, factsOnlySince, footprintOf, presuppositions } = ctx;
+  const out: GateFinding[] = [];
+  // Check in stage formalise, and freeze: no proof added or changed since the round started.
   // Fixer round 2: also no proof carried inside a declaration that is not one (a def, instance or structure, or a name
   // only Lean reports inside one): it carries a proof when what it rests on goes beyond the vocabulary layer (Lean's
   // standard axioms, the signature and the existence presuppositions), i.e. it uses a claim such as a `.holds`.
@@ -715,7 +1131,7 @@ export function evaluate(input: RuleInput): RuleReport {
     const vocabularyLayer = new Set([...STANDARD_AXIOM_NAMES, ...signatureAxioms(current), ...presuppositions, SORRY_AXIOM]);
     const carried = (f: DeclFacts | undefined) => (footprintOf(f) ?? []).filter((a) => !vocabularyLayer.has(a));
     const carrier = (name: string, claims: string[], j: Judged) =>
-      push({
+      out.push({
         step: 'G3',
         code: 'proof-before-freeze',
         message: `${locOf(j)}${name} carries a proof written before freeze_statements (it rests on ${claims.join(', ')}): no proofs before the freeze (D-19), also not inside a definition, instance or structure; remove it, call freeze_statements, then prove.`,
@@ -734,7 +1150,7 @@ export function evaluate(input: RuleInput): RuleReport {
         if (claims.length > 0) carrier(name, claims, { name, entry, ...(f ? { facts: f } : {}), proof: false });
         continue;
       }
-      push({
+      out.push({
         step: 'G3',
         code: 'proof-before-freeze',
         message: `${loc(entry)}${name} is a proof written before freeze_statements: no proofs before the freeze (D-19); remove it, call freeze_statements, then prove.`,
@@ -748,64 +1164,75 @@ export function evaluate(input: RuleInput): RuleReport {
       if (claims.length > 0) carrier(name, claims, { name, facts: f, proof: false });
     }
   }
+  return out;
+}
 
-  // ---- examples (fixer round 3): every `example` added since B (by text, as a multiset: the user's own stay theirs)
+/**
+ * Examples (token `example`): every `example` added since B (by text, as a multiset: the user's own stay theirs) is a
+ * finding in every purpose: `proof-before-freeze` without the round's freeze, `footprint` after it.
+ */
+export function exampleFindings(ctx: RuleContext): GateFinding[] {
+  const { B, S, freeze } = ctx;
+  const out: GateFinding[] = [];
+  // Fixer round 3: every `example` added since B (by text, as a multiset: the user's own stay theirs)
   // is a finding in every purpose, so none reaches the user's files, whatever the finish status. An example is a proof
   // without a name: Lean reports nothing about it, so no rule can check what it rests on, nothing can use it, and the
   // files never need one. Before the round's freeze it is a proof written before freeze_statements (D-19); after it,
   // a proof telelean cannot check (code `footprint`, token `example`).
-  {
-    const baseExamples = new Map<string, number>();
-    for (const example of B.examples) baseExamples.set(example.text, (baseExamples.get(example.text) ?? 0) + 1);
-    for (const example of S.examples) {
-      const left = baseExamples.get(example.text) ?? 0;
-      if (left > 0) {
-        baseExamples.set(example.text, left - 1);
-        continue;
-      }
-      const place = { file: example.file.path, range: example.decl.range };
-      const here = where(example.file.path, example.decl.range);
-      if (freeze === undefined) {
-        push({ step: 'G3', code: 'proof-before-freeze', message: `${here}: an \`example\` is a proof, written before freeze_statements: remove it.`, token: 'example', ...place });
-      } else {
-        push({
-          step: 'G3',
-          code: 'footprint',
-          message: `${here}: an \`example\` may not stay in the files: it has no name, so Lean reports nothing about it and telelean cannot check what it rests on; remove it (to try something out, use #check or a named lemma).`,
-          token: 'example',
-          ...place,
-        });
-      }
+  const baseExamples = new Map<string, number>();
+  for (const example of B.examples) baseExamples.set(example.text, (baseExamples.get(example.text) ?? 0) + 1);
+  for (const example of S.examples) {
+    const left = baseExamples.get(example.text) ?? 0;
+    if (left > 0) {
+      baseExamples.set(example.text, left - 1);
+      continue;
+    }
+    const place = { file: example.file.path, range: example.decl.range };
+    const here = where(example.file.path, example.decl.range);
+    if (freeze === undefined) {
+      out.push({ step: 'G3', code: 'proof-before-freeze', message: `${here}: an \`example\` is a proof, written before freeze_statements: remove it.`, token: 'example', ...place });
+    } else {
+      out.push({
+        step: 'G3',
+        code: 'footprint',
+        message: `${here}: an \`example\` may not stay in the files: it has no name, so Lean reports nothing about it and telelean cannot check what it rests on; remove it (to try something out, use #check or a named lemma).`,
+        token: 'example',
+        ...place,
+      });
     }
   }
+  return out;
+}
 
-  // ---- not-frozen (gate-proved)
+/** `not-frozen` (gate-proved): a finish with status proved needs a successful freeze_statements in the round. */
+export function notFrozenFindings(ctx: RuleContext): GateFinding[] {
+  const { purpose, selection, freeze } = ctx;
+  const out: GateFinding[] = [];
   if (purpose === 'gate-proved' && !freeze) {
-    push({
+    out.push({
       step: 'G3',
       code: 'not-frozen',
       message: 'finish with status proved needs a successful freeze_statements in this round: call check_lean and freeze_statements first, then prove and call finish again.',
       nodeId: selection.target,
     });
   }
+  return out;
+}
 
-  // ---- flagged definitions (questions, never failures)
-  const flaggedDefinitions = flagged(input, chosen, inBase);
-
-  // ---- the run's new statements (normalisation pins them)
+/** The run's new statements (`RuleReport.formalisedThisRun`): chosen cards formalised now that B had bound to nothing (normalisation pins them). */
+export function formalisedThisRunOf(ctx: RuleContext): string[] {
+  const { base, current, chosen } = ctx;
   const formalisedThisRun: string[] = [];
   for (const id of chosen) {
     const now = current.nodes.get(id)?.node;
     if (now === undefined || !formalised(current, now)) continue;
     if (bound(base.nodes.get(id)?.node) === undefined) formalisedThisRun.push(id);
   }
-
-  const ordered = [...(findings.get('build') ?? []), ...G3_ORDER.flatMap((c) => findings.get(c) ?? []), ...(findings.get('markup') ?? []), ...LATE_ORDER.flatMap((c) => findings.get(c) ?? [])];
-  return { findings: ordered, flaggedDefinitions, footprints, formalisedThisRun, declarations: { added, changed, removed } };
+  return formalisedThisRun;
 }
 
 /** New definitions on a statement path and new presuppositions (A2, D-4, D-3). */
-function flagged(input: RuleInput, chosen: ReadonlySet<string>, inBase: (name: string) => boolean): FlaggedDefinition[] {
+export function flagged(input: RuleInput, chosen: ReadonlySet<string>, inBase: (name: string) => boolean): FlaggedDefinition[] {
   const { current } = input;
   const out: FlaggedDefinition[] = [];
   const closureOfChosen = new Set<string>();
@@ -834,7 +1261,7 @@ function flagged(input: RuleInput, chosen: ReadonlySet<string>, inBase: (name: s
 }
 
 /** G5: the user's words, ids, `lean:` lines and bindings; no new blocks but telelean's own (docs/m2-plan.md 3.3). */
-function markupFindings(input: RuleInput, chosen: ReadonlySet<string>, sentence: (id: string) => string): GateFinding[] {
+export function markupFindings(input: RuleInput, chosen: ReadonlySet<string>, sentence: (id: string) => string): GateFinding[] {
   const { base, current } = input;
   const out: GateFinding[] = [];
   const baseIds = nodeIdsOfBlocks(base);
@@ -884,6 +1311,16 @@ function markupFindings(input: RuleInput, chosen: ReadonlySet<string>, sentence:
     const extra = now.slice(was.length);
     return new Set(extra).size === extra.length && extra.every((id) => telelean.has(id) && !was.includes(id));
   };
+  /**
+   * Spec v4 AR-5 / B.3: a premise accepted into a target marked "follows from nothing" replaces the mark, as telelean's
+   * follow-on edit at that adoption (A). So the target's `follows_from:` may be gone exactly when B had it, A and S have
+   * none, and A appended adopted ghosts to its premises (`adoptedPremises`). The agent itself never changes it.
+   */
+  const adoptedMarkRemoved = (bBlock: MarkupBlock, sBlock: MarkupBlock, key: string): boolean => {
+    const aBlock = input.adopted?.nodes.get(key)?.block;
+    if (aBlock === undefined || raws(bBlock, 'follows_from').length === 0) return false;
+    return raws(aBlock, 'follows_from').length === 0 && raws(sBlock, 'follows_from').length === 0 && adoptedPremises(bBlock, sBlock, key);
+  };
   const matched = new Set<MarkupBlock>();
   const moved = new Set<string>();
   const files = [...base.files.values()].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
@@ -914,6 +1351,7 @@ function markupFindings(input: RuleInput, chosen: ReadonlySet<string>, sentence:
         const now = raws(sBlock, field);
         if (sameList(was, now)) continue;
         if (field === 'premises' && adoptedPremises(bBlock, sBlock, key)) continue;
+        if (field === 'follows_from' && adoptedMarkRemoved(bBlock, sBlock, key)) continue;
         const show = (list: string[]) => (list.length === 0 ? '(absent)' : list.map(quote).join(', '));
         const words = field === 'natural_name' || field === 'rationale';
         out.push(

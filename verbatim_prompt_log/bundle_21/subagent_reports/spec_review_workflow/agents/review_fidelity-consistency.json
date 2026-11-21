@@ -1,0 +1,237 @@
+{
+  "summary": "Fidelity and consistency review of /home/zhengyew/telelean/verbatim_prompt_log/bundle_21/user_requested_documents/01_spec_v4.md, checked against prompt21.md, all three mid-turn messages in prompt21_midturn.md, v3.1 and the code. The review was read-only.\n\nEvery turn-21 paragraph (¶1–¶12) and every ★D1–★D6 answer is captured by some clause, and Part 4 explains most departures. I found no blockers. There are 11 major findings, 17 minor and 1 nit.\n\n1. **The user's third mid-turn message is missing from v4.** It was queued at 15:36:19Z (23:36 local), two minutes after v4 was saved (23:34:14). It asks for two things:\n   - a fixed, unchanging session base, with the Current tab completely uneditable. v4's ES-7 (hand edits merged into the base) and its knock-on clauses do the opposite (F1);\n   - undo/redo whose Current and Proposed histories never interact. v4 never mentions Redo and puts everything on one Undo (F2).\n\n2. **The new arrow and glow model contradicts unchanged or partly updated clauses:**\n   - RV-6 leaks proof results through the now-transitive green glow (F5);\n   - the band and the §13.7 guarantee overclaim when a proof uses a card that has no arrow; TL107's coverage exemption is never removed (F7, F8);\n   - CF-7 makes proof-used (solid) arrows impossible to freeze, contradicting FZ-13 (F3);\n   - a target selected through its \"follows from nothing\" mark can receive Claude's arrows, but only the user may remove the mark (F4);\n   - with the whole model open, proofs of non-target cards have no question and no permitted set (F6).\n\n3. **Two autopilot items don't work as written:**\n   - AR-8's ★D7 dialog fails for an unformalised source and inside a session (F9);\n   - Part 4's \"unless you unfreeze arrows\" is false under ES-2's preset (F10).\n\n4. **The autopilot log is incomplete.** It claims to list every choice made without asking, yet it omits the clause-level departures from the user's own words (F11).\n\n**Minor and nit findings:**\n- stale wording from v3.1's ★D1(a), in TR-13's \"Delete anyway\" (F12);\n- departures that are untagged or wrongly tagged: AR-6, AR-2, the whole-model switch (F13, F14);\n- gesture conflicts in CM-7 (F15), and the FZ-4 and FZ-9 lists not updated for arrows (F16);\n- terminology clashes (F25–F28):\n  - dotted vs dashed;\n  - \"✓ proved\" used for established cards;\n  - \"pending item\" used for items in review;\n  - RV-5's \"Dependencies\" title clashing with the new Dependencies field;\n  - axiom card vs Lean axiom;\n- edge cases a builder would hit: verdict overlap (F17), Claude-added intermediate cards (F19), old ASSUMPTION blocks with premises (F20), unselected arrows (F23), and arrow drawing in the Proposed view (F24).\n\nCode evidence cited:\n- packages/core/src/project/edges.ts:154-158\n- packages/webview/src/board/edges.ts:16,41\n- packages/webview/src/styles/board.css:731\n- packages/webview/src/dialogs/Dialogs.tsx:219-228\n- packages/webview/src/main.tsx:98\n- packages/core/src/kindChange.ts:14-16\n- packages/core/src/markup/parser.ts:5",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "major",
+      "clauses": "ES-7, ES-9, RV-1 (session base), RV-5, FZ-3, EN-2, A4, Appendix B Baseline and Backstop; user mid-turn message 3",
+      "problem": "Mid-turn message 3 arrived 2 minutes after v4 was saved. It requires two things during a session: the Current tab must be completely uneditable, and the base the session diffs from must be concrete and unchanging. v4 builds the opposite.\n- ES-7 copies hand edits into the session's base and working copy as they happen.\n- ES-9 still allows moving cards on Current, and keeps other subjects editable, including subjects whose declarations the session's subject imports.\n- These all assume a moving base: RV-1's base ('plus your own changes'), RV-5 ('by a hand edit'), FZ-3 ('frozen value becomes your version'), EN-2 ('your own edits during the session'), A4, and Appendix B's Baseline ('plus what you typed … from your transforms') and Backstop ('session base plus your own edits').\nA builder following v4 would implement exactly what the user has just ruled out.",
+      "evidence": "User (prompt21_midturn.md:42): \"when an edit session is in play (the \\\"Proposed\\\" tab), I want the Current tab to be completely uneditable -- this is because it does not make sense to have both the Current tab and the edit session become edited versions of some same common base -- ... the basis that it will diff from should be concrete and unchanging.\"\nv4:\n- ES-7 (l.406): \"Hand edits are copied into the session's base and working copy as they happen\";\n- RV-1 (l.503): \"Items are computed between the session's base (your files at its start, plus your own changes, ES-7)\";\n- ES-9 (l.413, l.416): \"Moving cards still works, because it is layout only.\" / \"Other subjects stay editable.\";\n- A4 (l.893); Baseline (l.963); Backstop (l.968).\nTiming: v4 mtime 23:34:14 local; message 3 queued 15:36:19Z = 23:36 local.",
+      "fix": "1. Replace ES-7 with: \"ES-7 (v4) The base is fixed. A session diffs against your files exactly as they were when it started. While it is active, the session subject's Current view is completely read-only: no edits, arrows, moves, Tidy layout, A|P box or Undo. Subjects whose declarations it uses are read-only too. If those files change on disk anyway (a hand edit in VS Code), telelean does not merge the change. The session bar says 'your files changed since this session started', and Apply is refused until you revert the change or Exit. Freezing stays available, because it changes neither your files nor the base.\" Tag it '(yours: turn-21 message 3)'.\n2. RV-1: the base is 'your files at the session's start'.\n3. Delete 'or by a hand edit, ES-7' (RV-5), the ES-7 sentence in FZ-3, 'your own edits during the session' (EN-2), and 'plus your own edits' (Backstop).\n4. Rewrite A4 to describe the refusal.\n5. Appendix B Baseline: your in-session transform edits become accepted items in the working copy instead of joining the base.\n6. ES-9: drop 'Moving cards still works' and narrow 'Other subjects stay editable'."
+    },
+    {
+      "id": "F2",
+      "severity": "major",
+      "clauses": "AR-1, FZ-9, ES-9, EN-3, A5 (new clause needed); user mid-turn message 3",
+      "problem": "Message 3 asks for an undo/redo system in which undos on the Current and Proposed tabs never interact. v4 does not provide one:\n- It never mentions Redo, although today's board has it.\n- It puts freeze changes, which change no file, on 'the board's Undo', which today undoes file edits.\n- A5 has Ctrl+Z undo 'the freezes and the statuses together'.\nSo one Ctrl+Z history mixes file edits, freezes and review decisions, with no rule for which view it acts on. Nothing stops an undo on one tab from reverting something done on the other.",
+      "evidence": "User (prompt21_midturn.md:40): \"try to have an undo / redo system, so that I can undo / redo things. Be careful that undos between the Current and Proposal tab should never accidentally have bad interactions with each other.\"\nv4:\n- FZ-9 (l.289): \"Freeze changes go on the board's Undo (Ctrl+Z). They change no file and make no History snapshot.\"\n- ES-9 (l.413): \"Undo then covers only freeze changes.\"\n- A5 (l.894): \"Ctrl+Z restores the freezes and the statuses together\".\n- 'Redo' does not occur in v4.\nToday: packages/webview/src/main.tsx:98 (Ctrl+Z, Ctrl+Shift+Z / Ctrl+Y); header/Header.tsx:49-63 (Redo button).",
+      "fix": "Add \"ES-10 (v4) Undo and Redo. Ctrl+Z, Ctrl+Shift+Z / Ctrl+Y and the header's Undo/Redo buttons work on two histories that never mix:\n(1) the file history, as today: board edits, standing-freeze changes and direct transforms outside a session, plus each Apply as one step;\n(2) the session history: your review decisions, your freezes and unfreezes, and queued transforms in this session. It starts empty, acts only in the Proposed view, and is discarded when the session ends.\nDuring a session the Current view has no Undo (ES-7). Claude's steps are not undo steps; Cancel step and Retry step handle them. Undoing an Accept or Decline is a status change and follows RV-5. (yours: turn-21 message 3)\"\nThen point FZ-9, ES-9 and A5 at the right history."
+    },
+    {
+      "id": "F3",
+      "severity": "major",
+      "clauses": "RV-6, BD-6, RV-5, §13 item 6, A15, ★D8 slice 1",
+      "problem": "v4 makes the green glow transitive: established means proved all the way down to axiom cards. Proving a pending target therefore turns every card that rests on it from blue with 'rests on pending' to green in the Proposed view.\nRV-6 hides only things 'into that target', so these downstream glows and chips show whether the proof succeeded before the user has judged its statements.\nThe same leak happens through another target's Result. A's Result can be revealed while L's is still hidden, and A's verdict ('established' vs 'rests on pending L') tells you L's outcome. RV-6's reveal condition waits only for statement and belief items.\nThis breaks D-19 and the §13.6 guarantee in v4's main new workflow (A15: draw an arrow into a used axiom, then formalize it).",
+      "evidence": "RV-6 (l.531-537): \"stays neutral until every statement and belief item it depends on has been decided ... Hidden until then: ... the proof chips, footprints, bands, glows and solid arrows into that target in the Proposed view\".\nBD-6 (l.180): \"It never rests on a pending proposition.\"\nA15 (l.904): \"everything resting on it loses its green glow until it is proved\".\nRV-5 (l.523): \"I is a Result whose inference uses J\".\n§13.6 (l.638).",
+      "fix": "RV-6:\n- add to 'Hidden until then': 'every change the target's proof causes to other cards: their glows, \"rests on pending\" chips and verdicts, in the Proposed view and the stage report';\n- change the condition to '…has been decided, and every Result it depends on (RV-5) has been revealed'.\nState that ★D8 slice 1's review hides the same."
+    },
+    {
+      "id": "F4",
+      "severity": "major",
+      "clauses": "BD-7, B.5, A20, A16, BD-5, B.6, S14",
+      "problem": "Suppose a proof uses a card that has no declared arrow: a hand-written proof (A20), or after you delete a used arrow (A16).\n- B.5 defines band(v) as 'the arrows from direct(v)', which includes that card. A20 says it is 'never inside a band'.\n- If it is left out, the band still claims 'Together these suffice (checked by Lean)' for arrows that do not suffice.\nBD-5 and A20 also require the warning colour whenever a used card has no arrow. Today's TL107 is suppressed when the used card's basis is covered, which S14 itself names as the problem. B.6 does not tell the builder to drop that exemption, nor to change TL109 and TL102.",
+      "evidence": "B.5 (l.956): \"band(v) = the arrows from direct(v).\"\nA20 (l.909): \"That arrow shows solid in the warning colour (TL107), and is never inside a band until you draw it.\"\nBD-7 (l.186): \"\\\"Together these suffice (checked by Lean)\\\"\".\nCode: packages/core/src/project/edges.ts:157 `if (rests(edge.source).every((x) => covered.has(x))) continue;` (TL107 skipped when covered).\nB.6 (l.957-960) lists only TL116, TL105, TL106.",
+      "fix": "B.5: \"band(v) = the declared arrows from direct(v). If direct(v) contains a card with no declared arrow, the band is drawn without its ✓ and without the 'suffice' tooltip, with the chip 'also uses ‹card› (no arrow)'.\"\nB.6: add \"TL107 fires for every card in direct(v) with no declared arrow, covered or not (drop edges.ts's coverage exemption). TL109 no longer uses the warning colour (BD-5). TL102's 'rests on a goal asserted as an axiom' becomes 'rests on pending'.\""
+    },
+    {
+      "id": "F5",
+      "severity": "major",
+      "clauses": "§13 item 7, BD-5, A16, A20, B.2, B.3, RV-7, ES-2 (Open the whole model)",
+      "problem": "§13.7 says, without conditions, that every card a proof uses has an arrow into the proved card. A16 and A20 describe states where this is false. BD-5 says only hand-written proofs can produce such arrows, but A16 is a deletion, not a hand-written proof.\nNothing stops Claude creating such a state either:\n- with the whole model open, B.3 lets it remove any unselected, unfrozen arrow, including one a non-target's proof uses;\n- B.2 checks targets only;\n- RV-7 says removing an arrow is never an own-Accept item, so a group Accept can apply it.",
+      "evidence": "§13.7 (l.639): \"Every card a proof uses directly has an arrow into the proved card, and the band shows exactly those arrows.\"\nBD-5 (l.172): \"(only hand-written proofs can, B.2; TL107)\".\nA16 (l.905): \"You delete an arrow that a proof uses (outside a session)...\".\nB.3 (l.945): \"Claude removes only unfrozen arrows, never a selected one.\"\nRV-7 (l.552): \"Removing an arrow ... are not RV-7 items\".",
+      "fix": "§13.7: \"No state telelean judges in a session contains a used-but-undrawn arrow (TL107) that the session's base did not have, and each target's band shows exactly the arrows its proof uses.\"\nB.3: add \"Claude never removes an arrow that a proof in the working copy uses.\"\nBD-5 row: \"a proof uses a card you drew no arrow from (a hand-written proof, A20, or an arrow you deleted, A16)\"."
+    },
+    {
+      "id": "F6",
+      "severity": "major",
+      "clauses": "CF-7, Terms (Arrow), FZ-13, BD-5, A16, ES-2",
+      "problem": "CF-7 says solid arrows ('what a proof uses') are derived and can never be edited or frozen. But by Terms and BD-5, every declared arrow that a checked proof uses is drawn solid; today's code draws one arrow per pair, solid once verified.\nSo the arrows the user most wants to protect, those a proof rests on, could not be frozen (contradicting FZ-13) or deleted (contradicting A16). A frozen dotted arrow would also become unfreezable once it is proved.",
+      "evidence": "CF-7 (l.125-126): \"It covers: status, the glows and bands, solid arrows (what a proof uses) ... Dotted arrows are not derived: they are the Dependencies field, which you edit and can freeze (FZ-13).\"\nTerms (l.70): \"It is dotted while only claimed, and solid once a checked proof of Y uses X.\"\nFZ-13 (l.311): \"Select one or more arrows ... and choose Freeze\".\nA16 (l.905).\nCode: packages/webview/src/board/edges.ts:16 \"one arrow per (source, target) pair: solid once Lean verified it\", :41.",
+      "fix": "CF-7: replace \"solid arrows (what a proof uses)\" with \"whether an arrow is used by a proof (its solid line and its place in the band)\".\nAdd: \"A declared arrow stays part of Dependencies when a proof uses it. Drawn solid, it can still be selected, frozen, deleted and formalized. Only an arrow that a proof uses without a declaration (the warning colour, TL107) is purely derived.\""
+    },
+    {
+      "id": "F7",
+      "severity": "major",
+      "clauses": "AR-5, ES-2 (preset, third exception), RV-1 (Add premise, Add arrow), B.3, FZ-13",
+      "problem": "A target can be selected through its 'follows from nothing' mark. Its Dependencies are then open for additions, so Claude may propose Add premise or Add arrow items into it (RV-1 checks 'the target's question plus it'). Accepting one leaves a card with both the mark (the explicitly empty set) and an incoming arrow.\nAR-5 removes the mark only when you draw an arrow, and B.3 forbids Claude to touch it. The spec never says what happens. Freezing a mark is also meaningless as written: 'Claude may not remove them' adds nothing, because Claude can never remove a mark.",
+      "evidence": "ES-2 (l.362): \"Select one or more arrows (or \\\"follows from nothing\\\" marks)\"; (l.372) \"each target's Dependencies is open for additions: Claude may propose new arrows into it (RV-1)\".\nTerms (l.71): \"\\\"Follows from nothing\\\" is the explicitly empty set\".\nAR-5 (l.219, l.221): \"Drawing an arrow into the card removes the mark ... Only you set or remove the mark.\"\nB.3 (l.946): \"Claude never sets or removes \\\"follows from nothing\\\".\"",
+      "fix": "Add to AR-5: \"Accepting an Add premise or Add arrow item into a card marked 'follows from nothing' also removes the mark, as part of your Accept; the item says 'replaces follows from nothing'. A frozen mark blocks such items: Claude makes an unfreeze request instead (A10).\"\nB.3: append \"…except as part of an accepted arrow into that card.\""
+    },
+    {
+      "id": "F8",
+      "severity": "major",
+      "clauses": "ES-2 (Open the whole model), S8, TR-14, B.1, B.2, Appendix B 'Generalised', RV-1",
+      "problem": "With the whole model open, 'the preset freezes nothing' and Claude 'may then change any other card', so the Proof fields of non-target cards are open. But a non-target card has no question. B.1 gives it no permitted set and B.2 no edge check, which contradicts S8 and Appendix B ('each declaration Claude adds is judged against the permitted set of the inference that produced it').\nThe spec also does not say what happens to a non-target proof that a model-wide change breaks. That is exactly the user's motivating case for the switch (adding a notion of time throughout).",
+      "evidence": "ES-2 (l.378-382): \"With it on, the preset freezes nothing, apart from ... Claude may then change any other card, arrow, definition or vocabulary item, for example to add a notion of time throughout the model.\"\nS8 (l.722): \"proofs come only from Formalize for dependencies, each with its own question\".\nAppendix B (l.932).\nTR-14 (l.450-452) covers broken proofs only for transforms.\nUser ★D3: \"implement subsystems throughout the entire model, such as a concept of time\".",
+      "fix": "Add to ES-2's switch: \"Proofs of cards that are not targets: if Claude changes one, that card becomes an extra inference of the step. Its question is all of its current arrows, B.1 and B.2 judge it, and it gets its own Result item (RV-1, RV-6). A proof that stops building and that Claude does not redo becomes a Proof broken item (TR-14).\""
+    },
+    {
+      "id": "F9",
+      "severity": "major",
+      "clauses": "AR-8, ★D7, ES-2 (Order), ES-9, RV-9, AR-5, RV-7",
+      "problem": "AR-8's ★D7 dialog is undefined in three cases a builder will hit:\n(1) The unproved source L has no Lean statement, so 'Mark it pending' cannot write `axiom L.holds`. L's statement is only fuzzy for Claude inside the step.\n(2) The dialog can appear during a session, because RV-9 allows Formalize mid-stage. ES-9 forbids direct edits there, and the spec says neither where the pending claim goes nor whether it needs RV-7's own Accept.\n(3) 'Also formalize the arrows into it' is impossible when L has neither arrows nor the mark (AR-5). It is also not said whether all of L's arrows form its question.",
+      "evidence": "AR-8 (l.234): \"Formalizing such an arrow first asks you (★D7 (b)): \\\"‹source› is not proved. Mark it pending (assumed until proved), also formalize the arrows into it, or cancel?\\\"\".\nES-9 (l.412): \"no field edits, no arrows, no kind changes, no adding\".\nRV-9 (l.558).\nAR-5 (l.220): \"Nothing can be formalized for it until you give it one.\"\nRV-7 (l.543): \"adds or changes any Lean axiom (... a pending claim)\".",
+      "fix": "AR-8: add \"'Mark it pending' is offered only outside a session and only when ‹source› has a Lean statement. It is a direct edit: one Undo step, by D-11. 'Also formalize the arrows into it' is offered only when ‹source› has incoming arrows or the mark, and all of them become its question. Otherwise the choices are 'Select arrows into ‹source›…' and Cancel.\""
+    },
+    {
+      "id": "F10",
+      "severity": "major",
+      "clauses": "Part 4 ¶3 row, ES-2 (preset and its tag), FZ-6, FZ-7",
+      "problem": "Part 4 tells the user that, under the preset, Claude only adds arrows 'unless you unfreeze arrows or open the whole model'. The first escape does not exist:\n- ES-2 re-freezes every arrow that exists at the start of each Formalize step;\n- step limits are 'no FZ-7 reason', and FZ-6/FZ-7 never say whether Unfreeze lifts one.\nSo the user's own request, that Claude 'can add or delete others if they aren't frozen', is reachable only through the whole-model switch. ES-2 also carries no changed or clarified tag for this departure, or for keeping the touched cards' sentences and Lean frozen.",
+      "evidence": "User ¶3: \"(it can add or delete others if they aren't frozen)\".\nPart 4 (l.816): \"in a Formalize step Claude only adds arrows into the targets, unless you unfreeze arrows or open the whole model\".\nES-2 (l.369): \"everything that exists when the step starts is frozen for that step, at its value then: every field, binding, declaration and arrow\".\nES-2 (l.386): \"they add no FZ-7 reason\".\nES-2 tag (l.361) has no changed/clarified.",
+      "fix": "Part 4 ¶3: \"…only adds arrows into the targets, unless you open the whole model.\"\nES-2: add \"Unfreeze removes FZ-7 reasons only; it does not lift a step's preset.\"\nTag ES-2: \"changed: under the preset Claude only adds arrows (S15); clarified: inside the touched cards, your sentences and existing Lean stay frozen (Part 2)\"."
+    },
+    {
+      "id": "F11",
+      "severity": "major",
+      "clauses": "Part 2 'Decided for you on autopilot'; 02_autopilot_decisions.md; Part 4",
+      "problem": "The user asked that every design decision taken for them on autopilot be logged so they can reverse it. Part 2 and the log list only ★D7 and ★D8, and the log claims to list every choice made without asking.\nBut v4 also departs, without asking, from the user's own turn-21 words:\n- green means established, not proved (BD-6);\n- Claude only adds arrows under the preset (ES-2);\n- any card, or the 'follows from nothing' mark, moves an axiom to the canvas (AR-6);\n- Move to axioms drops the proof (AR-7);\n- the right-click menu replaces VS Code's (CM-7);\n- DO-0 defines what 'the relevant cards' are;\n- the whole-model switch keeps standing freezes.\nPart 4 gives reasons for these but no way to reverse them, so the log's claim to completeness is false.",
+      "evidence": "User message 2 (midturn:34): \"if there are any more design decisions for the spec, I want you to choose what you would recommend, and then log those choices (in case I want to reverse them later)\".\n02_autopilot_decisions.md:5: \"Every choice I made without asking you is listed here, with what it affects and how to reverse it.\"\nv4 Part 2 (l.664-671) lists only ★D7 and ★D8; Part 4 (l.815-825) lists the departures.",
+      "fix": "1. In 02_autopilot_decisions.md, add one AP entry per departure: BD-6, ES-2 arrows, AR-6, AR-7 proof drop, CM-7, DO-0, and the whole-model scope. Each says 'To reverse: restore your wording …' and gives the clause.\n2. In v4 Part 2, add: \"Besides ★D7 and ★D8, every clause Part 4 marks as differing from your text was decided on autopilot. Each is logged, with how to reverse it, in 02_autopilot_decisions.md.\""
+    },
+    {
+      "id": "F12",
+      "severity": "minor",
+      "clauses": "TR-13, ES-9",
+      "problem": "TR-13 still says 'Delete anyway' remains only for directly applied transforms. That was written for v3.1's recommended ★D1(a). Under the chosen ★D1(c), the board's own Delete outside a session stays 'as today', and today's board delete dialog offers 'Delete anyway'.",
+      "evidence": "TR-13 (l.448): \"Today's \\\"Delete anyway\\\", which marks dependents broken, remains only for transforms applied directly outside a session (TR-15)\".\nES-9 (l.415): \"Outside a session, the board stays directly editable, as today ... Today's \\\"card only\\\" Delete is the one exception (S9).\"\nCode: packages/webview/src/dialogs/Dialogs.tsx:219-228 ('Delete anyway', 'Delete card only, keep Lean').",
+      "fix": "TR-13: \"…remains only for direct edits outside a session: the board's Delete (ES-9) and transforms applied directly (TR-15).\""
+    },
+    {
+      "id": "F13",
+      "severity": "minor",
+      "clauses": "AR-6, AR-2, RV-1 (Add premise), Part 4 ¶6 row, Appendix B (Replaced, Storage)",
+      "problem": "Several departures from the user's words carry 'clarified' or no tag:\n- AR-6 replaces 'from at least one other axiom' with 'any card' and adds 'follows from nothing'. That is a change of substance, not a clarification. And because Terms count vocabulary items as cards, 'any card' literally admits vocabulary sources, which `premises:` (card ids) cannot store.\n- AR-2 adds 'at least in part' without a tag.\n- RV-1 folds a proposed premise's arrow into the Add premise item, so that arrow is not 'an item' on its own as ¶6 asks. Part 4's ¶6 row does not mention this.\n- Appendix B's Replaced and Storage bullets changed but are not marked (v4).",
+      "evidence": "User ¶11: \"he needs to draw dependencies from at least one other axiom to the desired axiom\".\nAR-6 tag (l.222): \"clarified: any card can be the source; \\\"follows from nothing\\\" also works\".\nTerms (l.67): Card includes \"a vocabulary card\".\nAR-2 (l.207) tag \"(yours: T21 ¶3)\".\nRV-1 (l.470): \"together with its arrow into the target, as one item\".\nUser ¶6: \"appearing as part of the review stage as an item\".\nCode: parser.ts:192 (premises are node ids).",
+      "fix": "- AR-6 tag: \"changed: any axiom or proposition card (not a vocabulary card) can be the source; 'follows from nothing' also works\".\n- AR-2 tag: add \"clarified: 'at least in part' (the band says which arrows suffice together)\".\n- Part 4 ¶6 row: add \"A proposed premise's arrow travels inside its Add premise item, and is declined with it (DO-0).\"\n- Mark Appendix B's Replaced and Storage bullets (v4)."
+    },
+    {
+      "id": "F14",
+      "severity": "minor",
+      "clauses": "ES-2 (Open the whole model), Part 2 ★D3 row and clarification, FZ-9, A23",
+      "problem": "The user asked for 'an easy way to make the entire model unfrozen'. The switch keeps standing freezes, and A23 needs an unfreeze request for each. That is a reasonable reading, but it is untagged and Part 2 does not explain it.",
+      "evidence": "User ★D3 (midturn:16): \"there should be an easy way to make the entire model unfrozen\".\nES-2 (l.378-381): \"the preset freezes nothing, apart from three things that still hold: your standing freezes; ...\".\nTag: \"(yours: T21 answer to ★D3)\".",
+      "fix": "Tag the switch \"(yours: T21 answer to ★D3; clarified: your standing freezes still hold; Unfreeze all other cards (FZ-9) lifts them too)\", and add the same sentence to Part 2's ★D3 clarification."
+    },
+    {
+      "id": "F15",
+      "severity": "minor",
+      "clauses": "CM-7, AR-1, BD-3 (Tidy layout)",
+      "problem": "CM-7 selects the right-clicked thing first unless it is already selected, which replaces the selection. This breaks two gestures:\n- AR-1's 'select one or more cards, right-click the target, and choose Draw arrows from the selection' loses its sources;\n- the empty-canvas menu's 'Tidy layout' ('re-places the selected cards') has nothing left selected after the right click.",
+      "evidence": "CM-7 (l.353): \"It is selected first, unless it is already part of the selection.\"\nAR-1 (l.204).\nCM-7 (l.354): \"On empty canvas, the menu offers New proposition here, Fit all and Tidy layout.\"\nBD-3 (l.158): \"Tidy layout re-places the selected cards.\"",
+      "fix": "CM-7: \"A right click on a card outside the selection keeps the selection, and offers Draw arrows from the selection into that card plus that card's own actions. A right click on empty canvas keeps the selection.\""
+    },
+    {
+      "id": "F16",
+      "severity": "minor",
+      "clauses": "FZ-4, ES-2, FZ-9, FZ-1",
+      "problem": "FZ-4 says held content never overrides 'ES-2's exceptions', but lists only two of the three. The third, a target's Dependencies open for additions, can be held through a `#` reference to a Dependencies field (RF-1 allows field references), so whether held content blocks additions is undefined.\nFZ-9's 'cards that contain none of the selected items' also doesn't fit arrows. Per FZ-1 an arrow belongs to its target only, so 'Freeze all other cards' with an arrow selected freezes the arrow's source. ES-2 treats both ends as the cards at a selected arrow.",
+      "evidence": "FZ-4 (l.258): \"Held never overrides ES-2's exceptions: a target's Proof stays open, and an empty Lean statement at either end of a selected arrow stays fuzzy\".\nES-2 (l.372): the third exception.\nFZ-9 (l.287).\nFZ-1 (l.239): \"An arrow belongs to its target's Dependencies.\"",
+      "fix": "FZ-4: append \", and a target's Dependencies stays open for additions\".\nFZ-9: add \"A selected arrow or mark counts as contained in the cards at both of its ends.\""
+    },
+    {
+      "id": "F17",
+      "severity": "minor",
+      "clauses": "RV-1 (Result verdicts), BD-6, BD-7, A9, S18",
+      "problem": "RV-1's four verdicts are neither exclusive nor complete:\n- A proof that uses no arrow and rests only on definitions or presuppositions is both 'established' (BD-6) and 'proved from nothing'.\n- A proved Result that relies on a signature axiom or a hidden assumption (BD-6's chip) fits no verdict.\nBD-7 also puts a from-nothing band on the 'follows from nothing' mark. In A9 the card has arrows and no mark, so the band has nowhere to go.",
+      "evidence": "RV-1 (l.494-498): \"established; proved, resting on pending ‹card›; proved from nothing (S18); not proved\".\nBD-6 (l.179-182).\nBD-7 (l.187): \"For a card proved from nothing, the band sits on its \\\"follows from nothing\\\" mark.\"\nA9 (l.898).\nS18 (l.779): \"whether or not you marked it\".",
+      "fix": "RV-1: \"The verdict is established, proved but not established (with BD-6's reason chip), or not proved. 'Proved from nothing' is a flag that can accompany either proved verdict.\"\nBD-7: \"…sits on its mark. With no mark, no band is drawn, and the card shows the 'proved from nothing' chip.\""
+    },
+    {
+      "id": "F18",
+      "severity": "minor",
+      "clauses": "BD-1",
+      "problem": "The AXIOMS header claims the column accounts for every belief, but two kinds of assumption are not counted:\n- pending propositions, which are Lean axioms on the canvas and which v4 itself treats as assumptions (S16);\n- definitions, which can carry beliefs (S5).",
+      "evidence": "BD-1 (l.137): \"also assumed: N existence assumptions, M hidden assumptions\". Each links to its item in the Vocabulary column. So the column accounts for every belief.\"\nS16 (l.761); S5 (l.705).",
+      "fix": "BD-1: \"also assumed: N existence assumptions, M hidden assumptions, K pending propositions\", each linked to its card or item. Replace \"every belief\" with \"every assumption Lean sees; definitions that need your endorsement are flagged in the Definitions column\"."
+    },
+    {
+      "id": "F19",
+      "severity": "minor",
+      "clauses": "ES-2 (Claude may add cards), Terms (Inference), B.1, RV-7, A25, A12, RV-3",
+      "problem": "Intermediate cards that Claude adds get 'their own arrows and Results'. But Terms and B.1 define an inference's question as the selected arrows, and ES-2 defines a target as the head of a selected arrow. So it is undefined:\n- whether an intermediate is a target with an empty question;\n- whether an arrow into it that its proof uses is a 'changes what is proved' item, since RV-7 names only arrows 'into a target'.\nA25 also says a failed intermediate makes the target 'to be redone (RV-3)'. RV-3 sets that status only after a decline, and A12 handles the same failure by reporting it.",
+      "evidence": "ES-2 (l.385): \"Claude may add proposition cards for intermediate steps, with their own arrows and Results\".\nTerms (l.81).\nB.1 (l.935).\nRV-7 (l.551): \"adds an arrow into a target that its Result's proof uses\".\nA25 (l.914).\nRV-3 (l.511): \"when something it depends on is declined\".\nA12 (l.901).",
+      "fix": "ES-2: \"An intermediate card Claude adds is a target of the step with an empty question. Its permitted set comes from the arrows Claude adds into it (E(T)), and RV-7 treats each of them as an arrow into a target.\"\nA25: \"…Its Result says so, and the target's step reports '‹card› was not proved' (as in A12).\""
+    },
+    {
+      "id": "F20",
+      "severity": "minor",
+      "clauses": "A19, B.6, CF-2, AR-2, BD-2",
+      "problem": "Old files can contain an ASSUMPTION block with a `premises:` list:\n- today's markup allows `premises:` on every type;\n- today's D→A and G→A kind changes leave `premises:` in place.\nUnder v4 such a block would be an axiom with incoming arrows, which CF-2 and AR-2 rule out. A19 does not say how it loads.",
+      "evidence": "parser.ts:5: \"`premises:` is allowed on every type\".\nkindChange.ts:14 (G->A, D->A change only `.holds`); edit/planKind.ts never touches premises.\nA19 (l.908).\nAR-2 (l.208): \"Y must be a proposition\".\nCF-2: the axiom row has no Dependencies.",
+      "fix": "A19: add \"An old ASSUMPTION block with a `premises:` list loads as an axiom. Its list is not drawn; the card shows a warning, 'declared premises on an axiom: make it a proposition, or remove them', until you choose.\""
+    },
+    {
+      "id": "F21",
+      "severity": "minor",
+      "clauses": "Title, Status, 'How v4 was checked', Appendix D",
+      "problem": "The header is out of date now that the build runs on autopilot:\n- it still calls v4 'a proposal for your approval' and says 'Nothing is implemented', yet the user put the build on autopilot and AP-7 makes the reviewed v4 the version the build follows;\n- it says 'How v4 was checked: Appendix D', but Appendix D's turn-21 part records no check.\nThe user wants this document as the concrete reference for undoing changes.",
+      "evidence": "Header lines 1, 3, 5.\nAppendix D (l.1053-1055).\n02_autopilot_decisions.md AP-7.\nUser message 2: \"First, finish the spec so I have something concrete to refer to later if I want to undo changes.\"",
+      "fix": "Status: \"The spec the autopilot build follows (turn 21), after one review round (AP-7). Amend or reverse any clause by its ID. Steps for reversing code changes are in 02_autopilot_decisions.md.\"\nChange 'checked' to 'made and checked', and add the review round to Appendix D as step 8."
+    },
+    {
+      "id": "F22",
+      "severity": "minor",
+      "clauses": "CM-7, Part 4 ¶8 row, Appendix B canvas notes",
+      "problem": "Today the board has no menu of its own, so a right click opens VS Code's default webview menu, which v4 says it suppresses. That is the most plausible referent of the user's 'still opens the menu'.\nPart 4 reads 'the menu' as the Context Menu's actions, without saying that the default Cut/Copy/Paste menu goes away. The new menu also has no Copy for selected text.",
+      "evidence": "User ¶8: \"A right click without movement still opens the menu.\"\nAppendix B (l.991): \"This also keeps VS Code's default webview menu away.\"\nPart 4 (l.821).\nbundle_20 board-ui.md:255: \"No context menu exists: no onContextMenu, no webview/context contribution\".",
+      "fix": "Part 4 ¶8 row: add \"Today a right click opens VS Code's default webview menu (Cut/Copy/Paste); v4 replaces it.\"\nCM-7: add \"When text is selected, the menu also offers Copy.\""
+    },
+    {
+      "id": "F23",
+      "severity": "minor",
+      "clauses": "A10, A7, B.2, AR-2, §13 item 2, RV-10",
+      "problem": "Suppose the proof needs a card that already has an unselected arrow into the target. Claude cannot propose an arrow item, because there is one arrow per pair, and B.2 forbids using it. A10's recovery does not apply and the step just fails, with no stated outcome.\n§13.2's 'the sources of the target's arrows in the final state' also reads as including unselected arrows, which A7 and B.1 exclude.",
+      "evidence": "A10 (l.899): \"Claude needs a card you drew no arrow from. It proposes an arrow item.\"\nA7 (l.896).\nAR-2 (l.209): \"There is one arrow per pair\".\nB.2 (l.941).\n§13.2 (l.630): \"the sources of the target's arrows in the final state: the selected ones, plus those you accepted from Claude\".",
+      "fix": "A10: add \"If you drew that arrow but did not select it, Claude cannot add it again. The stage report lists it under 'what is missing' as 'select ‹card› → ‹target› too'.\"\n§13.2: \"the sources of the selected arrows and of the arrows you accepted from Claude (named as such)\"."
+    },
+    {
+      "id": "F24",
+      "severity": "minor",
+      "clauses": "ES-9, BD-3, AR-1, CM-4, TR-1, TR-4, RV-9",
+      "problem": "ES-9 routes all your changes during a session through Transform. But two things are left open:\n- BD-3, AR-1 and CM-4 do not say whether the arrow handle, Draw arrows, Delete (arrows), Follows from nothing and Move to axioms work in the Proposed view;\n- the transform window (draft cards) has no stated way to edit a Dependencies field.\nA builder cannot tell whether drawing an arrow in Proposed is allowed, or what it becomes.",
+      "evidence": "ES-9 (l.414): \"Changes you want during a session go through Transform cards…, queued until Submit review (RV-9).\"\nBD-3 (l.150).\nCM-4 (l.336-340): only Delete (arrows) says \"outside a session\".\nTR-4 (l.429, l.431): Dependencies start frozen / fuzzy Dependencies.",
+      "fix": "ES-9: add \"In the Proposed view the arrow handle, Draw arrows, Delete (arrows), Follows from nothing and Move to axioms are disabled, with the reason on hover.\"\nTR-4: add \"In the window, Dependencies is edited as a list of `#` card references, or the 'follows from nothing' mark.\""
+    },
+    {
+      "id": "F25",
+      "severity": "minor",
+      "clauses": "BD-5, Terms (Arrow), D-13, D-15, FZ-11, TR-4",
+      "problem": "v4 uses the user's word 'dotted' for declared arrows (BD-5, Terms), but keeps 'dashed'/'dashing' in D-13, D-15, FZ-11 and TR-4, and today's code draws them dashed. A builder cannot tell whether the line pattern should change.",
+      "evidence": "BD-5 (l.167): \"dotted | declared by you\".\nD-13 (l.32): \"drawn as dashed arrows\".\nFZ-11 (l.297): \"It never uses dashing or translucency, which already mean \\\"declared by you\\\"\".\nTR-4 (l.424).\nCode: packages/webview/src/styles/board.css:731 `.tl-edge--declared { stroke-dasharray: 5 4; }`.",
+      "fix": "Terms (Arrow): \"dotted (your word for today's dashed line, D-13; the look does not change)\". If the look should change, say so in BD-5 and update D-13, D-15, FZ-11 and TR-4."
+    },
+    {
+      "id": "F26",
+      "severity": "minor",
+      "clauses": "BD-6, BD-9, Part 4 'What this replaces', RV-1 verdicts, Terms",
+      "problem": "v4 defines the green glow as 'established' (BD-6, Terms, §13.8), but labels it '✓ proved'. BD-9 and Part 4 say 'green means proved'. Meanwhile a proved card that is not established gets no green and no 'proved' label. Readers and builders get two meanings for one colour and label.",
+      "evidence": "BD-6 (l.178): \"Green glow, with \\\"✓ proved\\\": the card is established.\"\nBD-9 (l.198): \"Green is kept for \\\"proved\\\": the glow and the band.\"\nPart 4 (l.862): \"green means proved (BD-9)\".\nTerms (l.69): a theorem is \"proved\".\nRV-1 (l.495): verdict \"established\".",
+      "fix": "- BD-6 chip: \"✓ established\".\n- BD-9: \"Green is kept for what Lean checked: the glow (established) and the band (a checked inference).\"\n- Part 4 row: \"green means established (BD-6)\".\n- A proved but not established card's chip reads \"proved, but rests on pending: ‹card›\"."
+    },
+    {
+      "id": "F27",
+      "severity": "minor",
+      "clauses": "FZ-10, EN-2, A1, RV-5, ES-7, RV-11, Terms (Arrow)",
+      "problem": "v4 gives existing words new meanings without renaming their old uses:\n- 'pending', now a proof state, is still used for items in review ('pending item(s)');\n- 'Dependencies', now a card field, is still RV-5's title for item-to-item dependencies, which makes 'dependencies' in ES-7 and RV-11 ambiguous;\n- 'claimed', renamed to 'pending' for proofs, is reused for arrows.",
+      "evidence": "FZ-10 (l.292): \"a card that has a pending item\".\nEN-2 (l.609): \"discards N accepted and M pending items\".\nA1 (l.890).\nRV-5 (l.520): \"RV-5 (v4) Dependencies.\"\nES-7 (l.408): \"whose content or dependencies they touch\".\nRV-11 (l.569): \"A Result whose verdict or dependencies changed\".\nTerms (l.70): \"dotted while only claimed\" vs Part 4 (l.848): \"\\\"claimed\\\" (a Proof state) | pending\".",
+      "fix": "- Replace \"pending item(s)\" with \"item(s) in review\" (FZ-10, EN-2, A1).\n- Retitle RV-5 \"Item dependencies\", and write \"item dependencies\" in ES-7 and RV-11.\n- Terms (Arrow): \"dotted while only declared\"."
+    },
+    {
+      "id": "F28",
+      "severity": "minor",
+      "clauses": "Terms (Established), BD-6, B.5, Appendix B Backstop (a)",
+      "problem": "Now that 'axiom' is a card kind, several clauses use 'axiom(s)' ambiguously:\n- Terms' 'resting only on axioms', where BD-6 also allows presuppositions and definitions;\n- Backstop (a)'s 'every axiom', which means Lean axioms;\n- B.5's 'every card in its footprint is an axiom card', while Terms count presuppositions as (vocabulary) cards.\nBD-6 also says both 'hidden axiom' and 'hidden assumption' for the same thing (TL103).",
+      "evidence": "Terms (l.73): \"Proved, and resting only on axioms, never on a pending claim.\"\nBD-6 (l.179-180).\nBackstop (l.970): \"(a) every axiom, except new sorts, predicates, constants and functions\".\nB.5 (l.955).\nTerms (l.67): a vocabulary card includes \"presupposition\".\nBD-6 (l.179) \"no hidden axiom\" vs (l.182) \"uses a hidden assumption\".",
+      "fix": "- Terms: \"Proved, and resting only on axiom cards, presuppositions and definitions, never on a pending claim.\"\n- Backstop (a): \"every Lean axiom\".\n- B.5: \"every axiom or proposition card in its footprint is an axiom card\".\n- BD-6 (l.179): \"no hidden assumption (TL103)\".\n- Add to Terms: 'axiom' alone means the card; 'Lean axiom' means the declaration."
+    },
+    {
+      "id": "F29",
+      "severity": "nit",
+      "clauses": "Part 3 preamble, S8, S11, RV-1, §13 item 10, CM-4, BD-8, A13, RV-4, AR-4",
+      "problem": "Small leftovers:\n- Part 3 says S1–S13 are 'kept as written then', but S8 and S11 were edited into v4 terms.\n- RV-1 (v4) still flags 'may simply restate the goal'.\n- §13.10 omits marking an axiom 'follows from nothing' (AR-6).\n- CM-4 marks only Delete (arrows) 'outside a session', though ES-9 also blocks Follows from nothing, Draw arrows and Move to axioms; BD-8 does not point to ES-9.\n- A13's 'nothing is rewritten' contradicts AR-7, which changes the kind and arrows.\n- RV-4's 'Add … and its arrow' fits only Add premise.\n- AR-4's 'Today only These suffice writes that field' overlooks 'I hold this' adoption (gate/adoption.ts:143) and deletes (edit/planAction.ts:193-196).",
+      "evidence": "l.679, l.722, l.729, l.471, l.642, l.336-340, l.193, l.902, l.514, l.215",
+      "fix": "- Part 3: \"kept as written then, apart from S8 and S11\".\n- RV-1: \"restate the target\".\n- §13.10: add \"or by marking it follows from nothing\".\n- CM-4: add \"outside a session (ES-9)\" to those three rows.\n- BD-8: add \"(not during a session on its subject, ES-9)\".\n- A13: \"its axiom n.holds stays; only its kind and arrows change\".\n- RV-4: \"Add: every field of the new card. Add premise: that, and its arrow.\"\n- AR-4: \"Today only These suffice and 'I hold this' add to that field.\""
+    }
+  ]
+}

@@ -6,7 +6,7 @@
  * Anything a test needs beyond that (e.g. the `And.right` ref Lean records for `.2`) goes in `overrides`.
  * The Spyro acceptance tests use the hand-written fixtures/project/*.json instead.
  */
-import type { DeclFacts, DeclRef, LeanDeclKind, LeanFacts, LeanMessageFact, ModuleFacts } from '../../../src/facts.js';
+import { probeFailure, type DeclFacts, type DeclRef, type LeanDeclKind, type LeanFacts, type LeanMessageFact, type ModuleFacts, type ProbeRunFacts } from '../../../src/facts.js';
 import type { DeclInfo, ParsedFile } from '../../../src/markup/types.js';
 import { moduleOfPath } from '../../../src/paths.js';
 import { keywordKind } from '../../../src/project/factsIndex.js';
@@ -26,6 +26,14 @@ export interface DeclOverride {
   value?: string;
   error?: string;
   parent?: string;
+  /** Slice 1d: the elaborated value's constants (`DeclFacts.valueConsts`), e.g. a lemma `simp` used unnamed. */
+  valueConsts?: string[];
+  /** Slice 1d: leave `valueConsts` out for this declaration (a failed probe, old facts). */
+  noValueConsts?: boolean;
+  /** Slice 2a1: the elaborated type's constants (`DeclFacts.typeConsts`), e.g. a class reached through a field. */
+  typeConsts?: string[];
+  /** Slice 2a1: leave `typeConsts` out for this declaration (old facts, a failed probe). */
+  noTypeConsts?: boolean;
   /** Leave the declaration out of the facts. */
   drop?: boolean;
 }
@@ -37,6 +45,25 @@ export interface FakeFactsOptions {
   moduleStates?: Record<string, ModuleFacts['state']>;
   messages?: LeanMessageFact[];
   status?: LeanFacts['status'];
+  /**
+   * Slice 1d: give every declaration `valueConsts`, as the value probe does: the project declarations its refs name
+   * (in order, once), unless overridden. Off by default: such facts are the ones from before slice 1d.
+   */
+  valueConsts?: boolean;
+  /**
+   * Slice 2a1 (docs/slice2-plan.md 2.1): give every declaration `typeConsts`, as slice 2's probe does: the project
+   * declarations named in its type (the signature before `:=`/`where`/`|`; the whole declaration for an axiom, an
+   * opaque without a value, and an inductive, structure or class, whose constructors' types count), in order, once,
+   * unless overridden. Off by default: such facts are the ones from before slice 2.
+   */
+  typeConsts?: boolean;
+  /**
+   * Slice 2b2 (docs/slice2-plan.md 2.1, D2-75): the isolated probe's marker (`LeanFacts.probe`); a status alone gets
+   * `durationMs: 300` and no detail. When it is `cut` or `failed`, no declaration gets valueConsts or typeConsts, whatever
+   * the other options and overrides say (a refresh never gives constants then), and the facts' status is `check-errors`
+   * with the cause in `detail` (refresh reports it as a check problem) unless `status` is given.
+   */
+  probe?: ProbeRunFacts | ProbeRunFacts['status'];
 }
 
 export const hashOf = (path: string) => `sha-${path}`;
@@ -68,11 +95,16 @@ export function fakeFacts(files: readonly ParsedFile[], options: FakeFactsOption
   const byName = new Map(entries.map((e) => [e.name, e]));
 
   const refsOf = new Map<string, DeclRef[]>();
+  /** Slice 2a1: the refs inside each declaration's type (see `FakeFactsOptions.typeConsts`). */
+  const typeRefsOf = new Map<string, string[]>();
   for (const { file, decl, name } of entries) {
     const lines = new LineMap(file.text);
     const from = decl.nameSpan?.end ?? decl.keywordSpan.end;
     const body = blankComments(file.text.slice(from, decl.span.end));
     const refs: DeclRef[] = [];
+    const structural = ['inductive', 'coinductive', 'structure', 'class', 'class inductive'].includes(decl.keyword);
+    const typeEnd = structural || decl.valueStart === undefined ? decl.span.end : decl.valueStart;
+    const typeRefs: string[] = [];
     for (const token of identifierTokens(body)) {
       let text = token.text;
       let resolved = resolveName(text, decl.namespace, known);
@@ -84,7 +116,9 @@ export function fakeFacts(files: readonly ParsedFile[], options: FakeFactsOption
       const start = from + token.start;
       const target = byName.get(resolved);
       refs.push({ name: resolved, module: moduleOfPath(target?.file.path ?? '') ?? '', range: lines.rangeOf(start, start + text.length) });
+      if (start < typeEnd && !typeRefs.includes(resolved)) typeRefs.push(resolved);
     }
+    typeRefsOf.set(name, typeRefs);
     const o = overrides[name];
     if (o?.extraRefs) {
       const end = lines.positionAt(decl.span.end);
@@ -149,6 +183,8 @@ export function fakeFacts(files: readonly ParsedFile[], options: FakeFactsOption
   }));
   const factsOk = (path: string) => (states[path] ?? 'fresh') === 'fresh' || states[path] === 'stale';
 
+  const probe: ProbeRunFacts | undefined = options.probe === undefined ? undefined : typeof options.probe === 'string' ? { status: options.probe, durationMs: 300 } : options.probe;
+  const probeFailed = probe !== undefined && (probe.status === 'cut' || probe.status === 'failed');
   const decls: DeclFacts[] = [];
   for (const e of entries) {
     if (!factsOk(e.file.path)) continue;
@@ -189,20 +225,30 @@ export function fakeFacts(files: readonly ParsedFile[], options: FakeFactsOption
       ...(e.decl.docstring !== undefined ? { docstring: e.decl.docstring } : {}),
       refs: refsOf.get(e.name) ?? [],
       ...(o.parent !== undefined ? { parent: o.parent } : {}),
+      ...((options.valueConsts === true || o.valueConsts !== undefined) && !o.noValueConsts && !probeFailed
+        ? { valueConsts: o.valueConsts ?? [...new Set((refsOf.get(e.name) ?? []).map((r) => r.name).filter((n) => names.has(n) && n !== e.name))] }
+        : {}),
+      ...((options.typeConsts === true || o.typeConsts !== undefined) && !o.noTypeConsts && !probeFailed
+        ? { typeConsts: o.typeConsts ?? (typeRefsOf.get(e.name) ?? []).filter((n) => names.has(n) && n !== e.name) }
+        : {}),
     });
   }
 
-  return {
+  const facts: LeanFacts = {
     format: 'telelean-lean-facts',
     version: 1,
     toolchain: 'leanprover/lean4:v4.35.0',
     library,
     startedAt: '2026-11-01T02:00:00.000Z',
     finishedAt: '2026-11-01T02:00:01.200Z',
-    status: options.status ?? 'ok',
+    status: options.status ?? (probeFailed ? 'check-errors' : 'ok'),
     build: { status: 'ok', durationMs: 1000, messages: options.messages ?? [], failedModules: Object.entries(states).filter(([, s]) => s === 'failed').map(([p]) => moduleOfPath(p) ?? p) },
     check: { status: 'ok', durationMs: 200, probed: decls.length },
     modules,
     decls,
+    ...(probe !== undefined ? { probe } : {}),
   };
+  const cause = probeFailure(facts);
+  if (cause !== undefined && options.status === undefined) facts.detail = cause;
+  return facts;
 }

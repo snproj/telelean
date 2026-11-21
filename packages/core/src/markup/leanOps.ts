@@ -1,6 +1,7 @@
 /**
  * Lean text operations (docs/m1-plan.md section 6.2): the D-11 kind-change rewrites and the D-9 docstring mirror,
- * planned by WP-model and applied here to one file. All or nothing: any problem means no edits.
+ * planned by WP-model and applied here to one file. All or nothing: any problem means no edits. Slice 2 (2b2) adds
+ * `replace-decl`, which puts back another version's text of a declaration (taking an item's content out, §4.11).
  */
 import { holdsName } from '../facts.js';
 import { isCommandWord } from './decls.js';
@@ -220,6 +221,23 @@ export function applyLeanOps(file: ParsedFile, ops: readonly LeanOp[]): LeanOpsR
           const start = text.charAt(span.start - 1) === '@' && text.charAt(span.start) !== '@' ? span.start - 1 : span.start;
           edits.push({ span: { start, end: span.end }, newText: `(${text.slice(start, span.end)} ${op.hypName})` });
         }
+        break;
+      }
+      case 'replace-decl': {
+        // 2b2 (§4.11): B's text of a declaration back in place of the current one.
+        const decl = need(op.name, 'The declaration');
+        if (decl === undefined || !holdsNoBlock(decl, op.name) || !endsCleanly(decl, op.name)) break;
+        const replacement = op.text.split(/\r?\n/).join(eol);
+        const lexed = lexLean(replacement);
+        if (replacement.trim() === '') {
+          problems.push(`The text to put back for \`${op.name}\` is empty.`);
+          break;
+        }
+        if (lexed.comments.some((c) => c.unterminated) || /@@\s*telelean\b/.test(replacement)) {
+          problems.push(`The text to put back for \`${op.name}\` is not one complete declaration (an unterminated comment, or a telelean block).`);
+          break;
+        }
+        edits.push({ span: decl.span, newText: replacement });
         break;
       }
       case 'set-docstring': {

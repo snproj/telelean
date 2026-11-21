@@ -2,17 +2,21 @@
  * Fresh models end to end (turn 13, the demo path): a person opens an EMPTY folder, runs "telelean: Initialize Model
  * Here" (runner `inspectFolder` + `planInitialize`, written by the fs EditApplier as the extension's applier writes
  * them; then the git offer, accepted with `initGit` or declined), opens the board (a Lean refresh) and types their own
- * example as cards (M1 `add-node` actions, exactly what the board's A|D|G box sends: code-less blocks in
- * Model/<Subject>/Inbox.lean), selects premises and a goal and presses "These suffice". A FakeBackend plays
+ * example as cards (M1 `add-node` actions, exactly what the board's A|P box sends: code-less blocks in
+ * Model/<Subject>/Inbox.lean), draws arrows from the premises into the goal and runs "Formalize for dependencies"
+ * (M2's "These suffice"; with no premises, "Follows from nothing?"). The scripts still name the
+ * kinds ASSUMPTION, DERIVATION and GOAL: the board sends their spec v4 names (AXIOM, PROPOSITION), as the markup reads
+ * them (`parseNodeType`). A FakeBackend plays
  * test-fixtures/fresh/*.json: a well-behaved Claude following the system prompt, which must create EVERYTHING
  * itself (sorts, predicates, constants with their existence presupposition and instance, the statements, the
  * selected assumptions' `.holds`, lemmas and proofs). The REAL RunManager, Lean check engine (sandboxed Lean), proposal
  * service and sidecar store run it; then Accept, a Lean refresh and the board's statuses.
  *
- *   (a) socrates  proved; G->D; the existence presupposition is the only question; Accept; Undo and Redo; then a
+ *   (a) socrates  proved; the existence presupposition is the only question; Accept; Undo and Redo; then a
  *                 second example in the same model (plato) that reuses the accepted vocabulary
- *   (b) chain     a named lemma and a tactic proof; proved; a reason and a card the person typed while Claude worked
- *                 are kept by Accept (placed by card id, then re-checked)
+ *   (b) chain     a named lemma and a tactic proof; proved; a hand edit made while Claude worked holds Accept back
+ *                 (spec v4 ES-7, slice 1f: the files differ from the run's base) until it is undone; before 1f,
+ *                 Accept rebased such edits by card id
  *   (c) penguin   a question answered; not proved with a suggestion that closes the gap; adopted ("I hold this");
  *                 re-frozen; proved; Accept writes the card worded by Claude
  *   (d) zero premises, not self-evident: not proved; Accept keeps the formalisation (git history declined)
@@ -27,12 +31,16 @@
  * and every finish passes at its first attempt.
  * Real Lean, one job at a time (vitest runs files sequentially), LEAN_NUM_THREADS=4 (runLean); no Claude
  * (TELELEAN_NO_REAL_CLAUDE=1 in the vitest config, FakeBackend only).
+ *
+ * Slice 2d (docs/slice2-plan.md §0, "Tests that move"): every start is an edit session, whose RunView has no verdict and
+ * which has no proposal to Accept; each of these runs ends in Accept, so all of them move to 2f (Apply). The session
+ * itself runs end to end with real Lean in walkthrough.e2e.test.ts.
  */
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import type { NodeType, RunView, TlGraph } from '@telelean/core';
+import { parseNodeType, type NodeType, type RunView, type TlGraph } from '@telelean/core';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { createLeanCheckEngine } from '../../src/gate/index.js';
@@ -56,7 +64,8 @@ afterAll(() => {
 });
 
 interface FreshCard {
-  type: NodeType;
+  /** The kind as the script names it (ASSUMPTION, DERIVATION or GOAL: read as AXIOM or PROPOSITION). */
+  type: string;
   naturalName: string;
   /** The id the board derives for it (the script's edits rely on it). */
   id: string;
@@ -141,10 +150,17 @@ async function initialiseFolder(label: string, subject: string, today: string, g
   return { root, runsDir: path.join(dir, 'runs'), workspace, managers: [], runIds: [] };
 }
 
-/** The person types the script's cards in the A|D|G box (one `add-node` each), then the board refreshes. */
+/** A script's kind name as the board sends it (spec v4: the old names read as aliases). */
+function kindOf(written: string | undefined): NodeType {
+  const kind = parseNodeType(written ?? '')?.type;
+  if (kind === undefined) throw new Error(`not a kind: ${String(written)}`);
+  return kind;
+}
+
+/** The person types the script's cards in the A|P box (one `add-node` each), then the board refreshes. */
 async function typeCards(f: Fresh, script: FreshScript): Promise<void> {
   for (const card of script.cards) {
-    const outcome = await f.workspace.perform({ kind: 'add-node', subject: script.subject, type: card.type, naturalName: card.naturalName });
+    const outcome = await f.workspace.perform({ kind: 'add-node', subject: script.subject, type: kindOf(card.type), naturalName: card.naturalName });
     expect(outcome, JSON.stringify(outcome)).toMatchObject({ ok: true, nodeId: card.id });
   }
   expect(await f.workspace.refreshNow()).toMatchObject({ state: 'fresh' });
@@ -165,11 +181,22 @@ function newManager(f: Fresh, script: FreshScript): RunManager {
   return manager;
 }
 
-/** Presses "These suffice"; answers Claude's question (if it asks) as the script says. Resolves at the end of round 1. */
+/**
+ * Runs "Formalize for dependencies" (spec v4.1, M2's "These suffice") on the arrows the person drew; answers Claude's
+ * question (if it asks) as the script says. Resolves at the end of round 1. Slice 1e: a run no longer declares its
+ * premises, so the person draws the arrows first (one `add-arrows`, as the board's handle or "Draw arrows from the
+ * selection" would); the files then hold the same `premises:` line M2's start wrote, so the scripts' edits still apply.
+ * (An empty question is left as it was: the runner does not check it; the extension host does, core
+ * formalizeStartProblem.)
+ */
 async function theseSuffice(f: Fresh, manager: RunManager, script: FreshScript): Promise<{ review: RunView; before: Record<string, string> }> {
+  if (script.premises.length > 0) {
+    const drawn = await f.workspace.perform({ kind: 'add-arrows', target: script.target, sources: script.premises });
+    expect(drawn, JSON.stringify(drawn)).toMatchObject({ ok: true });
+  }
   const started = await manager.start({ subject: script.subject, target: script.target, premises: script.premises });
   expect(started, JSON.stringify(started)).toMatchObject({ ok: true });
-  // From here on (the premises are declared) nothing may change the person's files until Accept.
+  // From here on (the arrows are drawn) nothing may change the person's files until Accept.
   const before = modelTree(f.root);
   const first = await waitForRun(manager, (v) => v.state === 'waiting-for-answer' || v.state === 'review' || v.state === 'failed', 240_000, 'the question or the end of round 1');
   f.runIds.push(first.runId);
@@ -210,11 +237,11 @@ function neverRefused(results: readonly string[], failedChecks = 0, freezeRefusa
 
 const sorted = (xs: readonly string[]): string[] => [...xs].sort();
 
-/** Accepts the proposal with every lifecycle item ticked and every definition approved. */
+/** Accepts the proposal with every definition approved. */
 async function acceptAll(f: Fresh, manager: RunManager, review: RunView): Promise<void> {
   const proposal = manager.proposal();
   expect(proposal).not.toBeNull();
-  const accepted = await manager.accept(review.runId, proposal?.proposalId ?? '', proposal?.lifecycle.map((l) => l.id) ?? [], proposal?.definitions.map((d) => d.id) ?? []);
+  const accepted = await manager.accept(review.runId, proposal?.proposalId ?? '', proposal?.definitions.map((d) => d.id) ?? []);
   expect(accepted, JSON.stringify(accepted)).toMatchObject({ ok: true });
   expect(manager.current()?.state).toBe('accepted');
 }
@@ -226,7 +253,7 @@ async function refreshedGraph(f: Fresh, script: FreshScript): Promise<TlGraph> {
   expect(graph.diagnostics.filter((d) => d.severity === 'error'), JSON.stringify(graph.diagnostics)).toEqual([]);
   for (const id of script.premises) {
     const node = graph.nodes.find((n) => n.id === id);
-    if (node?.type !== 'ASSUMPTION') continue;
+    if (node?.type !== 'AXIOM') continue;
     expect(node.status.formal, id).toBe('formalized');
     expect(node.status.proof.kind, id).toBe('assumed');
     expect(node.lean.binding, id).toBe('pinned');
@@ -241,13 +268,13 @@ async function finishFresh(f: Fresh): Promise<void> {
 }
 
 /**
- * The common path of a one-round script: a fresh folder, the cards, "These suffice", the expected verdict with the
- * expected questions and lifecycle item, Accept, a refresh; returns the refreshed graph.
+ * The common path of a one-round script: a fresh folder, the cards, Formalize, the expected verdict with the
+ * expected questions, Accept, a refresh; returns the refreshed graph.
  */
 async function oneRound(
   name: string,
   git = true,
-  beforeAccept?: (f: Fresh, script: FreshScript) => Promise<void>,
+  beforeAccept?: (f: Fresh, script: FreshScript, manager: RunManager, review: RunView) => Promise<void>,
 ): Promise<{ f: Fresh; script: FreshScript; review: RunView; graph: TlGraph }> {
   const script = loadFresh(name);
   const f = await initialiseFolder(name, script.subject, script.today, git);
@@ -259,29 +286,29 @@ async function oneRound(
   const proposal = manager.proposal();
   expect(proposal?.definitions.map((d) => d.name)).toEqual(script.expect.definitions);
   for (const d of proposal?.definitions ?? []) expect(d.kind, d.name).toBe('presupposition');
-  const targetType = script.cards.find((c) => c.id === script.target)?.type;
+  const targetType = kindOf(script.cards.find((c) => c.id === script.target)?.type);
   const proved = script.expect.verdict === 'proved';
-  expect(proposal?.lifecycle.map((l) => [l.id, l.from, l.to, l.recommended])).toEqual(proved && targetType === 'GOAL' ? [['l1', 'GOAL', 'DERIVATION', true]] : []);
+  // Spec v4: no lifecycle item; a proved proposition stays a proposition.
+  expect(proposal).not.toHaveProperty('lifecycle');
   if (script.expect.footprint !== undefined) expect(sorted(proposal?.report.footprint ?? [])).toEqual(sorted(script.expect.footprint));
   expect(proposal?.report.selfEvident).toBe(script.expect.selfEvident ?? false);
-  await beforeAccept?.(f, script);
+  await beforeAccept?.(f, script, manager, review);
   await acceptAll(f, manager, review);
   const graph = await refreshedGraph(f, script);
   const target = graph.nodes.find((n) => n.id === script.target);
   expect(target?.status.formal).toBe('formalized');
   expect(target?.lean.binding).toBe('pinned');
+  expect(target?.type).toBe(targetType);
   if (proved) {
-    expect(target?.type).toBe('DERIVATION');
     expect(target?.status.proof).toEqual({ kind: 'proved', footprint: expect.arrayContaining(script.expect.footprint ?? []) as unknown as string[] });
   } else {
-    expect(target?.type).toBe(targetType);
     expect(target?.status.proof).toEqual({ kind: 'none' });
   }
   return { f, script, review, graph };
 }
 
 describe('fresh models: a demo user\'s own example from "Initialize Model Here" to the refreshed board', () => {
-  it('(a) socrates: proved; Accept writes the vocabulary and the formalisation; Undo/Redo; a second example reuses the vocabulary', async () => {
+  it.skip('moves to 2f: (a) socrates: proved; Accept writes the vocabulary and the formalisation; Undo/Redo; a second example reuses the vocabulary', async () => {
     const { f, script, graph } = await oneRound('socrates');
     const inbox = readFileSync(path.join(f.root, INBOX), 'utf8');
     for (const [id, statement] of [
@@ -293,7 +320,7 @@ describe('fresh models: a demo user\'s own example from "Initialize Model Here" 
     }
     expect(inbox).toContain('axiom all_humans_are_mortal.holds : all_humans_are_mortal');
     expect(inbox).toContain('theorem socrates_is_mortal.holds : socrates_is_mortal :=');
-    expect(inbox).toMatch(/id: socrates-is-mortal\ntype: DERIVATION\nnatural_name: Socrates is mortal\npremises: all-humans-are-mortal, socrates-is-a-human\n/);
+    expect(inbox).toMatch(/id: socrates-is-mortal\ntype: PROPOSITION\nnatural_name: Socrates is mortal\npremises: all-humans-are-mortal, socrates-is-a-human\n/);
     const vocabulary = readFileSync(path.join(f.root, VOCABULARY), 'utf8');
     expect(vocabulary).toContain('axiom Being : Type\n');
     expect(vocabulary).toContain('axiom Being.exists : Nonempty Being\ninstance : Nonempty Being := Being.exists\n');
@@ -327,7 +354,7 @@ describe('fresh models: a demo user\'s own example from "Initialize Model Here" 
     const after = await refreshedGraph(f, plato);
     for (const id of ['socrates-is-mortal', 'plato-is-mortal']) {
       const node = after.nodes.find((n) => n.id === id);
-      expect(node?.type, id).toBe('DERIVATION');
+      expect(node?.type, id).toBe('PROPOSITION');
       expect(node?.status.proof.kind, id).toBe('proved');
     }
     expect(after.vocabulary.find((v) => v.shortName === 'plato')?.kind).toBe('constant');
@@ -335,27 +362,36 @@ describe('fresh models: a demo user\'s own example from "Initialize Model Here" 
     await finishFresh(f);
   });
 
-  it('(b) chain: a named lemma and a tactic proof; proved; the card and the reason typed meanwhile are kept by Accept', async () => {
-    // While Claude works the person keeps using the board: a reason on a premise (the board asks for one on every
-    // assumption) and one more card. On a fresh Inbox both are within 3 lines of Claude's changes: turn 13 places them
-    // by card id, so Accept rebases, re-checks and keeps them.
-    const meanwhile = async (f: Fresh): Promise<void> => {
-      expect(await f.workspace.perform({ kind: 'edit-node', id: 'tom-is-a-cat', field: 'rationale', value: 'I have seen him' })).toMatchObject({ ok: true });
-      expect(await f.workspace.perform({ kind: 'add-node', subject: 'Demo', type: 'ASSUMPTION', naturalName: 'Jerry is a mouse' })).toMatchObject({ ok: true, nodeId: 'jerry-is-a-mouse' });
+  it.skip('moves to 2f: (b) chain: a named lemma and a tactic proof; proved; a hand edit made meanwhile holds Accept back until it is undone (ES-7)', async () => {
+    // While Claude works the person edits the Inbox by hand (the board itself cannot be edited during a run, ES-9).
+    // Accept then refuses, naming the file, and changes nothing; once the edit is undone (as the editor's Undo would),
+    // the same Accept goes through. (Before slice 1f, Accept rebased such edits, placed by card id.)
+    const meanwhile = async (f: Fresh, _script: FreshScript, manager: RunManager, review: RunView): Promise<void> => {
+      const file = path.join(f.root, INBOX);
+      const base = readFileSync(file, 'utf8');
+      const edited = base.replace('natural_name: Tom is a cat\n', 'natural_name: Tom is a cat\nrationale: I have seen him\n');
+      expect(edited).not.toBe(base);
+      writeFileSync(file, edited);
+      await f.workspace.invalidate([INBOX]);
+      const proposal = manager.proposal();
+      const refused = await manager.accept(review.runId, proposal?.proposalId ?? '', proposal?.definitions.map((d) => d.id) ?? []);
+      expect(refused).toEqual({ ok: false, code: 'conflict', error: `Your files changed since this run started (${INBOX}). Undo those edits in the editor, or discard the run.` });
+      expect(manager.current()?.state).toBe('review');
+      expect(readFileSync(file, 'utf8')).toBe(edited); // nothing applied
+      writeFileSync(file, base);
+      await f.workspace.invalidate([INBOX]);
     };
     const { f, graph } = await oneRound('chain', true, meanwhile);
     const inbox = readFileSync(path.join(f.root, INBOX), 'utf8');
     expect(inbox).toContain('theorem tom_is_a_mammal : Mammal tom :=');
-    expect(inbox).toMatch(/id: tom-is-a-cat\ntype: ASSUMPTION\nnatural_name: Tom is a cat\nrationale: I have seen him\nasserted: 2026-11-10\nlean: Demo\.tom_is_a_cat\n-\/\n/);
-    expect(inbox.indexOf('id: jerry-is-a-mouse')).toBeGreaterThan(inbox.indexOf('theorem tom_is_an_animal.holds'));
-    expect(graph.nodes.find((n) => n.id === 'jerry-is-a-mouse')?.status.formal).toBe('informal');
-    expect(graph.nodes.find((n) => n.id === 'tom-is-a-cat')?.rationale).toBe('I have seen him');
+    expect(inbox).not.toContain('rationale: I have seen him');
+    expect(graph.nodes.find((n) => n.id === 'tom-is-a-cat')?.rationale).toBeUndefined();
     // The lemma is proof-only vocabulary, never a question.
     expect(graph.vocabulary.find((v) => v.shortName === 'tom_is_a_mammal')?.kind).toBe('lemma');
     await finishFresh(f);
   });
 
-  it('(c) penguin: a question; not proved with a suggestion; "I hold this" re-freezes and proves; Accept writes the card worded by Claude', async () => {
+  it.skip('moves to 2f: (c) penguin: a question; not proved with a suggestion; "I hold this" re-freezes and proves; Accept writes the card worded by Claude', async () => {
     const script = loadFresh('penguin');
     const f = await initialiseFolder('penguin', script.subject, script.today, true);
     await typeCards(f, script);
@@ -374,7 +410,7 @@ describe('fresh models: a demo user\'s own example from "Initialize Model Here" 
     expect(modelTree(f.root)).toEqual(before);
     neverRefused(await toolResults(f, r2.runId));
     const proposal = manager.proposal();
-    expect(proposal?.lifecycle.map((l) => l.id)).toEqual(['l1']);
+    expect(proposal).not.toHaveProperty('lifecycle');
     expect(proposal?.definitions.map((d) => d.name)).toEqual(script.expect.definitions);
     expect(sorted(proposal?.report.footprint ?? [])).toEqual(sorted(script.expect.footprint ?? []));
     await acceptAll(f, manager, r2);
@@ -385,36 +421,37 @@ describe('fresh models: a demo user\'s own example from "Initialize Model Here" 
     expect(ghostAt).toBeLessThan(inbox.indexOf('natural_name: Tweety can fly'));
     expect(inbox).toContain('worded_by: agent');
     expect(inbox).toContain('rationale: penguins are birds');
-    expect(inbox).toMatch(/id: tweety-can-fly\ntype: DERIVATION\nnatural_name: Tweety can fly\npremises: all-birds-can-fly, tweety-is-a-penguin, every-penguin-is-a-bird\n/);
+    expect(inbox).toMatch(/id: tweety-can-fly\ntype: PROPOSITION\nnatural_name: Tweety can fly\npremises: all-birds-can-fly, tweety-is-a-penguin, every-penguin-is-a-bird\n/);
+    expect(inbox).toMatch(/id: every-penguin-is-a-bird\ntype: AXIOM\n/);
     const graph = await refreshedGraph(f, script);
     const ghost = graph.nodes.find((n) => n.id === script.expect.ghostNode);
-    expect(ghost?.type).toBe('ASSUMPTION');
+    expect(ghost?.type).toBe('AXIOM');
     expect(ghost?.status.proof.kind).toBe('assumed');
     const target = graph.nodes.find((n) => n.id === script.target);
-    expect(target?.type).toBe('DERIVATION');
+    expect(target?.type).toBe('PROPOSITION');
     expect(target?.status.proof.kind).toBe('proved');
     expect(target?.premises).toContain(script.expect.ghostNode);
     expect(graph.diagnostics.filter((d) => d.nodeId === script.target && d.code === 'TL107')).toEqual([]);
     await finishFresh(f);
   });
 
-  it('(d) zero premises, not self-evident: not proved; Accept keeps the formalisation; the goal stays a goal (no git history)', async () => {
+  it.skip('moves to 2f: (d) zero premises, not self-evident: not proved; Accept keeps the formalisation; the proposition stays one (no git history)', async () => {
     const { f, review, graph } = await oneRound('self-evident-not', false);
     expect(review.ghosts).toEqual([]);
     expect(readFileSync(path.join(f.root, INBOX), 'utf8')).toContain('abbrev pingu_can_swim : Prop := CanSwim pingu\n');
     expect(readFileSync(path.join(f.root, INBOX), 'utf8')).not.toContain('.holds');
-    expect(graph.nodes.map((n) => [n.id, n.type])).toEqual([['pingu-can-swim', 'GOAL']]);
+    expect(graph.nodes.map((n) => [n.id, n.type])).toEqual([['pingu-can-swim', 'PROPOSITION']]);
     await finishFresh(f);
   });
 
-  it('(e) the goal typed before its premises: the proof moves below them; proved', async () => {
+  it.skip('moves to 2f: (e) the goal typed before its premises: the proof moves below them; proved', async () => {
     const { f } = await oneRound('goal-first');
     const inbox = readFileSync(path.join(f.root, INBOX), 'utf8');
     expect(inbox.indexOf('theorem socrates_is_mortal.holds')).toBeGreaterThan(inbox.indexOf('axiom socrates_is_a_human.holds'));
     await finishFresh(f);
   });
 
-  it('(f) propositional, the conclusion typed as a Derivation: proved; no kind change; nothing to approve', async () => {
+  it.skip('moves to 2f: (f) propositional, the conclusion typed as a Derivation: proved; no kind change; nothing to approve', async () => {
     const { f, graph } = await oneRound('rain');
     expect(graph.vocabulary.map((v) => [v.shortName, v.kind])).toEqual([
       ['Rains', 'predicate'],
@@ -423,7 +460,7 @@ describe('fresh models: a demo user\'s own example from "Initialize Model Here" 
     await finishFresh(f);
   });
 
-  it('(h) honest variants: a named presupposition instance, vocabulary in Inbox.lean, `def` statements, the proof in Main.lean; a blank line named and fixed', async () => {
+  it.skip('moves to 2f: (h) honest variants: a named presupposition instance, vocabulary in Inbox.lean, `def` statements, the proof in Main.lean; a blank line named and fixed', async () => {
     const { f, review } = await oneRound('variants');
     const results = await toolResults(f, review.runId);
     // The one refusal names the blank line and never asks to remove the assumption's .holds.
@@ -435,15 +472,15 @@ describe('fresh models: a demo user\'s own example from "Initialize Model Here" 
     await finishFresh(f);
   });
 
-  it('(i) an intermediate step typed as a Derivation and selected: proved after the freeze and used; both proofs accepted', async () => {
+  it.skip('moves to 2f: (i) an intermediate step typed as a Derivation and selected: proved after the freeze and used; both proofs accepted', async () => {
     const { f, graph } = await oneRound('derivation-premise');
     const step = graph.nodes.find((n) => n.id === 'tom-is-a-mammal');
-    expect(step?.type).toBe('DERIVATION');
+    expect(step?.type).toBe('PROPOSITION');
     expect(step?.status.proof.kind).toBe('proved');
     await finishFresh(f);
   });
 
-  it('(g) arithmetic with zero premises: proved and flagged self-evident (declarations that mention no constant get facts)', async () => {
+  it.skip('moves to 2f: (g) arithmetic with zero premises: proved and flagged self-evident (declarations that mention no constant get facts)', async () => {
     const { f, graph } = await oneRound('arith');
     expect(graph.nodes.find((n) => n.id === 'two-plus-two-is-four')?.status.flags).toContain('self-evident');
     expect(graph.vocabulary.find((v) => v.shortName === 'four_eq')?.kind).toBe('lemma');

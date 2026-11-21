@@ -261,7 +261,7 @@ describe('AT4.2 Lean refresh scheduling and states', () => {
     const ws = await workspace(async () => fakeFacts('ok', { modules: freshModules(root) }), { semantic: { enabled: false } });
     const graphJson = '.telelean/graph.json';
     write(root, graphJson, 'not json');
-    const outcome = await ws.perform({ kind: 'reorder', id: 'new-spyro-pg', column: 'ASSUMPTION', beforeId: 'pg-no-dark-past' });
+    const outcome = await ws.perform({ kind: 'reorder', id: 'new-spyro-pg', column: 'AXIOM', beforeId: 'pg-no-dark-past' });
     expect(outcome).toMatchObject({ ok: true });
     const json = JSON.parse(read(root, graphJson)) as GraphJson;
     expect(json.format).toBe('telelean-graph');
@@ -411,7 +411,7 @@ describe('AT4.2 Lean refresh scheduling and states', () => {
       open.push(ws);
       await ws.load();
       write(root, '.telelean/graph.json', 'old');
-      const outcome = await ws.perform({ kind: 'reorder', id: 'new-spyro-pg', column: 'ASSUMPTION', beforeId: 'pg-no-dark-past' });
+      const outcome = await ws.perform({ kind: 'reorder', id: 'new-spyro-pg', column: 'AXIOM', beforeId: 'pg-no-dark-past' });
       expect(outcome.ok).toBe(true);
       const json = JSON.parse(read(root, '.telelean/graph.json')) as GraphJson;
       expect(json.format).toBe('telelean-graph');

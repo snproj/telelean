@@ -1,5 +1,6 @@
 /**
- * AT5.8 (and AT5.9 in VS Code): a "These suffice" run through the real extension, runner workspace, RunManager, Lean
+ * AT5.8 (and AT5.9 in VS Code): a "Formalize for dependencies" run (spec v4.1 ES-2; M2's "These suffice") through the
+ * real extension, runner workspace, RunManager, Lean
  * check engine, proposal service and sidecar store, on a fresh COPY of mental_model/ that scripts/smoke.mjs placed at
  * $TELELEAN_RUNS_ROOT (outside the window's workspace folder). Claude is the FakeBackend with the normative-reading
  * script of docs/m2-plan.md section 10.2, installed through the testing API (real Claude is disabled in Test mode, and
@@ -7,7 +8,7 @@
  *
  *   open the board, initialize git, refresh -> startRun from the board (consent answered by the testing API) -> the
  *   modality question arrives -> answered through simulateBoardMessage (Claude's guess revealed only now) -> the gate
- *   passes, a proved proposal with the G->D lifecycle item arrives, the real files are untouched -> the raw Lean diff
+ *   passes, a proved proposal arrives (spec v4: no G->D lifecycle item), the real files are untouched -> the raw Lean diff
  *   opens -> Accept: Main.lean changes on disk, one history entry, Undo restores it byte-exactly -> a second run
  *   waits for an answer; the window "reloads" (testing.disposeWorkspace) and the restored board shows the question
  *   again -> Cancel -> a third run is working when the window goes: restored as interrupted (Resume offered), its
@@ -267,10 +268,8 @@ suite('a Claude run through the board (FakeBackend; AT5.8, AT5.9)', () => {
     proposal = latestProposal;
     assert.equal(proposal.report.verdict, 'proved', JSON.stringify(proposal.report));
     assert.equal(latestRun?.state, 'review');
-    assert.deepEqual(
-      proposal.lifecycle.map((item) => [item.nodeId, item.from, item.to, item.recommended]),
-      [[TARGET, 'GOAL', 'DERIVATION', true]],
-    );
+    // Spec v4 (slice 1a): a proof no longer proposes a kind change (the GOAL -> DERIVATION lifecycle item is gone).
+    assert.equal('lifecycle' in proposal, false, 'a proposal of this build has no lifecycle items');
     assert.deepEqual(proposal.definitions, [], 'the normative reading introduces no definition');
     assert.equal(latestRun?.answered[0]?.claudesGuess?.option, 0, "Claude's guess is revealed after the answer");
     assert.equal(read(MAIN), mainBefore, "the user's files change only on Accept");
@@ -290,7 +289,6 @@ suite('a Claude run through the board (FakeBackend; AT5.8, AT5.9)', () => {
     const accepted = await request('acceptProposal', {
       runId,
       proposalId: proposal.proposalId,
-      lifecycle: proposal.lifecycle.filter((item) => item.recommended).map((item) => item.id),
       definitions: proposal.definitions.map((d) => d.id),
       requestId: 'run-accept',
     });
@@ -299,7 +297,8 @@ suite('a Claude run through the board (FakeBackend; AT5.8, AT5.9)', () => {
     assert.match(main, /abbrev pg_no_dark_past : Prop :=/);
     assert.match(main, /lean: Spyro\.pg_no_dark_past/); // pinned by telelean's normalisation
     assert.match(main, /theorem cynder_not_good\.holds : cynder_not_good :=/);
-    assert.match(main, /id: cynder-not-good\ntype: DERIVATION\n/);
+    // The goal keeps its kind (its type: line, GOAL in the copy, is read as PROPOSITION): a run changes no kind.
+    assert.match(main, /id: cynder-not-good\ntype: GOAL\n/);
     await waitFor(() => latestRun?.state === 'accepted', 30_000, `the run accepted (now ${latestRun?.state})`);
 
     const listed = nextPost(api, (e) => e.root === root && e.message.type === 'history', 30_000, 'the history listing');
@@ -309,7 +308,7 @@ suite('a Claude run through the board (FakeBackend; AT5.8, AT5.9)', () => {
     const listing: HistoryListing = event.message.payload.listing;
     const newest = listing.entries[0];
     assert.equal(newest?.action, 'accept-proposal', JSON.stringify(listing.entries.slice(0, 3)));
-    assert.match(newest?.label ?? '', /^These suffice/);
+    assert.match(newest?.label ?? '', /^Formalize → proved: /);
 
     const undone = await request('undo', { requestId: 'run-undo' });
     assert.equal(undone.ok, true, JSON.stringify(undone));

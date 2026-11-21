@@ -1,6 +1,6 @@
 // Tiny static server for the Playwright harness (module scripts and fonts need http://, not file://).
 //   /harness/*  -> packages/webview/test/harness/
-//   /dist/*     -> packages/extension/dist/webview/   (the built bundle)
+//   /dist/*     -> packages/extension/dist/webview/   (the built bundle), or $TELELEAN_WEBVIEW_OUT when set
 // Listens on 127.0.0.1 only. Usage: node test/harness/serve.mjs [port]
 import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
@@ -10,7 +10,8 @@ import { fileURLToPath } from 'node:url';
 const here = fileURLToPath(new URL('.', import.meta.url));
 const roots = {
   '/harness/': resolve(here),
-  '/dist/': resolve(here, '../../../extension/dist/webview'),
+  // TELELEAN_WEBVIEW_OUT: a test build kept outside the extension's dist/ (see vite.config.ts).
+  '/dist/': process.env.TELELEAN_WEBVIEW_OUT ? resolve(process.env.TELELEAN_WEBVIEW_OUT) : resolve(here, '../../../extension/dist/webview'),
 };
 const types = {
   '.html': 'text/html; charset=utf-8',

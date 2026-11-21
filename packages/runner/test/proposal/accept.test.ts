@@ -1,30 +1,20 @@
 /**
  * AT4.4 baseDrift, AT4.5 planAccept, AT4.9 diffFiles and ProposalService.apply, with an in-memory shadow and fakes for
- * WP1's stubs (proposalLabel, lifecycleChanges). The merge is checked line by line around the 3 context lines of
- * docs/m2-plan.md section 7.1: a user's edit 3 lines from a change of Claude's is a conflict, 4 lines away merges.
+ * WP1's stubs (proposalLabel). The merge is checked line by line around the 3 context lines of docs/m2-plan.md
+ * section 7.1: a user's edit 3 lines from a change of Claude's is a conflict, 4 lines away merges. (Spec v4 removed
+ * the lifecycle items and their tests: docs/slice1-plan.md 2.6.)
  */
 import path from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import {
-  ActionError,
-  createUserNode,
-  type ActionOutcome,
-  type FileChange,
-  type LeanFacts,
-  type LifecycleItem,
-  type ProjectModel,
-  type ProposalView,
-  type ReportCard,
-} from '@telelean/core';
+import { createUserNode, REVIEW_TEXTS, type ActionOutcome, type FileChange, type ProposalView, type ReportCard } from '@telelean/core';
 
-import { createProposalService, MERGE_CONTEXT_LINES, PROPOSAL_FACTS_FILE, type ProposalCore } from '../../src/proposal/index.js';
+import { createProposalService, MERGE_CONTEXT_LINES, type ApplyRequest, type ProposalCore } from '../../src/proposal/index.js';
 import type { ExternalChangeSet, ModelWorkspace } from '../../src/workspace/types.js';
-import { cleanup, copyMentalModel, fakeFacts, makeTempDir, overlayTextSource, write } from '../workspace/helpers.js';
+import { cleanup, copyMentalModel, makeTempDir, overlayTextSource, write } from '../workspace/helpers.js';
 import { edit, fakeDiff, fakeShadow, INBOX, MAIN, normativeState, realReader, shadowFilesOnDisk, USAGE, VOCABULARY } from './helpers.js';
 
-const L1: LifecycleItem = { id: 'l1', kind: 'change-kind', nodeId: 'cynder-not-good', from: 'GOAL', to: 'DERIVATION', recommended: true, reason: 'Lean proved it from the selected premises' };
 const TARGET_SENTENCE = 'Cynder would not be a good addition to the new Spyro game';
 
 function report(overrides: Partial<ReportCard> = {}): ReportCard {
@@ -45,7 +35,7 @@ function report(overrides: Partial<ReportCard> = {}): ReportCard {
 }
 
 function proposal(overrides: Partial<ProposalView> = {}): ProposalView {
-  const target = createUserNode({ id: 'cynder-not-good', type: 'GOAL', naturalName: TARGET_SENTENCE, subject: 'Spyro' });
+  const target = createUserNode({ id: 'cynder-not-good', type: 'PROPOSITION', naturalName: TARGET_SENTENCE, subject: 'Spyro' });
   return {
     runId: 'r1',
     proposalId: 'p1',
@@ -56,7 +46,6 @@ function proposal(overrides: Partial<ProposalView> = {}): ProposalView {
     files: [],
     review: [],
     definitions: [],
-    lifecycle: [L1],
     ghosts: [],
     report: report(),
     baseChanged: false,
@@ -68,20 +57,14 @@ function proposal(overrides: Partial<ProposalView> = {}): ProposalView {
 /** Fakes for WP1's stubs, recording their calls. */
 function fakes() {
   const labels: Array<Parameters<ProposalCore['proposalLabel']>> = [];
-  const lifecycle: Array<{ model: ProjectModel; items: readonly LifecycleItem[] }> = [];
   const core: Partial<ProposalCore> = {
     diffGraphs: () => fakeDiff(),
     proposalLabel: (...args) => {
       labels.push(args);
-      return `label(${args[0]}, ${args[1]}, +${args[2].lifecycle} lifecycle, +${args[2].adoptedGhosts} adopted)`;
-    },
-    lifecycleChanges: (model, items) => {
-      lifecycle.push({ model, items });
-      const before = model.files.get(MAIN)?.text ?? '';
-      return items.length === 0 ? [] : [{ path: MAIN, before, after: edit(before, 'id: cynder-not-good\ntype: GOAL\n', 'id: cynder-not-good\ntype: DERIVATION\n') }];
+      return `label(${args[0]}, ${args[1]}, +${args[2].adoptedGhosts} adopted)`;
     },
   };
-  return { core, labels, lifecycle };
+  return { core, labels };
 }
 
 /** 40 distinct lines (`-- line 1` … `-- line 40`), with line `k` (1-based) replaced. */
@@ -134,16 +117,16 @@ describe('the proposal service around Accept', () => {
       const service = createProposalService({ core });
       const shown = normativeState(base);
       const shadow = fakeShadow({ runDir: runDir(), root, base, current: shown });
-      const plan = await service.planAccept({ proposal: proposal(), shadow, lifecycle: [], readReal: realReader(new Map(base)), today: '2026-11-01', realFiles: [...base.keys()] });
+      const plan = await service.planAccept({ proposal: proposal(), shadow, readReal: realReader(new Map(base)), today: '2026-11-01', realFiles: [...base.keys()] });
       expect(plan).toEqual({
         ok: true,
         changes: [{ path: MAIN, before: base.get(MAIN), after: shown.get(MAIN) }],
-        label: `label(proved, ${TARGET_SENTENCE}, +0 lifecycle, +0 adopted)`,
+        label: `label(proved, ${TARGET_SENTENCE}, +0 adopted)`,
         nodes: ['cynder-not-good'],
         drift: [],
         shadowState: shown,
       });
-      expect(labels).toEqual([['proved', TARGET_SENTENCE, { lifecycle: 0, adoptedGhosts: 0 }]]);
+      expect(labels).toEqual([['proved', TARGET_SENTENCE, { adoptedGhosts: 0 }]]);
     });
 
     it(`drift more than ${MERGE_CONTEXT_LINES} lines from every change of Claude's merges; files only the user changed keep their text`, async () => {
@@ -153,7 +136,7 @@ describe('the proposal service around Accept', () => {
       const shadow = fakeShadow({ runDir: runDir(), root, base: baseFiles, current: new Map([...baseFiles, [MAIN, lines({ 20: '-- line 20, by Claude' })]]) });
       for (const k of [10, 16, 24, 40]) {
         const real = new Map<string, string | null>([...baseFiles, [MAIN, lines({ [k]: `-- line ${k}, by the user` })], [INBOX, `${base.get(INBOX) ?? ''}-- mine\n`]]);
-        const plan = await service.planAccept({ proposal: proposal(), shadow, lifecycle: [], readReal: realReader(real), today: '2026-11-01', realFiles: [...baseFiles.keys()] });
+        const plan = await service.planAccept({ proposal: proposal(), shadow, readReal: realReader(real), today: '2026-11-01', realFiles: [...baseFiles.keys()] });
         expect(plan.ok, `user edit on line ${k}: ${JSON.stringify(plan)}`).toBe(true);
         if (!plan.ok) continue;
         const merged = lines({ [k]: `-- line ${k}, by the user`, 20: '-- line 20, by Claude' });
@@ -171,7 +154,7 @@ describe('the proposal service around Accept', () => {
       const shadow = fakeShadow({ runDir: runDir(), root, base: baseFiles, current: new Map([...baseFiles, [MAIN, lines({ 20: '-- line 20, by Claude' })]]) });
       for (const k of [17, 19, 20, 21, 23]) {
         const real = new Map<string, string | null>([...baseFiles, [MAIN, lines({ [k]: `-- line ${k}, by the user` })]]);
-        const plan = await service.planAccept({ proposal: proposal(), shadow, lifecycle: [], readReal: realReader(real), today: '2026-11-01', realFiles: [...baseFiles.keys()] });
+        const plan = await service.planAccept({ proposal: proposal(), shadow, readReal: realReader(real), today: '2026-11-01', realFiles: [...baseFiles.keys()] });
         expect(plan, `user edit on line ${k}`).toEqual({
           ok: false,
           code: 'conflict',
@@ -187,7 +170,7 @@ describe('the proposal service around Accept', () => {
       const shown = normativeState(base);
       const shadow = fakeShadow({ runDir: runDir(), root, base, current: shown });
       const realMain = edit(base.get(MAIN) ?? '', 'rationale: known from gaming news', 'rationale: known from gaming news and the trailer');
-      const plan = await service.planAccept({ proposal: proposal(), shadow, lifecycle: [], readReal: realReader(new Map([...base, [MAIN, realMain]])), today: '2026-11-01' });
+      const plan = await service.planAccept({ proposal: proposal(), shadow, readReal: realReader(new Map([...base, [MAIN, realMain]])), today: '2026-11-01' });
       expect(plan.ok, JSON.stringify(plan)).toBe(true);
       if (!plan.ok) return;
       expect(plan.changes).toEqual([
@@ -195,7 +178,7 @@ describe('the proposal service around Accept', () => {
       ]);
       // An edit of the user's inside pg-no-dark-past's block (which normalisation pinned) overlaps: conflict.
       const inBlock = edit(base.get(MAIN) ?? '', 'stance: rule\n', 'stance: believe\n');
-      const conflict = await service.planAccept({ proposal: proposal(), shadow, lifecycle: [], readReal: realReader(new Map([...base, [MAIN, inBlock]])), today: '2026-11-01' });
+      const conflict = await service.planAccept({ proposal: proposal(), shadow, readReal: realReader(new Map([...base, [MAIN, inBlock]])), today: '2026-11-01' });
       expect(conflict).toMatchObject({ ok: false, code: 'conflict', files: [MAIN] });
     });
 
@@ -207,7 +190,7 @@ describe('the proposal service around Accept', () => {
       const shadow = fakeShadow({ runDir: runDir(), root, base, current: shown });
       const mine = 'Model/Spyro/Mine.lean';
       const real = new Map<string, string | null>([...base, [mine, 'namespace Spyro\n-- mine\nend Spyro\n'], [INBOX, null]]);
-      const plan = await service.planAccept({ proposal: proposal(), shadow, lifecycle: [], readReal: realReader(real), today: '2026-11-01', realFiles: [...base.keys(), mine].filter((r) => r !== INBOX) });
+      const plan = await service.planAccept({ proposal: proposal(), shadow, readReal: realReader(real), today: '2026-11-01', realFiles: [...base.keys(), mine].filter((r) => r !== INBOX) });
       expect(plan.ok, JSON.stringify(plan)).toBe(true);
       if (!plan.ok) return;
       expect(plan.changes).toEqual([
@@ -218,7 +201,7 @@ describe('the proposal service around Accept', () => {
       expect(plan.shadowState.get(mine)).toBe(real.get(mine)); // the re-gate sees the user's new file too
       expect(plan.shadowState.has(INBOX)).toBe(false); // deleted by the user, untouched by Claude: stays deleted
       // The user deleted the file Claude changed: conflict.
-      const gone = await service.planAccept({ proposal: proposal(), shadow, lifecycle: [], readReal: realReader(new Map([...base, [MAIN, null]])), today: '2026-11-01', realFiles: [] });
+      const gone = await service.planAccept({ proposal: proposal(), shadow, readReal: realReader(new Map([...base, [MAIN, null]])), today: '2026-11-01', realFiles: [] });
       expect(gone).toMatchObject({ ok: false, code: 'conflict', files: [MAIN] });
     });
 
@@ -227,56 +210,12 @@ describe('the proposal service around Accept', () => {
       const service = createProposalService({ core });
       const shadow = fakeShadow({ runDir: runDir(), root, base, current: normativeState(base) });
       write(root, 'Model/Spyro/Mine.lean', 'namespace Spyro\nend Spyro\n');
-      const plan = await service.planAccept({ proposal: proposal(), shadow, lifecycle: [], readReal: overlayTextSource(root).read, today: '2026-11-01' });
+      const plan = await service.planAccept({ proposal: proposal(), shadow, readReal: overlayTextSource(root).read, today: '2026-11-01' });
       expect(plan.ok && plan.shadowState.get('Model/Spyro/Mine.lean')).toBe('namespace Spyro\nend Spyro\n');
       expect(plan.ok && plan.drift).toEqual(['Model/Spyro/Mine.lean']);
     });
 
-    it('an unknown lifecycle id is not-found; nothing else is planned', async () => {
-      const { core, lifecycle } = fakes();
-      const service = createProposalService({ core });
-      const shadow = fakeShadow({ runDir: runDir(), root, base, current: normativeState(base) });
-      const plan = await service.planAccept({ proposal: proposal(), shadow, lifecycle: ['l1', 'l9'], readReal: realReader(new Map(base)), today: '2026-11-01' });
-      expect(plan).toEqual({ ok: false, code: 'not-found', error: 'l9 is not a lifecycle item of this proposal.' });
-      expect(lifecycle).toEqual([]);
-    });
-
-    it('ticked lifecycle items are applied on top of the merged files (with the facts given), not in shadowState', async () => {
-      const { core, lifecycle, labels } = fakes();
-      const service = createProposalService({ core });
-      const shown = normativeState(base);
-      const shadow = fakeShadow({ runDir: runDir(), root, base, current: shown });
-      const facts = fakeFacts('ok');
-      const plan = await service.planAccept({ proposal: proposal(), shadow, lifecycle: ['l1'], readReal: realReader(new Map(base)), today: '2026-11-01', facts });
-      expect(plan.ok, JSON.stringify(plan)).toBe(true);
-      if (!plan.ok) return;
-      const after = edit(shown.get(MAIN) ?? '', 'id: cynder-not-good\ntype: GOAL\n', 'id: cynder-not-good\ntype: DERIVATION\n');
-      expect(plan.changes).toEqual([{ path: MAIN, before: base.get(MAIN), after }]);
-      expect(plan.shadowState.get(MAIN)).toBe(shown.get(MAIN));
-      expect(lifecycle).toHaveLength(1);
-      expect(lifecycle[0]?.items).toEqual([L1]);
-      expect(lifecycle[0]?.model.facts).toBe(facts);
-      expect(lifecycle[0]?.model.files.get(MAIN)?.text).toBe(shown.get(MAIN));
-      expect(labels.at(-1)).toEqual(['proved', TARGET_SENTENCE, { lifecycle: 1, adoptedGhosts: 0 }]);
-    });
-
-    it("a lifecycle item that no longer applies refuses the whole plan (core's ActionError, or a change that does not fit)", async () => {
-      const shadow = fakeShadow({ runDir: runDir(), root, base, current: normativeState(base) });
-      const request = { proposal: proposal(), shadow, lifecycle: ['l1'], readReal: realReader(new Map(base)), today: '2026-11-01' };
-      const refused = createProposalService({
-        core: {
-          ...fakes().core,
-          lifecycleChanges: () => {
-            throw new ActionError('unsafe', 'Cynder would not be a good addition… is no longer proved.');
-          },
-        },
-      });
-      expect(await refused.planAccept(request)).toEqual({ ok: false, code: 'unsafe', error: 'Cynder would not be a good addition… is no longer proved.' });
-      const misfit = createProposalService({ core: { ...fakes().core, lifecycleChanges: () => [{ path: MAIN, before: 'something else', after: 'x' }] } });
-      expect(await misfit.planAccept(request)).toMatchObject({ ok: false, code: 'unsafe' });
-    });
-
-    it('with shownState (after a passing re-gate): after = exactly those files (+ lifecycle), before = the real files', async () => {
+    it('with shownState (after a passing re-gate): after = exactly those files, before = the real files', async () => {
       const { core } = fakes();
       const service = createProposalService({ core });
       const shown = normativeState(base);
@@ -288,12 +227,10 @@ describe('the proposal service around Accept', () => {
       await shadow.commit('accept-base', 'Your files at Accept', 1);
       const regated = new Map([...real].filter((e): e is [string, string] => e[1] !== null));
       regated.set(MAIN, edit(shown.get(MAIN) ?? '', 'rationale: known from gaming news', 'rationale: from the trailer'));
-      const plan = await service.planAccept({ proposal: proposal(), shadow, lifecycle: ['l1'], readReal: realReader(real), today: '2026-11-01', shownState: regated, facts: fakeFacts('ok') });
+      const plan = await service.planAccept({ proposal: proposal(), shadow, readReal: realReader(real), today: '2026-11-01', shownState: regated });
       expect(plan.ok, JSON.stringify(plan)).toBe(true);
       if (!plan.ok) return;
-      expect(plan.changes).toEqual([
-        { path: MAIN, before: realMain, after: edit(regated.get(MAIN) ?? '', 'id: cynder-not-good\ntype: GOAL\n', 'id: cynder-not-good\ntype: DERIVATION\n') },
-      ]);
+      expect(plan.changes).toEqual([{ path: MAIN, before: realMain, after: regated.get(MAIN) }]);
       expect(plan.shadowState).toEqual(regated);
       expect(plan.drift).toEqual([INBOX, MAIN]);
     });
@@ -309,11 +246,11 @@ describe('the proposal service around Accept', () => {
       const regated = new Map(shown);
       // During the re-check the user typed in Vocabulary.lean (which the re-gated state leaves as it was): kept.
       const typed = new Map<string, string | null>([...base, [VOCABULARY, `${base.get(VOCABULARY) ?? ''}-- typed\n`]]);
-      const kept = await service.planAccept({ proposal: proposal(), shadow, lifecycle: [], readReal: realReader(typed), today: '2026-11-01', shownState: regated });
+      const kept = await service.planAccept({ proposal: proposal(), shadow, readReal: realReader(typed), today: '2026-11-01', shownState: regated });
       expect(kept.ok && kept.changes).toEqual([{ path: MAIN, before: base.get(MAIN), after: shown.get(MAIN) }]);
       // … and in Main.lean, which the re-gated state changes: refused, nothing lost.
       const raced = new Map<string, string | null>([...base, [MAIN, `${base.get(MAIN) ?? ''}-- typed\n`]]);
-      const refused = await service.planAccept({ proposal: proposal(), shadow, lifecycle: [], readReal: realReader(raced), today: '2026-11-01', shownState: regated });
+      const refused = await service.planAccept({ proposal: proposal(), shadow, readReal: realReader(raced), today: '2026-11-01', shownState: regated });
       expect(refused).toEqual({
         ok: false,
         code: 'conflict',
@@ -322,7 +259,7 @@ describe('the proposal service around Accept', () => {
       });
     });
 
-    it('the label counts adopted ghosts; nodes = target, reviewed statements, adopted cards and lifecycle cards', async () => {
+    it('the label counts adopted ghosts; nodes = target, reviewed statements and adopted cards', async () => {
       const { core, labels } = fakes();
       const service = createProposalService({ core });
       const shadow = fakeShadow({ runDir: runDir(), root, base, current: normativeState(base) });
@@ -338,55 +275,16 @@ describe('the proposal service around Accept', () => {
           { ...ghost, id: 'ghost-2', state: 'rejected' },
         ],
       });
-      const plan = await service.planAccept({ proposal: p, shadow, lifecycle: ['l1'], readReal: realReader(new Map(base)), today: '2026-11-01', facts: fakeFacts('ok') });
+      const plan = await service.planAccept({ proposal: p, shadow, readReal: realReader(new Map(base)), today: '2026-11-01' });
       expect(plan.ok && plan.nodes).toEqual(['cynder-not-good', 'pg-no-dark-past', 'a-character-who-cannot-be-in']);
-      expect(labels.at(-1)).toEqual(['proved', TARGET_SENTENCE, { lifecycle: 1, adoptedGhosts: 1 }]);
-    });
-
-    it('the facts build kept come back for Accept, also in a new service after a window reload', async () => {
-      const shown = normativeState(base);
-      const shadow = fakeShadow({ runDir: runDir(), root, base, current: shown });
-      const facts: LeanFacts = { ...fakeFacts('ok'), finishedAt: '2026-11-01T11:11:11.000Z' };
-      const first = fakes();
-      const service = createProposalService({ core: first.core });
-      const built = await service.build({
-        runId: 'r1',
-        round: 1,
-        proposalId: 'p7',
-        selection: { subject: 'Spyro', target: 'cynder-not-good', premises: [], adoptedGhosts: [] },
-        shadow,
-        check: { outcome: 'ok', g0: [], findings: [], diagnostics: [], facts, durationMs: 1 },
-        rendered: [],
-        currentGraph: proposal().graph,
-        verdict: 'not-proved',
-        ghosts: [],
-        gateAttempts: [],
-        flaggedDefinitions: [],
-        usage: USAGE,
-        durationMs: 1,
-        agentMs: 1,
-        drift: [],
-        graphVersion: 9,
-      });
-      const p = { ...built, lifecycle: [L1] }; // as if the target were proved
-      const request = { proposal: p, shadow, lifecycle: ['l1'], readReal: realReader(new Map(base)), today: '2026-11-01' };
-      expect((await service.planAccept(request)).ok).toBe(true);
-      expect(first.lifecycle[0]?.model.facts).toEqual(facts);
-      const reloaded = fakes();
-      expect((await createProposalService({ core: reloaded.core }).planAccept(request)).ok).toBe(true);
-      expect(reloaded.lifecycle[0]?.model.facts).toEqual(facts);
-      // Another proposal id: the kept facts are not used for it.
-      const other = fakes();
-      await createProposalService({ core: other.core }).planAccept({ ...request, proposal: { ...p, proposalId: 'p8' } });
-      expect(other.lifecycle[0]?.model.facts).toBeUndefined();
-      expect(path.basename(PROPOSAL_FACTS_FILE)).toBe('proposal-facts.json');
+      expect(labels.at(-1)).toEqual(['proved', TARGET_SENTENCE, { adoptedGhosts: 1 }]);
     });
   });
 
   describe('the report card from the proposed board (faked subjectGraph)', () => {
     /** A build whose proposed board is `target` (status as given) plus `edges`, on the Spyro files without facts. */
     async function reportFor(proof: ProposalView['graph']['nodes'][number]['status']['proof'], premises: string[], verdict: ReportCard['verdict'], edges: ProposalView['graph']['edges'] = []) {
-      const target = createUserNode({ id: 'cynder-not-good', type: 'GOAL', naturalName: TARGET_SENTENCE, subject: 'Spyro' });
+      const target = createUserNode({ id: 'cynder-not-good', type: 'PROPOSITION', naturalName: TARGET_SENTENCE, subject: 'Spyro' });
       const proposed = { ...proposal().graph, nodes: [{ ...target, status: { ...target.status, proof } }], edges };
       const service = createProposalService({ core: { diffGraphs: () => fakeDiff(), subjectGraph: () => proposed } });
       const built = await service.build({
@@ -415,12 +313,25 @@ describe('the proposal service around Accept', () => {
     it('"Self-evident?": proved from zero premises with only presuppositions in the footprint', async () => {
       const built = await reportFor({ kind: 'proved', footprint: ['presup:Spyro.Character.exists'] }, [], 'proved');
       expect(built.report).toMatchObject({ verdict: 'proved', footprint: ['presup:Spyro.Character.exists'], selfEvident: true, unusedPremises: [] });
-      expect(built.lifecycle.map((l) => l.id)).toEqual(['l1']);
+      expect(built).not.toHaveProperty('lifecycle');
       const hidden = await reportFor({ kind: 'proved', footprint: ['axiom:Spyro.shortcut'] }, [], 'proved');
       expect(hidden.report.selfEvident).toBe(false);
     });
 
-    it('a premise used through a proved derivation (verified edge) is not unused; one the proof ignores is', async () => {
+    it('A9 / S18 (fixer 1e): proved without using a single selected arrow is "proved from nothing" too; through a selected card proved from nothing it is not', async () => {
+      const ignored = await reportFor({ kind: 'proved', footprint: ['presup:Spyro.Character.exists'] }, ['cynder-dark-past', 'new-spyro-pg'], 'proved');
+      expect(ignored.report).toMatchObject({ selfEvident: true, unusedPremises: ['cynder-dark-past', 'new-spyro-pg'] });
+      // The selected premise is itself proved from nothing: the target's footprint holds no card, but its proof uses that
+      // arrow (the verified edge), so the flag stays off.
+      const through = await reportFor({ kind: 'proved', footprint: ['presup:Spyro.Character.exists'] }, ['a-derivation'], 'proved', [
+        { id: 'verified:a-derivation->cynder-not-good', type: 'verified', source: 'a-derivation', target: 'cynder-not-good', origin: 'lean', where: 'proof' },
+      ]);
+      expect(through.report).toMatchObject({ selfEvident: false, unusedPremises: [] });
+      // A hidden assumption (`axiom:`) is never "from nothing".
+      expect((await reportFor({ kind: 'proved', footprint: ['axiom:Spyro.shortcut'] }, ['cynder-dark-past'], 'proved')).report.selfEvident).toBe(false);
+    });
+
+    it('a premise used through a proved proposition (verified edge) is not unused; one the proof ignores is', async () => {
       const built = await reportFor({ kind: 'proved', footprint: ['cynder-dark-past'] }, ['cynder-dark-past', 'a-derivation', 'new-spyro-pg'], 'proved', [
         { id: 'verified:a-derivation->cynder-not-good', type: 'verified', source: 'a-derivation', target: 'cynder-not-good', origin: 'lean', where: 'proof' },
       ]);
@@ -428,13 +339,11 @@ describe('the proposal service around Accept', () => {
       expect(built.report.selfEvident).toBe(false);
     });
 
-    it('not proved, gave up (reverted): no footprint, no unused premises, no lifecycle item; the revert is reported', async () => {
+    it('not proved, gave up (reverted): no footprint, no unused premises; the revert is reported', async () => {
       const built = await reportFor({ kind: 'proved', footprint: ['cynder-dark-past'] }, ['cynder-dark-past'], 'gave-up');
       expect(built.report).toMatchObject({ verdict: 'gave-up', footprint: [], unusedPremises: [], selfEvident: false, reverted: { toCommit: 'c1', label: 'Statements frozen (round 1)', reason: 'gave up' } });
-      expect(built.lifecycle).toEqual([]);
       const conditional = await reportFor({ kind: 'conditional', on: ['new-spyro-pg'], footprint: [] }, ['cynder-dark-past'], 'proved');
       expect(conditional.report.footprint).toEqual([]);
-      expect(conditional.lifecycle).toEqual([]);
     });
   });
 
@@ -468,6 +377,79 @@ describe('the proposal service around Accept', () => {
       expect(await service.apply(plan, {} as ModelWorkspace, 'Spyro')).toMatchObject({ ok: false, code: 'internal' });
       const throwing = { applyChanges: async () => Promise.reject(new Error('boom')) } as unknown as ModelWorkspace;
       expect(await service.apply(plan, throwing, 'Spyro')).toEqual({ ok: false, code: 'internal', error: 'boom' });
+    });
+  });
+
+  describe('slice 2b3b: planApply, an edit session\'s Apply (docs/slice2-plan.md 3.10 step 4)', () => {
+    const request = (shadow: ReturnType<typeof fakeShadow>, real: Map<string, string | null>, finalState: ReadonlyMap<string, string>, over: Record<string, unknown> = {}) => ({
+      shadow,
+      readReal: realReader(real),
+      finalState,
+      targets: [TARGET_SENTENCE],
+      nodes: ['cynder-not-good', 'pg-no-dark-past', 'cynder-not-good'],
+      realFiles: [...base.keys()],
+      ...over,
+    });
+
+    it('real files equal to B: exactly B -> F, no merge, Apply\'s label, drift empty, shadowState = F\'s model files', async () => {
+      const service = createProposalService();
+      const final = normativeState(base);
+      final.set('Model/Spyro/Lemmas.lean', 'namespace Spyro\nend Spyro\n');
+      final.delete(INBOX);
+      final.set('Model/Spyro/notes.md', 'not a model file\n');
+      const shadow = fakeShadow({ runDir: runDir(), root, base, current: new Map([...base, [MAIN, 'ws/ moved on\n']]) });
+      const plan = await service.planApply(request(shadow, new Map(base), final));
+      if (!plan.ok) throw new Error(plan.error);
+      expect(plan.changes).toEqual([
+        { path: INBOX, before: base.get(INBOX), after: null },
+        { path: 'Model/Spyro/Lemmas.lean', before: null, after: 'namespace Spyro\nend Spyro\n' },
+        { path: MAIN, before: base.get(MAIN), after: final.get(MAIN) },
+      ]);
+      expect(plan.label).toBe(`Apply: Formalize for dependencies → ${TARGET_SENTENCE}`);
+      expect(plan.nodes).toEqual(['cynder-not-good', 'pg-no-dark-past']);
+      expect(plan.drift).toEqual([]);
+      expect(plan.shadowState.has('Model/Spyro/notes.md')).toBe(false);
+      expect(plan.shadowState.get(MAIN)).toBe(final.get(MAIN));
+      // F equal to B: nothing to change (an empty Apply).
+      const empty = await service.planApply(request(shadow, new Map(base), base));
+      expect(empty).toMatchObject({ ok: true, changes: [], drift: [] });
+      // F is the state the final check passed, which the caller names (fixer 2b3b r1, A-V2B3B-ADV-6): never ws/ by
+      // default. A request without it does not compile, and is refused before anything is read.
+      const reader = realReader(new Map(base));
+      // @ts-expect-error finalState is required
+      const missing: ApplyRequest = { shadow: fakeShadow({ runDir: runDir(), root, base, current: final }), readReal: reader, targets: [TARGET_SENTENCE], nodes: [] };
+      await expect(service.planApply(missing)).rejects.toThrow(/planApply needs finalState/u);
+      expect(reader.reads).toEqual([]);
+    });
+
+    it('real files that differ from B (an edit, an unsaved buffer, a file the person added or deleted): refused with the session\'s drift text, nothing planned, nothing written', async () => {
+      const service = createProposalService();
+      const final = normativeState(base);
+      const shadow = fakeShadow({ runDir: runDir(), root, base, current: final });
+      const ws = new Map(shadow.current);
+      const cases: Array<[string, Map<string, string | null>, string[] | undefined, string[]]> = [
+        ['an edit', new Map([...base, [VOCABULARY, `${base.get(VOCABULARY) ?? ''}-- mine\n`]]), undefined, [VOCABULARY]],
+        ['an edit to a file F changes', new Map([...base, [MAIN, `${base.get(MAIN) ?? ''}-- mine\n`]]), undefined, [MAIN]],
+        ['a file the person deleted', new Map([...base, [INBOX, null]]), undefined, [INBOX]],
+        ['a file the person added', new Map([...base, ['Model/Spyro/Mine.lean', 'namespace Spyro\nend Spyro\n']]), [...base.keys(), 'Model/Spyro/Mine.lean'], ['Model/Spyro/Mine.lean']],
+        ['two at once', new Map([...base, [INBOX, null], [VOCABULARY, '']]), undefined, [INBOX, VOCABULARY]],
+      ];
+      expect(REVIEW_TEXTS.drift([VOCABULARY])).toBe(
+        `Your files changed since the session started: ${VOCABULARY}. Apply stays disabled until they match again (undo those edits in the editor), or until you exit the session.`,
+      );
+      for (const [label, real, realFiles, drift] of cases) {
+        const reader = realReader(real);
+        const plan = await service.planApply({ ...request(shadow, real, final), readReal: reader, ...(realFiles !== undefined ? { realFiles } : {}) });
+        expect(plan, label).toEqual({
+          ok: false,
+          code: 'conflict',
+          error: REVIEW_TEXTS.drift(drift),
+          files: drift,
+        });
+        // Each real file was read once; ws/ is untouched (a plan writes nothing).
+        expect(new Set(reader.reads).size).toBe(reader.reads.length);
+        expect(shadow.current).toEqual(ws);
+      }
     });
   });
 });

@@ -1,0 +1,10 @@
+[
+ {
+  "id": "R1-1",
+  "severity": "nit",
+  "where": "packages/runner/test/semantic/probe.test.ts:175 (the 'importModules first' test)",
+  "problem": "The comment 'The check's options: its timeout, its argv, its (lowered) cap.' still says this test compares the probe job's lowered cap with the check's. The test asserts only `argv` and `timeoutMs` (lines 176-177). S-V2B3A-S2 cited this exact comment. The fix put the cap assertions in a new test (line 403ff.) but left the comment, so this test still claims a check it does not make.",
+  "fix": "Reword it, for example: \"The check's options: its argv and its timeout (its lowered cap: the S-V2B3A-S2 test below)\". Or drop 'its (lowered) cap'.",
+  "evidence": "probe.test.ts:175 `// The check's options: its timeout, its argv, its (lowered) cap.` followed only by `expect(probe.options.argv).toEqual(check.options.argv); expect(probe.options.timeoutMs).toBe(check.options.timeoutMs);`. The cap is asserted only at :416-418 in the new S2 test."
+ }
+]

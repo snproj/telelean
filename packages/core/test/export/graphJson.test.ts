@@ -36,7 +36,7 @@ describe('AT2.10 graph.json', () => {
     expect(json.nodes[1]).toEqual({
       id: 'cynder-dark-past',
       subject: 'Spyro',
-      type: 'ASSUMPTION',
+      type: 'AXIOM',
       natural_name: 'Cynder is a character who has a dark past',
       rationale: 'familiar with gaming lore',
       stance: null,
@@ -83,7 +83,7 @@ describe('AT2.10 graph.json', () => {
       proof: 'proved',
       footprint: ['cynder-dark-past', 'new-spyro-pg', 'pg-no-dark-past', 'presup:Spyro.Character.exists', 'presup:Spyro.Game.exists'],
       conditional_on: [],
-      flags: ['proved-goal'],
+      flags: ['established'],
     });
     expect(json.edges.filter((e) => e.type === 'verified')).toHaveLength(3);
   });

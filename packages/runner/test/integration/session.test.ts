@@ -4,15 +4,17 @@
  *
  *   1. WP2's hand-written facts fixtures against WP3's real facts: the Spyro fixture, the proved overlay and the
  *      derivation variant built by Lean give the same cards, statuses, edges and vocabulary as the hand-written facts
- *      (and the frozen samples spyroGraph() / spyroProvedGraph());
+ *      (and the frozen samples spyroGraph() / spyroProvedGraph()); since slice 2b3a also every declaration's value and
+ *      type constants, name for name, and the isolated probe's marker (UPDATE_SEMANTIC_RECORDINGS=1 writes Lean's type
+ *      constants and the marker into the hand-written facts, leaving everything else as it is);
  *   2. a board session on a copy of mental_model/ with the proved Main.lean, inside a user's git repository:
- *      A->G on an assumption the goal's proof uses (needs confirmation; "rewrite" makes the goal conditional on it,
- *      Lean agrees; "mark broken" breaks the proof, Lean says so; both undo byte-exactly), a derivation used by a
- *      proof (verified edge, D->G asks), set-premises (a used-undeclared mismatch), reorder, delete (attic), the
- *      history (listing, storage counter, revert, undo of the revert), graph.json validated against the schema,
- *      and the user's branch, index and hooks untouched.
+ *      P->A on the proved proposition (spec v4: the theorem becomes the axiom, its arrows go, Lean agrees; undo is
+ *      byte-exact; A->P is refused), a proposition used by a proof (verified edge), set-premises (a used-undeclared
+ *      mismatch), reorder, delete (attic), the history (listing, storage counter, revert, undo of the revert),
+ *      graph.json validated against the schema, and the user's branch, index and hooks untouched. (The change to Goal
+ *      with its "rewrite"/"mark broken" choices went with the GOAL kind.)
  */
-import { chmodSync, cpSync, existsSync, readFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -52,6 +54,27 @@ const comparable = (graph: TlGraph) => ({
   diagnostics: graph.diagnostics.map((d) => [d.code, d.nodeId ?? d.vocab ?? null]).sort(),
 });
 
+/**
+ * Slice 2b3a: Lean's type constants and the isolated probe's marker written into a hand-written facts file (each
+ * declaration's `typeConsts` right after its `valueConsts`, the marker last), everything else left as it is.
+ */
+function writeHandConsts(file: string, real: LeanFacts): void {
+  const hand = JSON.parse(readFileSync(file, 'utf8')) as LeanFacts & Record<string, unknown>;
+  const decls = hand.decls.map((d) => {
+    const typeConsts = real.decls.find((x) => x.name === d.name)?.typeConsts;
+    const out: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(d)) {
+      if (key === 'typeConsts') continue;
+      out[key] = value;
+      if (key === 'valueConsts' && typeConsts !== undefined) out['typeConsts'] = typeConsts;
+    }
+    if (!('valueConsts' in d) && typeConsts !== undefined) out['typeConsts'] = typeConsts;
+    return out;
+  });
+  const { probe: _old, ...rest } = hand;
+  writeFileSync(file, `${JSON.stringify({ ...rest, decls, probe: { status: 'ok', durationMs: 600 } }, null, 2)}\n`);
+}
+
 /** The text with `import Model.Spyro.Inbox` after the Vocabulary import, as mental_model/ has it (plan 7.4). */
 const withInboxImport = (text: string) => text.replace('import Model.Spyro.Vocabulary\n', 'import Model.Spyro.Vocabulary\nimport Model.Spyro.Inbox\n');
 
@@ -72,7 +95,18 @@ describe('WP2 hand-written facts vs WP3 real facts (plan 11.3)', () => {
         const facts = await realFacts(root);
         expect(facts.status, `${c.label}: ${facts.detail ?? ''}`).toBe('ok');
         const real = boardOf(root, facts);
+        if (process.env['UPDATE_SEMANTIC_RECORDINGS'] === '1') writeHandConsts(path.join(CORE_FIXTURES, c.facts), facts);
         const handFacts = JSON.parse(readFileSync(path.join(CORE_FIXTURES, c.facts), 'utf8')) as LeanFacts;
+        // Slice 2b3a: the isolated probe's constants, name for name, and its marker (the hand-written facts' time).
+        expect(facts.probe?.status, c.label).toBe('ok');
+        expect(handFacts.probe, c.label).toEqual({ status: 'ok', durationMs: 600 });
+        expect(handFacts.decls.map((d) => [d.name, d.valueConsts, d.typeConsts]), c.label).toEqual(
+          handFacts.decls.map((d) => {
+            const lean = facts.decls.find((x) => x.name === d.name);
+            return [d.name, lean?.valueConsts, lean?.typeConsts];
+          }),
+        );
+        expect(handFacts.decls.map((d) => d.name).sort(), c.label).toEqual(facts.decls.map((d) => d.name).sort());
         const hand = boardOf(root, handFacts, { 'Model.lean': 'sha-model-root', [MAIN]: c.mainHash, 'Model/Spyro/Vocabulary.lean': 'sha-vocabulary' });
         expect(comparable(real), c.label).toEqual(comparable(hand));
         if (c.sample) {
@@ -129,17 +163,18 @@ describe('a board session with real Lean on a copy of mental_model/ (plan 11.3)'
     cleanup(tmp);
   });
 
-  it('loads 4 cards; Lean: the goal is proved from the three assumptions (verified arrows), 9 vocabulary items', async (ctx) => {
+  it('loads 4 cards; Lean: the proposition is proved from the three axioms (verified arrows), 9 vocabulary items', async (ctx) => {
     if (!(await waitForMemory())) ctx.skip();
     expect(ws.subjects().map((s) => [s.name, s.nodeCount])).toEqual([['Spyro', 4]]);
     await fresh();
     const g = graph();
     expect(g.nodes.map((n) => [n.id, n.type, n.status.proof.kind])).toEqual([
-      ['pg-no-dark-past', 'ASSUMPTION', 'assumed'],
-      ['cynder-dark-past', 'ASSUMPTION', 'assumed'],
-      ['new-spyro-pg', 'ASSUMPTION', 'assumed'],
-      ['cynder-not-good', 'GOAL', 'proved'],
+      ['pg-no-dark-past', 'AXIOM', 'assumed'],
+      ['cynder-dark-past', 'AXIOM', 'assumed'],
+      ['new-spyro-pg', 'AXIOM', 'assumed'],
+      ['cynder-not-good', 'PROPOSITION', 'proved'],
     ]);
+    expect(g.nodes.find((n) => n.id === 'cynder-not-good')?.status.flags).toContain('established');
     expect(g.edges.filter((e) => e.type === 'verified').map((e) => e.id).sort()).toEqual([
       'verified:cynder-dark-past->cynder-not-good',
       'verified:new-spyro-pg->cynder-not-good',
@@ -149,25 +184,21 @@ describe('a board session with real Lean on a copy of mental_model/ (plan 11.3)'
     expect((await ws.listHistory('Spyro')).entries.map((e) => e.label)).toEqual(['Initial state']);
   });
 
-  it('A->G on an assumption the proof uses: needs confirmation; "rewrite" makes the goal conditional (Lean agrees); undo is byte-exact', async (ctx) => {
+  it('P->A on the proved proposition: the theorem becomes the axiom (archived), its arrows go, Lean agrees; undo is byte-exact; A->P is refused', async (ctx) => {
     if (!(await waitForMemory())) ctx.skip();
     const before = read(root, MAIN);
-    expect(await ws.perform({ kind: 'change-kind', id: 'cynder-dark-past', to: 'GOAL', beforeId: null })).toMatchObject({
-      ok: false,
-      code: 'needs-confirmation',
-      dependents: ['cynder-not-good'],
-    });
+    // AR-6: an axiom becomes a proposition by an arrow or "follows from nothing", never by a kind change.
+    expect(await ws.perform({ kind: 'change-kind', id: 'cynder-dark-past', to: 'PROPOSITION', beforeId: null })).toMatchObject({ ok: false, code: 'invalid' });
     expect(read(root, MAIN)).toBe(before);
-    const outcome = await ws.perform({ kind: 'change-kind', id: 'cynder-dark-past', to: 'GOAL', beforeId: null, dependents: 'rewrite', confirmedDependents: ['cynder-not-good'] });
-    expect(outcome, JSON.stringify(outcome)).toMatchObject({ ok: true, label: 'Make Goal: Cynder is a character who has a dark past (dependents rewritten)' });
+    const outcome = await ws.perform({ kind: 'change-kind', id: 'cynder-not-good', to: 'AXIOM', beforeId: null });
+    expect(outcome, JSON.stringify(outcome)).toMatchObject({ ok: true, label: 'Move to axioms: Cynder would not be a good addition to the new Spyro game' });
     const main = read(root, MAIN);
-    expect(main).not.toContain('axiom cynder_dark_past.holds');
-    expect(main).toContain('theorem cynder_not_good.holds (h_cynder_dark_past : cynder_dark_past) : cynder_not_good :=');
-    expect(main).toContain('pg_no_dark_past.holds newSpyro cynder new_spyro_pg.holds h_cynder_dark_past');
+    expect(main).toContain('id: cynder-not-good\ntype: AXIOM\nnatural_name: Cynder would not be a good addition to the new Spyro game\nasserted: 2026-11-01\n');
+    expect(main).not.toContain('premises: cynder-dark-past, new-spyro-pg, pg-no-dark-past');
+    expect(main).toContain('axiom cynder_not_good.holds : cynder_not_good');
+    expect(main).not.toContain('theorem cynder_not_good.holds');
     await fresh();
-    expect(node('cynder-dark-past')).toMatchObject({ type: 'GOAL', status: { proof: { kind: 'none' } } });
-    expect(node('cynder-not-good')?.status.proof).toMatchObject({ kind: 'conditional', on: ['cynder-dark-past'] });
-    expect(graph().edges.some((e) => e.id === 'verified:cynder-dark-past->cynder-not-good' && e.conditional)).toBe(true);
+    expect(node('cynder-not-good')).toMatchObject({ type: 'AXIOM', premises: [], status: { proof: { kind: 'assumed' } } });
 
     expect(await ws.undo('Spyro')).toMatchObject({ ok: true });
     expect(read(root, MAIN)).toBe(before);
@@ -175,35 +206,17 @@ describe('a board session with real Lean on a copy of mental_model/ (plan 11.3)'
     expect(node('cynder-not-good')?.status.proof.kind).toBe('proved');
   });
 
-  it('A->G with "mark broken" removes the axiom; Lean reports the broken proof on the goal; undo restores it', async (ctx) => {
-    if (!(await waitForMemory())) ctx.skip();
-    const before = read(root, MAIN);
-    const outcome = await ws.perform({ kind: 'change-kind', id: 'cynder-dark-past', to: 'GOAL', beforeId: null, dependents: 'mark-broken', confirmedDependents: ['cynder-not-good'] });
-    expect(outcome, JSON.stringify(outcome)).toMatchObject({ ok: true, label: 'Make Goal: Cynder is a character who has a dark past (dependents marked broken)' });
-    expect(read(root, MAIN)).not.toContain('axiom cynder_dark_past.holds');
-    const summary = await ws.refreshNow();
-    expect(summary.state, JSON.stringify(summary)).toBe('failed');
-    const goal = node('cynder-not-good');
-    expect(goal?.status.proof.kind).toBe('none');
-    expect(goal?.status.formal === 'ill-formed' || goal?.status.flags.includes('not-checked'), JSON.stringify(goal?.status)).toBe(true);
-    expect(graph().diagnostics.some((d) => d.code === 'LEAN' && d.severity === 'error' && d.file === MAIN)).toBe(true);
-    expect(await ws.undo('Spyro')).toMatchObject({ ok: true });
-    expect(read(root, MAIN)).toBe(before);
-    await fresh();
-    expect(node('cynder-not-good')?.status.proof.kind).toBe('proved');
-  });
-
-  it('a derivation used by a proof (hand-written): the verified arrow comes from it, and D->G on it asks first', async (ctx) => {
+  it('a proposition used by a proof (hand-written): the verified arrow comes from it; the outer proof is established', async (ctx) => {
     if (!(await waitForMemory())) ctx.skip();
     // The user types the derivation and a goal proved through it into Main.lean (as the derivation fixture has them).
     const extra = DERIVED_MAIN.slice(DERIVED_MAIN.indexOf('/-\n@@ telelean v1\nid: dark-and-pg'), DERIVED_MAIN.lastIndexOf('end Spyro'));
     write(root, MAIN, read(root, MAIN).replace('\nend Spyro\n', `\n${extra}end Spyro\n`));
     await ws.invalidate([MAIN]);
     await fresh();
-    expect(node('dark-and-pg')).toMatchObject({ type: 'DERIVATION', status: { proof: { kind: 'proved' } } });
+    expect(node('dark-and-pg')).toMatchObject({ type: 'PROPOSITION', status: { proof: { kind: 'proved' } } });
     expect(node('pg-again')?.status.proof.kind).toBe('proved');
+    expect(node('pg-again')?.status.flags).toContain('established');
     expect(graph().edges.filter((e) => e.target === 'pg-again').map((e) => e.id).sort()).toEqual(['premise:dark-and-pg->pg-again', 'verified:dark-and-pg->pg-again']);
-    expect(await ws.perform({ kind: 'change-kind', id: 'dark-and-pg', to: 'GOAL', beforeId: null })).toMatchObject({ ok: false, code: 'needs-confirmation', dependents: ['pg-again'] });
   });
 
   it('set-premises declares support (a proof using an undeclared assumption is flagged), reorder changes only the layout', async (ctx) => {
@@ -215,11 +228,11 @@ describe('a board session with real Lean on a copy of mental_model/ (plan 11.3)'
     expect(graph().edges.find((e) => e.id === 'verified:pg-no-dark-past->cynder-not-good')?.mismatch).toBe('used-undeclared');
 
     const mainBefore = read(root, MAIN);
-    const moved = await ws.perform({ kind: 'reorder', id: 'new-spyro-pg', column: 'ASSUMPTION', beforeId: 'pg-no-dark-past' });
+    const moved = await ws.perform({ kind: 'reorder', id: 'new-spyro-pg', column: 'AXIOM', beforeId: 'pg-no-dark-past' });
     expect(moved).toMatchObject({ ok: true, label: 'Move: The new Spyro game is PG' });
     expect(read(root, MAIN)).toBe(mainBefore);
-    expect(graph().nodes.filter((n) => n.type === 'ASSUMPTION').map((n) => n.id)).toEqual(['new-spyro-pg', 'pg-no-dark-past', 'cynder-dark-past']);
-    expect(JSON.parse(read(root, '.telelean/subjects/Spyro/layout.json')).columns.ASSUMPTION[0]).toBe('new-spyro-pg');
+    expect(graph().nodes.filter((n) => n.type === 'AXIOM').map((n) => n.id)).toEqual(['new-spyro-pg', 'pg-no-dark-past', 'cynder-dark-past']);
+    expect(JSON.parse(read(root, '.telelean/subjects/Spyro/layout.json')).columns.AXIOM[0]).toBe('new-spyro-pg');
   });
 
   it('delete removes the block and its declarations, keeping the proof in the attic; Lean is fresh again', async (ctx) => {
@@ -239,7 +252,7 @@ describe('a board session with real Lean on a copy of mental_model/ (plan 11.3)'
     const listing = await ws.listHistory('Spyro');
     const labels = listing.entries.map((e) => e.label);
     expect(labels.at(-1)).toBe('Initial state');
-    for (const label of ['Make Goal: Cynder is a character who has a dark past (dependents rewritten)', 'Manual edits', 'Delete: The new Spyro game is PG, again']) {
+    for (const label of ['Move to axioms: Cynder would not be a good addition to the new Spyro game', 'Manual edits', 'Delete: The new Spyro game is PG, again']) {
       expect(labels, labels.join('\n')).toContain(label);
     }
     expect(listing.storage.subjectBytes).toBeGreaterThan(0);

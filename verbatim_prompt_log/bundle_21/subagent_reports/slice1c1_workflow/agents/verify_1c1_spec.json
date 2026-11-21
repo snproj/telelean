@@ -1,0 +1,60 @@
+{
+  "summary": "Fidelity review of sub-slice 1c1 (read-only; no builds or tests run). I rebuilt the after-1f tree from HEAD plus after_slice_1f.patch in my scratch folder, so the diff below covers only 1c1's own changes. The changed-file set matches the report: 19 new files, 25 modified, and Column.tsx and VocabularyGroup.tsx deleted.\n\nThe brief is followed item by item:\n- **A (layout):** the AXIOMS column keeps its scrolling, order, re-order and Alt+↑/↓, header count, the \"also assumed\" line with links, and the ghosts at its top. The PROPOSITIONS canvas is a viewport with one transformed layer. Above them is the Vocabulary/Definitions band with a persisted divider and a one-line collapsed summary.\n- **B (view control):** wheel zoom about the cursor, clamped 0.1–4, with Ctrl scaled up, on the board element with passive: false. Right-drag pans with pointer capture. The menu opens on a release under 4 px, with both CM-7 exceptions. A right-drag never selects and never opens the menu. Native contextmenu is suppressed on the board except over text fields or selected text. Left-drag moves a card with one moveCards; the keyboard, toolbar and reveals work.\n- **C (placement):** layer = longest declared path, with axioms at layer 0, and the result is never written. Tidy layout is one moveCards. An expanded card is raised above the others, and nothing moves.\n- **D (overlay):** one SVG under both parts and two clips. The column has ▲/▼ cuts, and each canvas edge has its own badge that pans to the nearest hidden card. Declared arrows are round dots. Frames are scheduled with requestAnimationFrame, at most one per frame, and will-change is set only while panning or moving.\n- **E:** the CSP holds (no style= attributes). The runner carry-over (`currentLayoutOf`) has its own unit test.\n- **Core, extension and runner:** the changes are exactly §2.4's add-node.position: validated in the protocol, written by the same plan for propositions only, and mapped by the host.\n\nSafety properties:\n- Only the user changes kinds: the menu entries call 1b's actions, with the A→P dialog.\n- No markup is rewritten.\n- Old layouts, old webview state and add messages without a position still load.\n- The Current tab stays uneditable during a session: moves, Tidy layout, New proposition here and every menu edit are disabled with EDIT_SESSION_ACTIVE, and the store's own guards also refuse them.\n- The Proposed view never moves, tidies or selects, so nothing reaches the board's Undo stack from there (the user's undo concern).\n- Positions are not part of the diff (core diff.ts has no positions).\n\nFindings:\n- **One major:** the ∅ \"follows from nothing\" stub is drawn solid, with the verified arrowhead. BD-5 and the on-screen legend reserve that look for a proof Lean checked, so on an unproved card it overstates what Lean checked.\n- **Minors:** the geometry test rewrite dropped coverage of behaviour that still exists, while the report says no tests were deleted. Existing cards with no stored position can sit elsewhere on the Proposed canvas than on Current. The arrow and mark menu labels do not name everything the delete removes.\n- **Two nits.**\n\nEffects outside the repo: only my scratch reconstruction at /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/v1c1_fid (the after-1f tree and 1c1.diff).",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "major",
+      "where": "packages/webview/src/styles/board.css:948 and packages/webview/src/board/EdgeEngine.ts:451",
+      "problem": "The 'follows from nothing' mark is the user's own declaration (AR-5), but it is drawn as a solid 1.5 px line ending in the verified arrowhead. BD-5 says the line pattern carries epistemic status: dotted means 'declared by you', solid means 'a checked proof of the target uses it'. The board's legend shows solid as 'Lean checked that the proof uses it'. So on an unproved proposition marked 'follows from nothing', the stub reads as Lean-verified and claims more than Lean checked. Plan §4 and BD-7 put the 'checked' signal on 1d's band drawn over the stub, not on the stub itself.",
+      "fix": "Give `.tl-mark__line` the declared look: `stroke-width: 2.4; stroke-linecap: round; stroke-dasharray: 0 6`. For the focus and selected looks, use the widths of declared arrows. In `writeMarks`, use the `declared` marker, or `focus` while the mark is focused or selected, instead of `verified`. Note in plan §8 that the stub stays dotted, and that 1d's band marks a proof from nothing.",
+      "evidence": "board.css:948 `.tl-mark__line { fill: none; stroke: var(--tl-edge); stroke-width: 1.5; }` has no dasharray, while board.css:927 has `.tl-edge--declared { stroke-width: 2.4; stroke-dasharray: 0 6; }`. EdgeEngine.ts:451 sets `marker-end` to `url(#tl-arrow-${m.focused || m.selected ? 'focus' : 'verified'})`. Header.tsx's legend has `data-legend=\"verified\" title=\"Lean checked that the proof uses it\"`."
+    },
+    {
+      "id": "F2",
+      "severity": "minor",
+      "where": "packages/webview/test/unit/geometry.test.ts (rewritten)",
+      "problem": "The rewrite lost cases for behaviour that still exists. The old case 'clamps the anchor into the visible part of a partly scrolled card' has no counterpart, although `anchor()` still clamps to the visible band. Nothing exercises an arrow between two column cards: the right-side loop when both show, and the `stubPath` hook with the ▲/▼ count when one end is scrolled away. Such arrows still exist, e.g. verified edges into an axiom whose `.holds` is a theorem, and lean-ref arrows. The old `gutterY` case was removed together with its function, which is behaviour v4 removes. But the report says 'No tests were deleted', and plan §6 asks for every deletion to be listed.",
+      "fix": "Add three cases: (1) a tall column card scrolled so its title line is hidden, whose anchor sits at viewTop + edgeInset; (2) an edge between two visible column cards, drawn as an R→R loop under clip 'board'; (3) the same edge with one end scrolled away: a hook path, cut 'up' or 'down', and the column badge. List the dropped `gutterY` test in the report and in plan §8.",
+      "evidence": "Old file (after 1f): the 'endpoint' block had 'clamps the anchor into the visible part of a partly scrolled card', and computeFrame had 'routes same-column edges through the gutter…' and 'finds the gap nearest…' (gutterY). The new file has no edge whose two ends are both column cards (all its edges use a1/a2/a3 → p*, or canvas↔canvas)."
+    },
+    {
+      "id": "F3",
+      "severity": "minor",
+      "where": "packages/webview/src/board/PropositionCanvas.tsx:62-84 (with model/run.ts buildOverlay)",
+      "problem": "The carry-over (`currentLayoutOf` and `buildOverlay`) brings over only stored positions. A card placed by the board, with no stored position, is placed again in the Proposed view. That uses the overlay's premises and the cards' sizes measured again: diff badges, hidden-result chips and the proposal's new cards change them. Such a card can therefore sit somewhere other than on the Current canvas. The brief's item E asks 'so the Proposed canvas places existing cards where Current does (new cards by the layered placement)'. As it is, switching Current ↔ Proposed moves cards the user never touched.",
+      "fix": "While the Proposed view is on screen, seed the placement's `stored` with each kept card's last shown position on the Current board. Remember the Current board's placed positions (`canvas.layout`) for each subject, and merge them under `boardView(s).positions`. Then only the proposal's new cards, and removed cards with no place, go through `placeCards`. Add a test for this."
+    },
+    {
+      "id": "F4",
+      "severity": "minor",
+      "where": "packages/webview/src/board/menu.ts:171,179; packages/webview/src/board/ContextMenu.tsx:111,123",
+      "problem": "Two menu labels understate what the delete removes:\n- 'Remove N arrows' counts only `selectedArrows`.\n- 'Remove 'follows from nothing'' names only the mark.\n\nBoth entries call `deleteSelectedArrows()`. It sends one remove-arrows with every selected arrow and mark. Without an A16 question nothing else asks, so a selected mark, or selected arrows, go too without being named. This is reachable today on mismatch and conditional arrows, which take the pointer, and everywhere once 1c2 makes arrows hit-testable.",
+      "fix": "When the thing is part of the selection, build the label from the whole selection, as core's plan label does, e.g. 'Remove 2 arrows and 1 'follows from nothing' mark'. Alternatively, when the selection mixes arrows and marks, make the entry remove only the arrows (or only the mark). Add a menu test either way."
+    },
+    {
+      "id": "F5",
+      "severity": "nit",
+      "where": "packages/webview/src/prompt/PromptBox.tsx:50-53",
+      "problem": "BD-8 places a new proposition 'in view, next to the selected card if any'. `selectedOnCanvas` keeps only propositions, so with an axiom selected the new card goes to the middle of the view instead of next to that axiom.",
+      "fix": "When the last selected card is an axiom, place the new proposition near the canvas's left edge, level with the axiom's row: convert its client rect with `canvas.clientToCanvas`, then pass it through `newCardPosition`. Otherwise, record the narrower rule as a decision in plan §8."
+    },
+    {
+      "id": "F6",
+      "severity": "nit",
+      "where": "packages/webview/test/unit/store-canvas.test.ts:90",
+      "problem": "The test 'does nothing during an edit session (ES-9, with the reason) nor in the Proposed view' only checks the run lock. The Proposed-view case of `newPropositionAt`, which returns false before the lock check and shows no toast, is not tested.",
+      "fix": "Add the Proposed-view case: receive run plus proposal, as the later test does, then expect false, `newCardAt` null and no new toast. Or retitle the test."
+    }
+  ],
+  "checks_run": [
+    "git archive HEAD -- packages docs test-fixtures scripts | tar -x into scratch v1c1_fid/after1f; git apply after_slice_1f.patch there (outside any repo) -> APPLIED",
+    "file-set comparison after-1f vs working tree -> 19 new, 25 modified, 2 deleted (Column.tsx, VocabularyGroup.tsx); matches the report",
+    "diff -u of every changed file -> scratch v1c1_fid/1c1.diff (6816 lines), read core/extension/runner diffs in full and every new webview file",
+    "grep 'style={' in packages/webview/src -> none (CSP holds)",
+    "grep moveCards callers -> only BoardInput.finishMove (user drag) and tidyLayout (user action); store.moveCards guards proposedOverlay and locked()",
+    "grep positions in core/src/proposal and graph -> diffGraphs never compares positions",
+    "grep layoutOf/currentLayoutOf in runner -> only proposal/service.ts and the new positions.test.ts",
+    "compared old geometry.test.ts cases (after 1f) with the rewritten file -> anchor-clamp and column-to-column cases lost, gutterY removed",
+    "no builds, tsc, vitest or Playwright run (outside this verifier's lens)"
+  ]
+}

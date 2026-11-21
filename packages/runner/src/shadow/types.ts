@@ -20,8 +20,8 @@
  *     scratch/     telelean's scratch Lean projects (ghost checks, statement rendering) — never agent-visible.
  *     run.json     the persisted run state (runner/src/run/types.ts PersistedRun).
  *     base-facts.json      the Lean facts of the user's files at the run's start (WP2 `checkBase`, B's facts).
- *     proposal-facts.json  the facts of the shown state of the current proposal (WP4 `ProposalService.build`; Accept's
- *                          lifecycle change needs them after a window reload).
+ *     (proposal-facts.json, the facts Accept's lifecycle items needed, went with them in spec v4: a run directory
+ *     written before may still hold one; nothing reads it.)
  *
  * FROZEN CONTRACT (M2). Owner: WP2. Additive optional members / new exports only (docs/m2-plan.md section 14).
  */
@@ -64,7 +64,16 @@ export type ShadowCommitKind =
    */
   | 'accept-base'
   /** Any other snapshot telelean wants to keep (e.g. the state at a gate failure, for the transcript). */
-  | 'checkpoint';
+  | 'checkpoint'
+  /**
+   * Slice 2 (docs/slice2-plan.md 2.6, 2b3b): the start S₀ of a step of an edit session (its StepScope is recorded on
+   * it). A step's rollback never goes behind it (`lastCommitSince`).
+   */
+  | 'step-start'
+  /** Slice 2: telelean carried out the person's decision in ws/ (a decline, a take-out, an un-reject's merge). */
+  | 'decision'
+  /** Slice 2: telelean's completion of a target from an accepted premise (`engine.complete`, §3.8). */
+  | 'completion';
 
 export const PASSING_COMMIT_KINDS: readonly ShadowCommitKind[] = ['gate-pass', 'freeze', 'base'];
 
@@ -163,8 +172,11 @@ export interface ShadowWorkspace {
    * Makes build/ hold exactly ws/'s MODEL files (`<library>.lean`, `<library>/**.lean`, the project files; other
    * files never reach Lean): copies changed ones by content compare, deletes model files gone from ws/, keeps mtimes
    * of unchanged files so Lake's rebuild stays incremental. Throws like `currentFiles`.
+   * Slice 2b3b (additive): with `files` (path -> text, e.g. a commit's `filesAt`), build/ holds exactly those files'
+   * model files instead of ws/'s, which is not read: the session's judge builds the head commit whatever a write in
+   * progress has put into ws/ meanwhile (docs/slice2-plan.md 2.6).
    */
-  syncMirror(): Promise<{ copied: string[]; removed: string[] }>;
+  syncMirror(files?: ReadonlyMap<string, string>): Promise<{ copied: string[]; removed: string[] }>;
   /**
    * telelean's own writes into ws/ (normalisation, ghost adoption, rebase): each change's `before` must equal the
    * current text (else ShadowLayoutError `io` and nothing is written); paths must be model files.
@@ -174,6 +186,13 @@ export interface ShadowWorkspace {
   commits(): Promise<ShadowCommit[]>;
   /** The newest commit of one of `kinds` (default PASSING_COMMIT_KINDS). */
   lastCommit(kinds?: readonly ShadowCommitKind[]): Promise<ShadowCommit | undefined>;
+  /**
+   * Slice 2 (docs/slice2-plan.md 2.6, 2b3b): the newest commit of one of `kinds` that is `since` itself or newer than
+   * it, never an older one: a step's rollback target is `lastCommitSince(step.startCommit, ['gate-pass', 'freeze',
+   * 'step-start'])`, so a rollback never goes behind the step's start. Undefined when `since` is not a commit of the
+   * shadow, or when neither it nor a newer commit is of one of `kinds` (fail closed: the caller rolls back to nothing).
+   */
+  lastCommitSince(since: string, kinds: readonly ShadowCommitKind[]): Promise<ShadowCommit | undefined>;
   filesAt(commitId: string): Promise<Map<string, string>>;
   /**
    * Restores ws/ to a commit (files not in it are deleted), commits it as `revert`, returns the changes it made.

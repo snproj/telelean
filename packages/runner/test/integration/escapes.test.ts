@@ -40,7 +40,7 @@ describe('markup escapes survive a Lean build (plan 11.4)', () => {
     if (!(await waitForMemory())) ctx.skip(); // RAM rule: never build below 12 GB available
     const ids: string[] = [];
     for (const sentence of SENTENCES) {
-      const outcome = await ws.perform({ kind: 'add-node', subject: 'Spyro', type: 'ASSUMPTION', naturalName: sentence, rationale: `why: ${sentence}` });
+      const outcome = await ws.perform({ kind: 'add-node', subject: 'Spyro', type: 'AXIOM', naturalName: sentence, rationale: `why: ${sentence}` });
       expect(outcome, JSON.stringify(outcome)).toMatchObject({ ok: true });
       if (outcome.ok && outcome.nodeId) ids.push(outcome.nodeId);
     }

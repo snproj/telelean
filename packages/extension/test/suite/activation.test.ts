@@ -64,7 +64,8 @@ suite('activation, opt-in and isolation', () => {
     const manifest = vscode.extensions.getExtension(EXTENSION_ID)?.packageJSON as { contributes: { colors: Array<{ id: string }> } };
     assert.deepEqual(
       manifest.contributes.colors.map((c) => c.id),
-      ['telelean.kindAssumption', 'telelean.kindDerivation', 'telelean.kindGoal', 'telelean.formalizedAura', 'telelean.vocabulary', 'telelean.highlight'],
+      // Spec v4 (slice 1a): the two kinds' stripes and the proved green of the established glow and the band.
+      ['telelean.kindAxiom', 'telelean.kindProposition', 'telelean.proved', 'telelean.formalizedAura', 'telelean.vocabulary', 'telelean.highlight'],
     );
   });
 

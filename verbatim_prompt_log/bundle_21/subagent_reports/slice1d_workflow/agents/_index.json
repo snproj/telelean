@@ -1,0 +1,45 @@
+[
+  {
+    "label": "build:1d",
+    "agentId": "a658e8736362bba74",
+    "file": "agents/build_1d.json",
+    "toolsUsed": [
+      "Read",
+      "Bash",
+      "Edit",
+      "Write",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "verify:1d:spec",
+    "agentId": "a552172c80c37df62",
+    "file": "agents/verify_1d_spec.json",
+    "toolsUsed": [
+      "Read",
+      "Bash",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "verify:1d:code",
+    "agentId": "adc025b44f28d2b8a",
+    "file": "agents/verify_1d_code.json",
+    "toolsUsed": [
+      "Read",
+      "Bash",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "fix:1d",
+    "agentId": "a3b3cb9eaf9b43510",
+    "file": "agents/fix_1d.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Edit",
+      "SubagentHandback"
+    ]
+  }
+]

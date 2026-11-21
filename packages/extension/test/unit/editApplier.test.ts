@@ -187,7 +187,7 @@ describe('CheckedEditApplier (AT5.7)', () => {
         { path: 'Model/Spyro/Inbox.lean', before: 'namespace Spyro\n\nend Spyro\n', after: 'namespace Spyro\n\n/- x -/\n\nend Spyro\n' },
         { path: '.telelean/subjects/Spyro/layout.json', before: null, after: '{}\n' },
       ],
-      'Add assumption: x',
+      'Add axiom: x',
     );
     expect(editor.applied).toHaveLength(1);
     expect(editor.texts.get('Model/Spyro/Inbox.lean')).toBe('namespace Spyro\n\n/- x -/\n\nend Spyro\n');

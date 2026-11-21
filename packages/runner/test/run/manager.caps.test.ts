@@ -3,6 +3,8 @@
  * the turn cap counts usage events and interrupts the session (cap-reached); the agent-active time cap runs on fake
  * timers and is paused while a question waits; a cap reached during a tool call takes effect when the call returns
  * (a passing gate is honoured); Feedback resets the counters.
+ * Slice 2d (docs/slice2-plan.md 3.4): in an edit session the caps apply per step. A turn or time cap fails the step
+ * (back to its start, D2-29; the stage opens with Retry step), and Retry step runs it again with fresh counters.
  */
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -12,7 +14,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { FakeStep } from '../../src/llm/fake.js';
 import type { LlmEvent } from '../../src/llm/types.js';
 import { FAKE_TIMERS } from './helpers/env.js';
-import { makeHarness, round1, START, state, step, waitForRun, type Harness } from './helpers/harness.js';
+import { makeHarness, rawRun, rawStep, round1, START, state, step, waitForRun, waitForStage, type Harness } from './helpers/harness.js';
 
 const TARGET_LINE = 'abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro\n';
 const PROOF = 'theorem cynder_not_good.holds : cynder_not_good :=\n  pg_no_dark_past.holds newSpyro cynder new_spyro_pg.holds cynder_dark_past.holds\n';
@@ -48,46 +50,50 @@ describe('caps (AT3.4)', () => {
     expect(h.engine.methods().filter((m) => m === 'check')).toHaveLength(26);
   });
 
-  it('counts turns from usage events and interrupts the session at maxTurns: cap-reached, reverted, re-checked', async () => {
+  it('counts turns from usage events and interrupts the session at maxTurns: the step fails, back to its start; Retry step runs it with fresh counters', async () => {
     h = makeHarness({
       caps: { maxTurns: 3 },
       script: [round1(step.usage('a'), step.check(), step.usage('b'), step.freeze(), step.usage('b'), step.usage('c'), step.check(), step.result())],
     });
     await h.manager.start(START);
-    const review = await waitForRun(h.manager, state('review'));
+    const review = await waitForStage(h.manager, 1);
     expect(h.backend?.configs[0]?.maxTurns).toBe(3); // belt and braces: the CLI's own per-user-turn cap
-    expect(review.verdict).toBe('cap-reached');
+    expect(rawStep(h, 's1')).toMatchObject({ state: 'failed', attempt: { verdict: 'cap-reached' } });
     expect(review.counters.turns).toBe(3); // `b` twice counts once (deduplicated by message id)
     expect(review.usage.requests).toBe(3);
-    expect(review.notices.map((n) => n.kind)).toEqual(['cap', 'reverted']);
-    expect(review.notices[0]?.text).toBe("Claude reached this round's limit of 3 turns; telelean stopped it.");
+    const raw = rawRun(h);
+    expect(raw.view.notices.map((n) => n.kind)).toEqual(['cap']);
+    expect(raw.view.notices[0]?.text).toBe("Claude reached this round's limit of 3 turns; telelean stopped it.");
+    expect(raw.session?.heading).toMatchObject({ kind: 'failed', text: 'Step failed: the turn limit was reached' });
     expect(h.backend?.interrupts.length).toBeGreaterThan(0);
-    // The check after the cap never ran: one check by Claude, one freeze, then the uncounted re-check.
-    expect(h.engine.methods()).toEqual(['checkBase', 'check', 'freeze', 'normalise', 'check']);
-    expect(h.proposals.builds[0]?.input.verdict).toBe('cap-reached');
-    // Feedback starts a fresh round with fresh counters.
-    await h.manager.feedback(review.runId, 'Try again with fewer turns.');
+    // The check after the cap never ran: one check by Claude, one freeze; the failed step goes back to its start
+    // (no re-check), and the queue's judge opens the stage.
+    expect(h.engine.methods().slice(0, 4)).toEqual(['checkBase', 'check', 'freeze', 'judge']);
+    expect(await h.shadow().currentFiles()).toEqual(await h.shadow().filesAt(rawStep(h, 's1').startCommit ?? ''));
+    // Retry step starts a fresh step with fresh counters (the caps apply per step).
+    expect(await h.manager.retry(review.runId)).toMatchObject({ ok: true });
     const r2 = await waitForRun(h.manager, (v) => v.round === 2);
     expect(r2.counters).toMatchObject({ turns: 0, checks: 0, gateAttempts: 0 });
-    expect(r2.counters.agentMs).toBeLessThan(5_000); // reset for the round (the new round's clock has just started)
+    expect(r2.counters.agentMs).toBeLessThan(5_000); // reset for the step (the new step's clock has just started)
+    expect(rawStep(h, 's2')).toMatchObject({ retryOf: 's1', queue: 2 });
   });
 
-  it('caps agent-active time on the clock, paused while a question waits', async () => {
+  it('caps agent-active time on the clock, paused while a question waits (the step fails)', async () => {
     vi.useFakeTimers(FAKE_TIMERS);
     h = makeHarness({ caps: { maxAgentMs: 60_000 }, script: [round1(step.ask(), { kind: 'sleep', ms: 10 * 60_000 }, step.finish(), step.result())] });
     await h.manager.start(START);
     const waiting = await waitForRun(h.manager, state('waiting-for-answer'));
     await vi.advanceTimersByTimeAsync(30 * 60_000); // half an hour of the person thinking: not agent time
     expect(h.manager.current()?.state).toBe('waiting-for-answer');
-    expect(h.manager.current()?.notices).toEqual([]);
+    expect(rawRun(h).view.notices).toEqual([]);
     await h.manager.answer(waiting.runId, waiting.pendingQuestions?.id ?? '', [{ question: 0, choice: { kind: 'leave-open' }, scope: 'run' }]);
     await waitForRun(h.manager, state('working'));
     await vi.advanceTimersByTimeAsync(59_000);
-    expect(h.manager.current()?.notices.filter((n) => n.kind === 'cap')).toEqual([]);
+    expect(rawRun(h).view.notices.filter((n) => n.kind === 'cap')).toEqual([]);
     await vi.advanceTimersByTimeAsync(2_000);
     const review = await waitForRun(h.manager, state('review'));
-    expect(review.verdict).toBe('cap-reached');
-    expect(review.notices[0]?.text).toBe("Claude reached this round's limit of 1 minute of work; telelean stopped it.");
+    expect(rawStep(h, 's1')).toMatchObject({ state: 'failed', attempt: { verdict: 'cap-reached' } });
+    expect(rawRun(h).view.notices[0]?.text).toBe("Claude reached this round's limit of 1 minute of work; telelean stopped it.");
     expect(review.counters.agentMs).toBeGreaterThanOrEqual(60_000);
     expect(review.counters.agentMs).toBeLessThan(120_000);
     // The finish after the sleep never ran.
@@ -111,11 +117,10 @@ describe('caps (AT3.4)', () => {
     expect(h.manager.current()?.state).toBe('gate');
     expect(h.backend?.interrupts).toEqual([]); // not while the gate runs
     release();
-    const review = await waitForRun(h.manager, state('review'));
-    expect(review.verdict).toBe('proved');
-    expect(review.notices.map((n) => n.kind)).toEqual(['cap']);
+    await waitForRun(h.manager, state('review'));
+    expect(rawStep(h, 's1')).toMatchObject({ state: 'passed', attempt: { verdict: 'proved' } });
+    expect(rawRun(h).view.notices.map((n) => n.kind)).toEqual(['cap']);
     expect(h.backend?.interrupts.length).toBe(1);
     expect(h.engine.methods().filter((m) => m === 'check')).toHaveLength(0); // the check after the cap never ran
-    expect(h.proposals.builds[0]?.input.verdict).toBe('proved');
   });
 });

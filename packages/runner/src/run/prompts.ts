@@ -3,7 +3,19 @@
  * user turn of a run (5.2, the context bundle) and the later user turns (5.3). Pure functions over the project model
  * and the board graph; the RunManager sends their results verbatim and records them in the run's transcript.
  */
-import { subjectDir, subjectRootFile, type DecisionRecord, type ModelNode, type ProjectModel, type RunCaps, type TlGraph, type TlNode, type VocabItem } from '@telelean/core';
+import {
+  CLAUDE_SESSION_TEXTS,
+  subjectDir,
+  subjectRootFile,
+  type DecisionRecord,
+  type ModelNode,
+  type NodeType,
+  type ProjectModel,
+  type RunCaps,
+  type TlGraph,
+  type TlNode,
+  type VocabItem,
+} from '@telelean/core';
 
 import { SYSTEM_PROMPT } from './systemPrompt.js';
 import type { ContextBundleInput } from './types.js';
@@ -92,9 +104,10 @@ function blockPlace(node: TlNode): string {
 function targetStatus(node: TlNode): string {
   switch (node.status.proof.kind) {
     case 'proved':
-      return 'Proved (re-prove from this selection).';
-    case 'pending-promotion':
-      return 'Promotion pending: its .holds is still an axiom.';
+      // A11 (slice 1e fixer): check_lean does not judge the person's unchanged proof, so the bundle says what to do with it.
+      return 'Proved already (prove it again from exactly this selection: a new proof replaces the existing one; if it does not follow, leave the existing proof as it is).';
+    case 'pending':
+      return 'Pending proof: its .holds is still an axiom.';
     default:
       return 'Not proved.';
   }
@@ -103,10 +116,10 @@ function targetStatus(node: TlNode): string {
 function premiseStatus(node: TlNode, statement: string): string {
   const holds = `${statement}.holds`;
   const proof = node.status.proof.kind;
-  if (proof === 'assumed' || (node.type === 'ASSUMPTION' && node.lean.justificationKind === 'axiom')) return `assumed (axiom ${holds})`;
+  if (proof === 'assumed' || (node.type === 'AXIOM' && node.lean.justificationKind === 'axiom')) return `assumed (axiom ${holds})`;
   if (proof === 'proved') return 'proved';
-  if (proof === 'pending-promotion') return 'promotion pending';
-  if (node.type === 'ASSUMPTION') return `assumed, but its axiom ${holds} is missing (add it)`;
+  if (proof === 'pending') return 'pending proof';
+  if (node.type === 'AXIOM') return `assumed, but its axiom ${holds} is missing (add it)`;
   return 'not usable as a premise: no proof yet';
 }
 
@@ -188,6 +201,17 @@ function neighbourhood(graph: TlGraph, focus: ReadonlySet<string>): Set<string> 
   return out;
 }
 
+/**
+ * The run's name on the first line of its context bundle (slice 1g; it was M2's "These suffice"): the board's action
+ * (spec v4.1 ES-2), or its empty question (a target marked "follows from nothing", AR-5). The same words as the run
+ * panel's target line and the run's start activity.
+ */
+export const RUN_NAME = { formalize: 'Formalize for dependencies', fromNothing: 'Follows from nothing?' } as const;
+
+/** The heading of the context bundle's other cards (A10; slice 2d: through an arrow proposed with propose_arrow, D2-1). */
+export const OTHER_CARDS_HEADING =
+  'OTHER CARDS OF THIS SUBJECT (context only: if the proof needs one that has a .holds, propose its arrow with propose_arrow; if it has none, finish not_proved and name its id in gap)';
+
 /** The first user turn of a run (docs/m2-plan.md section 5.2). */
 export function renderContextBundle(input: ContextBundleInput): string {
   const { model, graph, library, selection, decisions, caps, scope } = input;
@@ -206,22 +230,28 @@ export function renderContextBundle(input: ContextBundleInput): string {
   const others = graph.nodes.filter((n) => !focus.has(n.id) && (near === undefined || near.has(n.id)));
 
   const out: string[] = [];
+  // The run's name, as the board and the run panel give it (spec v4.1 ES-2; slice 1g): "Formalize for dependencies", or,
+  // for an empty question (the target's "follows from nothing" mark, AR-5), "Follows from nothing?". The FakeBackend
+  // scripts of test-fixtures/ match this line (`Run: "Formalize for dependencies"`, `Run: "Follows from nothing?"`).
   out.push(
-    `Run: "These suffice" for the subject ${subject} (namespace ${subject}; the subject's folder is ${subjectDir(subject, library)}/, its root module ${subjectRootFile(subject, library)}).`,
+    `Run: "${premiseNodes.length === 0 ? RUN_NAME.fromNothing : RUN_NAME.formalize}" for the subject ${subject} (namespace ${subject}; the subject's folder is ${subjectDir(subject, library)}/, its root module ${subjectRootFile(subject, library)}).`,
   );
   out.push('');
   out.push('TARGET');
   out.push(...targetLines(model, target, subject));
   out.push('');
-  out.push('SELECTED PREMISES (prove the target from exactly these)');
-  if (premiseNodes.length === 0) out.push('(none: the person asks whether the target is self-evident: provable from no premises at all.)');
+  // Spec v4.1 ES-2 (slice 1e): the selection is the arrows the person drew into the target, or its "follows from nothing" mark.
+  out.push('SELECTED PREMISES (the person drew arrows from these to the target: prove it from exactly these)');
+  if (premiseNodes.length === 0) out.push('(none: the person marked the target as following from nothing: prove it from no premises at all.)');
   for (const node of premiseNodes) out.push(...premiseLines(model, node, subject));
   out.push('');
   out.push(
     'Allowed besides these: Lean\'s standard axioms, the vocabulary, and the existence presuppositions of the things these statements mention (for example "there is at least one character"). freeze_statements tells you the exact list.',
   );
   out.push('');
-  out.push('OTHER CARDS OF THIS SUBJECT (context only; never use them as premises)');
+  // A10 (slice 1e): a card the proof needs but nobody selected is named in `gap`. Slice 2 (D2-1): unless it has a `.holds`,
+  // when Claude proposes its arrow with propose_arrow (the person reviews it as an item).
+  out.push(OTHER_CARDS_HEADING);
   if (others.length === 0) out.push('(none)');
   for (const node of others) out.push(otherCardLine(model, node, subject));
   out.push('');
@@ -263,7 +293,7 @@ export interface AdoptedGhostTurnInput {
 
 export function adoptionTurn(g: AdoptedGhostTurnInput): string {
   return (
-    `The person adopted your suggestion as an assumption:\n- ${g.nodeId} (ASSUMPTION, worded by you): ${quoted(g.sentence)}\n` +
+    `The person adopted your suggestion as an axiom:\n- ${g.nodeId} (AXIOM, worded by you): ${quoted(g.sentence)}\n` +
     `  Lean: ${g.leanName} := ${g.statement}; axiom ${g.leanName}.holds (telelean wrote it right before the target's block).\n` +
     `The statements are frozen again with it selected, so you may use ${g.leanName}.holds. Prove the target now and call finish. ` +
     `Budget for this round: ${budgetText(g.caps)}`
@@ -279,3 +309,134 @@ export function resumeTurn(frozen: boolean): string {
 
 export const NUDGE_TURN =
   'You ended your turn without calling finish. Call finish now: with status proved if the target is proved, otherwise with status not_proved and the gap.';
+
+// ---------------------------------------------------------------------------------------------
+// Slice 2 (docs/slice2-plan.md 2.8): an edit session's turns. Their first lines are fixed (core
+// CLAUDE_SESSION_TEXTS), so FakeBackend scripts can match them; the session's first turn is the context bundle (its
+// first line unchanged) plus the FORMALIZE PLAN and the first step's turn.
+
+/** One inference of the plan, as the turns name it. */
+export interface PlanTarget {
+  id: string;
+  sentence: string;
+  /** The question's sources (card ids); empty with `fromNothing` for the "follows from nothing" mark. */
+  sources: readonly string[];
+  fromNothing: boolean;
+}
+
+/** The FORMALIZE PLAN of the session's first turn: the targets in order (sources first), each with its question. */
+export function formalizePlan(targets: readonly PlanTarget[]): string {
+  const lines = ['FORMALIZE PLAN (one step per target, in this order; each step proves its target from its own question)'];
+  targets.forEach((t, k) => {
+    const question = t.sources.length > 0 ? `from ${t.sources.join(', ')}` : 'follows from nothing (no premises at all)';
+    lines.push(`${k + 1}. ${t.id}: ${quoted(t.sentence)} ← ${question}`);
+  });
+  return lines.join('\n');
+}
+
+export interface StepTurnInput {
+  index: number;
+  of: number;
+  kind: 'formalize' | 'submit';
+  target: { id: string; type: NodeType; sentence: string };
+  question: { sources: ReadonlyArray<{ id: string; sentence: string }>; fromNothing: boolean };
+  /** Claude's arrows into the target so far (earlier steps'), with their review status. */
+  arrows: ReadonlyArray<{ source: string; status: string }>;
+  /** A12 (D2-4): the earlier target of the queue, a source of the question, that has no `.holds` at the step's start. */
+  statementsOnly?: string;
+  fuzzyStatements: readonly string[];
+  openProof: boolean;
+  openArrows: boolean;
+  /** A Submit step's items to rework (2e). */
+  openItems?: readonly string[];
+  /** The first step of a mid-stage Formalize or a Retry queue: the decisions made since the previous queue. */
+  decisions?: readonly string[];
+  caps: RunCaps;
+}
+
+/** One item of the feedback turn (§3.7): its label, its Lean text, and per section its note or what it relied on. */
+export interface FeedbackItem {
+  label: string;
+  lean: string;
+  /** SHAKY: the person's note for Claude (D2-13). */
+  note?: string;
+  /** TO BE REDONE: what it relied on (the items that took it down), or why telelean took it out. */
+  reliedOn?: readonly string[];
+}
+
+export interface SubmitFeedbackInput {
+  /** The stage the person submitted. */
+  stage: number;
+  accepted: readonly FeedbackItem[];
+  rejected: readonly FeedbackItem[];
+  shaky: readonly FeedbackItem[];
+  redo: readonly FeedbackItem[];
+  /** The Submit steps, in the order they run (D2-57): each its inference's target and sentence. */
+  steps: ReadonlyArray<{ id: string; sentence: string }>;
+}
+
+/**
+ * §2.8, §3.7 (builder 2e): the feedback turn that precedes a Submit queue's first step, generated from the statuses,
+ * with the items' labels and Lean texts: ACCEPTED (keep them exactly), REJECTED (never propose these exact versions
+ * again), SHAKY (a different arrangement for the set, each note quoted; `no_alternative` when there is none), TO BE
+ * REDONE (what each relied on) and STEPS PLANNED. Its first line is fixed (core `CLAUDE_SESSION_TEXTS.reviewSubmitted`).
+ */
+export function submitFeedbackTurn(i: SubmitFeedbackInput): string {
+  const lines = [CLAUDE_SESSION_TEXTS.reviewSubmitted(i.stage), ''];
+  const leanLines = (lean: string) => (lean.trim() === '' ? [] : lean.trim().split('\n').map((l) => `    ${l}`));
+  const section = (title: string, items: readonly FeedbackItem[], tail: (x: FeedbackItem) => string[] = () => []) => {
+    lines.push(title);
+    if (items.length === 0) lines.push('(none)');
+    for (const x of items) lines.push(`- ${x.label}`, ...leanLines(x.lean), ...tail(x));
+    lines.push('');
+  };
+  section('ACCEPTED: keep them exactly as they are.', i.accepted);
+  section('REJECTED: they were removed; never propose these exact versions again.', i.rejected);
+  section(
+    'SHAKY: propose a different arrangement for these together. Any single one may come back unchanged, but not the whole set; if there is none, finish with no_alternative: true.',
+    i.shaky,
+    (x) => (x.note !== undefined ? [`  The person's note: ${quoted(x.note)}`] : []),
+  );
+  section('TO BE REDONE: propose them again; what each relied on:', i.redo, (x) => (x.reliedOn !== undefined && x.reliedOn.length > 0 ? [`  It relied on: ${x.reliedOn.join('; ')}`] : []));
+  lines.push('STEPS PLANNED (one step per target, in this order):');
+  i.steps.forEach((s, k) => lines.push(`${k + 1}. ${s.id}: ${quoted(s.sentence)}`));
+  return `${lines.join('\n')}\n`;
+}
+
+/** A step's turn (§2.8, §3.3): its fixed first line, the target, its question, Claude's arrows, what is open and fixed. */
+export function stepTurn(i: StepTurnInput): string {
+  const t = i.target;
+  const first =
+    i.statementsOnly !== undefined
+      ? CLAUDE_SESSION_TEXTS.stepStatementsOnly(i.index, i.of, t.id, i.statementsOnly)
+      : i.kind === 'submit'
+        ? CLAUDE_SESSION_TEXTS.stepRework(i.index, i.of, t.id)
+        : CLAUDE_SESSION_TEXTS.stepFormalize(i.index, i.of, t.id);
+  const out = [first, ''];
+  if (i.decisions !== undefined) {
+    out.push(CLAUDE_SESSION_TEXTS.decisionsSince);
+    out.push(...(i.decisions.length > 0 ? i.decisions.map((d) => `- ${d}`) : ['(none)']));
+    out.push('');
+  }
+  out.push(`TARGET: ${t.id} (${t.type}): ${quoted(t.sentence)}`);
+  out.push(
+    i.question.sources.length > 0
+      ? `QUESTION: the person selected the arrows from ${i.question.sources.map((q) => `${q.id} (${quoted(q.sentence)})`).join(', ')}: prove the target from exactly these.`
+      : 'QUESTION: the person marked the target as following from nothing: prove it from no premises at all.',
+  );
+  out.push(`YOUR ARROWS INTO IT SO FAR: ${i.arrows.length > 0 ? i.arrows.map((a) => `${a.source} (${a.status})`).join(', ') : '(none)'}`);
+  const open: string[] = [];
+  if (i.openProof) open.push("the target's proof (its .holds theorem) and the lemmas it needs");
+  if (i.fuzzyStatements.length > 0) open.push(`the empty Lean statements of ${i.fuzzyStatements.join(', ')}`);
+  if (i.openArrows) open.push('new arrows into the target, proposed with propose_arrow');
+  if (i.openItems !== undefined && i.openItems.length > 0) open.push(`the items to rework: ${i.openItems.join(', ')}`);
+  out.push(`OPEN IN THIS STEP: ${open.length > 0 ? open.join('; ') : 'the target\'s statement only'}.`);
+  out.push('FIXED: everything else, also what earlier steps wrote and what the person is reviewing: leave it exactly as it is.');
+  if (i.statementsOnly !== undefined) {
+    out.push(
+      `This step only formalises the statements: formalise them, call freeze_statements, then call finish with status not_proved and name ${i.statementsOnly} in gap. Do not try to prove the target.`,
+    );
+  }
+  out.push(`BUDGET: ${budgetText(i.caps)}`);
+  return `${out.join('\n')}\n`;
+}

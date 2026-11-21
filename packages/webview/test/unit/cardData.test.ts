@@ -2,6 +2,7 @@ import { SPYRO_LEAN, spyroGraph, spyroProvedGraph, type TlNode } from '@telelean
 import { describe, expect, it } from 'vitest';
 import {
   cardChips,
+  cardGlow,
   codeSegments,
   deleteDependents,
   dependsOn,
@@ -22,7 +23,7 @@ const vocab = vocabIndex(graph.vocabulary);
 const node = (id: string, g = graph) => g.nodes.find((n) => n.id === id) as TlNode;
 const byId = (g = graph) => Object.fromEntries(g.nodes.map((n) => [n.id, n]));
 const ctx = (g = graph): RelationContext => {
-  const order = { ASSUMPTION: [] as string[], DERIVATION: [] as string[], GOAL: [] as string[] };
+  const order = { AXIOM: [] as string[], PROPOSITION: [] as string[] };
   for (const n of g.nodes) order[n.type].push(n.id);
   return { edges: g.edges, nodes: byId(g), order };
 };
@@ -97,19 +98,19 @@ describe('card chips (AT6.3 data)', () => {
   const chips = (id: string) => cardChips(nodes[id] as TlNode, nodes);
   const labels = (id: string) => chips(id).map((c) => c.label);
 
-  it('formalised nodes get the Lean chip; a code-less assumption gets "no Lean yet" and "no source yet" (stance rule)', () => {
+  it('formalised nodes get the Lean chip; a code-less axiom gets "no Lean yet" and "no source yet" (stance rule)', () => {
     expect(labels('cynder-dark-past')).toEqual(['λ Lean', 'assumed']);
     expect(labels('pg-no-dark-past')).toEqual(['λ Lean', 'assumed', 'no source yet']); // formalised in the proved graph, still no reason
     expect(cardChips(node('pg-no-dark-past'), byId())).toMatchObject([{ key: 'lean', label: 'no Lean yet' }, { key: 'no-rationale', label: 'no source yet', action: 'edit-rationale' }]);
   });
 
   it('one chip per ProofStatus kind and M1 flag', () => {
-    expect(chips('cynder-not-good')).toEqual([
-      expect.objectContaining({ key: 'lean' }),
-      expect.objectContaining({ key: 'proved-goal', label: '✓ proved: make Derivation?', action: 'make-derivation' }),
-    ]);
-    expect(labels('d-pending')).toContain('promotion pending');
-    expect(labels('d-conditional')).toContain('conditional on Cynder is not PG material');
+    // Spec v4.1 BD-6 (slice 1d): the proved goal of the sample is established: "✓ established" (no "make Derivation?"
+    // chip, no TL105), with the green glow (cardGlow).
+    expect(chips('cynder-not-good')).toEqual([expect.objectContaining({ key: 'lean' }), expect.objectContaining({ key: 'established', label: '✓ established', tone: 'proved' })]);
+    expect(chips('cynder-not-good').some((c) => c.action !== undefined)).toBe(false);
+    expect(chips('d-pending')).toContainEqual(expect.objectContaining({ key: 'pending', label: 'pending proof' }));
+    expect(labels('d-conditional')).toContain('proved, given: Cynder is not PG material');
     expect(labels('g-sorry')).toEqual(['λ Lean', 'uses sorry']);
     expect(labels('a-missing')).toEqual(['λ Lean', 'missing .holds']);
     expect(labels('g-unchecked')).toEqual(['λ Lean', 'unproved', 'not checked by Lean']);
@@ -120,16 +121,39 @@ describe('card chips (AT6.3 data)', () => {
     ]);
     // "checking…" only while Lean is checking (the badge says "Lean: checking…" then).
     expect(cardChips(nodes['a-stale'] as TlNode, nodes, true).find((c) => c.key === 'stale')).toMatchObject({ label: 'checking…' });
-    expect(labels('a-premised')).toContain('you think this follows from those: prove it?');
+    // Spec v4 A19 (slice 1b): an axiom's premises: from before v4 is not drawn; the chip offers the two ways out.
+    expect(chips('a-premised')).toContainEqual(expect.objectContaining({ key: 'declared-before-v4', label: 'declared before v4: make it a proposition, or drop these arrows', tone: 'info' }));
+    expect(labels('cynder-dark-past')).not.toContain('declared before v4: make it a proposition, or drop these arrows');
+  });
+
+  it('spec v4 AR-5 (slice 1b): a card marked "follows from nothing" shows the mark as a chip', () => {
+    const marked = makeNode('fn', 'PROPOSITION', 'Follows from nothing', {}, { fromNothing: true });
+    expect(cardChips(marked, { fn: marked })).toContainEqual(expect.objectContaining({ key: 'from-nothing', label: 'follows from nothing', tone: 'info' }));
+    expect(chips('cynder-not-good').some((c) => c.key === 'from-nothing')).toBe(false);
+  });
+
+  it('spec v4: "rests on pending" for a proof resting on a pending proposition; "has a proof" (no button) on an axiom with a theorem', () => {
+    const pending = makeNode('w', 'PROPOSITION', 'w', { proof: { kind: 'proved', footprint: ['d-pending'] }, flags: ['rests-on-pending'] });
+    expect(cardChips(pending, { ...nodes, w: pending })).toContainEqual(
+      expect.objectContaining({ key: 'rests-on-pending', label: 'proved, but rests on pending: Cynder is not PG material', tone: 'attention' }),
+    );
+    const provable = makeNode('ax', 'AXIOM', 'ax', { proof: { kind: 'proved', footprint: [] }, flags: ['provable-assumption'] });
+    const chip = cardChips(provable, { ax: provable }).find((c) => c.key === 'provable-assumption');
+    expect(chip).toMatchObject({ label: 'has a proof', tone: 'info' });
+    expect(chip?.action).toBeUndefined();
+    // Slice 1d (BD-6): an axiom never glows green and has no proof chip of its own: "has a proof" says it.
+    expect(cardChips(provable, { ax: provable }).map((c) => c.key)).toEqual(['lean', 'provable-assumption']);
+    // An axiom's `.holds` axiom is simply assumed (TL116's "make it an Assumption?" is gone with the GOAL kind).
+    expect(chips('cynder-dark-past').find((c) => c.key === 'proof')).toMatchObject({ label: 'assumed', title: 'Taken as an axiom', tone: 'plain' });
   });
 
   it('never shows a check mark for a node Lean has not checked', () => {
-    const odd = makeNode('x', 'GOAL', 'odd', { proof: { kind: 'proved', footprint: [] }, flags: ['not-checked'] });
+    const odd = makeNode('x', 'PROPOSITION', 'odd', { proof: { kind: 'proved', footprint: [] }, flags: ['not-checked'] });
     expect(cardChips(odd, { x: odd }).map((c) => c.label).join(' ')).not.toContain('✓');
   });
 
   it('ill-formed nodes say so', () => {
-    const bad = makeNode('x', 'ASSUMPTION', 'bad', { formal: 'ill-formed' });
+    const bad = makeNode('x', 'AXIOM', 'bad', { formal: 'ill-formed' });
     expect(cardChips(bad, { x: bad })[0]).toMatchObject({ key: 'lean', label: 'Lean problem', tone: 'error' });
   });
 });
@@ -172,5 +196,79 @@ describe('footprint entries', () => {
       { kind: 'axiom', name: 'Spyro.sneaky' },
       { kind: 'other', name: 'elsewhere-node' },
     ]);
+  });
+});
+
+describe('spec v4.1 BD-6 (slice 1d): glows and the chips that say why', () => {
+  const goal = (status: Partial<TlNode['status']>, extra: Partial<TlNode> = {}) => makeNode('g', 'PROPOSITION', 'The goal', status, extra);
+  const pending = makeNode('p', 'PROPOSITION', 'A pending claim', { proof: { kind: 'pending' } });
+  const axiom = makeNode('a', 'AXIOM', 'An axiom', { proof: { kind: 'assumed' } });
+  const nodes = { p: pending, a: axiom };
+  const keyed = (node: TlNode) => cardChips(node, { ...nodes, [node.id]: node }).filter((c) => c.key !== 'lean');
+
+  it('established: "✓ established" and the green glow, which replaces the blue one', () => {
+    const node = goal({ proof: { kind: 'proved', footprint: ['a'] }, flags: ['established'] });
+    expect(keyed(node)).toEqual([expect.objectContaining({ key: 'established', label: '✓ established', tone: 'proved' })]);
+    expect(cardGlow(node)).toEqual({ glow: 'established', dim: false });
+    // Never colour alone: the chip carries the ✓ as well.
+    expect(keyed(node)[0]?.label.startsWith('✓')).toBe(true);
+  });
+
+  it('proved but resting on pending: the blue glow and "proved, but rests on pending: ‹card›"', () => {
+    const node = goal({ proof: { kind: 'proved', footprint: ['a', 'p'] }, flags: ['rests-on-pending'] });
+    expect(keyed(node)).toEqual([expect.objectContaining({ key: 'rests-on-pending', label: 'proved, but rests on pending: A pending claim' })]);
+    expect(cardGlow(node)).toEqual({ glow: 'formalized', dim: false });
+  });
+
+  it('a conditional proof: "proved, given: ‹card›"', () => {
+    const node = goal({ proof: { kind: 'conditional', on: ['p'], footprint: ['a'] } });
+    expect(keyed(node).map((c) => c.label)).toEqual(['proved, given: A pending claim']);
+    expect(cardGlow(node).glow).toBe('formalized');
+  });
+
+  it('a hidden assumption (TL103): "proved, but uses a hidden assumption"', () => {
+    const node = goal({ proof: { kind: 'proved', footprint: ['a', 'axiom:Spyro.hidden'] } });
+    expect(keyed(node).map((c) => [c.key, c.label])).toEqual([['hidden-assumption', 'proved, but uses a hidden assumption']]);
+  });
+
+  it('several reasons at once each get their chip; with none of them, plain "proved" (no ✓)', () => {
+    const both = goal({ proof: { kind: 'conditional', on: ['p'], footprint: ['a', 'axiom:Spyro.hidden'] } });
+    expect(keyed(both).map((c) => c.key)).toEqual(['conditional', 'hidden-assumption']);
+    const plain = goal({ proof: { kind: 'proved', footprint: ['a'] } });
+    expect(keyed(plain)).toEqual([expect.objectContaining({ key: 'proof', label: 'proved' })]);
+  });
+
+  it('pending: "pending proof"; an axiom never glows green, and one with a proof says "has a proof"', () => {
+    expect(keyed(pending).map((c) => c.label)).toEqual(['pending proof']);
+    const provable = makeNode('ax', 'AXIOM', 'Provable', { proof: { kind: 'proved', footprint: [] }, flags: ['provable-assumption', 'established'] });
+    expect(cardGlow(provable).glow).toBe('formalized');
+    expect(keyed(provable).map((c) => c.label)).toEqual(['has a proof']);
+  });
+
+  it('proved from nothing: the chip says so, unless the card is marked "follows from nothing" (its band says it then)', () => {
+    const node = goal({ proof: { kind: 'proved', footprint: [] }, flags: ['established', 'self-evident'] });
+    expect(keyed(node).map((c) => c.label)).toEqual(['✓ established', 'proved from nothing']);
+    const marked = goal({ proof: { kind: 'proved', footprint: [] }, flags: ['established', 'self-evident'] }, { fromNothing: true });
+    expect(keyed(marked).map((c) => c.key)).toEqual(['established', 'from-nothing']);
+  });
+
+  it('a use the arrows do not show (B.2 cross-check): its chip names the card', () => {
+    const node = goal({ proof: { kind: 'proved', footprint: ['a'] }, flags: ['uses-unseen'], direct: { ids: [], from: 'source', unseen: ['a'] } });
+    expect(keyed(node)).toContainEqual(expect.objectContaining({ key: 'uses-unseen', label: 'uses An axiom in a way the arrows do not show', tone: 'attention' }));
+  });
+
+  it('out-of-date facts: the last glow dimmed, never green, with "changed since last check"', () => {
+    // Core never flags a stale card established; even if both arrive, the card does not glow green.
+    const node = goal({ proof: { kind: 'proved', footprint: ['a'] }, flags: ['established', 'stale'] });
+    expect(cardGlow(node)).toEqual({ glow: 'formalized', dim: true });
+    const chips = keyed(node);
+    expect(chips.find((c) => c.key === 'established')?.dim).toBe(true);
+    expect(chips).toContainEqual(expect.objectContaining({ key: 'stale', label: 'changed since last check' }));
+  });
+
+  it('while the Proposed view hides the result: the blue glow, never the green one', () => {
+    const node = goal({ proof: { kind: 'proved', footprint: ['a'] }, flags: ['established'] });
+    expect(cardGlow(node, true)).toEqual({ glow: 'formalized', dim: false });
+    expect(cardGlow(makeNode('x', 'PROPOSITION', 'x', { formal: 'informal' }))).toEqual({ glow: null, dim: false });
   });
 });

@@ -1,0 +1,148 @@
+{
+  "summary": "I re-verified fixer 2c2 r1 by reading the code, running my own mutations on a scratch copy of packages/core (the repo was not touched) and running small probes against the repo's sources (read-only).\n\nAll 22 findings are resolved: 21 by real fixes and 1 by the docs change it asked for. Every fix I mutated breaks at least one test. I ran 11 such mutations (V-F1, V-F2, V-Q1, V-R1, V-K1, V-G2, V-U1, V-Z1, V-P1, V-S1, V-D1). I also read the fixer's 40 mutations: they are meaningful. Only the 8 files listed in changed_files.txt differ between before.diff and after.diff, and nothing in the repo changed after after.diff was written.\n\nVerification (capped.sh 1800, one job at a time; vitest with --maxWorkers=1 --no-cache --fsModuleCachePath=<rv2c2r1>/fsmc and TMPDIR=<rv2c2r1>/tmp):\n- tsc --noEmit: core and runner tsconfig.test.json, webview tsconfig.json and tsconfig.node.json, extension tsconfig.json. Each exits 0 with no output.\n- core: \"Test Files  76 passed (76)\", \"Tests  1127 passed (1127)\".\n- webview: \"Test Files  19 passed (19)\", \"Tests  314 passed (314)\".\n- extension: \"Test Files  22 passed (22)\", \"Tests  205 passed (205)\".\n- runner smoke run, test/gate/pure.test.ts (TELELEAN_TEST_TMP in my scratch, timeout 900): \"Test Files  1 passed (1)\", \"Tests  14 passed (14)\". No runner source or test uses the changed symbols (checked by grep).\n\nNew problems:\n- R1-1 (minor). The D2-59 subtraction (ADV-6's fix) is too broad. It also removes a source from a later step that asked for it again. That can happen after un-reject, Accept and a new mid-stage Formalize. Once the results are shown, the re-ask note is inverted. The fixer's §8 reason that this \"can never\" happen is wrong.\n- R1-2 (minor). While a step runs, an arrow item's `why` comes from the running queue's ledger entries. Those entries depend on how the step ended, so a narrow mid-queue leak of the same class as ADV-1 is left.\n- R1-4 (minor, test gap). The fallback for steps without a queue number has no test. My mutation V-Q2 survives.\n- R1-3 (nit). Three force contract comments are out of date.\n- R1-5 (nit). A taken-out Result still shows the taken-out version's Claude summary and gap.\n\nEffects outside my scratch dir:\n- The `.git` directory's mtime changed at 11:45 when I ran a read-only `git status`; `.git/index` is unchanged (Nov 17).\n- Vite briefly used the existing node_modules/.vite-temp folders of the repo root, core, webview and runner during my verification runs (11:29 to 11:30). All are empty again.\n- No file in the repo, packages/extension/out or packages/extension/dist is newer than my start marker.\n- Nothing new in /tmp outside claude-1000. No network, installs, git writes or real Claude.\n\nMy scratch files are in /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/rv2c2r1:\n- verify.sh and logs/summary.txt\n- logs/vt_core.log, logs/vt_webview.log, logs/vt_ext.log, logs/vt_runner_pure.log\n- mutate.py, muts1.json, muts1_results.json, logs/muts1_run.log\n- probe/rv.probe.ts, probe/rv2.probe.ts, logs/probe_run1.log, logs/probe_run2.log",
+  "resolved": [
+    {
+      "id": "S-F1-confirmed",
+      "how": "Option (a) adopted. reconcile.ts:447 now ends every force, the user's and the `decided` one, whenever `queueSteps` is given, before RV-7. §3.5 step 3, §4.7's force rule and §8 say so. My mutation V-F1 (the old rule) fails 2 tests: the view.test.ts pipeline pair and the new reconcile test. V-F2 (only the user's force ends) fails the reconcile test."
+    },
+    {
+      "id": "S-TEST-REASK-PAIR",
+      "how": "view.test.ts now has a pipeline pair. Stage 1 is judged and reconciled, Show results and the seal go through reduceReview, and each twin's own working copy is judged and reconciled with queueSteps ['s2']. The twins' records really differ (Result rev 2 with 'updated' vs rev 1), and the views are byte-identical, also with a statement-phase helper. It fails under V-F1. The hand-made pair is kept and renamed."
+    },
+    {
+      "id": "S-STAGE-PROBLEMS-NO-PATH",
+      "how": "Option (a). There is a new SessionView.problems, filled from the judgement's facts and unowned problems, the items that disappeared (not computed while judging) and the new SessionViewInput.problems. Hidden items are filtered while hidden. §2.3, §2.9, §5.8 and §8 are updated. The new test checks the hidden and shown variants and the judging case; my V-P1 and the fixer's PR1–PRA all fail it."
+    },
+    {
+      "id": "S-PERSIST-NEW-RECORD-FIELDS",
+      "how": "§2.6 now has PersistedStep.queue? (2d writes it at queue-start) and PersistedSession.confirmation.reusedFileChecks? (2f writes it). The §8 hand-off names both."
+    },
+    {
+      "id": "S-STALEFILES-VACUOUS",
+      "how": "The test now uses a stale module. While hidden there is no `staleFiles` and the state is 'fresh'; once shown it is 'stale' with the file listed. The fixer's S01 (drop the `hidden ? [] :` guard) fails it."
+    },
+    {
+      "id": "S-HIDDEN-SUMMARY-ENVELOPE",
+      "how": "The builder's §8 board sentence is corrected (sandbox statuses map from the envelope), the semanticOf comment says so, and §4.7 has a new residual line for a judge build that times out or runs out of memory."
+    },
+    {
+      "id": "C-V2C2-C1",
+      "how": "Same fix as S-F1-confirmed (reconcile ends every force at a queue's end). Verified by V-F1 and V-F2."
+    },
+    {
+      "id": "C-V2C2-C2",
+      "how": "The running-step fixture now holds every outcome-like datum: a gave-up step with its words, a D2-59 decline, a re-ask in the running queue that gave up, and a declined item. It asserts none of them shows while running, and that each shows after the queue. My V-G2 (Result words while running) fails 2 tests, and the fixer's G01–G07 cover each consumer."
+    },
+    {
+      "id": "C-V2C2-C3",
+      "how": "New test with a rejected Result and its rejected earlier version while hidden: rejected is [] and the Result is not counted. My V-K1 (iterate `ordered`) fails it."
+    },
+    {
+      "id": "C-V2C2-C4",
+      "how": "`decidesHidden` makes undo and redo null when the top decide action decided an item that is hidden now, using the reducer's exported `decidedBy` (the same rule as the reducer's D2-8 refusal). The test also checks that reduceReview refuses the Undo and the Redo. My V-U1 fails it."
+    },
+    {
+      "id": "C-V2C2-C5",
+      "how": "previousOf now takes the newest version with rev < r.rev. Tested with a written premise's same-rev draft key and with an updated one. The fixer's P01 fails it."
+    },
+    {
+      "id": "C-V2C2-C6",
+      "how": "With judgement null the board is input.base, and cardRef never falls back to input.current. The stage-0 test passes a proved working copy and asserts JSON equal to B's. My V-Z1 fails it; the fixer's Z03 covers the card name."
+    },
+    {
+      "id": "C-V2C2-C7",
+      "how": "Docs: the §8 sentence is corrected and the residual added, as for S-HIDDEN-SUMMARY-ENVELOPE."
+    },
+    {
+      "id": "A-V2C2-ADV-1",
+      "how": "questionOf now shows the asked question (less D2-59's removals) while a step runs, for a target whose latest ended step is in the running queue (the newest queue number). The twin test differs only in the record's question and gives byte-identical views. A second case covers a target from an earlier queue. My V-Q1 fails it. A related channel through the arrow's `why` remains: see R1-2."
+    },
+    {
+      "id": "A-V2C2-ADV-2",
+      "how": "A Result is read from its `judged` record, with its proof, only when the user declined it while its content was in ws/ (status declined and !isReverted). A taken-out Result reads the stage judgement and shows no proof. The P6-style test goes through reconcile and judgeState again. My V-R1 fails it."
+    },
+    {
+      "id": "A-V2C2-ADV-3",
+      "how": "Same fix as S-F1-confirmed. Verified by V-F1 and V-F2."
+    },
+    {
+      "id": "A-V2C2-ADV-4",
+      "how": "Report targets read revealed only when shown and judgement !== null, and the stage-0 board is B. The fixer's Z02 fails the stage-0 test."
+    },
+    {
+      "id": "A-V2C2-ADV-5",
+      "how": "The reason chip and Claude's words now come from `standingStep`: the latest ended step whose asked question (less D2-59's removals) equals the record's. Tested both ways round. My V-S1 fails 2 tests. Same-question re-asks are a documented limitation (decision 5)."
+    },
+    {
+      "id": "A-V2C2-ADV-6",
+      "how": "`askedBy` subtracts the done stack's D2-59 removals while hidden, and the hidden InferenceView and the Result detail are tested. My V-D1 fails 3 tests. The subtraction is too broad when a source comes back: see R1-1."
+    },
+    {
+      "id": "A-V2C2-ADV-7",
+      "how": "New seeded random-sequence test: 40 seeds of up to 12 actions on 3 pairs. Actions are own and group Accept, Reject, Shaky with a note, back to review and un-reject, and Undo and Redo, with and without `confirmed`. Answers must be equal at every action and views equal while either twin is hidden. It asserts that each action kind is carried out somewhere and that refused, conflict and needs-confirmation answers occur."
+    },
+    {
+      "id": "A-V2C2-ADV-8",
+      "how": "Un-reject in 'Rejected in this session' is asserted closed in the step, interrupted, confirming and applying phases, and open in a stage. The fixer's K02 fails 2 tests."
+    },
+    {
+      "id": "A-V2C2-ADV-9",
+      "how": "REVIEW_TEXTS.stepPassed now reads \"Claude's step finished\" and the test checks it. Nothing else in the repo uses the old text (checked by grep)."
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1-1",
+      "severity": "minor",
+      "where": "packages/core/src/review/view.ts:697-718 (`removedFromQuestion`, `askedBy`), used by `questionOf` (:731), `standingStep` (:740) and the re-ask note (:1256-1266); docs/slice2-plan.md §8 'fixer 2c2 r1' D2-59 bullet (line ~3401)",
+      "problem": "`askedBy` removes every D2-59 source in the done stack from every ended step's question, including a step asked after that decline, which may have asked the source again. §8 justifies this with 'A source declined this way can never come back into a later question (its arrow is in `rejectedArrows`)'. That is false:\n- un-reject of the declined Claude arrow takes it out of `rejectedArrows`;\n- the arrow can then be accepted again;\n- check 3 of formalizeStartProblems counts accepted Claude arrows, so a later mid-stage Formalize can re-ask T with that source.\nThe decline action stays in `done` across the seal. Then:\n- while hidden: the InferenceView, the Result detail's question and the list order show T's question without the source, although the re-ask asked for it (both twins alike, so no leak, but wrong);\n- once shown, the re-ask note is inverted: the proved twin says '“T” was not proved: your earlier result stands', and the not-proved twin gets no note;\n- in the not-proved twin, `standingStep` picks the re-ask, so its chip and words go on the earlier version.\nThe note's subtraction is the builder's; the hidden question, the standing step and the §8 claim are the fixer's.",
+      "fix": "Count a D2-59 removal only against steps whose queue started before the declining action. In `done`, those are the decide actions after the seal that opened the step's queue (queue q ≥ 2 starts at the (q-1)-th seal); for queue 1 or a step without a queue number, all of them.\n- Optionally drop a 'left the question' note once a later step of that target asked the source again.\n- Correct the §8 sentence: un-reject clears `rejectedArrows`, and a later mid-stage Formalize may select the arrow again.\n- Add a twin test: DO-0, un-reject, Accept, seal, re-ask of T with the source, proved or not. Assert that the hidden question is what the re-ask asked and that the 'not proved' note appears only in the not-proved twin.",
+      "evidence": "Probe PA (rv2c2r1/probe/rv.probe.ts, logs/probe_run1.log):\n- 's2 asked: cynder-dark-past,new-spyro-pg,pg-no-dark-past | view question (proved): cynder-dark-past,pg-no-dark-past | (not proved): cynder-dark-past,pg-no-dark-past';\n- shown, proved twin notes: ['The new question for “Cynder would not be a good addition to the new Spyro game” was not proved: your earlier result stands.', …];\n- shown, not-proved twin notes: only the 'left the question' line.\nProbe PC (probe/rv2.probe.ts, logs/probe_run2.log), through reduceReview:\n- after DO-0: rejectedArrows [new-spyro-pg→T], question without new-spyro-pg;\n- after un-reject: status in-review, question still without it, rejectedArrows [];\n- Accept again: ok.\nreducer.ts:548-560: un-reject never touches the question. formalize.ts:72-75: an accepted Claude arrow passes check 3."
+    },
+    {
+      "id": "R1-2",
+      "severity": "minor",
+      "where": "packages/core/src/review/view.ts:883-889 (`whyOf`, used by the arrow item's detail at :1060) while `running`",
+      "problem": "While a step runs with the results shown when the queue started, `whyOf` returns the newest ledger arrow entry for the arrow's ends, including one that an ended step of the running queue wrote. Such an entry is kept only if that step passed (for a re-ask, only if it proved T); a give-up's or an unproved re-ask's rollback drops it (§3.4).\n- So the listed arrow item's `why` shows Claude's words from the running queue (D2-10: withheld while a step runs).\n- That `why` also differs with the outcome before the queue ends (D2-63, §4.7). This is the class of ADV-1 that the question fix does not cover.\n- Reachable in slice 2, narrowly. A Claude arrow whose source is a written premise card is taken out by a cascade (RV-5 edge 3; judge.test.ts's A-ADV-1 fixture). The premise is un-rejected (AF2: no merge, so the arrow stays out) and accepted again. Then a multi-target mid-stage Formalize re-asks T, and Claude proposes the arrow again with a new why (allowed since fixer 2b1b r1).",
+      "fix": "While a step runs, have `whyOf` skip ledger entries whose `step` belongs to the running queue (`inRunningQueue` over records.steps by id). Do the same for the `completion` check, for consistency, so that nothing the running queue wrote reaches the view. Add a twin test: phase 'step', the results forced, a taken-out arrow item, and ledgers with and without the re-ask's arrow entry. Assert byte-identical views.",
+      "evidence": "Probe PB (rv2c2r1/probe/rv.probe.ts, logs/probe_run1.log): 'PB phase step shown true | why (proved): second why: needed for the re-ask | why (not proved): first why: the game is PG | views equal: false'."
+    },
+    {
+      "id": "R1-4",
+      "severity": "minor",
+      "where": "packages/core/src/review/view.ts:723 (`inRunningQueue`: `step.queue === undefined || …`); packages/core/test/review/view.test.ts",
+      "problem": "The fail-closed fallback that §8 states ('a step without one counts as in it') has no test. My mutation V-Q2 changes it to `step.queue !== undefined && step.queue === runningQueue`, and view.test.ts still passes (54/54). If 2d leaves `queue` unset on some steps, ADV-1's mid-queue question leak would come back with no test failing. The brief's mutation rule says a rule no test catches needs a new test.",
+      "fix": "Add an ADV-1-style running twin whose steps have no `queue` numbers, with D2-46's question replacement in one twin. Assert byte-identical views and the asked question.",
+      "evidence": "rv2c2r1/muts1_results.json, V-Q2: exit 0, '54 passed (54)'. Its log is logs/mut_V-Q2.log."
+    },
+    {
+      "id": "R1-3",
+      "severity": "nit",
+      "where": "packages/core/src/review/types.ts:210 (SessionForce doc); docs/slice2-plan.md §2.2 (~line 426) and §2.6 `forced?` comment (~line 796)",
+      "problem": "The contract comments still say that Show results' force lasts 'until a statement or belief item next becomes undecided'. They do not mention RV-11's Result returns, nor every queue's end, which is the rule now in reconcile, §3.5 step 3 and §4.7.",
+      "fix": "Add one clause to each: '…, a Result that RV-11 returns to review, or the end of any queue of Claude steps (§4.7)'."
+    },
+    {
+      "id": "R1-5",
+      "severity": "nit",
+      "where": "packages/core/src/review/view.ts:958, 977, 982 (resultDetail: `wordsOf` for a Result with `redo.reverted`)",
+      "problem": "For a Result that telelean or a cascade took out, the fixer now shows B's verdict and drops the proof, but Claude's summary and gap from the taken-out version still show, because `standingStep` is that version's step. In the ADV-2 test's setup the detail reads verdict 'not-proved' with summary 'Proved from the three arrows.' and gap 'nothing missing'. That is part of what ADV-2 asked never to read as proved.",
+      "fix": "Leave out `summary` and `gap` for a Result whose content is out and that the user did not decline (`!inWs && !declinedVersion`), as for `proof`. Assert their absence in the ADV-2 test."
+    }
+  ],
+  "checks_run": [
+    "Read verify_common.md, builder_rules.md and the 2c2 brief; read every diff in the fixer's 8 changed files against the backup; checked that before.diff and after.diff differ in exactly those 8 files and that nothing in the repo is newer than after.diff",
+    "Read plan §3.1–§3.7, §4.5, §4.7, the §2.6 and §2.9 contracts, the §8 builder 2c2 and fixer 2c2 r1 entries, and the spec's RV-6",
+    "Traced reconcile's force rule (endsForce, RV-7, ADV-1's decided rule, seen-early) and every change in view.ts (stage-0 board, questionOf with the running queue, askedBy and D2-59, standingStep, the taken-out Result, previousOf, Undo/Redo, notes, report targets, problems)",
+    "Checked the reducer's undo, redo, decideLabel, DO-0, un-reject (questions and rejectedArrows), formalizeStartProblems check 3, arrowProblems, RV-5 edge 3, and judgeState's unowned and facts problems",
+    "capped.sh 1800 tsc --noEmit -p on core and runner tsconfig.test.json, webview tsconfig.json and tsconfig.node.json, and extension tsconfig.json: each exit 0, no output",
+    "core vitest run --maxWorkers=1 --no-cache --fsModuleCachePath=<rv2c2r1>/fsmc with TMPDIR=<rv2c2r1>/tmp: 'Test Files  76 passed (76)', 'Tests  1127 passed (1127)'",
+    "webview vitest run, same flags: 'Test Files  19 passed (19)', 'Tests  314 passed (314)'",
+    "extension vitest run --no-cache, same flags: 'Test Files  22 passed (22)', 'Tests  205 passed (205)'",
+    "runner test/gate/pure.test.ts smoke run (TELELEAN_TEST_TMP in scratch, timeout 900): 'Test Files  1 passed (1)', 'Tests  14 passed (14)'; grep shows no runner use of the changed symbols",
+    "12 mutations on a scratch copy of packages/core (restored and cmp-checked against the repo after each): V-F1, V-F2, V-Q1, V-R1, V-K1, V-G2, V-U1, V-Z1, V-P1, V-S1 and V-D1 each fail at least one test; V-Q2 survives (R1-4)",
+    "Read the fixer's 40 mutations (mutate.py, mutate_final.log): each is meaningful and failed at least one test",
+    "Probes PA, PB and PC (scratch only, repo sources imported read-only): the D2-59 over-subtraction and inverted note, the mid-queue arrow `why`, and the reducer's DO-0, un-reject and re-Accept",
+    "Side-effect checks: no file in the repo, packages/extension/out or dist newer than my start marker; the vite-temp folders are empty; .git/index unchanged; no leftover processes of mine"
+  ]
+}

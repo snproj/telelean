@@ -183,7 +183,8 @@ function Target({ run }: { run: RunView }) {
   const premises = run.premises.map((id) => nodes[id]?.naturalName ?? id);
   return (
     <p className="tl-run__target" data-testid="run-target">
-      <span className="tl-run__target-label">{run.premises.length === 0 ? 'Self-evident?' : 'These suffice:'}</span> “
+      {/* Spec v4.1 ES-2, AR-5 (slice 1e): the action's name, or its "follows from nothing" question. */}
+      <span className="tl-run__target-label">{run.premises.length === 0 ? 'Follows from nothing?' : 'Formalize for dependencies:'}</span> “
       <UserText text={target?.naturalName ?? run.target} />”{' '}
       <span className="tl-run__hint" title={premises.join('\n')}>
         {run.premises.length === 0 ? 'from no premises at all' : `from ${run.premises.length} premise${run.premises.length === 1 ? '' : 's'}`}

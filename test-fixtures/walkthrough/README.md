@@ -15,14 +15,16 @@ Lean, a scratch git copy of `mental_model/`), by the RunManager's unit tests, an
   "answer": { "phenomenon": "modality", "option": 0 },
   "premises": ["cynder-dark-past", "new-spyro-pg", "pg-no-dark-past"],
   "expect": { "verdict": "proved", "…": "…" },
-  "turns": [{ "match": "Run: \"These suffice\"", "steps": [ { "kind": "read", "path": "Model/Spyro/Main.lean" }, … ] }]
+  "turns": [{ "match": "Run: \"Formalize for dependencies\"", "steps": [ { "kind": "read", "path": "Model/Spyro/Main.lean" }, … ] }]
 }
 ```
 
 - `turns` are played in order by `llm.playFakeScript` (runner `src/llm/fakeScripts.ts`): each user turn takes the
-  next unplayed turn whose `match` (if any) occurs in the turn text. Round 1 matches the context bundle
-  (`Run: "These suffice"`), an adoption round `The person adopted your suggestion`. A user turn the script did not
-  plan (for example a nudge) gets no steps. The cursor survives a resumed session (`--resume`).
+  next unplayed turn whose `match` (if any) occurs in the turn text. Round 1 matches the context bundle's first line
+  (`Run: "Formalize for dependencies"`; a run with no premises, a target marked "follows from nothing", starts
+  `Run: "Follows from nothing?"`; both were `Run: "These suffice"` before spec v4's slice 1g), an adoption round
+  `The person adopted your suggestion`. A user turn the script did not plan (for example a nudge) gets no steps. The
+  cursor survives a resumed session (`--resume`).
 - `steps` are runner `FakeStep`s: `read`, `edit` (`oldString` → `newString`, first occurrence, through the same
   path guard as the CLI's hook), `writeFile`, `callTool` (validated with the real tool schemas, dispatched to the
   RunManager's tool host), `text`, `usage` (one API response), `rateLimit`, `sleep`, `result` (with the CLI's

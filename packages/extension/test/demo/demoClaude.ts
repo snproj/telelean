@@ -68,7 +68,8 @@ function cardOf(lines: readonly string[], i: number, subject: string): ContextCa
 
 /** Parses the context bundle (runner run/prompts.ts renderContextBundle); undefined when the turn is not one. */
 export function parseContext(turn: string): RunContext | undefined {
-  const head = /^Run: "These suffice" for the subject (\S+) \(namespace \S+; the subject's folder is (\S+)\/, its root module \S+\)\./.exec(turn);
+  // Slice 1g: the run's name, "Formalize for dependencies" (or "Follows from nothing?" with no premises); was "These suffice".
+  const head = /^Run: "(?:Formalize for dependencies|Follows from nothing\?)" for the subject (\S+) \(namespace \S+; the subject's folder is (\S+)\/, its root module \S+\)\./.exec(turn);
   if (!head?.[1] || !head[2]) return undefined;
   const subject = head[1];
   const lines = turn.split('\n');
@@ -472,6 +473,8 @@ export class DemoClaude implements LlmBackend {
         if (this.record) this.record.proposal = { natural_name: args.natural_name, lean_statement: args.lean_statement, status: result.status, gateChecked: result.gateChecked };
         return result;
       },
+      // Slice 2d: the dry run's Claude never proposes an arrow; the tool is passed through.
+      propose_arrow: (args, ctx) => host.propose_arrow(args, ctx),
       finish: async (args, ctx) => {
         const verdict = await host.finish(args, ctx);
         if (this.plan) this.plan.lastFinish = args;
@@ -563,7 +566,8 @@ export class DemoClaude implements LlmBackend {
     yield vocabularyEdit(files, plan);
     for (const card of context.premises) {
       if (card.statement !== undefined) continue;
-      yield statementEdit(files, card, plan.names.get(card.id) ?? statementName(card.id), plan.statements.get(card.id) ?? 'True', card.type === 'ASSUMPTION');
+      // An axiom card gets its `.holds` axiom (spec v4 kinds; ASSUMPTION is the bundle's word before v4).
+      yield statementEdit(files, card, plan.names.get(card.id) ?? statementName(card.id), plan.statements.get(card.id) ?? 'True', card.type === 'AXIOM' || card.type === 'ASSUMPTION');
     }
     if (context.target.statement === undefined) {
       yield statementEdit(files, context.target, plan.names.get(context.target.id) ?? statementName(context.target.id), plan.statements.get(context.target.id) ?? 'True', false);

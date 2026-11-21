@@ -11,7 +11,7 @@ import path from 'node:path';
 import { isTerminalRunState, type RunState } from '@telelean/core';
 
 import { rootKeyOf } from '../shadow/index.js';
-import { PERSISTED_RUN_FORMAT, type PersistedRun } from './types.js';
+import { PERSISTED_RUN_FORMAT, PERSISTED_SESSION_FORMAT, type PersistedRun } from './types.js';
 
 let tempCounter = 0;
 
@@ -40,10 +40,20 @@ export function writeTextAtomicSync(file: string, text: string): void {
   renameSync(temp, file);
 }
 
+/**
+ * A run.json of version 1 (M2's runs, slice 1's) or 2 (slice 2: an edit session, docs/slice2-plan.md 2.6), so a
+ * version-2 run is never dropped on recovery. A version-2 run must hold its session (format and arrays checked); a
+ * version-1 run is read as before (a v1 run in review is converted when it is recovered, §3.11).
+ */
 export function isPersistedRun(value: unknown): value is PersistedRun {
   if (typeof value !== 'object' || value === null) return false;
   const v = value as Partial<PersistedRun>;
-  return v.format === PERSISTED_RUN_FORMAT && v.version === 1 && typeof v.view === 'object' && v.view !== null && typeof v.view.runId === 'string';
+  if (v.format !== PERSISTED_RUN_FORMAT || typeof v.view !== 'object' || v.view === null || typeof v.view.runId !== 'string') return false;
+  if (v.version === 1) return true;
+  if (v.version !== 2) return false;
+  const s = v.session as unknown as Record<string, unknown> | undefined;
+  if (typeof s !== 'object' || s === null || s['format'] !== PERSISTED_SESSION_FORMAT || s['version'] !== 1 || typeof s['head'] !== 'string') return false;
+  return ['inferences', 'steps', 'queue', 'retry', 'items', 'premises', 'ledger', 'rejectedArrows', 'events'].every((k) => Array.isArray(s[k]));
 }
 
 export async function readPersistedRun(file: string): Promise<PersistedRun | undefined> {
@@ -105,6 +115,21 @@ export class RunFiles {
   writeState(text: string): Promise<void> {
     if (this.closed) return this.flush();
     return this.enqueue(() => (this.closed ? Promise.resolve() : writeTextAtomic(this.stateFile, text)));
+  }
+
+  /**
+   * Slice 2 (docs/slice2-plan.md 2.6): the same write, in the same order, but it rejects when the write fails (or when
+   * the files were closed: the window is closing, nothing more may be recorded), where `writeState` logs the failure
+   * and resolves. A session write's steps 1 and 4 use it: a failed step 1 aborts the write.
+   */
+  writeStateChecked(text: string): Promise<void> {
+    if (this.closed) return Promise.reject(new Error('the run is closing'));
+    const job = (): Promise<void> => (this.closed ? Promise.reject(new Error('the run is closing')) : writeTextAtomic(this.stateFile, text));
+    const run = this.chain.then(job, job);
+    this.chain = run.catch((e: unknown) => {
+      this.log(`run.json could not be written: ${(e as Error).message}`);
+    });
+    return run;
   }
 
   writeStateSync(text: string): void {

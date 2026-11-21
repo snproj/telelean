@@ -9,23 +9,26 @@ import {
   spyroProvedGraph,
   type ActionOutcome,
   type BoardAction,
+  type CanvasPosition,
   type FileChange,
   type HistoryAvailability,
   type HistoryDiff,
   type HistoryListing,
   type HostToWebviewMessage,
+  type ItemDecision,
   type ProjectModel,
   type ProposalView,
   type QuestionAnswer,
   type Range,
   type RunView,
   type SemanticSummary,
+  type SessionView,
   type SubjectInfo,
   type TlGraph,
   type WorkspaceState,
 } from '@telelean/core';
 import type { LlmBackend } from '@telelean/runner/llm/types.js';
-import type { RunChange, RunManager, RunManagerOptions, RunStartRequest } from '@telelean/runner/run/types.js';
+import type { FormalizeRequest, RunChange, RunManager, RunManagerOptions, RunStartRequest } from '@telelean/runner/run/types.js';
 import type { Disposable, ExternalChangeSet, ModelWorkspace, WorkspaceChange } from '@telelean/runner/workspace/index.js';
 
 import type { BoardSessionPorts, ConfirmId, LogLevel } from '../../src/logic/boardSession';
@@ -120,7 +123,7 @@ export class FakeWorkspace implements ModelWorkspace {
   async historyDiff(subject: string, entryId: string, compare: 'parent' | 'current'): Promise<HistoryDiff> {
     return (
       this.diff ?? {
-        entry: { id: entryId, time: '2026-11-01T10:00:00.000Z', action: 'add-node', label: 'Add assumption: x', subject, nodes: [] },
+        entry: { id: entryId, time: '2026-11-01T10:00:00.000Z', action: 'add-node', label: 'Add axiom: x', subject, nodes: [] },
         compare,
         files: [{ path: 'Model/Spyro/Inbox.lean', before: 'a\n', after: 'a\nb\n' }],
       }
@@ -270,7 +273,6 @@ export function sampleProposal(overrides: Partial<ProposalView> = {}): ProposalV
     files: [{ path: 'Model/Spyro/Main.lean', change: 'modified', additions: 5, deletions: 0 }],
     review: [],
     definitions: [],
-    lifecycle: [{ id: 'l1', kind: 'change-kind', nodeId: 'cynder-not-good', from: 'GOAL', to: 'DERIVATION', recommended: true, reason: 'Lean proved it from the selected premises' }],
     ghosts: [],
     report: {
       verdict: 'proved',
@@ -304,7 +306,18 @@ export type RunMethod =
   | 'dismiss'
   | 'proposalDiff'
   | 'recover'
-  | 'dispose';
+  | 'dispose'
+  // Slice 2 (docs/slice2-plan.md 2.5)
+  | 'formalize'
+  | 'decide'
+  | 'reveal'
+  | 'undoSession'
+  | 'redoSession'
+  | 'submit'
+  | 'end'
+  | 'retry'
+  | 'sessionDiff'
+  | 'moveProposed';
 
 /**
  * A recording RunManager. Like the real one (WP3), `start` obtains the backend from `options.services.backend` when
@@ -314,6 +327,8 @@ export class FakeRunManager implements RunManager {
   calls: Array<{ method: RunMethod; args: unknown[] }> = [];
   run: RunView | null = null;
   currentProposal: ProposalView | null = null;
+  /** Slice 2d: what `session()` returns. */
+  currentSession: SessionView | null = null;
   /** The outcome every action method resolves with (or computes from the call). */
   outcome: ActionOutcome | ((method: RunMethod, args: unknown[]) => ActionOutcome | Promise<ActionOutcome>) = (method) => ({
     ok: true,
@@ -342,11 +357,14 @@ export class FakeRunManager implements RunManager {
   proposal(): ProposalView | null {
     return this.currentProposal;
   }
+  session(): SessionView | null {
+    return this.currentSession;
+  }
   onDidChange(listener: (change: RunChange) => void): Disposable {
     this.listeners.add(listener);
     return { dispose: () => void this.listeners.delete(listener) };
   }
-  fire(change: RunChange = { run: true, proposal: true }): void {
+  fire(change: RunChange = { run: true, proposal: true, session: true }): void {
     for (const listener of [...this.listeners]) listener(change);
   }
   get listenerCount(): number {
@@ -385,8 +403,8 @@ export class FakeRunManager implements RunManager {
   resume(runId: string): Promise<ActionOutcome> {
     return this.resolve('resume', [runId]);
   }
-  accept(runId: string, proposalId: string, lifecycle: readonly string[], definitions: readonly string[]): Promise<ActionOutcome> {
-    return this.resolve('accept', [runId, proposalId, lifecycle, definitions]);
+  accept(runId: string, proposalId: string, definitions: readonly string[]): Promise<ActionOutcome> {
+    return this.resolve('accept', [runId, proposalId, definitions]);
   }
   feedback(runId: string, text: string): Promise<ActionOutcome> {
     return this.resolve('feedback', [runId, text]);
@@ -402,6 +420,50 @@ export class FakeRunManager implements RunManager {
   }
   dismiss(runId: string): Promise<ActionOutcome> {
     return this.resolve('dismiss', [runId]);
+  }
+  /** Slice 2d: a start obtains the backend like `start`; a mid-stage Formalize only records. */
+  async formalize(request: FormalizeRequest): Promise<ActionOutcome> {
+    if (request.runId === undefined) {
+      const backend = this.options?.services.backend;
+      if (typeof backend === 'function') {
+        try {
+          this.backend = await backend();
+        } catch (error) {
+          this.calls.push({ method: 'formalize', args: [request] });
+          return { ok: false, code: 'not-yet', error: error instanceof Error ? error.message : String(error) };
+        }
+      } else if (backend) {
+        this.backend = backend;
+      }
+    }
+    return this.resolve('formalize', [request]);
+  }
+  decide(runId: string, stage: number, own: boolean, decisions: readonly ItemDecision[], confirmed: boolean): Promise<ActionOutcome> {
+    return this.resolve('decide', [runId, stage, own, decisions, confirmed]);
+  }
+  reveal(runId: string, stage: number, via: 'show-result' | 'activity'): Promise<ActionOutcome> {
+    return this.resolve('reveal', [runId, stage, via]);
+  }
+  undoSession(runId: string, step: number, confirmed: boolean): Promise<ActionOutcome> {
+    return this.resolve('undoSession', [runId, step, confirmed]);
+  }
+  redoSession(runId: string, step: number, confirmed: boolean): Promise<ActionOutcome> {
+    return this.resolve('redoSession', [runId, step, confirmed]);
+  }
+  submit(runId: string, stage: number): Promise<ActionOutcome> {
+    return this.resolve('submit', [runId, stage]);
+  }
+  end(runId: string, decision: 'apply' | 'exit' | 'back', stage?: number, check?: string): Promise<ActionOutcome> {
+    return this.resolve('end', [runId, decision, stage, check]);
+  }
+  retry(runId: string): Promise<ActionOutcome> {
+    return this.resolve('retry', [runId]);
+  }
+  sessionDiff(runId: string, stage: number, confirmed: boolean): Promise<ActionOutcome> {
+    return this.resolve('sessionDiff', [runId, stage, confirmed]);
+  }
+  moveProposed(runId: string, positions: Readonly<Record<string, CanvasPosition>>): Promise<ActionOutcome> {
+    return this.resolve('moveProposed', [runId, positions]);
   }
   async proposalDiff(runId: string, proposalId: string): Promise<FileChange[]> {
     this.calls.push({ method: 'proposalDiff', args: [runId, proposalId] });

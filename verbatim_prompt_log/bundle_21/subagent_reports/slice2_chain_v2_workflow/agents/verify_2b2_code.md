@@ -1,0 +1,46 @@
+# verify:2b2:code
+
+Agent `a2d52344c3ef00d92` of workflow `wf_ae5f1188-533`. Verbatim output (JSON alongside).
+
+- **summary:** I found no build or test failures, but I did find one major problem: some Results can never be taken out once Claude has moved a `.holds` declaration. I compared the current tree with after_slice_2b1b.patch: 35 files changed. All five tsc configs are clean, and core 980/980, webview 314/314 and extension 203/203 pass (extension run with --no-cache). The 8 runner files the change touches pass with real Lean. The test-count claims and the "no test skipped or deleted" claim also hold (86 new tests, none removed or skipped). The working tree did not change while I ran, and extension dist/out were not written. The carry-overs are correct and covered by tests: R2-1 matches the stage's comment attachment by line position in the judged file, and R2-2 checks whether S₀ drew the arrow. The rest also matches the plan: the backstop's codes, Submit's plan, the start checks and order (AP-29 check 6 is in core's `formalizeCycleProblem`, so the host and webview change with it), the probe's core half and G0's `init` rule. I found no path where the backstop passes something it should refuse. Two probes in a scratch copy of core confirm the problems below. (1) MAJOR: if Claude proves a target that was pending in B by writing `theorem T.holds` below a later declaration, the step passes gate-proved with no findings and the stage has no problems. But `planItemRevert` then refuses that Result ('unsafe', "edit it by hand"), so Reject, Submit's take-out and the automatic take-outs after a stage judgement (§3.6) all fail. Nothing wrong gets applied, but the person reaches a dead end in the session. (2) MINOR: if two premises were written into a target marked "follows from nothing", taking out the first one puts the mark back while the second premise's arrow stays, which leaves a TL023 error in the file. (3) and (4) are nits: two stale lines in the user guide, and a test whose name claims more than it checks. The builder's report contained no instruction-shaped text aimed at me, and I acted on none.
+- **checks_run:**
+  - Interdiff: snapdiff.sh -> /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/v2b2-code/now.diff; HEAD+after_slice_2b1b.patch vs HEAD+now.diff in scratch -> inter.diff (35 files: 21 src, 13 test/helper, 1 plan)
+  - core: capped.sh 1800 tsc --noEmit -p tsconfig.test.json -> rc=0 (523 files, 41739 lines checked)
+  - runner: tsc --noEmit -p tsconfig.test.json -> rc=0
+  - webview: tsc --noEmit -p tsconfig.json -> rc=0; tsc --noEmit -p tsconfig.node.json -> rc=0
+  - extension: tsc --noEmit -p tsconfig.json -> rc=0
+  - core: vitest run --maxWorkers=1 --no-cache --fsModuleCachePath=<scratch>/fsmc (TMPDIR in scratch) -> "Test Files  72 passed (72)" / "Tests  980 passed (980)"
+  - webview: same flags -> "Test Files  19 passed (19)" / "Tests  314 passed (314)"
+  - extension: same flags (--no-cache) -> "Test Files  22 passed (22)" / "Tests  203 passed (203)"
+  - runner, one file at a time, real Lean, MemAvailable >= 12 GB, capped.sh 3000 timeout 900, TELELEAN_TEST_TMP/TMPDIR in scratch: workspace/perform 8 passed (8); run/manager.rounds 4 passed (4); run/manager.gate 8 passed (8); integration/m2flow 5 passed (5); gate/rules 26 passed (26); gate/engine 30 passed (30); run/fresh.e2e 9 passed (9); run/walkthrough.e2e 22 passed (22); all rc=0, tmp_leftovers=0
+  - grep of inter.diff: 86 added it(...) (matches the report's counts), no removed tests, no .skip/.only/.todo
+  - Probes in a scratch copy of core (/tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/v2b2-code/mirror/packages/core/test/review/zz_verifier_probe.test.ts): A = TL023 after taking out the first of two premises; B = moved T.holds passes gate-proved but planItemRevert throws unsafe; C = empty backstop ok, a draft passed twice reverts cleanly
+  - Safety: the snapdiff before and after my runs are byte-identical (cmp); nothing in packages/extension/dist or out is newer than the session start; node_modules/.vite-temp dirs are empty; none of my processes left running
+  - Read: verify_common.md, 2b2.md, builder_rules.md, plan §0, §1/§1.1, §2.1, §2.9 (2b2 contracts), §3.6-3.8, §4.9-4.12, §6.1 2b2, §8 (2b1b r2, AP30-1 r3, builder 2b2)
+- **findings:**
+  - [1]
+    - **id:** V2B2-C1
+    - **severity:** major
+    - **where:** packages/core/src/review/revert.ts:118 (takeDecl), with the step rules that let the move through
+    - **problem:** planItemRevert refuses ('unsafe', "… moved since the session started … edit it by hand") any item with a declaration that B has and that moved since B. The step rules allow such a move under openProof. Example: B has a pending `axiom T.holds`; Claude deletes it and writes `theorem T.holds` below a later declaration. That Result can then never be taken out: Reject or plain decline (§3.6), Submit's D2-57 take-out, and the judge-apply reverts for no-longer-builds or a failed B.2/B.1 (§3.6) all throw. The person cannot edit ws/ by hand during a session, so the only way out is Exit. The plan (§4.11) says the take-out restores B's version and lists no refusal for this case.
+    - **evidence:** Probe B (scratch mirror): B = FORMALISED + `axiom cynder_not_good.holds` + `def extra_d`; the step removes the axiom and appends HONEST_PROOF after extra_d. judge(gate-proved, openProof) stepFindings: [] (no findings); stage problems: [] (Result owns Spyro.cynder_not_good.holds). planItemRevert(proof:cynder-not-good) -> "unsafe: Spyro.cynder_not_good.holds moved since the session started, so “proof:cynder-not-good” cannot be taken out mechanically: edit it by hand." The builder's own test RV8 covers the refusal (for a moved `def`) as intended.
+    - **fix:** In planItemRevert, handle a moved declaration that B has instead of refusing it. Remove it where it is (remove-decl) and insert B's text back at B's place: for a `.holds`, right after its statement (reuse the existing `plan.insert` path); otherwise after the nearest unit that B and the current state share (compareTexts' kept units). Then run verify() as now. Alternatively, close it at the source: make the step limits refuse moving any declaration B has, opened or not (T.holds rewritten in place), so no reachable state needs this. Add the probe scenario as a test (reject, and reconcile's revert, of a Result whose T.holds moved).
+  - [2]
+    - **id:** V2B2-C2
+    - **severity:** minor
+    - **where:** packages/core/src/review/revert.ts:260-262 (the mark comes back for plan.marks)
+    - **problem:** Taking out the written premise whose ledger `mark-removed` removed T's "follows from nothing" mark puts `follows_from: nothing` back even when another written premise's arrow into T stays. The card then has both the mark and `premises:`, which is TL023 (an error; the arrows win, so T's `fromNothing` turns false and no longer matches the inference's recorded question). This is reachable: §3.8 writes a second accepted premise for an already proved T as an "unused premise", and declining the first one takes it out. The backstop does not catch it, because B and F both have the mark.
+    - **evidence:** Probe A (scratch mirror): planGhostAdoption writes two premises into the marked target (marked = LITERAL with `follows_from: nothing`). The ledger has premise + mark-removed for the first and premise for the second. planItemRevert([first]) leaves the target block with lines `premises: cynder-is-not-in-the-new` and `follows_from: nothing`, and parseLeanFile reports "TL023 error A card cannot both follow from nothing and have arrows …".
+    - **fix:** Put the mark back only when the card's `premises:` is empty after the revert. Otherwise leave it removed, and record in §8 for 2f that the `mark-removed` ledger entry must move to a remaining written premise (or refuse explicitly with a clear message). Add a test with two written premises where the first is taken out.
+  - [3]
+    - **id:** V2B2-C3
+    - **severity:** nit
+    - **where:** docs/user-guide.md:103 and :237
+    - **problem:** Since 2b2, any cycle in the subject disables Formalize, with the new text "The arrows of this subject form a cycle (…): remove one arrow first." (AP-29 G2). Both the board and the host's start check do this now. The guide still lists only "This card is on a cycle of arrows (…)" as the reason (l.103), and says the start check is "no selected card lies on a cycle" (l.237).
+    - **fix:** Update both lines to describe the subject-wide check and its new text, or name them explicitly in 2h's (or 2i's) guide work so the stale wording is not missed.
+  - [4]
+    - **id:** V2B2-C4
+    - **severity:** nit
+    - **where:** packages/core/test/review/judge.test.ts:1582
+    - **problem:** The test 'at the stage and the end nothing changes: the reference is B already' only judges the stage. The end (`final`) is never asserted, so its name claims more than it checks.
+    - **fix:** Also assert `tags(judge(between, { purpose: 'final', ledger, inferences, ended: [TARGET] }).global)` is [] (or rename the test to say only the stage).

@@ -33,6 +33,9 @@ export const SHADOW_COMMIT_KINDS: readonly ShadowCommitKind[] = [
   'rebase',
   'accept-base',
   'checkpoint',
+  'step-start',
+  'decision',
+  'completion',
 ];
 const KIND_SET: ReadonlySet<string> = new Set(SHADOW_COMMIT_KINDS);
 const COMMIT_ID = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/u;
@@ -226,11 +229,16 @@ export class RunShadow implements ShadowWorkspace {
     return out.sort(byPath);
   }
 
-  syncMirror(): Promise<{ copied: string[]; removed: string[] }> {
+  syncMirror(files?: ReadonlyMap<string, string>): Promise<{ copied: string[]; removed: string[] }> {
     return this.exclusive(async () => {
-      const scan = await scanTree(this.paths.ws);
-      if (scan.unusual.length > 0) throw unusualEntriesError(scan.unusual);
-      const model = new Map([...scan.files].filter(([p]) => isModelPath(p, this.library)));
+      let source: ReadonlyMap<string, string>;
+      if (files !== undefined) source = files;
+      else {
+        const scan = await scanTree(this.paths.ws);
+        if (scan.unusual.length > 0) throw unusualEntriesError(scan.unusual);
+        source = scan.files;
+      }
+      const model = new Map([...source].filter(([p]) => isModelPath(p, this.library)));
       const mirror = await scanTree(this.paths.build, { skipHidden: true, readText: false });
       const copied: string[] = [];
       const removed: string[] = [];
@@ -321,6 +329,17 @@ export class RunShadow implements ShadowWorkspace {
   async lastCommit(kinds: readonly ShadowCommitKind[] = PASSING_COMMIT_KINDS): Promise<ShadowCommit | undefined> {
     const all = await this.commits();
     for (let i = all.length - 1; i >= 0; i--) {
+      const c = all[i];
+      if (c !== undefined && kinds.includes(c.kind)) return c;
+    }
+    return undefined;
+  }
+
+  async lastCommitSince(since: string, kinds: readonly ShadowCommitKind[]): Promise<ShadowCommit | undefined> {
+    const all = await this.commits();
+    const start = all.findIndex((c) => c.id === since);
+    if (start < 0) return undefined;
+    for (let i = all.length - 1; i >= start; i--) {
       const c = all[i];
       if (c !== undefined && kinds.includes(c.kind)) return c;
     }

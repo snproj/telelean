@@ -22,11 +22,12 @@ export function planAction(model: ProjectModel, action: BoardAction, ctx: PlanCo
 }
 
 /**
- * D-11 with the facts: which `.holds` changes, which dependents need `(h : n)`, what breaks (docs/m1-plan.md 6.2).
- * `rewrite` throws ActionError `facts-stale` unless every touched file is fresh, and `unsafe` (listing them) when a
- * declaration in the closure of users of `n.holds` is not a `theorem` (a def/instance/abbrev cannot take a
- * hypothesis without changing its type) or, for an axiom `n.holds`, when a declaration whose `#print axioms` lists
- * it is not reached through the `.ilean` references (a use the mechanical rewrite could not find).
+ * D-11 with the facts: which `.holds` changes, which dependents must change, what breaks (docs/m1-plan.md 6.2; spec
+ * v4: docs/slice1-plan.md 2.4). Only P->A is planned: it removes the card's `premises:` and `follows_from:` lines too
+ * (AR-7); A->P throws ActionError `invalid` (AR-6: an arrow or "follows from nothing" makes an axiom a proposition).
+ * When a conditional proof becomes an axiom, the declarations that pass it arguments need a DependentsChoice:
+ * `rewrite` throws `facts-stale` unless every touched file is fresh, and `unsafe` when the `.holds` type is not
+ * `… → n`.
  */
 export function planKindChange(model: ProjectModel, request: KindChangeRequest): KindChangePlan {
   return planKind(model, request);

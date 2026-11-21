@@ -1,7 +1,7 @@
 import type { SemanticSummary } from '@telelean/core';
 import { describe, expect, it } from 'vitest';
 import { semanticBadge, whyPlaceholder } from '../../src/labels';
-import { codeSpans, formatBytes, formatTime, oneLine, pastedLine, plainText, sentences, shortcutFor } from '../../src/model/format';
+import { codeSpans, formatBytes, formatTime, oneLine, pastedLine, plainText, selectionKeyFor, sentences, shortcutFor } from '../../src/model/format';
 
 describe('formatters', () => {
   it('formats history times: HH:MM today, "Mon D HH:MM" otherwise', () => {
@@ -42,17 +42,24 @@ describe('formatters', () => {
     expect(shortcutFor(key('y', { ctrlKey: true }))).toBe('redo');
     expect(shortcutFor(key('z'))).toBeNull();
     expect(shortcutFor(key('z', { ctrlKey: true, altKey: true }))).toBeNull();
+    // Spec v4 slice 1b: Escape clears the selection, Delete removes selected arrows; never with a modifier.
+    expect(selectionKeyFor(key('Escape'))).toBe('clear');
+    expect(selectionKeyFor(key('Delete'))).toBe('delete');
+    expect(selectionKeyFor(key('Delete', { shiftKey: true }))).toBeNull();
+    expect(selectionKeyFor(key('Escape', { ctrlKey: true }))).toBeNull();
+    expect(selectionKeyFor(key('Backspace'))).toBeNull();
+    expect(selectionKeyFor(key('z', { ctrlKey: true }))).toBeNull();
   });
 });
 
 describe('labels', () => {
   it('the why placeholder follows the stance and kind (D-14)', () => {
-    expect(whyPlaceholder('ASSUMPTION', undefined)).toBe('Why do you believe it?');
-    expect(whyPlaceholder('ASSUMPTION', 'believe')).toBe('Why do you believe it?');
-    expect(whyPlaceholder('ASSUMPTION', 'rule')).toBe('Where does the rule come from?');
-    expect(whyPlaceholder('ASSUMPTION', 'supposing')).toBe('What are you exploring?');
-    expect(whyPlaceholder('DERIVATION', 'rule')).toBe('Why do you think it follows?');
-    expect(whyPlaceholder('GOAL', undefined)).toBe('Why do you care?');
+    expect(whyPlaceholder('AXIOM', undefined)).toBe('Why do you believe it?');
+    expect(whyPlaceholder('AXIOM', 'believe')).toBe('Why do you believe it?');
+    expect(whyPlaceholder('AXIOM', 'rule')).toBe('Where does the rule come from?');
+    expect(whyPlaceholder('AXIOM', 'supposing')).toBe('What are you exploring?');
+    expect(whyPlaceholder('PROPOSITION', 'rule')).toBe('Why do you think it follows?');
+    expect(whyPlaceholder('PROPOSITION', undefined)).toBe('Why do you think it follows?');
   });
 
   it('the Lean badge has a text for every SemanticSummary state', () => {

@@ -3,7 +3,8 @@
  * Lean refresh (WP3), all integrated.
  *
  *   4 cards -> refresh: semantic fresh, 9 vocabulary items -> addNode writes a block to Model/Spyro/Inbox.lean, undo
- *   removes it -> G->A on cynder-not-good adds the axiom, the refresh shows it assumed -> copyText -> initGit,
+ *   removes it -> P->A ("Move to axioms", spec v4 AR-7) on cynder-not-good adds the axiom and drops its arrows, the
+ *   refresh shows it assumed -> copyText -> initGit,
  *   historyList, historyPreview (diff editor), historyRevert (and its undo) -> openInEditor Main.lean ->
  *   .telelean/graph.json exists. Git runs only in the scratch copy (refs/telelean/* only, no branch commits).
  */
@@ -86,7 +87,7 @@ suite('model board on the copied sample (real workspace; AT5.5)', () => {
     this.timeout(60_000);
     const inbox = path.join(root, 'Model', 'Spyro', 'Inbox.lean');
     const before = existsSync(inbox) ? readFileSync(inbox, 'utf8') : null;
-    const added = await request('addNode', { clientId: 'tmp-1', type: 'ASSUMPTION', naturalName: 'Cynder can fly', requestId: 'm-add' });
+    const added = await request('addNode', { clientId: 'tmp-1', type: 'AXIOM', naturalName: 'Cynder can fly', requestId: 'm-add' });
     assert.equal(added.ok, true, JSON.stringify(added));
     assert.match(readFileSync(inbox, 'utf8'), /natural_name: Cynder can fly/);
     await waitFor(() => latest?.nodes.length === 5, 30_000, 'a graph with 5 cards');
@@ -95,15 +96,18 @@ suite('model board on the copied sample (real workspace; AT5.5)', () => {
     assert.equal(existsSync(inbox) ? readFileSync(inbox, 'utf8') : null, before);
   });
 
-  test('G->A on cynder-not-good adds the axiom; the refresh shows it assumed', async function () {
+  test('P->A ("Move to axioms") on cynder-not-good adds the axiom and drops its arrows; the refresh shows it assumed', async function () {
     this.timeout(LEAN_TIMEOUT_MS + 30_000);
-    const outcome = await request('kindChange', { id: 'cynder-not-good', from: 'GOAL', to: 'ASSUMPTION', beforeId: null, requestId: 'm-g2a' });
+    const outcome = await request('kindChange', { id: 'cynder-not-good', from: 'PROPOSITION', to: 'AXIOM', beforeId: null, requestId: 'm-p2a' });
     assert.equal(outcome.ok, true, JSON.stringify(outcome));
-    assert.match(readFileSync(path.join(root, 'Model', 'Spyro', 'Main.lean'), 'utf8'), /axiom cynder_not_good\.holds/);
+    const main = readFileSync(path.join(root, 'Model', 'Spyro', 'Main.lean'), 'utf8');
+    assert.match(main, /axiom cynder_not_good\.holds/);
+    // Spec v4 AR-7: a proposition that becomes an axiom loses its incoming arrows (its premises: line).
+    assert.doesNotMatch(main, /premises: cynder-dark-past, new-spyro-pg, pg-no-dark-past/);
     await waitFor(
       () => {
         const node = latest?.nodes.find((n) => n.id === 'cynder-not-good');
-        return node?.type === 'ASSUMPTION' && node.status.proof.kind === 'assumed' && latest?.semantic.state === 'fresh';
+        return node?.type === 'AXIOM' && node.status.proof.kind === 'assumed' && latest?.semantic.state === 'fresh';
       },
       LEAN_TIMEOUT_MS,
       'cynder-not-good assumed after the refresh',

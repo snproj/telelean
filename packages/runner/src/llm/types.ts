@@ -294,6 +294,26 @@ export interface Adoption {
   aloneEntails?: boolean;
 }
 
+/**
+ * Slice 2 (docs/slice2-plan.md 2.8, D2-1): an arrow the proof needs into the step's target, from an existing card with
+ * a `.holds` that is no selected premise. telelean checks it at once (core `proposeArrowProblems`), records it, and
+ * writes it into the target's `premises:` at the step's next normalise; the person reviews it as an item.
+ */
+export interface ProposeArrowArgs {
+  /** The id of the card the arrow starts from. */
+  source: string;
+  /** The id of the card it goes into: the step's target. */
+  target: string;
+  /** Why the proof needs it, in one sentence. */
+  why: string;
+}
+
+/** Slice 2: propose_arrow's answer. `rejected`: the reason, in telelean's words (never counted as a check). */
+export interface ArrowProposal {
+  status: 'recorded' | 'rejected';
+  message: string;
+}
+
 export type FinishStatus = 'proved' | 'insufficient' | 'inconsistent' | 'not_proved' | 'lean_errors';
 
 export interface FinishArgs {
@@ -303,6 +323,11 @@ export interface FinishArgs {
   conflict?: string[];
   unused?: string[];
   assumed_without_asking: string[];
+  /**
+   * Slice 2 (DO-3, docs/slice2-plan.md 2.8): a Submit step found no other arrangement for the Shaky items of its
+   * inference, so the set may come back unchanged.
+   */
+  no_alternative?: boolean;
 }
 
 /**
@@ -354,6 +379,8 @@ export interface AgentToolHost {
   freeze_statements(args: FreezeStatementsArgs, ctx: ToolCallContext): Promise<FreezeResult>;
   ask_user(args: AskUserArgs, ctx: ToolCallContext): Promise<Answers>;
   propose_assumption(args: ProposeAssumptionArgs, ctx: ToolCallContext): Promise<Adoption>;
+  /** Slice 2 (D2-1): an arrow into the step's target, checked at once; outside an edit session it is refused. */
+  propose_arrow(args: ProposeArrowArgs, ctx: ToolCallContext): Promise<ArrowProposal>;
   finish(args: FinishArgs, ctx: ToolCallContext): Promise<GateVerdict>;
 }
 

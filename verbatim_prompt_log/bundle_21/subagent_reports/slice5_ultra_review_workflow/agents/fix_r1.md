@@ -1,0 +1,385 @@
+# fix:r1
+
+Agent `a09ac20cd7bb1782d` of workflow `wf_3842fba8-348`. Verbatim output (JSON alongside).
+
+- **summary:** I rewrote the slice-5 plan in one file, /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/plans/slice5-plan.md (now 498 lines), and every section that used a changed contract was updated with it: sub-slice scopes, contracts, design, UI, tests, cheats, decisions and coverage. One dated line was added to §8: "2026-11-20, ultra review round 1: …".
+
+**The blocker (IMP-1).** `JudgeInput.subject` and `BackstopInput.subject` are now required. They are taken from the run, never from a target, and 5a adds them. The built `judge.ts` and `backstop.ts` derive the subject from the first target, and I confirmed this in the code. In a transform step that target is `transform:<id>`, and a transform-started session with no inference has none, so every rule in this plan would have checked nothing in those sessions.
+
+**The four findings on slice 4's missing `revalued.held` (SOUND-02, LC-2, FID5-2, IMP-2).** The four findings offered either defining the revalue in slice 5 or following D4-21; I chose to define it in slice 5, as new decision D5-19. A held key that a live TransformFreeze covers is compared only through that TransformFreeze's own check, for every holder except accepted items. The revalue is worked out at every judge and stored nowhere. A card that refers to a changed target is never a TR-13 problem, which overrides D4-21 for references, and §2.6 now says so for slice 4's integrator. There is one fail-closed residual: if the person unfreezes the field they typed, the revalue ends.
+
+**Other major fixes:**
+- **Holds during a transform step (SOUND-03, LC-1, SOUND-09).** From the typed write on, a pending TransformFreeze carries a `held` map computed by `pendingHolds`, and that map is never excused by S₀. `transformScopeOf` also drops held fields from `open` and `arrowsInto`.
+- **ES-2's exceptions (FID5-1, SOUND-13).** Referenced Dependencies and empty Lean statements are now held, with ES-2's exceptions applied inside the check. The exceptions are worked out from the session's inferences, so a fill that a step was allowed still passes at stage, final and backstop. Proof references stay a logged narrowing, citing FZ-4.
+- **Dangling references (SOUND-01).** A reference whose target was deleted is held as absent, and a new `revived` token stops Claude declaring that name again (new decision D5-21, cheat 9).
+- **Premise Whys (SOUND-04).** The Why that telelean writes on a premise card is recorded in the ledger's `premise` entry and stays allowed whatever the item's status. The `reference` rule now uses slice 3's two-value rule at step purposes.
+- **Premise window (SOUND-05, IMP-17).** A sentence the person types in a suggested premise's window may hold `#`. Its token check moved out of `adoptionPlan` and into the `propose_assumption` tool check.
+- **The `#` picker (UI-1).** It now has a full focus, portal and keyboard model.
+
+**Minor fixes, applied where cheap and clearly right:**
+- Id allocation:
+  - The allocator also avoids every id the files name, every block id, and in a session B's ids and run.json's ids.
+  - A malformed ids.json is read leniently, keeping every id it can find, instead of being refused.
+  - An unreadable ids.json now blocks adding cards and starting sessions across the whole model folder.
+  - The in-memory registry only grows.
+  - A suggested premise keeps its card id when it is written again (D5-20).
+- F1 now runs through one shared hook in every planner.
+- Ids are derived with `idSource`, and TL112 comes from the build.
+- Raw spans, `renderForPerson` and the resolver getter.
+- Mirrors are re-made outside sessions.
+- Session prose is validated at commit.
+- New decision D5-22 covers accepted premises that are not written yet.
+- The UI findings are applied, and the webview's unit tests are split into pure node modules plus named Playwright cases.
+
+**What I did not take in full:**
+- FID5-15: not applied. It is a nit that adds a feature rather than removing ambiguity.
+- FID5-3, FID5-5, FID5-6, FID5-7, FID5-8, FID5-9, FID5-13, UI-15, SOUND-07 and SOUND-11 were taken only in part. The note on each says why.
+- **dispositions:**
+  - [1]
+    - **id:** build-IMP-1
+    - **action:** fixed
+    - **note:** JudgeInput.subject and BackstopInput.subject are required and come from the run (the start request, persisted in PersistedRun), never from a target (§2.4, 5a). referenceFindings, heldFields, holdingMap, otherSubjectRefHolds and slice 3's other-subject rule all read them. SessionCheckContext, finalCheck and Apply pass them. 5c2 and 5d test transform-only queues and inference-less sessions at gate-other, stage, final and backstop, with a mutation check (deriving the subject from a target must fail); cheat 1 is extended.
+  - [2]
+    - **id:** checks-S5-SOUND-02
+    - **action:** fixed
+    - **note:** Chose option (a), recorded as D5-19. §3.6 defines the revalue: a held key that a live TransformFreeze covers is compared only through that TransformFreeze, for every holder except accepted items, worked out at every judge and stored nowhere. Field keys and Lean names are mapped (via the statement or declaration the TransformFreeze targets). All citations of revalued.held are removed, and §2.6 records the D4-21 override for references. The 5d tests cover a field, a statement, a vocabulary item and a detached holder.
+  - [3]
+    - **id:** lifecycle-LC-2
+    - **action:** fixed
+    - **note:** Same fix as SOUND-02 (D5-19, §3.6). The revalue goes with its TransformFreeze on rollback, Retry, Unfreeze and session end; the Unfreeze corner is logged as a fail-closed residual. frozenChangesOf lists only expectations that were not set aside. Tests: the scenario passes, Claude's later change is refused, and a rolled-back step leaves no revalue.
+  - [4]
+    - **id:** intent-FID5-2
+    - **action:** fixed
+    - **note:** D5-19 defines the revalue in slice 5 and makes a card that refers to a changed target a warning only, never a TR-13 problem. This overrides D4-21 for references, and §2.6 and §7.1 say so. Slice 4's freeze and analysis places are in 5d's scope. Tests are in 5d.
+  - [5]
+    - **id:** build-IMP-2
+    - **action:** fixed
+    - **note:** Option (a), D5-19. revalued.held is removed from §2.6's list of requirements on slice 4, and §2.6 now says slice 5 builds the revalue itself.
+  - [6]
+    - **id:** checks-S5-SOUND-03
+    - **action:** fixed
+    - **note:** Slice 4's pending TransformFreeze gains held? (§2.5, §2.6), set at the typed write by core pendingHolds. It covers field values from the typed commit and declaration values from S₀'s facts; declarations the typed write itself writes are left to their own TransformFreezes. These holds are compared like any held key and never excused by S₀. The 5d tests cover both scenarios (a newly typed reference, and a detach that keeps the card's other references holding).
+  - [7]
+    - **id:** lifecycle-LC-1
+    - **action:** fixed
+    - **note:** Pending holds as in SOUND-03. In addition, transformScopeOf drops from open and arrowsInto every field key held at S₀, plus the fields that the typed or detached sentences refer to; the turn lists them under HELD, the window marks them, and a fuzzy held field is a problem. The refuter's caveat is handled: declaration holds use S₀'s facts, and typed declarations are left to their own TransformFreeze. 5d test included.
+  - [8]
+    - **id:** checks-S5-SOUND-04
+    - **action:** fixed
+    - **note:** The ledger premise entry gains rationale? (5a type, written by 5e's runner). It is the allowance on the written card's Why while the entry stands, whatever the item's status. reference is under slice 3's two-value rule at step purposes (§2.4, §3.5). The 5c2 tests cover a Shaky decline and a cascade to be redone.
+  - [9]
+    - **id:** checks-S5-SOUND-05
+    - **action:** fixed
+    - **note:** Chose 'allow it': a premise unit's naturalName counts on the natural_name of the card its ledger premise entry wrote (§3.5). The token check sits in the propose_assumption tool path, never inside adoptionPlan, and adoption writes mirrorText. §4.4 and D5-11 list the premise window's sentence. 5c2 test included.
+  - [10]
+    - **id:** build-IMP-17
+    - **action:** fixed
+    - **note:** Resolved together with SOUND-05: the premise window's sentence takes #, the refusal is only in the propose_assumption path, and added counts the live premise unit's naturalName.
+  - [11]
+    - **id:** intent-FID5-1
+    - **action:** fixed
+    - **note:** D5-9 is rewritten. #[card:c:dependencies] holds c's Dependencies (no arrow removed or added, mark unchanged, compared by HeldValue.deps). An empty statement is held as kept empty. ES-2's exceptions are applied inside the check through refExceptions, taken from the session's inferences, so they persist at stage, final and backstop. Proof references keep holding nothing, as a logged narrowing citing FZ-4 (the refuter's inconsistency point). Also updated: the tools (proposeArrowProblems, removeArrowProblems), fuzzyStatements, the guide, 5d tests and cheat 10.
+  - [12]
+    - **id:** checks-S5-SOUND-13
+    - **action:** fixed
+    - **note:** Covered by FID5-1's fix: empty statements and Dependencies are held, with ES-2's exceptions applied inside the check. The remaining proof case (mark_proof_broken on a referenced non-target proof) is now named in D5-9 as a narrowing, with its reason, an alternative and how to reverse it. The 'by construction' claim is gone.
+  - [13]
+    - **id:** checks-S5-SOUND-01
+    - **action:** fixed
+    - **note:** referenceHolds takes every target whether or not it resolves; gone targets are held as absent in heldFields, holdingMap and otherSubjectRefHolds. A new reference token, revived, refuses a re-declared dangling lean name unless the person's typed text declares or uses it, with Claude's text. §3.3 is corrected, D5-18 gains the residual, new decision D5-21 records the choice, and cheat 9 has a proof-phase lemma twin.
+  - [14]
+    - **id:** checks-S5-SOUND-06
+    - **action:** fixed
+    - **note:** takenIds takes namedIds(m, s) for every subject, so an id a dangling token or premises: entry names is never given before it is recorded (§2.2). 5a test: an empty registry plus a hand-deleted x gives x-2.
+  - [15]
+    - **id:** lifecycle-LC-4
+    - **action:** fixed
+    - **note:** namedIds of every subject is in takenIds, and §3.2's false sentence is corrected. Tokens in decisions.json are covered because session prose is now validated at commit (§2.7, D5-11), so they always name a card that was recorded.
+  - [16]
+    - **id:** build-IMP-12
+    - **action:** fixed
+    - **note:** takenIds treats every block id of every parsed model file as taken, including blocks outside a subject and duplicates, as add-node does today (§2.2). 5a test included.
+  - [17]
+    - **id:** lifecycle-LC-5
+    - **action:** fixed
+    - **note:** Every in-session allocation passes, as extra, namedIds of B plus every card id run.json names (records, cardIds, ledger premise, card and typed ids, the stack's takenOut). It is pure, so there is no write at load (§2.2). 5b test uses a slice-4 run.json fixture and a rolled-back registry.
+  - [18]
+    - **id:** lifecycle-LC-8
+    - **action:** fixed
+    - **note:** recordIds adds to the in-memory registry before it writes and resolves; while the window is open the registry only grows; re-reads are unioned, and a smaller file is rewritten at the next record (§2.2). 5b test: foo, then foo-2 with no watcher event.
+  - [19]
+    - **id:** lifecycle-LC-13
+    - **action:** fixed
+    - **note:** takenIds refuses while any registry of the folder is unreadable. TL203 says no card can be added in the folder and no session can start. Lenient parsing (FID5-10) makes this state rare. D5-17 is updated, with a test.
+  - [20]
+    - **id:** intent-FID5-10
+    - **action:** fixed
+    - **note:** parseIdsFile salvages every quoted string matching ID_PATTERN (for a merge conflict, the union of both sides) and reports it as a TL204 warning, rewriting the file cleanly at the next record. A file is unreadable only when it is non-empty and nothing can be salvaged. D5-17 is rewritten.
+  - [21]
+    - **id:** build-IMP-10
+    - **action:** fixed
+    - **note:** No in-session allocation can reach an unreadable file, because takenIds refuses first. A premise write refused this way fails like an environment failure: taken back out, still accepted, still due (§2.2). 5b test included.
+  - [22]
+    - **id:** lifecycle-LC-3
+    - **action:** fixed
+    - **note:** ItemRecord.cardId is set at the first write's step 4 and never cleared. Later writes of the same item reuse it when no card holds it, and other allocations avoid it through extra. New decision D5-20, I1 restated, §3.2 and §5 updated. 5b tests: Accept, move, Undo×2, Redo×2; back to review then Accept keeps the id.
+  - [23]
+    - **id:** build-IMP-11
+    - **action:** fixed
+    - **note:** namedIdsInText is defined as an over-approximation (written ids, premises entries, tokens, the parser's derived ids). TL112 moves to project/build.ts with the build's node id (5a). Test: TL112 and F1 agree on the id with the -2 suffix.
+  - [24]
+    - **id:** build-IMP-13
+    - **action:** fixed
+    - **note:** New idSource(sentence) replaces each token with its card id, or its Lean name's last component, before deriveId. This needs no resolver in 5a. Test: spyro-pg-is-too-strong.
+  - [25]
+    - **id:** build-IMP-7
+    - **action:** fixed
+    - **note:** writeSubjectIds takes cards?, and planIdWrites is a wrapper around it. The end's board step keeps its subset of kept cards (D3-16), so slice 3's 3e1 tests are unchanged (§2.2, §3.2, D5-4).
+  - [26]
+    - **id:** lifecycle-LC-15
+    - **action:** fixed
+    - **note:** Said which: planIdWrites keeps the cards filter, and §3.2 names the board step after Exit or an empty Apply as F1's one exception. The 5a test checks that step's files.
+  - [27]
+    - **id:** build-IMP-8
+    - **action:** fixed
+    - **note:** F1 runs through one hook in edit/session.ts (changes({ writeIdsOf, lose })) that every planner shares: planAction, planArrows, set-freezes and slice 4's planTransform are all named in 5a. One F1 test per planner kind.
+  - [28]
+    - **id:** build-IMP-9
+    - **action:** fixed
+    - **note:** §0's list of known test changes now has the core CTX fixtures gaining ids, core JudgeInput and BackstopInput gaining subject (5a), and the three fakes gaining idsOf and recordIds (5b). A session start without recordIds is refused.
+  - [29]
+    - **id:** build-IMP-5
+    - **action:** fixed
+    - **note:** §0 says 5a moves slice 3's heldFields hook into freeze/refs.ts with the new signature, still returning an empty map and never throwing, and updates its call site. Only functions nothing calls yet are throwing stubs. 5a test included.
+  - [30]
+    - **id:** checks-S5-SOUND-08
+    - **action:** fixed
+    - **note:** holdingMap(B, …) is memoised per (B, target), and heldFields is assembled from the entries at every call. The { from: 'base' } test compares holdingMaps with field keys included (§2.5). 5d tests: an own base freeze made after a judge holds; a freeze made while a referenced sentence differs is stored as state.
+  - [31]
+    - **id:** lifecycle-LC-6
+    - **action:** fixed
+    - **note:** Same as SOUND-08. 5d test on one B: freeze, held; Unfreeze, not held; Undo, held again.
+  - [32]
+    - **id:** lifecycle-LC-7
+    - **action:** fixed
+    - **note:** The { from: 'base' } test compares holdingMap(J, …) with holdingMap(B, …), field keys included (§2.5). Tests in both directions, including the keep offered at Exit.
+  - [33]
+    - **id:** checks-S5-SOUND-09
+    - **action:** fixed
+    - **note:** transformScopeOf drops held field keys (and held Dependencies from arrowsInto). The window marks them 'held by “‹A›” (it refers to this)', and a fuzzy held field is a problem, with two texts: one for a frozen holder, one for the person's own typed sentence (§3.6, §2.8).
+  - [34]
+    - **id:** checks-S5-SOUND-10
+    - **action:** fixed
+    - **note:** §3.4 lists every text that tells Claude a value to keep exactly: G5's, slice 3's frozen texts, FROZEN BY THE PERSON, personChangedFreezes, the transform turn's 'keep exactly', the feedback turn's kept parts, heldField, and the reference texts. The core ones go in 5c2 and the runner ones in 5e. Each is on 5e's allow list with a test that the stored token survives.
+  - [35]
+    - **id:** build-IMP-6
+    - **action:** fixed
+    - **note:** New core renderForPerson(text, r) drops every marker and renders 'plain'. Every runner copy of a Claude-facing message into a view, notice or sidecar uses it: GateAttemptView.detail, notices, attempts.jsonl and the stage report (§2.7). 5e test: no U+E000/U+E001 and no #[card:.
+  - [36]
+    - **id:** build-IMP-16
+    - **action:** fixed
+    - **note:** renderingSession and renderingToolHost take a resolver getter; the tool-host wrapper catches thrown errors, renders their messages and rethrows (§2.7). Both are covered in 5e's transcript scan.
+  - [37]
+    - **id:** lifecycle-LC-12
+    - **action:** fixed
+    - **note:** The resolver is the running step's newest check, else its S₀ model, else the stage judgement's, else B's. After a reload it is a markup-only model of ws/ (§2.7, §5). 5e tests the second step's first turn and the Resume turn.
+  - [38]
+    - **id:** checks-S5-SOUND-14
+    - **action:** fixed
+    - **note:** otherSubjectRefHolds is holdingMap over B with every other subject's sentences and Whys as roots, restricted to the session subject's keys, so the meaning closure and absent targets are included (§2.5). 5d test with a changed helper; cheat 5 is extended.
+  - [39]
+    - **id:** checks-S5-SOUND-11
+    - **action:** partly
+    - **note:** Applied: detachRefs uses the target's label in B when its current sentence is Claude's (§3.7, D5-12); propose_assumption refuses a token in why_needed (§2.8, §3.5); the premise Accept's Why starts empty and is never prefilled with Claude's text (§4.4). Not applied: the TR-13 row showing both versions. The row shows the words it will write, which is enough to review the detach.
+  - [40]
+    - **id:** checks-S5-SOUND-12
+    - **action:** fixed
+    - **note:** Claude's Delete items and vocabulary removal items carry ItemDetailView.referencedBy on the masked model and show the 'Referred to by …' line (§3.7, 5c2, 5f2). 5c2 test included.
+  - [41]
+    - **id:** checks-S5-SOUND-07
+    - **action:** partly
+    - **note:** Applied: every reader (core, runner, the webview's refs/, RefText) uses only core's refsIn and parseRefToken, with a property test that chips match core's spans. NAME is now a fully qualified identifier with dots, never #, U+2039 or U+203A. Resolution is by exact match only. Renderings never form a token (property test). Skipped: stripping _root_. in refKey, because refProblems' exact-match lookup already refuses any name that is not a vocabulary item's fully qualified name.
+  - [42]
+    - **id:** lifecycle-LC-9
+    - **action:** fixed
+    - **note:** Chose the preferred 'wait', narrowed to the case that matters: while an accepted Add premise whose Why holds a token is not written yet, Formalize, Retry step and Submit review are refused with the reload text. New decision D5-22 (§3.6, §2.8, 5d runner, with a test).
+  - [43]
+    - **id:** lifecycle-LC-10
+    - **action:** fixed
+    - **note:** Detach units are owned by the trashed target's typed item, so one Reject restores both. A detach gives a TransformFreeze only to a field that is frozen for another reason. EndConfirmationView.typed gains followOn rows, with their text (§3.7, §2.6, §2.8). 5c2 tests the Reject.
+  - [44]
+    - **id:** lifecycle-LC-11
+    - **action:** fixed
+    - **note:** refProblems' trashed includes every queued transform's trash, with its own text. At Submit review, a queued transform whose tokens name a card another queued transform trashes is stale, with its own text (§3.7, §2.4, §2.8). 5c2 test.
+  - [45]
+    - **id:** lifecycle-LC-14
+    - **action:** fixed
+    - **note:** The residual is added to D5-18, §3.2's 'No migration' and the guide's list of narrowings.
+  - [46]
+    - **id:** intent-FID5-3
+    - **action:** partly
+    - **note:** D5-5's editor is kept, as the refuter argued: it matches GitHub's raw form plus a preview. What survived is applied: §9 marks RF-1 (b) and RF-2 (c) as narrowed in editors by D5-5; the cost of a stale slug is stated in D5-3 and D5-5; malformedRefs makes commit refuse '#[card:' or '#[lean:' text that is not a token; and the live preview shows problems.
+  - [47]
+    - **id:** intent-FID5-4
+    - **action:** fixed
+    - **note:** (1) Outside sessions, every board plan that changes a model file of a subject also re-mirrors that subject's stale mirrors, in the same Undo step, through the shared EditSession hook. (2) normalise requires mirrorText for any new or changed docstring; the loose isMirrorOf applies only to docstrings unchanged since B and to D-9's follow test. D5-7, §3.4, D5-18 (in-session residual) and the 5c1 tests are updated.
+  - [48]
+    - **id:** intent-FID5-5
+    - **action:** partly
+    - **note:** Took the finding's second option: D5-10's wider hold is kept, consistent with slice 3's unliftable other-subject rule. Its reason is corrected, and these holds now appear in StateJudgement.held and the marks as 'held by “A” of S (it refers to this)'. Holding only what other subjects' frozen cards reference, liftable by Unfreeze, is logged as D5-10's alternative with how to reverse it.
+  - [49]
+    - **id:** intent-FID5-6
+    - **action:** partly
+    - **note:** D5-12's incorrect reason is replaced: after a detach nothing is left broken, the person's words stay theirs, and Claude could not add the wanted reference anyway (D5-8). The no-choice detach (plus 'Delete it too') is kept; per-dependent choices with a trashed-token rule are logged as the alternative.
+  - [50]
+    - **id:** intent-FID5-7
+    - **action:** partly
+    - **note:** The reason is now stated in D5-11: a draft card has no id until the typed write, and giving one at creation would need a host round trip and burn an id for every draft dropped. Draft ids at creation, or draft keys in Instructions, are logged as alternatives.
+  - [51]
+    - **id:** intent-FID5-8
+    - **action:** partly
+    - **note:** Session prose (answers, notes, the premise Why, Instructions) is now validated at commit with refProblems on the model the person sees, so telelean's own inputs never produce a cross-subject card token. The Copy tooltip says card references work on their own subject's board. The 'deleted card' display for hand-written cross-subject tokens is kept, explained by TL124, rather than adding a project-wide display resolver to the webview.
+  - [52]
+    - **id:** intent-FID5-9
+    - **action:** partly
+    - **note:** D5-8 is kept and its actual reason is stated: RF-1 has the person pick references, Claude-added ones would make holds follow targets the person never chose, a forged id could name a card not yet made or hidden, and the check is cheap. The Shaky and D2-15 interplay is noted. The simpler 'visible target' check is logged as the alternative.
+  - [53]
+    - **id:** intent-FID5-11
+    - **action:** fixed
+    - **note:** refLabel nests references up to three levels with a visited set, using '…' at the bound or on a cycle; inner labels use ASCII quotes, so labels hold no guillemets and no token. D5-5 is updated, with 5c1 tests.
+  - [54]
+    - **id:** intent-FID5-12
+    - **action:** fixed
+    - **note:** Both sides of a review row render with the Proposed (masked) resolver. The chip tooltip adds 'In your files: “‹name›”' when the name in your files differs (§3.3, §2.8, 5f2 test).
+  - [55]
+    - **id:** intent-FID5-13
+    - **action:** partly
+    - **note:** The Delete dialog marks frozen referrers (§3.7, §2.8, §4.6). A 'Keep their words' option on the board's Delete is logged as D5-12's alternative rather than built, which keeps delete-node unchanged.
+  - [56]
+    - **id:** intent-FID5-14
+    - **action:** fixed
+    - **note:** The system prompt line lists all four token forms, describes card and vocabulary renderings separately with an example, and says where the field goes (§2.8).
+  - [57]
+    - **id:** intent-FID5-15
+    - **action:** rejected
+    - **note:** A nit that adds a feature rather than removing ambiguity. → already reaches every field of the highlighted card, which meets RF-1's 'cards and fields'. Left for a later pass.
+  - [58]
+    - **id:** intent-FID5-16
+    - **action:** fixed
+    - **note:** heldFields keeps a via card for each holder. Marks read 'held by “A” (it refers to this)' for direct holds and 'held by “A” through “B”' for transitive ones (§2.5, §2.8); 5d test.
+  - [59]
+    - **id:** build-IMP-3
+    - **action:** fixed
+    - **note:** New graph-level referencedByIn, and refProblems now takes a RefResolver (with leanUnknown 'allow' for the webview's preview). DeletePlan.referencedBy is dropped: the dialog computes the list from the view's graph. 5f2 test: the dialog's list equals core's referencedBy on a fixture.
+  - [60]
+    - **id:** build-IMP-4
+    - **action:** fixed
+    - **note:** Pure modules refs/inputModel.ts (refTrigger, pickerReduce, insertionRange) and refs/segments.ts are unit-tested in node. Browser behaviour is moved to named Playwright cases in s5-refs.spec.ts. The 5f2 DOM scan becomes a source test plus react-dom/server scans.
+  - [61]
+    - **id:** ui-UI-6
+    - **action:** fixed
+    - **note:** §6.1 5f1 is split into node unit tests of the pure functions and a named list of Playwright cases. §4.1 says the integrator's run, not 5f1, decides whether RefInput needs its own undo.
+  - [62]
+    - **id:** build-IMP-14
+    - **action:** fixed
+    - **note:** 5e keeps only the 'names no card' case. The hidden-card twin moves to 5c1 as an S4 test on slice 4's draft problems, in a window opened while the results are hidden.
+  - [63]
+    - **id:** build-IMP-15
+    - **action:** fixed
+    - **note:** 'reference' is added to StateJudgement.problems' code, BackstopRefusal.code and FinalCheckRule (§2.4, 5c2), with verbatim texts for added, revived and docstring (§2.8). Held-field problems use slice 3's frozen and held codes.
+  - [64]
+    - **id:** build-IMP-18
+    - **action:** fixed
+    - **note:** A chip is a <button type=button data-nodrag>; its onClick stops propagation, so NodeCard's clickCard never runs (§4.3). A Playwright case covers a press-and-move on a chip.
+  - [65]
+    - **id:** build-IMP-19
+    - **action:** fixed
+    - **note:** CardRef gains name, filled by buildSessionView from the masked model (5c2). §4.6 uses it for review labels.
+  - [66]
+    - **id:** build-IMP-20
+    - **action:** fixed
+    - **note:** searchRefs is slice 4's matcher in a 'refs' mode; CardSearch keeps the default ranking, so its 4k tests stand. The Dependencies editor uses CardSearch (§4.2, §0).
+  - [67]
+    - **id:** build-IMP-21
+    - **action:** fixed
+    - **note:** subjectGraph takes extra wanted names: in a session, the Lean names the session's prose references (answers, notes, Instructions, Earlier answers) join the Proposed graph's band (§2.3; 5c1 adds the parameter, 5e passes the names). 5c1 test.
+  - [68]
+    - **id:** build-IMP-22
+    - **action:** fixed
+    - **note:** §2.3 now says ‹x› marks a placeholder and names the literal characters U+2039 and U+203A. The 'plain' and 'claude' renderings and nameOf use them; chips show their labels without them. Labels never contain them.
+  - [69]
+    - **id:** build-IMP-23
+    - **action:** fixed
+    - **note:** 5b names workspace/types.ts. 5a's heading reads 'Core, plus two runner changes'. The system prompt line has #[lean:NAME:FIELD]. Cheat 6, and cheat 7's runner part, are exempt from the core cheats file.
+  - [70]
+    - **id:** ui-UI-1
+    - **action:** fixed
+    - **note:** §4.1 adds the focus model (a combobox and a listbox that never takes focus, with ARIA), mousedown prevention on the picker's root and on 'Shows as:', the portal into the nearest dialog or .tl-popover through Popover's container, placement and following, and Popover's keepFocus. Playwright cases cover each host.
+  - [71]
+    - **id:** ui-UI-2
+    - **action:** fixed
+    - **note:** §4.1: window-level keydown in the capture phase while the picker is open, handling ↑ ↓ → ← Enter Tab Esc. Enter with no row inserts nothing; Tab closes the picker and moves focus; the first Esc closes only the picker. Playwright cases cover each host (A|P box, hold-as, decline menu, transform window).
+  - [72]
+    - **id:** ui-UI-3
+    - **action:** fixed
+    - **note:** Reveal no longer changes the selection (revealNode, highlightVocab), and Ctrl+click selects (§4.3). The chip is a data-nodrag button whose onClick stops propagation. Store test: revealRef leaves the selections unchanged; Playwright case included.
+  - [73]
+    - **id:** ui-UI-4
+    - **action:** fixed
+    - **note:** TransformDependent gains reference?: { text } with choices []; 'Delete it too' stays. Changed-target and other-subject rows are warnings. transform/ImpactPanel.tsx is in 5f2's scope, with rows skipped by 'Set all to …'. Tests in 5c2 and 5f2.
+  - [74]
+    - **id:** ui-UI-5
+    - **action:** fixed
+    - **note:** RationaleDialog's Why takes # (5f1, §4.4). planChangeKind's rationale is validated with refProblems (5c1, §2.7), with tests for forged and cross-subject tokens and a Playwright host case.
+  - [75]
+    - **id:** ui-UI-7
+    - **action:** fixed
+    - **note:** A card face's chips join slice 3's roving focus. CardDetails gains a 'Refers to' row of focusable chips beside 'Referred to by'. aria-label texts are in §2.8.
+  - [76]
+    - **id:** ui-UI-8
+    - **action:** fixed
+    - **note:** (a) The host's 'Copied' is the only toast, and the hint moved into the tooltip. (b) Texts for 'Copy ‹n› of ‹m› references' with per-item tooltip lines. (c) The section copies the selection; a right-click menu copies its target (U1). (d) The copy codicon, never link. D5-15 is updated.
+  - [77]
+    - **id:** ui-UI-9
+    - **action:** fixed
+    - **note:** While TL203 is in the workspace diagnostics, Add, New proposition here, Formalize and Transform cards… are disabled with TL203's text as the reason (§4.4, 5f1). TL203 now says no card can be added in the folder and no session can start.
+  - [78]
+    - **id:** ui-UI-10
+    - **action:** fixed
+    - **note:** (a) Window candidates leave out cards in this transform's or any queued transform's trash. (b) # in the Dependencies editor opens slice 4's CardSearch seeded with the typed text, so its cycle-disabled rows stay (§4.2).
+  - [79]
+    - **id:** ui-UI-11
+    - **action:** fixed
+    - **note:** The picker closes by itself when its query matches nothing and ends with a space; Enter with no row inserts nothing (§4.1). Covered by pickerReduce's unit tests.
+  - [80]
+    - **id:** ui-UI-12
+    - **action:** fixed
+    - **note:** The 5f2 scan covers text, title, aria-label, aria-description and SVG <title>, with an allowlist, and fixtures build name through one helper that calls core's renderRefs. The sites added to §4.6 are NodeCard's aria-label, cardData.ts, band.ts, AlsoAssumed.tsx, menuName and CardDetails.
+  - [81]
+    - **id:** ui-UI-13
+    - **action:** fixed
+    - **note:** The dialog computes referrers from the view's graph with referencedByIn and shows them as a section of linked items, frozen ones marked, counted with the dialog's other lists so 'Nothing else refers to it.' appears only when none refers to it. Singular and plural texts are in §2.8.
+  - [82]
+    - **id:** ui-UI-14
+    - **action:** fixed
+    - **note:** RefResolver carries its subject, and lean() returns the item's subject; a label is the short name in its own subject and the qualified name elsewhere (displayName's rule). 5c1 test: S1.InGame and S2.InGame are distinct.
+  - [83]
+    - **id:** ui-UI-15
+    - **action:** partly
+    - **note:** Inside the window a chip reveals a draft card of that window (scroll and flash); any other target is named by its tooltip, since the board behind the modal cannot be seen (new decision D5-23). The read-only peek popover is logged as the alternative rather than built.
+  - [84]
+    - **id:** ui-UI-16
+    - **action:** fixed
+    - **note:** RefInput previews refProblems on the view's graph (resolverOfGraph, leanUnknown 'allow') and shows problems under 'Shows as:'. Enter does not commit while a problem exists; Esc still cancels (§4.1). Test included.
+  - [85]
+    - **id:** ui-UI-17
+    - **action:** fixed
+    - **note:** One mark per field, 'held by “‹first›” (and ‹n› more)', with one tooltip line per holder ('its Lean relies on it' or 'it refers to this') (§2.8, §4.6).
+  - [86]
+    - **id:** ui-UI-18
+    - **action:** fixed
+    - **note:** The guide's 'References' section states in plain words D5-6, D5-7, D5-11, D5-12, D5-14, D5-23, the proof narrowing and the LC-14 residual (§4.6).
+  - [87]
+    - **id:** ui-UI-19
+    - **action:** fixed
+    - **note:** Face chips get a dotted underline and a small leading # glyph, so blue never reads as a status (§4.3). The Playwright screenshots include cards with the formalised glow and the established glow.

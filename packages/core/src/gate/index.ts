@@ -4,12 +4,11 @@
  * describe). Pure TypeScript: no Node or vscode APIs (the webview bundles core).
  */
 import type { FileChange } from '../actions.js';
-import type { LifecycleItem } from '../run.js';
 import type { ProjectModel } from '../project/types.js';
 import { adoptionPlan } from './adoption.js';
 import { describe, notice } from './describe.js';
 import { checkChangeSet, ghostProblems, scanForbiddenText } from './g0.js';
-import { lifecycle, normalisation } from './normalise.js';
+import { normalisation } from './normalise.js';
 import { permittedAxioms, snapshotOf } from './permitted.js';
 import { evaluate } from './rules.js';
 import type {
@@ -26,6 +25,8 @@ import type {
 } from './types.js';
 
 export * from './types.js';
+/** Spec v4.1 B.2 (slice 1e): the `undeclared-premise` text when telelean cannot see which cards a proof uses. */
+export { UNSEEN_PROOF } from './rules.js';
 
 /**
  * G0 token denylist over one Lean file's text (03 section 8.5 G0, prototype): `lexLean` tokens only, so words in
@@ -80,12 +81,12 @@ export function checkFileChanges(base: ReadonlyMap<string, string>, current: Rea
  *     `other`; an axiom outside every subject's modules (only the user writes there) counts when it is not a Prop
  *   ∪ selected: `n.holds` of each selected premise / adopted ghost whose `.holds` is an axiom
  *   ∪ presuppositions: presupposition axioms in `lean.presupposes` of the target's and the selected statements
- *   ∪ derivation footprints: `#print axioms` of each selected premise whose `.holds` is a theorem with status `proved`
- *     (minus `sorryAx`), unless that footprint contains the target's own `.holds` (a pending promotion: circular).
+ *   ∪ proof footprints: `#print axioms` of each selected premise whose `.holds` is a theorem with status `proved`
+ *     (minus `sorryAx`), unless that footprint contains the target's own `.holds` (a target pending proof: circular).
  *     Fixer round 1: given `base` (B: the user's files, the run's base or Accept's accept-base commit), only for the
  *     user's own proof: the premise had the same statement in B and its `.holds` keeps B's source text (B's footprint
  *     when B has facts). A proof Claude added or changed in the run never widens the set it is judged against.
- * Selected premises contributing nothing (no `.holds`, conditional, resting on the target's claimed `.holds`, or, given
+ * Selected premises contributing nothing (no `.holds`, conditional, resting on the target's pending `.holds`, or, given
  * `base`, proved only in this run) are listed in `unusable`. The target's `.holds` is never in the result.
  * Throws ActionError `invalid` when the target or a selected id is not a node of `selection.subject`.
  */
@@ -131,7 +132,7 @@ export function normalisationChanges(model: ProjectModel, nodeIds: readonly stri
 }
 
 /**
- * D-6 adoption ("I hold this"): inserts, right before the target's block in the target's file, a new ASSUMPTION
+ * D-6 adoption ("I hold this"): inserts, right before the target's block in the target's file, a new AXIOM
  * block (`renderBlock`: id, type, natural_name = Claude's sentence, rationale?, asserted, lean, origin: agent,
  * session, worded_by: agent) followed by `/-- <sentence> -/`, `abbrev <name> : Prop := <statement>` and
  * `axiom <name>.holds : <name>`, then a blank line; and (fixer round 1) appends the new card's id to the target's
@@ -144,15 +145,6 @@ export function normalisationChanges(model: ProjectModel, nodeIds: readonly stri
  */
 export function planGhostAdoption(model: ProjectModel, request: GhostAdoptionRequest): GhostAdoptionPlan {
   return adoptionPlan(model, request);
-}
-
-/**
- * The confirmed lifecycle items of a proposal as text changes (D-21): `change-kind` G->D of a proved target changes
- * only its block's `type:` (06.2 table: "type only (already proved)"). Applied by Accept on top of the rebased files.
- * Throws ActionError `unsafe` if an item no longer applies (e.g. the target is no longer proved).
- */
-export function lifecycleChanges(model: ProjectModel, items: readonly LifecycleItem[]): FileChange[] {
-  return lifecycle(model, items);
 }
 
 /**

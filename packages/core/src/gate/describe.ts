@@ -165,6 +165,13 @@ export function describe(finding: GateFinding, ctx: DescribeContext, brief = fal
       return usedAxioms(finding, ctx, brief);
     case 'comparator-illegal-axiom':
       return usedAxioms(finding, ctx, brief);
+    case 'undeclared-premise':
+      // Spec v4.1 B.2 (slice 1e): the board's words for the user, who selected the arrows.
+      if (token === 'source-only') return 'telelean could not see which cards the proof uses; this check needs the elaborated facts';
+      if (token === 'unseen') return `the proof uses ${cardLabel(finding.nodeId, ctx)} in a way the arrows do not show`;
+      // Slice 2 (2b1b, D2-50): proof material stays with its Result.
+      if (token === 'other-result') return `it used ${shown ?? 'a declaration'}, which belongs to the proof of ${cardLabel(finding.nodeId, ctx)}`;
+      return `the proof uses ${cardLabel(finding.nodeId, ctx)}, which is not one of the arrows you selected`;
     case 'sorry-axiom':
       return `it left a gap (${code('sorry')}) in ${shown ?? 'a proof'}`;
     case 'new-axiom':
@@ -172,6 +179,8 @@ export function describe(finding: GateFinding, ctx: DescribeContext, brief = fal
       if (token === 'statement') return `it wrote an axiom${shown !== undefined ? ` (${shown})` : ''} as the statement of ${cardLabel(finding.nodeId, ctx)}`;
       if (token === 'unclassified') return `it added an axiom telelean cannot classify as vocabulary${shown !== undefined ? ` (${shown})` : ''}`;
       if (token === 'detached') return `it left a blank line between ${cardLabel(finding.nodeId, ctx)} and its Lean statement`;
+      // Slice 2 (2b1b): a reused name with another type (S6).
+      if (token === 'type-changed') return `it added an axiom with the name of an existing declaration${shown !== undefined ? ` (${shown})` : ''}`;
       return `it added an axiom${shown !== undefined ? ` (${shown})` : ''}, and only you can add beliefs`;
     case 'vocabulary-shape':
       return `it added vocabulary of a kind telelean does not allow${shown !== undefined ? ` (${shown})` : ''}`;
@@ -179,6 +188,16 @@ export function describe(finding: GateFinding, ctx: DescribeContext, brief = fal
       if (token === 'target') return `it changed the statement it had to prove (a definition the frozen statement depends on changed${shown !== undefined ? `: ${shown}` : ''})`;
       if (token === 'removed') return `it removed an existing declaration${shown !== undefined ? ` (${shown})` : ''}`;
       if (token === 'ghost') return `it changed the suggestion you adopted${shown !== undefined ? ` (${shown})` : ''}`;
+      // Slice 2 (2b1b, D2-41): the step limits; content an earlier step proposed stays as it is in this one.
+      if (token === 'session') return `it changed ${shown ?? 'something'}, which an earlier step proposed and you are reviewing`;
+      // Fixer 2b1b r2 (R1-3): content an earlier step wrote that no review item covers (an anomaly: nothing to review).
+      if (token === 'uncovered') return `it changed ${shown ?? 'something'}, which an earlier step wrote`;
+      // Fixer 2b1b r1 (S-F4): the target's proof while the step's scope keeps it closed (added, changed, removed or
+      // moved: fixer 2b1b r2, R1-3); a line outside declarations.
+      if (token === 'closed-proof') return `it changed the proof of ${cardLabel(finding.nodeId, ctx)}, which this step may not change`;
+      if (token === 'text') return `it removed or moved a line outside declarations${finding.names?.[0] !== undefined ? ` (${code(finding.names[0])})` : ''}${inFile(finding)}`;
+      // Fixer 2b1b r1 (A-ADV-3): a difference no review item can hold.
+      if (token === 'unowned') return `it made a change no review item can hold${shown !== undefined ? ` (${shown})` : ''}`;
       return `it changed an existing declaration${shown !== undefined ? ` (${shown})` : ''}`;
     case 'statement-changed':
     case 'comparator-definition-mismatch':
@@ -196,6 +215,9 @@ export function describe(finding: GateFinding, ctx: DescribeContext, brief = fal
     case 'comparator-export':
       return 'telelean could not export the proof for the final check';
     case 'status-mismatch':
+      // Slice 1e fixer: the target's `.holds` the person had stays as it was when the goal is not proved (ES-2, A11).
+      if (token === 'removed') return `it removed ${shown ?? 'the proof of the goal'} although it did not prove the goal (it must stay as it was)`;
+      if (token === 'changed') return `it changed ${shown ?? 'the proof of the goal'} although it did not prove the goal (it must stay as it was)`;
       return 'it said the goal was not proved but left a proof of it in the files';
     case 'not-formalised':
       if (token === 'malformed') return `it bound ${cardLabel(finding.nodeId, ctx)} to something that is not a Lean statement${shown !== undefined ? ` (${shown})` : ''}`;
@@ -203,8 +225,8 @@ export function describe(finding: GateFinding, ctx: DescribeContext, brief = fal
       return `it did not formalise ${cardLabel(finding.nodeId, ctx)}`;
     case 'missing-holds':
       return token === 'mismatch'
-        ? `it did not state ${cardLabel(finding.nodeId, ctx)} correctly as an assumption${shown !== undefined ? ` (${shown})` : ''}`
-        : `it did not state ${cardLabel(finding.nodeId, ctx)} as an assumption${shown !== undefined ? ` (${shown} is missing)` : ''}`;
+        ? `it did not state ${cardLabel(finding.nodeId, ctx)} correctly as an axiom${shown !== undefined ? ` (${shown})` : ''}`
+        : `it did not state ${cardLabel(finding.nodeId, ctx)} as an axiom${shown !== undefined ? ` (${shown} is missing)` : ''}`;
     case 'proof-before-freeze':
       if (token === 'example') return 'it wrote an example before freezing the statements';
       if (token === 'carrier') return `it put a proof inside ${shown !== undefined ? shown : 'a definition'} before freezing the statements`;
@@ -238,6 +260,50 @@ export function describe(finding: GateFinding, ctx: DescribeContext, brief = fal
           return `it changed the card ${card}`;
       }
     }
+    // ---- Slice 2 (2b1b): edit sessions only
+    case 'arrow': {
+      const source = cardLabel(finding.names?.[0], ctx);
+      const target = cardLabel(finding.nodeId, ctx);
+      switch (token) {
+        case 'not-target':
+          return `it added an arrow into ${target}, which this step was not proving`;
+        case 'into-axiom':
+          return `it added an arrow into the axiom ${target}`;
+        case 'mark':
+          return `it added an arrow into ${target}, which you marked as following from nothing`;
+        case 'no-holds':
+          return `it added an arrow from ${source}, which has no proof and no claim`;
+        case 'declined':
+          return `it used the arrow from ${source} into ${target}, which you declined`;
+        case 'cycle':
+          return 'its arrows made a cycle';
+        case 'unknown-card':
+          return `it added an arrow from something that is not a card of this subject${finding.names?.[0] !== undefined ? ` (${code(finding.names[0])})` : ''}`;
+        case 'drawn':
+          return `it proposed an arrow from ${source} that is drawn already`;
+        case 'other-target':
+          return `it added an arrow from ${source}, another card this session proves`;
+        default:
+          return `it added an arrow into ${target} that is not allowed`;
+      }
+    }
+    case 'holds-kind':
+      if (token === 'theorem-to-axiom') return `it turned the proof of ${cardLabel(finding.nodeId, ctx)} into an axiom`;
+      if (token === 'type-changed') return `it changed what the proof of ${cardLabel(finding.nodeId, ctx)} proves`;
+      // Fixer 2b1b r1 (S-F1, A-ADV-2, C-V2B1B-C3): only the target's proof may be written.
+      if (token === 'not-target') return `it wrote a proof of ${cardLabel(finding.nodeId, ctx)}, which it was not asked to prove`;
+      if (token === 'axiom-to-theorem') return `it turned the claim of ${cardLabel(finding.nodeId, ctx)} into a proof`;
+      return `it stated ${cardLabel(finding.nodeId, ctx)} as an axiom instead of proving it`;
+    case 'rejected-repeat':
+      if (token === 'arrow') return 'it proposed again an arrow you declined';
+      if (token === 'premise') return 'it proposed again a premise you rejected';
+      if (token === 'shaky-identical') return 'it proposed again exactly what you declined as Shaky';
+      return 'it proposed again a version you rejected';
+    case 'stray-command':
+      // Builder 2b2 (carry-over R2-1): a comment that would go with a declaration the step may not change names it.
+      if (token === 'comment' && shown !== undefined) return `it left a comment that would go with ${shown}, which it may not change${inFile(finding)}`;
+      if (token === 'comment') return `it left a comment next to nothing it wrote${inFile(finding)}`;
+      return `it wrote a command outside any declaration${finding.names?.[0] !== undefined ? ` (${code(finding.names[0])})` : ''}${inFile(finding)}`;
     default: {
       const unknown: never = finding.code;
       return `a check failed (${String(unknown)})`;
@@ -253,12 +319,16 @@ export function describe(finding: GateFinding, ctx: DescribeContext, brief = fal
 function distinct(findings: readonly GateFinding[], ctx: DescribeContext): GateFinding[] {
   const added = new Set(findings.filter((f) => f.code === 'new-axiom').flatMap((f) => f.names ?? []));
   const changed = new Set(findings.filter((f) => f.code === 'existing-changed').flatMap((f) => f.names ?? []));
+  // Slice 1e: B.2 naming a card whose `.holds` the footprint rule already reported (an unselected axiom) is the same
+  // problem in the board's words.
+  const outside = new Set(findings.filter((f) => f.code === 'footprint' || f.code === 'comparator-illegal-axiom').flatMap((f) => f.names ?? []));
   const covered = (f: GateFinding, by: ReadonlySet<string>) => (f.names ?? []).length > 0 && (f.names ?? []).every((n) => by.has(n));
   const seen = new Set<string>();
   const out: GateFinding[] = [];
   for (const finding of findings) {
     if (finding.code === 'footprint' && covered(finding, added)) continue;
     if (finding.code === 'statement-changed' && covered(finding, changed)) continue;
+    if (finding.code === 'undeclared-premise' && finding.token === 'unselected' && covered(finding, outside)) continue;
     const text = describe(finding, ctx);
     if (seen.has(text)) continue;
     seen.add(text);

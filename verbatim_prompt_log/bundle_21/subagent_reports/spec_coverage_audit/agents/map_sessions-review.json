@@ -1,0 +1,1636 @@
+{
+  "summary": "I audited spec v4.1 §7 (ES-1 to ES-9), §9 (RV-1 to RV-13), §10 (the preamble and DO-0 to DO-3), §11 (EN-1 to EN-4), and the session, review and ending cases of Appendix A (A1–A5, A7–A12, A17, A23, A25–A28). That gives 233 rows.\n\n**Totals:** 30 built, 130 planned for slice 2, 38 planned for slice 3, 14 for slice 4, 0 for slice 5, 20 narrowed by a logged decision, 1 contradicted, 0 unassigned.\n\n**Built (slice 1, on M2's run engine).** In slice 1 the session is the run.\n- One session per model folder, on one subject.\n- The Current | Proposed views.\n- The Formalize question and its selection rules (warning and mention arrows cannot be selected; the warning arrow's menu offers \"Draw this arrow\").\n- The S1 protections for a single target, and a not-proved finish that leaves the proof as it was.\n- ES-9's folder-wide read-only lock, the disabled arrow actions in the Proposed view, and A27.\n- A base that never moves: Accept refuses on drift and nothing is merged.\n- Reload and Resume, Claude's questions, and the answers kept in decisions.json.\n- The ghost scratch check with B.2, \"proved from nothing\", and the A7–A10 report behaviour.\n\n**Slice 2 build state.** Only sub-slices 2a1 and 2a2 are built (plus fixer 2a), all in `packages/core/src/review/`: `computeItems`, `classify`, `itemDeps`, `resultsState`, `reconcile`, `reduceReview`, `planGroupAccept`/`planGroupDecline` and `acceptGate`. `judgeState`, `permittedFor`, `planItemRevert`, the mask, `buildSessionView`, `planSubmit`, the backstop and `formalizeOrder` are still stubs. Nothing in the runner, host or webview is built for slice 2 yet, so rows that cite built core code stay \"planned-slice2\".\n\n**Slice 3 carries:**\n- RV-4 entirely: Accept freezes nothing in slice 2.\n- Open the whole model, and Claude may add cards. Under D3-43, Claude may add cards can fall back to slice 4.\n- The Add card, Change, Delete, Remove arrow and Proof broken items.\n- Unfreeze requests, freezing on the Proposed view, and the EN-2 and EN-3 freeze rows with keep ticks.\n\n**Slice 4 (transform window):**\n- Explicitly left to slice 4 by both plans: ES-3, DO-2, Decline → Transform, and transforms queued until Submit.\n- Five items are only implied by \"transform window = slice 4\" and named by no plan. Slice-4 planning must pick them up:\n  - ES-6: transform drafts coming back after a reload;\n  - RV-5: leaving \"accepted\" because you changed the content or something it depends on (in a transform, or a D-11 follow-on edit);\n  - RV-7: content you typed yourself counts as accepted by you;\n  - RV-12: queued transforms that need no Claude are carried out first;\n  - EN-2: Apply shows what you typed yourself in transforms (slice 2's `EndConfirmationView` has no such section).\n\n**Narrowed by logged decisions:**\n- AP-24 / D2-61: one reveal per stage, and the Proposed view masks to the session's base B rather than each step's start.\n- D2-62 and D2-8: no decisions while a step runs, and none on hidden Results.\n- D2-65, D2-63, D2-53, D2-20: mid-stage Formalize waits until the results are shown.\n- D2-64 and D2-27: Submit also needs the results shown and nothing being re-checked; with D2-61, this means \"to be redone\" can block Submit.\n- D2-2 and D2-57: one Submit step per affected inference, so Shaky items are not all reworked in one step.\n- D2-15: no Shaky splits or merges.\n- D2-31: one item per vocabulary term, grouped as \"Vocabulary (N)\".\n- D2-44: an inference whose step never ended has no Result item.\n- D2-13: Ask me instead becomes a Shaky decline with a note until slice 4.\n- D2-36: an open Exit confirmation is not restored after a reload.\n- D3-1: no starting-freeze reasons, which also changes EN-2's summary line.\n- D3-4: Accept's freeze ends only on your own change.\n- D3-9: no \"meaning changed\" items; b5 unused.\n- D3-36: a premise for a target with frozen Dependencies is refused or its Accept gated, with no unfreeze request record.\n- D3-41, D3-12, D3-14: the whole model open is limited to the session's subject, changes come only before freeze_statements, and the tools are restricted.\n\n**Contradicted (1):** ES-9's last bullet, with S9, says the board's \"card only\" Delete goes. The board still offers \"Delete card only, keep Lean\" (`packages/webview/src/dialogs/Dialogs.tsx:227` and `:280`; `core/src/actions.ts:58-62`; `docs/user-guide.md:122`). It leaves `axiom ….holds` behind as an unmarked axiom. Slice 1 kept it, neither the slice-2 nor the slice-3 plan removes it, and no decision records keeping it.\n\n**Sources:** `/home/zhengyew/telelean/docs/slice2-plan.md` (its §8 log stops at fixer 2a, with 2b1a in progress), `/tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/plans/slice3-plan.md` (as read now, still under review), `/home/zhengyew/telelean/docs/slice1-plan.md` §8, and `/home/zhengyew/telelean/verbatim_prompt_log/bundle_21/user_requested_documents/02_autopilot_decisions.md`.",
+  "rows": [
+    {
+      "clause": "ES-1 sentence 1",
+      "requirement": "At most one edit session is active per model folder, on one subject.",
+      "status": "built",
+      "where": "extension/src/logic/runs.ts:169 busyRefusal; core/src/run.ts:143 runLocksBoard; slice2-plan §3.1 (one session = one run), §4.12 check 1",
+      "note": "Slice 1's run is the session (slice1-plan §8 1f). Slice 3 D3-41 adds that steps change only the session's subject."
+    },
+    {
+      "clause": "ES-1 sentence 2",
+      "requirement": "While a session is active the board has two views: Current (your files, not editable) and Proposed (the session's working copy).",
+      "status": "built",
+      "where": "webview/src/run/ProposalBanner.tsx:3 (Current | Proposed toggle); slice2-plan §5.8 (switch in the session bar), §5.10 (Proposed view from SessionView.board)",
+      "note": "Today Proposed is the run's proposal in review; slice 2 makes it the stage's working copy, base-masked while results are hidden."
+    },
+    {
+      "clause": "ES-2 The question, bullets 1-3",
+      "requirement": "Selecting drawn arrows (dotted or solid) or follows-from-nothing marks into propositions and choosing Formalize makes each head a target whose question is exactly its selected arrows.",
+      "status": "built",
+      "where": "core/src/formalize.ts:125 formalizeStartProblem; webview/src/board/contextActions.ts:78 formalizeState; runner/src/run/manager.ts:871; slice2-plan §2.2 SessionInference.question, §4.12",
+      "note": "One target per Formalize in slice 1 (AP-9)."
+    },
+    {
+      "clause": "ES-2 The question, bullet 4",
+      "requirement": "Warning arrows and mention arrows cannot be selected for Formalize; a warning arrow's menu offers 'Draw this arrow'.",
+      "status": "built",
+      "where": "webview/src/board/gestures.ts:26-35,215; webview/src/board/menu.ts:235; slice2-plan §5.10 Selection",
+      "note": ""
+    },
+    {
+      "clause": "ES-2 Several targets, bullet 1",
+      "requirement": "Several targets in one session, proved one after another, sources first, one step each.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.2 Start steps 3-4, §3.3, §4.12 formalizeOrder, D2-63; AP-9 limits slice 1",
+      "note": "D2-63: the whole queue runs before the stage opens. core/src/review/formalize.ts:23 formalizeOrder is still a stub."
+    },
+    {
+      "clause": "ES-2 Several targets, bullet 2 (first half); RV-11 sentence 1",
+      "requirement": "Every step re-judges every inference of the session on the current state.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.3 item 6, §3.5, §4.9 judgeState, §3.6 (judge after every decision)",
+      "note": "Judged at each gate, but the RV-11 effect on items is applied once at the queue's end (D2-63, AP-24). judgeState is a stub until 2b1b."
+    },
+    {
+      "clause": "ES-2 Several targets, bullet 2 (second half)",
+      "requirement": "Apply re-judges every inference on the final state.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.10 step 2 (finalCheck: judgeState('final') over every inference, comparator per proved inference), §4.10",
+      "note": ""
+    },
+    {
+      "clause": "ES-2 Several targets, bullet 3 (sentence 1)",
+      "requirement": "A target may use another target only through a selected arrow.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.8 (E(T) sources never targets), §4.9 other-result and B.3 other-target, §4.12 check 3, D2-50",
+      "note": ""
+    },
+    {
+      "clause": "ES-2 Several targets, bullet 3 (sentence 2)",
+      "requirement": "A source proved earlier in the session contributes its footprint as judged in the current state, and the new Result depends on that Result.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.8 contrib 'session proof' and throughResults, §4.5 rule 2; core/src/review/deps.ts:93 (edge built 2a2)",
+      "note": "D2-48: counts while its content is in ws/ (accepted, in review, Shaky, redo not reverted). permittedFor is a 2b1b stub."
+    },
+    {
+      "clause": "ES-2 Several targets, bullet 4",
+      "requirement": "A source with neither a proof nor a pending claim follows AR-8.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.12 check 4, §5.11 AR-8 questions, §3.3 item 3 (A12, D2-4); outside sessions built: core/src/formalize.ts:145",
+      "note": "In a session the choices are 'Select the arrows into L too' or Cancel, as AR-8 says."
+    },
+    {
+      "clause": "ES-2 Preset (main)",
+      "requirement": "In each inference's step, everything existing at step start is frozen for that step at its value then: fields, bindings, declarations, arrows, content in review included.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.7 StepScope, §3.3 step 2, §4.9 Step limits (existing-changed token session, D2-41), G5 against S0; slice3-plan §3.5 (meaningKey, R2-13)",
+      "note": "Slice 1 enforces today's rules for one run (core/src/gate/rules.ts:568,1252). D3-1: enforced as step limits, never as freeze reasons."
+    },
+    {
+      "clause": "ES-2 Preset, exception 1",
+      "requirement": "The empty Lean statement of each card at either end of a selected arrow is fuzzy.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.7 fuzzyStatements, §3.3 step 2; D2-21",
+      "note": "D2-21: an empty statement at the source of Claude's own arrow is not fuzzy."
+    },
+    {
+      "clause": "ES-2 Preset, exception 2 (open proof)",
+      "requirement": "Each target's Proof is open even when empty: Claude may fill it, prove a pending one, or replace an existing proof, shown as 'replaces your proof'.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.7 openProof, §2.2 ResultFlag replaces-your-proof, §5.6; core/src/gate/rules.ts:698 (slice 1 allows replacing)",
+      "note": "Slice 1 shows no 'replaces your proof' label. slice3-plan §0: a re-ask cannot replace a proof whose Result was accepted."
+    },
+    {
+      "clause": "ES-2 Preset, exception 2 (no proof)",
+      "requirement": "In a step that does not end in a proof, the target's Proof stays exactly as it was.",
+      "status": "built",
+      "where": "core/src/gate/rules.ts:198-200,319 (targetProofNew, status-mismatch; slice1-plan §8 1e fixer); slice2-plan §4.9 status-mismatch at gate-other, §3.2 re-ask (D2-46)",
+      "note": ""
+    },
+    {
+      "clause": "ES-2 Preset, exception 3",
+      "requirement": "Each target's Dependencies is open for additions only: Claude may propose new arrows into it but never remove one; for a target questioned by its mark, only premises.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.8 propose_arrow (D2-1), §2.7 openArrows (false for the mark), §4.9 B.3 tokens, proposeArrowProblems",
+      "note": "Slice 1 adds no Claude arrows by design (★D8 a, AP-2)."
+    },
+    {
+      "clause": "ES-2 Preset, 'A standing freeze always wins'",
+      "requirement": "A standing freeze always wins over fuzzy and open.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.5 ('What a step may change' = scope exceptions ∩ not frozen ∩ not held), §3.11 frozenNeeds warning (D3-18)",
+      "note": ""
+    },
+    {
+      "clause": "ES-2 Preset, protected cards (S1)",
+      "requirement": "At the selected arrows, your sentences and existing Lean statements, the targets' included, stay frozen.",
+      "status": "built",
+      "where": "core/src/gate/rules.ts:568 (existing-changed), :1252 (G5); slice2-plan §4.9 step limits, §6.2 cheat S1",
+      "note": ""
+    },
+    {
+      "clause": "ES-2 Preset, last sentence",
+      "requirement": "Unfreeze removes FZ-7 reasons only; it does not lift a step's preset.",
+      "status": "planned-slice3",
+      "where": "slice3-plan D3-1, §2.8 request_unfreeze refusal ('fixed by this step's question, not frozen')",
+      "note": ""
+    },
+    {
+      "clause": "ES-2 Open the whole model (switch)",
+      "requirement": "Formalize offers an 'Open the whole model' switch.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.8 (Formalize ▾, 3e2), §2.5 formalize.options, §3.10 Switches; D2-12 deferred it from slice 2",
+      "note": ""
+    },
+    {
+      "clause": "ES-2 Open the whole model, bullet 1",
+      "requirement": "With it on, the preset freezes nothing except standing freezes, the selected arrows, CF-3 data, and the Proofs of non-target cards.",
+      "status": "narrowed-by-decision",
+      "where": "D3-41, D3-12; slice3-plan §3.10 'Step limits with wholeModel'",
+      "note": "Also fixed: other subjects (D3-41), everything after freeze_statements (D3-12), other Results' proof material, other targets' Claude arrows and premises, Shaky content."
+    },
+    {
+      "clause": "ES-2 Open the whole model, bullet 1 (Proof broken)",
+      "requirement": "A non-target proof that stops building because of the change becomes a Proof broken item, which you can re-prove later.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.10 Proof broken, §2.8 mark_proof_broken; D3-10, D3-47",
+      "note": "Claude must mark it (D3-10); re-proving only after the session (D3-47); 'make it pending' waits for slice 4."
+    },
+    {
+      "clause": "ES-2 Open the whole model, bullet 2",
+      "requirement": "Claude may change any other card, arrow, definition or vocabulary item, and may remove an arrow only if no proof in the working copy uses it.",
+      "status": "narrowed-by-decision",
+      "where": "D3-11, D3-14, D3-41, D3-12; slice3-plan §2.8 tools, §3.10",
+      "note": "remove_arrow only for your arrows that no question selects; delete_card restricted; session's subject only; changes only before freeze_statements."
+    },
+    {
+      "clause": "ES-2 Open the whole model, bullet 3",
+      "requirement": "Every change comes back as an item; each belief or proof-changing item needs its own Accept.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.10 Ownership (Change, Delete, Remove arrow, Proof broken) and Classes; slice2-plan §4.4",
+      "note": ""
+    },
+    {
+      "clause": "ES-2 Open the whole model, bullet 4 (reset)",
+      "requirement": "The switch resets to off after each session.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.8, D3-29",
+      "note": "D3-29: stays on for the session's later mid-stage Formalizes."
+    },
+    {
+      "clause": "ES-2 Open the whole model, bullet 4 (label, banner)",
+      "requirement": "While on, the button reads 'Formalize for dependencies (whole model)' and the banner says so.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.8, §4.5 Session banner (freezes.mode)",
+      "note": ""
+    },
+    {
+      "clause": "ES-2 Claude may add cards, bullets 1-2",
+      "requirement": "A switch, off by default, lets Claude add intermediate propositions: targets with empty questions whose incoming arrows count as arrows into a target; none may be used unproved.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.10 Intermediate cards (3c2, 3e3), §4.8, D3-13",
+      "note": "D3-43: moves to slice 4 with TR-7 if 3c2 or 3e3 keeps a blocker or major finding."
+    },
+    {
+      "clause": "ES-2 Claude may add cards, bullet 3",
+      "requirement": "With the switch off, intermediate steps stay as lemmas in Lean (Vocabulary column).",
+      "status": "built",
+      "where": "slice 1 Vocabulary band lists Claude's lemmas (slice2-plan §7.3 item 3); slice2-plan §4.2 (proof-phase lemmas are the Result's proof material, D2-43), §4.7",
+      "note": "In a session they stay hidden until the reveal."
+    },
+    {
+      "clause": "ES-2 Claude may add cards, bullet 4",
+      "requirement": "Either way, Claude may propose missing premises.",
+      "status": "built",
+      "where": "slice 1 'Claude suggests' ghosts and 'I hold this' (slice1-plan intro, §2.6); slice2-plan §3.8 Add premise items",
+      "note": ""
+    },
+    {
+      "clause": "ES-2 last bullet (starting inference)",
+      "requirement": "For the inference that starts a session, the preset freezes are also the session's starting freezes (FZ-7 reasons).",
+      "status": "narrowed-by-decision",
+      "where": "D3-1; slice3-plan §2.2 SessionFreezes.start",
+      "note": "No binding session-start reasons; the start is recorded only for EN-2's summary line."
+    },
+    {
+      "clause": "ES-2 last bullet (mid-stage inference)",
+      "requirement": "For a mid-stage inference the preset only limits its step: no FZ-7 reason, ending with the step.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.7 StepScope, §3.2, §3.3 step 2; slice3-plan D3-1",
+      "note": ""
+    },
+    {
+      "clause": "ES-3 bullet 1",
+      "requirement": "Transform cards… with no session active opens the window and starts a provisional session in which every non-selected card is session-frozen.",
+      "status": "for-slice4",
+      "where": "slice2-plan header ('Not in slice 2: the transform window (slice 4)'); slice3-plan header and §3.12 (session-start and transform reasons typed, never made)",
+      "note": ""
+    },
+    {
+      "clause": "ES-3 Submit transform, unchanged",
+      "requirement": "Submitting unchanged continues the session with an empty first stage and no Claude step.",
+      "status": "for-slice4",
+      "where": "slice2-plan and slice3-plan headers (transform window: slice 4)",
+      "note": ""
+    },
+    {
+      "clause": "ES-3 Submit transform, needs Claude",
+      "requirement": "A transform that needs Claude (TR-15) starts the first Claude step.",
+      "status": "for-slice4",
+      "where": "slice2-plan and slice3-plan headers",
+      "note": ""
+    },
+    {
+      "clause": "ES-3 Submit transform, changed, no Claude",
+      "requirement": "A changed transform needing no Claude drops the provisional session, undoes its freezes and applies the edits directly as one Undo step.",
+      "status": "for-slice4",
+      "where": "slice2-plan and slice3-plan headers",
+      "note": ""
+    },
+    {
+      "clause": "ES-3 Cancel",
+      "requirement": "Cancel drops the provisional session with nothing to apply, confirming first only if freezes changed in the window.",
+      "status": "for-slice4",
+      "where": "slice2-plan and slice3-plan headers",
+      "note": ""
+    },
+    {
+      "clause": "ES-4 bullet 1 (private copy)",
+      "requirement": "Claude works on the session's private copy.",
+      "status": "built",
+      "where": "runner shadow ws/ (M2); slice2-plan §3.1 working copy",
+      "note": ""
+    },
+    {
+      "clause": "ES-4 bullet 1 (statements fixed)",
+      "requirement": "Within a step, statements are fixed before proving.",
+      "status": "built",
+      "where": "core/src/run.ts RunStage formalise/prove (freeze_statements, M2); slice2-plan §2.8 (fixes exactly the step's target), §3.3",
+      "note": "The 'statements fixed' rename (FZ-12) is slice3-plan §3.12."
+    },
+    {
+      "clause": "ES-4 bullet 1 (checks)",
+      "requirement": "Every Appendix B check runs, with today's loop of up to 3 attempts.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.3 item 4 (judgeState per step, maxGateAttempts), §4.8-§4.10; runner/src/run/manager.ts:1087 (3 attempts, built)",
+      "note": "Slice 1 runs today's checks plus B.2 for one target; B.1-B.4 per inference come with 2b1b."
+    },
+    {
+      "clause": "ES-4 bullet 2",
+      "requirement": "After a failed attempt the step rolls back to the newest passing state no older than your latest decision; a rollback never undoes your decisions.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.4 gave-up row (lastCommitSince(S0,…)), §3.1 (never behind step-start, which follows every decision), D2-62",
+      "note": ""
+    },
+    {
+      "clause": "ES-4 bullet 3",
+      "requirement": "With no such state, the stage is headed 'Claude's step did not pass: …' and allows Decline, Unfreeze, Formalize and Exit but no Accept until a later step passes.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.4 'Did not pass', §3.6, §5.8; core/src/review/reducer.ts:297 (built 2a2); Unfreeze: slice3-plan §3.6",
+      "note": ""
+    },
+    {
+      "clause": "ES-4 bullet 4 (cancel, caps, failure)",
+      "requirement": "Cancel step, a turn or time cap, or an environment failure returns to the previous stage, marked 'step cancelled' or 'step failed', with Retry step.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.4 cancelled/failed row and Retry step, §2.5, §5.8; D2-29, D2-55, D2-63",
+      "note": "D2-63: the rest of the queue becomes 'not run' and is retried with it."
+    },
+    {
+      "clause": "ES-4 bullet 4 (first step)",
+      "requirement": "For the session's first step you get an empty stage with the same mark, Retry step and Exit session.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.4",
+      "note": ""
+    },
+    {
+      "clause": "ES-4 bullet 5",
+      "requirement": "A step never ends the session.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.5, §3.4",
+      "note": ""
+    },
+    {
+      "clause": "ES-4 bullet 6 (questions)",
+      "requirement": "Claude may ask you questions, which pause the step.",
+      "status": "built",
+      "where": "runner/src/run/manager.ts:1065,1330 (waiting-for-answer, M2); slice2-plan §2.4 answerQuestions kept, D2-74",
+      "note": ""
+    },
+    {
+      "clause": "ES-4 bullet 6 (unfreeze requests)",
+      "requirement": "Claude may make unfreeze requests, which pause the step.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.9, §2.8 request_unfreeze, §4.6",
+      "note": ""
+    },
+    {
+      "clause": "ES-5 sentence 1",
+      "requirement": "A session changes your files only when it ends successfully.",
+      "status": "built",
+      "where": "runner run/manager.ts accept path (only Accept applies; runs work on the shadow, slice1-plan §8 1f); slice2-plan §3.1 'Files change only at Apply', §6.1 2f spy",
+      "note": ""
+    },
+    {
+      "clause": "ES-5 bullet 1",
+      "requirement": "Your own arrows are already in your files before the session; nothing writes premises at start.",
+      "status": "built",
+      "where": "runner/src/run/manager.ts:871 (slice 1e)",
+      "note": ""
+    },
+    {
+      "clause": "ES-5 bullet 2",
+      "requirement": "Arrows you accept from Claude are written at Apply, like everything else.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.8 (ledger arrow written into ws/ at normalise), §3.10 step 4 (Apply writes exactly F)",
+      "note": ""
+    },
+    {
+      "clause": "ES-6 sentence 1",
+      "requirement": "A session survives a window reload.",
+      "status": "built",
+      "where": "runner/src/run/manager.ts:1786 recover (run.json v1, M2); slice2-plan §3.11, §2.6 (isPersistedRun v1|v2), D2-72",
+      "note": ""
+    },
+    {
+      "clause": "ES-6 sentence 2",
+      "requirement": "A running step is interrupted by a reload and can be resumed.",
+      "status": "built",
+      "where": "runner/src/run/manager.ts:1070,1403 (interrupted), :1448 resume; slice2-plan §3.11, D2-55 (Cancel step too)",
+      "note": ""
+    },
+    {
+      "clause": "ES-6 sentence 3 (stages, end confirmation)",
+      "requirement": "Stages and an open end confirmation come back after a reload as they were.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.11 (statuses, versions, stack, force, confirmation and its check), §2.6 webview review state per runId, §6.1 2d reload tests",
+      "note": ""
+    },
+    {
+      "clause": "ES-6 sentence 3 (Exit confirmation)",
+      "requirement": "An open Exit confirmation comes back after a reload.",
+      "status": "narrowed-by-decision",
+      "where": "D2-36; slice2-plan §5.9",
+      "note": "Exit's confirmation is a non-persisted board dialog; only the Apply confirmation is a persisted phase."
+    },
+    {
+      "clause": "ES-6 sentence 3 (transform drafts)",
+      "requirement": "Transform drafts come back after a reload.",
+      "status": "for-slice4",
+      "where": "transform window: slice 4 (slice2-plan and slice3-plan headers)",
+      "note": "Implied by the transform window; no plan names it."
+    },
+    {
+      "clause": "ES-7 bullet 1 (base)",
+      "requirement": "The base is your files at the session's start and it never moves.",
+      "status": "built",
+      "where": "runner/src/run/manager.ts:146,1677-1688 (Accept refuses on drift; D-21 rebase unreachable, slice1-plan §8 1f); slice2-plan §3.1, §1.1 2f (rebase and accept-base writers deleted)",
+      "note": ""
+    },
+    {
+      "clause": "ES-7 bullet 1 (items); RV-1 last bullet",
+      "requirement": "Every item is computed between the base and the working copy.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.1, §4.2; core/src/review/items.ts:610 computeItems (built 2a1)",
+      "note": ""
+    },
+    {
+      "clause": "ES-7 bullet 3 (watch, notice)",
+      "requirement": "telelean watches your files; if they change, the session bar says 'Your files changed since the session started' and lists them.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.9 (onDidChange, 300 ms debounce, after recovery, before Apply), §5.8 drift line",
+      "note": "AP-18: no live watcher in slice 1; the note appears only when the proposal is built."
+    },
+    {
+      "clause": "ES-7 bullet 3 (Apply); EN-2 last bullet; A4",
+      "requirement": "While your files differ from the base, Apply is disabled until they match again or you Exit; nothing is merged.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.9, §3.10 step 4 (drift checked again), §5.9; built analogue: runner/src/run/manager.ts:1680-1688 (Accept refuses)",
+      "note": ""
+    },
+    {
+      "clause": "ES-7 bullet 4 (no merge)",
+      "requirement": "telelean never merges such changes into the session.",
+      "status": "built",
+      "where": "runner/src/run/manager.ts:1680-1688 (plan.drift authoritative, slice1-plan §8 1e/1f); slice2-plan §1.1 2f, §3.1",
+      "note": ""
+    },
+    {
+      "clause": "ES-7 bullet 4 (steps go on)",
+      "requirement": "Claude's steps keep working on the private copy while the files differ.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.9 ('steps go on')",
+      "note": ""
+    },
+    {
+      "clause": "ES-8",
+      "requirement": "Exit session, at any time, discards the session's work after EN-2's confirmation.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.10 step 6, §5.9 Exit modal, §2.4-§2.5 (exit allowed while a step runs, not queued, D2-74), D2-36",
+      "note": "Slice 1 has M2's Cancel and Discard (runner/src/run/manager.ts:1420,1473)."
+    },
+    {
+      "clause": "ES-9 bullet 1 (edits); ES-7 bullet 2",
+      "requirement": "During a session no board of the model folder can be edited: no field edits, arrows, kind changes, adding, deleting, moving, Undo, Redo or History revert.",
+      "status": "built",
+      "where": "core/src/run.ts:140-145; extension/src/logic/boardSession.ts:410-425 editLock; webview/src/state/store.ts:664-686; slice1-plan §8 1f",
+      "note": ""
+    },
+    {
+      "clause": "ES-9 bullet 1 (freezing)",
+      "requirement": "No freezing or unfreezing on the Current view during a session.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.1 Routing, §2.5 (setFreezes is ES-9-locked)",
+      "note": ""
+    },
+    {
+      "clause": "ES-9 bullet 1 (scope)",
+      "requirement": "The lock covers every subject of the model folder.",
+      "status": "built",
+      "where": "extension/src/logic/boardSession.ts:417-425 (the root's run, any subject); AP-14 (i); slice2-plan §5.8 RunElsewhere",
+      "note": ""
+    },
+    {
+      "clause": "ES-9 bullet 2",
+      "requirement": "You can still look: select, expand, pan, zoom, copy references, open in the editor.",
+      "status": "built",
+      "where": "slice1-plan §8 1f ('Viewing stays'), 1c2 gestureGate (selecting and menus stay)",
+      "note": "'Copy reference' (RF) itself is slice 5."
+    },
+    {
+      "clause": "ES-9 bullet 3 (transforms)",
+      "requirement": "Changes you want go through Transform cards…, queued until Submit review.",
+      "status": "for-slice4",
+      "where": "transform window: slice 4 (slice2-plan and slice3-plan headers)",
+      "note": ""
+    },
+    {
+      "clause": "ES-9 bullet 3 (freezes)",
+      "requirement": "During a session, freezes are made on the Proposed view.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.1 Routing (sessionFreeze on the Proposed view or in session scope)",
+      "note": ""
+    },
+    {
+      "clause": "ES-9 bullet 4",
+      "requirement": "In the Proposed view the arrow handle, Draw arrows, Delete (arrows), Follows from nothing and Move to axioms are disabled with the reason on hover.",
+      "status": "built",
+      "where": "webview/src/board/menu.ts:125,171-174,181-190; webview/src/board/contextActions.ts:220; slice1-plan §8 1d item 1; slice2-plan §5.10 Menus",
+      "note": ""
+    },
+    {
+      "clause": "ES-9 bullet 5 (outside a session)",
+      "requirement": "Outside a session the board stays directly editable, with the arrow actions added.",
+      "status": "built",
+      "where": "slice1-plan §8 1b, 1c2 (draw, delete, follows from nothing, Move to axioms)",
+      "note": ""
+    },
+    {
+      "clause": "ES-9 bullet 5 (card-only Delete, S9)",
+      "requirement": "Today's 'card only' Delete goes: a board Delete never leaves the card's Lean behind.",
+      "status": "contradicted",
+      "where": "webview/src/dialogs/Dialogs.tsx:227,280 ('Delete card only, keep Lean'); core/src/actions.ts:58-62 (delete-node keepLean); docs/user-guide.md:122",
+      "note": "Still offered; it leaves axiom ….holds as an unmarked axiom. Slice 1 kept it, neither the slice-2 nor slice-3 plan removes it, and no decision records keeping it."
+    },
+    {
+      "clause": "RV-1 main, sentences 1-2",
+      "requirement": "A card has at most two items, one for its fields (Add, Change, Formalize, Delete) and one for its proof (Result, Proof broken); arrows have their own items.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.2 item keys, §4.2; core/src/review/keys.ts:16-22, items.ts:610 (built 2a1)",
+      "note": ""
+    },
+    {
+      "clause": "RV-1 main, sentence 3",
+      "requirement": "Each item keeps the same id from stage to stage.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.2 ItemRecord.id (D2-31, AF7), §3.5; core/src/review/hash.ts:111 reviewItemId (built)",
+      "note": ""
+    },
+    {
+      "clause": "RV-1 main, sentence 4",
+      "requirement": "A newer proposal updates its item in place: back to 'in review', marked 'updated', previous proposal viewable.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.5 changed content key, §2.3 ItemView.previous, §5.6; core/src/review/reconcile.ts:135-245 (built 2a2)",
+      "note": ""
+    },
+    {
+      "clause": "RV-1 Add ‹card›",
+      "requirement": "A new card Claude adds is an Add item.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.10 (add_card → card:<I> Add plus Result, 3c2/3e3); slice2-plan header (kind defined, never produced in slice 2)",
+      "note": "D3-43 fallback may move it to slice 4; Shaky splits never add cards (D2-15)."
+    },
+    {
+      "clause": "RV-1 Add premise",
+      "requirement": "A missing premise Claude proposes, together with its arrow into the target, is one item.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.8, §2.2 key premise:<T>:<leanName>",
+      "note": "Slice 1: 'Claude suggests' ghost with 'I hold this' (built)."
+    },
+    {
+      "clause": "RV-1 Add premise, sub-bullet 1 (outside ws/)",
+      "requirement": "It stays outside the working copy until you accept it.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.1, §3.8 (a premise in review is always outside ws/)",
+      "note": "Exception: an adopted ghost of a converted v1 run (D2-16)."
+    },
+    {
+      "clause": "RV-1 Add premise, sub-bullet 1 (scratch check)",
+      "requirement": "telelean checks in a scratch file that question plus premise prove the target ('closes the gap (checked)'), flags 'may simply restate the target', B.2 included.",
+      "status": "built",
+      "where": "runner/src/gate/engine.ts:809,840 ghostDirectProblems (slice 1e); webview/src/run/GhostSuggestion.tsx:57,61; slice2-plan §3.8 Proposing (with E(T)), §5.6",
+      "note": ""
+    },
+    {
+      "clause": "RV-1 Add premise, sub-bullet 1 (re-check)",
+      "requirement": "It is re-checked whenever something it relies on changes.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.8 'Checked again' (premiseChecks), §3.5 ('no longer closes the gap')",
+      "note": ""
+    },
+    {
+      "clause": "RV-1 Add premise, sub-bullet 2",
+      "requirement": "It is part of the target's result and appears only when that Result is revealed.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.2 partOfResult, §4.7",
+      "note": "Revealed with every Result of the stage (D2-61)."
+    },
+    {
+      "clause": "RV-1 Add premise, sub-bullet 3",
+      "requirement": "For a target whose Dependencies are frozen it comes with an unfreeze request, and can be accepted only after you allow it.",
+      "status": "narrowed-by-decision",
+      "where": "D3-36; slice3-plan §2.8 (propose_assumption refuses), §3.7 (Accept gated, Select them)",
+      "note": "No automatic unfreeze-request record: refused when proposed, or its Accept waits until you unfreeze."
+    },
+    {
+      "clause": "RV-1 Add premise, sub-bullet 4",
+      "requirement": "Accepting asks how you hold it (as an axiom, or as a proposition pending proof, never green); either way it is a belief item.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.8 Accept (holdAs, Why), §5.6 hold-as dialog, §4.4 b1; core/src/review/classify.ts:158 (built)",
+      "note": ""
+    },
+    {
+      "clause": "RV-1 Add premise, sub-bullet 5 (write)",
+      "requirement": "telelean then writes the card (Claude's wording) and its arrow, with no extra Claude step.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.8 (premise write, planGhostAdoption with holdAs, adopt commit), D2-71",
+      "note": "Slice 1's 'I hold this' does this as an axiom only."
+    },
+    {
+      "clause": "RV-1 Add premise, sub-bullet 5.1",
+      "requirement": "telelean re-checks the written premise; if its fully explicit form differs from the accepted one, it returns to review marked 'meaning differs in place'.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.8 'Meaning in place' (engine.writePremise)",
+      "note": ""
+    },
+    {
+      "clause": "RV-1 Add premise, sub-bullet 5.2",
+      "requirement": "telelean completes the target's proof and checks it as a step would; until that passes the Result reads 'completion not checked'.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.8 Completion (engine.complete), D2-56, D2-71",
+      "note": "A failed completion is taken back out, with Retry step (D2-56)."
+    },
+    {
+      "clause": "RV-1 Add premise, sub-bullet 5.3",
+      "requirement": "The target's Result then returns to 'in review', marked 'updated'.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.8 Completion",
+      "note": ""
+    },
+    {
+      "clause": "RV-1 Add premise, sub-bullet 5.4",
+      "requirement": "A second accepted premise for the same target leaves the first completion standing and is listed as unused.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.8 ('unused premise' marker)",
+      "note": ""
+    },
+    {
+      "clause": "RV-1 Add arrow",
+      "requirement": "An arrow Claude adds is its own item.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.8 propose_arrow (D2-1), §2.2 key arrow:<s>><t>, §4.2",
+      "note": ""
+    },
+    {
+      "clause": "RV-1 Remove arrow",
+      "requirement": "An arrow Claude removes is its own item.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §2.8 remove_arrow, §3.10 Ownership (unarrow:), D3-14",
+      "note": "Whole model only."
+    },
+    {
+      "clause": "RV-1 Add/Remove arrow, sentence 2",
+      "requirement": "An added arrow into a target is part of that target's result.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.2 partOfResult, §4.7",
+      "note": ""
+    },
+    {
+      "clause": "RV-1 Add/Remove arrow, sentence 3",
+      "requirement": "Removing a card's arrows as part of deleting it belongs to its Delete item, not separate items.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.10 Ownership (ledger delete → card:<c> Delete with outgoing arrows and mark)",
+      "note": ""
+    },
+    {
+      "clause": "RV-1 Change ‹card› (fields)",
+      "requirement": "A Change item is shown field by field, before → after.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.10 (whole-model field changes give Change items); slice2-plan §2.3 FieldChangeView, §5.6 (rendering)",
+      "note": "No slice-2 step produces Change items; transforms add more in slice 4."
+    },
+    {
+      "clause": "RV-1 Change ‹card› (mentions)",
+      "requirement": "A Change item lists every card whose statement or proof mentions what it changes.",
+      "status": "planned-slice3",
+      "where": "slice2-plan §2.3 change detail mentionedBy, §5.6 'Mentioned by'; produced from slice3-plan §3.10",
+      "note": ""
+    },
+    {
+      "clause": "RV-1 Formalize ‹card›",
+      "requirement": "A Formalize item fills an empty Lean statement and changes nothing else.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.2 (statement → Formalize when B had none), §4.9 step limits; core/src/review/items.ts (built 2a1)",
+      "note": ""
+    },
+    {
+      "clause": "RV-1 Delete ‹card›",
+      "requirement": "A Delete item deletes the card, its Lean and its arrows; a .holds is never left behind as a hidden assumption.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §2.8 delete_card, §3.10 (block, bound declarations, proof material, outgoing arrows, mark), D3-14",
+      "note": ""
+    },
+    {
+      "clause": "RV-1 Vocabulary (N), sentences 1-2",
+      "requirement": "New plain vocabulary is one item that expands into sub-items with their own statuses ('k of N accepted').",
+      "status": "narrowed-by-decision",
+      "where": "D2-31; slice2-plan §2.2 (vocab:<name> per term), §5.5 group 'Vocabulary (N)'",
+      "note": "Each term is its own item, grouped under 'Vocabulary (N)' with 'k of N accepted'."
+    },
+    {
+      "clause": "RV-1 Vocabulary (N), sentences 3-4",
+      "requirement": "Changes to existing vocabulary, definitions and presuppositions get their own items; a presupposition's helper instance belongs to it; other new instances get their own.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.2, §2.2 DeclKind and decl:<name>; core/src/review/items.ts (built 2a1)",
+      "note": "Changes to existing vocabulary arise only with the whole model open (slice 3)."
+    },
+    {
+      "clause": "RV-1 Result, sentence 1",
+      "requirement": "One Result item per inference, always present, whether or not a proof was found.",
+      "status": "narrowed-by-decision",
+      "where": "D2-44; slice2-plan §4.2 (a Result for every inference whose step ended, F9)",
+      "note": "An inference whose step never ended has no Result; Submit drops it and the confirmation lists it 'not run'."
+    },
+    {
+      "clause": "RV-1 Result, sub-bullet 1",
+      "requirement": "Once revealed, a Result shows the verdict, the proof ('replaces your proof' when it does), the band and what it rests on.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.3 result detail, §5.6",
+      "note": ""
+    },
+    {
+      "clause": "RV-1 Result, sub-bullet 2",
+      "requirement": "The verdict is established, proved but not established (with BD-6's reason chip), or not proved.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.3 verdict and reasonChip, §5.6",
+      "note": ""
+    },
+    {
+      "clause": "RV-1 Result, sub-bullet 3",
+      "requirement": "'Proved from nothing' is a flag with the text 'check what the statement says'.",
+      "status": "built",
+      "where": "webview/src/run/ReportCard.tsx:107-111 (slice 1e); core/src/review/texts.ts:68-73 (built 2a1); slice2-plan §2.2 ResultFlag, §5.6",
+      "note": ""
+    },
+    {
+      "clause": "RV-1 Result, sub-bullet 4",
+      "requirement": "Selected arrows the proof did not need are listed 'not needed' and stay dotted.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.3 band.notNeeded, §5.4, §5.6",
+      "note": "Slice 1's report lists 'Not used by the proof' (ReportCard.tsx:113)."
+    },
+    {
+      "clause": "RV-1 Result, sub-bullet 5",
+      "requirement": "If the session changed the target's statement, the Result says 'proves a statement changed in this session'.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.2 ResultFlag proves-changed-statement, §4.4 c2",
+      "note": "Reachable once statements can change (slice 3 whole model, slice 4)."
+    },
+    {
+      "clause": "RV-1 Proof broken ‹card›",
+      "requirement": "A broken proof becomes a Proof broken item (TR-14).",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.10 Proof broken (mark_proof_broken; Accept → unproved; Reject restores), D3-10, D3-47; slice2-plan §5.6",
+      "note": "'Make it pending' waits for slice 4 (D3-10); re-proving waits until after the session (D3-47)."
+    },
+    {
+      "clause": "RV-2 sentence 1, bullet 1",
+      "requirement": "The review list is the status table; items are grouped by card, with arrow items under their target.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §5.5 Order, §2.3 ItemView.group",
+      "note": ""
+    },
+    {
+      "clause": "RV-2 bullet 2 (rows)",
+      "requirement": "Each item shows its label, status and badges (belief, changes what is proved, depends on N).",
+      "status": "planned-slice2",
+      "where": "slice2-plan §5.5 Rows",
+      "note": ""
+    },
+    {
+      "clause": "RV-2 bullet 2 (header)",
+      "requirement": "Counts at the top ('3 in review · 5 accepted · 1 declined') with an 'in review' filter.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §5.5 Header",
+      "note": ""
+    },
+    {
+      "clause": "RV-2 bullet 3",
+      "requirement": "Back/Next or ↑/↓ cycle items; A accepts, D declines; Accept & next combines them.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §5.5 Keyboard, §5.6 footer, D2-37",
+      "note": "Shift+A is Accept & next."
+    },
+    {
+      "clause": "RV-2 bullet 4 (detail)",
+      "requirement": "The detail shows your sentence above its Lean, a Fully explicit toggle, and what the Lean uses.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §5.6 formalize body, §3.12 renderings, §2.3 LeanStatementView",
+      "note": ""
+    },
+    {
+      "clause": "RV-2 bullet 4 (arrow item)",
+      "requirement": "An arrow item's detail shows both cards' sentences.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §5.6 add-arrow / remove-arrow",
+      "note": ""
+    },
+    {
+      "clause": "RV-2 bullet 4 (narrow panel)",
+      "requirement": "On a narrow panel the detail replaces the list.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §5.5 Narrow panel",
+      "note": ""
+    },
+    {
+      "clause": "RV-3 bullet 1, sentence 1",
+      "requirement": "Every item starts in review, then becomes accepted or declined (with a decline option).",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.2 ItemStatus, §3.5, §4.6; core/src/review/reducer.ts:1210 (built 2a2)",
+      "note": "D2-17 adds 'withdrawn' for content Claude removed in a Shaky step."
+    },
+    {
+      "clause": "RV-3 bullet 1, sentence 2",
+      "requirement": "You can change any item's status at any time during the session.",
+      "status": "narrowed-by-decision",
+      "where": "D2-62, D2-8 (AP-24 #2); slice2-plan §3.6, §4.6, §5.13",
+      "note": "Not while Claude's step runs; not Results or their parts while results are hidden; not in confirming (Back to review first)."
+    },
+    {
+      "clause": "RV-3 bullet 2, sentence 1",
+      "requirement": "telelean sets 'to be redone' on an item when something it depends on is declined.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.6, §4.6, §3.5 RV-3 rule, D2-28; core/src/review/reducer.ts (built 2a2)",
+      "note": ""
+    },
+    {
+      "clause": "RV-3 bullet 2, sentence 2 (Submit)",
+      "requirement": "'To be redone' does not block Submit review.",
+      "status": "narrowed-by-decision",
+      "where": "D2-61, D2-64; slice2-plan §3.7",
+      "note": "Submit needs the results shown; a statement to be redone with its content kept keeps them hidden until declined as Shaky or the results are shown."
+    },
+    {
+      "clause": "RV-3 bullet 2, sentence 2 (redo)",
+      "requirement": "The next step proposes a to-be-redone item again.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.7 (Submit steps with openItems), §3.5 F5 rule",
+      "note": ""
+    },
+    {
+      "clause": "RV-3 bullet 3",
+      "requirement": "Markers 'updated' and 'no alternative found'.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.2 ItemMarker, §3.5; core/src/review/texts.ts:54 (built)",
+      "note": ""
+    },
+    {
+      "clause": "RV-4 header",
+      "requirement": "Accept freezes the item's content as a session freeze until the item's status changes.",
+      "status": "narrowed-by-decision",
+      "where": "D3-4; slice3-plan §3.7; slice2-plan header (Accept freezes nothing in slice 2)",
+      "note": "Ends only by your own status change, an Unfreeze or a cascade you confirm; telelean's returns to review keep it frozen."
+    },
+    {
+      "clause": "RV-4 bullet 1",
+      "requirement": "Accepting Add freezes every field of the new card; Add premise, those and its arrow.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.7 acceptCovers",
+      "note": ""
+    },
+    {
+      "clause": "RV-4 bullet 2",
+      "requirement": "Accepting Add arrow freezes the arrow.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.7",
+      "note": ""
+    },
+    {
+      "clause": "RV-4 bullet 3",
+      "requirement": "Accepting Change or Formalize freezes the sentence and Lean statement together, plus any other changed field.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.7",
+      "note": ""
+    },
+    {
+      "clause": "RV-4 bullet 4",
+      "requirement": "Accepting a Result freezes the proof.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.7",
+      "note": ""
+    },
+    {
+      "clause": "RV-4 bullet 5",
+      "requirement": "Accepting Delete or Remove arrow freezes nothing, but Claude may not re-add the card or arrow.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.4 step 1, §3.7, §2.8 (propose_arrow refusal, D3-50)",
+      "note": ""
+    },
+    {
+      "clause": "RV-4 bullet 6",
+      "requirement": "Accepting vocabulary freezes each term.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.7",
+      "note": ""
+    },
+    {
+      "clause": "RV-5 edge 1",
+      "requirement": "I depends on J when I's elaborated Lean mentions something J adds or changes.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.5 rule 1, §4.1; core/src/review/deps.ts:93 (built 2a2)",
+      "note": ""
+    },
+    {
+      "clause": "RV-5 edge 2",
+      "requirement": "A Result depends on what its inference uses, including an item that adds an arrow its proof uses.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.5 rule 2; core/src/review/deps.ts (built 2a2)",
+      "note": ""
+    },
+    {
+      "clause": "RV-5 edge 3",
+      "requirement": "An arrow item depends on the item that adds a card at either end.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.5 rule 3; core/src/review/deps.ts:128 (built 2a2)",
+      "note": "Fires only once slice 3 adds cards (slice3-plan §3.10, 3c2)."
+    },
+    {
+      "clause": "RV-5 edge 4",
+      "requirement": "An item adding an arrow that would close a cycle depends on the item that removes another one.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.5 rule 4; core/src/review/deps.ts:138 (built 2a2)",
+      "note": "Fires only with slice 3's Remove arrow items (A17)."
+    },
+    {
+      "clause": "RV-5 edge 5",
+      "requirement": "A Delete or Change depends on the items that remove other mentions of what it deletes or changes.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.5 rule 5; slice3-plan §3.10 (extended to Proof broken)",
+      "note": "Change and Delete items exist from slice 3."
+    },
+    {
+      "clause": "RV-5 bullet 2",
+      "requirement": "Accept is enabled only once everything the item depends on is accepted; until then it lists what is missing, with Select them.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.6, §2.3 Gate.missing, §5.6; core/src/review/reducer.ts:1232 acceptGate (built 2a2)",
+      "note": "D2-26: items in a dependency cycle are accepted one by one, blocked only by dependencies outside it."
+    },
+    {
+      "clause": "RV-5 bullet 2 (side effects)",
+      "requirement": "Nothing is ever accepted as a side effect.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.1 (decisions are the user's), §4.6 properties",
+      "note": ""
+    },
+    {
+      "clause": "RV-5 bullet 3 (decline, status change)",
+      "requirement": "Before an item leaves 'accepted' by a decline or status change, telelean lists the accepted items that depend on it and takes them with it; cancelling cancels.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.6 Accepted dependents, §4.6, D2-64; core/src/review/reducer.ts:739 (built 2a2)",
+      "note": "On a decline they become 'to be redone' (RV-3, D2-28), not 'in review'. While results are hidden it always asks and names no Result."
+    },
+    {
+      "clause": "RV-5 bullet 3 (unfreeze)",
+      "requirement": "An item leaves 'accepted' when its content is unfrozen, with the same list of dependents.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.6 Unfreeze, §4.4",
+      "note": "Only in a stage (D3-7, D3-35)."
+    },
+    {
+      "clause": "RV-5 bullet 3 (your change)",
+      "requirement": "An item leaves 'accepted' when you change its content or what it depends on (in a transform, or by a D-11 follow-on edit), with the same list.",
+      "status": "for-slice4",
+      "where": "transform window: slice 4 (slice2-plan and slice3-plan headers)",
+      "note": "Implied; no plan names this path."
+    },
+    {
+      "clause": "RV-5 bullet 4",
+      "requirement": "The accepted items always form a self-contained whole.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.6 properties, §3.5 defensive RV-5 rule, §4.10 not-accepted and scc",
+      "note": ""
+    },
+    {
+      "clause": "RV-6 bullet 1",
+      "requirement": "Each Result stays neutral until the statement and belief items it depends on are decided and the Results it depends on are revealed, or until Show result.",
+      "status": "narrowed-by-decision",
+      "where": "D2-61 (AP-24 #1); slice2-plan §4.7; core/src/review/reveal.ts:36 resultsState (built 2a2)",
+      "note": "One reveal per stage: every Result waits for every undecided meaning item, and Show results shows all. Hides more than RV-6 asks."
+    },
+    {
+      "clause": "RV-6 bullet 1 (seen early)",
+      "requirement": "Show result notes that you saw the result early.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.7 seen-early marker, §5.6 dialog",
+      "note": "Not available while a step runs (D2-62)."
+    },
+    {
+      "clause": "RV-6 bullet 2",
+      "requirement": "Until then the Proposed view shows every derived datum as if the target's .holds were as at the step's start: glows, chips, bands, Rests on, Used by, solid arrows, stub counts, tooltip.",
+      "status": "narrowed-by-decision",
+      "where": "D2-61 (D2-6 withdrawn); slice2-plan §4.7 base mask, §5.10",
+      "note": "Masks to the session's base B rather than each step's start. Slice 1d's webview overlay has leaks that slice 2 removes (§7.3)."
+    },
+    {
+      "clause": "RV-6 bullet 3 (verdict, proof)",
+      "requirement": "Until revealed, hide the verdict, the proof and what it rests on.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.7, §2.3 hidden Result row, D2-5",
+      "note": ""
+    },
+    {
+      "clause": "RV-6 bullet 3 (Claude's proposals)",
+      "requirement": "Until revealed, hide the premises and arrows Claude proposes into the target.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.7 (Results' parts left out)",
+      "note": ""
+    },
+    {
+      "clause": "RV-6 bullet 3 (report)",
+      "requirement": "Until revealed, hide the stage report's verdicts, Claude's summary and 'Assumed without asking'.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.7, D2-10",
+      "note": ""
+    },
+    {
+      "clause": "RV-6 bullet 3 (lemmas)",
+      "requirement": "Hide new lemmas and proof-only declarations until every Result that uses them is revealed.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.7 base mask, D2-43",
+      "note": ""
+    },
+    {
+      "clause": "RV-6 bullet 3 (proof exists)",
+      "requirement": "Until revealed, hide whether a proof exists at all: the Proof field and proof status, in the Proposed view and every item detail.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.7 (base mask, neutral rows, non-interference), §6.1 2c2/2e",
+      "note": ""
+    },
+    {
+      "clause": "RV-6 bullet 4 (counts)",
+      "requirement": "Counts, 'depends on N' badges, missing lists and TR-13's lists leave out hidden items and proofs.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.3 counts, §4.5 Hidden items",
+      "note": "TR-13's lists come with the transform window (slice 4)."
+    },
+    {
+      "clause": "RV-6 bullet 4 (raw diff)",
+      "requirement": "Raw Lean diff… counts as Show result for every Result it shows.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.4 openSessionDiff, §5.8",
+      "note": "Slice 1 opens it without counting (leak 4, slice2-plan §7.3)."
+    },
+    {
+      "clause": "RV-6 bullet 5",
+      "requirement": "The result is hidden again if any of those items returns to 'in review'.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.7 'Hidden again', §3.5 step 3; core/src/review/reveal.ts (built 2a2)",
+      "note": ""
+    },
+    {
+      "clause": "RV-7 header",
+      "requirement": "Group Accept skips items that need their own Accept, and says so.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.6 planGroupAccept, §5.5 'Left N' note, D2-32; core/src/review/reducer.ts:211 (built 2a2)",
+      "note": ""
+    },
+    {
+      "clause": "RV-7 belief 1",
+      "requirement": "Belief: adds an axiom card, or a premise accepted as a pending proposition.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.4 b1; core/src/review/classify.ts:158-161 (built)",
+      "note": "b1 counts every Add premise, as RV-1 says."
+    },
+    {
+      "clause": "RV-7 belief 2",
+      "requirement": "Belief: formalises an axiom, or changes an axiom's sentence or Lean.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.4 b2; classify.ts:163",
+      "note": ""
+    },
+    {
+      "clause": "RV-7 belief 3",
+      "requirement": "Belief: adds or changes any Lean axiom (presupposition, unmarked axiom, pending claim).",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.4 b3; classify.ts:165-172",
+      "note": "D2-40: Claude may not add an unmarked Prop axiom at all."
+    },
+    {
+      "clause": "RV-7 belief 4",
+      "requirement": "Belief: adds a definition, instance or coercion, or changes vocabulary, in the elaborated closure of a card's statement; new plain vocabulary is not a belief.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.4 b4, §4.1 R_stmt, D2-30, D2-42, D2-25; classify.ts:177",
+      "note": ""
+    },
+    {
+      "clause": "RV-7 belief 5",
+      "requirement": "Belief: a 'meaning changed' item of an axiom (FZ-5).",
+      "status": "narrowed-by-decision",
+      "where": "D3-9; slice3-plan §3.9",
+      "note": "No 'meaning changed' items and no 'Allow this change'; b5 stays unused."
+    },
+    {
+      "clause": "RV-7 belief, last line",
+      "requirement": "Items are classified by their effect in Lean, never by column.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.4, §4.10 own-accept",
+      "note": ""
+    },
+    {
+      "clause": "RV-7 changes what is proved 1",
+      "requirement": "Changes a Lean statement or proof that existed at the session's start, or the statement a Result proves.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.4 c1, c2",
+      "note": ""
+    },
+    {
+      "clause": "RV-7 changes what is proved 2",
+      "requirement": "Changes the sentence of a card with Lean; shown above the unchanged Lean, marked 'sentence and Lean may disagree'.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.4 c3, §2.2 marker, §5.6",
+      "note": "Sentence changes arise from slice 3 (whole model) and slice 4."
+    },
+    {
+      "clause": "RV-7 changes what is proved 3",
+      "requirement": "Adds an arrow into a proposition; marked 'adds no new basis' when the added card rests only on what the question covers.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.4 c4 (addsNoNewBasis, AF8); classify.ts:140",
+      "note": ""
+    },
+    {
+      "clause": "RV-7 bullet 3",
+      "requirement": "Every Add arrow into a proposition changes what is proved, used or not; removing an arrow is not an RV-7 item.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.4 ('Not RV-7: Remove arrow'); slice3-plan §3.10",
+      "note": ""
+    },
+    {
+      "clause": "RV-7 bullet 4",
+      "requirement": "Classes are recomputed on every judged state; an accepted item that becomes RV-7 returns to review with its badge and RV-5's list.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.5 RV-7 rule, §4.6, D2-23; core/src/review/reconcile.ts (built 2a2)",
+      "note": ""
+    },
+    {
+      "clause": "RV-7 bullet 5",
+      "requirement": "Content you typed yourself counts as accepted by you.",
+      "status": "for-slice4",
+      "where": "transform window: slice 4 (slice2-plan and slice3-plan headers); TR-15",
+      "note": "Implied; no plan names it."
+    },
+    {
+      "clause": "RV-8 sentence 1",
+      "requirement": "You can select several items and Accept or Decline them together.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §5.5 group buttons, §5.7 Group decisions (2h adds the Context Menu)",
+      "note": ""
+    },
+    {
+      "clause": "RV-8 bullet 1",
+      "requirement": "Group Accept takes every non-RV-7 item whose dependencies are accepted or taken by the same Accept, and lists what it left and why.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.6 planGroupAccept, §5.5; core/src/review/reducer.ts:211 (built 2a2)",
+      "note": "Hidden Results are left out (D2-8)."
+    },
+    {
+      "clause": "RV-8 bullet 2; §10 preamble (group)",
+      "requirement": "Group Decline applies one option to every item, and plain Decline to arrow items.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.6 planGroupDecline, §5.7; core/src/review/reducer.ts:249 (built 2a2)",
+      "note": ""
+    },
+    {
+      "clause": "RV-8 bullet 2 (Transform)",
+      "requirement": "Decline → Transform opens one window for all the selected items.",
+      "status": "for-slice4",
+      "where": "D2-14; slice2-plan §5.7 (Transform shown disabled until slice 4)",
+      "note": ""
+    },
+    {
+      "clause": "RV-9 bullet 1, sentences 1-2",
+      "requirement": "At any point in a stage you can run Formalize on selected arrows; a Claude step runs at once (preset or whole model), its items joining the current stage.",
+      "status": "narrowed-by-decision",
+      "where": "D2-65, D2-63, D2-53, D2-20; slice2-plan §3.2, §4.12, §5.11; whole model: slice3-plan §3.10",
+      "note": "Waits until the results are shown; items join after the queue ends; refuses targets with Shaky items and arrows still in review."
+    },
+    {
+      "clause": "RV-9 bullet 1, sentence 3",
+      "requirement": "Cards you declined with Transform or Shaky count as frozen for it.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.12 checks 3 and 5 (D2-53), §4.9 step limits; slice3-plan §3.10 whole-model limits",
+      "note": "Transform part from slice 4."
+    },
+    {
+      "clause": "RV-9 bullet 1, sentence 4",
+      "requirement": "Mid-stage Formalize is disabled while a step runs.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.2, §5.11, D2-62",
+      "note": ""
+    },
+    {
+      "clause": "RV-9 bullet 2",
+      "requirement": "Transforms started during a stage wait until Submit review.",
+      "status": "for-slice4",
+      "where": "transform window: slice 4",
+      "note": ""
+    },
+    {
+      "clause": "RV-10 sentence 1",
+      "requirement": "The stage report sits above the list.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §5.3 panel order, §5.4",
+      "note": ""
+    },
+    {
+      "clause": "RV-10 contents 1",
+      "requirement": "The stage report contains Claude's summary.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §5.4 (results shown, D2-10)",
+      "note": "Slice 1's report card has it for one run."
+    },
+    {
+      "clause": "RV-10 contents 2",
+      "requirement": "For each target, once revealed: the verdict, the band, and what it rests on.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §5.4, §2.3 StageReportView.targets",
+      "note": ""
+    },
+    {
+      "clause": "RV-10 contents 3",
+      "requirement": "The stage report lists selected arrows that were not needed.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §5.4 'Not needed'",
+      "note": ""
+    },
+    {
+      "clause": "RV-10 contents 4; A10 last sentence",
+      "requirement": "The stage report lists what is missing, including drawn but unselected arrows ('select ‹card› → ‹target› too').",
+      "status": "planned-slice2",
+      "where": "slice2-plan §5.4 (missingArrowHints, 'Select these arrows'); built for one run: webview/src/model/run.ts:555",
+      "note": ""
+    },
+    {
+      "clause": "RV-10 contents 5",
+      "requirement": "The stage report says 'consistency unchecked'.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §5.4, StageReportView.consistency",
+      "note": "Slice 1's report card shows it."
+    },
+    {
+      "clause": "RV-10 contents 6",
+      "requirement": "The stage report lists open unfreeze requests.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §2.4 StageReportView.requests, §3.9, §4.6",
+      "note": ""
+    },
+    {
+      "clause": "RV-10 bullet 2",
+      "requirement": "'Assumed without asking' lists Claude's interpretive choices, each with Ask me instead: declines relying items with Transform and 'Ask me about: …' prefilled.",
+      "status": "narrowed-by-decision",
+      "where": "D2-13; slice2-plan §5.4",
+      "note": "Until slice 4 it is a Shaky decline of the step's statement items, with that note prefilled."
+    },
+    {
+      "clause": "RV-11 sentence 2",
+      "requirement": "A Result whose verdict or dependencies changed returns to 'in review', marked 'updated', with its result hidden again.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.5 RV-11 rule, §3.5 step 3; core/src/review/reconcile.ts:139,172 (built 2a2)",
+      "note": ""
+    },
+    {
+      "clause": "RV-11 sentence 3",
+      "requirement": "A proof accepted earlier in the session counts like your own for later inferences, whose reports show what they rest on through it.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.8 session proof (D2-48), §5.4 ('through ‹L›'s proof (this session)')",
+      "note": ""
+    },
+    {
+      "clause": "RV-12 sentence 1",
+      "requirement": "Submit review is enabled once nothing is 'in review'.",
+      "status": "narrowed-by-decision",
+      "where": "D2-64, D2-27; slice2-plan §3.7 Enabled",
+      "note": "Also needs the results shown, no step running or queued, and nothing being re-checked."
+    },
+    {
+      "clause": "RV-12 bullet 1",
+      "requirement": "Queued transforms that need no Claude are carried out first, as accepted items.",
+      "status": "for-slice4",
+      "where": "transform window: slice 4",
+      "note": "Implied; no plan names it."
+    },
+    {
+      "clause": "RV-12 bullet 2",
+      "requirement": "If every item is accepted or rejected, nothing is to be redone and no transform needs Claude, go to the end confirmation with no Claude step; telelean carries out the rejects.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.7 (confirming, no step, no seal, D2-54), §3.6 (rejects carried out at decision time)",
+      "note": ""
+    },
+    {
+      "clause": "RV-12 bullet 3",
+      "requirement": "Otherwise one Claude step handles queued transforms, Shaky items and items to be redone; the next stage begins; accepted items carry over.",
+      "status": "narrowed-by-decision",
+      "where": "D2-2, D2-57; slice2-plan §3.7",
+      "note": "One step per affected inference, after a take-out of items that other steps' items depend on."
+    },
+    {
+      "clause": "RV-13",
+      "requirement": "A step that proposes nothing says so, with Claude's reason.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.4, §5.4, §2.3 proposedNothing",
+      "note": "Shown with the results (D2-10)."
+    },
+    {
+      "clause": "§10 preamble (option required)",
+      "requirement": "A decline must pick one option.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.4 decideItems validator, §5.7",
+      "note": ""
+    },
+    {
+      "clause": "§10 preamble (Results)",
+      "requirement": "On a Result, Decline offers Reject (keeps the previous proof; that exact proof is barred) and Shaky (Claude retries at Submit); no Transform.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §5.7 Results",
+      "note": ""
+    },
+    {
+      "clause": "DO-0 bullet 1, sentence 1",
+      "requirement": "Arrow items have no decline options: Decline puts the arrow back or takes it away at once.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.6 DO-0, §5.7, §5.5 (D declines at once); core/src/review/reducer.ts (built 2a2)",
+      "note": "'Put back' applies to Remove arrow items, which exist from slice 3."
+    },
+    {
+      "clause": "DO-0 bullet 1, sentence 2",
+      "requirement": "Claude may not propose that exact arrow again in this session.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.2 rejectedArrows, §4.9 B.3 token declined; core/src/review/reducer.ts:479",
+      "note": ""
+    },
+    {
+      "clause": "DO-0 bullet 2, sub-bullet 1",
+      "requirement": "Declining an arrow makes every Result whose proof uses it 'to be redone'.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.6 DO-0, D2-59; core/src/review/reducer.ts:483",
+      "note": ""
+    },
+    {
+      "clause": "DO-0 bullet 2, sub-bullet 2",
+      "requirement": "Any card Claude added at either end of the arrow is declined, with its items.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.10 (3c2: Reject of the intermediate's Add and its items)",
+      "note": "D3-43 fallback may move it to slice 4."
+    },
+    {
+      "clause": "DO-0 bullet 2, last line",
+      "requirement": "Your own cards are never declined by it.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.6 DO-0; slice3-plan §3.10",
+      "note": ""
+    },
+    {
+      "clause": "DO-0 bullet 3",
+      "requirement": "An Add premise carries its arrow, so declining it declines both.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.6, §3.8 Taking a written premise out",
+      "note": ""
+    },
+    {
+      "clause": "DO-1 bullet 1",
+      "requirement": "Reject restores the previous version in the working copy at once.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.6 Reject (planItemRevert, one decision commit), D2-28",
+      "note": "planItemRevert is a 2b2 stub."
+    },
+    {
+      "clause": "DO-1 bullet 2, sentences 1-2",
+      "requirement": "Claude may not propose that exact thing again in this session; exact repeats are checked.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.9 rejected-repeat (D2-66), §3.7, §4.3",
+      "note": ""
+    },
+    {
+      "clause": "DO-1 bullet 2, sentence 3",
+      "requirement": "A reworded repeat comes back as the same item, in review and 'updated'; the rejected version stays under 'Rejected in this session'.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.5 (D2-70), §2.3 RejectedView.superseded",
+      "note": ""
+    },
+    {
+      "clause": "DO-1 bullet 3",
+      "requirement": "Reject does not freeze the card; to stop all changes to it you also Freeze it.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.6 (Freeze in a stage; Versions)",
+      "note": "Slice 2's Reject freezes nothing."
+    },
+    {
+      "clause": "DO-1 bullet 4",
+      "requirement": "Rejected items are listed under 'Rejected in this session', where you can un-reject them.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.3 RejectedView, §3.6 Un-reject, §5.7; core/src/review/reducer.ts:532-544 (built 2a2)",
+      "note": "Un-reject is refused after a newer version, on a merge conflict, or for a hidden Result."
+    },
+    {
+      "clause": "DO-2",
+      "requirement": "Transform opens the window on the proposed version beside the previous one and waits for Submit review; Claude's fields are marked and not accepted by submitting.",
+      "status": "for-slice4",
+      "where": "D2-14; slice2-plan header, §5.7",
+      "note": ""
+    },
+    {
+      "clause": "DO-3 bullet 1, sentence 1",
+      "requirement": "All items marked Shaky in a stage are taken together.",
+      "status": "narrowed-by-decision",
+      "where": "D2-2, D2-57; slice2-plan §3.7",
+      "note": "Reworked per affected inference, one step each; DO-3's set is checked per inference."
+    },
+    {
+      "clause": "DO-3 bullet 1, sentence 2",
+      "requirement": "Claude may keep, change, remove, split or merge those cards, within the frozen rules.",
+      "status": "narrowed-by-decision",
+      "where": "D2-15; slice2-plan §3.7; slice3-plan §3.10, §3.12, D3-49",
+      "note": "Content only: no new cards, splits or merges (kept in slice 3)."
+    },
+    {
+      "clause": "DO-3 bullet 2",
+      "requirement": "The new set must not be identical to the declined set (kinds, sentences, Lean statements, arrows; whitespace collapsed); single cards may return unchanged; telelean checks.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.7 rejected-repeat shaky-identical, §4.3",
+      "note": ""
+    },
+    {
+      "clause": "DO-3 bullet 3",
+      "requirement": "If Claude finds no different arrangement it says so, and the items come back marked 'no alternative found'.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.8 finish no_alternative, §3.5; core/src/review/reconcile.ts:271 (built 2a2)",
+      "note": ""
+    },
+    {
+      "clause": "EN-1 sentence 1",
+      "requirement": "A session ends successfully when you submit a stage in which every item is accepted or rejected and no transform needing Claude is queued.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.7, §3.10",
+      "note": "The transform condition comes with slice 4."
+    },
+    {
+      "clause": "EN-1 sentence 2",
+      "requirement": "Otherwise the session ends by Exit session.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.10 step 6, §3.13",
+      "note": ""
+    },
+    {
+      "clause": "EN-2 sentence 1",
+      "requirement": "A confirmation always comes first, except Cancel in the session-starting window when no freezes changed.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.10 (confirming), §5.9, D2-36",
+      "note": "The ES-3 exception comes with slice 4."
+    },
+    {
+      "clause": "EN-2 Apply, bullet 1",
+      "requirement": "Apply's confirmation shows the changes, each as a link.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §5.9",
+      "note": ""
+    },
+    {
+      "clause": "EN-2 Apply, bullet 2",
+      "requirement": "Apply's confirmation shows, separately, what you typed yourself in transforms.",
+      "status": "for-slice4",
+      "where": "transform window: slice 4",
+      "note": "Implied; slice2-plan §2.3 EndConfirmationView has no such section and no plan names it."
+    },
+    {
+      "clause": "EN-2 Apply, bullet 3",
+      "requirement": "Apply's confirmation shows the final check on exactly the final state; file checks may be reused only for an identical state; the backstop always runs.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.10 step 2, §4.10, §5.9",
+      "note": ""
+    },
+    {
+      "clause": "EN-2 Apply, bullet 4",
+      "requirement": "Apply's confirmation shows the freeze changes your decisions caused, each with a keep tick.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.7, §5.4 rows, D3-33",
+      "note": "None in slice 2 (§5.9)."
+    },
+    {
+      "clause": "EN-2 Apply, bullet 5",
+      "requirement": "Apply's confirmation summarises the session's starting freezes in one line ('the other N cards return to how they were').",
+      "status": "narrowed-by-decision",
+      "where": "D3-1; slice3-plan §4.7, §2.2 SessionFreezes.start",
+      "note": "No starting freezes exist; the line is 'Claude's step limits end with the session; your other freezes return to how they were.'"
+    },
+    {
+      "clause": "EN-2 Exit (text)",
+      "requirement": "Exit's confirmation says 'discards N accepted items and M items in review; your files are not changed'.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §5.9 Exit",
+      "note": ""
+    },
+    {
+      "clause": "EN-2 Exit (freeze list)",
+      "requirement": "Exit's confirmation shows the same freeze list, with keep ticks only for content in your files.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.7, §5.4",
+      "note": ""
+    },
+    {
+      "clause": "EN-2 bullet 'Back to review'",
+      "requirement": "Every confirmation has Back to review, returning to the submitted stage, unsubmitted, with nothing changed.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.10 step 3, §5.9, D2-54; slice3-plan §5.3 (R2-2)",
+      "note": "Freezes made while confirming stay (slice 3)."
+    },
+    {
+      "clause": "EN-2 bullet 'final check fails'",
+      "requirement": "If the final check fails, Apply is disabled, the failures are listed and nothing is applied.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.10 step 3, §5.9",
+      "note": ""
+    },
+    {
+      "clause": "EN-3 sentence 1 (history)",
+      "requirement": "Apply writes the changes as one history entry and one Undo step.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.10 step 4, D2-67, §6.1 2f",
+      "note": "D2-39: with nothing accepted, Apply only records the outcome."
+    },
+    {
+      "clause": "EN-3 sentence 1 (freezes)",
+      "requirement": "Apply then restores the freezes, except those ticked keep.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §5.4, D3-32",
+      "note": ""
+    },
+    {
+      "clause": "EN-3 sentence 2",
+      "requirement": "Apply records each accepted definition and presupposition as endorsed, so the board stops saying it needs your endorsement.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.6 endorsements.json (D2-18), §3.10 step 4, §1.1 2c1/2f",
+      "note": ""
+    },
+    {
+      "clause": "EN-4 sentence 1",
+      "requirement": "Exit discards the session's working copy.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.10 step 6",
+      "note": "Slice 1's Discard does this for a run."
+    },
+    {
+      "clause": "EN-4 sentence 2",
+      "requirement": "Your answers to Claude's questions stay recorded.",
+      "status": "built",
+      "where": "runner/src/run/manager.ts:1228-1369 (decisions.json); slice2-plan §3.10 step 6",
+      "note": ""
+    },
+    {
+      "clause": "A1",
+      "requirement": "Rejecting an item that an item in review depends on makes the dependent 'to be redone'.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.6, §4.6, §6.1 2e; core/src/review/reducer.ts (built 2a2)",
+      "note": ""
+    },
+    {
+      "clause": "A2",
+      "requirement": "When frozen Lean stops building after Claude filled the rest, Claude makes an unfreeze request instead of retrying, and the stage reports it.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.9, §2.8 system prompt, §2.4 StageReportView.requests",
+      "note": ""
+    },
+    {
+      "clause": "A3",
+      "requirement": "An instruction that needs frozen content gets an unfreeze request; if kept frozen, the stage reports that it could not be followed.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.9, §2.4 StageReportView.requests ('A3')",
+      "note": "Instructions come with the transform window (slice 4)."
+    },
+    {
+      "clause": "A5",
+      "requirement": "Ctrl+Z after an accidental 'Unfreeze all other cards' restores the freezes and the statuses together.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §5.3 ('A5 holds')",
+      "note": ""
+    },
+    {
+      "clause": "A7",
+      "requirement": "Only the selected arrows form a target's question; the others stay dotted, whatever the result.",
+      "status": "built",
+      "where": "core/src/formalize.ts:125; runner/src/run/manager.ts:871; slice1-plan §8 1d (band(v) = used drawn arrows)",
+      "note": ""
+    },
+    {
+      "clause": "A8",
+      "requirement": "When the proof uses fewer arrows than selected, the band binds those it uses; the rest are listed 'not needed' and stay dotted.",
+      "status": "built",
+      "where": "slice1-plan §8 1d bands; webview/src/run/ReportCard.tsx:113 ('Not used by the proof'); slice2-plan §5.4 'Not needed'",
+      "note": ""
+    },
+    {
+      "clause": "A9",
+      "requirement": "A proof that uses none of the selected arrows is flagged 'proved from nothing'.",
+      "status": "built",
+      "where": "webview/src/run/ReportCard.tsx:107-111; core/src/run.ts:448",
+      "note": ""
+    },
+    {
+      "clause": "A10 (slice 1)",
+      "requirement": "In slice 1, if Claude needs an unselected card it finishes not proved naming it; the report offers 'Draw (or select) the arrow…'; no existing card proposed as premise.",
+      "status": "built",
+      "where": "webview/src/model/run.ts:555 missingArrowHints; runner/src/run/systemPrompt.ts:16; B.2 undeclared-premise (slice1-plan §8 1e)",
+      "note": "'Never proposes an existing card' is a prompt rule; B.2 refuses using one."
+    },
+    {
+      "clause": "A10 (from slice 2)",
+      "requirement": "From slice 2, Claude proposes an arrow item for a card it needs.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.8 propose_arrow and the system prompt's arrow rule",
+      "note": ""
+    },
+    {
+      "clause": "A10 (frozen Dependencies)",
+      "requirement": "If the target's Dependencies are frozen, Claude makes an unfreeze request instead of an arrow item.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §2.8 (propose_arrow refuses into frozen Dependencies: 'ask with request_unfreeze first')",
+      "note": ""
+    },
+    {
+      "clause": "A11",
+      "requirement": "A new proof of an already-proved target replaces it ('replaces your proof'); the band moves, and the Result lists the cards whose basis changes.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.2 ResultFlag, §2.3 basisChanged and previousProof, §5.6",
+      "note": "Replacing already works in slice 1 (rules.ts:698), without the label or the list."
+    },
+    {
+      "clause": "A12",
+      "requirement": "In a chain X → L → A, L is proved first; if L fails, A's step reports 'L was not proved', and ★D7 applies to a later retry of A alone.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.3 item 3 (statements-only step, D2-4), §4.12 check 4",
+      "note": ""
+    },
+    {
+      "clause": "A17",
+      "requirement": "When an added arrow depends on removing another, declining the removal declines the addition.",
+      "status": "planned-slice3",
+      "where": "core/src/review/deps.ts:138 (rule 4, built 2a2); slice3-plan §3.10 remove_arrow",
+      "note": "Remove arrow items exist only from slice 3."
+    },
+    {
+      "clause": "A23",
+      "requirement": "With the whole model open, changing something under a standing freeze needs an unfreeze request.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.10 (standing freezes hold), §3.9",
+      "note": ""
+    },
+    {
+      "clause": "A25",
+      "requirement": "An intermediate card that fails to be proved has a Result saying so; a target that needed it reports '‹card› was not proved'.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.10 Intermediate cards, D3-13, §6.1",
+      "note": "D3-43 fallback applies."
+    },
+    {
+      "clause": "A26",
+      "requirement": "A premise accepted as a pending proposition leaves the target proved but resting on pending, with no green glow until it is proved.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.8 (as pending: PROPOSITION with axiom P.holds, never green); BD-6 rests-on-pending built in slice 1d",
+      "note": ""
+    },
+    {
+      "clause": "A27",
+      "requirement": "Ctrl+Z on the Current view during a session does nothing, and the disabled Undo button says why.",
+      "status": "built",
+      "where": "webview/src/state/store.ts:680-686 undoLock; webview/src/header/Header.tsx:82; slice2-plan §5.12",
+      "note": ""
+    },
+    {
+      "clause": "A28",
+      "requirement": "Once Claude's next step has run, Ctrl+Z stops at the step; to take back an earlier Accept, set the item back to 'in review'.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.6 (seal text), §4.6 seals; core/src/review/reducer.ts:1064 (built 2a2)",
+      "note": ""
+    }
+  ]
+}

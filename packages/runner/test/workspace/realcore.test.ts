@@ -31,7 +31,7 @@ describe('a board session with the real core', () => {
   it('adds a card to the Inbox and the layout, and undoes it exactly', async () => {
     const inbox = read(root, 'Model/Spyro/Inbox.lean');
     const layout = read(root, '.telelean/subjects/Spyro/layout.json');
-    const outcome = await ws.perform({ kind: 'add-node', subject: 'Spyro', type: 'ASSUMPTION', naturalName: 'Spyro is a purple dragon' });
+    const outcome = await ws.perform({ kind: 'add-node', subject: 'Spyro', type: 'AXIOM', naturalName: 'Spyro is a purple dragon' });
     expect(outcome.ok, JSON.stringify(outcome)).toBe(true);
     const id = outcome.ok ? (outcome.nodeId ?? '') : '';
     expect(id).not.toBe('');
@@ -49,7 +49,7 @@ describe('a board session with the real core', () => {
 
   it('reorders within a column (layout only) and undoes it', async () => {
     const before = ids();
-    const outcome = await ws.perform({ kind: 'reorder', id: 'new-spyro-pg', column: 'ASSUMPTION', beforeId: before[0] ?? null });
+    const outcome = await ws.perform({ kind: 'reorder', id: 'new-spyro-pg', column: 'AXIOM', beforeId: before[0] ?? null });
     expect(outcome.ok, JSON.stringify(outcome)).toBe(true);
     expect(ids()[0]).toBe('new-spyro-pg');
     expect((await ws.undo('Spyro')).ok).toBe(true);
@@ -72,7 +72,7 @@ describe('a board session with the real core', () => {
   it('records the session in the history', async () => {
     const listing = await ws.listHistory('Spyro');
     expect(listing.entries.map((e) => e.action)).toEqual(['undo', 'add-node', 'initial']);
-    expect(listing.entries[1]?.label).toMatch(/^Add assumption: Spyro is a purple dragon$/);
+    expect(listing.entries[1]?.label).toMatch(/^Add axiom: Spyro is a purple dragon$/);
     expect(listing.entries[0]?.label).toBe(`Undo: ${listing.entries[1]?.label ?? ''}`);
   });
 });

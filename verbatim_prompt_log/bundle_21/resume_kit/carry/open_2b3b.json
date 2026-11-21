@@ -1,0 +1,26 @@
+[
+ {
+  "id": "R1-1",
+  "severity": "minor",
+  "where": "packages/runner/test/gate/session.test.ts: complete tests at 699-727 and 1170-1272, for engine.ts:1751 (completeNow's starting state)",
+  "problem": "No test covers a completion that becomes due after a decision. That is F-FC-2's second case; the finding asked for a test of it, and the fixer's decision 5 (the newest commit, checked by content) was chosen over the narrower rule to handle exactly this case.\n- Every passing completion in the tests starts from the adopt state or a `revert` copy of it.\n- The only test with a decision-commit parent is a refusal (\"already proved\").\n\nSo a regression to the narrower rule would go unnoticed, and a premise written while T was proved would never be completed once T's Result is taken out.",
+  "fix": "Add a real-Lean test. Start from the adopt state of the premise flow and commit a `decision` that also changes something unrelated, so its files differ from the adopt commit's (for example another card's docstring). Write the completion on that head and assert that complete passes: commit kind `completion`, and the newest frozen copy holds the decision's change.",
+  "evidence": "In my scratch mirror I added the narrow alternative after the three precondition checks: a parent that is not an adopt commit must have exactly the last adopt commit's files, else refuse. All 26 tests of session.test.ts still passed (V20 in /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/rv2b3br1/mutation-results.jsonl; log at \u2026/rv2b3br1/logs/mut-V20.log)."
+ },
+ {
+  "id": "R1-2",
+  "severity": "minor",
+  "where": "docs/slice2-plan.md \u00a73.8 lines 1693 and 1699, and \u00a76.1 (2f tests) line 2570",
+  "problem": "The plan still says a failed completion is taken out by returning ws/ to the `adopt` commit (1693, and 2570: \"ws/ at the adopt commit\"). It also says the completion \"always starts from the `adopt` commit\" (1699).\n\nThe fixer's new complete contract, written into \u00a73.8's completion bullet and \u00a72.9's note, lets the completion be written on a later commit: after a crash replay's `revert`, or when it becomes due after a decision. In the due-later case, a 2f that follows the failure bullet literally would revert ws/ to the old adopt commit. That would discard every decision made after it (for example the person's Reject of T's Result), and ws/ would no longer match the records.",
+  "fix": "In \u00a73.8's failed-completion bullet and in \u00a76.1's 2f test line, say \"ws/ returns to the write's parent (the head the completion was written on; the adopt commit when it runs right after its premise write), as a `revert` commit\". In the due-writes paragraph, limit \"so that the completion always starts from the adopt commit\" to the completion that the premise write's step 4 enqueues.",
+  "evidence": "Line 1691 (with the fixer's note) says \"from the state the completion is written on, \u2026 the adopt commit or a later one after a crash replay or a decision\". Lines 1693, 1699 and 2570 are unchanged from before the fix."
+ },
+ {
+  "id": "R1-3",
+  "severity": "nit",
+  "where": "packages/runner/test/gate/session.test.ts:1163-1167 (test 'judge checks a draft again when its reliance changed\u2026')",
+  "problem": "The comment says that once the written premise joins E(T), the other draft \"is checked again\". Since outcomes are now re-emitted, the assertion `Object.keys(written.judgement.premiseChecks ?? {})).toEqual([otherItem])` holds whether or not the draft was re-checked. Before the fix, the key's presence alone proved a re-check, so this part of the test is now weaker.",
+  "fix": "After the `written` judge, add `expect(scratch).toHaveBeenCalledTimes(2);`. The spy is still active at that point.",
+  "evidence": "A probe in my mirror read the spy at that point: `scratch` had been called 2 times. So the behaviour holds, but nothing asserts it (log at /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/rv2b3br1/probe-p1.log)."
+ }
+]

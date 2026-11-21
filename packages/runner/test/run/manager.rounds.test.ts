@@ -5,6 +5,9 @@
  *   AT3.9 propose_assumption -> GhostView with the engine's checked statement; adoptGhost in review -> the adoption
  *         written (fake core planGhostAdoption), commit `adopt`, freeze with adoptedGhosts, round 2 in stage prove,
  *         the adoption turn naming the Lean name; a refused re-freeze reverts and stays in review
+ * Slice 2d: every start is an edit session, which has no Feedback round (Submit review's queue, 2e) and no ghost
+ * adoption (an Add premise item's Accept and write, 2f): those tests move (docs/slice2-plan.md 0). propose_assumption's
+ * refusals before the freeze and its rejected check stay, in a session step (its draft, never a ghost).
  */
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -14,7 +17,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import type { LlmEvent } from '../../src/llm/types.js';
 import type { CheckContext, FreezeOutcome } from '../../src/gate/types.js';
-import { fakeCore, makeHarness, round1, START, state, step, waitForRun, type Harness } from './helpers/harness.js';
+import type { PersistedRun } from '../../src/run/types.js';
+import { fakeCore, makeHarness, readJson, round1, START, state, step, waitForRun, type Harness } from './helpers/harness.js';
 import { okReport } from './helpers/fakeEngine.js';
 
 const MAIN = 'Model/Spyro/Main.lean';
@@ -47,7 +51,7 @@ async function proofBeforeFreeze(ctx: CheckContext): Promise<FreezeOutcome | und
 }
 
 describe('Feedback (AT3.8)', () => {
-  it('starts round 2 in stage formalise; finish(proved) needs a new freeze; the old proof is not a proof before the freeze', async () => {
+  it.skip('moves to 2e: Feedback (AT3.8) starts round 2 in stage formalise; finish(proved) needs a new freeze; the old proof is not a proof before the freeze', async () => {
     h = makeHarness({
       script: [
         round1(step.check(), step.freeze(), step.edit(TARGET_LINE, TARGET_LINE + PROOF), step.finish(), step.result()),
@@ -91,7 +95,7 @@ describe('Feedback (AT3.8)', () => {
 });
 
 const GHOST_BLOCK =
-  '/-\n@@ telelean v1\nid: a-character-who-cannot-be-in\ntype: ASSUMPTION\nnatural_name: A character who cannot be in a game would not be a good addition to it\nrationale: it seems obvious to me\nasserted: 2026-11-01\nlean: Spyro.not_in_game_not_good\norigin: agent\nworded_by: agent\n-/\n/-- A character who cannot be in a game would not be a good addition to it -/\nabbrev not_in_game_not_good : Prop := ∀ (c : Character) (g : Game), ¬ InGame c g → ¬ GoodAddition c g\naxiom not_in_game_not_good.holds : not_in_game_not_good\n\n';
+  '/-\n@@ telelean v1\nid: a-character-who-cannot-be-in\ntype: AXIOM\nnatural_name: A character who cannot be in a game would not be a good addition to it\nrationale: it seems obvious to me\nasserted: 2026-11-01\nlean: Spyro.not_in_game_not_good\norigin: agent\nworded_by: agent\n-/\n/-- A character who cannot be in a game would not be a good addition to it -/\nabbrev not_in_game_not_good : Prop := ∀ (c : Character) (g : Game), ¬ InGame c g → ¬ GoodAddition c g\naxiom not_in_game_not_good.holds : not_in_game_not_good\n\n';
 const TARGET_BLOCK_START = '/-\n@@ telelean v1\nid: cynder-not-good';
 
 function fakeAdoption(requests: GhostAdoptionRequest[]) {
@@ -107,7 +111,7 @@ function fakeAdoption(requests: GhostAdoptionRequest[]) {
 }
 
 describe('ghosts (AT3.9)', () => {
-  it('records a checked suggestion as a ghost; adopting it writes it, re-freezes with it selected and starts a proving round', async () => {
+  it.skip('moves to 2f: ghosts (AT3.9) records a checked suggestion as a ghost; adopting it writes it, re-freezes with it selected and starts a proving round', async () => {
     const requests: GhostAdoptionRequest[] = [];
     h = makeHarness({
       core: { ...fakeCore(), planGhostAdoption: fakeAdoption(requests) },
@@ -166,7 +170,7 @@ describe('ghosts (AT3.9)', () => {
     const r2 = await waitForRun(h.manager, (v) => v.state === 'review' && v.round === 2);
     expect(r2.verdict).toBe('proved');
     expect(h.player?.played[1]?.turn).toBe(
-      'The person adopted your suggestion as an assumption:\n- a-character-who-cannot-be-in (ASSUMPTION, worded by you): "A character who cannot be in a game would not be a good addition to it"\n' +
+      'The person adopted your suggestion as an axiom:\n- a-character-who-cannot-be-in (AXIOM, worded by you): "A character who cannot be in a game would not be a good addition to it"\n' +
         '  Lean: Spyro.not_in_game_not_good := ∀ (c : Character) (g : Game), ¬ InGame c g → ¬ GoodAddition c g; axiom Spyro.not_in_game_not_good.holds (telelean wrote it right before the target\'s block).\n' +
         'The statements are frozen again with it selected, so you may use Spyro.not_in_game_not_good.holds. Prove the target now and call finish. Budget for this round: 25 Lean checks, 80 turns, 20 minutes.',
     );
@@ -178,7 +182,7 @@ describe('ghosts (AT3.9)', () => {
     expect(await h.manager.adoptGhost(r1.runId, 'ghost-1')).toMatchObject({ ok: false });
   });
 
-  it('a refused re-freeze reverts the adoption and stays in review', async () => {
+  it.skip('moves to 2f: ghosts (AT3.9) a refused re-freeze reverts the adoption and stays in review', async () => {
     h = makeHarness({
       core: { ...fakeCore(), planGhostAdoption: fakeAdoption([]) },
       script: [round1(step.freeze(), step.propose(), step.finish('not_proved'), step.result())],
@@ -214,5 +218,8 @@ describe('ghosts (AT3.9)', () => {
     expect(results[2]?.text).toBe('Proposal rejected: the gap proof does not typecheck: unknown identifier InGame');
     expect(r.ghosts).toEqual([]);
     expect(r.counters.checks).toBe(2);
+    // Slice 2d: in a session the check gets the draft's Lean name, and no draft is kept for the rejected suggestion.
+    expect(h.engine.calls.find((c) => c.method === 'checkGhost')?.ghost).toMatchObject({ leanName: 'not_in_game_not_good' });
+    expect(readJson<PersistedRun>(h.shadow().paths.stateFile).session?.premises).toEqual([]);
   });
 });

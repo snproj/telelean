@@ -1,0 +1,79 @@
+# verify:1f:code
+
+Agent `ac3989211186f9ff1` of workflow `wf_6dff6c3c-db5`. Verbatim output (JSON alongside).
+
+- **summary:** I reviewed slice 1f for correctness and regressions and found no blocker or major problem. Every verification claim in the builder's report reproduced exactly.
+
+**What the review covered**
+- **Patch:** I regenerated it from b1f/orig and it is byte-identical to the builder's 1f.patch (48 files, 3405 lines).
+- **Host lock (`boardSession.ts`):**
+  - Every one of the 12 action types, plus undo, redo and historyRevert, is refused in `handleInOrder` before planning, with core `EDIT_SESSION_ACTIVE` and code `conflict`.
+  - No other host path writes the model files. The workspace's `perform`, `undo`, `redo` and `revert` are only called from `handleInOrder`, there is one board per root, and the Initialize command refuses an existing model.
+  - The start's lock and `await this.queue` cannot deadlock: no board-queue job waits on the run queue.
+- **"The base never moves":** confirmed.
+  - The only `base` commit is made in `createRunShadow`.
+  - `ctx.baseCommit` is set only in the now-unreachable rebase.
+  - The user's files are read into the shadow only at start, and in that rebase.
+  - The context bundle is rendered only at start, and ghost adoption writes only to the shadow.
+- **Accept drift refusal:** it comes before `planAccept` and changes no state, so the run stays in review.
+- **Webview:**
+  - Every store action that posts an edit is gated; I enumerated every `webviewMessage` call in the store and every action call in the components.
+  - `run` is never reset when the subject changes, so the webview lock matches the host lock folder-wide.
+  - The Proposed view never posts undo or redo.
+  - The CSS keeps hover tooltips on disabled controls.
+- **Carry-overs 1–4:** correct.
+  - Nothing consumes TL015 as a guard.
+  - `arrowList`'s relaxed empty check has a single caller, which re-checks it together with `marks`.
+  - The TL102 from the legacy upgrade has the same shape as build.ts's (prefix plus `nodeId`).
+- **Tests:** the new and changed tests test what they claim.
+- **E2E:** the builder's list of e2e breakage is complete. Only m2-layout 75–80 and board.spec.ts:327 are new with 1f; the other m2 specs edit nothing during a run.
+
+**Findings (below major):**
+- **Minor:** a pre-existing race window in Accept can still merge a hand edit.
+- **Nits:** a tooltip and a doc comment that contradict the lock.
+
+**Side effects of my runs**
+- Nothing in the repo changed apart from what vitest/vite and `git status` touch on their own:
+  - vite created and deleted its temporary bundled config, leaving the empty `packages/{core,runner,webview}/node_modules/.vite-temp` directories with new mtimes;
+  - the `.git` directory's mtime moved, most likely from `git status`'s index lock. `.git/index` is unchanged, as is the `git status --porcelain` output.
+- I sent vitest's results cache and transform cache to my scratch directory (`--no-cache`, `--fsModuleCachePath`), then deleted them.
+- `packages/extension/out` and `dist` are untouched, and nothing in them has changed since 03:45, so the builder's claim holds too.
+- `~/.elan/known-projects` is unchanged (mtime 2026-11-17).
+- There were transient systemd scopes from `capped.sh` and Lean units during m2flow and fresh.e2e. None are left, and no processes of mine remain.
+- No network was used, and no Claude.
+- **findings:**
+  - [1]
+    - **id:** F1
+    - **severity:** minor
+    - **where:** packages/runner/src/run/manager.ts:1673-1679 (acceptNow)
+    - **problem:** The drift check runs on one read of the user's files (`baseDrift`). `planAccept` then reads them again and, with no `shownState`, 3-way merges base→shown onto whatever it reads; the `plan.drift` it computes is ignored. A hand edit that lands between the two reads is merged into the Accept silently instead of being refused. `readText` reads open editor buffers first, so typing in an editor while pressing Accept can hit this window. The re-gate is skipped too, because `baseDrift` saw no drift. This breaks 1f's guarantee (ES-7, A4: "Nothing is merged") in a narrow window. The race existed before 1f, but 1f now claims Accept refuses whenever the files differ from the base.
+    - **fix:** Keep the early `baseDrift` refusal (it gives the exact message cheaply) and also refuse right after planning: `let plan = await proposals.planAccept(request); if (!plan.ok) return refused(plan.code, plan.error); if (plan.drift.length > 0) return refused('conflict', driftRefusal(plan.drift));`. `plan.drift` comes from the same reads that become the changes' `before`, and the EditApplier re-checks those at apply, so the window closes completely. Add a manager test where `planAccept` reports drift while `baseDrift` did not.
+  - [2]
+    - **id:** F2
+    - **severity:** nit
+    - **where:** packages/webview/src/board/CardDetails.tsx (ArrowActions, data-testid="select-incoming")
+    - **problem:** While the board is locked, "Select incoming arrows" stays enabled, which is right, but its tooltip still says "Select every arrow into this card (Delete removes them)". During a run, Delete only shows the lock toast and removes nothing.
+    - **fix:** Use `title={lock !== null ? 'Select every arrow into this card' : 'Select every arrow into this card (Delete removes them)'}`.
+  - [3]
+    - **id:** F3
+    - **severity:** nit
+    - **where:** packages/webview/src/run/Questions.tsx:2
+    - **problem:** The header comment says the questions are "answered in place so the A|P box keeps working (D-16)". Since 1f, the A|P box is disabled while a run is active (ES-9), so the comment now contradicts the behaviour.
+    - **fix:** Reword it, e.g. "answered in place, beside the board (which is read-only during the run, ES-9)".
+- **checks_run:**
+  - Regenerated the 1f diff from b1f/orig and b1f/new-files.txt: 48 files, 3405 lines, byte-identical to b1f/1f.patch (cmp: SAME_AS_BUILDER_PATCH)
+  - capped.sh 1400 tsc --noEmit -p packages/core/tsconfig.test.json -> exit 0, no output
+  - capped.sh 1600 tsc --noEmit -p packages/runner/tsconfig.test.json -> exit 0, no output
+  - capped.sh 1600 tsc --noEmit -p packages/webview/tsconfig.json -> exit 0, no output
+  - capped.sh 1600 tsc --noEmit -p packages/webview/tsconfig.node.json -> exit 2, 6 errors (test/e2e m1-edits x3, m2-layout x1, m2-review x2), identical to the builder's log and to the 1b verifier's log
+  - capped.sh 1700 tsc --noEmit -p packages/extension/tsconfig.json -> exit 2, 9 errors (test/suite e2e-runs x2, e2e x1, model x1, runs x5), identical to the builder's log and to the 1b verifier's log
+  - core: capped.sh 1700 vitest run --maxWorkers=1 --no-cache --fsModuleCachePath <scratch> -> 'Test Files  52 passed (52)' / 'Tests  564 passed (564)'
+  - webview: same flags -> 'Test Files  10 passed (10)' / 'Tests  165 passed (165)'
+  - extension: same flags (--no-cache) -> 'Test Files  22 passed (22)' / 'Tests  197 passed (197)'; find out dist -newer stamp -> nothing
+  - runner: capped.sh 1800 timeout 900 vitest run --maxWorkers=1 test/run/manager.accept.test.ts test/run/manager.lifecycle.test.ts test/workspace/arrows.test.ts -> 'Test Files  3 passed (3)' / 'Tests  26 passed (26)'
+  - runner: test/integration/m2flow.test.ts (real Lean) -> 'Test Files  1 passed (1)' / 'Tests  5 passed (5)', Duration 52.59s (none skipped)
+  - runner: test/run/fresh.e2e.test.ts (real Lean) -> 'Test Files  1 passed (1)' / 'Tests  9 passed (9)', Duration 106.74s (none skipped)
+  - runner: test/integration/fixes.test.ts -t 'P->A on a' -> 'Test Files  1 passed (1)' / 'Tests  5 skipped (5)', 240.47s (the 12 GB RAM wait, as the builder reported)
+  - runner: test/integration/session.test.ts -t 'P->A on the proved proposition|history: snapshots per action' -> 'Test Files  1 passed (1)' / 'Tests  8 skipped (8)', 240.65s (the 12 GB RAM wait, as the builder reported)
+  - Greps: remaining 'Make Axiom' strings are only in test fakes (extension watchers/boardSession, runner fakeCore/perform); every remove-arrows consumer handles empty arrows; no other caller of arrowList; nothing consumes TL015; the only user-file reads into the shadow are at start (manager.ts:886) and in the unreachable rebase
+  - Repo side effects: git status --porcelain md5 unchanged (.git/index mtime unchanged; only the .git dir mtime moved); no repo file newer than my stamp outside node_modules; empty node_modules/.vite-temp dirs in core/runner/webview had their mtimes bumped; no telelean systemd units or processes left; ~/.elan/known-projects mtime unchanged (2026-11-17)

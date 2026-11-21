@@ -20,6 +20,17 @@ beforeEach(() => {
   session = new BoardSession({ root: ws.root, rootName: 'spyro', workspace: ws, ports });
 });
 
+/** A second Spyro proposition, whose proof passes cynder-not-good's (conditional) proof its arguments. */
+const USER = { id: 'cynder-would-not-sell', naturalName: 'A Spyro game with Cynder would not sell' };
+
+/** Adds USER to the fake workspace's Spyro graph (spec v4: the kind change with dependents is P->A of a conditional proof). */
+function withUserOfTheGoal(): void {
+  const spyro = ws.graph('Spyro');
+  const goal = spyro.nodes.find((n) => n.id === 'cynder-not-good');
+  if (!goal) throw new Error('the sample has no proposition');
+  ws.graph = (subject: string) => ({ ...spyro, subject, nodes: [...spyro.nodes, { ...goal, ...USER }] });
+}
+
 describe('publishing', () => {
   it('answers "ready" with the workspace state, then the subject graph', async () => {
     await session.handle(message('ready', { lastVersion: null }));
@@ -49,13 +60,13 @@ describe('publishing', () => {
 
 describe('actions: actionResult and notices (AT5.7)', () => {
   it('performs the mapped action, then posts actionResult (requestId) and an undoable notice with the label', async () => {
-    ws.outcome = { ok: true, label: 'Add assumption: Cynder is a dragon', undoable: true, nodeId: 'cynder-is-a-dragon' };
-    await session.handle(message('addNode', { clientId: 'tmp-1', type: 'ASSUMPTION', naturalName: 'Cynder is a dragon', requestId: 'req-1' }));
-    expect(ws.performed).toEqual([{ kind: 'add-node', subject: 'Spyro', type: 'ASSUMPTION', naturalName: 'Cynder is a dragon' }]);
+    ws.outcome = { ok: true, label: 'Add axiom: Cynder is a dragon', undoable: true, nodeId: 'cynder-is-a-dragon' };
+    await session.handle(message('addNode', { clientId: 'tmp-1', type: 'AXIOM', naturalName: 'Cynder is a dragon', requestId: 'req-1' }));
+    expect(ws.performed).toEqual([{ kind: 'add-node', subject: 'Spyro', type: 'AXIOM', naturalName: 'Cynder is a dragon' }]);
     const [result] = ports.of('actionResult');
     expect(result?.payload).toEqual({ requestId: 'req-1', outcome: ws.outcome });
     const [notice] = ports.of('notice');
-    expect(notice?.payload).toMatchObject({ level: 'info', text: 'Add assumption: Cynder is a dragon', undoable: true });
+    expect(notice?.payload).toMatchObject({ level: 'info', text: 'Add axiom: Cynder is a dragon', undoable: true });
     expect(ports.posts.map((p) => p.type)).toEqual(['actionResult', 'notice', 'workspace', 'graph']);
   });
 
@@ -76,16 +87,17 @@ describe('actions: actionResult and notices (AT5.7)', () => {
     expect(ports.of('notice')[0]?.payload).toMatchObject({ level: 'warning', undoable: false, text: expect.stringContaining('changed since') });
 
     ports.clear();
-    ws.outcome = { ok: false, code: 'needs-confirmation', error: 'others use it', dependents: ['cynder-not-good'] };
-    await session.handle(message('kindChange', { id: 'cynder-dark-past', from: 'ASSUMPTION', to: 'GOAL', beforeId: null, requestId: 'r-3' }));
+    withUserOfTheGoal();
+    ws.outcome = { ok: false, code: 'needs-confirmation', error: 'others use it', dependents: [USER.id] };
+    await session.handle(message('kindChange', { id: 'cynder-not-good', from: 'PROPOSITION', to: 'AXIOM', beforeId: null, requestId: 'r-3' }));
     expect(ports.of('actionResult')[0]?.payload).toEqual({
       requestId: 'r-3',
-      outcome: { ...ws.outcome, dependentCards: { 'cynder-not-good': { subject: 'Spyro', type: 'GOAL', naturalName: 'Cynder would not be a good addition to the new Spyro game' } } },
+      outcome: { ...ws.outcome, dependentCards: { [USER.id]: { subject: 'Spyro', type: 'PROPOSITION', naturalName: USER.naturalName } } },
     });
     expect(ports.of('notice')).toEqual([]);
 
     ports.clear(); // without a requestId the webview cannot ask: tell the user
-    await session.handle(message('kindChange', { id: 'cynder-dark-past', from: 'ASSUMPTION', to: 'GOAL', beforeId: null }));
+    await session.handle(message('kindChange', { id: 'cynder-not-good', from: 'PROPOSITION', to: 'AXIOM', beforeId: null }));
     expect(ports.of('notice')[0]?.payload.level).toBe('warning');
   });
 
@@ -105,8 +117,8 @@ describe('actions: actionResult and notices (AT5.7)', () => {
     expect(ports.of('actionResult')[0]?.payload.outcome).toEqual({
       ...ws.outcome,
       dependentCards: {
-        'cynder-not-good': { subject: 'Spyro', type: 'GOAL', naturalName: 'Cynder would not be a good addition to the new Spyro game' },
-        'other-goal': { subject: 'Bayonetta', type: 'GOAL', naturalName: 'Bayonetta would be a good addition' },
+        'cynder-not-good': { subject: 'Spyro', type: 'PROPOSITION', naturalName: 'Cynder would not be a good addition to the new Spyro game' },
+        'other-goal': { subject: 'Bayonetta', type: 'PROPOSITION', naturalName: 'Bayonetta would be a good addition' },
       },
     });
 
@@ -122,38 +134,41 @@ describe('actions: actionResult and notices (AT5.7)', () => {
   });
 
   it('M2 carry-over 3: a kind change sends the dependents the dialog listed; core finding more answers needs-confirmation with all of them, cards named (AT5.7)', async () => {
+    // Spec v4: making a proposition with a conditional proof an axiom; its users pass the proof arguments.
     // The user chose "rewrite" for the one dependent the dialog showed; core (WP1) finds a second one the board did not list.
+    withUserOfTheGoal();
+    const error = 'cynder_not_good.holds takes a hypothesis, but as an axiom it becomes `axiom cynder_not_good.holds : cynder_not_good`, so 2 dependents that pass it arguments must change';
     ws.outcome = (action) =>
       action.kind === 'change-kind' && action.confirmedDependents?.includes('Spyro.helper_lemma')
-        ? { ok: true, label: 'Make Goal: Cynder is a character who has a dark past', undoable: true }
-        : { ok: false, code: 'needs-confirmation', error: 'Making it a Goal removes its .holds, which 2 dependents use', dependents: ['cynder-not-good', 'Spyro.helper_lemma'] };
+        ? { ok: true, label: 'Make Axiom: Cynder would not be a good addition to the new Spyro game (dependents rewritten)', undoable: true }
+        : { ok: false, code: 'needs-confirmation', error, dependents: [USER.id, 'Spyro.helper_lemma'] };
     const send = (requestId: string, confirmed: string[]) =>
       session.handle(
-        message('kindChange', { id: 'cynder-dark-past', from: 'ASSUMPTION', to: 'GOAL', beforeId: null, dependents: 'rewrite', confirmedDependents: confirmed, requestId }),
+        message('kindChange', { id: 'cynder-not-good', from: 'PROPOSITION', to: 'AXIOM', beforeId: null, dependents: 'rewrite', confirmedDependents: confirmed, requestId }),
       );
-    await send('k1', ['cynder-not-good']);
+    await send('k1', [USER.id]);
     expect(ws.performed[0]).toEqual({
       kind: 'change-kind',
-      id: 'cynder-dark-past',
-      to: 'GOAL',
+      id: 'cynder-not-good',
+      to: 'AXIOM',
       beforeId: null,
       dependents: 'rewrite',
-      confirmedDependents: ['cynder-not-good'],
+      confirmedDependents: [USER.id],
     });
     // The refusal lists every dependent, and names the cards among them, so the board re-asks with the host's list.
     expect(ports.of('actionResult')[0]?.payload.outcome).toEqual({
       ok: false,
       code: 'needs-confirmation',
-      error: 'Making it a Goal removes its .holds, which 2 dependents use',
-      dependents: ['cynder-not-good', 'Spyro.helper_lemma'],
-      dependentCards: { 'cynder-not-good': { subject: 'Spyro', type: 'GOAL', naturalName: 'Cynder would not be a good addition to the new Spyro game' } },
+      error,
+      dependents: [USER.id, 'Spyro.helper_lemma'],
+      dependentCards: { [USER.id]: { subject: 'Spyro', type: 'PROPOSITION', naturalName: USER.naturalName } },
     });
     // The re-sent change with both listed goes through.
-    await send('k2', ['cynder-not-good', 'Spyro.helper_lemma']);
+    await send('k2', [USER.id, 'Spyro.helper_lemma']);
     expect(ports.of('actionResult')[1]?.payload.outcome).toMatchObject({ ok: true });
     expect(ws.performed.map((a) => (a.kind === 'change-kind' ? a.confirmedDependents : undefined))).toEqual([
-      ['cynder-not-good'],
-      ['cynder-not-good', 'Spyro.helper_lemma'],
+      [USER.id],
+      [USER.id, 'Spyro.helper_lemma'],
     ]);
   });
 
@@ -161,10 +176,10 @@ describe('actions: actionResult and notices (AT5.7)', () => {
     ws.outcome = () => {
       throw new Error('boom');
     };
-    await session.handle(message('reorder', { id: 'a', column: 'GOAL', beforeId: null, requestId: 'r-4' }));
+    await session.handle(message('reorder', { id: 'a', column: 'PROPOSITION', beforeId: null, requestId: 'r-4' }));
     expect(ports.of('actionResult')[0]?.payload.outcome).toEqual({ ok: false, code: 'internal', error: 'boom' });
     expect(ports.of('notice')).toEqual([]);
-    await session.handle(message('reorder', { id: 'a', column: 'GOAL', beforeId: null }));
+    await session.handle(message('reorder', { id: 'a', column: 'PROPOSITION', beforeId: null }));
     expect(ports.of('notice')[0]?.payload.level).toBe('error');
     expect(outcomeFromError(new ActionError('needs-confirmation', 'x', ['a']))).toEqual({ ok: false, code: 'needs-confirmation', error: 'x', dependents: ['a'] });
   });
@@ -197,11 +212,96 @@ describe('actions: actionResult and notices (AT5.7)', () => {
       return { ok: true, label: action.kind, undoable: true };
     };
     await Promise.all([
-      session.handle(message('addNode', { clientId: 'c', type: 'GOAL', naturalName: 'g' })),
-      session.handle(message('reorder', { id: 'a', column: 'GOAL', beforeId: null })),
+      session.handle(message('addNode', { clientId: 'c', type: 'PROPOSITION', naturalName: 'g' })),
+      session.handle(message('reorder', { id: 'a', column: 'PROPOSITION', beforeId: null })),
       session.handle(message('deleteNode', { id: 'a', keepLean: true })),
     ]);
     expect(order).toEqual(['add-node', 'reorder', 'delete-node']);
+  });
+});
+
+describe('spec v4 slice 1b: arrows as board edits (routed like every action)', () => {
+  it('each arrow message becomes its BoardAction, then actionResult and an undoable notice with the label', async () => {
+    const labels: Record<string, string> = {
+      'add-arrows': 'Draw arrow: Cynder is a character who has a dark past → Cynder would not be a good addition…',
+      'remove-arrows': 'Remove arrow: PG games cannot have characters with… → Cynder would not be a good addition…',
+      'set-from-nothing': 'Follows from nothing: Cynder would not be a good addition to the new Spyro game',
+      'claim-pending': 'Mark pending: Cynder would not be a good addition to the new Spyro game',
+      'move-cards': 'Move: Cynder would not be a good addition to the new Spyro game',
+    };
+    ws.outcome = (action) => ({ ok: true, label: labels[action.kind] ?? action.kind, undoable: true });
+    await session.handle(message('addArrows', { target: 'cynder-not-good', sources: ['cynder-dark-past'], requestId: 'b1' }));
+    await session.handle(message('removeArrows', { arrows: [{ source: 'pg-no-dark-past', target: 'cynder-not-good' }], confirmed: true, requestId: 'b2' }));
+    await session.handle(message('setFromNothing', { id: 'cynder-not-good', on: true, requestId: 'b3' }));
+    await session.handle(message('claimPending', { id: 'cynder-not-good', requestId: 'b4' }));
+    await session.handle(message('moveCards', { positions: { 'cynder-not-good': { x: 40, y: 80 } }, requestId: 'b5' }));
+    expect(ws.performed).toEqual([
+      { kind: 'add-arrows', target: 'cynder-not-good', sources: ['cynder-dark-past'] },
+      { kind: 'remove-arrows', arrows: [{ source: 'pg-no-dark-past', target: 'cynder-not-good' }], confirmed: true },
+      { kind: 'set-from-nothing', id: 'cynder-not-good', on: true },
+      { kind: 'claim-pending', id: 'cynder-not-good' },
+      { kind: 'move-cards', positions: { 'cynder-not-good': { x: 40, y: 80 } } },
+    ]);
+    expect(ports.of('actionResult').map((m) => [m.payload.requestId, m.payload.outcome.ok])).toEqual([
+      ['b1', true],
+      ['b2', true],
+      ['b3', true],
+      ['b4', true],
+      ['b5', true],
+    ]);
+    expect(ports.of('notice').map((m) => [m.payload.text, m.payload.undoable])).toEqual(Object.values(labels).map((label) => [label, true]));
+    // Each answer is followed by a fresh workspace state and graph (the undo label and the board follow the change).
+    expect(ports.posts.filter((p) => p.type === 'graph')).toHaveLength(5);
+  });
+
+  it('needs-confirmation for an arrow change goes back to the board with the cards named (the dialog shows them by sentence)', async () => {
+    withUserOfTheGoal();
+    const error =
+      'Drawing this arrow into “The new Spyro game is PG” makes it a proposition. `axiom new_spyro_pg.holds` stays, marked pending proof, until a run proves it (`theorem new_spyro_pg.holds : … := …`). 1 card that rests on it will lose its green glow until it is proved.';
+    ws.outcome = (action) =>
+      action.kind === 'add-arrows' && action.confirmed !== true
+        ? { ok: false, code: 'needs-confirmation', error, dependents: [USER.id] }
+        : { ok: true, label: 'Draw arrow: Cynder is a character who has a dark past → The new Spyro game is PG', undoable: true };
+    await session.handle(message('addArrows', { target: 'new-spyro-pg', sources: ['cynder-dark-past'], requestId: 'c1' }));
+    expect(ports.of('actionResult')[0]?.payload.outcome).toEqual({
+      ok: false,
+      code: 'needs-confirmation',
+      error,
+      dependents: [USER.id],
+      dependentCards: { [USER.id]: { subject: 'Spyro', type: 'PROPOSITION', naturalName: USER.naturalName } },
+    });
+    expect(ports.of('notice')).toEqual([]);
+    // The board's dialog sends it again, confirmed.
+    await session.handle(message('addArrows', { target: 'new-spyro-pg', sources: ['cynder-dark-past'], confirmed: true, requestId: 'c2' }));
+    expect(ws.performed.map((a) => (a.kind === 'add-arrows' ? a.confirmed === true : undefined))).toEqual([false, true]);
+    expect(ports.of('actionResult')[1]?.payload.outcome).toMatchObject({ ok: true });
+  });
+
+  it('a refusal (a cycle) is an actionResult only; without a request id a warning notice says it', async () => {
+    ws.outcome = { ok: false, code: 'invalid', error: 'This arrow would make a cycle: A → B → A.' };
+    await session.handle(message('addArrows', { target: 'a', sources: ['b'], requestId: 'd1' }));
+    expect(ports.of('actionResult')[0]?.payload.outcome).toEqual(ws.outcome);
+    expect(ports.of('notice')).toEqual([]);
+    ports.clear();
+    await session.handle(message('addArrows', { target: 'a', sources: ['b'] }));
+    expect(ports.of('notice')[0]?.payload).toMatchObject({ level: 'warning', text: 'This arrow would make a cycle: A → B → A.', undoable: false });
+  });
+
+  it('arrow messages queue with the other board edits, in arrival order; undo then acts on the board subject', async () => {
+    const order: string[] = [];
+    ws.outcome = (action) => {
+      order.push(action.kind);
+      return { ok: true, label: action.kind, undoable: true };
+    };
+    await Promise.all([
+      session.handle(message('addArrows', { target: 'g', sources: ['a'] })),
+      session.handle(message('editNode', { id: 'g', field: 'naturalName', value: 'G' })),
+      session.handle(message('setFromNothing', { id: 'h', on: true })),
+      session.handle(message('moveCards', { positions: { g: { x: 1, y: 2 } } })),
+    ]);
+    expect(order).toEqual(['add-arrows', 'edit-node', 'set-from-nothing', 'move-cards']);
+    await session.handle(message('undo', { requestId: 'u9' }));
+    expect(ws.undone).toEqual(['Spyro']);
   });
 });
 
@@ -248,7 +348,7 @@ describe('subjects (AT5.7)', () => {
     expect(session.subject).toBe('');
     expect(ports.of('graph')).toEqual([]);
     expect(ports.of('workspace')[0]?.payload.state.subject).toBe('');
-    await session.handle(message('addNode', { clientId: 'c', type: 'GOAL', naturalName: 'g', requestId: 'a1' }));
+    await session.handle(message('addNode', { clientId: 'c', type: 'PROPOSITION', naturalName: 'g', requestId: 'a1' }));
     expect(ws.performed).toEqual([]);
     expect(ports.of('actionResult')[0]?.payload.outcome).toMatchObject({ ok: false, code: 'invalid' });
   });

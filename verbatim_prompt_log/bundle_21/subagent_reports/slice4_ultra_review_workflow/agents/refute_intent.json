@@ -1,0 +1,64 @@
+{
+  "verdicts": [
+    {
+      "id": "F1",
+      "real": true,
+      "severity": "minor",
+      "reason": "Survives in part. §3.6 steps 1–3 end the provisional session (a real session under D4-2) with no popup. EN-2 says a confirmation always comes first, with Cancel-without-freeze-changes as its only exception. D4-2, D4-3 and D4-16 do not log this gap, and §3.1's Cancel path opens slice 3's Exit dialog with keep ticks while Submit-direct offers none. Overstated parts: the finding says the OutcomeLine names neither effect, but §4.6's direct text, shown just above [Submit transform], reads \"The fields you typed stay frozen, as board edits do.\" and \"The ‹n› freeze changes you made in this session are dropped.\" ES-3 itself says the provisional session's freezes are undone on this path, so keep ticks go beyond the spec. The result is one board Undo step, and a dropped freeze can be redone on the board at once. Missing: REVIEW 8's popup with a per-field list, or a logged D4 narrowing. No safety impact."
+    },
+    {
+      "id": "F2",
+      "real": true,
+      "severity": "major",
+      "reason": "Confirmed contract contradiction. §3.2 lets the chip set a typed field back to open. §2.1 defines typedKeys as every key whose value the typed write changes, and §3.11 gives each one a TransformFreeze. But §3.9 step 1 computes TransformScope.open before step 2 adds those freezes, so the field stays in open. The §2.8 turn tells Claude \"you may change it\", and §3.9 step 4 compares the key only with the typed text, never excused by S₀. Nothing in §3.2, §4.3 or the 4j tests forbids open on a typed field. The rollback after 3 attempts is the worst case: Claude more likely reverts after the first refusal. Either way, TR-4's open state on edited text, a natural \"polish my draft\" use, is never honoured, and Claude is given contradictory instructions. Fix caveat: a typed field also frozen by another reason still needs its TransformFreeze for §3.11's revalue. Exclude only open fields that no session reason covers (open minus sessionFrozen already drops the others)."
+    },
+    {
+      "id": "F3",
+      "real": true,
+      "severity": "minor",
+      "reason": "Mostly refuted on substance; a naming problem remains. D4-10 already cites FROZEN 3 and logs the session-freeze alternative. The Shaky route in the scenario fails: §3.9 step 7 (D4-24) reworks a transform's Shaky items under that same transform's scope, so chip-frozen fields stay outside `open`. A later mid-stage Formalize keeps existing content through ES-2's preset. What remains exposed is a whole-model Formalize (the user opts in, and its changes come back as items) or filling a kept-empty statement at a selected arrow, which is D4-10's stated reason. S11's protections all still hold. Still, labelling a transform-only limit \"frozen for this transform\" reuses FROZEN's word for something that is not FROZEN. FZ-12 renamed a similar use for exactly this reason, and slice 3's FZ-12 test allows /frozen/ in UI texts only from FREEZE_TEXTS. The chip states should be renamed."
+    },
+    {
+      "id": "F4",
+      "real": true,
+      "severity": "major",
+      "reason": "Confirmed. TW-1 (§2.7) refuses any freeze action that changes an item's status. Unfreezing accepted content returns its item to review (FZ-7; slice 3: in a stage, with RV-5's list). Yet §3.2's problem for a fuzzy field frozen for any session reason, accepted included, says \"unfreeze it, or type it\". §3.4's [Unfreeze them] also fails for a dependent frozen by accepted plus another reason, because Unfreeze removes every reason. The same dead end arises in a Decline → Transform window on an accepted item, which stays accepted until queueing (D4-8). FZ-9 names the transform window explicitly and the user wrote \"At ALL times … in all interfaces\". D4-18 records the status-change refusal in substance but cites RV-3, RV-9 and ES-9, not FZ-9 or FROZEN 4. The plan is also inconsistent: accepted-only dependents go through the Submit cascade (§3.4), but accepted fuzzy fields are blocked. Cancelling a stage window discards the draft. Status-only changes do not touch the working copy, and Submit recomputes the analysis anyway (§3.7)."
+    },
+    {
+      "id": "F5",
+      "real": true,
+      "severity": "minor",
+      "reason": "D4-15 is logged against TRANSFORM 4, so this narrowing is not hidden, and \"cannot be expressed\" is overstated: typing the new card's sentence makes it a normal card that typed fields and arrows can reach. What survives: D4-15 gives no reason; the implicit one is that new ids come from the sentence (§3.12 newCardId). Its alternative (require every sentence) and its \"To reverse\" (refuse slots) both make it narrower, so the log offers no route back to the user's reading that each field is fuzzy on its own. Until F2 is fixed, the workaround also freezes the typed sentence, so Claude cannot reword it. This is a log and capability gap, not a defect that breaks anything."
+    },
+    {
+      "id": "F6",
+      "real": true,
+      "severity": "minor",
+      "reason": "D4-14 states the limits plainly: \"edits its sentence, Why and Lean statement only, never needs Claude\". §3.7, §3.2 and D4-26 (\"(alone) Add premise\") log the group exclusion. Workarounds exist: a Shaky decline with a note asks Claude to rework (D4-26 keeps D2-13's Shaky decline as Ask me instead's fallback), and rejecting the premise and using Transform cards… with new cards covers splits and merges. So the user is not left without a route. What survives: D4-14 presents \"not offered\" as the alternative that narrows TRANSFORM 9, and its \"To reverse\" also goes narrower, while D4-14 itself narrows TRANSFORM 9, TR-10 and REVIEW 4 without saying so. The fix is to relabel the log entry; building the extensions is optional."
+    },
+    {
+      "id": "F7",
+      "real": true,
+      "severity": "minor",
+      "reason": "Confirmed but mitigated. §3.9 step 4 allows \"new declarations (vocabulary, definitions and instances: items like any)\" whatever mayAddCards says. TR-7's always-allowed exception is \"New plain vocabulary\" (the spec's term for shape-rule vocabulary, RV-7), and the spec's Terms count definitions as cards, so the user's \"strictly stick to the current set of cards\" covers them. §9 maps TR-7 (b) to \"new declarations\", and no D4 entry logs the widening. The plan's own texts disagree: the §4.2 hint says plain vocabulary only, while the stage banner says \"add vocabulary\". Nothing enters unreviewed, though: every definition and instance is an item, and those in a card's closure are belief items needing their own Accept. So the cost is surprise and review burden, not a safety hole."
+    },
+    {
+      "id": "F8",
+      "real": true,
+      "severity": "nit",
+      "reason": "The substance is refuted. The narrowing is logged and was assigned to stay. Logged in: D2-15 (AP-25), the audit's §4 narrowing table, and the slice-5 plan's coverage table, which says slice 5 changes none of it. Assigned in: slice 3's frozen §3.12 (\"Slice 4: … D2-15 stays (no Shaky splits)\") and the audit's slice-4 scope (\"TR-7 (c), DO-3 … and CF-3 (Shaky split) stay narrowed unless you reverse it\"). D3-14 and D4-25 log the ban on removals in Shaky reworks. D4-12 restates it with an alternative and a way to reverse it. Building Shaky splits would widen slice 4's assigned scope. Only D4-12's missing reason remains (beyond \"split your cards yourself\"; the plan's general reason is AP-24's simplicity)."
+    },
+    {
+      "id": "F9",
+      "real": true,
+      "severity": "minor",
+      "reason": "Partly refuted. Undo for text fields only is what the spec's UN-4 sets for the window, and each draft edit can be reversed by hand (Restore, trash the new card, switch Kind back, click the chip back). The trap survives: §4.5 and TW-1 let Ctrl+Z inside the modal window undo any freeze action, including one made before the window opened, possibly on a card the window does not show. The modal covers the board, so the unfreeze can go unnoticed. TransformWindowView already holds `freezeActions` since `openedAtAction`, so limiting Undo to those is easy. Harm is bounded: step limits and review still protect the card."
+    },
+    {
+      "id": "F10",
+      "real": true,
+      "severity": "minor",
+      "reason": "The plan follows the spec: TR-11, CF-4 and §14 item 10 allow a kind change in the window, and \"keeps the axiom as pending (AR-6)\". But AP-14 (e) logs only the widening of ¶11's source rule, and neither the spec nor any D4 entry logs that the window's Kind control turns an axiom into a proposition with no arrow and no mark. The user's ¶11 says an axiom moves only once dependencies are drawn into it. §4.4 also strikes an axiom's Dependencies through, which blocks the user's own route inside the window. This survives as an unlogged departure from the user's words. Mitigated: the user acts deliberately with KindImpact shown, the end state (a proposition with no stated basis) already exists under AR-5 and TR-11, and there is no safety effect."
+    }
+  ]
+}

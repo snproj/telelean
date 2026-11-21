@@ -1,0 +1,159 @@
+# recheck:r2
+
+Agent `ae0cb5595f235db8d` of workflow `wf_3842fba8-348`. Verbatim output (JSON alongside).
+
+- **summary:** I checked the fix round against the plan as it now reads. S5R2-01 to S5R2-07 and checks-S5-SOUND-09 are fixed. S5R2-08 is only partly fixed and is re-raised as minor: the plan defines the query as ending at the caret, so the new → condition is always true and → can never move the caret.
+
+Looking with all five lenses, I found two new major problems:
+- **S5R3-01:** the detach rewrites a referrer's whole line. When that line holds Claude's own rewording (Claude kept the person's token), the trashed card's typed item takes ownership of it. It is then accepted as yours without review, Claude's Change item is withdrawn, and a Shaky rework cannot touch it.
+- **S5R3-02:** D5-19's set-aside, now applied to every live follow-on TransformFreeze, leaves a key that has no reason of its own compared only through slice 4's typed units. Those units do not pin a Dependencies field's other entries, or a statement's meaning after a D-9 mirror update. A reference holding `#[card:t:dependencies]` or `#[card:c:statement]` therefore stops protecting that field after a routine follow-on edit.
+
+There are three new minor problems:
+- **S5R3-03:** the SOUND-09 fix leaves out D5-10's other-subject reference holds.
+- **S5R3-04:** a token copied into the window that names a card trashed in the same window is never refused, and its typed field is then detached as well.
+- **S5R3-05:** detached sentences restrict the scope and the window even when they hold nothing in the check.
+
+Everything else I checked holds as written, including:
+- the walk stop;
+- valuing holds by valuation, not by phase;
+- the S5R2-07 narrowing;
+- the AR-5 mark exception;
+- the IME, Tab and blur handling;
+- the contract additions: run/step.ts, frozenFindings' subject, and planTypedWrite's base.
+- **findings:**
+  - [1]
+    - **id:** S5R3-01
+    - **severity:** major
+    - **where:** §3.7 (the detach: 'a unit owned by the trashed target's typed item'; 'The words come from the target's label … so Claude's wording never becomes the person's text'); §2.6 (the typed write's follow-on edits); D5-12; slice-4 plan §3.10 computeItems ('a value Claude writes is never yours unless you typed exactly it'), §3.5 (D4-29) and §3.9 step 6 (typed units hold, D4-33)
+    - **problem:** The detach replaces the referrer's whole sentence or Why line with detachRefs(its current text). The S5R2-07 fix keeps Claude's words of the trashed TARGET out of the result, but not Claude's words of the REFERRER.
+
+Claude may reword a sentence or Why and keep the person's token (§3.5 allows keeping tokens). When such a referrer is detached:
+- the `line` unit holds Claude's rewording, and the trashed card's typed item owns it;
+- slice 4's computeItems gives a line to the unit that has exactly its value, so Claude's text leaves Claude's Change item and joins 'Delete ‹c› · you typed it';
+- that typed item is accepted as yours at the queue end, with no Accept of its own;
+- the Change item is withdrawn as replaced-by-transform;
+- D4-33 then pins the line for the rest of the session.
+
+This breaks TR-15 ('Content the window copied from Claude's proposal stays Claude's') and RV-7, and it defeats a Shaky decline.
+    - **scenario:** 1. In B, unfrozen A reads '#[card:c] is too strong', and c reads 'Spyro is PG'.
+2. Stage 1: a whole-model Formalize rewords A to '#[card:c] overstates the game's rating', keeping the token (the `reference` rule allows this). The person declines this Change Shaky.
+3. In the same stage, the person trashes c in a no-Claude transform and presses Submit review.
+4. The transform runs first. The detach writes A's natural_name as '‹Spyro is PG› overstates the game's rating', a `line` unit owned by typed:c.
+5. computeItems gives that line to typed:c, and 'Change ‹A›' is withdrawn as replaced-by-transform.
+6. At the queue end, 'Delete ‹c› · you typed it' is accepted as yours.
+7. Claude's unreviewed wording is now the person's accepted content. The Shaky rework cannot change it, since the unit must hold, and Apply writes it to the person's files.
+    - **fix:** In §3.7, D5-12, §2.6 and §2.8: do not detach a referrer whose sentence or Why holds Claude's content in the judged state. Claude's content means a value that differs from B's and from every value telelean recorded for the person (§3.5's allowances: live typed units, a `premise` unit's naturalName, a written premise's `rationale`). That covers a Change in review, accepted, declined Shaky or declined Transform.
+
+Instead, the window shows a problem: '“‹A›”'s ‹field› is Claude's proposal and refers to “‹c›”: reject that proposal first (telelean then turns the reference in your own words into words), take “‹A›” into this transform and type its ‹field›, or delete “‹A›” too.'
+
+A queued transform that meets this at Submit review is stale, under slice 4's 'a problem appears'.
+
+5c2 tests:
+- a Claude-worded referrer (in review, Shaky, accepted) gives the problem and no unit;
+- after Reject, the detach uses B's words;
+- property: no typed unit's value is a line whose text is Claude's.
+  - [2]
+    - **id:** S5R3-02
+    - **severity:** major
+    - **where:** §3.6 'The person's own changes' ('is compared only through that TransformFreeze: its own table entry when the key has a reason …, and in every case slice 4's typed units'; 'every holder's expectation of it but an accepted item's is set aside'); §2.5 heldFields (stop keys: 'the holder holds instead that TransformFreeze's own held map'), transformHolds ('Other targets keep slice 4's own held map') and FreezeTable.transforms ('follow-on ones on keys with no reason of their own included'); D5-19; slice-4 plan §3.5 (follow-on keys: another card's Dependencies, a docstring mirror) and §3.11 (a follow-on edit 'freezes nothing new')
+    - **problem:** The fix round applies D5-19's set-aside to every live TransformFreeze, follow-on ones included. On a key with no reason of its own, the held key is then compared only through slice 4's typed units. Those units pin only what telelean wrote:
+- the `entry` units of a Dependencies change pin only the entries the typed write changed;
+- the `decl` unit of a D-9 mirror update pins a statement's text, not its meaning.
+
+The holder's own expectation is dropped. For a Dependencies or statement target, what replaces it is the TF's own map, which is empty.
+
+So a reference holding `#[card:t:dependencies]` or `#[card:c:statement]` stops protecting the rest of that field for the rest of the session, once one of slice 4's routine follow-on edits touches it: removing a trashed source's arrow, or re-mirroring after a reworded sentence. This reopens S12, FZ-4 bullet 2 and RF-5 (a), and cheats 4 and 10.
+    - **scenario:** (a) Meaning.
+1. Standing-frozen F reads '#[card:c:statement] is too weak'.
+2. Stage 1: the person rewords c's sentence in a no-Claude transform. The typed write updates c's D-9 mirror, so c.statement is a follow-on key with a TF and no reason.
+3. F's expectation of c's statement names is set aside, and only the `decl` unit (text) compares them.
+4. Stage 2: in a whole-model Formalize, Claude adds `instance (priority := high) : Coe Character Entity := ⟨fun _ => nobody⟩` above c's statement. The text is the same, but the meaning has changed.
+5. Nothing catches it, the backstop included.
+
+(b) Dependencies.
+1. Standing-frozen F's Why reads '#[card:t:dependencies] are what it rests on'. T's Dependencies are s→T and u→T.
+2. The person trashes s. The follow-on removal of T's entry for s gives t.dependencies a follow-on TF.
+3. In a later whole-model step, Claude deletes u with `delete_card` (unfrozen, not held, at no selected arrow), which removes u→T.
+4. Only the unit 'entry s absent' is compared, so every check passes up to Apply.
+    - **fix:** In §3.6, §2.5 and D5-19: a holder's expectation of a key that a live TF covers is replaced, not dropped. It becomes that TF's value:
+- its pending text, then the value its judgement gave it, meaningKey and `deps` included;
+- compared in full by slice 3's step 2 and 3 comparisons at every purpose;
+- for a statement target, through the declarations' held values (meaning, and text without the docstring).
+
+The walk stop and the binding of the TF's own map stay as they are. `proposeArrowProblems`, `removeArrowProblems` and `deleteCardProblems` keep treating such a key as held.
+
+State that 'compared only through typed units' never applies to a key whose units do not pin its whole held value.
+
+5d tests: (a) and (b), with the mutation 'set aside' passing both. Add variants of cheats 4 and 10 run after a follow-on edit.
+  - [3]
+    - **id:** S5R3-03
+    - **severity:** minor
+    - **where:** §3.6 'During a transform step' (sessionFrozen: 'heldFields, and the own, accepted and TransformFreeze maps'); §2.6 (transformScopeOf, the analysis's marks and problems); §3.6 'Other subjects' and D5-10 (otherSubjectRefHolds binds Claude 'whether or not the referring card is frozen'); §2.8
+    - **problem:** The SOUND-09 fix takes reference-held keys only from heldFields and the stored maps.
+
+D5-10's otherSubjectRefHolds also binds Claude. It holds a declaration of the session's subject that another subject's sentence or Why references, together with its closure and gloss, whether or not the referring card is frozen. These holds are not counted, so:
+- such a declaration or gloss, left open or fuzzy in the window, stays in `open`;
+- a definition dependent among them can be left to Claude.
+
+Every change Claude makes there is refused (`other-subject`), and the window gives no warning. The person cannot unfreeze another subject's card during the session.
+    - **scenario:** 1. S2's card reads '#[lean:S1.Rating] is what parents check'.
+2. In an S1 session, the person transforms the vocabulary card Rating, clears its gloss (fuzzy, 'Claude fills this') and submits.
+3. Every gloss Claude writes is refused by `other-subject`: the empty soft unit counts as the person's value only while Claude leaves it empty.
+4. The step fails after three attempts. The window showed nothing.
+
+The same happens when Rating's declaration is left open with Instructions, or when a definition that uses a changed name is left to Claude.
+    - **fix:** sessionFrozen also leaves out of `open` (and out of `arrowsInto`) every key that otherSubjectRefHolds holds.
+
+The window marks these keys 'held by “‹A›” of ‹S› (it refers to this)'. A fuzzy one, or a dependent left to Claude whose declarations are among them, is a problem, with a new §2.8 text: '“‹A›” of ‹S› refers to ‹x›: a session never changes what another subject relies on: type it, or change it outside a session.'
+
+Add 5d tests for an open declaration, a fuzzy gloss, and a dependent left to Claude.
+  - [4]
+    - **id:** S5R3-04
+    - **severity:** minor
+    - **where:** §2.4 refProblems ('every token not already in `before` … (not `card`, nor one in `trashed`…)'); §3.7 ('a referrer in the window counts by its draft's text'; 'Tokens to trashed cards. A draft's own token to a card in its trash … is refused'); §2.6 (plan.keys)
+    - **problem:** §3.7 says a draft's token to a card in its own trash is refused. But refProblems' contract exempts every token already in `before`, so a token copied into the window is never checked against `trashed`.
+
+The window card then counts as a `reference` dependent by its draft's text, and the detach runs on it:
+- If the person typed that field and kept the token, the typed write records a typed `line` unit (with the token) and a detach unit (in words) on the same line. `plan.keys` then holds the key twice (typed: true and typed: false) with different texts. The typed-units rule and the newest-TF rule disagree, so whether the step fails depends on how the builder orders them.
+- If the field is untouched and open, the detach unit must hold (D4-33), while `open` tells Claude it may change the field.
+    - **scenario:** 1. The person opens Transform cards… on A ('#[card:c] is too strong') and c.
+2. They trash c and edit A's sentence to '#[card:c] is far too strong', keeping the copied token. refProblems passes, because the token is in `before`.
+3. The analysis lists A as a reference dependent: 'Its reference becomes words'.
+4. planTypedWrite writes A's typed line, then detaches it. The typed TF's pending text, which holds the token, never matches the state.
+5. The no-Claude step fails ('Your transform “…” could not be carried out'), and every Retry fails the same way.
+    - **fix:** In §2.4 and §3.7: `trashed` refuses every token in a window draft's sentence or Why that names a card in this transform's trash or a queued transform's, whatever `before` holds. The person takes the token out, and the field is then theirs.
+
+A card in the window is never a `reference` dependent. The detach covers only referrers outside the window, so `plan.keys` never holds one key twice.
+
+5c1 and 5c2 tests:
+- a copied, untouched token and a kept token in a typed field, both naming a card trashed in the same window, are refused;
+- planTypedWrite never records two units for one line.
+  - [5]
+    - **id:** S5R3-05
+    - **severity:** minor
+    - **where:** §3.6 'During a transform step' ('every field the transform's typed and detached sentences and Whys refer to'; 'nor one that a detached sentence still refers to'; the dependents problem '… or by this transform's typed and detached sentences and Whys'); §2.8 ('… but your “‹A›” refers to it' texts); compare §3.6 'It binds when its key has a reason of its own, or when it sets aside some holder's expectation' and the 5d test 'an unfrozen, unheld detached A's other references hold nothing'
+    - **problem:** The check holds a detached field's other references only when that field binds. The scope and the window, though, exclude them unconditionally.
+
+The window also calls the referrer 'your “A”', although telelean wrote the detached text and A may be outside the window. The result is an over-restricted transform, plus advice the person cannot follow: 'take the reference out' of a card that is not in the window.
+    - **scenario:** 1. Unfrozen, unheld A reads '#[card:c] contradicts #[card:d]'.
+2. The person transforms c and d: they trash c, and clear d's sentence so that Claude rewords it.
+3. A is detached. The window shows 'You asked Claude to fill it, but your “A” refers to it: type it, or take the reference out.', and d's sentence leaves `open`.
+4. The check would not hold d's sentence, because A binds nothing. The person has to type d's sentence themselves.
+    - **fix:** In §3.6: count a detached field's references, in sessionFrozen and in the dependents problem, only when its TF binds, as the check does.
+
+In §2.8: name a detached holder by the reason it binds ('frozen “‹A›”', or '“‹A›”, which frozen “‹B›” refers to'), never 'your'.
+
+Add a 5d test for the unbound case.
+  - [6]
+    - **id:** S5R2-08
+    - **severity:** minor
+    - **where:** §4.1 Opening ('The query is the text after `#` up to the caret') and Keys ('→ only in the card list with the caret at the end of the query'; 'any other ← or → moves the caret as usual'); §6.1 5f1 pickerReduce cases
+    - **problem:** The IME, Tab and blur parts are fixed. The ←/→ part is not.
+
+§4.1 defines the query as ending at the caret, so 'the caret at the end of the query' is always true. Every → in the card list is therefore taken to open the field list, and it never moves the caret. After ← moves back into '#query' to fix a typo, → cannot move forward again.
+    - **scenario:** 1. The person types '#cyndr', presses ← so the caret sits before 'r', and types 'e'. The query is now 'cynde'.
+2. They press → to move past 'r'. The picker takes the key and opens the highlighted card's fields; the caret does not move.
+3. Only End or a click puts the caret back.
+    - **fix:** Take → only when the character after the caret is whitespace or the end of the field, that is, when the caret ends the `#`-word. Otherwise → moves the caret.
+
+Add pickerReduce cases: '→ with a character after the caret moves the caret' and '→ at the end of the word opens the fields'.

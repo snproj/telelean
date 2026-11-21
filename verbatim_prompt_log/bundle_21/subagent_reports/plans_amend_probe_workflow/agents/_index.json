@@ -1,0 +1,75 @@
+[
+  {
+    "label": "amend:slice2-probe",
+    "agentId": "a54e6ecc331740da6",
+    "file": "agents/amend_slice2-probe.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Edit",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "amend:slice3",
+    "agentId": "a827b3fb8e59680ce",
+    "file": "agents/amend_slice3.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Edit",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "check:amendments",
+    "agentId": "acd70fd6d50651dd5",
+    "file": "agents/check_amendments.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "fix:r1",
+    "agentId": "a39664fc071846682",
+    "file": "agents/fix_r1.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Edit",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "recheck:r1",
+    "agentId": "a8dcb0e372f2cde9b",
+    "file": "agents/recheck_r1.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "fix:r2",
+    "agentId": "af3b8dd18c5b15082",
+    "file": "agents/fix_r2.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Edit",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "recheck:r2",
+    "agentId": "ac3e1c309efea33ac",
+    "file": "agents/recheck_r2.json",
+    "toolsUsed": [
+      "Bash",
+      "StructuredOutput"
+    ]
+  }
+]

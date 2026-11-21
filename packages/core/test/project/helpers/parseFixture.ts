@@ -6,7 +6,7 @@
  * The gated tests run the same scenarios through the real parser once WP-markup is implemented.
  */
 import type { BlockBinding, BlockFields, DeclInfo, DeclKeyword, FieldLine, MarkupBlock, ParsedFile, Span } from '../../../src/markup/types.js';
-import type { Evidential, NodeType, Range, Stance } from '../../../src/model.js';
+import { parseNodeType, type Evidential, type Range, type Stance } from '../../../src/model.js';
 
 const DECL_KEYWORDS = ['axiom', 'theorem', 'lemma', 'def', 'abbrev', 'opaque', 'instance', 'example', 'inductive', 'coinductive', 'structure', 'class', 'mutual'];
 const MODIFIERS = ['private', 'public', 'protected', 'noncomputable', 'unsafe', 'partial', 'nonrec', 'scoped', 'local', 'meta'];
@@ -297,8 +297,14 @@ export function parseFixture(path: string, text: string): ParsedFile {
         case 'id':
           id = value;
           break;
-        case 'type':
-          fields.type = value.toUpperCase() as NodeType;
+        case 'type': {
+          // Spec v4: AXIOM or PROPOSITION, the old kinds as aliases (the real parser's rule).
+          const type = parseNodeType(value)?.type;
+          if (type !== undefined) fields.type = type;
+          break;
+        }
+        case 'follows_from':
+          if (value === 'nothing') fields.followsFrom = 'nothing';
           break;
         case 'natural_name':
           fields.naturalName = value;

@@ -1,0 +1,229 @@
+{
+  "summary": "I checked the plan against the slice-1 code, slice 2's final contracts (§2, §2.9 and the §8 change log through builder 2b2), slice 3's plan and the user's words. The plan reuses slice 2's machinery carefully in most places, but several contracts don't fit the code or each other. I found no blockers: 15 major, 12 minor and 1 nit.\n\nThe most serious problems:\n- **No ProjectModel in the webview.** The webview is told to preview with `analyseTransform`, which needs a ProjectModel, and the webview only ever has a TlGraph.\n- **The direct path loses the edit.** It ends the session and then \"answers with the board action\", but no result type has a field to carry it.\n- **Sessions with no target.** Transform-started sessions have no inference, and transform steps use a fake `transform:<id>` target. Slice 2's CheckContext selection, RunView, computeItems' active target and `ended` all assume a real card target, and `validateContext` throws without one.\n- **No sub-slice owns the normalise changes.** Transform steps need changes to core normalise (AXIOM card blocks, pins for open fields, `worded_by`), and none of 4a–4f lists that file.\n- **New cards fall outside the step scope.** The scope is computed before new cards get their ids, so Claude can never fill a new card's fuzzy fields.\n- **Undo can't restore everything.** FreezeDelta has nowhere to record a removed `TransformFreeze`. The `transform` SessionAction lacks the force, take-out and commit fields slice 2's cascades need.\n- **D4-20 contradicts D4-19.** D4-20 refuses the session-target statement changes that D4-19 promises to rework.\n- **Frozen dependents block direct edits.** That goes against FZ-1, and in a provisional session every card outside the window is session-start frozen. The window and the runner's dry run also see different freezes.\n- **Submit review re-analyses without the scratch.** So every transform queued with \"Claude must define\" is stale forever.\n- **The scratch check fails open.** It passes when an import fails, and it elaborates in a different module context from where the typed text is written.\n- **The backstop refuses Claude's AXIOM cards.** Its rule contradicts slice 2's new-axiom allowance 4.\n- **Rejecting a typed item leaves a stage problem.** The item's own `TransformFreeze`s stay behind and disable Apply.\n- **4g runs beside core sub-slices.** This breaks the inherited one-builder-in-core rule.",
+  "findings": [
+    {
+      "id": "IMP-1",
+      "severity": "major",
+      "where": "§0 'One builder at a time in core'; §1 table row 4g ('4a (beside 4b–4f)')",
+      "problem": "§0 says 4a→4f run 'strictly in order, nothing beside them', then lets 4g run beside 4b–4f. Slice 2's §0, which slice 4 inherits, forbids any sub-slice beside one that changes core. The reason is that every package compiles core's sources (`@telelean/core` → core/src/index.ts), so a half-written core file breaks every package's tsc and vitest.",
+      "scenario": "4d's builder has review/items.ts half-rewritten (an export removed, a type error) while 4g runs the runner's tsc -p tsconfig.test.json and its vitest. 4g fails for reasons outside its own files, so it cannot end 'compiling with tests passing'. Its capped real-Lean runs are wasted.",
+      "fix": "Schedule 4g after 4f (or right after 4a, before 4b), never beside a core sub-slice. Change 4g's 'After' cell to '4f' and delete 'and may run beside 4b–4f' from §0."
+    },
+    {
+      "id": "IMP-2",
+      "severity": "major",
+      "where": "§4.1 (webview previews with analyseTransform); §2.9 AnalyseInput.model/graph; §2.4 TransformWindowView; §6.1 4j/4k",
+      "problem": "`AnalyseInput.model: ProjectModel` is required. Dependents use usersOf/axiomListUsers/reach over declFacts. The webview never receives a ProjectModel: it only has TlGraph (`graph`) and SessionView. So the webview cannot compute Submit's `expect`, the problems that disable Submit, the ImpactPanel dependents, kinds or the OutcomeLine 'with the same core functions'. TransformWindowView carries no analysis either, and ActionOutcome.transform lacks kinds, warnings and touched.",
+      "scenario": "The 4j builder implements 'Submit's expect' and finds no ProjectModel in the store. A graph-only reimplementation misses definition dependents found through `reach`. Its `expect` then differs from the runner's outcome, and every Submit bounces with needs-confirmation.",
+      "fix": "Make the host's analysis authoritative and send it. Add `analysis: TransformAnalysis` (masked as the window is, no scratch-only fields) to TransformWindowView. The runner recomputes it on every saveTransformDraft and returns it in that ActionOutcome. The webview runs only typedLeanProblems, transformLabel and kindChangeImpact locally. Rewrite §4.1 and the 4j/4k tests accordingly, e.g. 'Submit disabled while a save is in flight or the host's analysis has problems'."
+    },
+    {
+      "id": "IMP-3",
+      "severity": "major",
+      "where": "§3.6 step 2; §2.4 ActionOutcome.transform; §2.7 submitTransform signature",
+      "problem": "§3.6 says the runner answers `direct` 'with the board action' and the host then performs `apply-transform`. Neither ActionOutcome.transform nor submitTransform's return type has a field for subject, draft, keys or label, so the host has nothing to build the action from.",
+      "scenario": "4i's host receives `{ ok: true, transform: { outcome: 'direct' } }` after the runner has already ended and dismissed the provisional session. The draft exists nowhere any more, so the person's edits are silently lost.",
+      "fix": "Have RunManager.submitTransform return `ActionOutcome & { apply?: Extract<BoardAction, { kind: 'apply-transform' }> }`, with `apply` set only for outcome `direct`. The host strips it before posting actionResult. Add a 4i host test that the host performs exactly the returned action."
+    },
+    {
+      "id": "IMP-4",
+      "severity": "major",
+      "where": "§3.1 (start-session, claude-step); §3.9; §2.2 StepScope ('target is transform:<id>'); slice 2 §2.9 CheckContext note",
+      "problem": "A transform-started session has no inference, and a transform step has no target card. Slice 2 and the built code assume one:\n- CheckContext.selection for judge/finalCheck is 'the active step's, or else the first inference's'. runner gate/engine.ts validateContext (used by checkBase too) throws without `selection.target`.\n- RunView.target/premises and PersistedRun.selection are required.\n- computeItems makes a Result draft for 'the active step's target' that owns content.\n- `ended` is built from steps' targets.\nThe plan never says how these treat `transform:<id>` or an empty inference list.",
+      "scenario": "Submit transform unchanged → stage 1 opens and the runner calls checkBase and then engine.judge on B. There is no step and no inference, so the selection has no target and validateContext throws. In a claude-step, computeItems instead gets active.target 'transform:t1', emits a `proof:transform:t1` Result draft, and reconcile creates a phantom Result item.",
+      "fix": "Specify two things.\n(a) For sessions with no inference: CheckContext.selection is `{ subject, target: '', premises: [], adoptedGhosts: [] }`, accepted by validateContext at session purposes; RunView.target is '' and premises []; PersistedRun.selection likewise. Assign to 4i.\n(b) Transform steps pass no `active` to computeItems: their new declarations take the step through `created` entries written at the step's end. They never appear in `ended`, get no Result draft, and their stepFindings are `global` only. Assign to 4e. Test both."
+    },
+    {
+      "id": "IMP-5",
+      "severity": "major",
+      "where": "§1.1 4e and 4h file lists; §0 ('4h and 4i … change no core file'); §3.9 step 4; §2.8 add_card {slot?, kind?}",
+      "problem": "Transform steps need core normalise (gate/normalise.ts; slice 3 3c1 put the tools' ledger writes there) to do three things:\n- write a ledger `card` entry with `kind: AXIOM` or a `slot` (slice 3 writes only PROPOSITION blocks);\n- pin the fuzzy statements in TransformScope.open (slice 2 pins StepScope.fuzzyStatements, which the plan sets empty for transform steps);\n- write `worded_by: agent` for an open sentence Claude changed.\nNo core sub-slice lists normalise.ts, and 4h/4i may not change core. Under D3-43's fallback the same gap covers the whole `card` block write.",
+      "scenario": "Claude fills an AXIOM slot with add_card { slot: 'new:2' }. Normalise writes a PROPOSITION block under slice 3's rule, G5/B.4 then refuse the kind, and every gate attempt fails. The 4h builder cannot fix it without editing core.",
+      "fix": "Add gate/normalise.ts to 4e (or 4d) with:\n- the card entry's `kind`/`slot`;\n- pins for every statement card in TransformScope.open, new cards included;\n- `worded_by: agent` for sentences Claude changed in transform steps;\n- core tests.\nState that 4h only passes the scope and live entries to normalise."
+    },
+    {
+      "id": "IMP-6",
+      "severity": "major",
+      "where": "§2.3 FreezeDelta and FreezeTableEntry; §3.11 Transform ('ends only by Unfreeze or the session's end'); §5.1",
+      "problem": "Unfreeze removes a key's `transform` reason, but FreezeDelta only gains `startCleared`. A removed TransformFreeze (target, transform, value) is recorded nowhere, so the Undo of that Unfreeze cannot restore it, against UN-4's 'Undo restores what the action changed'. Slice 3's FreezeTableEntry.expect also has no variant for a pending text value.",
+      "scenario": "After Submit review the person Unfreezes a typed sentence, then presses Undo. The lock does not come back because no TransformFreeze is restored. The next Claude step may rewrite the typed sentence although the person undid the Unfreeze.",
+      "fix": "Add a per-key `transform?: TransformFreeze[]` to FreezeDelta (before/after), restored by Undo and removed again by Redo. Add `{ from: 'transform'; transform: string; value: OwnValue | { pending: true; text: string } }` to slice 3's FreezeTableEntry.expect in §2.3. Add a 4e test: Unfreeze → Undo → Redo of a typed key."
+    },
+    {
+      "id": "IMP-7",
+      "severity": "major",
+      "where": "§2.2 SessionAction 'transform'; §3.7 (decline window's cascade); §5.1",
+      "problem": "Queueing a decline-window transform has slice 2's Shaky-like cascade. Accepted dependents return to review (RV-5), which can end Show results' force, can start the `decided` force when no meaning item is left undecided, and can take out an accepted written Add premise (a ws/ write). Slice 2's `decide` action records endedForce, startedForce, takenOut and commits so that Undo restores them. The `transform` action has only before/after/changes, and the reducer's outcome for it has no `write`.",
+      "scenario": "The person declines Claude's definition with Transform. An accepted written premise rests on it, so the confirmed cascade returns the premise to review and its card is taken out of ws/. Undo of 'Queue transform' sets it back to accepted from `changes` but cannot put its card and ledger entries back. The backstop's `not-written` then blocks Apply, and the ended force stays ended.",
+      "fix": "Give the 'transform' SessionAction decide's effect fields: takenOut, endedForce?, startedForce? and commits. Let the queue-transform and drop-transform outcomes carry `write: ItemWrite | null`. Add 4f tests: a queue whose cascade covers a written premise and a forced reveal, whose Undo restores records, ws/ and the force exactly."
+    },
+    {
+      "id": "IMP-8",
+      "severity": "major",
+      "where": "§2.1 DraftKey and draftFromModel; §2.5 transformDraft(); §3.7 premise window; §2.2 TypedUnit 'premise'",
+      "problem": "A premise window edits a PremiseDraft, which is not a card and has no id until written. DraftKey allows only `card:`, `vocab:` and `new:`, and the validator refuses anything else. Keying it `new:<n>` would make planTypedWrite step 1 write a new card block instead of the `premise` unit. draftFromModel has no input for premise drafts.",
+      "scenario": "Decline → Transform on an Add premise item. The runner has no legal key for the premise card, so either the window cannot open or every saveTransformDraft is refused by transformDraft().",
+      "fix": "Add a DraftKey form `premise:<item id>`: only sentence, why and statement; no kind, proof or dependencies; never trashed. transformDraft() accepts it only in that shape. Give draftFromModel `premises?: readonly PremiseDraft[]`. Map the key in planTypedWrite to the `premise` unit only. Test in 4a and 4c."
+    },
+    {
+      "id": "IMP-9",
+      "severity": "major",
+      "where": "§3.2 Problems (D4-20) vs §3.4 Session targets (D4-19); §3.8 step 2",
+      "problem": "A session target's Proof is locked. Its statement 'may change only when B has no proof of it; its Result is then reworked (reworkResults)'. But D4-20 refuses any changed statement on a card whose proof is kept and offers only 'clear it'. A target whose Result proved it has a proof in the working copy, so its `proof` field is present and locked at `keep`.",
+      "scenario": "With the results hidden, the masked window shows no proof; the person changes target T's statement and queues the transform. At Submit review the re-analysis on the real state finds T's Result proof kept and the statement changed. That is a D4-20 problem, so the transform is stale ('needs a new look'). In the Edit window Proof is locked, so it can never be submitted, and D4-19's rework path is unreachable.",
+      "fix": "Exempt session targets from D4-20: when the kept proof is a session Result rather than B's, the statement change adds T to reworkResults instead of raising a problem. Say so in §3.2 and §3.4, and add a 4b test with a proved Result, both shown and hidden."
+    },
+    {
+      "id": "IMP-10",
+      "severity": "major",
+      "where": "§3.4 ('A dependent frozen by any other reason is a problem'); §3.6 planAction(apply-transform); §3.11 session-start",
+      "problem": "The frozen-dependent problem applies in every context. But direct transforms are the person's own edits, which freezes never bind (FZ-1), and in a provisional session every card outside the window is session-start frozen. The planner's `frozen` input is also unspecified: the window analyses with session reasons (session-start, standingCleared), while the board planner sees only freezes.json.",
+      "scenario": "In a provisional window, the person trashes card X, which Y's proof uses; Y is outside the window and standing-frozen on disk. The window demands an Unfreeze, so the person unfreezes Y (a session-only flag) and picks 'Leave it broken'. The runner's dry run of planAction(apply-transform) then reads Y's standing record, finds the problem, and refuses. Nothing inside the window can lift it.",
+      "fix": "Raise the frozen-dependent problem only when a dependent would be left to Claude (outcomes claude-step, queue, queue-claude). For `direct`, list frozen dependents with their reasons but do not block (FZ-1). Specify that the planner calls analyseTransform with `frozen: {}`, and that the runner's dry run uses exactly the planner's inputs. Test in 4b and 4c."
+    },
+    {
+      "id": "IMP-11",
+      "severity": "major",
+      "where": "§3.8 steps 2–4; §2.9 planSubmit ('Extended, not new'); AnalyseInput.scratch",
+      "problem": "Submit review re-analyses each queued transform with no scratch input specified, yet it is stale when 'its needs-Claude reasons changed'. Without the scratch, mustDefine is empty and the 'Claude must define' reason disappears, so every transform queued with mustDefine is stale every time. Separately, planSubmit receives only records and the judgement, but 4f's tests make it compute stale transforms and the cascade, which need models or analyses.",
+      "scenario": "A typed statement uses `Wicked`, which nothing defines yet, so the transform is queued as queue-claude with 'Claude must define: Wicked'. At Submit review the re-analysis has no scratch, the reasons lack that line, and the transform is stale ('needs a new look'). Edit → Submit transform queues it again, it is stale again, and it can never run.",
+      "fix": "Re-analyse with a TypedScratchResult rebuilt from QueuedTransform.mustDefine (minus names the working copy now defines) and compare reasons on that basis. Have the runner compute the analyses and pass them to planSubmit as `analyses: Record<string, TransformAnalysis>`, added to §2.9. Add a 4f test showing a mustDefine transform is not stale."
+    },
+    {
+      "id": "IMP-12",
+      "severity": "major",
+      "where": "§3.9 steps 1–2; §2.9 transformScopeOf(t, a, sessionFrozen); §3.5 step 1 (ids from newCardId); §2.1 typedKeys",
+      "problem": "The StepScope's `open` (FreezeKeys) and `arrowsInto` (card ids) come from transformScopeOf at step start, before the typed write gives new cards their ids. A new non-slot card's fuzzy statement, Why, stance, source and Dependencies therefore cannot be in the scope, and fuzzyStatements is empty for transform steps. typedKeys has the same problem.",
+      "scenario": "The person adds a new proposition, types its sentence and leaves its Lean statement fuzzy (TR-4's default), so it is queued as queue-claude. Claude writes the abbrev for the new card, but the id is not in `open`. Normalise does not pin it, the binding change matches no typed unit, and the step limits refuse it. The transform always fails.",
+      "fix": "Run planTypedWrite (it is pure) on the head before committing step-start. Pass its `ids` to transformScopeOf (new parameter `ids: Record<string, string>`) and use them for typedKeys and the TransformFreezes; then commit step-start and write. Add a 4e test with a new card's fuzzy statement filled by Claude."
+    },
+    {
+      "id": "IMP-13",
+      "severity": "major",
+      "where": "§3.3 (b) TR-12 scratch; §3.5 steps 1–2 (where typed Lean is written); §6.1 4g",
+      "problem": "Two gaps in the scratch check.\n(1) It attributes messages by line and says nothing about errors outside the typed lines. A failed import (a person's module with a Lean error has no .olean) or a header error stops elaboration, no message lands on a typed line, and the check passes.\n(2) It imports the whole library inside `namespace S.telelean_typed`, but the typed write puts a new card's statement in Inbox (which imports only Vocabulary) and new vocabulary in Vocabulary.lean (which imports nothing of the subject). Text that elaborates in the scratch may not build where it is written.",
+      "scenario": "One of the person's modules has a Lean error, so the scratch's import fails, Lean elaborates nothing, and TR-12 (b) passes; the direct path then writes ill-typed Lean. Or a new card's typed statement uses an existing card's abbrev from Main: the scratch passes, the write puts it in Inbox, and the files stop building.",
+      "fix": "Fail closed on any error not on a typed line, and on a missing end sentinel (a final command whose message must appear). Elaborate each piece in its destination's context: vocabulary with Vocabulary.lean's imports, new cards with Inbox's, existing statements with their module's. Otherwise refuse names the destination cannot see. Add 4g tests: a broken module in B, and a cross-module reference."
+    },
+    {
+      "id": "IMP-14",
+      "severity": "major",
+      "where": "§3.10 Backstop; §2.8 add_card (axiom cards); §2.2 ledger `card` + transform/slot/kind",
+      "problem": "§3.10 lets 'an AXIOM card's new .holds' pass 'only with their typed unit'. Slice 2's new-axiom allowance 4 lets Claude write `axiom n.holds : n` for an AXIOM card whose statement is new in the session. Slice 4 itself lets Claude make AXIOM cards (add_card with mayAddCards, AXIOM slots) and fill fuzzy statements of AXIOM cards, and nobody else writes their .holds. Slice 3's readers of `card` entries (intermediateInferences, the mask, B.3's intermediate exceptions, the backstop's 'kind refuses an intermediate that is not a PROPOSITION') would also treat a transform's card as an intermediate.",
+      "scenario": "Claude fills an AXIOM slot and writes `axiom s.holds : s`. The step passes under allowance 4 and the Add is accepted, but Apply's backstop refuses it (no typed unit), or its `kind` rule refuses the 'intermediate' AXIOM card.",
+      "fix": "Reword §3.10 to 'besides slice 2's allowances (an AXIOM card's .holds whose statement is new in the session stays allowed for Claude)', and say that Claude writes the .holds of AXIOM cards it formalises in transform steps. Assign to 4d/4e that intermediateInferences, the mask, B.3 and the backstop's kind rule skip `card` entries that carry `transform`."
+    },
+    {
+      "id": "IMP-15",
+      "severity": "major",
+      "where": "§3.10 typed items' Reject and cascades; slice 3 §3.7 decide.freeze; §3.11 Transform",
+      "problem": "Every typed key holds a TransformFreeze. Rejecting a typed item (B's version back), or a cascade that withdraws it, therefore always changes content its own TransformFreezes expect. Slice 3's frozen-changes dialog acts only on standing and own reasons: `unfreeze` drops them and `yours` revalues own freezes to base. The TransformFreeze stays, and the plan never says what happens to it.",
+      "scenario": "At the queue end a typed sentence is accepted as yours, and the person then Rejects it. The decline lists the sentence as frozen. Whichever button the person picks, the TransformFreeze still expects the typed text, so the judge reports 'frozen, but the working copy differs' and Apply stays disabled.",
+      "fix": "State that a typed item's Reject, and any cascade that withdraws it, removes that item's own TransformFreezes in the same action. Record them in the decide action's `freezes` delta (using IMP-6's field) so Undo restores them. Extend §3.7's `unfreeze`/`yours` to `transform` reasons. Test in 4d and 4f."
+    },
+    {
+      "id": "IMP-16",
+      "severity": "minor",
+      "where": "§2.5 LIMITS and openTransform/transformDraft() rules",
+      "problem": "openTransform accepts up to transformCards (50) card ids plus 50 vocabulary names, but transformDraft() caps a draft at draftCards (60) cards, before any new card or 'Delete it too' is added.",
+      "scenario": "The person selects 55 cards: the window opens, and every saveTransformDraft and submitTransform is refused by the validator.",
+      "fix": "Set draftCards to at least 2×transformCards plus room for new and deleted cards (e.g. 200), or cap cards+vocab together in openTransform well below draftCards."
+    },
+    {
+      "id": "IMP-17",
+      "severity": "minor",
+      "where": "§4.2 ('Esc … never closes the window'); D4-18; common/Modal.tsx",
+      "problem": "Modal relies on the `cancel` event plus preventDefault. Chromium's close watchers (VS Code 1.140's webview) close a modal <dialog> on a second Escape without user activation, and fire no cancelable cancel event.",
+      "scenario": "Two quick Escapes close the transform window natively while the store still thinks it is open. 'Transform cards…' then stays disabled ('a window is open') until a reload.",
+      "fix": "Intercept Escape on keydown inside the window with preventDefault (before the close request), and handle the native `close` event by calling showModal() again. Add a 4m Playwright check."
+    },
+    {
+      "id": "IMP-18",
+      "severity": "minor",
+      "where": "§3.1 claude-step; §3.9 step 5 (D4-4 'stays queued'); §2.2 QueuedTransform.action; slice 2 SealBy",
+      "problem": "The provisional claude-step makes a queue-start write, but:\n- no SealBy fits ('submit' | 'formalize' | 'retry' | 'answer');\n- its transform is never put in `transform.queued`, and QueuedTransform.action has no SessionAction to name;\n- 'outcome ≠ expect' and 'claude-step without consented' are specified only for stage windows.",
+      "scenario": "The session's first transform step fails. D4-4 says its transform 'stays queued with lastFailure' and Retry runs it, but nothing in run.json holds it, so Retry has nothing to run.",
+      "fix": "Specify that the claude-step write adds the transform to transform.queued (from 'cards', no items, action 0 or optional), that SealBy gains 'transform', and that in every context an outcome different from `expect`, or a claude-step without `consented`, answers needs-confirmation."
+    },
+    {
+      "id": "IMP-19",
+      "severity": "minor",
+      "where": "§5.3 ('recover() reads absent fields as empty'); §2.2 PersistedSession.claudeStarted; §3.8 step 6",
+      "problem": "Reading an absent claudeStarted as false (empty) makes every Formalize-started session created before slice 4 look as if its conversation had not started.",
+      "scenario": "After the upgrade, Submit review on an old session asks the egress consent again and opens a second conversation with a fresh context bundle, losing Claude's earlier context.",
+      "fix": "Read an absent value as true. Transform-started sessions write `claudeStarted: false` explicitly and set it to true when their first Claude step opens the conversation."
+    },
+    {
+      "id": "IMP-20",
+      "severity": "minor",
+      "where": "§3.9 step 2 (typed write inside the step); §5.3 ('resumed or cancelled as slice 2's are')",
+      "problem": "The typed write is three unordered-recovery writes: run.json (ledger and TransformFreezes), files, then the `typed` commit. Nothing records that it completed, and slice 2's four-write rule covers only writes outside steps.",
+      "scenario": "The window reloads after run.json holds the typed entry but with only some files written. Resume continues Claude's turn on a half-written typed write, and the pending TransformFreezes then fail every attempt for reasons Claude cannot fix.",
+      "fix": "Record `typedCommit` on the step in a run.json write after the commit. recover() of a transform step without it reverts ws/ to step-start and redoes the typed write before Resume (or ends the step cancelled, with the transform still queued). Add 4h crash tests."
+    },
+    {
+      "id": "IMP-21",
+      "severity": "minor",
+      "where": "§3.2 ('the state chip sets open …'); §3.11 ('Each of typedKeys gets a TransformFreeze'); §2.9 transformScopeOf",
+      "problem": "Typing sets `frozen`, but the chip can then set a typed field to open. transformScopeOf puts it in `open`, yet typedKeys gives it a TransformFreeze that is never excused by S₀. The step limits allow the change and frozenFindings refuses it.",
+      "scenario": "The person types a Why and sets it to 'open: Claude may change it'. Claude adjusts it, the frozen check refuses it, and the transform fails all three attempts.",
+      "fix": "Create TransformFreezes only for typed fields whose chip is frozen or kept empty (plus follow-on edits), and leave typed-but-open fields out; or lock the chip of a typed field to frozen. Add a 4e test."
+    },
+    {
+      "id": "IMP-22",
+      "severity": "minor",
+      "where": "§3.4 dependents; slice 3 §3.5 'other-subject' rule",
+      "problem": "A declaration of another subject that reaches a vocabulary item this transform changes has no workable choice in a session. Claude may not change another subject, and 'Delete it too' cannot take it (TR-10 c). Slice 3's other-subject rule then fails the step at Submit review.",
+      "scenario": "S2's statement uses S1's `InGame`, and a session transform on S1 changes `InGame`. It queues without a warning and then fails every time at Submit review.",
+      "fix": "In a session, make it a problem in the window: '“‹x›” of ‹S2› relies on it: change it outside a session'. Add a 4b test."
+    },
+    {
+      "id": "IMP-23",
+      "severity": "minor",
+      "where": "§3.5 order (step 5 'Kinds: P→A through planKind' after steps 1–4)",
+      "problem": "planKind's D-11 ops (add-hypothesis, drop-arguments) carry Spans computed from facts on the unedited text. Applied after steps 1–4 have edited the same file, their spans are stale. leanOps only checks that a span sits on some identifier inside the declaration, and checkSpansAgainstLean skips sessions that already have batches.",
+      "scenario": "In a direct transform, a sentence edit in Main.lean above dependent C is followed by P→A with `rewrite`. The add-hypothesis spans now point a few characters off and can land on another identifier in C's proof.",
+      "fix": "Apply kind changes and D-11 rewrites first in each file, or map every span through EditSession.mapOffset and refuse ('unsafe') when an edit replaced it."
+    },
+    {
+      "id": "IMP-24",
+      "severity": "minor",
+      "where": "§3.1 start-session ('then checkBase and a judge of the head publish its judgement')",
+      "problem": "Stage 1 is opened before checkBase runs. Nothing says what the stage shows, or whether Formalize can run, when checkBase refuses: B does not build, or its probe failed (slice 2's start rule).",
+      "scenario": "B has a Lean error. Submit transform unchanged opens stage 1, checkBase fails, and the session sits at stage 1 'judging' or with no base facts, which the base mask and the next Formalize need.",
+      "fix": "For start-session, run checkBase inside submitTransform before the write, keeping the window with 'Your files must build first: ‹errors›' as claude-step does. Alternatively, define stage 1's environment problem and refuse Formalize until it clears."
+    },
+    {
+      "id": "IMP-25",
+      "severity": "minor",
+      "where": "§3.6 steps 2–3; D4-3 residual",
+      "problem": "The runner ends and dismisses the provisional session before the host performs apply-transform. A window reload or extension-host crash in between loses the draft with no message; D4-3's residual names only a hand edit.",
+      "scenario": "VS Code reloads right after submitTransform resolves. run.json no longer holds the session and the board action was never performed, so the edits are gone.",
+      "fix": "Keep the session until the host reports the board action's outcome (a `pendingApply` in run.json, ended by the host after perform), or add this case to D4-3's residual explicitly."
+    },
+    {
+      "id": "IMP-26",
+      "severity": "minor",
+      "where": "§2.4 ItemDetailView typed; §2.2/§2.9 FormalizeSession, GroupItem, GroupLeftReason",
+      "problem": "Several contract types lack fields the plan needs:\n- FieldChangeView.field has no declaration, gloss, kind or proof, so the typed item detail cannot show vocabulary, kind or proof changes.\n- FormalizeSession has no list for check 3's Transform-declined rule.\n- planGroupDecline's GroupItem has no `kind`, so it cannot tell Results, Proof broken or premises apart for the Transform refusals, and GroupLeftReason has no reasons for them.",
+      "scenario": "4f's builder must invent these fields and log contract changes. Meanwhile the webview's planGroupDecline (which runs on ItemViews) and the host's version may disagree.",
+      "fix": "Add to §2.2/§2.4: FieldChangeView.field + 'declaration' | 'gloss' | 'kind' | 'proof'; FormalizeSession.transformTargets?: string[]; GroupItem.kind?: ItemKind; and GroupLeftReason + 'not-transformable' with the three texts."
+    },
+    {
+      "id": "IMP-27",
+      "severity": "minor",
+      "where": "§2.1 typedLeanProblems(i: { field, text, name? })",
+      "problem": "The function is text-only, but the vocabulary shape rule TR-12 names ('predicates over sorts') needs the model's sorts. The plan does not say which part is checked textually and which later.",
+      "scenario": "A typed `axiom P : Nat → Prop` passes the text check and is written directly, after which the board flags a vocabulary-shape diagnostic.",
+      "fix": "State that typedLeanProblems checks the textual shape (an axiom's type is `Type` or ends in `→ Prop`, which also excludes Prop axioms). Have the scratch (or the planner, which has the model) check 'over sorts' from the elaborated facts and the model's sorts, and add the case to 4g's tests."
+    },
+    {
+      "id": "IMP-28",
+      "severity": "nit",
+      "where": "§2.5 transformDraft(); §1.1 4a scope vs §0; §1.1 4e; §6.1 4h; §2.2/§2.3 duplicate start selection",
+      "problem": "Several small inconsistencies:\n- transformDraft() is a pure protocol validator, yet it is given rules that need runner state: a key 'not among the window's keys only when trashed', `proof` only on cards with a proof, and the premise window's refusals.\n- 4a's scope says 'one line each' in the webview and runner, while §0 has 4a add cases to every exhaustive switch in built code (runner, webview, host).\n- 4e puts proposeArrowProblems' branch in freeze/tools.ts, but it lives in review/judge.ts.\n- 4h's tests need queued transforms, which openTransform/submitTransform only provide from 4i.\n- The start selection is stored twice (SessionTransforms.start and SessionFreezes.start.transform).",
+      "scenario": "Builders follow the letter and put window-dependent checks in the protocol, or miss a runner or webview switch case in 4a.",
+      "fix": "Move the state-dependent rules to the runner's window checks. Align 4a's scope line with §0. Name review/judge.ts in 4e. Say that 4h's tests seed transform.queued through core's reducer. Keep the selection in one place: SessionFreezes.start.transform."
+    }
+  ]
+}

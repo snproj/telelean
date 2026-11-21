@@ -937,7 +937,7 @@ export class ModelWorkspaceImpl implements ModelWorkspace {
     if (typeof set.subject !== 'string' || !isSubjectName(set.subject)) {
       return { ok: false, code: 'invalid', error: `An accepted proposal needs the subject whose Undo records it (got ${JSON.stringify(set.subject)}).` };
     }
-    const label = set.label.replace(/[\r\n]+/g, ' ').trim() || 'These suffice';
+    const label = set.label.replace(/[\r\n]+/g, ' ').trim() || 'Formalize for dependencies';
     const seen = new Set<string>();
     const changes: FileChange[] = [];
     for (const change of set.changes) {

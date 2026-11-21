@@ -1,0 +1,86 @@
+# verify:1c2:spec
+
+Agent `a22d1a5d086bfa2fc` of workflow `wf_2d1ec6a9-856`. Verbatim output (JSON alongside).
+
+- **summary:** Fidelity review of sub-slice 1c2 (arrow gestures and selection), read-only. The diff carries out brief items A to G and does not contradict the plan or the cited clauses (AR-1, AR-3, AR-5, AR-6, AR-7, CM-2, CM-7, A21, A24, ES-9). I found no blocker and no major problem.
+
+**Scope.** Only webview files and docs/slice1-plan.md changed after the builder's pre-change snapshot. Core, extension and runner are untouched, and packages/extension/dist/webview still has its 2026-11-17 timestamps. The builder's diff matches the tree file for file.
+
+**What the diff does, by item.**
+- A (hit paths): every drawn arrow gets a 12 px transparent hit path, and so does every arrow a proof uses without a declaration. Mention arrows get none. A drawn arrow is selected by a plain click and added to the selection with Ctrl/Cmd. An undeclared (TL107) arrow has only its menu, which offers "Draw this arrow" (addArrows). The ∅ stub selects as a mark.
+- B (Delete): `pressDelete` sends one removeArrows with `marks`, behind A16's question. A focused card's delete dialog opens only when no arrow or mark is selected.
+- C (drawing): the handle draws a rubber band that follows scroll, pan and zoom. A hint states the AR-6 impact and names cycles exactly as core's planner does (same breadth-first search and same cut text). A release calls addArrows(target, [source]); an axiom target goes through 1b's dialog first. Esc cancels. 1b's temporary "Draw arrow from the selection" button is gone everywhere.
+- D (rectangle): selects the whole canvas cards, drawn arrows and marks inside it; Ctrl adds.
+- E (drop on the column): one proposition runs moveToAxioms with its impact dialog. Several cards are refused and go back. The column header and drop zone show the impact. Column re-ordering and the axiom-onto-canvas refusal are unchanged.
+- F (edit session and Proposed view): during a session there are no handles, no moves and no drops, and Delete shows the lock reason; selecting and menus still work. The store and host guards from 1f still apply underneath. The Proposed view selects and changes nothing.
+- G (tests): the pure rules are unit-tested (17 + 13 new tests, +2 in menu.test.ts). No test was deleted; test counts were checked against the snapshot.
+
+**Safety properties.**
+- Every kind change from a gesture goes through a user-confirmed dialog.
+- The rubber band and the ∅ stub keep the declared (dotted) look, so nothing claims Lean checked it.
+- Hidden verified edges are filtered out of the Proposed view's edge list, so their hit paths and tooltips cannot reveal a result early (D-19).
+- No markup or parser code was touched.
+
+**User's relayed request.** The Current view cannot be edited by any 1c2 gesture while a session is active. 1c2 adds no undo or redo paths.
+
+**Remaining findings (all minor or nit):**
+- the handle is hidden, not shown disabled with ES-9's reason, in the Proposed view;
+- one test title claims a Proposed-view case it never runs;
+- the cycle check before release ignores a pre-v4 axiom's `premises:`, which core checks;
+- a drop on the column ignores where in the column it was dropped;
+- one store test checks only the axiom branch of addArrows despite its title;
+- the column hit-test's region rule is untested.
+- **findings:**
+  - [1]
+    - **id:** F1
+    - **severity:** minor
+    - **where:** packages/webview/src/board/NodeCard.tsx:212 (drawable) and the handle span near :327
+    - **problem:** Spec ES-9 says that in the Proposed view "the arrow handle, Draw arrows, Delete (arrows), Follows from nothing and Move to axioms are disabled too, with the reason on hover". Brief F repeats it: "in the Proposed view, arrow actions are disabled with 'Arrows change only through review items and transforms.'" 1c2 does not render the handle at all in the Proposed view (`drawable = !proposed && lock === null && !provisional`), so the user never sees why they cannot draw from a card there. During a session on the Current view the brief allows "hidden or inert", so only the Proposed view is at stake.
+    - **fix:** In the Proposed view, render the handle inert instead of omitting it: `<span className="tl-handle" data-handle="" data-nodrag="" data-disabled="" title={MENU_PROPOSED_ARROWS} />`, with a CSS rule such as `.tl-handle[data-disabled] { cursor: not-allowed; border-style: dashed; }`. BoardInput.startDraw already returns when `gate().draw !== null`, so a press does nothing, and the card's click is ignored in the Proposed view. Alternatively, record in plan §8 that hiding the handle is the accepted reading of ES-9.
+    - **evidence:** `const drawable = !proposed && lock === null && !provisional;` and `{drawable ? <span className="tl-handle" ... title="Drag to another card to draw an arrow from this one" /> : null}`. In gestures.ts, gestureGate gives `draw: MENU_PROPOSED_ARROWS` in the Proposed view, but nothing on screen shows that reason for the handle.
+  - [2]
+    - **id:** F2
+    - **severity:** minor
+    - **where:** packages/webview/test/unit/store-gestures.test.ts:182
+    - **problem:** The test titled "is cleared when an edit session begins, on another subject, and in the Proposed view" never switches to the Proposed view. It checks only the run-start and subject-change clears. So the `overAxioms: null` that 1c2 added to setProposedView (store.ts:2322) is not tested, although the report and plan §8 list it.
+    - **fix:** Add the third case without the lock clearing it first: set up a review run and its proposal, call `setProposedView(false)`, then `setOverAxioms({ id: GOAL, count: 1 })`, then `setProposedView(true)`, and expect `overAxioms` to be null. Or drop "and in the Proposed view" from the title.
+    - **evidence:** The test body sets overAxioms, receives `run { state: 'starting' }` and expects null; then on a new store it applies a graph of another subject and expects null. setProposedView is never called.
+  - [3]
+    - **id:** F3
+    - **severity:** minor
+    - **where:** packages/webview/src/board/gestures.ts:300-309 (drawTarget / cycleThrough), drawHint :323-338
+    - **problem:** Core's planner (planArrows.ts:141, `refuseCycles(model, node.id, toProposition ? [...node.premises, ...fresh] : fresh)`) treats the pre-v4 `premises:` of an old axiom (A19) as new arrows, because drawing into that axiom also draws them. The webview's check before release looks only at source → target. For such an axiom the hint can say "Arrow into …" (ok). The user then confirms 1b's AR-6 dialog, and only after that does the host refuse with the cycle, as a toast. The hint also never says that the old arrows will be drawn; only the dialog after release says so. AR-6 ("before you let go, the gesture states the impact") and the brief's "refusals named before release" are therefore met only after release for legacy axioms. The builder recorded the gap in §8.
+    - **fix:** In drawTarget, when `node.type === 'AXIOM'`, check `cycleThrough(p, over, board)` for every `p` in `[source, ...node.premises.filter((id) => id !== over && board.nodes[id] !== undefined)]`, and refuse with the first cycle found, mirroring core's refuseCycles. In drawHint, add the line "Its arrows from before v4 are drawn too." when the target axiom has `premises`. Add a gestures.test case with a legacy axiom whose old premise closes a cycle.
+    - **evidence:** cycleThrough only adds premises of `node.type === 'PROPOSITION'` and is called once, as `cycleThrough(source, over, board)`. The plan §8 entry for 1c2 says: "an old axiom's `premises:` is not counted, and the host still checks the arrows such a change would draw".
+  - [4]
+    - **id:** F4
+    - **severity:** nit
+    - **where:** packages/webview/src/board/BoardInput.ts:571
+    - **problem:** A proposition dropped on the AXIOMS column always ends up last in the column, wherever it was released, because `s.moveToAxioms(outcome.id)` passes `beforeId: null`. 1a's HTML drop into a column used the drop position (`requestKindChange(id, to, beforeId)`), and BD-2 keeps the column "in your order". This is not a brief requirement, but the change of behaviour is not recorded in §8.
+    - **fix:** Work out `beforeId` from the column card under the release point (top or bottom half, as the column's re-order does), and pass it through `requestKindChange(id, 'AXIOM', beforeId)` or a new `moveToAxioms(id, beforeId)`. Or record in §8 that the card is always appended.
+    - **evidence:** store.ts moveToAxioms: `dialog: { kind: 'rationale', id, to: 'AXIOM', beforeId: null, ... }`; and `get().requestKindChange(id, 'AXIOM', null)`.
+  - [5]
+    - **id:** F5
+    - **severity:** nit
+    - **where:** packages/webview/test/unit/store-gestures.test.ts:212
+    - **problem:** The test titled "a draw released on a card adds one arrow, source → target" checks only the axiom branch: the dialog opens and nothing is sent. The common case, a proposition target where exactly one `addArrows { target, sources: [source] }` is posted, is not checked in this file. The test also sits inside the `gestureGateOf` describe block.
+    - **fix:** Add a proposition target, for example `makeNode('loose', 'PROPOSITION', …)` added to the graph. Call `addArrows('loose', [DARK])` and expect exactly one `addArrows` message with payload `{ target: 'loose', sources: [DARK], requestId }`. Move the test to its own describe block, or rename it to "into an axiom, a draw asks first (AR-6)".
+    - **evidence:** The body only checks `addArrows(PG, [DARK])` returns true, that no addArrows was posted, and that `dialog` matches `{ kind: 'arrows', id: PG, change: {...} }`.
+  - [6]
+    - **id:** F6
+    - **severity:** nit
+    - **where:** packages/webview/src/board/EdgeEngine.ts hitTestColumn (the 1c2 block of geometric queries)
+    - **problem:** Brief G asks for unit tests of the hit-testing selection logic. The pure distance test (`arrowAt`) is covered. The column's region rule is not: only between the list's left edge and the canvas, only within the visible band, only paths under the board clip. That rule lives in the DOM-bound engine and is untested, so a regression there would show up only in e2e.
+    - **fix:** Move the rule into a pure helper in gestures.ts, e.g. `columnHit(paths, column, canvasLeft, p)` working on DrawnPath with a clip field. Call it from hitTestColumn, and unit-test the header/footer exclusion, the strip up to the canvas, and the canvas-clip exclusion.
+    - **evidence:** `if (p.x < column.left || p.x > box.left || p.y < column.viewTop || p.y > column.viewBottom) return null; const clipped = new Set(this.lastPaths.filter((x) => x.clip === 'board')...)`. Neither gestures.test.ts nor geometry.test.ts reaches it.
+- **checks_run:**
+  - diff -rq <b1c2/before>/src packages/webview/src (and test/, slice1-plan.md): differences are exactly the files the report lists (gestures.ts, gestures.test.ts and store-gestures.test.ts are new)
+  - find packages/{core,extension,runner,webview}/{src,test} docs -newer <before snapshot>: only webview files and docs/slice1-plan.md changed (no core, extension or runner files)
+  - ls --full-time packages/extension/dist/webview: timestamps 2026-11-17 13:50, so dist is untouched
+  - grep 'it(' counts before and after: menu.test.ts 14 -> 16, store-arrows 22 -> 22, store-lock 11 -> 11; gestures.test.ts 17 and store-gestures.test.ts 13 new; 15 test files; no deletions
+  - grep for 'Draw arrow from the selection' / 'draw-arrows' across packages (excluding dist and out) and docs: only comments and the plan's history remain
+  - read core planArrows.ts arrowGraph/pathBetween/refuseCycles and cutText: the webview cycleThrough matches the core walk and naming; core also checks an old axiom's premises (F3)
+  - read model/run.ts buildOverlay: hidden verified edges are filtered out of the edges list, so no hit path or tooltip leaks a hidden result
+  - read EdgeEngine MutationObserver config: data-draw-target and the other new data-* attributes do not trigger re-layout loops
+  - grep e2e selectors (path.tl-edge…, path[data-edge-id], dragCard press point): hit paths (class tl-edge-hit, data-hit-edge) do not double-count; the report's e2e notes are accurate
+  - No builds, tsc or vitest were run (read-only lens; the other verifier runs them)

@@ -27,7 +27,7 @@ import {
   type TlGraph,
 } from '@telelean/core';
 
-import type { AcceptPlan, AcceptRequest, ProposalBuildInput, ProposalService, ReadRealText, RunSidecarStore } from '../../../src/proposal/types.js';
+import type { AcceptPlan, AcceptRequest, ApplyRequest, ProposalBuildInput, ProposalService, ReadRealText, RunSidecarStore } from '../../../src/proposal/types.js';
 import type { ShadowWorkspace } from '../../../src/shadow/types.js';
 import type { ExternalChangeSet, ModelWorkspace, WorkspaceChange } from '../../../src/workspace/types.js';
 import { SPYRO_FACTS, SPYRO_FIXTURE } from './env.js';
@@ -70,10 +70,6 @@ export class FakeProposals implements ProposalService {
       files: [],
       review: [],
       definitions: this.definitions,
-      lifecycle:
-        input.verdict === 'proved'
-          ? [{ id: 'l1', kind: 'change-kind', nodeId: target, from: 'GOAL', to: 'DERIVATION', recommended: true, reason: 'Lean proved it from the selected premises' }]
-          : [],
       ghosts: [...input.ghosts],
       report: {
         verdict: input.verdict,
@@ -106,6 +102,15 @@ export class FakeProposals implements ProposalService {
     if (this.onPlan !== undefined) return this.onPlan(request, this.plans.length);
     const shadowState = request.shownState !== undefined ? new Map(request.shownState) : await request.shadow.currentFiles();
     return { ok: true, changes: [], label: 'These suffice → proved: Cynder would not be a good addition to the new…', nodes: [request.proposal.report.target], drift: [...this.drift], shadowState };
+  }
+
+  /** Slice 2b3b: an edit session's Apply plan (no default: a test that reaches it scripts `onPlanApply`). */
+  onPlanApply?: (request: ApplyRequest) => AcceptPlan | Promise<AcceptPlan>;
+
+  async planApply(request: ApplyRequest): Promise<AcceptPlan> {
+    this.log.push('proposals.planApply');
+    if (this.onPlanApply === undefined) throw new Error('FakeProposals.planApply is not scripted');
+    return this.onPlanApply(request);
   }
 
   async apply(plan: Extract<AcceptPlan, { ok: true }>, workspace: ModelWorkspace, subject: string): Promise<ActionOutcome> {

@@ -46,8 +46,8 @@ export function signatureAxioms(model: ProjectModel): string[] {
   return out;
 }
 
-/** Why a selected card cannot be used, or undefined when it contributes axioms (and which). */
-function contribution(node: TlNode, targetHolds: string | undefined): { selected?: string; footprint?: string[] } | undefined {
+/** Why a selected card cannot be used, or undefined when it contributes axioms (and which). Exported for slice 2's B.1 (`review/permitted.ts`, 2b1b). */
+export function contribution(node: TlNode, targetHolds: string | undefined): { selected?: string; footprint?: string[] } | undefined {
   const statement = node.lean.statement;
   if (statement === undefined || node.lean.justification === undefined || node.status.flags.includes('holds-mismatch')) return undefined;
   if (node.lean.justificationKind === 'axiom') return { selected: holdsName(statement) };
@@ -62,9 +62,10 @@ function contribution(node: TlNode, targetHolds: string | undefined): { selected
  * A selected derivation's footprint, given B: only for the user's own proof, i.e. its statement is the same card's
  * statement in B and its `.holds` is a declaration of B with the same source text now (B's footprint when B has
  * facts, else the current one). A proof Claude added or changed in the run gives nothing (`undefined`: unusable as a
- * source of axioms; it can still be used as a lemma, whose own footprint must then be permitted).
+ * source of axioms; it can still be used as a lemma, whose own footprint must then be permitted). Exported for slice 2's
+ * B.1 (`review/permitted.ts`, 2b1b: "own proof").
  */
-function footprintSinceBase(model: ProjectModel, base: ProjectModel, id: string, node: TlNode, targetHolds: string | undefined): string[] | undefined {
+export function footprintSinceBase(model: ProjectModel, base: ProjectModel, id: string, node: TlNode, targetHolds: string | undefined): string[] | undefined {
   const statement = node.lean.statement;
   const before = base.nodes.get(id)?.node;
   if (statement === undefined || before === undefined || before.lean.statement !== statement) return undefined;

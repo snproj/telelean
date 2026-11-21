@@ -47,6 +47,11 @@ export class EditSession {
   private readonly states = new Map<string, FileState>();
   /** Blocks of the model's parse that this session removes (their binding may go). */
   private readonly removed = new Set<MarkupBlock>();
+  /**
+   * Slice 2 (2b2, planItemRevert): blocks of the model's parse whose binding a plan changes on purpose, with the
+   * statement each must end bound to (undefined: none, code-less).
+   */
+  private readonly expected = new Map<MarkupBlock, string | undefined>();
 
   constructor(private readonly model: ProjectModel) {}
 
@@ -136,6 +141,15 @@ export class EditSession {
     this.apply(path, setBlockField(this.parsed(path), { ...current, id: nodeId }, key, value));
   }
 
+  /**
+   * Slice 2 (2b2, planItemRevert: a card's statement taken out goes back to B's): `original`, a block of the model,
+   * must end bound to `statement`, or to nothing (`undefined`: a blank line then keeps it code-less when a declaration
+   * ends up directly below it), instead of keeping the binding it has in the model. Any other binding is refused.
+   */
+  expectBinding(original: MarkupBlock, statement: string | undefined): void {
+    this.expected.set(original, statement);
+  }
+
   removeBlock(path: string, original: MarkupBlock): void {
     const current = this.block(path, original);
     this.removed.add(original);
@@ -167,7 +181,8 @@ export class EditSession {
     const parsed = this.parsed(path);
     let map: LineMap | undefined;
     for (const op of ops) {
-      const name = op.op === 'remove-decl' ? op.name : op.op === 'remove-holds' || op.op === 'holds-theorem-to-axiom' ? holdsName(op.statement) : undefined;
+      const name =
+        op.op === 'remove-decl' || op.op === 'replace-decl' ? op.name : op.op === 'remove-holds' || op.op === 'holds-theorem-to-axiom' ? holdsName(op.statement) : undefined;
       if (name === undefined) continue;
       const decl = findDecl(parsed, name);
       const facts = this.model.declFacts.get(name);
@@ -213,10 +228,13 @@ export class EditSession {
           const offset = this.mapOffset(path, block.span.start);
           const current = offset === undefined ? undefined : byStart.get(offset);
           if (!current) continue;
-          const before = block.binding.statement ?? '';
+          // A binding a plan changes on purpose (2b2) is held to the one it must end with.
+          const expected = this.expected.has(block);
+          const before = (expected ? this.expected.get(block) : block.binding.statement) ?? '';
+          const codeLess = expected ? this.expected.get(block) === undefined : block.binding.mode === 'none';
           const after = current.binding.statement ?? '';
           if (before === after) continue;
-          if (block.binding.mode === 'none' && current.binding.mode === 'adjacent') {
+          if (codeLess && current.binding.mode === 'adjacent') {
             // A blank line after the block's last line keeps it code-less.
             const newline = now.text.indexOf('\n', current.span.end);
             if (newline < 0) continue;

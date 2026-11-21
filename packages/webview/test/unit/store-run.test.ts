@@ -4,8 +4,8 @@
  */
 import { hostMessage, spyroGraph, spyroProvedGraph, type ActionOutcome, type ProposalView, type RunView, type TlGraph, type WebviewToHostMessage } from '@telelean/core';
 import { describe, expect, it } from 'vitest';
-import { boardView, clampSplit, createBoardStore, proposedOverlay, readSplit, TARGET_CHOICE_BLOCK, trayModel, vocabularyCollapsed } from '../../src/state/store';
-import { mapNode } from '../shared/graphs';
+import { boardView, clampSplit, createBoardStore, formalizeOf, proposedOverlay, readSplit, vocabularyCollapsed } from '../../src/state/store';
+import { conditionalGraph, mapNode } from '../shared/graphs';
 import {
   ADOPTED_ID,
   adoptedProposal,
@@ -62,7 +62,8 @@ describe('run and proposal are kept apart from the graph', () => {
     const p = definitionProposal();
     run(reviewRun(p));
     proposal(p);
-    expect(state().review).toMatchObject({ runId: RUN_ID, proposalId: 'p3', step: 0, revealed: false, definitions: {}, lifecycle: { l1: true, l2: false }, feedback: '' });
+    expect(state().review).toMatchObject({ runId: RUN_ID, proposalId: 'p3', step: 0, revealed: false, definitions: {}, feedback: '' });
+    expect(state().review).not.toHaveProperty('lifecycle');
     expect(state().proposedView).toBe(true);
     expect(boardView(state()).nodes[ADOPTED_ID]).toBeDefined();
     expect(proposedOverlay(state())?.hidden.has(TARGET)).toBe(true);
@@ -112,47 +113,46 @@ describe('run and proposal are kept apart from the graph', () => {
   });
 });
 
-describe('starting a run (M2 tray)', () => {
-  it('blocked while a run of the root is active (any subject) and for an assumption target; one request at a time', () => {
+describe('starting a run: Formalize for dependencies (slice 1e; the tray of M2 is gone)', () => {
+  /** The arrows into the target from two of its drawn premises. */
+  const selectQuestion = (state: () => ReturnType<ReturnType<typeof createBoardStore>['getState']>) => {
+    state().selectArrow('cynder-dark-past', TARGET, false);
+    state().selectArrow('new-spyro-pg', TARGET, true);
+  };
+
+  it('blocked while a run of the root is active (any subject), and while a start is on its way; one request at a time', () => {
     const { state, run, result, ofType } = setup();
-    for (const id of ['cynder-dark-past', TARGET]) state().clickCard(id, true);
+    selectQuestion(state);
     run(runView({ subject: 'Bayonetta' }));
-    expect(state().startRun()).toBe(false);
+    expect(state().formalize()).toBe(false);
+    expect(formalizeOf(state()).disabled).toBe("A run is active. Claude is already working on Bayonetta: wait for it to finish, or cancel it.");
     run(runView({ state: 'cancelled' }));
-    expect(state().startRun()).toBe(true);
+    expect(state().formalize()).toBe(true);
     expect(state().runBusy).toMatchObject({ action: 'start', requestId: 'r1' });
-    expect(state().startRun()).toBe(false); // in flight
+    expect(formalizeOf(state()).disabled).toBe('A run is active. It is starting.');
+    expect(state().formalize()).toBe(false); // in flight
     result('r1', { ok: false, code: 'not-yet', error: 'The project is not on leanprover/lean4:v4.35.0.' });
     expect(state().runBusy).toBeNull();
-    expect(state().toasts.map((t) => t.text)).toEqual(['The project is not on leanprover/lean4:v4.35.0.']);
-    state().setTarget('cynder-dark-past');
-    expect(state().startRun()).toBe(false);
+    expect(state().toasts.map((t) => t.text)).toEqual([
+      'A run is active. Claude is already working on Bayonetta: wait for it to finish, or cancel it.',
+      'A run is active. It is starting.',
+      'The project is not on leanprover/lean4:v4.35.0.',
+    ]);
     expect(ofType('startRun')).toHaveLength(1);
+    expect(ofType('startRun')[0]?.payload).toEqual({ target: TARGET, premises: ['cynder-dark-past', 'new-spyro-pg'], requestId: 'r1' });
   });
 
   it('a declined consent is information, not an error, and the next start clears it; other refusals stay errors', () => {
     const { state, result } = setup();
-    for (const id of ['cynder-dark-past', TARGET]) state().clickCard(id, true);
-    expect(state().startRun()).toBe(true);
+    selectQuestion(state);
+    expect(state().formalize()).toBe(true);
     const declined = 'Not started: telelean sends nothing to Claude until you allow it ("Run with Claude").';
     result('r1', { ok: false, code: 'not-yet', error: declined });
     expect(state().toasts.map((t) => [t.level, t.text])).toEqual([['info', declined]]);
-    expect(state().startRun()).toBe(true);
+    expect(state().formalize()).toBe(true);
     expect(state().toasts).toEqual([]);
     result('r2', { ok: false, code: 'not-yet', error: 'Claude could not be started: no claude binary' });
     expect(state().toasts.map((t) => [t.level, t.text])).toEqual([['error', 'Claude could not be started: no claude binary']]);
-  });
-
-  it('the tray names what is missing: a Derivation is a valid target too, chosen with ⊢', () => {
-    const graph = mapNode(spyroGraph(), TARGET, (n) => ({ ...n, type: 'DERIVATION' }));
-    const { state } = setup(graph);
-    for (const id of ['cynder-dark-past', TARGET]) state().clickCard(id, true);
-    expect(trayModel(state())).toMatchObject({ target: null, blocked: TARGET_CHOICE_BLOCK });
-    state().setTarget(TARGET);
-    expect(trayModel(state())).toMatchObject({ target: TARGET, blocked: null });
-    state().clearSelection();
-    for (const id of ['cynder-dark-past', 'new-spyro-pg']) state().clickCard(id, true);
-    expect(trayModel(state()).blocked).toBe('Select the card to prove too: a Goal, or a Derivation (then choose it with ⊢).');
   });
 
   it('the run panel’s size per layout: clamped, persisted, null for the default; a stored value is read defensively', () => {
@@ -170,13 +170,6 @@ describe('starting a run (M2 tray)', () => {
     expect(clampSplit(0.5004)).toBe(0.5);
   });
 
-  it('a target that already declares one of the premises is never also sent as a premise', () => {
-    const graph = mapNode(spyroGraph(), TARGET, (n) => ({ ...n, premises: ['cynder-dark-past'] }));
-    const { state, last } = setup(graph);
-    for (const id of ['new-spyro-pg', TARGET]) state().clickCard(id, true);
-    expect(state().startRun('add')).toBe(true);
-    expect(last()).toEqual({ v: 1, type: 'startRun', payload: { target: TARGET, premises: ['cynder-dark-past', 'new-spyro-pg'], requestId: 'r1' } });
-  });
 });
 
 describe('answering questions', () => {
@@ -225,7 +218,7 @@ describe('the review', () => {
     expect(state().review?.revealed).toBe(true);
     expect(state().overlay?.hidden.size).toBe(0);
     state().reviewGo(99);
-    expect(state().review?.step).toBe(4); // clamped to the last step
+    expect(state().review?.step).toBe(3); // clamped to the last step, the result (spec v4: no "Card changes" step after it)
     const fresh = setup();
     fresh.run(reviewRun(p));
     fresh.proposal(p);
@@ -237,7 +230,7 @@ describe('the review', () => {
     expect(plain.state().review?.revealed).toBe(true);
   });
 
-  it('Accept waits for every definition; a "no" opens Feedback, prefilled; Accept sends ticks and approvals', () => {
+  it('Accept waits for every definition; a "no" opens Feedback, prefilled; Accept sends the approvals', () => {
     const { state, run, proposal, last } = setup();
     const p = definitionProposal();
     run(reviewRun(p));
@@ -248,11 +241,8 @@ describe('the review', () => {
     expect(state().review).toMatchObject({ feedbackOpen: true, feedback: "I don't endorse the definition `Spyro.Rating.exists` (“there is at least one rating”): " });
     expect(state().acceptProposal()).toBe(false);
     state().answerDefinition('d2', 'yes');
-    state().setLifecycleTick('l1', false);
-    state().setLifecycleTick('l2', true);
-    state().setLifecycleTick('nope', true);
     expect(state().acceptProposal()).toBe(true);
-    expect(last()).toEqual({ v: 1, type: 'acceptProposal', payload: { runId: RUN_ID, proposalId: 'p3', lifecycle: ['l2'], definitions: ['d1', 'd2'], requestId: 'r1' } });
+    expect(last()).toEqual({ v: 1, type: 'acceptProposal', payload: { runId: RUN_ID, proposalId: 'p3', definitions: ['d1', 'd2'], requestId: 'r1' } });
   });
 
   it('Accept remembers whether it changes the files (the run panel’s outcome line): the proposal’s `empty`, then the host’s answer; a refusal or another run forgets it', () => {
@@ -291,12 +281,12 @@ describe('the review', () => {
     run(runView({ runId: 'run_3' }));
     expect(state().accepted).toBeNull();
 
-    // A round that changed no file, with Goal -> Derivation ticked: the Accept changes the card's kind in the file.
-    const proved = emptyProposal({ runId: 'run_4', lifecycle: normativeProposal().lifecycle, report: normativeProposal().report });
+    // A round that changed no file only records, even when it proved the target (spec v4: no card change to tick).
+    const proved = emptyProposal({ runId: 'run_4', report: normativeProposal().report });
     run(reviewRun(proved, { runId: 'run_4' }));
     proposal(proved);
     state().acceptProposal();
-    expect(state().accepted).toEqual({ runId: 'run_4', proposalId: 'p1', changedFiles: true });
+    expect(state().accepted).toEqual({ runId: 'run_4', proposalId: 'p1', changedFiles: false });
   });
 
   it('Feedback: prefills go on their own line; the text is trimmed but keeps its line breaks; blank text is not sent', () => {
@@ -370,14 +360,17 @@ describe('the review', () => {
     ]);
   });
 
-  it('adding a card from the A|D|G box during a review shows the current board again (D-16)', () => {
-    const { state, run, proposal } = setup();
+  it('slice 1f (ES-9): nothing is added from the A|P box during a review, and the board stays on the proposal (no switch back to Current)', () => {
+    const { state, run, proposal, sent } = setup();
     const p = normativeProposal();
     run(reviewRun(p));
     proposal(p);
     expect(state().proposedView).toBe(true);
-    state().addNode('ASSUMPTION', 'Critics notice ratings');
-    expect(state().proposedView).toBe(false);
+    const before = sent.length;
+    expect(state().addNode('AXIOM', 'Critics notice ratings')).toBeNull();
+    expect(state().proposedView).toBe(true);
+    expect(sent.slice(before).filter((m) => m.type === 'addNode')).toEqual([]);
+    expect(Object.keys(state().provisional)).toEqual([]);
   });
 });
 
@@ -388,22 +381,23 @@ function sent(ofType: ReturnType<typeof setup>['ofType']): Array<[string, unknow
 
 describe('carry-over 3: confirmedDependents', () => {
   it('the choice names the listed dependents; a host that finds more re-asks with its list; asked about nothing new, it does not loop', () => {
-    const { state, result, last } = setup(spyroProvedGraph(1));
-    state().dropCard('cynder-dark-past', 'GOAL', null);
+    // Spec v4: the dependents dialog comes from P->A of a proof that takes hypotheses (d1, applied by g1).
+    const { state, result, last } = setup(conditionalGraph(1));
+    state().dropCard('d1', 'AXIOM', null);
     state().confirmDependents('rewrite');
-    expect(last()).toMatchObject({ type: 'kindChange', payload: { dependents: 'rewrite', confirmedDependents: [TARGET], requestId: 'r1' } });
-    result('r1', { ok: false, code: 'needs-confirmation', error: 'more', dependents: [TARGET, 'Spyro.helper_lemma'] });
-    expect(state().dialog).toMatchObject({ kind: 'dependents', dependents: [TARGET, 'Spyro.helper_lemma'], relisted: true, summary: 'Make Goal: 2 dependents need a hypothesis rewrite' });
+    expect(last()).toMatchObject({ type: 'kindChange', payload: { from: 'PROPOSITION', to: 'AXIOM', dependents: 'rewrite', confirmedDependents: ['g1'], requestId: 'r1' } });
+    result('r1', { ok: false, code: 'needs-confirmation', error: 'more', dependents: ['g1', 'Spyro.helper_lemma'] });
+    expect(state().dialog).toMatchObject({ kind: 'dependents', dependents: ['g1', 'Spyro.helper_lemma'], relisted: true, summary: 'Move to axioms: 2 dependents need a rewrite' });
     state().confirmDependents('mark-broken');
-    expect(last()).toMatchObject({ type: 'kindChange', payload: { dependents: 'mark-broken', confirmedDependents: [TARGET, 'Spyro.helper_lemma'], requestId: 'r2' } });
+    expect(last()).toMatchObject({ type: 'kindChange', payload: { dependents: 'mark-broken', confirmedDependents: ['g1', 'Spyro.helper_lemma'], requestId: 'r2' } });
     result('r2', { ok: false, code: 'needs-confirmation', error: 'same again', dependents: ['Spyro.helper_lemma'] });
     expect(state().dialog).toBeNull();
     expect(state().toasts.map((t) => t.text)).toEqual(['same again']);
   });
 
-  it('the optional reason of a change to Assumption is sent again with the answer to the host’s question', () => {
+  it('the optional reason of a change to Axiom is sent again with the answer to the host’s question', () => {
     const { state, result, last } = setup(spyroGraph(1));
-    state().requestKindChange(TARGET, 'ASSUMPTION', null);
+    state().requestKindChange(TARGET, 'AXIOM', null);
     state().confirmRationale('a friend said so');
     expect(last()).toMatchObject({ type: 'kindChange', payload: { rationale: 'a friend said so', requestId: 'r1' } });
     expect((last() as Extract<WebviewToHostMessage, { type: 'kindChange' }>).payload.confirmedDependents).toBeUndefined();

@@ -16,6 +16,7 @@ export * from './project.js';
 export * from './lakeLog.js';
 export * from './ilean.js';
 export * from './checkFile.js';
+export * from './probeFile.js';
 export { declDrafts, gitMaskPaths, messageFacts, rootRelativeFile, toDeclFacts, type DeclDraft } from './refresh.js';
 
 /**

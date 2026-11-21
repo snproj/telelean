@@ -1,0 +1,40 @@
+[
+ {
+  "id": "R1-1",
+  "severity": "minor",
+  "where": "packages/core/src/review/view.ts:697-718 (`removedFromQuestion`, `askedBy`), used by `questionOf` (:731), `standingStep` (:740) and the re-ask note (:1256-1266); docs/slice2-plan.md \u00a78 'fixer 2c2 r1' D2-59 bullet (line ~3401)",
+  "problem": "`askedBy` removes every D2-59 source in the done stack from every ended step's question, including a step asked after that decline, which may have asked the source again. \u00a78 justifies this with 'A source declined this way can never come back into a later question (its arrow is in `rejectedArrows`)'. That is false:\n- un-reject of the declined Claude arrow takes it out of `rejectedArrows`;\n- the arrow can then be accepted again;\n- check 3 of formalizeStartProblems counts accepted Claude arrows, so a later mid-stage Formalize can re-ask T with that source.\nThe decline action stays in `done` across the seal. Then:\n- while hidden: the InferenceView, the Result detail's question and the list order show T's question without the source, although the re-ask asked for it (both twins alike, so no leak, but wrong);\n- once shown, the re-ask note is inverted: the proved twin says '\u201cT\u201d was not proved: your earlier result stands', and the not-proved twin gets no note;\n- in the not-proved twin, `standingStep` picks the re-ask, so its chip and words go on the earlier version.\nThe note's subtraction is the builder's; the hidden question, the standing step and the \u00a78 claim are the fixer's.",
+  "fix": "Count a D2-59 removal only against steps whose queue started before the declining action. In `done`, those are the decide actions after the seal that opened the step's queue (queue q \u2265 2 starts at the (q-1)-th seal); for queue 1 or a step without a queue number, all of them.\n- Optionally drop a 'left the question' note once a later step of that target asked the source again.\n- Correct the \u00a78 sentence: un-reject clears `rejectedArrows`, and a later mid-stage Formalize may select the arrow again.\n- Add a twin test: DO-0, un-reject, Accept, seal, re-ask of T with the source, proved or not. Assert that the hidden question is what the re-ask asked and that the 'not proved' note appears only in the not-proved twin.",
+  "evidence": "Probe PA (rv2c2r1/probe/rv.probe.ts, logs/probe_run1.log):\n- 's2 asked: cynder-dark-past,new-spyro-pg,pg-no-dark-past | view question (proved): cynder-dark-past,pg-no-dark-past | (not proved): cynder-dark-past,pg-no-dark-past';\n- shown, proved twin notes: ['The new question for \u201cCynder would not be a good addition to the new Spyro game\u201d was not proved: your earlier result stands.', \u2026];\n- shown, not-proved twin notes: only the 'left the question' line.\nProbe PC (probe/rv2.probe.ts, logs/probe_run2.log), through reduceReview:\n- after DO-0: rejectedArrows [new-spyro-pg\u2192T], question without new-spyro-pg;\n- after un-reject: status in-review, question still without it, rejectedArrows [];\n- Accept again: ok.\nreducer.ts:548-560: un-reject never touches the question. formalize.ts:72-75: an accepted Claude arrow passes check 3."
+ },
+ {
+  "id": "R1-2",
+  "severity": "minor",
+  "where": "packages/core/src/review/view.ts:883-889 (`whyOf`, used by the arrow item's detail at :1060) while `running`",
+  "problem": "While a step runs with the results shown when the queue started, `whyOf` returns the newest ledger arrow entry for the arrow's ends, including one that an ended step of the running queue wrote. Such an entry is kept only if that step passed (for a re-ask, only if it proved T); a give-up's or an unproved re-ask's rollback drops it (\u00a73.4).\n- So the listed arrow item's `why` shows Claude's words from the running queue (D2-10: withheld while a step runs).\n- That `why` also differs with the outcome before the queue ends (D2-63, \u00a74.7). This is the class of ADV-1 that the question fix does not cover.\n- Reachable in slice 2, narrowly. A Claude arrow whose source is a written premise card is taken out by a cascade (RV-5 edge 3; judge.test.ts's A-ADV-1 fixture). The premise is un-rejected (AF2: no merge, so the arrow stays out) and accepted again. Then a multi-target mid-stage Formalize re-asks T, and Claude proposes the arrow again with a new why (allowed since fixer 2b1b r1).",
+  "fix": "While a step runs, have `whyOf` skip ledger entries whose `step` belongs to the running queue (`inRunningQueue` over records.steps by id). Do the same for the `completion` check, for consistency, so that nothing the running queue wrote reaches the view. Add a twin test: phase 'step', the results forced, a taken-out arrow item, and ledgers with and without the re-ask's arrow entry. Assert byte-identical views.",
+  "evidence": "Probe PB (rv2c2r1/probe/rv.probe.ts, logs/probe_run1.log): 'PB phase step shown true | why (proved): second why: needed for the re-ask | why (not proved): first why: the game is PG | views equal: false'."
+ },
+ {
+  "id": "R1-4",
+  "severity": "minor",
+  "where": "packages/core/src/review/view.ts:723 (`inRunningQueue`: `step.queue === undefined || \u2026`); packages/core/test/review/view.test.ts",
+  "problem": "The fail-closed fallback that \u00a78 states ('a step without one counts as in it') has no test. My mutation V-Q2 changes it to `step.queue !== undefined && step.queue === runningQueue`, and view.test.ts still passes (54/54). If 2d leaves `queue` unset on some steps, ADV-1's mid-queue question leak would come back with no test failing. The brief's mutation rule says a rule no test catches needs a new test.",
+  "fix": "Add an ADV-1-style running twin whose steps have no `queue` numbers, with D2-46's question replacement in one twin. Assert byte-identical views and the asked question.",
+  "evidence": "rv2c2r1/muts1_results.json, V-Q2: exit 0, '54 passed (54)'. Its log is logs/mut_V-Q2.log."
+ },
+ {
+  "id": "R1-3",
+  "severity": "nit",
+  "where": "packages/core/src/review/types.ts:210 (SessionForce doc); docs/slice2-plan.md \u00a72.2 (~line 426) and \u00a72.6 `forced?` comment (~line 796)",
+  "problem": "The contract comments still say that Show results' force lasts 'until a statement or belief item next becomes undecided'. They do not mention RV-11's Result returns, nor every queue's end, which is the rule now in reconcile, \u00a73.5 step 3 and \u00a74.7.",
+  "fix": "Add one clause to each: '\u2026, a Result that RV-11 returns to review, or the end of any queue of Claude steps (\u00a74.7)'."
+ },
+ {
+  "id": "R1-5",
+  "severity": "nit",
+  "where": "packages/core/src/review/view.ts:958, 977, 982 (resultDetail: `wordsOf` for a Result with `redo.reverted`)",
+  "problem": "For a Result that telelean or a cascade took out, the fixer now shows B's verdict and drops the proof, but Claude's summary and gap from the taken-out version still show, because `standingStep` is that version's step. In the ADV-2 test's setup the detail reads verdict 'not-proved' with summary 'Proved from the three arrows.' and gap 'nothing missing'. That is part of what ADV-2 asked never to read as proved.",
+  "fix": "Leave out `summary` and `gap` for a Result whose content is out and that the user did not decline (`!inWs && !declinedVersion`), as for `proof`. Assert their absence in the ADV-2 test."
+ }
+]

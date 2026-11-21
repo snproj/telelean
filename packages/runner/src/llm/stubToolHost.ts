@@ -9,6 +9,7 @@ import type {
   AgentToolHost,
   AgentToolName,
   Answers,
+  ArrowProposal,
   AskUserArgs,
   CheckLeanArgs,
   CheckResult,
@@ -17,6 +18,7 @@ import type {
   FreezeStatementsArgs,
   GateFailure,
   GateVerdict,
+  ProposeArrowArgs,
   ProposeAssumptionArgs,
   ToolCallContext,
 } from './types.js';
@@ -134,6 +136,11 @@ export class StubToolHost implements AgentToolHost {
     this.record('propose_assumption', args);
     this.ghosts += 1;
     return { status: 'recorded', ghostId: `ghost-${this.ghosts}`, gateChecked: false, message: 'M0 stub: recorded without a gate check' };
+  }
+
+  async propose_arrow(args: ProposeArrowArgs): Promise<ArrowProposal> {
+    this.record('propose_arrow', args);
+    return { status: 'recorded', message: 'M0 stub: recorded without a check' };
   }
 
   async finish(args: FinishArgs): Promise<GateVerdict> {

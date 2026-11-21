@@ -1,0 +1,145 @@
+# reverify:2b1b:r2
+
+Agent `ac54eaabf581189c9` of workflow `wf_ae5f1188-533`. Verbatim output (JSON alongside).
+
+- **summary:** All five findings of this round are resolved; none is still open. The fix round introduced one minor regression (R2-1) and one nit (R2-2).
+
+Every check passes:
+- **Typechecks:** core and runner (`tsconfig.test.json`), webview (`tsconfig.json` and `tsconfig.node.json`) and extension (`tsconfig.json`) all exit 0 with no output.
+- **core vitest:** "Test Files  67 passed (67)", "Tests  895 passed (895)".
+- **webview vitest:** "Test Files  19 passed (19)", "Tests  313 passed (313)".
+- **extension vitest (`--no-cache`):** "Test Files  22 passed (22)", "Tests  203 passed (203)".
+- **runner `test/run/manager.gate.test.ts`** (it uses core's `describeFinding`, which changed): "Test Files  1 passed (1)", "Tests  8 passed (8)".
+
+The fixes and their tests:
+- **Tests fail without the fixes.** In a scratch copy of core, the fixer's pre-fix sources with the new tests give "Tests  7 failed | 100 passed (107)". Each finding's new or updated test is among the failures.
+- **R1-1's refinement is covered.** The review's plain version of the R1-1 fix fails the new "comment above the person's own proof" test.
+- **Boundary mutations.** I broke two boundary conditions myself (R4c, C2c), and each fails a new test.
+- **Snapshots.** Exactly the 10 listed files differ between the before and after snapshots, and no repo file changed after the after snapshot.
+
+**R2-1 (minor): R1-1 made the fixer's logged "decision 2" reachable from opened declarations.**
+- Before this round, a step was refused for a new comment placed below an opened, unchanged session lemma and directly above a session declaration it was not given.
+- Now that comment passes `check`, `gate-proved` and `gate-other`.
+- At the stage it attaches to the declaration below and changes that item's content key. ES-2's preset freezes that item for the step.
+- My probe shows this on the current code and the refusal on the pre-fix code.
+
+**R2-2 (nit):** after R1-4, Claude no longer gets G5's message telling it to restore `premises:` when it redraws a declined arrow by hand.
+
+Effects outside my scratch dir: vite's config loader left four git-ignored `.vite-temp` folders empty, with only their modification times changed:
+- `node_modules/.vite-temp`
+- `packages/core/node_modules/.vite-temp`
+- `packages/webview/node_modules/.vite-temp`
+- `packages/runner/node_modules/.vite-temp`
+
+Nothing else changed:
+- `node_modules/.vitest-cache` still has 1654 entries.
+- Nothing was written under `packages/extension/out` or `packages/extension/dist`.
+- git state is unchanged: HEAD is still 187673d, and git status lists the same 316 entries.
+- There was no network use and no install, and none of my processes remain.
+
+My scripts, mirror, probes and logs are in /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/rv2b1br2.
+- **resolved:**
+  - [1]
+    - **id:** C-V2B1B-C2
+    - **how:** Fixed as the review proposed. In `otherResultFindings` (sessionRules.ts:1291), a target's `.holds` now gets a creator with `active: false`, so what T.holds mentions is judged with `materialQuestionOf`. That is the recorded question at check, freeze and gate-other while T.holds is unchanged, and the step's question at gate-proved and at check once T.holds changed (judge.ts:282).
+
+The new test "the old proof stands until the step claims the new question…" fails on the pre-fix sources. My mutation C2c (check never claims the new question) fails "a proved finish claims it…".
+
+I found no regression:
+- For any target other than the active one, `materialQuestionOf` equals `questionOf`.
+- At freeze, a changed T.holds is still refused by `proof-before-freeze`, which fires for any changed proof (rules.ts:1123).
+- At gate-other, a changed text is still refused by `status-mismatch`.
+- The rule now matches round 1's footprint rule for earlier material (judge.ts:423-435).
+
+The stage and final purposes are unchanged.
+  - [2]
+    - **id:** R1-1
+    - **how:** Fixed, with a sound refinement. `compareTexts` gains an optional `alsoTouched`. `strayCommandFindings(c, openNames)` passes it at step purposes, limited to opened declarations that are session content (new or rewritten since B). judgeState passes `openNames`.
+
+The pre-fix sources fail the new test "a Submit step that opened the Result rewords its lemma’s comment…". The review's plain version (`openNames.has` alone) fails the guard test "a new comment above the person’s own proof stays a stray comment…". So the refinement is needed and covered.
+
+`computeItems` and `stepLimitFindings` call `compareTexts` without the new argument, so they are unchanged. The fix widens one existing gap, reported as R2-1.
+  - [3]
+    - **id:** R1-2
+    - **how:** Fixed. `extraSources` now takes `current: ProjectModel` as a required parameter (permitted.ts:48), and the drawn test always runs. Its only caller, `permittedFor`, already passed it. No other package calls it.
+
+The `extra` comment in review/types.ts and in plan §2.9 now states the drawn condition, and §4.8 already did. The new test fails on the pre-fix sources. The core typecheck passes with the `@ts-expect-error` in use.
+  - [4]
+    - **id:** R1-3
+    - **how:** Fixed:
+- `closed-proof` now reads "it changed the proof of “T”, which this step may not change" (describe.ts:197).
+- Session content that no item of S₀ covers gets the new token `uncovered`, with the sentence "it changed ‹name›, which an earlier step wrote" (sessionRules.ts:276, describe.ts:194). It is documented in gate/types.ts and plan §2.7.
+
+Nothing else depends on the `session` token: only describe.ts reads it, in core, runner, extension and webview alike. Three tests fail on the pre-fix sources, and the describeSession test checks a removed closed proof as judgeState reports it.
+  - [5]
+    - **id:** R1-4
+    - **how:** Fixed. G5 now skips an added `premises:` entry when a ledger arrow for it exists and its item is declined (sessionRules.ts:410-411, :477).
+
+That is exactly B.3's first-loop condition (sessionRules.ts:729-745), since an added entry is drawn, so no case falls between the two rules. Arrow items are always declined `plain` (reducer.ts:463), so no Shaky-declined arrow can trip it.
+
+The new test fails on the pre-fix sources. My mutation R4c (hand-off without a ledger arrow) fails the same test. That run also carried a leftover mutation from an earlier check, but the test passed when that mutation ran alone.
+
+The message Claude now gets is weaker, reported as R2-2.
+- **findings:**
+  - [1]
+    - **id:** R2-1
+    - **severity:** minor
+    - **where:** packages/core/src/gate/sessionRules.ts:1048-1049 (strayCommandFindings: a step's new comment attaches against S₀, and opened session content counts as touched through `alsoTouched`) with packages/core/src/review/items.ts:305 and :336-350 (compareTexts' attachment, which computeItems runs from B at the stage); docs/slice2-plan.md:3182 (§8 'fixer 2b1b r2 decided (seen while fixing R1-1, left as is)')
+    - **problem:** R1-1's fix turned a refused comment into an accepted one. Take a new comment placed directly below an opened, unchanged session lemma and directly above a session declaration the step was not given, with no markup block between them (for example, an earlier step's vocabulary definition).
+
+At the step, the comment now attaches upward to the opened lemma, so check, gate-proved and gate-other all pass. At the stage, computeItems compares from B. It sees the declaration below as session content and attaches the comment to it instead.
+
+That item's content key changes, although ES-2's preset freezes it for the step (spec line 394: 'everything that exists when the step starts is frozen for that step … including content whose item is still in review'). If the item was accepted, reconcile sends it back to review as 'updated', with its accepted dependents (RV-5).
+
+Before this round, the step refused the same comment (`stray-command/comment`). Writing a comment that describes the declaration below it is the natural way to trigger this.
+
+The fixer logged the general case as 'left as is' because it is visible. It was already reachable from a comment trailing a new declaration. But R1-1 widened it to every opened declaration, and it breaks the preset the step limits exist to enforce. A written premise is not exposed: its markup block sits above its statement, and a block unit has no name, so the comment attaches upward.
+    - **fix:** At step purposes, also judge each comment line the step added (relative to S₀) by the stage's attachment. Run `compareTexts(c.base, c.current)` and match units by their span in the current file.
+
+Refuse the comment (token `comment`, with a message naming the declaration it would go with) when that owner is a declaration the step may not change: in S₀, unchanged since S₀, and not in `openNames`. This is the fixer's own logged alternative.
+
+R1-1's tests keep passing: the reworded comment's owner at the stage is the opened lemma itself, and a comment above the person's own proof stays stray. The fix also closes the older new-declaration case.
+
+Then:
+- add the probe below as a test;
+- replace the §8 'left as is' entry with the decision.
+    - **evidence:** Probe /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/rv2b1br2/probe/widen.probe.test.ts; output in /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/rv2b1br2/probe-out.txt.
+
+Setup:
+- S₀ is PROVED plus `theorem t_lemma : HasDarkPast cynder := cynder_dark_past.holds`, directly followed by `/-- wicked -/ def Wicked (c : Character) : Prop := HasDarkPast c`.
+- Both are created by step s0: t_lemma in the proof phase, Wicked in the statements phase.
+- The Submit scope s2 has openItems [proof:cynder-not-good].
+- The judged state adds `-- the end of the helpers` between t_lemma and Wicked.
+
+Current code:
+- check, gate-proved and gate-other each give stepFindings [];
+- at the stage, the content key of `decl:Spyro.Wicked` changes, with problems [] and global [].
+
+The fixer's pre-fix sources, on the same probe, give ['stray-command/comment'] at all three purposes, with the message 'this comment is not next to a declaration this step wrote or changed…'.
+  - [2]
+    - **id:** R2-2
+    - **severity:** nit
+    - **where:** packages/core/src/gate/sessionRules.ts:477 (G5 now leaves a hand-redrawn declined ledger arrow to B.3) with :739 (B.3's `declined` message) and packages/core/src/review/texts.ts:467 (`arrowDeclined`)
+    - **problem:** After R1-4, when Claude redraws a declined arrow by hand in `premises:`, it gets only B.3's message: 'The person declined “S” → “T” in this session: do not propose it again. It is still drawn into “T”: it may not be used.'
+
+The dropped G5 message was the one that told Claude what to do: 'never edit `premises:` … restore it'. 'It is still drawn' reads as a state Claude did not cause, and 'it may not be used' invites Claude to drop the use from its proof but keep the entry. The finding then comes back on the next check or gate, which can cost a gate attempt. The board sentence ('it used the arrow … which you declined') is unaffected.
+    - **fix:** In B.3's first loop, at a step, when the arrow is drawn now but was not drawn in S₀ (Claude drew it), end the message with the action. For example: 'You drew it by editing `premises:`: never edit `premises:`; remove it.' Assert that sentence in the R1-4 test.
+- **checks_run:**
+  - tsc --noEmit -p packages/core/tsconfig.test.json (capped.sh 1800): exit 0, no output
+  - tsc --noEmit -p packages/runner/tsconfig.test.json: exit 0
+  - tsc --noEmit -p packages/webview/tsconfig.json: exit 0
+  - tsc --noEmit -p packages/webview/tsconfig.node.json: exit 0
+  - tsc --noEmit -p packages/extension/tsconfig.json: exit 0
+  - core vitest run --maxWorkers=1 --no-cache --fsModuleCachePath=<scratch>/fsmc, TMPDIR and TELELEAN_TEST_TMP set to <scratch>/tmp: 'Test Files  67 passed (67)', 'Tests  895 passed (895)'
+  - webview vitest (same flags): 'Test Files  19 passed (19)', 'Tests  313 passed (313)'
+  - extension vitest (same flags, --no-cache): 'Test Files  22 passed (22)', 'Tests  203 passed (203)'; nothing written under packages/extension/out or dist
+  - runner capped.sh 3000 timeout 900 vitest run test/run/manager.gate.test.ts: 'Test Files  1 passed (1)', 'Tests  8 passed (8)'
+  - Scratch mirror of core, pre-fix sources (fixer's backup) with the new tests, judge.test.ts and describeSession.test.ts: 'Tests  7 failed | 100 passed (107)'; each finding's new or updated test is among the failures
+  - R1-1 refinement guard: the review's plain `openNames.has` version fails 'a new comment above the person’s own proof stays a stray comment…' (1 failed)
+  - Mutation R4c (hand-off without a ledger arrow): fails 'at a step, `arrow` (`declined`) only…'
+  - Mutation C2c (check never claims the new question): 2 failed, including 'a proved finish claims it…'
+  - Snapshot check: before.diff and after.diff each list 341 files, the same set, and exactly the fixer's 10 files differ; no repo file is newer than after.diff
+  - Probe widen.probe.test.ts on the current and pre-fix code (R2-1)
+  - Code reading: otherResultFindings, sessionRuleContext and materialQuestionOf, judgeState's re-ask handling, stepLimitFindings, sessionMarkupFindings (G5), arrowFindings (B.3), strayCommandFindings, compareTexts, extraSources and permittedFor, the reconcile and inWorkingCopy rules for changed keys, and describe.ts's tokens
+  - Greps for consumers of the changed signatures and tokens across core, runner, extension and webview
+  - Side-effect check: the four .vite-temp folders are empty (mtime only), .vitest-cache still has 1654 entries, git status and HEAD are unchanged, and none of my processes remain

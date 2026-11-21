@@ -4,7 +4,7 @@
  * definitions; footprints; the declaration diff; finding order.
  */
 import { describe, expect, it } from 'vitest';
-import { evaluateRules, frozenSnapshot, planGhostAdoption, type RuleReport } from '../../src/gate/index.js';
+import { evaluateRules, frozenSnapshot, planGhostAdoption, type RuleInput, type RuleReport } from '../../src/gate/index.js';
 import {
   BASE,
   codes,
@@ -291,7 +291,7 @@ describe('AT1.4 G3', () => {
   it('a pending derivation\'s `.holds` axiom may become the proof, also after the freeze', () => {
     const pending = edit(edit(BASE, MAIN, 'type: GOAL', 'type: DERIVATION'), MAIN, TARGET_LINE, `${TARGET_LINE}axiom cynder_not_good.holds : cynder_not_good\n`);
     const base = model(pending);
-    expect(base.nodes.get('cynder-not-good')?.node.status.proof.kind).toBe('pending-promotion');
+    expect(base.nodes.get('cynder-not-good')?.node.status.proof.kind).toBe('pending');
     const freeze = frozenSnapshot(model(normative(pending)), SEL, 1);
     expect(freeze.declarations['Spyro.cynder_not_good.holds']).toMatchObject({ kind: 'axiom' });
     const promoted = model(pinned(edit(normative(pending), MAIN, 'axiom cynder_not_good.holds : cynder_not_good\n', HONEST_PROOF)));
@@ -345,6 +345,9 @@ describe('AT1.4 G5 markup', () => {
     expect(one(edit(normative(), MAIN, 'natural_name: Cynder is a character who has a dark past', 'natural_name: Cynder is a character who had a dark past'))).toEqual([['cynder-dark-past', 'natural_name']]);
     expect(one(edit(normative(), MAIN, 'rationale: familiar with gaming lore', 'rationale: everyone knows it'))).toEqual([['cynder-dark-past', 'rationale']]);
     expect(one(edit(normative(), MAIN, 'id: pg-no-dark-past\ntype: ASSUMPTION', 'id: pg-no-dark-past\ntype: GOAL'))).toEqual([['pg-no-dark-past', 'type']]);
+    // Spec v4: an alias is compared as written (rewriting ASSUMPTION as AXIOM is a change), and `follows_from:` is kept data too.
+    expect(one(edit(normative(), MAIN, 'id: pg-no-dark-past\ntype: ASSUMPTION', 'id: pg-no-dark-past\ntype: AXIOM'))).toEqual([['pg-no-dark-past', 'type']]);
+    expect(one(edit(normative(), MAIN, 'id: cynder-not-good\ntype: GOAL\nnatural_name: Cynder would not be a good addition to the new Spyro game\n', 'id: cynder-not-good\ntype: GOAL\nnatural_name: Cynder would not be a good addition to the new Spyro game\nfollows_from: nothing\n'))).toEqual([['cynder-not-good', 'follows_from']]);
     expect(one(edit(normative(), MAIN, 'source: reported\n', ''))).toEqual([['new-spyro-pg', 'source']]);
     expect(one(edit(normative(), MAIN, 'lean: Spyro.cynder_dark_past\n', ''))).toEqual([['cynder-dark-past', 'lean']]);
     const removedBlock = edit(BASE, MAIN, '/-\n@@ telelean v1\nid: pg-no-dark-past\ntype: ASSUMPTION\nnatural_name: PG games cannot have characters with dark pasts\nstance: rule\nasserted: 2026-11-01\n-/\n\n', '');
@@ -365,6 +368,37 @@ describe('AT1.4 G5 markup', () => {
     expect(evaluateRules({ purpose: 'freeze', stage: 'formalise', selection, base, current: normalised, teleleanBlocks: [] }).findings).toEqual([]);
     const otherId = model(edit(normative(idless), MAIN, 'natural_name: PG games cannot have characters with dark pasts\nstance: rule', 'id: something-else\nnatural_name: PG games cannot have characters with dark pasts\nstance: rule'));
     expect(evaluateRules({ purpose: 'freeze', stage: 'formalise', selection, base, current: otherId, teleleanBlocks: [] }).findings.map((f) => f.code)).toContain('markup');
+  });
+
+  it('spec v4 AR-5: an adoption into a target marked "follows from nothing" removes the mark (A); the agent alone cannot (slice 1a fixer)', () => {
+    const mark = (texts: Texts) => edit(texts, MAIN, 'premises: cynder-dark-past, new-spyro-pg, pg-no-dark-past\n', 'follows_from: nothing\n');
+    const markedBase = model(mark(BASE));
+    const literalTexts = mark(pinned(literal()));
+    const plan = planGhostAdoption(model(literalTexts), {
+      subject: 'Spyro',
+      target: 'cynder-not-good',
+      naturalName: 'A character who cannot be in a game would not be a good addition to it',
+      leanStatement: '∀ (c : Character) (g : Game), ¬ InGame c g → ¬ GoodAddition c g',
+      leanName: 'not_in_game_not_good',
+      session: 'r1',
+      today: '2026-11-02',
+    });
+    const adoptedTexts = { ...literalTexts, [MAIN]: plan.changes[0]?.after as string };
+    const A = model(adoptedTexts);
+    const selection = { ...SEL, adoptedGhosts: [plan.nodeId] };
+    const ctx: Partial<RuleInput> = { selection, adopted: A, teleleanBlocks: [plan.nodeId] };
+    const markup = (current: Texts, extra: Partial<RuleInput> = ctx) =>
+      findingsOf(rules('gate-other', 'formalise', markedBase, model(current), extra), 'markup').map((f) => [f.nodeId, f.token]);
+    expect(markup(adoptedTexts)).toEqual([]);
+    // Without the adoption (A), the same removal is the agent's: refused, field by field.
+    expect(markup(adoptedTexts, { ...ctx, adopted: undefined, teleleanBlocks: [] })).toEqual(
+      expect.arrayContaining([
+        ['cynder-not-good', 'premises'],
+        ['cynder-not-good', 'follows_from'],
+      ]),
+    );
+    // The agent removing the mark on its own, with no adoption into the target, is refused too.
+    expect(markup(edit(literalTexts, MAIN, 'follows_from: nothing\n', ''), { selection: SEL })).toEqual([['cynder-not-good', 'follows_from']]);
   });
 
   it('an adopted ghost\'s block and declarations are held to the adopt commit (A), not to B', () => {

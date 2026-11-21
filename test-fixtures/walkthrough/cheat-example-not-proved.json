@@ -22,7 +22,7 @@
   },
   "turns": [
     {
-      "match": "Run: \"These suffice\"",
+      "match": "Run: \"Formalize for dependencies\"",
       "steps": [
         {
           "kind": "usage",

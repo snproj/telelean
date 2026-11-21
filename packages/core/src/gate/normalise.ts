@@ -1,14 +1,12 @@
 /**
- * telelean's deterministic normalisation before every gate (docs/m2-plan.md section 3.4) and the confirmed lifecycle
- * items of a proposal (D-21). Both go through WP-markup's primitives via the edit session, so every byte outside the
- * edited lines stays as it was.
+ * telelean's deterministic normalisation before every gate (docs/m2-plan.md section 3.4). It goes through WP-markup's
+ * primitives via the edit session, so every byte outside the edited lines stays as it was. (The confirmed lifecycle
+ * items of a proposal, a proved GOAL made a DERIVATION, went with spec v4's two kinds: docs/slice1-plan.md 2.6.)
  */
-import { ActionError, type FileChange } from '../actions.js';
+import type { FileChange } from '../actions.js';
 import { EditSession } from '../edit/session.js';
-import { setBlockFields } from '../markup/edits.js';
 import { escapeBodyText } from '../markup/values.js';
 import type { ProjectModel } from '../project/types.js';
-import type { LifecycleItem } from '../run.js';
 
 /** See `normalisationChanges` in ./index.ts. */
 export function normalisation(model: ProjectModel, nodeIds: readonly string[]): FileChange[] {
@@ -30,26 +28,6 @@ export function normalisation(model: ProjectModel, nodeIds: readonly string[]): 
     if (entry.statementDecl.decl.docstring !== escapeBodyText(sentence).trim()) {
       session.leanOps(entry.statementDecl.file, [{ op: 'set-docstring', decl: statement, text: sentence }]);
     }
-  }
-  return session.changes();
-}
-
-/** See `lifecycleChanges` in ./index.ts. */
-export function lifecycle(model: ProjectModel, items: readonly LifecycleItem[]): FileChange[] {
-  const session = new EditSession(model);
-  for (const item of items) {
-    const entry = model.nodes.get(item.nodeId);
-    if (item.kind !== 'change-kind') throw new ActionError('unsafe', `Unknown lifecycle item ${JSON.stringify(item.kind)}.`);
-    if (!entry) throw new ActionError('unsafe', `The card "${item.nodeId}" no longer exists, so "${item.reason}" no longer applies.`);
-    const node = entry.node;
-    if (item.from !== 'GOAL' || item.to !== 'DERIVATION') {
-      throw new ActionError('unsafe', `Only "Make Derivation" of a proved goal is applied with a proposal (got ${item.from} → ${item.to}).`);
-    }
-    if (node.type !== item.from) throw new ActionError('unsafe', `"${node.naturalName}" is no longer a goal (it is a ${node.type.toLowerCase()}), so it cannot be made a derivation now.`);
-    if (node.status.proof.kind !== 'proved') throw new ActionError('unsafe', `"${node.naturalName}" is no longer proved, so it cannot be made a derivation now.`);
-    // Only the `type:` line (06.2: "type only (already proved)"); no pin, no id line.
-    const block = session.block(entry.file, entry.block);
-    session.apply(entry.file, setBlockFields(session.parsed(entry.file), { ...block, idWritten: true }, [{ key: 'type', value: item.to }]));
   }
   return session.changes();
 }

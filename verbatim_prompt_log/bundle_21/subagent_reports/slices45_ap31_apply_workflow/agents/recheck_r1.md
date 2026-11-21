@@ -1,0 +1,123 @@
+# recheck:r1
+
+Agent `a721699773a8a6e20` of workflow `wf_7292b46b-740`. Verbatim output (JSON alongside).
+
+- **summary:** I checked all 25 fixes against both rewritten plans and against slices 2 and 3 as built and planned. I made no edits.
+
+**The 25 fixes.** All 25 are in the plans as the fixer says. The four adaptations are sound:
+- the ids write comes first, with no refusal;
+- the remaining one-bit channel is logged, and typed Lean is not refused while the results are hidden;
+- the window's planned typed holds are added by `analyseTransform`, not inside `holdIndexOf`;
+- the reconcile tests are in 4d.
+
+No mechanism that AP-31 removed has come back. One fix is incomplete at the contract level: intent-build-F9. Slice 4 §5.1 and slice 5 §2.2 say a Redo reuses its new cards' recorded ids, but `planTransformWrite` and `newCardId` have no input to receive them. I re-raise it as minor.
+
+**Three new major problems.**
+1. **recheck-01 (slice 4).** When a transform trashes Claude's Add or removes Claude's arrow, it rejects that item, and slice 2's cascade then takes out the items that depend on it. The same items are also handled by:
+   - TR-13's dependent choices (Keep it, Claude re-formalises it, Delete it too);
+   - RV-5 b3's "return to review" confirmation for accepted items.
+
+   The effects contradict each other, the confirmation text is wrong, and the planner is asked to write one card twice.
+2. **recheck-02 (both plans).** When a Reject or take-out drops the ledger's typed values, it drops everything recorded under the owner card, not just what the rejected item owns. Two failures follow:
+   - **Too much dropped.** Rejecting your own "Clear proof C" also drops C's typed sentence and its `worded_by` line. That causes false G5 problems that disable Apply, and in slice 5 false `reference` problems.
+   - **Too little dropped.** Rejecting your Delete of X brings back the arrow X→D. But D's recorded Dependencies change and its line stay live, so Claude can later remove X→D directly and the change reads "you typed it".
+3. **recheck-03 (slice 4).** A queued Claude part's sources are defined as "the items on its cards". That includes a session target's Result and its arrow and premise parts. So a decision, and reconcile with events, decline hidden Results. This breaks slice 2's tested rule that no decision or event names a hidden Result. D4-43's `drops` then differs between twin states. The plan also defines sources three different ways.
+
+Plan files reviewed:
+- /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/plans/slice4-plan.md
+- /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/plans/slice5-plan.md
+- **findings:**
+  - [1]
+    - **id:** recheck-01
+    - **severity:** major
+    - **plan:** slice4
+    - **where:** slice4 §3.5 step 8 (trashing Claude's Add = that Add's Reject 'with slice 2's cascade') and step 6 (a removed Claude arrow chip = its DO-0 decline); §3.4 Dependents and Choices; §2.1 `cascade` and `touched`; §3.8 step 4 (RV-5 b3's text) and step 5.2 (`unaccept` beside `reject`); §2.10 has no row for this; §3.8's heading cites D3-48, but no step runs it
+    - **problem:** In one decision, three mechanisms reach the same items with incompatible effects.
+
+Example: you trash Claude's Add A (new vocabulary `S.a`). Claude's Change of card D, in review, uses `S.a`.
+- **The dependents walk** (on facts) lists D as a statement dependent with two choices, so Submit is blocked until you choose.
+- **Slice 2's Reject cascade** (§3.5 step 8) reverts D to your files' version and makes it 'to be redone'.
+
+So each choice goes wrong:
+- **'Keep it'** means nothing: D is reverted anyway, and it then builds.
+- **'Claude re-formalises it'** asks the planner to empty D's Lean, which the cascade restores. D also becomes both a declined-`transform` source of the new part and 'to be redone' for its own Submit step.
+- **'Delete it too'** both deletes and reverts D.
+
+In the last two cases `planTransformWrite` either refuses ('a span an earlier edit replaced') or writes one effect arbitrarily.
+
+Accepted dependents of A are in `cascade`. They get `unaccept` and RV-5 b3's text 'These accepted items return to review'. But slice 2's Reject takes them out to be redone (reverted), with 'lose their Accept and are taken out to be redone'.
+
+The cascade's take-outs of frozen content never get D3-48's check. Only the take-back's `frozen` finding catches them, after a build.
+    - **fix:** State the precedence, and log it as a §2.10 row amending slice 2 §3.6.
+
+1. Compute the cascades of the decision's Rejects first (trashed Adds, removed Claude arrows, Claude's arrows of trashed cards), on the real dependencies.
+2. Every item they take out is reverted once, by the cascade's `planItemRevert`. It is no TR-13 dependent and has no choice. List it in `touched` as 'taken out with “‹A›”: Claude redoes it at Submit review'. Run §3.4's walk on the state after those reverts.
+3. An accepted item reached by such a cascade follows slice 2's Reject rule and text ('lose their Accept and are taken out to be redone'). It is not in `unaccept`.
+4. A card in the window is never a cascade target: its draft decides its content.
+5. Run slice 3's `frozenChangesOf` on the cascade's take-outs at Submit transform, and fold D3-48's [Unfreeze them and decline] into the decision's confirmation.
+
+Tests:
+- 4b/4c: the example above. D is listed as taken out with A, with no choice. The plan reverts D once. The decision stands, with D to be redone.
+- 4e: an accepted E that rests on A gets the Reject wording and status.
+  - [2]
+    - **id:** recheck-02
+    - **severity:** major
+    - **plan:** both
+    - **where:** slice4 §2.2 (ledger `transform` entry: 'drops that owner's values and lines'; decide's `transformValues` keyed by `owner`; `values` of follow-on keys owned by the other card); §3.10 'A Reject or take-out that restores a card'; §2.10 A6, A23; §3.5 (follow values); slice5 §3.5 (`added` allowance from `liveTransformValues`), cheat 14
+    - **problem:** Values and lines are dropped, and restored by Undo or un-reject, per owner card. Items are not per card: `card:<c>` and `proof:<c>` are separate items, and a Delete also owns its arrows out, which sit in other cards' blocks. So per-owner drops fail both ways.
+
+**Too much dropped.** In one transform, clear C's proof and retype C's sentence on a `worded_by: agent` block. Then Reject the item 'Clear proof C · you typed it'. If that counts as restoring C, all of `card:C`'s values and lines go, including the sentence and the `worded_by` removal. Then:
+- C's sentence item loses 'you typed it' and needs its own Accept.
+- G5 (read at `stage`, `final` and in the backstop) finds the `worded_by` removal unexplained, which disables Apply.
+- In slice 5, your tokens in that sentence become `added`.
+
+If it does not count, the proof value and its `.holds` line stay live after the proof is restored.
+
+**Too little dropped.** Trashing X removes X from D's `premises:`. That is recorded as a follow value and a `premises:` line owned by `card:D`. Rejecting your Delete of X restores X→D but drops only `card:X`'s entries. D's value and line stay live.
+
+Later Claude, in a whole-model step, removes X→D by editing D's block, with D's Dependencies unfrozen. G5 and B.3 pass on the live line. computeItems gives the change to `card:D` through `lines`, and `whollyYours` reads D as 'wholly' yours. So the badge is forged and takes a plain Accept, which is exactly what T8 and T18 forbid.
+    - **fix:** Drop and restore by what the reverted item owns, never by owner card. Record in `transformValues` and `transformValuesRestored` each (transform, owner, target) value and line by its key.
+- A `card:<c>` revert covers c's field, statement, kind and Dependencies values and the lines in c's block. For c's Delete it also covers the `premises:` lines its trash removed from other blocks, and those blocks' follow values.
+- A `proof:<c>` revert covers the proof value and its `.holds` lines.
+- A `vocab:` or `decl:` revert covers the declaration and gloss.
+
+Give every follow value and line the item that caused it (`causedBy`), so it is dropped with that item. Undo and un-reject restore exactly what was dropped.
+
+Tests:
+- 4d/4e: the over-drop case. 'Change C · you typed it' stays, with no G5 problem at `stage`, at `final` or in the backstop (mutation: dropping per owner raises G5).
+- 4d: the under-drop case. Claude's removal of X→D is refused, and D is not 'you typed it' (mutation: per owner, it passes).
+- 5c2, cheat 14: the typed sentence's tokens stay allowed after the Reject of 'Clear proof C'.
+  - [3]
+    - **id:** recheck-03
+    - **severity:** major
+    - **plan:** slice4
+    - **where:** slice4 §3.9 step 1 (sources are 'the items that own content on its cards or under its keys', plus 'every record that reconcile creates or updates on its cards … with an event'); §2.2 `QueuedTransform.items` ('on its cards') vs `StepScope.openItems` ('under its keys'); §2.10 A12 ('a record it creates or updates on a card a queued part holds'); §3.7 and D4-43 (decisions on a source refused; `drops`); §2.1 `drops`; slice 2's tested property that no decision or event names a Result or its part while the results are hidden, and D2-8
+    - **problem:** A window may hold a session target T even while the results are hidden (D4-19), and it may leave T's Why or sentence to Claude. That queues a part with T among its cards. The decision then declines `transform` 'the items that own content on its cards'. On T's card those include:
+- T's Result (`proof:T`, which owns T's `.holds`);
+- Claude's Add arrow items into T, which live in T's `premises:` line;
+- written premise items.
+
+These are Results and their parts. Reconcile then declines every later record on T's card 'with an event'.
+
+While the results are hidden, this is a decision and events naming Results and their parts. That breaks slice 2's tested property and D2-8, and the part's `items` are shown in `QueuedTransformView`.
+
+D4-43 then applies to them. Take a later transform whose Reject cascade (say, trashing Claude's Add that T's hidden proof uses) reaches such a hidden source:
+- it needs `confirmed.drops`, which the masked analysis cannot list;
+- so write step 2 either refuses or drops the part, in one twin only (an RV-6 leak).
+
+Even with the results shown, the person cannot accept T's Result or its arrows until Submit review, although a Claude part writes no proof and no arrow into a target. The plan also defines sources three ways ('on its cards', 'under its keys', 'on a card a queued part holds').
+    - **fix:** Define sources once, by key, in §2.2, and use that definition in §3.9 step 1, A12 and `StepScope.openItems`:
+- **What counts:** the `card:`, `vocab:` and `decl:` items that own content under the part's `open` keys, and Claude's arrow items into its `arrowsInto` cards.
+- **What never counts:** a `proof:` item (a Result or a Proof broken item), or a Result's part (an Add arrow, an Add premise, a proof-phase `decl:`).
+- **Reconcile** declines only records it creates or updates under those keys.
+
+State that a `transform` decline cascades as a Shaky decline does: dependents in review become to be redone, not reverted, silently for hidden Results (D2-64). So T's Result stays decidable or is reworked under slice 2's own rules.
+
+Twin tests (4e/4g): in two states that differ only in T's hidden Result, a window on T that leaves T's Why to Claude gives identical visible statuses, `QueuedTransformView` and events. A later transform that trashes Claude's Add used by T's hidden proof gives the same `drops` and confirmation in both twins (mutation: card-based sources make them differ).
+  - [4]
+    - **id:** intent-build-F9
+    - **severity:** minor
+    - **plan:** both
+    - **where:** slice4 §2.9 `planTransformWrite` (inputs: `reserved`, `session: { drafts, items, ledger, run, transform, redoHidden, table }`) and §3.12 `newCardId(sentence, reserved)`, against §5.1 and A13 (a Redo reuses its recorded `ids`); slice5 §2.2 and §2.6 (the Redo bypasses `takenIds`)
+    - **problem:** The reuse behaviour is specified in prose, but no contract can carry it. `planTransformWrite` and `newCardId` receive only a reserved set. So a 4c builder implementing §2.9 as written cannot make a Redo give a new card its recorded id. Slice 5's allocator replaces `newCardId` with `takenIds`, which refuses the recorded id because the registry already holds it. So the Redo would make `x-2` again, which is the failure F9 described.
+    - **fix:** Add `session.reuseIds?: Readonly<Record<string, string>>` (`new:<n>` → the recorded id; set by a Redo only) to `planTransformWrite`. `newCardId` uses that id when no card of the model holds it, before any reserved or `takenIds` test. Name it in slice 5 §2.6's 'New card ids' bullet as the one path that skips the allocator. The 4c test: a plan with `reuseIds` writes `x` even though `x` is reserved.

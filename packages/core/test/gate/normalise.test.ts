@@ -1,12 +1,12 @@
 /**
  * AT1.5 (docs/m2-plan.md section 3.4): normalisationChanges pins, writes the derived id and mirrors the docstring for
- * a newly formalised card, idempotently and byte-stable elsewhere. AT1.7 (D-21): lifecycleChanges.
+ * a newly formalised card, idempotently and byte-stable elsewhere. (AT1.7's lifecycleChanges went with spec v4's two
+ * kinds: docs/slice1-plan.md 2.6.)
  */
 import { describe, expect, it } from 'vitest';
-import { ActionError, type FileChange } from '../../src/actions.js';
-import { lifecycleChanges, normalisationChanges } from '../../src/gate/index.js';
-import type { LifecycleItem } from '../../src/run.js';
-import { BASE, edit, MAIN, model, normative, pinned, proved, TARGET_LINE, type Texts } from './helpers/spyroRun.js';
+import type { FileChange } from '../../src/actions.js';
+import { normalisationChanges } from '../../src/gate/index.js';
+import { BASE, edit, MAIN, model, normative, pinned, proved, type Texts } from './helpers/spyroRun.js';
 
 const apply = (texts: Texts, changes: readonly FileChange[]): Texts => {
   const out = { ...texts };
@@ -61,46 +61,6 @@ describe('AT1.5 normalisationChanges', () => {
     expect(normalisationChanges(model(BASE), ['cynder-dark-past', 'new-spyro-pg', 'cynder-not-good'])).toEqual([]);
     expect(normalisationChanges(model(BASE), ['pg-no-dark-past', 'nope'])).toEqual([]);
     expect(normalisationChanges(model(pinned(proved())), ['pg-no-dark-past', 'cynder-not-good'])).toEqual([]);
-  });
-});
-
-const G_TO_D: LifecycleItem = { id: 'l1', kind: 'change-kind', nodeId: 'cynder-not-good', from: 'GOAL', to: 'DERIVATION', recommended: true, reason: 'Lean proved it from the selected premises' };
-
-const refusal = (fn: () => unknown): ActionError => {
-  try {
-    fn();
-  } catch (error) {
-    if (error instanceof ActionError) return error;
-    throw error;
-  }
-  throw new Error('expected an ActionError');
-};
-
-describe('AT1.7 lifecycleChanges', () => {
-  it('G->D of the proved target changes only its `type:` line', () => {
-    const texts = pinned(proved());
-    expect(lifecycleChanges(model(texts), [G_TO_D])).toEqual([
-      { path: MAIN, before: texts[MAIN], after: (texts[MAIN] as string).replace('id: cynder-not-good\ntype: GOAL', 'id: cynder-not-good\ntype: DERIVATION') },
-    ]);
-    // An adjacency-bound target without a written id: still only the `type:` line (no pin, no id).
-    const bare = edit(edit(pinned(proved()), MAIN, 'id: cynder-not-good\n', ''), MAIN, 'asserted: 2026-11-01\nlean: Spyro.cynder_not_good\n-/', 'asserted: 2026-11-01\n-/');
-    const id = 'cynder-would-not-be-a-good';
-    expect(model(bare).nodes.get(id)?.node.status.proof.kind).toBe('proved');
-    expect(lifecycleChanges(model(bare), [{ ...G_TO_D, nodeId: id }])[0]?.after).toBe((bare[MAIN] as string).replace('type: GOAL', 'type: DERIVATION'));
-    expect(lifecycleChanges(model(texts), [])).toEqual([]);
-  });
-
-  it('refuses (unsafe) an item that no longer applies', () => {
-    const notProved = model(pinned(normative()));
-    expect(refusal(() => lifecycleChanges(notProved, [G_TO_D])).code).toBe('unsafe');
-    expect(refusal(() => lifecycleChanges(notProved, [G_TO_D])).message).toMatch(/no longer proved/);
-    const derivation = model(edit(pinned(proved()), MAIN, 'type: GOAL', 'type: DERIVATION'));
-    expect(refusal(() => lifecycleChanges(derivation, [G_TO_D])).code).toBe('unsafe');
-    expect(refusal(() => lifecycleChanges(model(pinned(proved())), [{ ...G_TO_D, nodeId: 'gone' }])).code).toBe('unsafe');
-    expect(refusal(() => lifecycleChanges(model(pinned(proved())), [{ ...G_TO_D, to: 'ASSUMPTION' }])).code).toBe('unsafe');
-    // The weakened-type cheat is not "proved".
-    const weak = model(pinned(edit(normative(), MAIN, TARGET_LINE, `${TARGET_LINE}theorem cynder_not_good.holds : cynder_not_good ∨ True := Or.inr trivial\n`)));
-    expect(refusal(() => lifecycleChanges(weak, [G_TO_D])).code).toBe('unsafe');
   });
 });
 

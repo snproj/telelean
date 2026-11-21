@@ -1,0 +1,126 @@
+# verify:1g:spec
+
+Agent `a31d4d46cf97bce46` of workflow `wf_666837d7-695`. Verbatim output (JSON alongside).
+
+- **summary:** Verdict: 1g matches its brief and the spec. I found no blocker and no major problem; there are 3 minor and 5 nit findings, all about test coverage or wording.
+
+How I checked: I rebuilt the post-1e tree in my scratch folder (HEAD plus after_slice_1e.patch) and diffed it against the working tree. That isolated exactly 1g's changes: 86 files, the same set the report lists. Every file touched since the builder's start marker is in that set, and nothing under packages/extension/dist or out changed. Per my lens, I did not run any builds or tests.
+
+Brief item by item:
+- **A (Playwright specs).** All nine required interactions are covered by real tests:
+  - s1-canvas: zoom keeps the point under the cursor fixed; a right-drag pans with no menu; a still right click opens the menu.
+  - s1-arrows: drawing by the handle; drawing into an axiom (the AR-6 dialog, Cancel, then confirm moves it to the canvas); Delete of selected arrows, including A16's question.
+  - s1-glows: a complete band with its ✓, an open band without it, no band from stale facts.
+  - s1-formalize: Formalize's enablement and its disabled reasons.
+  - s1-session: the read-only board during a run.
+  - The 13 updated specs keep their intent. Exactly 3 tests were deleted (counts: 81 before, 79 after), each for behaviour v4 removed (CM-4's "Add to its premises", the Derivations column, the lifecycle step), and each is listed. The behaviour that still exists from the deleted m2-review test (the "changed no file" note and tooltip) is still covered by the neighbouring test.
+- **B (VS Code suites).** They now speak AXIOM/PROPOSITION, "Move to axioms", the Context Menu section and `Formalize → proved`, and keep their intent. They also strengthen CF-4: Accept must leave the goal's `type: GOAL` line unchanged (the alias is not rewritten). Every selector they rely on exists in the source.
+- **C (docs).** user-guide.md covers every topic the brief lists. Its "What changed in slice 1" section links to the spec and the decision log, and both targets exist. I spot-checked its claims against the source: ghosts sit at the top of the AXIOMS column, the run panel's target line, the history label with "(+ 1 adopted axiom)", Shift+F10, and the A16 dialog title. DEMO.md's new steps 5 and 6 match the menu labels and what `selectIncomingArrows` does.
+
+Extra items:
+- **Recordings.** I confirmed independently that removing `valueConsts` from the new spyro and extras recordings gives exactly the old files (16 of 16 and 42 of 42 declarations gained it).
+- **realFacts change.** Dropping the expected `undeclared-premise` finding is justified: the recorded value of `cynder_not_good.holds` uses exactly the three selected premises' `.holds`.
+- **F7.** Every script's round-1 matcher agrees with its premises: the 2 empty-question fresh scripts use "Follows from nothing?", the other 30 use "Formalize for dependencies". The bundle is rendered once, at the run's start, so adopted ghosts cannot skew the run's name.
+- **CSS fix.** `min-width: 26px` matches ContextSection's MORE_WIDTH and fittingActions, so the "…" button stays reachable.
+- **slice2-plan.md.** It was not edited by 1g. Its lines 727 and 2175 still say the first line stays `Run: "These suffice"`. The builder already flagged this for the integrator or the slice-2 planner.
+
+Safety properties:
+- Only the user changes kinds: the suites now assert this.
+- No status claims more than Lean checked: covered by the open-band, stale and RV-6 tests.
+- Aliases are never rewritten: the suites assert `type: GOAL` survives Accept.
+- Old files still load: fakeWorkspace reads the aliases, and core's direct.test.ts keeps covering facts without `valueConsts`.
+- Deletions: all listed. The report's list of parts dropped inside kept tests is incomplete (F4).
+
+The user's question, "What are the various slices again?" (checked against docs/slice1-plan.md §1 and its "Not in slice 1" list): the builder's section 8 is correct.
+- **Slice 1, the new board (spec v4)**, built in the order 1a, 1b, 1f, 1c1, 1c2, 1d, 1e, 1g:
+  - 1a: two kinds, AXIOM and PROPOSITION.
+  - 1b: arrows as board edits (draw, delete, follows from nothing, axiom to proposition by an arrow, Move to axioms, Mark pending, cycle refusal, arrow selection).
+  - 1c1: the canvas and the columns above it (pan, zoom, right-click menu, keyboard, placement, the arrow overlay, the ∅ stub, the AXIOMS header counts).
+  - 1c2: arrow gestures (hit-testing and selection, Delete, drawing by handle and from the selection, the selection rectangle, drags between canvas and column).
+  - 1d: glows, bands, arrow looks and the legend.
+  - 1e: Formalize for dependencies (the Context Menu section replaces the tray, the AR-8 dialog, the gate's B.2 check).
+  - 1f: the board is read-only during a run, Accept refuses on drift, the board's Undo is locked during a run.
+  - 1g: end-to-end tests and the user guide; the VS Code suites type-check.
+- **Later slices:**
+  - 2: the review list, arrow items and the session Undo stack.
+  - 3: FROZEN and the freeze UI.
+  - 4: the transform window.
+  - 5: references.
+- **findings:**
+  - [1]
+    - **id:** F1
+    - **severity:** minor
+    - **where:** packages/webview/test/e2e/s1-formalize.spec.ts:57 (also the report's section 2: "each of its disabled reasons")
+    - **problem:** The test title says "Formalize enabled or disabled with each reason", and the report says the same. No browser spec exercises the cycle reason ("This card is on a cycle of arrows (…): remove one arrow first."). That is AR-3/AP-13's rule that a cycle in your files blocks Formalize with the cycle named, and 1e's §8 entry explicitly asked 1g for "each disabled reason". The provisional-card reason ("Waiting for the extension to write this card.") is not exercised either. Only three reasons are covered: cards alone, several targets, and a run active.
+    - **evidence:** A grep of test/e2e for "cycle of arrows" and "Waiting for the extension to write" finds nothing; only unit/contextActions.test.ts covers them. formalizeState (board/contextActions.ts:88-90) computes the cycle from nodes and edges through core's formalizeCycleProblem.
+    - **fix:** Add a case to s1-formalize: a graph with two propositions whose premises form a cycle (a hand edit, TL015), for example A.premises=[B] and B.premises=[A]. Select the arrow B→A and expect Formalize disabled, with formalize-reason starting "This card is on a cycle of arrows (". Also drop "each" from the title, the report and the §8 wording, or name the reasons that are covered.
+  - [2]
+    - **id:** F2
+    - **severity:** minor
+    - **where:** packages/webview/test/e2e/s1-arrows.spec.ts:297
+    - **problem:** The selection-rectangle test claims "it selects the cards and arrows wholly inside", but neither rectangle contains a whole arrow. Around the goal, its arrows come from the AXIOMS column and are only partly inside; SIDE has no arrows. So CM-2 and BD-3's "a selection rectangle selects the cards and arrows inside it" is never checked end to end, and the test cannot tell "arrows are never selected" from correct behaviour.
+    - **evidence:** Only card selection and the summary "2 cards" are asserted. No `tl-edge--selected` or arrow-summary assertion follows a rectangle. The only rectangle test in test/e2e is this one (grep for data-selecting).
+    - **fix:** Use two canvas propositions joined by a drawn arrow (for example, give SIDE premises [GOAL], with both on the canvas). Draw the rectangle around both and assert the arrow path has class tl-edge--selected and context-summary reads "1 arrow into “…” · 2 cards". Also assert that an arrow from a column card, which is only partly inside, is not selected.
+  - [3]
+    - **id:** F3
+    - **severity:** minor
+    - **where:** packages/webview/test/e2e/s1-session.spec.ts:99
+    - **problem:** The read-only-during-a-run test does not assert two of ES-9's locks. First, "Draw arrows from the selection", AR-1's second way to draw (CM-4: "outside a session"): it is listed in the very menu the test opens, because cynder-dark-past is still selected, but its state is never checked. Second, ES-9's "no … History revert": History's "Revert to this" and "New subject…" are not checked during a run in any browser spec.
+    - **evidence:** The loop checks only ['mark-pending','move-to-axioms','edit','why','delete']. menu.ts:181 lists 'draw-from-selection' whenever other cards are selected, disabled through edit(). The only 'Revert to this' checks are in m1-header, with no run active.
+    - **fix:** Add 'draw-from-selection' to the disabled-with-EDIT_SESSION_ACTIVE loop at line 99. Open the board with `history: historyListing()`, open History during the run, and assert that "Revert to this" and "New subject…" are disabled with title EDIT_SESSION_ACTIVE and that no historyRevert or createSubject is posted.
+  - [4]
+    - **id:** F4
+    - **severity:** nit
+    - **where:** Builder report section 2, "Parts dropped inside tests that were kept", and docs/slice1-plan.md §8 (builder 1g)
+    - **problem:** The list of dropped parts is incomplete. Every omission is behaviour that v4, 1e or 1f removed, so nothing regressed; only the record is incomplete. Missing:
+- m1-edits AT6.11: the tray's clickable presupposition chip that highlighted the item in the Vocabulary group. The presuppositions are now only in the summary's tooltip.
+- m2-layout: "The A|D|G box keeps working (D-16); its optional row shows once it has the focus" during a run. Since ES-9 the box is disabled.
+- m2-run AT6.1: the ⊢ target choice with its axiom-target refusal, and "Add to its premises ▶".
+- m1-fixes: "toasts never cover the tray".
+    - **evidence:** See the diffs of m1-edits.spec.ts (AT6.11), m2-layout.spec.ts (first test), m2-run.spec.ts (AT6.1) and m1-fixes.spec.ts (the toasts test).
+    - **fix:** Add these four items to the report's list and to the §8 1g entry's "Parts dropped inside kept tests", each with the clause that removed it (CM-4/CM-5, ES-9).
+  - [5]
+    - **id:** F5
+    - **severity:** nit
+    - **where:** packages/extension/test/suite/e2e-runs.test.ts:397
+    - **problem:** `assert.equal(typeLineOf(main, TARGET), typeLineOf(before[MAIN] ?? '', TARGET))` also passes when the regex matches neither text (both are ''). The "a run changes no kind" check (CF-4) can therefore pass vacuously if the block's format ever shifts.
+    - **evidence:** typeLineOf returns '' when there is no match. The literal test and runs.test.ts assert `type: GOAL` explicitly, but the normative test does not.
+    - **fix:** Assert the value too: `assert.equal(typeLineOf(main, TARGET), 'type: GOAL')`, or at least `assert.notEqual(typeLineOf(before[MAIN] ?? '', TARGET), '')` before the comparison.
+  - [6]
+    - **id:** F6
+    - **severity:** nit
+    - **where:** packages/webview/test/shared/runs.ts:476-477; test-fixtures/fresh/README.md:19
+    - **problem:** Stale wording that 1g left next to text it updated:
+- ACCEPTED_NOTICE still reads "Accepted: These suffice → proved: …" and RECORDED_NOTICE "Recorded: Self-evident? → …". The same m2-review tests now send actionResult and notice texts "Formalize → proved" and "Follows from nothing? → …", and the runner now emits "Accepted: Formalize → proved: …" (manager.ts:1771 with core's proposalLabel).
+- fresh/README.md still says "the cards typed in the A|D|G box", one line above the paragraph 1g rewrote.
+    - **evidence:** Shown by grep. The board does not read the notice wording, so test validity is unaffected; the problem is cosmetic.
+    - **fix:** Rename the fixture texts to "Accepted: Formalize → proved: …" and "Recorded: Follows from nothing? → not proved: …" (test/shared is in 1g's write set), and "A|D|G box" to "A|P box" in the README.
+  - [7]
+    - **id:** F7
+    - **severity:** nit
+    - **where:** packages/webview/test/e2e/s1-canvas.spec.ts:64-99
+    - **problem:** The required "zoom keeps the point under the cursor fixed" check runs entirely in the space of the view variables. canvasPointAt reads --tl-tx, --tl-ty and --tl-s and assumes screen = origin + t + s·p. Whether the user sees the point stay put therefore rests on `.tl-canvas__layer { transform-origin: 0 0 }`, which no assertion here reads. A regression in that CSS rule would still pass this test, though other specs (Fit-all inView, checkArrows after a zoom) would probably catch it indirectly.
+    - **evidence:** expectSamePoint compares canvasPointAt values, which are computed from the CSS custom properties only.
+    - **fix:** Also measure rendered geometry. Before and after the wheel over the card, record the card's real box and assert that (cursorX − box.x)/box.width and (cursorY − box.y)/box.height are unchanged, within 0.5 px scaled.
+  - [8]
+    - **id:** F8
+    - **severity:** nit
+    - **where:** packages/webview/test/e2e/s1-arrows.spec.ts:148
+    - **problem:** The comment says the axiom becomes "a proposition (pending, by the host's graph)", but the test never sends a host graph and never checks the pending status. It checks only the optimistic kind and placement on the canvas. AR-6's "an axiom n.holds stays, marked pending proof" is thus claimed by this test but not tested here.
+    - **evidence:** After arrows-confirm, the test asserts only the canvas list membership, data-kind=PROPOSITION and the arrow path. No send(graph) follows and no [data-chip="pending"] check is made.
+    - **fix:** Send the host's graph with new-spyro-pg as a PROPOSITION with proof {kind:'pending'} and expect its [data-chip="pending"] chip to read "pending proof", or reword the comment to say that only the optimistic move is checked.
+- **checks_run:**
+  - git archive HEAD -- packages docs test-fixtures scripts | tar -x into scratch v1g_fid/base; git apply after_slice_1e.patch -> APPLIED (rebuilds the post-1e tree, read-only for the repo)
+  - diff -rqN post-1e tree vs working tree -> 86 changed files (packages, docs, test-fixtures), the same set as the report; webview test/shared, playwright config and m1-header/m2-questions unchanged
+  - diff -ruN -> scratch v1g_fid/g.diff (8555 lines); read every diff hunk: runner, core test, CSS, harness, extension suites, all 13 updated specs, docs
+  - Read the 5 new specs and helpers.ts in full
+  - grep test(...) counts per spec: before 81, after 79 (m1-fixes 9->8, m2-review 5->4); title diff shows exactly the 3 deletions listed in the report
+  - python3 -I: strip valueConsts from the new recordings and compare with the post-1e originals -> spyro identical (16/16 with valueConsts, 9 empty), extras identical (42/42, 15 empty)
+  - python3 -I: each fixture's premises vs its round-1 match -> fresh arith and self-evident-not ([] -> 'Follows from nothing?'), the other 30 -> 'Formalize for dependencies'
+  - Recorded extras valueConsts of Spyro.cynder_not_good.holds = the three selected premises' .holds plus vocabulary -> the realFacts change is justified
+  - find dist/out -newer start-marker -> 0 files; files touched since the start marker == changed set (comm: no differences)
+  - grep: data-action, context-summary, formalize, formalize-reason, rationale-confirm, board-menu exist in webview src (VS Code suite selectors)
+  - grep/sed: menu.ts cardActions (draw-from-selection listed with any other selected card), store selectIncomingArrows (clears cards), RunPanel target line, sidecars adopted-axiom label, AxiomsColumn GhostCards first, BoardInput Shift+F10, store A16 title -> the user guide's claims hold
+  - grep e2e for the cycle and provisional Formalize reasons, data-selecting, Revert to this during a run, draw-from-selection -> the gaps in F1-F3
+  - Read the builder logs: final.summary matches the report; tsc-extension-2 (12:37:18) and tsc-webview-node-2 (12:37:21) postdate the late edits (12:28) and are empty (clean)
+  - No builds, tests, network or repo writes (read-only lens)

@@ -1,0 +1,603 @@
+# map:design-rationale
+
+# Prior decisions and design rationale touched by the edit-system spec (prompt 20)
+
+**Scope.** This report covers the design rationale and the user's earlier decisions only. It is meant to stop the spec revision from silently undoing a decision, and to give each safety issue with its original reason.
+
+**What I read in full:**
+- `docs/design-amendments.md`, `docs/decisions-log.md`, `docs/user-guide.md`, `docs/DEMO.md` and `docs/m2-live-report.md`;
+- `docs/m2-plan.md` §0–4 and §12 (§5.1, §7.1 and §15 too);
+- `verbatim_prompt_log/bundle_1/user_requested_documents/02_design_decisions.md` (every decision) and `03_architecture.md` §7–8;
+- `docs/project-report.md` §1.7, §2.4.9–2.4.15, §3.6, §3.7 and Appendices A–C;
+- every `prompt*.md` in bundles 1–19, and the responses of turns 1, 2, 3, 5, 9 (plus interims 54, 56 and 58), 10–19;
+- the HANDOFF and memory snapshot in bundle 19.
+
+**Code.** I spot-checked it with read-only greps wherever a decision has a concrete enforcement point. `docs/` is clean at HEAD `187673d` ("demo"). Where docs and code disagree, the code is authoritative; such places are marked **DOCS≠CODE**.
+
+**Authority of earlier decisions.** The order of precedence is: the user's requests, then `design-amendments.md` (A1–A8), then 02/03 (`m2-plan.md:5`; `design-amendments.md:3`).
+
+In turn 2 the user approved every ★ recommendation: "I approve the ★ recommendations, with some notes / caveats below." (`bundle_2/prompt2.md:99`). So these are decisions the user made:
+- D-3 (vocabulary computed from Lean; presuppositions count);
+- D-4 (definitions need endorsement);
+- D-13 (arrows);
+- D-16 (the A|D|G box never calls Claude);
+- D-17 (click selects; drag with drop zones for kind; in-board Undo);
+- D-18 (delete / suspend / refine-supersede / merge);
+- D-19 (one-shot run with an explicit freeze);
+- D-20 (answers recorded).
+
+Two amendments are the user's own: A2 (the gate loop, proposed by the user) and A3 (the history dropdown, requested by the user).
+
+---
+
+## 1. Each earlier decision the spec touches
+
+### 1.1 One-shot run, one diff at the end (D-19★ b, user sentence S31) vs the spec's multi-stage review
+
+**What was decided.** 02:316–331 gave three options:
+- **(a)** "Pause mid-run for you to sign off the statements, then prove. This roughly doubles the walkthrough's user actions, mostly low-risk ✓/✗" (not chosen);
+- **(b) One-shot**: "you get **one diff at the end**, as S31 describes" (chosen);
+- **(c)** a hybrid that pauses when something risky appears (designed as a setting, never built: the setting `.review.pauseWhenRisky` does not exist, `project-report.md:362`).
+
+D-21 (02:347–352) adds: "Accept is all-or-nothing (node-level partial accept comes later). Feedback continues the same Claude session." D-19 also designed persistent **sign-offs**: "A sign-off binds to your wording, the statement, its closure and the decisions in force; it goes stale when any of these changes, and says which side changed" (02:331).
+- **DOCS≠CODE:** sign-offs were never built. There is no `signoffs.json`, and the flag `signoff-stale` is declared (`core/src/model.ts:143`) but never produced (project-report App. B).
+
+**Why it was decided.**
+- The user's own walkthrough: "When the LLM is done, it will propose a diff … The user can accept this, or else provide some feedback." (`prompt1.md:31`).
+- The click cost of option (a).
+- IC-26: diffs atomic and reversible.
+- "Proof results are revealed afterwards, which counters automation bias" (02:331).
+
+**What the code does today.**
+- The review is a stepper: Statements → New vocabulary → Definitions → Result → Card changes (`webview/src/model/run.ts:474–497`).
+- Only the definition answers gate Accept (`run.ts:500` `definitionsApproved`; host check `runner/src/run/manager.ts:1652`).
+- New pure-signature vocabulary is approved automatically and can be revoked.
+- Accept is all-or-nothing and makes one history entry and one Undo step (`decisions-log.md:339`).
+
+**What the spec does: it changes this decision.** It introduces per-item statuses, several review stages, and no automatic approval.
+
+Part of D-19 can be kept: the user's files are still written once, when the session ends successfully, and "exit" is today's Discard. D-21's deferred partial accept becomes per-item approval inside a run, while the write stays all-or-nothing over a fully approved final state.
+
+Trade-offs to put to the user:
+- the click cost, which was D-19's reason for rejecting (a);
+- quota: more stages mean more Claude rounds. The user said "I need to save quota for now." (`bundle_18/prompt18.md:4`);
+- every stage must still show a state the gate has judged (§1.11).
+
+### 1.2 The statement freeze before proving (D-19, `freeze_statements`) vs the spec's FROZEN
+
+**What was decided** (02:319): "Claude formalises and then calls `freeze_statements`. The gate refuses that call until the lint, build, audit and D-3 vocabulary rules pass; the call then exports the exact snapshot. **Before the freeze, `check_lean` rejects any proof body.** Claude then proves against the frozen statements … A re-freeze happens only when you adopt a ghost or send feedback."
+
+**What the code does.**
+- Rule `proof-before-freeze` (`core/src/gate/rules.ts` ~720–769) also catches a proof carried inside a definition, instance or structure, and any `example`.
+- The freeze succeeds at most once per round (`m2-plan.md:339`; `project-report.md:1620`).
+- `statement-changed` applies after the freeze (rules.ts ~474–489).
+- G4, Lean's comparator, checks the result against the freeze (`m2-plan.md:280`).
+- The freeze commit is labelled "Statements frozen (round N)" (`runner/src/gate/engine.ts:617`).
+- `decisions-log.md:307`: "The freeze protects statements, vocabulary and definitions (D-19), not proofs."
+
+**Why it was decided.** The user's own list of shortcuts includes "quietly weaken the goal statement", and the user expected "the goal statement must be the one you reviewed" (`bundle_2/prompt2.md:121–137`). Without a freeze, Claude can shape statements to fit what it managed to prove.
+
+**What the spec does: it is silent on this freeze, and its new "FROZEN" is a different thing.** The spec's FROZEN is a lock the user puts on cards or fields against edits by Claude. The two are complementary, not substitutes:
+- the user lock protects items the user has approved, across rounds;
+- the protocol freeze, within one round, protects Claude's own unapproved statements from changing once proving starts, and it anchors G4.
+
+The protocol freeze must stay in every Claude round, including REVIEW STAGE 5's "these suffice" during a review. Rename the user feature (§4). More stages means more rounds, which widens the gap "the freeze holds per round only" (§3).
+
+### 1.3 Suggested premises: "Claude suggests" and "I hold this" (D-6, A2, decisions-log §18)
+
+**What was decided.**
+- 02:149–158: "The LLM never adds beliefs."
+- A suggested premise (a "ghost") "must come with a gate-checked proof that it closes the gap, and a ghost that alone entails the goal is flagged."
+- "They are drawn **translucent with a 'Claude suggests' marker**. Dashing is reserved for *your* declared support."
+- "You adopt one with 'I hold this'. A rationale is encouraged but not required, and Claude's suggested wording stays marked as Claude's."
+- A2 (`design-amendments.md:43–46`) makes "a proposed missing premise (a ghost node: 'I hold this' / 'no')" a question for the user, not a retry.
+
+**What the code does.**
+- `propose_assumption` is allowed only after the freeze.
+- The single-term rule and a pinned scratch check apply (`core/src/gate/index.ts:58` `ghostTextProblems`; `runner/src/gate/scratch.ts`).
+- Adoption is possible only in review. telelean writes the card, not Claude (`core/src/gate/index.ts:145` `planGhostAdoption`; `runner/src/run/manager.ts:1526`). It appends the card to the target's `premises:`, freezes again, and starts a new round in the prove stage (`m2-plan.md:372–374`).
+- Suggestion cards are shown only in the Proposed view and are "not model cards for arrows and counts" (`decisions-log.md:398`).
+- UI strings (`webview/src/run/GhostSuggestion.tsx:47–116`):
+  - "Claude suggests", "closes the gap (checked)", "gives the goal on its own: it may simply restate it";
+  - **I hold this**, with the title "Adopt it as your assumption (worded by Claude; it stays marked as Claude's wording). Claude then proves the goal with it.";
+  - **No**, with the title "You do not hold it".
+- **DOCS≠CODE:** the user guide (10.9) says editing the sentence clears the "Claude's wording" mark. In fact `worded_by: agent` stays (project-report App. B, `docs/project-report.md:2409`).
+
+**Why it was decided.**
+- The user in turn 2: "not allowing the LLM to do these without approval from the user" (`prompt2.md:128`).
+- S7: a derivation "should never require new assumptions".
+- IC-10: Claude "never silently adds propositional assumptions".
+
+**What the spec does: it changes the presentation, and keeps the rule only under conditions.** Suggestions become ordinary "Add <name>" review items, and they can be transformed. The no-beliefs-from-Claude rule survives only if all of these hold:
+1. Accepting an Add item for an ASSUMPTION is the "I hold this" act, done item by item.
+2. telelean writes the card and its `.holds`; Claude never does.
+3. Accepting a gap-closing suggestion triggers a re-freeze and a proving round. Today adoption starts a new round. Without this, a session could end "successfully" with the suggestion accepted but the goal never re-proved.
+4. A transformed suggestion loses "closes the gap (checked)" until it is checked again.
+
+Also, REVIEW STAGE 4's group accept lets several beliefs be adopted in one click, which weakens D-6's one-belief-at-a-time explicitness.
+
+The response of turn 5 (`bundle_5/response5.md`) promised the user that "Editing the ghost's wording before adopting … arrive[s] in M3". The spec's TRANSFORM of "Claude suggests" cards would deliver that.
+
+### 1.4 New definitions need a yes or no (A2, D-4, decisions-log §19)
+
+**What was decided.**
+- 02:126: "An LLM can move a belief into a `def` body; it then drops out of `#print axioms`, and the goal holds *by definition* (ran)."
+- 02:134: "Any definition in the *statement closure* of a goal, a selected assumption, or vocabulary needs your endorsement: `def`, `abbrev`, `structure`, `inductive`, instances, coercions. Proof-only definitions are conservative and need none."
+- `decisions-log.md:337`: "Every definition question needs an explicit 'yes' before Accept; a 'no' is Feedback."
+
+**What the code does.**
+- Definitions are flagged in `rules.ts:793–808` (described in `m2-plan.md:282`).
+- The host refuses Accept with "Answer every definition question: a “no” is feedback." (`manager.ts:1652`).
+- The UI says, in `webview/src/run/Review.tsx` (DefinitionsStep): "Claude introduced these definitions. A definition can quietly carry a belief, so Accept needs your yes for each; a no is Feedback for Claude." **This is the sentence the user quotes in prompt 20.**
+
+**Why it was decided.**
+- The user in turn 2: "any new definition is shown to you for a yes/no" (`prompt2.md:137`).
+- Two cheats verified with real Lean (`m2-plan.md:27–28`, facts 5–6).
+
+**What the spec does: it never mentions definitions.** Its "you can have one item for all the vocabulary" (REVIEW 2) must not absorb definitions or presuppositions: each must remain its own item that needs explicit acceptance. The spec also uses "Lean definition" to mean a card's statement (§4).
+
+### 1.5 Existence presuppositions need the user's yes (D-3b, decisions-log §32)
+
+**What was decided.**
+- 02:118–123:
+  - telelean generates `axiom T.exists : Nonempty T` only for 0-ary data sorts;
+  - this is presupposition accommodation, shown as "assumes characters exist";
+  - "Presuppositions created during a run are always listed in the end review and never auto-approved";
+  - the presuppositions of constants in the selected statements count in the permitted set automatically.
+- Turn 13 (`decisions-log.md:501`): "No change to the vocabulary shape rule (D-3) or to the `T.exists` question … every new sort's existence presupposition still needs the person's Yes before Accept. Both are by design".
+- In the code, presuppositions appear in the Definitions step labelled "existence assumption" (Review.tsx).
+
+**Why it was decided.**
+- Naming something presupposes it exists.
+- A verified exploit: "a constant of type `{g : Game // IsPG g}`, whose existence presupposition *is* the belief" (02:108).
+
+**What the spec does: nothing changes, as long as** each `T.exists` stays a separate item. It must be neither folded into the single vocabulary item nor accepted silently in a group.
+
+### 1.6 Vocabulary is computed from Lean, not marked up (D-3★)
+
+**What was decided.**
+- 02:111: "**Computed, not marked up.** Vocabulary needs no new markup type. The board shows it, derived from Lean, in a collapsible **Vocabulary** group at the top of the Assumptions column … Glosses come from the docstrings, styled as *Claude's wording* until you rewrite them."
+- Vocabulary items are box-shaped "so they don't read as beliefs" (`bundle_3/response3.md`).
+- D-12 (02:231): "Everything that is not a node lives in `.telelean/`, never in `.lean` files. Comment edits re-elaborate files, and line shifts rebuild dependents (ran)."
+- In review, only pure-signature items appear under "New vocabulary"; they are approved automatically and can be revoked (`decisions-log.md:348`; Review.tsx: "approved unless you revoke one (revoking sends Feedback)").
+
+**Why it was decided.**
+- The user asked in turn 3: "were you going to add a way to see vocabulary in the extension? … `HasDarkPast` comes out of nowhere" (`bundle_3/prompt3.md:6`).
+- Vocabulary can smuggle beliefs: four verified exploits (02:104–108).
+- IC-4.
+
+**What the spec does: it changes this in part.** It introduces "Vocabulary cards" that can be transformed and frozen (TRANSFORM 9), and "one item for all the vocabulary" (REVIEW 2). This stays compatible with D-3 if:
+- lock state lives in a sidecar file keyed by the Lean full name, never in a markup block (D-12);
+- transforming a vocabulary item is treated as D-18's "redefine the vocabulary" alternative, which "changes the meaning of every node whose statement closure mentions it. All of those nodes are listed in the review as 'meaning changed by refinement'" (02:309).
+
+Such a transform also collides with any locked card whose closure contains the item. Finally, "reducing special cards" must not erase the visual epistemic distinctions that D-15 encodes on purpose (§1.12).
+
+### 1.7 Refine, supersede, merge, suspend (D-18★; planned for M3; not built)
+
+**What was decided** (02:300–314):
+- **Delete**, after a confirmation that lists the dependents.
+- **Suspend**, to leave an assumption out for what-if exploration.
+- **Refine/supersede:**
+  - "By default the vocabulary stays unchanged. The refined fact becomes an ASSUMPTION … and **inherits h1's rationale**";
+  - "h1 is re-derived through a **bridge** … The bridge is a new belief, so Claude proposes it as a ghost for you to adopt";
+  - "h1 then stays on the board, collapsed under its refinement … and dependents compile unchanged. The new block carries `supersedes: h1`".
+- **Merge** "Re-points premises, layout and decisions".
+- "The agent may propose deletions, merges or kind changes only when an 'Ask Claude…' request asked for them, and each one is confirmed separately."
+- 03 §8.6 (03:544–547), for "Ask Claude…" requests: "`permitted_axioms` = all existing assumptions. Claude may add only ghost assumptions. Lifecycle changes (delete, merge, kind) appear as separate items, each needing your confirmation."
+
+None of this is built (`m2-plan.md:113`; `project-report.md:2385`). The markup fields `supersedes:` and `refines:` are parsed (`core/src/markup/types.ts:72–73`) and protected by the markup rule, but nothing writes them.
+
+**Why it was decided.**
+- The user's own revision pattern in `cynder.lean`, "h1 is actually … superseding h1" (`bundle_1/response1.md`).
+- IC-10.
+
+**What the spec does: TRANSFORM covers refine, merge and split, plus "Ask Claude…" through its prose box.** It keeps "each change confirmed separately" through review items. It drops:
+- supersede provenance (the old card kept, collapsed and linked);
+- the bridge-as-suggestion discipline: the relation between the old and the new card is itself a belief;
+- "dependents compile unchanged";
+- Suspend, which has no counterpart;
+- merge's re-pointing of premises, layout and decisions;
+- "deletions … only when asked": REVIEW 1 lists deletions as a general item type, so they could appear in "these suffice" sessions too.
+
+### 1.8 In-board Undo and history (D-17★, A3, D-33)
+
+**What was decided.**
+- 02:296: "**In-board Undo/Redo** (Ctrl+Z while the board has focus) works from recorded inverse edits, and every semantic edit shows an Undo toast. Edits are saved immediately."
+- A3 (`design-amendments.md:50–61`): the history dropdown; "Revert to this" takes a snapshot first; a storage counter.
+- `decisions-log.md:339`: "One Accept = one history entry and one Undo step, your hand edits snapshotted first."
+- `decisions-log.md` §6 (lines 109–126) and user guide §4–5.
+
+**Why it was decided.** The user in turn 2, on D-33 (`prompt2.md:115`; quoted in §2).
+
+**What the spec does: it is silent.** To keep:
+- a successful session gives one history entry and one Undo step;
+- an exited session writes nothing.
+
+Open questions:
+- Can lock and unlock toggles be undone, and are they snapshotted? There is precedent both ways: `layout.json` is snapshotted and undoable, while `decisions.json` and `attempts.jsonl` are written directly and never undone (`decisions-log.md:359`).
+- INITIATING 3 removes M1's direct edits, and with them their per-edit Undo entries.
+
+### 1.9 The A|D|G box never calls Claude (D-16★)
+
+**What was decided.**
+- 02:282: "The prompt box has **exactly Assumption | Derivation | Goal**. Submitting creates a comment-only node with your verbatim words. **No LLM is involved and no Lean is written**, as in your walkthrough." Also "the A/D/G box keeps working during a run" (02:284).
+- User guide line 3: "Nothing calls Claude until you press 'These suffice' and allow it."
+- Adding a card from the box switches the board back to Current (`decisions-log.md:399`).
+- "The board does not lock editing during a run" (`decisions-log.md:497`).
+
+**Why it was decided.**
+- S18–S24 of the user's walkthrough: "The node is created, but no Lean code has been generated yet." (`prompt1.md:25–28`).
+- IC-7.
+
+**What the spec does: it is silent on the box.** TRANSFORM 2/4 creates cards whose unset fields "Claude will try and autofill", and INITIATING 3 forbids editing fields directly on Current.
+- If the box stays, the spec should say so.
+- If adding a card moves into TRANSFORM, then:
+  - adding a card calls Claude, which costs quota and needs consent;
+  - TRANSFORM needs a third field state, "leave empty" (no Lean yet, no reason). Otherwise no comment-only card can be made, which contradicts the user's own S19/S38.
+
+### 1.10 Changing kind by drag (D-17★, D-11)
+
+**What was decided.**
+- 02:291–295: "**Changing kind is deliberate.** During a drag, labelled drop zones appear, each stating the impact computed per D-11".
+- D-11 (02:217–228): "**telelean never removes a `.holds` that others use until its replacement exists.**"
+  - A→D leaves the promotion pending.
+  - A→G and D→G list the dependents, which are either rewritten (mechanically, undoably) or marked broken, after confirmation.
+
+**What the code does.**
+- Drop zones, and **Make Assumption / Make Derivation / Make Goal** buttons (`webview/src/board/CardDetails.tsx:288–300`).
+- The dependents dialog (decisions-log §12, §24).
+- The mechanical planner `core/src/edit/planKind.ts`.
+- In a run, the only lifecycle item is G→D for a proved goal, ticked under "Card changes" (`decisions-log.md:340, 346`).
+- **DOCS≠CODE:** D-17 says "'Move to ▸' is also in the context menu", and 03 §7 promises "context-menu equivalents". There is no context menu anywhere in `webview/src` (grep).
+
+**Why it was decided.**
+- The user's S16: "Nodes should also be able to move from one section to another; for instance, an assumption should also be promotable to a derivation, or a derivation made into an assumption, or a goal moved to a derivation once it's proven, etc etc." (`prompt1.md:22`).
+- IC-22: moving a node between columns "is a semantic operation on Lean code".
+
+**What the spec does: it is silent.** INITIATING 3 probably removes drag-to-change-kind on Current, and kind becomes a TRANSFORM field, presumably unset ("fuzzy") on new cards and then filled by Claude. The risks:
+- kind changes become Claude-mediated instead of telelean's deterministic D-11 plans with a previewed impact;
+- a Claude-filled kind of ASSUMPTION amounts to Claude adding a belief.
+
+### 1.11 The gate loop: 3 retries, then revert (A2, the user's own proposal)
+
+**What was decided** (`design-amendments.md:28–48`):
+- Non-LLM checks run each time Claude says it is finished.
+- A failure gives a small notice and an automatic re-prompt with the exact failure.
+- "After 3 failed attempts … reverts the working copy to the last state that passed".
+- "Your real files are never touched until you press Accept".
+- The following are "a question for you, not a retry": new definitions or vocabulary, a proposed missing premise, and the meaning review.
+
+**What the code does.**
+- `maxGateAttempts`: 3 by default, range 1–10.
+- A give-up calls `settleReverted` (`runner/src/run/manager.ts:1068–1112`), which reverts to the newest commit of a kind in `PASSING_COMMIT_KINDS = ['gate-pass','freeze','base']` (`runner/src/shadow/types.ts:69`).
+- The notice reads "telelean reverted Claude's working copy to “…” (…)." (`manager.ts:1108`).
+- Edits Claude makes after `finish` are discarded (`manager.ts:1094`; `decisions-log.md:320`).
+
+**Why it was decided.** The user's own words in turn 2 (§2, quote 1).
+
+**What the spec does: it is silent, and compatible.** The loop must run in every review stage. There is one integrity issue: user decisions written into the working copy between stages (approvals and locks, TRANSFORM inputs, accepted suggestions) must act as a floor for the revert.
+- Today only adoption is protected, because the re-freeze after an adoption makes a `freeze` commit.
+- Each stage's user decisions need a similar commit of a passing kind. Otherwise a give-up can revert past them.
+
+### 1.12 Other earlier decisions the spec touches
+
+**The user's words are the specification (G5, IC-10, IC-29).**
+- The system prompt says: "Their words are the specification. Never change any field of a block (including `lean:` lines), never add or delete blocks, never change a declaration that existed before the run …" (`m2-plan.md:405`).
+- The gate's markup rule says "the person's words are the specification and stay byte-identical" and "never add or delete blocks" (`core/src/gate/rules.ts:837+`).
+- telelean, never Claude, writes pins and docstrings (`decisions-log.md:291`).
+- `decisions-log.md:295`: "A card formalised before the run keeps its Lean statement … Otherwise Claude could point the goal at a new, weaker statement and freeze that."
+- The spec's "Change <card>" items for unlocked cards, and "shaky" ("Claude can do what it wishes with the card"), relax all of this.
+
+**Declared premises (D-13).**
+- "A new 'These suffice' press on the same goal *replaces* `premises:`" (02:249).
+- The tray offers "Add to its premises ▶" (`decisions-log.md:215`).
+- The markup rule lets only telelean's adoption append to the target's `premises:` (rules.ts `adoptedPremises`).
+- The spec says "Depends on" is not editable. But "Depends on" mixes the stored `premises:` field with computed edges (`webview/src/model/cardData.ts:293–303`).
+
+**Visual conventions (D-15).**
+- Blue aura means formalised (the user's S41).
+- "**Line pattern means epistemic status in every mode**: dashed = declared by you, solid = verified by Lean, translucent = suggested by Claude"; "Never colour alone".
+- "High contrast uses outlines instead of glows" (03 §7).
+- The spec's FROZEN aura must avoid dashing, translucency and colour alone.
+
+**Choices Claude made without asking (D-20, 02:341).** "Every interpretive choice Claude made *without* asking is listed under 'Assumed without asking', with 'Ask me instead'. It is not common ground until you acknowledge it." The spec's review list has no slot for these. Nor does it have one for the report card (verdict, footprint, unused premises, "consistency unchecked", the gap).
+
+**Hand edits and drift (D-21).** Hand edits are authoritative; when files drift during a run, Accept does a 3-way merge and re-runs the gate (`decisions-log.md:338, 497–498`).
+
+**One run at a time.** There is at most one active run per model folder, and the tray is disabled during a run (`webview/src/tray/SelectionTray.tsx:57`; `decisions-log.md:257`). REVIEW STAGE 5 needs "these suffice" to work inside an active session.
+
+**Consent and quota.** Consent to send data is asked once per folder (`decisions-log.md:369`), and quota tripwires keep tests off the subscription.
+
+**References (D-34, D-27).** D-34 deferred "short handles (h1, h2)" and "a typed query syntax"; D-27 put id completion in M4. The spec's REFERENCE SYSTEM extends these.
+
+**Sign-offs (D-19, D-21).** D-21: "Editing a statement or sentence yourself marks its sign-off stale and drops it from any frozen set, with a 'Re-sign' action. Lean you write counts as signed off by you." Sign-offs are the closest earlier concept to the spec's "accepted = frozen". But they were persistent and aware of the statement's closure, whereas the spec's locks are scoped to one session by default.
+
+---
+
+## 2. The user's own stated preferences (verbatim)
+
+1. On cheating by the LLM, turn 2, the authoritative message (`bundle_2/prompt2.md:128`): "From my understanding, this should be stopped by not allowing the LLM to do these without approval from the user -- maybe this should be done via a non-LLM programmatic check that runs after the LLM does and checks that none of these have been mutated. If it does detect these, it gives the user a small notice and automatically pings the LLM to try again, and runs every time the LLM claims to have finished, with some cap whereafter it lets the user know there is a problem and reverts the Lean code to the last safe state."
+   - "These" are the shortcuts the user quoted at lines 121–125: "add an axiom of its own; leave a sorry; quietly weaken the goal statement; tuck one of your beliefs into a definition, where it no longer shows up as an assumption."
+2. `prompt2.md:130–138`: "I'm guessing these include the checks you mentioned in", followed by the quoted list: "#print axioms must list only the assumptions you selected; no sorry; the goal statement must be the one you reviewed; any new definition is shown to you for a yes/no."
+3. `prompt2.md:140`: "I'm not so worried about Kind 2 at the moment since I am still prioritizing personal use, though I would certainly like to harden it later on."
+4. `prompt2.md:99`: "I approve the ★ recommendations, with some notes / caveats below."
+5. `prompt2.md:115` (D-33): "D-33: Sounds nice; built-in version control for the mental model itself would be very useful for both undoing and also meta-analyses; if possible, add a simple dropdown menu in the extension UI that allows a person to scroll through these and revert. I would be a bit worried about how much memory it takes up as well if the model is big so a simple counter of memory used per model / overall for all models in the dropdown would be nice as well."
+6. `prompt2.md:107`: "I intend this extension to ultimately be LLM-agnostic …". The spec says "Claude" everywhere; A1 puts every backend behind the `LlmBackend` interface.
+7. `prompt2.md:109`: "D-23(b): You may use a little of the quota, though let me know just before you do it: How much quota you plan to use and why."
+8. `bundle_1/prompt1_midturn.md:38`: "What exactly is being done currently / what exploits are you talking about? For context, I'm trying to create a prototype for personal use, so let me know to what extent this is relevant."
+9. `prompt1.md:5`: "The user would be able to modify the Lean model either directly by editing the files, or more commonly by prompting an AI. The prompts would be in natural language, BUT should be able to be marked by the user using a UI switch (and read by the extension) as either creating an ASSUMPTION, a DERIVATION or a GOAL."
+10. `prompt1.md:7`: "An ASSUMPTION is an axiom that the user supplies based on what they feel is true about the world. An assumption should be annotated with a natural language description of why the user has that assumption."
+11. `prompt1.md:9`: "A DERIVATION is something that can *purely* be derived from the ASSUMPTIONS -- it should never require new assumptions to be added to the model."
+12. `prompt1.md:22`: "Nodes should also be able to move from one section to another; for instance, an assumption should also be promotable to a derivation, or a derivation made into an assumption, or a goal moved to a derivation once it's proven, etc etc."
+13. `prompt1.md:25`: "1. I want to prove that "Cynder would not be a good addition to the new Spyro game", so I add this as a GOAL. The node is created, but no Lean code has been generated yet." The same "no Lean code" sentence recurs at lines 26–27.
+14. `prompt1.md:29`: "5. Finally, I select the three assumptions, and also click on the goal. The options I select should be shown in a separate section below. I click a button, and the LLM generates a Lean model representing what I have created. The essence of the button in this case is to say that "I assert that the assumptions must be enough to prove the goal". The job of the LLM is to formulate the assumptions and the goal in Lean in some intuitive way, and generate signatures for the assumptions and goals, and prove the goal."
+15. `prompt1.md:30`: "6. The LLM should ask questions to the user along the way; for instance, "do you want to model characters"? etc. which would help it understand the level of detail and the pragmatics (pragmatics in the sense it is used in linguistics; unspoken context) the user wants."
+16. `prompt1.md:31`: "7. When the LLM is done, it will propose a diff (which must be overlayed graphically on the nodes, but also the user should be able to switch to seeing the diff to the Lean files themselves). This would cause several more nodes to be created in the extension window (added to the mental model); for instance, it might create a structure `Cynder` and a Prop `isCharacter`, or some other more fine-grained representation of the concept I am trying to bring across. The user can accept this, or else provide some feedback."
+17. `prompt1.md:44`: "If the node does not yet have Lean code, then it should still be represented as a Lean comment with no accompanying Lean code. I don't think `sorry` would be the right thing to use for this, since that implies we do have a representation, but it's not inhabited yet."
+18. `prompt1.md:46`: "We want the user to first see natural language, and only dive into Lean code when necessary, … Nodes that DO have a Lean representation should be visually marked as such, perhaps with a blue aura. Of course, the user is also able to see and edit the Lean source code directly, but he is expected to mostly work in the extension window."
+19. `bundle_3/prompt3.md:6`: "To clarify, were you going to add a way to see vocabulary in the extension? It seems missing from the cards, so for instant `HasDarkPast` comes out of nowhere for the user."
+20. `bundle_9/prompt9.md:7`: "… In the future I hope to add in things like being able to ctrl+click on the code or even edit it through the cards …". This supports TRANSFORM's manual Lean field, but INITIATING 3 would allow such edits only inside a transform.
+21. `prompt9.md:9`: "… you might want to create a dropdown list for this that truncates to "HasDarkPast, cynder, ..." when inline."
+22. `prompt9.md:15`: "… (and log whatever smaller design decisions for me to read later if I decide to change them)."
+23. `prompt9.md:19`: "Do not do strange effectful things … Do not push anything to remote repositories! Make sure any subagents you create also receive these safety instructions."
+24. `bundle_13/prompt13.md:6–8`: "I want to create a minimal prototype for demo purposes with a real Claude backend as soon as possible. … By the end, I would like to have a demo where a user can try inputting their own custom simple example and getting results."
+25. `bundle_18/prompt18.md:4`: "I need to save quota for now."
+26. `bundle_19/prompt19.md`: "Stop them, because I'm probably going to edit the source code now anyway."
+27. `bundle_20/prompt20.md:10`: "If any of the specifications cause logic / formalization safety issues (e.g. something like "A definition can quietly carry a belief, so Accept needs your yes for each" that I have overlooked), then raise it to me. Then, if I approve, amend the edit system to fit the specification."
+28. `prompt20.md:14`: "This specification is aimed at affording the user more granular and systematic control over the cards and changes to them, and reducing the amounts of special cards, giving cards a uniform base set of capabilities."
+29. `prompt20.md:52` (FROZEN 2): "Then Claude can edit it not because the user has "given approval", but specifically and mechanically because the card itself is no longer frozen." This matches the user's turn-2 wish for a "non-LLM programmatic check".
+
+**Standing instructions recorded by the previous session** (not the user's own words; `bundle_19/user_requested_documents/HANDOFF.md` §8 and `memory_snapshot/telelean-scope-personal-prototype.md`):
+- "keep the proof-integrity checks, defer adversarial hardening (H)";
+- "Raise significant design decisions instead of choosing silently";
+- "Announce the quota amount and purpose just before any real-Claude run".
+
+---
+
+## 3. Open theory gaps (`project-report.md` §3.7, lines 1960–2057) and the spec
+
+| Gap | Effect of the spec | Why |
+|---|---|---|
+| **1. Faithfulness**: "proved from the selected premises *as formalised*" | **Mixed** | **Helps:** every item needs explicit approval (vocabulary is no longer approved automatically); a declined item can be transformed; there is a prose box; approved items are locked. **Hurts:** group accept; "one item for all the vocabulary"; the review list drops the meaning-before-proof order (`Review.tsx` hides the result until the statements are seen; `decisions-log.md:397`) and the report card's "assumed without asking"; Claude may now propose rewriting the user's sentences (fitting the specification to the formalisation) and existing Lean statements (for example a weaker goal), which G5 and `existing-changed` forbid today |
+| 1a. **The pre-freeze instance blind spot** (an instance that changes how unchanged text elaborates, while it prints the same) | **Neutral mechanically, hurts epistemically** | A "frozen" card suggests its meaning cannot change. Yet an instance, or an unlocked vocabulary item or definition in its closure, can still change it. A lock must cover meaning (the elaborated term and the closure), or the UI must say it covers text only |
+| **2. Consistency and vacuity** are unchecked | **Neutral; slightly hurts** | Bulk acceptance of Claude-suggested assumptions, and TRANSFORM 6's "generate more cards", make an inconsistent premise set easier to reach |
+| **3. What TypeScript decides and is trusted for** | **Slightly hurts** | More rules decided in TypeScript: per-field lock comparison, "exact configuration" of shaky cards, blacklist matching, permitted sets for several targets. They are mechanical, as the user wants |
+| 4. Examples are refused | Neutral | |
+| 5. Lake build traces, `reuseLeanBuild` | Neutral | |
+| 6. The prototype sandbox and deferred hardening | Neutral | |
+| **7a. The target's `.holds` exemption** (a round not finishing "proved" can delete the user's proof of T, or turn it into an axiom) | **Neutral to helps** | Helps if a lock on a card covers its `.holds`. The target itself must stay provable, so its exemption stays |
+| **7b. The freeze holds per round only**; Claude's earlier-round formalisations are unprotected (`project-report.md:1635`) | **Helps for approved items, hurts for the rest** | Approved items become locked across stages, which closes the gap for them. More stages mean more rounds in which Claude can rework unapproved or "shaky" statements after seeing proofs, and "shaky" explicitly invites that |
+| 7c. Text instead of terms | Neutral | Lock enforcement will inherit the weakness of comparing text and printed meaning |
+| 7d. Proved derivations stand for their assumptions | Neutral | |
+| 7e. Module granularity | Neutral | |
+| 7f. No logical scoping (decisions are advice) | Neutral | "Don't create again" and "shaky" are advice to Claude unless telelean checks them mechanically. The spec wants the "shaky" rule checked |
+| **7g. Not yet implemented** | **The spec implements several, and each needs new gate rules** | Partial accept (per-item approval); lifecycle items beyond G→D (Delete, kind change); refine and merge (TRANSFORM); Formalise-first ("Formalize <card>" items); "Ask Claude…" (the prose box); more than one target (these suffice with several goals, which needs a G4 challenge and permitted set per target) |
+| 7h. Resource budgets | Neutral | |
+| Extra (HANDOFF): the signature admits the user's own shape-violating vocabulary | **Neutral, with one catch** | Lean the user enters in a TRANSFORM is not in B (the user's files at run start). Today the gate would judge it as Claude's, and the shape rule would refuse it |
+
+---
+
+## 4. Words with an existing meaning, and suggested replacements
+
+| Spec word | What it already means | Suggestion |
+|---|---|---|
+| **frozen / freeze / unfreeze** | In docs and the run: the tool `freeze_statements` (once per round; refused until the rules pass; snapshot + permitted set + comparator challenge); `RunView.frozen`; `FrozenSnapshot`; `FreezeRecord`; the commit and notice label "Statements frozen (round N)" (`engine.ts:617`); the activity line "freeze_statements: statements frozen (round N)" with a **lock** icon (`manager.ts:2012`; `RunPanel.tsx:243`); the G4 tooltip "the one frozen before the proof"; D-21's "drops it from any frozen set". **Storage:** `.telelean/frozen/` is already gitignored by Initialize (`runner/src/workspace/initialize.ts:39`) and ignored by the file watcher (`extension/src/logic/modelPaths.ts:89`). **Code comments:** "FROZEN CONTRACT" (API stability markers) | Call the user's status **locked / Lock / Unlock**, and keep "freeze" for the run protocol. Never store locks under `.telelean/frozen/`. Give the protocol-freeze activity line a different icon |
+| **edit session** | Core class `EditSession` (`core/src/edit/session.ts:46`), a pure in-memory editing transaction used by every M1 planner and by normalisation. "Session" also means: the Claude Code session (`sessionId`, `--resume`; "Feedback continues the same Claude session"); the markup field `session:` (the run id on cards Claude created); the run folder `session/`; the extension's `BoardSession`; `.telelean/sessions/` (gitignored and watcher-ignored) | The spec's concept is an existing **run** (a run has rounds). Use "run" or "editing run" in the UI, or rename the class if "session" must stay |
+| **edit** | M1 board actions: direct, no LLM, undoable, history kind `edit-node`; the **Edit** button (the sentence); "hand edits" in the Lean editor (authoritative, D-21); "board edits (at Accept)", cards and reasons added during a run | Keep "edit" for direct edits |
+| **review / review stage / submit review** | Run state `review`; the **Review…** button; the review stepper (Statements, New vocabulary, Definitions, Result, Card changes); `StatementReview` and `VocabularyReview`; A2's "meaning review" | A review stage is one **round**'s review. "Review list" for the new per-card list |
+| **accept / accepted** | **Accept** writes the proposal to the user's files: one history entry and one Undo step, a re-check after drift; `acceptProposal`; history kind `accept-proposal`, labelled "accept"; run state `accepted`; `RunView.accepted` | Per item, use **Approve / approved**. Keep **Accept** (or "Apply") for the successful end, which writes files |
+| **decline** | Suggestion **No**, which is `rejectGhost` and state `'rejected'` (`core/src/run.ts:250`); a definition's **No…**, which prefills Feedback | Use "reject" with options, and map a rejected definition onto the feedback path |
+| **transform** | Not used anywhere in the code. Overlaps D-18 Refine…/merge, D-16 "Ask Claude…" and D-19 "Formalise first" (all designed for M3, unbuilt) | Fine as a word. Document that it replaces those designs |
+| **definition** | A `def`, `abbrev`, `structure`, `inductive`, `class` or `instance` that is not a card's statement, not a lemma and not a presupposition instance; vocabulary kind `definition`; "definition question" (needs a Yes); the "definitional choice" chip; the review step "Definitions (N)". The spec uses it for a card's Lean content ("its definition is FROZEN"; "only the Lean definition is being filled in") | Say **Lean statement** for a card's `abbrev n : Prop := …` |
+| **statement** | A card's `abbrev n : Prop := …` (glossary: "its meaning, committing to nothing"); the review steps "Statement N"; the rule `statement-changed` | Consistent once the spec says "Lean statement" |
+| **vocabulary / Vocabulary cards** | Computed items, not markup, not cards. Kinds: sort, predicate, function, constant, presupposition, definition, lemma, unmarked axiom, other. The review's "New vocabulary" holds pure signature only and is approved automatically | Say "vocabulary item". "One vocabulary item" in a review = pure signature only; definitions and presuppositions stay separate items |
+| **Claude suggests** | The suggestion card (from `propose_assumption`; checked to close the gap; **I hold this** / **No**; shown only in the Proposed view; not a model card) | Keep the marker for beliefs Claude proposes (new ASSUMPTIONs). Use "new card (Claude's wording)" for other new cards |
+| **Formalize <card>** | Status "formalised" (blue aura, chip "λ Lean"; code value `'formalized'`); run stage "formalise" ("Working · formalising"); D-19's "Formalise first" action. Docs use British spelling; the colour id is `telelean.formalizedAura` | Spell it **Formalise**, as the UI does |
+| **Current tab** | The **Current \| Proposed** toggle (`webview/src/run/ProposalBanner.tsx:36–40`). Current = your files, editable; Proposed = read-only overlay | INITIATING 3 inverts this meaning |
+| **Context Menu** | D-17's "'Move to ▸' is also in the context menu" and 03 §7's "context-menu equivalents" were never built. VS Code's right-click menus | Call it **Actions bar** or **Selection actions** |
+| **fuzzy** | Accept and Undo patches use "no fuzz" (`fuzzFactor: 0`, `runner/src/proposal/files.ts:88`, `runner/src/workspace/undo.ts:46`) | "unset (Claude fills)" |
+| **aura** | Blue aura = formalised (S41, D-15) | The lock signal should be an icon plus an outline, not a second glow |
+| **trash** | Files telelean deletes go to VS Code's OS trash (user guide §8) | "bin" inside the transform window |
+| **Depends on / Used by** | Sections of the expanded card. "Depends on" = declared premises (the stored `premises:` field) + verified proof dependencies + statement references | Say which parts are user data |
+| **card** | One `@@ telelean` block (glossary) | Vocabulary items and suggestions are not cards today |
+
+---
+
+## 5. Gaps inside the spec, seen from the rationale (for the tidy-up)
+
+- **Names.** EDIT SESSIONS 1 speaks of a "transform cards" button; INITIATING 2 speaks of "initiate edit session". Are they the same action?
+- **Locking non-selected cards.** INITIATING 2 locks every non-selected card; INITIATING 1 ("these suffice") says nothing. Today's gate already locks non-selected cards mechanically, in every run, through the markup tokens `formalised` and `binding` and through `existing-changed`. Make the rule uniform.
+- **What a lock covers, field by field.**
+  - A locked target must still be provable: adding a `.holds` theorem does not change its statement.
+  - Locking a card must cover its statement's closure, or say that it does not.
+- **Lock state at the end of a session.**
+  - A card created during the session has no state "before the session".
+  - A lock the user set by hand during a session is undone at its end (EDIT SESSION 7). Is that intended?
+- **Accepting a suggestion must start proving again**, or the session can end without the goal it was for being proved (§1.3).
+- **"Don't create" fits only Add items.** For Change and Delete items, the decline options need a meaning: "don't change" would be a lock. How should a re-proposal under another name be recognised?
+- **"Shaky" with one sensible configuration.** If the only sensible configuration is the same one, Claude is forced to make a cosmetic change.
+- **Unset fields need three states.** An unset `type` or `rationale` that Claude fills means Claude chooses a belief, or writes the user's reason for one (IC-29; D-14 "never blocking").
+- **Several goals in REVIEW 5.** One target per run today; the plural needs a meaning per target (D-5's strict meaning of a selection).
+- **The review list lacks a home** for the verdict, footprint, unused premises, gap, "assumed without asking", the G→D "Card changes", and the ordering "statements before result".
+
+---
+
+## 6. Answers to the user's three questions: see `answers`
+
+
+## spec_interactions
+
+- **EDIT SESSIONS + REVIEW STAGE (whole)** — current: D-19★(b) one-shot: Claude formalises, freezes, proves; one proposal per round, reviewed in a stepper (Statements → New vocabulary → Definitions → Result → Card changes); Accept is all-or-nothing, one history entry and one Undo step; only definition answers gate Accept; pure-signature vocabulary is approved automatically but revocable
+  - files: 02_design_decisions.md:316-331,347-352; webview/src/model/run.ts:474-503; runner/src/run/manager.ts:1652; docs/decisions-log.md:337-348
+  - conflict/gap: Changes a ★ decision the user approved. Option (a) (pause and sign off mid-run) was rejected for roughly doubling user actions. Per-item approval is D-21's deferred partial accept. The write can still be all-or-nothing at the successful end, so keep that. Costs: click count and quota (more rounds; user: “I need to save quota for now.”)
+  - safety: Medium: every stage must show a state the gate judged, and the final write must be re-gated as a whole
+- **REVIEW STAGE 3 / FROZEN (naming and function)** — current: “Freeze” is the run protocol's step: freeze_statements once per round, proofs refused before it (proof-before-freeze), statement-changed after it, G4 comparator against the freeze; labels “Statements frozen (round N)”
+  - files: core/src/gate/rules.ts (~474-489, ~720-769); runner/src/gate/engine.ts:617; runner/src/run/manager.ts:2012; runner/src/llm/toolSchemas.ts:250; docs/m2-plan.md:280,339
+  - conflict/gap: The spec's FROZEN is a user lock against edits by Claude, a different concept under the same word. It must not replace the protocol freeze, which still has to run in every Claude round, including REVIEW 5
+  - safety: High: the protocol freeze is what stops Claude weakening the goal after seeing what is provable (the user's turn-2 “quietly weaken the goal statement”)
+- **REVIEW STAGE 2 (“one item for all the vocabulary”)** — current: “New vocabulary” lists only pure signature (sorts, predicates, functions, constants). Definitions on statement paths and every new T.exists presupposition are separate definition questions, each needing “Yes, I endorse it” before Accept
+  - files: webview/src/run/Review.tsx (VocabularyStep, DefinitionsStep); core/src/gate/rules.ts:793-808; docs/decisions-log.md:337,348,501; 02_design_decisions.md:118-134
+  - conflict/gap: A single lumped vocabulary item could absorb definitions and existence presuppositions, which today need one explicit yes each. The spec never mentions definitions
+  - safety: High: “A definition can quietly carry a belief” (the UI text the user quotes); presuppositions can carry beliefs too (exploit at 02:108)
+- **REVIEW STAGE 2 (“Claude suggests … just regular new cards”) and TRANSFORM 9** — current: Suggestions come only from propose_assumption after the freeze, are checked in a scratch file to close the gap, and are flagged when they alone give the goal. They are translucent, shown only in the Proposed view, and not model cards. I hold this makes telelean write the card and its .holds, append it to the target's premises, re-freeze, and start a new proving round; No rejects it
+  - files: runner/src/run/manager.ts:1526-1610; core/src/gate/index.ts:58,145; runner/src/gate/scratch.ts; webview/src/run/GhostSuggestion.tsx:47-116; docs/decisions-log.md:326-332,398
+  - conflict/gap: Fine if approving an Add item for an ASSUMPTION is the I hold this act. Unspecified: (1) who writes the card (it must be telelean, never Claude); (2) approving must trigger re-freeze and re-prove, or the session can end without the proof; (3) a transformed suggestion loses its “closes the gap (checked)” status; (4) group approval adopts several beliefs at once
+  - safety: High: D-6, “The LLM never adds beliefs”; the user's turn 2, “not allowing the LLM to do these without approval from the user”
+- **REVIEW STAGE 4 (group accept/decline)** — current: Definition questions are answered one by one; suggestions are adopted one at a time, and each adoption starts a round
+  - files: webview/src/run/Review.tsx; webview/src/run/GhostSuggestion.tsx
+  - conflict/gap: Bulk approval erodes the one-at-a-time endorsement of beliefs (suggestions), definitions and presuppositions, and invites automation bias
+  - safety: Medium to high: explicit endorsement is the only safeguard for definitions and adopted beliefs
+- **REVIEW STAGE 5 (“these suffice” during a review stage)** — current: At most one active run per model folder; the tray is disabled during a run; a run has one target; “These suffice” replaces the target's premises: (D-13); a new round needs formalise → freeze → prove
+  - files: webview/src/tray/SelectionTray.tsx:57; docs/decisions-log.md:254-257,215; docs/m2-plan.md:339
+  - conflict/gap: Needs a new round inside an active run. With several goals selected it needs several targets per run (a G4 challenge and permitted set each). “Immediately do the inference” must still go through the freeze. What happens to items still in review is undefined: Claude may change them while the user is reading
+  - safety: High if the freeze is skipped; medium otherwise
+- **REVIEW STAGE 1 (Change and Delete items) and DECLINE OPTIONS 3 (shaky)** — current: G5: Claude never changes any field of any block, never adds or deletes blocks, never re-binds a card; existing declarations keep text and meaning (existing-changed); the only lifecycle item is G→D of a proved goal; D-18: Claude proposes deletions, merges or kind changes only when an “Ask Claude…” request asks, and each is confirmed separately
+  - files: core/src/gate/rules.ts:837+ (markupFindings); docs/m2-plan.md:405 (system prompt); docs/decisions-log.md:291,295,340; 02_design_decisions.md:314
+  - conflict/gap: Relaxes G5 and existing-changed for unlocked cards: Claude could propose a weaker goal statement, or reword the user's sentence to fit its formalisation. Such changes must be separate approved items applied by telelean, show old beside new, and mark rewritten sentences worded_by agent. Should Claude propose deletions in “these suffice” runs at all?
+  - safety: High: “Otherwise Claude could point the goal at a new, weaker statement and freeze that” (decisions-log.md:295); IC-10, IC-29
+- **REVIEW STAGE 2 (list items only: Add/Change/Delete/Formalize/vocabulary)** — current: The review also shows the Result (report card: verdict, footprint, unused premises, consistency unchecked, gap, “Assumed without asking” each with “Ask me instead”, check attempts) and “Card changes” (the G→D tick); the result stays hidden until the statements are seen (“Show result” reveals it early)
+  - files: webview/src/run/Review.tsx (ResultStep, LifecycleStep); webview/src/run/ReportCard.tsx; docs/decisions-log.md:397; 02_design_decisions.md:331,341
+  - conflict/gap: The new list has no slot for the result, the choices made without asking (D-20: “not common ground until you acknowledge it”), the G→D lifecycle tick, or the ordering “meaning before proof status”
+  - safety: Medium: guards against automation bias and keeps unasked choices visible
+- **EDIT SESSIONS 6-8 (successful end / exit)** — current: Accept: hand edits snapshotted first, then one history entry and one Undo step; drift gives a 3-line no-fuzz merge, re-freeze and re-gate; it never applies part of a proposal. Discard writes nothing
+  - files: runner/src/run/manager.ts (~1640-1720); runner/src/proposal/files.ts:80-93; docs/decisions-log.md:338-339,352-354
+  - conflict/gap: Keep: the successful end equals Accept, exit equals Discard, no writes before the end. The new end-of-session confirmation dialog is extra (Accept has no dialog today because one Undo reverts it)
+  - safety: High: “Your real files are never touched until you press Accept” (A2)
+- **EDIT SESSIONS 7 / FROZEN 3 (lock state stored and restored)** — current: No user locks exist. D-12: everything that is not a node lives in .telelean/, never in .lean files. Initialize gitignores /.telelean/frozen/ and /.telelean/sessions/, and the file watcher ignores them. layout.json is snapshotted and undoable; decisions.json is written directly
+  - files: runner/src/workspace/initialize.ts:39; extension/src/logic/modelPaths.ts:89; 02_design_decisions.md:230-243; docs/decisions-log.md:110,198,359
+  - conflict/gap: A store must be chosen: a sidecar keyed by card id or Lean name, not markup, and not under .telelean/frozen/ or sessions/ (silently gitignored and unwatched). Undecided: undoable? snapshotted? What are the pre-session states of cards created during the session? A lock set by hand during the session is undone at its end
+  - safety: Low to medium (integrity of user state)
+- **DECLINE OPTIONS 1 (don't create again) and 3 (shaky: no exact repeat)** — current: Decisions and answers are advice to Claude and have no formal effect (project-report 3.6 “Questions and decisions”, 3.7 item 7f)
+  - files: docs/project-report.md:1945-1958,2048
+  - conflict/gap: To match the user's wish for mechanical checks, telelean (not Claude) must detect a re-proposal and an identical shaky configuration. That needs an identity rule (id, sentence, Lean name?). “Don't create” is meaningless for Change and Delete items
+  - safety: Low to medium
+- **TRANSFORM 2/4 (new cards; unset fields autofilled by Claude) and INITIATING 3** — current: D-16★: the A|D|G box adds a comment-only card with the user's verbatim words; no LLM, no Lean; usable during a run. “Nothing calls Claude until you press “These suffice” and allow it.” D-14: the rationale is the user's, never blocking
+  - files: 02_design_decisions.md:280-285; docs/user-guide.md:3; docs/decisions-log.md:399,497; webview/src/prompt/PromptBox.tsx
+  - conflict/gap: If adding moves into TRANSFORM, adding calls Claude (quota, consent) and no comment-only card can be made unless fields get a third state, “leave empty”. Claude filling type = ASSUMPTION means Claude chooses a belief; Claude filling a rationale means Claude writes why the user believes something
+  - safety: Medium: provenance (IC-29) and the no-beliefs-from-Claude rule
+- **TRANSFORM 5 (user-filled fields become locked, including Lean)** — current: The gate judges every line that differs from B (the user's files at run start) as Claude's: G0 tokens, new-axiom, vocabulary shape, flagged definitions. D-21: “Lean you write counts as signed off by you.”
+  - files: core/src/gate/rules.ts; core/src/gate/g0.ts; runner/src/shadow/types.ts:69; docs/m2-plan.md:208
+  - conflict/gap: Lean the user types in a TRANSFORM would be judged as Claude's (an axiom refused, a definition turned into a question) unless a user-input reference commit (like the adoption reference A) is added. It must also be a revert floor
+  - safety: Medium: the gate still needs to judge the final state as a whole
+- **TRANSFORM 9 (vocabulary as cards that can be transformed and frozen)** — current: D-3★: vocabulary is computed from Lean, with no markup type; glosses come from docstrings and stay Claude's wording until rewritten. Changing existing vocabulary is refused by existing-changed; D-18's alternative (redefining vocabulary) needs endorsement and lists every card whose meaning changes
+  - files: 02_design_decisions.md:103-123,309; core/src/project/vocabulary.ts; webview/src/board/VocabularyGroup.tsx
+  - conflict/gap: Locking needs a key without markup. A vocabulary transform changes the meaning of every card whose closure uses the item, including locked cards, without editing them: a contradiction unless a lock covers the closure, or editing a vocabulary item requires unlocking its users
+  - safety: High: vocabulary and definitions are the documented belief-smuggling routes
+- **TRANSFORM (general) vs refine/supersede/merge/suspend** — current: D-18★ (planned for M3, not built): refine keeps vocabulary, the bridge is proposed as a suggestion, the old card stays collapsed with supersedes:, dependents compile unchanged; merge re-points premises, layout and decisions; suspend serves what-if exploration; Delete lists dependents. The fields supersedes: and refines: are parsed and protected but unused
+  - files: 02_design_decisions.md:300-314; 03_architecture.md:544-547; core/src/markup/types.ts:72-73; docs/decisions-log.md:184,227
+  - conflict/gap: TRANSFORM drops supersede provenance, the bridge-as-belief discipline, the guarantee that dependents compile, Suspend, and merge re-pointing. The spec should say what happens to the old cards and to their dependents' proofs
+  - safety: Medium: a changed premise statement silently changes what derivations proved from it mean
+- **TRANSFORM 10 (“Depends on” / “Used by” not editable)** — current: “Depends on” = declared premises (the stored premises: field, set by These suffice with replace semantics, or appended by adoption) + verified proof edges + statement references. G5 lets only telelean's adoption change the target's premises:
+  - files: webview/src/model/cardData.ts:293-303; 02_design_decisions.md:245-253; core/src/gate/rules.ts (adoptedPremises)
+  - conflict/gap: The declared part is user data; merges and splits must re-point it. The spec should separate stored declared support from computed dependencies
+  - safety: Low to medium
+- **FROZEN 1 (lock aura)** — current: D-15: blue aura = formalised (the user's S41; colour telelean.formalizedAura); line pattern reserved for epistemic status (dashed declared, solid verified, translucent suggested by Claude); never colour alone; high contrast uses outlines; a provisional card is drawn dashed
+  - files: extension/package.json:187-217; 02_design_decisions.md:261-274; 03_architecture.md:411
+  - conflict/gap: The lock signal must use none of dashing, translucency or a second glow. Use a lock icon plus an outline style with a new theme colour id
+  - safety: Low (but misreading epistemic marks undermines review)
+- **FROZEN 2 (mechanical lock)** — current: The gate already enforces mechanically that non-selected cards and existing declarations are unchanged (markup tokens formalised and binding; existing-changed by text and, with B's facts, printed meaning)
+  - files: core/src/gate/rules.ts:349-398,837+; docs/project-report.md:1970-1975
+  - conflict/gap: Locks must be enforced by the gate (a refused finding, retry, revert), not by prompting Claude: the user insists on “mechanically”. What a lock covers (text, printed meaning, closure, .holds) must be defined. The pre-freeze instance blind spot remains
+  - safety: High
+- **FROZEN 4/5 (lock or unlock anywhere, any time)** — current: The Proposed view is read-only (no selection, drag, edit or delete); selection exists for cards only and feeds the tray
+  - files: docs/decisions-log.md:399; webview/src/state/store.ts:1456-1458
+  - conflict/gap: Needs selection in the Proposed view and in the transform window, and selection of single fields. One selection then serves both the tray and the actions bar
+  - safety: Low
+- **INITIATING 1 vs 2 (locking non-selected cards)** — current: In every run the gate refuses formalising, re-binding or changing any card outside the selection
+  - files: core/src/gate/rules.ts:837+; docs/m2-plan.md:279
+  - conflict/gap: INITIATING 2 locks non-selected cards; INITIATING 1 says nothing. Make it uniform; the current gate is the precedent
+  - safety: Medium
+- **INITIATING 3 (no direct field edits on Current)** — current: M1 “map without AI” (D-29): in-place edits of sentence and reason, stance and source chips, delete, re-order, kind change by drag or Make … buttons; edits saved immediately with Undo; the board does not lock editing during a run
+  - files: 02_design_decisions.md:280-298,217-228; webview/src/board/CardDetails.tsx:278-313; core/src/edit/planKind.ts; docs/user-guide.md:42-67
+  - conflict/gap: Contradicts D-16, D-17 and the user's S4/S10/S18-S24 if every edit must go through a run backed by Claude. Kind changes would lose D-11's deterministic, previewed planning (the dependents dialog)
+  - safety: Medium: D-11, “never removes a .holds that others use until its replacement exists”
+- **CONTEXT MENU** — current: D-17 and 03 §7 promised a context menu (“Move to ▸”) and context-menu equivalents; none was built. Card actions sit in the expanded card
+  - files: 02_design_decisions.md:295; 03_architecture.md:389; webview/src/board/CardDetails.tsx
+  - conflict/gap: Name clash with VS Code's right-click menus and the design's unbuilt one. Suggest “Actions bar”
+  - safety: None
+- **REFERENCE SYSTEM** — current: D-34 deferred short handles (h1, h2) and a typed query syntax; D-27 put id completion in M4; ids are stable slugs
+  - files: 02_design_decisions.md:494-500,442
+  - conflict/gap: Compatible: it extends the deferred items. References in prose sent to Claude are advice only
+  - safety: None
+- **(silent) Gate loop: 3 attempts then revert (A2)** — current: On give-up, revert to the newest commit of kind gate-pass, freeze or base, normalise and re-check; notice “telelean reverted Claude's working copy to “…” (…).”
+  - files: runner/src/run/manager.ts:1068-1112; runner/src/shadow/types.ts:69; design-amendments.md:28-48
+  - conflict/gap: Must apply per stage. User decisions written between stages (approvals and locks, transforms, accepted suggestions) need a commit of a passing kind, or a revert can undo them
+  - safety: High (integrity of what the user approved)
+- **(silent) Undo and history (D-17, A3, D-33)** — current: One Accept gives one history entry and one Undo step; history in private git refs with preview and revert; in-memory Undo of 100 steps per subject
+  - files: docs/decisions-log.md:107-126,339; design-amendments.md:50-61
+  - conflict/gap: Unstated: a successful session as one Undo step; whether lock toggles are undoable or snapshotted; the loss of per-edit Undo if direct edits go
+  - safety: Low
+
+## safety_invariants
+
+- **“Proved” means proved from exactly the selected premises, as formalised: the footprint ⊆ STD ∪ signature ∪ selected .holds ∪ presuppositions ∪ the user's own proved-derivation footprints, minus T.holds and sorryAx** — enforced: core/src/gate/permitted.ts (computePermittedAxioms); core/src/gate/rules.ts (footprint, new-axiom, not-proved); runner/src/gate/engine.ts plus runner/src/lean/comparator.ts (G4, permitted_axioms); docs/m2-plan.md:232-257
+  - spec could break it: Approved Add items for ASSUMPTIONs joining the selection silently, or in a group; Claude writing belief axioms for its own new cards; TRANSFORM 6 “generate more cards” with kind ASSUMPTION; several targets in REVIEW 5 without a permitted set and G4 challenge per target
+- **Within each Claude round, statements are frozen before any proof exists; after the freeze they cannot change, and G4 compares the target against the freeze** — enforced: core/src/gate/rules.ts (proof-before-freeze ~720-769, statement-changed ~474-489); runner/src/gate/engine.ts:617 (freeze commit); runner/src/run/manager.ts (toolFreeze; one freeze per round)
+  - spec could break it: Treating the user's FROZEN or Approve as the freeze and skipping freeze_statements; REVIEW 5's “immediately do the inference” without formalise → freeze → prove; more stages letting Claude rework unapproved or shaky statements after seeing proofs (project-report §3.7 item 7)
+- **The LLM never adds beliefs: every new axiom from Claude is a selected assumption's .holds or vocabulary; missing premises are proposed, checked to close the gap, and adopted only by the user's explicit I hold this, written by telelean** — enforced: core/src/gate/rules.ts (new-axiom ~301-340); core/src/gate/index.ts:58 (ghostTextProblems), :145 (planGhostAdoption); runner/src/gate/scratch.ts; runner/src/run/manager.ts:1526 (adoptGhost)
+  - spec could break it: Treating Claude suggests as regular new cards that Claude writes itself; Claude filling the unset kind field with ASSUMPTION; group approval adopting several beliefs; approving a transformed suggestion without re-checking it
+- **Every new definition on a statement path, and every new existence presupposition (T.exists), needs the user's explicit yes; a no is feedback** — enforced: core/src/gate/rules.ts:793-808 (flagged); runner/src/run/manager.ts:1652 (refusal “Answer every definition question: a “no” is feedback.”); webview/src/model/run.ts:500 (definitionsApproved); webview/src/run/Review.tsx (DefinitionsStep)
+  - spec could break it: “One item for all the vocabulary” swallowing definitions or T.exists; group approval; a “Formalize <card>” item hiding a definition the statement relies on
+- **The user's words are the specification: Claude never changes a block's fields (natural_name, rationale, …), never adds or deletes blocks, never re-binds a card; telelean writes pins and docstrings; Claude's words are always shown as Claude's** — enforced: core/src/gate/rules.ts:837+ (markupFindings: “the person's words are the specification and stay byte-identical”); core/src/gate/normalise.ts; markup field worded_by; webview/src/common/AgentText.tsx
+  - spec could break it: Change items that let Claude reword unlocked user cards; Claude autofilling a rationale; shaky cards (“Claude can do what it wishes”); worded_by not updated when text changes hands (today an edit does not clear worded_by agent, project-report App. B)
+- **A card formalised before the run keeps its Lean statement, and every declaration from before the run keeps its text and printed meaning: the goal cannot be re-pointed at a weaker statement** — enforced: core/src/gate/rules.ts (existing-changed ~349-398; markup tokens binding and formalised); runner/src/gate/engine.ts (checkBase B facts); docs/decisions-log.md:292,295
+  - spec could break it: Change items for unlocked existing statements (a weaker goal offered for approval beside a proved result); locks that cover text but not the closure; the instance blind spot that the printed form misses
+- **Lifecycle changes (delete, kind, merge) are separate items the user confirms, applied mechanically by telelean under D-11: never remove a .holds others use until its replacement exists; dependents listed and either rewritten or marked broken** — enforced: core/src/edit/planKind.ts; core/src/kindChange.ts; core/src/edit/planDelete.ts; the markup rule forbids type changes and deletions by Claude; the run's only lifecycle item is G→D (docs/decisions-log.md:340)
+  - spec could break it: Delete and kind-change items generated by Claude in any run (D-18: only when asked); kind as a TRANSFORM field filled by Claude; deleting a card others depend on without the dependents list
+- **Nothing reaches the user's files before Accept; Accept applies exactly the judged files, re-gates after drift, never applies part of a proposal, and is one history entry and one Undo step** — enforced: runner/src/run/manager.ts (accept ~1640-1720); runner/src/proposal/files.ts (3-line no-fuzz merge, boardEditsOf); runner/src/proposal/service.ts
+  - spec could break it: Writing approved items or lock state into the Lean files during the run; applying the final state without re-gating it as a whole after per-item approvals
+- **What the proposal shows is always a judged state; after 3 failed checks the working copy reverts to the last state that passed (A2, the user's own design)** — enforced: runner/src/run/manager.ts:1068-1112 (settleReverted), :1094 (edits after finish discarded); runner/src/shadow/types.ts:69 (PASSING_COMMIT_KINDS gate-pass, freeze, base)
+  - spec could break it: Review items built from an unjudged state; user decisions and TRANSFORM inputs written to the working copy without a commit of a passing kind, so a give-up revert undoes them
+- **Meaning before proof status: the review shows the statements before the result** — enforced: webview/src/run/Review.tsx (ResultStep hidden until revealed; “Show result”); the overlay hides the target's result (docs/decisions-log.md:397)
+  - spec could break it: A per-card review list with no order and the proof status visible while the user approves statements, which invites automation bias toward weaker statements that were proved
+- **Nothing calls Claude, and nothing leaves the machine, without the user's explicit action and a one-time consent per folder; tests never call real Claude** — enforced: extension/src/logic/runs.ts (consent “Run Claude on this model?”); runner/src/llm/claudeCli.ts (TELELEAN_NO_REAL_CLAUDE tripwire); docs/decisions-log.md:369-376
+  - spec could break it: INITIATING 3 routing every edit through runs backed by Claude; TRANSFORM autofill calling Claude for trivial edits; loops of Claude asking the user to unfreeze something
+- **Only telelean changes a target's declared premises (premises:): set by These suffice (undoable set-premises) or appended at adoption; Claude never does** — enforced: core/src/gate/rules.ts (markup adoptedPremises); runner/src/run/manager.ts (start declares premises after preflight)
+  - spec could break it: Merges and splits in TRANSFORM not re-pointing premises; Claude-proposed Change items touching premises:
+- **A suggestion is a single Lean term checked in a pinned scratch declaration; adoption writes exactly the checked text** — enforced: core/src/gate/index.ts:58 (ghostTextProblems); runner/src/gate/scratch.ts (ghostScratchSource); docs/m2-plan.md:32 (fact 8)
+  - spec could break it: Writing transformed or approved suggestion text without the single-term rule; writing Claude-suggested cards straight into files
+- **Locks (the spec's FROZEN) must be enforced mechanically by the gate, not by asking Claude (the user's FROZEN 2 and the turn-2 “non-LLM programmatic check”)** — enforced: Not yet implemented. Today's analogues: the markup rule and existing-changed in core/src/gate/rules.ts
+  - spec could break it: Implementing locks as prompt text only; covering only fields, not meaning; storing them in a place the gate does not read
+
+## answers
+
+Q1. What the “Fully explicit” checkbox does.
+- Where it is: it is a per-statement checkbox in each Statement step of the run panel's review (webview/src/run/Review.tsx, StatementStep). Its tooltip reads “No notation, every argument and universe shown, no coercion arrows”.
+- What it does: it switches the displayed Lean proposition between two renderings.
+  - Pretty: Lean's normal #print.
+  - Explicit: Lean's #print under `set_option pp.explicit true in set_option pp.notation false in set_option pp.universes true in set_option pp.coercions false in` (runner/src/gate/scratch.ts:112). Both are rendered in a scratch file, never in your files.
+- Example (m2-plan.md §0 fact 4): `¬Spyro.InGame c g` becomes `Not (Spyro.InGame c g)`, and names are fully qualified.
+- What it does not do: it is display only. It changes nothing in the gate or in Accept.
+- Rationale: D-19 (02:325) put it in the M2 minimal review so you can check “Does the Lean say what the sentence says?” without notation hiding anything.
+- Side note (unverified): pp.explicit also prints the implicit and instance arguments that default printing hides. Those hidden arguments are what the pre-freeze instance blind spot exploits (project-report §3.7 item 1).
+
+Q2. “Claude suggests” cards vs “Statement 1”, “Statement 2” in the review.
+- Statement steps:
+  - What they are: one step per Lean statement that is new or changed against your files at run start (Review.tsx stepLabel: “Statement N” when there are several, “Statement” when there is one). Each formalises a card already in the run: the target, a selected premise Claude formalised, or (in the round after an adoption) the adopted suggestion, shown in Claude's italics.
+  - What each step shows: “Does the Lean say what the sentence says?”, the sentence above its Lean, “Fully explicit”, “It uses”, and “Show on the board”.
+  - Status: they are part of the proposal's files. You cannot accept or decline them one by one: Accept takes the whole proposal, and objections go through Feedback.
+- “Claude suggests” cards:
+  - What they are: new candidate premises (beliefs) Claude proposes with propose_assumption when the target does not follow. They are not part of the proposal's files.
+  - Where they appear: as translucent cards at the top of the Assumptions column (Proposed view only) and in the report card (webview/src/run/GhostSuggestion.tsx).
+  - Their checks: telelean checks in a scratch file that each one, together with your selected premises, proves the frozen target (“closes the gap (checked)”). It flags a suggestion that alone gives the goal (“gives the goal on its own: it may simply restate it”).
+  - Your choices: “I hold this” (optional reason, then Adopt) makes telelean write the card into Claude's working copy as an Assumption worded by Claude, add it to the target's premises, freeze again and start a new round to prove. “No” rejects it.
+- In short: Statement steps ask you to judge the meaning of formalisations of your cards. A suggestion asks whether you hold a new belief.
+
+Q3. Where definitions appear on the main board.
+- Not as cards: definitions have no column and no arrows.
+- In the Vocabulary group: it is the first item of the Assumptions column, collapsed by default, and lists the sorts, predicates, functions, constants, presuppositions, definitions and lemmas of the subject (user guide §7). Definitions there have kind “definition”. A definition your statements rely on is marked “definition on a statement path” (webview/src/board/VocabularyGroup.tsx:39, title “A definition your statements rely on (D-4: needs your endorsement)”).
+- On cards: a card whose statement relies on a definition gets the chip “definitional choice” (webview/src/model/cardData.ts:168). The “uses:” line lists the vocabulary of a card's statement.
+- Presuppositions: they appear as vocabulary items of kind “presupposition” and as “Presupposes” chips (“assumes characters exist”).
+- In a proposal: definitions Claude introduced appear only in the review's “Definitions (N)” step, each with “Yes, I endorse it” / “No…”. The text there reads: “A definition can quietly carry a belief, so Accept needs your yes for each; a no is Feedback for Claude.” Existence assumptions such as `Demo.Being.exists` are listed in that step with the label “existence assumption”.
+- Outside a run: definitions are flagged on the board but endorsed only in a proposal's review (project-report App. A.1).
+
+## uncertainties
+
+- Not verified with Lean: whether the “Fully explicit” rendering (pp.explicit) would actually reveal the instance in project-report §3.7's blind-spot example; reasoned from Lean's documented pp.explicit behaviour
+- Whether the spec's “transform cards” button (EDIT SESSIONS 1) is the same action as “initiate edit session” (INITIATING 2)
+- Whether the user means the A|D|G box to survive (no Claude, comment-only cards) under INITIATING 3; the spec does not mention it
+- Whether “Vocabulary cards” in TRANSFORM 9 means turning vocabulary into markup cards (contradicting D-3) or only giving vocabulary items card-like actions
+- D-21's phrase “drops it from any frozen set” (02:351) is ambiguous between the run's frozen statements and the planned sign-off set
+- Whether new definitions appear among the “+N new” items of the Proposed view's Vocabulary group (the review's Definitions step is confirmed)
+- Line numbers for code are from the working tree at HEAD 187673d (approximate ranges marked ~); I did not run any tests or Lean
+- Not read in full: docs/m1-plan.md, docs/project-report-files.md, the bundle_1/bundle_9/bundle_13 subagent reports, and the long bundle_9 interim log (only interims 54, 56, 58)

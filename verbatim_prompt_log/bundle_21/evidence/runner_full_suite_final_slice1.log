@@ -1,0 +1,10 @@
+
+ RUN  v5.0.5 /home/zhengyew/telelean/packages/runner
+
+
+ Test Files  61 passed (61)
+      Tests  585 passed | 1 skipped (586)
+   Start at  13:36:38
+   Duration  539.33s (tests 99%, import 1%)
+
+539.54 s

@@ -3,9 +3,12 @@
  * imports, and each block's binding. Rules of 02/03 that differ from the research prototype: `type:` is canonical
  * and `kind:` a silent alias; there is no DEFINITION kind; a missing version marker means v1 without a diagnostic;
  * `premises:` is allowed on every type; a block without `id:` gets a derived id (TL112).
+ * Spec v4 (docs/slice1-plan.md 2.2): `type:` takes AXIOM or PROPOSITION, and the old ASSUMPTION, DERIVATION and GOAL
+ * silently as aliases (`parseNodeType`; the line is never rewritten here); `follows_from: nothing` is the "follows from
+ * nothing" mark (TL022 for any other value, TL023 together with declared premises: the arrows win).
  */
-import type { Evidential, NodeType, Severity, Stance } from '../model.js';
-import { EVIDENTIALS, STANCES } from '../model.js';
+import type { Evidential, Severity, Stance } from '../model.js';
+import { EVIDENTIALS, NODE_TYPES, parseNodeType, STANCES } from '../model.js';
 import { lowerBound, scanDecls, type DeclScan, type Item } from './decls.js';
 import { deriveId, ID_PATTERN } from './ids.js';
 import { isLeanName, lexLean } from './lexer.js';
@@ -32,7 +35,6 @@ const TAG = /^[A-Za-z0-9][A-Za-z0-9_./-]*$/;
 const TOKEN = /^[A-Za-z0-9][A-Za-z0-9_.:+-]*$/;
 const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
-const NODE_TYPES: readonly NodeType[] = ['ASSUMPTION', 'DERIVATION', 'GOAL'];
 const LIST_KEYS = LIST_FIELD_KEYS;
 
 /** Normalised key: `kind` is an alias of `type`. */
@@ -174,6 +176,17 @@ function readBlock(text: string, comment: LeanComment, diags: Diagnostics, pendi
     seen.add(key);
     interpretField(block, key, value, lineSpan, note);
   }
+  if (block.fields.followsFrom !== undefined && (block.fields.premises ?? []).length > 0) {
+    // TL023 (docs/slice1-plan.md 2.2): a card with arrows does not follow from nothing; the arrows win.
+    const line = block.lines.find((l) => l.key === 'follows_from');
+    note(
+      'TL023',
+      'error',
+      'A card cannot both follow from nothing and have arrows: its `premises:` count, and `follows_from: nothing` is ignored. Remove one of the two.',
+      line?.span ?? markerSpan,
+    );
+    delete block.fields.followsFrom;
+  }
   return block;
 }
 
@@ -217,15 +230,20 @@ function interpretField(
       }
       return;
     case 'type': {
-      const upper = value.toUpperCase();
-      const type = NODE_TYPES.find((t) => t === upper);
-      if (type === undefined) invalid(NODE_TYPES.join(', '));
+      // AXIOM or PROPOSITION; ASSUMPTION, DERIVATION and GOAL are read as aliases, with no diagnostic (spec v4 B.6).
+      const parsed = parseNodeType(value);
+      if (parsed === undefined) invalid(NODE_TYPES.join(', '));
       else {
+        const upper = value.toUpperCase();
         if (value !== upper) note('TL019', 'hint', `The type is written in upper case: ${upper}.`, span);
-        fields.type = type;
+        fields.type = parsed.type;
       }
       return;
     }
+    case 'follows_from':
+      if (value === 'nothing') fields.followsFrom = 'nothing';
+      else note('TL022', 'error', `follows_from takes only the value nothing (found ${JSON.stringify(value)}); the field is ignored.`, span);
+      return;
     case 'natural_name':
       if (/[\r\n]/.test(value)) note('TL004', 'warning', 'natural_name should be a single line.', span);
       fields.naturalName = value;
@@ -359,7 +377,7 @@ function parse(path: string, text: string, eol: '\n' | '\r\n', lines: Lines): Pa
       (k): k is string => k !== undefined,
     );
     for (const key of missing) diags.add('TL003', 'error', `Missing required field \`${key}:\`.`, raw.markerSpan, id);
-    if (raw.fields.type === 'ASSUMPTION' && raw.fields.rationale === undefined) {
+    if (raw.fields.type === 'AXIOM' && raw.fields.rationale === undefined) {
       diags.add('TL011', 'info', noRationaleMessage(raw.fields.stance), raw.markerSpan, id);
     }
     const block: MarkupBlock = {

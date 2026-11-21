@@ -1,7 +1,8 @@
 # semantic fixtures
 
-Used by `packages/runner/test/semantic/` (WP3, the M1 semantic layer: `lake build` + `.ilean` + check file →
-`LeanFacts`). Base project: `../spyro`. Plain, trusted Lean files: no `#eval`, no `.telelean/config.json`.
+Used by `packages/runner/test/semantic/` (WP3, the M1 semantic layer: `lake build` + `.ilean` + check file + the isolated
+probe → `LeanFacts`). Base project: `../spyro`. Plain, trusted Lean files: no `#eval`, no `.telelean/config.json`; the
+one exception is `probe-init`, whose `[init]` code prints a line (below).
 Tests always copy `../spyro` to a scratch directory (`$TELELEAN_TEST_TMP`) and apply an overlay there; nothing is
 ever built here.
 
@@ -16,6 +17,8 @@ Files copied over a scratch copy of `../spyro` (complete replacements of the fil
 | `nonbmp-error` | `../spyro` plus a line with a non-BMP character (`𝔸`, two UTF-16 units) before an unknown identifier | AT3.9: Lean says column 30 (code points), the facts say character 31 (UTF-16) |
 | `toolchain` | `lean-toolchain` = `leanprover/lean4:v4.34.0` | AT3.6: `unsupported-toolchain`, nothing spawned |
 | `manifest-package` | a `lake-manifest.json` listing one package (`mathlib`; the file is only read, nothing is fetched) | AT3.11: `unsupported-project` |
+| `probe-forge` | (slice 2b3a) `../spyro` plus a statement `someone_dark := HasDarkPast default` that elaborates through an instance placed before it (`instWitness : Inhabited Character`), then the forgery: `instance (priority := high) forgeToString : ToString String` that drops `"Spyro.instWitness"` from any printed line, and `instance (priority := high) forgeLoop : ForIn m Lean.Loop Unit` that ends every `while` loop at once (everything from the `-- The forgery` line to `end Spyro`, which the test removes for the true lists) | `probe.test.ts`, isolation: the isolated probe gives the true constants; the in-file probe (the ghost check's) prints forged ones |
+| `probe-init` | (slice 2b3a) `../spyro` plus two modules imported by `Model.lean`: `InitForge.lean`, whose `@[init] def` prints a forged probe message (a JSON line in Lean's message format, with the probe's key and empty lists) in every Lean process whose frontend imports it, and `InitHygienic.lean`, the same through the hand-written hygienic spelling `@[init.«_@».x._hyg]` (AP30-1 r3). Built by hand: G0 refuses both in Claude's text | `probe.test.ts`: the check job prints both lines, the probe job (`importModules` with `loadExts := false`) neither |
 
 The "missing manifest" case of AT3.11 has no overlay: the test deletes `lake-manifest.json` from its scratch copy.
 
@@ -37,8 +40,12 @@ replaced by `/work/model` (the project) and `/home/user` (the home folder); noth
 | `unlisted-Inbox.lean` + `unlisted-Inbox.ilean.json` | (turn 13) a one-module project `Model` → `Model.Demo.Inbox` with that source, built with the toolchain's `lake` in a scratch directory on 2026-11-10: declarations whose source mentions no constant (`abbrev two_plus_two_is_four : Prop := 2 + 2 = 4`, `theorem plain_mp : ∀ (p q : Prop), p → (p → q) → q := …`) are missing from `decls` but have a parent-less `definition` in `references`; also an `example` (`Demo._example`), a private theorem, a structure, an inductive, a `where` declaration and an anonymous instance |
 | `check-spyro.lean` + `check-spyro.jsonl` | a check file in the generator's shape for the 16 declarations of `../spyro` plus `Spyro.nonexistent`, and `lake env lean --stdin --json`'s output |
 | `check-extras.lean` + `check-extras.jsonl` | the same for 16 declarations of `extras` (imports `Model.Spyro.Vocabulary`, `Model.Spyro.Main`, `Model`) |
-| `spyro-facts.json`, `extras-facts.json` | the `LeanFacts` that `refreshLeanFacts` returns for `../spyro` and for `extras` (sandboxed, in place), with times set to the epoch, durations to 0 and memory peaks removed. Real facts for core's tests and the integrator; `refresh.test.ts` checks them on every run and rewrites them when `UPDATE_SEMANTIC_RECORDINGS=1` |
+| `probe-spyro.lean` + `probe-spyro.jsonl` | (slice 2b3a, 2026-11-20) the isolated probe file in the generator's shape (`semantic/probeFile.ts`: imports `Lean.CoreM` and `Lean.Util.FoldConsts` only, and loads `Model.Spyro.Vocabulary`, `Model.Spyro.Main`, `Model` with `Lean.importModules`) for the same 16 declarations plus `Spyro.nonexistent`, and `lake env lean --stdin --json`'s output on a built copy of `../spyro` (no path in it). `probe.test.ts` checks both on every run and rewrites them when `UPDATE_SEMANTIC_RECORDINGS=1` |
+| `spyro-facts.json`, `extras-facts.json` | the `LeanFacts` that `refreshLeanFacts` returns for `../spyro` and for `extras` (sandboxed, in place), with times set to the epoch, durations to 0 and memory peaks removed (the probe job's too). Real facts for core's tests and the integrator; `refresh.test.ts` checks them on every run and rewrites them when `UPDATE_SEMANTIC_RECORDINGS=1`. Regenerated on 2026-11-20 with the isolated probe (slice 2b3a): every declaration's `typeConsts`, and the probe's marker `"probe": { "status": "ok", "durationMs": 0 }`; nothing else changed |
 
 If `../spyro` or an overlay changes, regenerate the affected recordings the same way (with the toolchain's own
 `lake`, never the elan proxies, in a scratch copy); the two `*-facts.json` files come from
-`UPDATE_SEMANTIC_RECORDINGS=1 npx vitest run test/semantic/refresh.test.ts` in `packages/runner`.
+`UPDATE_SEMANTIC_RECORDINGS=1 npx vitest run test/semantic/refresh.test.ts` in `packages/runner`, the two
+`probe-spyro.*` files from the same variable with `test/semantic/probe.test.ts`, and core's three hand-written Spyro
+facts (`packages/core/test/fixtures/project/spyro-*facts.json`: their `typeConsts` and the marker only) from the same
+variable with `test/integration/session.test.ts`.

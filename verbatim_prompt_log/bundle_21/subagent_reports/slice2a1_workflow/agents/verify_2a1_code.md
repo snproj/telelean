@@ -1,0 +1,95 @@
+# verify:2a1:code
+
+Agent `a1f55c05a00cd79aa` of workflow `wf_8df564ad-639`. Verbatim output (JSON alongside).
+
+- **summary:** I checked sub-slice 2a1 for code correctness and regressions. The builder's verification claims hold, but computeItems has two major ownership bugs, three minor gaps and one nit.
+
+**Builder's claims confirmed, each command run one at a time under capped.sh:**
+- **Typechecks:** tsc is clean in all five configs (core, runner, webview ×2, extension).
+- **Unit tests:** core 59 files / 638 tests, webview 19/313, extension 22/203 (run with --no-cache; `packages/extension/out` is still dated 13:47).
+- **Runner files that use the changed facts:** gate/pure + semantic/checkFile 2/24, valueProbe 1/2 and refresh 1/9, both with real Lean.
+- **Scope:** exactly the 31 files the report lists changed after the slice-1g patch, and no existing test was changed.
+- **Contracts:** a mechanical comparison against §2.2, §2.3, §2.7 and §2.9 found only formatting and the `SessionPhase` / `ComputeItemsInput` aliases.
+- **Stubs and names:** all 19 functions are stubbed with the planned signatures, and adding `export *` caused no name collisions.
+- **Texts:** every user-facing text the plan quotes in §2–§5 and §7 is in texts.ts.
+- **Hashes:** the SHA-256 vectors and the `reviewItemId` value match Python's hashlib.
+- **Tests:** the new tests check what they claim.
+
+**Problems, found by reading items.ts and confirmed with scratch probes run through vitest (nothing written into the repo's source):**
+- **Major — id write-back:** telelean writing Claude's arrow, or an accepted premise, into a card that has no written `id:` line creates a bogus "Change" item for that card's statement. That item shows while the results are hidden, so it gives away that Claude added an arrow, and it hides the results again after a premise is accepted.
+- **Major — Prop axiom in a proof phase:** a Prop axiom created in a proof phase is filed as part of the Result's proof instead of being reported as unowned (D2-40). This weakens the backstop's own `unowned` check.
+- **Minor:** whether a proof-phase definition is its own item depends on the premise drafts that exist now, so it changes when a draft is withdrawn. The item then reads as disappeared and Apply is blocked.
+- **Minor:** a declaration moved to another file with the same text produces no item and no problem.
+- **Minor:** comments outside declarations are ignored, so Claude's comments, including one left behind when the lemma below it is rejected, reach the user's files at Apply.
+- **Nit:** the builder's report leaves out 111 files its vitest runs wrote to the repo-root `node_modules/.vitest-cache`.
+
+**Effects of my own runs:**
+- My core vitest run (without --no-cache) rewrote `packages/core/node_modules/.vite/vitest/da39…/results.json`.
+- My probe runs added 76 module-cache files to `/home/zhengyew/telelean/node_modules/.vitest-cache`; vitest 5 writes this cache even with --no-cache.
+- The `.vite-temp` folders in `packages/{core,runner,webview}/node_modules` and the root `node_modules` were touched and are empty again.
+- capped.sh started short-lived systemd scopes, which ended with each command.
+- /tmp's modification time changed during the runner tests; no entry of mine remains there.
+- `git status` changed the `.git` folder's modification time; no git file changed.
+- No processes of mine are left running, and no repo source or git state was changed. Logs and probes are in `/tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/v2a1_corr/`.
+- **findings:**
+  - [1]
+    - **id:** V2A1-C1
+    - **severity:** major
+    - **where:** packages/core/src/review/items.ts:426-429 and 461-468 (every `id:` change goes into the card's statement item)
+    - **problem:** `EditSession.setField` / `setBlockField` (markup/edits.ts:79) writes `id: <derived>` into any block that has no written id. computeItems sends every `id:` change to `card:<c>`, which counts as a statement edit, so telelean's own non-statement writes on such a card create a fake Formalize/Change item of the user's statement. Writing Claude's arrow into the target's `premises:` (2d's normalise) or the premise write (planGhostAdoption) both do this. The fake item is not part of a Result, so it is listed while the results are hidden. That leaks that Claude added an arrow (RV-6; §4.7's arrow/no-arrow non-interference pair would differ for such a target). It also hides the results again after a premise Accept, and it survives DO-0, because removing the arrow writes the id again.
+    - **evidence:** Probe (scratch vitest, `v2a1_corr/probe/idwb*.json`). B is Spyro with the target's `id:` line removed and one arrow fewer; W adds the arrow via `EditSession.setField`, plus a ledger `arrow` entry. Drafts: `arrow:pg-no-dark-past>cynder-would-not-be-a-good` (add-arrow), `card:cynder-would-not-be-a-good` (kind change, `content.fields = {id}`), `proof:…`. The same setup with planGhostAdoption on a derived-id mark target gives `card:cynder-would-not-be-a-good` (change, `{id}`) next to the premise item.
+    - **fix:** Treat an `id:` line added to a block whose B block had `idWritten: false`, with the derived id as its value, as no statement change on its own. Give it to the card's statement item only when that item has another change. Otherwise give it to the arrow or premise item whose `premises:`/`follows_from:` entry changed on the same block, or ignore it (the id is the same). Record the decision in §8 and add tests: a derived-id target with Claude's arrow, with a written premise, and after DO-0.
+  - [2]
+    - **id:** V2A1-C2
+    - **severity:** major
+    - **where:** packages/core/src/review/items.ts:523-537 (proof-phase branch)
+    - **problem:** A new Prop axiom tied to no card is unowned only when it was created in a statement phase. Created in a proof phase, it is silently filed as part of `proof:<T>`. §4.2/D2-40 call a Prop axiom bound to no card an unowned difference in any phase, and the plan's proof-phase rule covers vocabulary only. The backstop's `unowned` check re-derives ownership from computeItems, so it no longer refuses a new assumption hidden in a Result's proof. Only judgeState's new-axiom rule still catches it; a Result accepted with its own Accept passes the backstop's own-accept and not-accepted checks.
+    - **evidence:** Probe `v2a1_corr/probe/propax.json`: `axiom cheat : HasDarkPast cynder` (facts kind axiom, typeSort Prop, vocabulary kind unmarked-axiom). With ledger `created` phase `statements`: problem "Spyro.cheat changed, but no review item covers it." With phase `proof`: no problem, and `proof:cynder-not-good` provides `['Spyro.cheat']`.
+    - **fix:** In the proof-phase branch, report an `axiom` that is not shape-passing vocabulary or a presupposition (vocabulary kind unmarked-axiom/other or shape-violation, or typeSort Prop) as unowned, as the statement-phase branch already does. Keep theorems and vocabulary as proof material. Add a proof-phase case to items.test.ts.
+  - [3]
+    - **id:** V2A1-C3
+    - **severity:** minor
+    - **where:** packages/core/src/review/items.ts:472-480 and 524-530 (`reachedByDraftOf` reads the current `premises`)
+    - **problem:** The D2-42 exception (a proof-phase definition reached by a same-step premise draft is its own `decl:` item, part of T's Result) is re-checked against whichever drafts exist now. §2.9 says it is "read from the ledger, never from later reach". When a later Submit step for T ends with a new Result version, T's unaccepted drafts are withdrawn and leave `premises` (§3.5, D2-17). A definition D that stays in ws/ then becomes part of `proof:T`. The `decl:D` record loses its draft, so reconcile reports "“‹item›” disappeared, and no decision removed it" and Apply is disabled, and `proof:T`'s content key changes for no new content.
+    - **evidence:** Code reading: `reachedByDraftOf(name, owner.step)` iterates `i.premises`; a withdrawn draft is no longer there, so D falls through to `acc(proofKey(owner.target))`.
+    - **fix:** Fix the exception when the step ends. For example, the integrator adds `draft?: string` (the premise key) to the ledger `created` entry, which 2d sets when a same-step draft reaches the declaration, and computeItems reads it instead of the current reach. Record the change in §8 and test that withdrawing the draft keeps `decl:D`.
+  - [4]
+    - **id:** V2A1-C4
+    - **severity:** minor
+    - **where:** packages/core/src/review/items.ts:185-193 (`sameDecl` compares text and facts only) with `outsideLines` masking every declaration
+    - **problem:** An existing declaration moved to another file with the same text gives no item and no problem. Apply would then write the move into the user's files with nothing reviewed, against D2-24 (every change in F belongs to an accepted item). The step limits compare by name, text and meaning, so they would not stop such a move either.
+    - **evidence:** Probe `v2a1_corr/probe/propax.json` `moved`: `GoodAddition` moved from Vocabulary.lean to the top of Main.lean gives drafts `[proof:cynder-not-good (asInBase)]` and problems `[]`.
+    - **fix:** Also compare each existing declaration's file path between B and W. Report a move as a difference: the card's statement item for a bound declaration, a `decl:` vocabulary change or unowned for an unbound one. Add a test.
+  - [5]
+    - **id:** V2A1-C5
+    - **severity:** minor
+    - **where:** packages/core/src/review/items.ts:268 (`blankComments` before comparing outside lines)
+    - **problem:** Comments outside declarations are never differences, so a comment Claude adds between declarations belongs to no item. planItemRevert removes only a declaration's span, so a comment left above a lemma that a Reject took out stays in ws/, is invisible to computeItems and the backstop, and reaches the user's files at Apply (D2-24). §8 records the decision ("Lean reads it as whitespace"), but not this consequence.
+    - **evidence:** Probe `v2a1_corr/probe/propax.json` `comment`: appending `-- Claude: this lemma was rejected` gives no item and no problem.
+    - **fix:** Attach a comment block added outside declarations to the item of the declaration that follows it (in its content key and provides, so revert and the backstop take it with that item). Alternatively, have the integrator record in §8 an explicit exception to D2-24 that includes the leftover after a revert.
+  - [6]
+    - **id:** V2A1-C6
+    - **severity:** nit
+    - **where:** Builder report, "Effects outside the repo and my scratch dir"
+    - **problem:** vitest 5 wrote 111 module-cache files to the repo-root `node_modules/.vitest-cache` during the build (16:30–16:37), which is outside the write locations the rules allow (packages, docs, test-fixtures, scratch). The report lists only the `packages/*/node_modules/.vite/vitest` result caches.
+    - **evidence:** `find node_modules/.vitest-cache -newermt '2026-11-19 16:00' ! -newer <my first log>` finds 111 files, timed 16:30 (31), 16:32 (5), 16:33 (2), 16:34 (72) and 16:37 (1). --no-cache does not stop these writes: my own probe runs added 76.
+    - **fix:** List this cache in the effects report, or point vitest's module cache at the scratch dir (e.g. a cacheDir / experimental cache setting) in future runs.
+- **checks_run:**
+  - git diff vs. a pre-2a1 reconstruction (HEAD + after_slice_1g.patch) of actions.ts, facts.ts, run.ts, index.ts and fakeFakes.ts: changes are additive only (typeConsts, refused, ActionOutcome.review/cascade/hiddenResults/reveal, RunView.session/inferences/step, export * from review, fakeFacts typeConsts options)
+  - find packages docs -newer after_slice_1g.patch: exactly the 31 files the report lists; no existing test file changed
+  - Contract comparison script over the plan's ts blocks: 72 declarations; only differences are the SessionPhase alias, the ComputeItemsInput alias and a leading `|` from formatting
+  - Quoted-text check (plan §2–§5 and §7 vs texts.ts): every UI text present; the unmatched quotes are parameterised examples or spec citations
+  - python3 hashlib: sha256 of '["run1","card:x"]' starts 28a92e030e357d5d; the unicode and 56-byte vectors match hash.test.ts
+  - core: capped.sh 1800 tsc --noEmit -p tsconfig.test.json -> exit 0, no output (154 files incl. 25 review/)
+  - runner: capped.sh 1800 tsc --noEmit -p tsconfig.test.json -> exit 0, no output
+  - webview: capped.sh 1800 tsc --noEmit -p tsconfig.json -> exit 0; -p tsconfig.node.json -> exit 0
+  - extension: capped.sh 1800 tsc --noEmit -p tsconfig.json -> exit 0
+  - core: capped.sh 1800 vitest run --maxWorkers=1 -> Test Files  59 passed (59), Tests  638 passed (638)
+  - webview: TMPDIR/TELELEAN_TEST_TMP=scratch capped.sh 1800 vitest run --maxWorkers=1 --no-cache -> Test Files  19 passed (19), Tests  313 passed (313)
+  - extension: same, --no-cache -> Test Files  22 passed (22), Tests  203 passed (203); packages/extension/out mtime still 13:47:18
+  - runner: env -u UPDATE_SEMANTIC_RECORDINGS capped.sh 1800 timeout 900 vitest run --maxWorkers=1 --no-cache test/gate/pure.test.ts test/semantic/checkFile.test.ts -> Test Files  2 passed (2), Tests  24 passed (24)
+  - runner (real Lean, MemAvailable ~14.9 GB): capped.sh 3000 timeout 900 vitest run --maxWorkers=1 --no-cache test/semantic/valueProbe.test.ts -> Test Files  1 passed (1), Tests  2 passed (2)
+  - runner (real Lean): capped.sh 3000 timeout 900 vitest run --maxWorkers=1 --no-cache test/semantic/refresh.test.ts -> Test Files  1 passed (1), Tests  9 passed (9)
+  - Not run: runner e2e and integration files that read RunView (fresh.e2e, m2flow, walkthrough.e2e); the RunView change is type-only and optional, and runner tsc is clean. Also not run: Playwright and the VS Code suite (the integrator's).
+  - Scratch probes (vitest --no-cache with a config in v2a1_corr/probe; root packages/core, cacheDir in scratch): id write-back after an arrow or premise write on a derived-id target produces card:<target> 'change' {id} (C1); proof-phase Prop axiom is owned by proof:T while the statement-phase one is unowned (C2); cross-file move gives no item or problem (C4); comment gives no item or problem (C5); anonymous instance inside a new namespace, `noncomputable section … end`, and a premise card id sorting after the target all handled correctly
+  - Side-effect audit: no repo source or git state changed; my core vitest rewrote packages/core/node_modules/.vite/vitest/da39…/results.json; probes added 76 files to node_modules/.vitest-cache; .vite-temp dirs touched (empty); no entries of mine left in /tmp; no processes of mine left running

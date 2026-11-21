@@ -194,11 +194,11 @@ describe('one RunManager per model root (section 8.1)', () => {
     const { host, api } = newHost(stub.ExtensionMode.Test);
     await host.openBoardCommand({ root: rootA });
     await sleep(0);
-    expect(posted(api, rootA).map((m) => m.type)).toEqual(['workspace', 'graph', 'run', 'proposal']);
+    expect(posted(api, rootA).map((m) => m.type)).toEqual(['workspace', 'graph', 'run', 'proposal', 'session']);
     const manager = managers[0];
     if (!manager) throw new Error('no RunManager');
     manager.run = sampleRun({ state: 'waiting-for-answer', subject: 'Other' });
-    manager.fire({ run: true, proposal: false });
+    manager.fire({ run: true, proposal: false , session: false });
     await sleep(0);
     const last = posted(api, rootA).at(-1);
     expect(last?.type).toBe('run');

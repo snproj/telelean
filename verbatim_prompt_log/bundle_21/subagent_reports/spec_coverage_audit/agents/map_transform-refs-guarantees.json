@@ -1,0 +1,1741 @@
+{
+  "summary": "Audit of spec v4.1 §8 TRANSFORM, §13 REFERENCES, §14 guarantees, Appendix B (Kept/Replaced/Generalised, B.1–B.7, Base and baseline, Backstop), Part 3 S1–S22, and Appendix A items A3, A7–A12, A16–A20, A25, A26, A29. 248 rows: 93 built, 61 planned-slice2, 22 planned-slice3, 46 for-slice4, 11 for-slice5, 8 narrowed-by-decision, 3 contradicted, 4 unassigned. Left to the other audits: Appendix B's Held sets, Storage, 'Sessions are runs' and canvas notes, and Appendix A items A1, A2, A4–A6, A13–A15, A21–A24, A27 and A28.\n\nUnassigned:\n- (1) §14.2: History never records where accepted Claude arrows came from.\n- (2) §14.2: signature axioms that are not a plain sort, predicate, function or constant are never named in a report.\n- (3) S9 / ES-9 / Part 4: the board's 'Delete card only, keep Lean' is still offered (webview/src/dialogs/Dialogs.tsx:227,280; core/src/edit/planDelete.ts keepLean), and no plan removes it.\n- (4) S20's M3 consistency check. The spec itself defers this, so it is not a v4 obligation.\n\nContradicted:\n- (a) §14.2: signatureAxioms (core/src/gate/permitted.ts:35-47) leaves out non-Prop axioms of vocabulary kind 'other' in subject modules. The spec includes them. The code is stricter and no v4 decision logs this.\n- (b) §14.9 and AR-3: slice2-plan §4.9 says 'A cycle already in B is never counted'. A hand-written cycle in B that does not pass through the question (slice 1's start check allows this) would therefore never block Apply.\n- (c) B.7: slice 1 also stores a canvas position when the A|P box adds a card. This is benign.\n\nNarrowed by decisions: D2-15 (Shaky splits), D3-47 (TR-14 re-proving in the session that broke the proof), D3-9 (FZ-5 'Allow this change'; §14.3 and the backstop's held clause), D2-26 (§14.4, accepting an SCC's items one by one), D2-69 and D3-31 (§14.6 side channels), AP-21 (the B.2 fallback gap), D2-24 (stricter backstop exemptions).\n\nEvery TR-* clause is left to slice 4 and every RF-* clause to slice 5, with these exceptions:\n- TR-10's 'can be frozen' is planned in slice 3.\n- TR-11's board path, TR-11's 'Claude never changes kind' and TR-13's board 'Delete anyway' are built.\n- TR-7's Shaky split and TR-14's re-prove are narrowed.\n\nRisk for RF-2: card ids are sentence slugs today (core/src/markup/ids.ts), so ids can be reused. Slice 3 keys standing freezes by card id.\n\nSlice 2 status: only the core modules of 2a1/2a2 exist (items, closure, classify, deps, reveal, reconcile, reducer), and they are not wired in. judgeState, permittedFor, proposeArrowProblems, applyBackstop, planItemRevert, planSubmit, formalizeStartProblems, baseMask and buildSessionView are still notImplemented stubs in core/src/review/. So B.1–B.4 inside sessions, and the backstop, are planned, not built. gate/rules.ts is being refactored right now (2b1a), so its rules are cited by function name. The slice-3 plan is under review and may change.",
+  "rows": [
+    {
+      "clause": "TR-1 (a)",
+      "requirement": "The transform window shows draft cards that start as exact copies of the selected cards.",
+      "status": "for-slice4",
+      "where": "AP-2; slice1/2/3-plan intros ('the transform window (slice 4)')",
+      "note": "Nothing built; slice 3 adds only hooks (slice3-plan §3.12)."
+    },
+    {
+      "clause": "TR-1 (b)",
+      "requirement": "Submitting the window unchanged changes nothing.",
+      "status": "for-slice4",
+      "where": "AP-2; slice1/2/3-plan intros",
+      "note": ""
+    },
+    {
+      "clause": "TR-2 (a)",
+      "requirement": "In the window you can create new cards of any kind, vocabulary included.",
+      "status": "for-slice4",
+      "where": "AP-2; slice1/2/3-plan intros",
+      "note": "The board's A|P box (BD-8) is built but adds only axioms or propositions, outside sessions."
+    },
+    {
+      "clause": "TR-2 (b)",
+      "requirement": "A new card's Kind (Axiom or Proposition; a vocabulary card's Lean name) is chosen at creation and is never fuzzy.",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": ""
+    },
+    {
+      "clause": "TR-2 (c)",
+      "requirement": "telelean gives each new card its id.",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": "Must respect RF-2's never-reused ids."
+    },
+    {
+      "clause": "TR-3 (a)",
+      "requirement": "A card can be dragged to the trash, stays visible there and can be dragged back.",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": ""
+    },
+    {
+      "clause": "TR-3 (b)",
+      "requirement": "Everything in the trash is deleted when the result is applied.",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": ""
+    },
+    {
+      "clause": "TR-3 (c)",
+      "requirement": "There is no separate 'delete permanently' (★D4 (a)).",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": "No such action exists today."
+    },
+    {
+      "clause": "TR-4 bullet 1 (fuzzy)",
+      "requirement": "An unfrozen empty field is fuzzy: it shows 'Claude fills this' with its own icon and never uses italics, dashing or translucency.",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": ""
+    },
+    {
+      "clause": "TR-4 bullet 2 (open)",
+      "requirement": "An unfrozen filled field is open: Claude may change it if the transform needs it.",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": ""
+    },
+    {
+      "clause": "TR-4 starting states (new card)",
+      "requirement": "A new card's fields start fuzzy, except its Kind and Lean name (chosen) and its Proof (empty and keep-empty).",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": ""
+    },
+    {
+      "clause": "TR-4 starting states (copied card)",
+      "requirement": "A copied card's Sentence, Why, Stance and Source start open; its Lean statement, Dependencies and Proof start frozen; its empty fields start keep-empty (one click makes them fuzzy).",
+      "status": "for-slice4",
+      "where": "AP-2; slice3-plan §2.2 (FreezeReason 'transform' typed, never made), §3.12",
+      "note": "Also S11's fix."
+    },
+    {
+      "clause": "TR-4 fuzzy Dependencies",
+      "requirement": "A fuzzy Dependencies field asks Claude to propose what the card follows from; in the window it is edited as a list of # card references or the 'follows from nothing' mark.",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": "Also needs slice 5's # references."
+    },
+    {
+      "clause": "TR-4 Proof field",
+      "requirement": "A Proof is never fuzzy; in a transform you keep or clear it, and clearing leaves the card unproved, never pending.",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": ""
+    },
+    {
+      "clause": "TR-5",
+      "requirement": "Typing in a field freezes it (a session freeze), and clearing a field makes it fuzzy.",
+      "status": "for-slice4",
+      "where": "D3-44 ('Typing in a transform freezes too (TR-5, slice 4)'); slice3-plan §2.2",
+      "note": ""
+    },
+    {
+      "clause": "TR-6",
+      "requirement": "Only the CF-2 fields can be edited in the window.",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": ""
+    },
+    {
+      "clause": "TR-7 (a)",
+      "requirement": "A 'Claude may add cards' checkbox (default off) says whether Claude may add axiom or proposition cards to fill gaps.",
+      "status": "for-slice4",
+      "where": "AP-2; D3-43",
+      "note": "D3-43's fallback may move Formalize's switch of the same name to slice 4 beside it."
+    },
+    {
+      "clause": "TR-7 (b)",
+      "requirement": "In a transform, new plain vocabulary is always allowed and is reviewed like everything else.",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": "Slice 2 already makes Claude's new vocabulary in Formalize steps into vocab: items (slice2-plan §4.2)."
+    },
+    {
+      "clause": "TR-7 (c)",
+      "requirement": "Splitting a Shaky card is always allowed and reviewed.",
+      "status": "narrowed-by-decision",
+      "where": "D2-15; slice3-plan §3.12 ('D2-15 stays (no Shaky splits)' in slice 4)",
+      "note": "A Shaky step re-proposes content only: no new cards, splits or merges."
+    },
+    {
+      "clause": "TR-8",
+      "requirement": "An Instructions box takes prose for Claude, with # references.",
+      "status": "for-slice4",
+      "where": "AP-2; D2-13",
+      "note": "Until then a Shaky note and 'Ask me instead' carry free text (D2-13); # references are slice 5."
+    },
+    {
+      "clause": "TR-9 (a)",
+      "requirement": "Submit transform finishes the window.",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": ""
+    },
+    {
+      "clause": "TR-9 (b)",
+      "requirement": "Cancel closes without changes, and a decline-Transform's item returns to 'in review'.",
+      "status": "for-slice4",
+      "where": "D2-14 (Transform shown disabled in the decline menu until slice 4)",
+      "note": ""
+    },
+    {
+      "clause": "TR-10 (a)",
+      "requirement": "Any card can be transformed, including vocabulary cards and proposed cards.",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": ""
+    },
+    {
+      "clause": "TR-10 (b)",
+      "requirement": "Other subjects' vocabulary can be frozen.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §2.2 (FreezeTarget 'vocab', any subject's (TR-10)), §3.6",
+      "note": ""
+    },
+    {
+      "clause": "TR-10 (c)",
+      "requirement": "Other subjects' vocabulary cannot be transformed (it can be referenced).",
+      "status": "for-slice4",
+      "where": "AP-2; D3-41 (a session never changes another subject)",
+      "note": "Referencing it is slice 5."
+    },
+    {
+      "clause": "TR-11 (board)",
+      "requirement": "Outside the window, a card's Kind changes only through your board gestures, carried out by D-11 with the impact shown (AR-7 removes incoming arrows, AR-6 keeps the axiom pending).",
+      "status": "built",
+      "where": "slice1-plan §8 builders 1a, 1b, 1c2; core/src/kindChange.ts (kindChangeImpact); core/src/edit/planArrows.ts",
+      "note": ""
+    },
+    {
+      "clause": "TR-11 (window)",
+      "requirement": "In a transform, Kind changes only through the window's Kind field, carried out by D-11 with its impact shown.",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": ""
+    },
+    {
+      "clause": "TR-11 (empty Dependencies)",
+      "requirement": "Emptying Dependencies, by you or by Claude, never changes Kind: the card stays a proposition with no stated basis.",
+      "status": "built",
+      "where": "slice1-plan §8 builder 1b (remove-arrows drops only the premises: line); core/src/gate/rules.ts markupFindings (G5 compares type)",
+      "note": "Claude's removals come with slice 3 (slice3-plan §3.10 remove_arrow), under the same G5 rule."
+    },
+    {
+      "clause": "TR-11 (Claude)",
+      "requirement": "Claude never carries out a kind change.",
+      "status": "built",
+      "where": "core/src/gate/rules.ts COMPARED_FIELDS 'type' + markupFindings; slice2-plan §4.9 G5, §4.10 'kind'",
+      "note": ""
+    },
+    {
+      "clause": "TR-12 (a)",
+      "requirement": "On submit, typed Lean must pass the single-term rule (statements, proofs) or the vocabulary shape rule (vocabulary declarations).",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": "Both rules exist (core/src/gate/g0.ts:231 single-term rule for ghost text; core/src/project/vocabulary.ts shape check) but are not applied to typed Lean."
+    },
+    {
+      "clause": "TR-12 (b)",
+      "requirement": "Typed Lean must elaborate in a scratch Lean file against the current vocabulary.",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": "runner/src/gate/scratch.ts exists for ghosts."
+    },
+    {
+      "clause": "TR-12 (c)",
+      "requirement": "Names that do not exist yet are allowed and listed as 'Claude must define: …'.",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": ""
+    },
+    {
+      "clause": "TR-13 bullet 1",
+      "requirement": "Before submit, deleting or changing a card others rely on (arrows, proofs, references) lists them, says which are frozen, and offers rewrite (D-11), delete too, or leave the unfrozen ones to Claude.",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": ""
+    },
+    {
+      "clause": "TR-13 (nothing left broken)",
+      "requirement": "Inside a session nothing is ever left broken.",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": "Slice 3 applies the same idea to whole-model changes with Proof broken items (slice3-plan §3.10, D3-10)."
+    },
+    {
+      "clause": "TR-13 (Delete anyway)",
+      "requirement": "'Delete anyway' (dependents marked broken) remains only for direct edits outside a session: the board's Delete and transforms applied directly.",
+      "status": "built",
+      "where": "webview/src/dialogs/Dialogs.tsx:218-224; board locked during a run (slice1-plan §8 builder 1f)",
+      "note": "The half for transforms applied directly is slice 4."
+    },
+    {
+      "clause": "TR-13 bullet 2",
+      "requirement": "The window warns when you change a sentence whose Lean stays frozen.",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": ""
+    },
+    {
+      "clause": "TR-14 (a)",
+      "requirement": "A transform step writes no proofs.",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": "Also S8's fix."
+    },
+    {
+      "clause": "TR-14 (b)",
+      "requirement": "A proof that stops building because of the transform becomes a 'Proof broken ‹card›' item in the card's proof slot.",
+      "status": "for-slice4",
+      "where": "AP-2; slice3-plan §3.10 (Proof broken for whole-model changes, D3-10)",
+      "note": "Slice 3's item kind and mark_proof_broken can be reused."
+    },
+    {
+      "clause": "TR-14 (c)",
+      "requirement": "A Proof broken card can be re-proved with Formalize for dependencies.",
+      "status": "narrowed-by-decision",
+      "where": "D3-47 (slice3-plan §3.10)",
+      "note": "Not in the session that broke it: only after Apply."
+    },
+    {
+      "clause": "TR-14 (d)",
+      "requirement": "Or it can be made pending: its proof is replaced by axiom ….holds, a belief item needing its own Accept.",
+      "status": "for-slice4",
+      "where": "D3-10 ('make it pending' waits for slice 4)",
+      "note": ""
+    },
+    {
+      "clause": "TR-15 (needs-Claude test)",
+      "requirement": "A transform needs Claude if and only if it has a fuzzy field, instructions, 'Claude may add cards' ticked, an open Lean field on a card whose sentence changed, typed Lean naming something undefined, or dependents left to Claude.",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": ""
+    },
+    {
+      "clause": "TR-15 (outside a session)",
+      "requirement": "Otherwise, outside a session (ES-3's provisional one included), telelean applies it as direct edits in one Undo step with no session; TR-12's checks run, but not the build or the full gate.",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": ""
+    },
+    {
+      "clause": "TR-15 (inside a session)",
+      "requirement": "Inside a session it is applied at Submit review, and only what you typed plus telelean's follow-on edits count as yours.",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": ""
+    },
+    {
+      "clause": "TR-15 (copied content)",
+      "requirement": "Content copied from Claude's proposal stays Claude's: same item id and RV-7 class, back in review marked 'updated' if you changed any of its fields, with RV-5, RV-6 and RV-7 applying.",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": "Also DO-2 and Appendix B's baseline rule."
+    },
+    {
+      "clause": "TR-15 (follow-on edits)",
+      "requirement": "telelean's follow-on edits (removing a deleted card's arrows, D-11 rewrites, pins, ids) may touch frozen cards; they count as your change, and TR-13 lists them.",
+      "status": "for-slice4",
+      "where": "slice3-plan §3.12 (slice-4 hooks: reason 'transform', 'revalue' op)",
+      "note": ""
+    },
+    {
+      "clause": "RF-1 (a)",
+      "requirement": "Typing # in any prose field (sentences, Why, transform instructions, answers to Claude) opens a dropdown of cards and fields, filtered as you type.",
+      "status": "for-slice5",
+      "where": "AP-2; slice1/2/3-plan intros ('References (slice 5)')",
+      "note": ""
+    },
+    {
+      "clause": "RF-1 (b)",
+      "requirement": "Picking an entry inserts a reference chip ('Card › Field'), and clicking the chip reveals the target.",
+      "status": "for-slice5",
+      "where": "AP-2",
+      "note": ""
+    },
+    {
+      "clause": "RF-2 (a)",
+      "requirement": "A reference is stored by stable id: the card's id, or a vocabulary card's Lean name, plus an optional field.",
+      "status": "for-slice5",
+      "where": "AP-2",
+      "note": ""
+    },
+    {
+      "clause": "RF-2 (b)",
+      "requirement": "telelean never reuses a card id within a subject.",
+      "status": "for-slice5",
+      "where": "AP-2",
+      "note": "Not true today: ids are sentence slugs (core/src/markup/ids.ts slugOf), so a deleted card's id comes back for a new card with the same sentence. Slice 3 keys standing freezes by card id (D3-16), so a hand-deleted card's freeze record could attach to such a new card."
+    },
+    {
+      "clause": "RF-2 (c)",
+      "requirement": "A reference always shows its target's current name, and a deleted target shows 'deleted card'.",
+      "status": "for-slice5",
+      "where": "AP-2",
+      "note": ""
+    },
+    {
+      "clause": "RF-2 (d)",
+      "requirement": "In Lean docstrings and everything Claude reads, references appear as the target's sentence.",
+      "status": "for-slice5",
+      "where": "AP-2",
+      "note": ""
+    },
+    {
+      "clause": "RF-3",
+      "requirement": "# does not open the dropdown in Lean fields, and Esc leaves a plain #.",
+      "status": "for-slice5",
+      "where": "AP-2",
+      "note": ""
+    },
+    {
+      "clause": "RF-4",
+      "requirement": "Cards get no short numbers; you find them by searching their sentences (★D6 (a)).",
+      "status": "for-slice5",
+      "where": "AP-2",
+      "note": "No short numbers exist today, and the webview has no sentence search."
+    },
+    {
+      "clause": "RF-5 (a)",
+      "requirement": "A frozen card's references hold their targets (FZ-4).",
+      "status": "for-slice5",
+      "where": "slice3-plan intro and §3.4 step 3 (hook heldFields() returns [])",
+      "note": "Also S12's fix."
+    },
+    {
+      "clause": "RF-5 (b)",
+      "requirement": "TR-13 warns about references as reliance.",
+      "status": "for-slice5",
+      "where": "AP-2",
+      "note": "Needs slice 4's TR-13."
+    },
+    {
+      "clause": "§14 item 1 (a)",
+      "requirement": "A session's changes reach your files only when it ends successfully.",
+      "status": "built",
+      "where": "slice1-plan §8 builder 1f (the run is the session: files are written only at Accept, and the board is locked meanwhile); slice2-plan §3.1 ('Files change only at Apply'), §3.10",
+      "note": "Slice 2 re-implements this for multi-stage sessions."
+    },
+    {
+      "clause": "§14 item 1 (b)",
+      "requirement": "They reach your files only as a state that passed every check.",
+      "status": "built",
+      "where": "runner/src/run/manager.ts:1677-1688 (Accept applies the gated proposal and refuses on drift); slice2-plan §3.10 steps 2-4 (final check on exactly F, then the backstop)",
+      "note": ""
+    },
+    {
+      "clause": "§14 item 2 (proved)",
+      "requirement": "'Proved' means Lean checked the proof with no sorry, resting on exactly what it lists.",
+      "status": "built",
+      "where": "core/src/gate/rules.ts notProvedFindings, sorryAxiomFindings, footprintFindings; runner G4",
+      "note": "Per inference in slice 2: slice2-plan §4.9."
+    },
+    {
+      "clause": "§14 item 2 bullet 1 (sources)",
+      "requirement": "For Formalize the permitted list contains only the sources of the selected arrows, plus those of arrows you accepted from Claude.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.8 (Q(T) ∪ E(T)); built for selected arrows: core/src/gate/permitted.ts:84-122, core/src/formalize.ts:125",
+      "note": "Claude's arrows (E(T)) arrive with slice 2."
+    },
+    {
+      "clause": "§14 item 2 bullet 1 (accepted arrows yours)",
+      "requirement": "Arrows you accepted from Claude become yours.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.10 (Apply writes F), §4.8, D2-20, D2-34",
+      "note": ""
+    },
+    {
+      "clause": "§14 item 2 bullet 1 (History provenance)",
+      "requirement": "History records where accepted Claude arrows came from.",
+      "status": "unassigned",
+      "where": "none",
+      "note": "Apply's history entry has only a label (D2-67). AttemptRecord (core/src/run.ts:590) holds the question, not Claude's arrows. The ledger lives only in the run's run.json."
+    },
+    {
+      "clause": "§14 item 2 bullet 2",
+      "requirement": "A proved source contributes its own basis; an axiom or pending source contributes its claim, marked 'pending' for the latter.",
+      "status": "built",
+      "where": "core/src/gate/permitted.ts:50-76; core/src/project/build.ts:653-656 (rests-on-pending, TL102); slice2-plan §4.8",
+      "note": "Sources proved in the session come with slice 2."
+    },
+    {
+      "clause": "§14 item 2 bullet 3",
+      "requirement": "Lean's standard axioms (propext, Classical.choice, Quot.sound) are permitted.",
+      "status": "built",
+      "where": "core/src/gate/permitted.ts:113",
+      "note": ""
+    },
+    {
+      "clause": "§14 item 2 bullet 4 (signature)",
+      "requirement": "The signature is every non-Prop axiom no card owns, including your own shape-breaking ones and those in the library root.",
+      "status": "contradicted",
+      "where": "core/src/gate/permitted.ts:35-47 (signatureAxioms)",
+      "note": "Stricter than the spec: a non-Prop axiom of vocabulary kind 'other' in a subject module (e.g. axiom weird : Empty) is left out, so a proof using it fails 'footprint'. Library-root ones are kept. This is a pre-v4 M2 choice, not logged as a v4 decision; slice2-plan §4.8 reuses it."
+    },
+    {
+      "clause": "§14 item 2 bullet 4 (named in report)",
+      "requirement": "Each signature axiom that is not a plain sort, predicate, function or constant is named in the report.",
+      "status": "unassigned",
+      "where": "none",
+      "note": "PermittedSummary.signature exists (runner/src/run/manager.ts:295), but no view shows it, and D2-68 drops 'frozen' from session RunViews. A library-root axiom weird : Empty is permitted silently."
+    },
+    {
+      "clause": "§14 item 2 bullet 5",
+      "requirement": "The existence presuppositions of the statements involved are permitted.",
+      "status": "built",
+      "where": "core/src/gate/permitted.ts:95,101; slice2-plan §4.8",
+      "note": ""
+    },
+    {
+      "clause": "§14 item 3 (data telelean keeps)",
+      "requirement": "Claude never changes data telelean keeps, and telelean checks this itself.",
+      "status": "built",
+      "where": "core/src/gate/rules.ts COMPARED_FIELDS + markupFindings (G5: type, premises, follows_from, ids, lean: lines, provenance); .telelean/ is outside ws/; slice2-plan §4.9 G5, §4.10 'unowned'",
+      "note": ""
+    },
+    {
+      "clause": "§14 item 3 (frozen and held)",
+      "requirement": "Claude never changes frozen or held content, and telelean checks this itself.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.2-§3.5, D3-2, D3-3, D3-51",
+      "note": ""
+    },
+    {
+      "clause": "§14 item 3 (FZ-5 exception)",
+      "requirement": "The one exception is a change you allow under FZ-5, which needs your Accept.",
+      "status": "narrowed-by-decision",
+      "where": "D3-9",
+      "note": "No 'Allow this change': held content changes only after you unfreeze what holds it."
+    },
+    {
+      "clause": "§14 item 4",
+      "requirement": "The accepted items always form a self-contained whole.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.5, §4.6 (properties), §3.7, §4.10 'not-accepted'/'scc'; core/src/review/deps.ts and reducer.ts built in 2a2, not wired in",
+      "note": "Slice 1's all-or-nothing Accept avoids the problem."
+    },
+    {
+      "clause": "§14 item 4 (cycles of items)",
+      "requirement": "(same guarantee) No accepted item rests on an item that is not accepted.",
+      "status": "narrowed-by-decision",
+      "where": "D2-26",
+      "note": "Items in a dependency cycle are accepted one by one, so during a stage an accepted SCC member can rest on one still in review. Submit and Apply require the whole SCC accepted."
+    },
+    {
+      "clause": "§14 item 5 (a)",
+      "requirement": "Nothing becomes something the model assumes without your individual Accept.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.4 (core/src/review/classify.ts:108, built in 2a2), §4.6 (own Accept, D2-32), §4.10 own-accept/class",
+      "note": "Slice 1 accepts a whole proposal at once."
+    },
+    {
+      "clause": "§14 item 5 (b)",
+      "requirement": "Apply checks this again, never reusing an earlier result.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.10 step 4, §4.10, §6.1 (2f spy test)",
+      "note": "core/src/review/backstop.ts is still a stub."
+    },
+    {
+      "clause": "§14 item 6",
+      "requirement": "You judge what the statements mean before you see whether they were proved, unless you press Show result.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.7 (D2-61, D2-5, D2-10), §5.10",
+      "note": "Slice 1 (the D-19 stepper plus the 1d overlay) has known leaks listed in slice2-plan §7.3, which slice 2 removes. Show results is unavailable while a step runs (D2-62)."
+    },
+    {
+      "clause": "§14 item 6 (side channels)",
+      "requirement": "(same guarantee) Nothing tells the outcome before the reveal.",
+      "status": "narrowed-by-decision",
+      "where": "D2-69; slice2-plan §4.7 ('Residual channels, accepted'); D3-31",
+      "note": "Step durations, Claude's questions, later visible content in the same queue, Lean name clashes and the words of unfreeze requests may hint at outcomes."
+    },
+    {
+      "clause": "§14 item 7 (arrows)",
+      "requirement": "In every state telelean judges in a session, every card a proposition's proof uses directly has a drawn arrow into it.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.9 (B.2 per inference, every purpose), §3.10 step 2, §4.10 'b2', D2-59; built for the run's single target: core/src/gate/rules.ts undeclaredPremiseFindings",
+      "note": ""
+    },
+    {
+      "clause": "§14 item 7 (band)",
+      "requirement": "Each band shows exactly the arrows whose sources the proof uses directly.",
+      "status": "built",
+      "where": "webview/src/board/band.ts:73-106",
+      "note": ""
+    },
+    {
+      "clause": "§14 item 7 (computed from Lean)",
+      "requirement": "direct(v) and the band are computed from Lean's elaborated proof, never from Claude's account.",
+      "status": "built",
+      "where": "core/src/project/edges.ts:160 (directWalk over DeclFacts.valueConsts); runner/src/semantic/checkFile.ts (value probe); slice1-plan §8 builder and fixer 1d",
+      "note": "Without the probe's facts the board falls back to the source text with no ✓, and the gate refuses ('source-only')."
+    },
+    {
+      "clause": "§14 item 7 (hand proofs, deleted arrows)",
+      "requirement": "For hand-written proofs and deleted arrows the board flags each missing arrow (TL107), and the band loses its ✓.",
+      "status": "built",
+      "where": "core/src/project/edges.ts:362-372; webview/src/board/band.ts:87",
+      "note": ""
+    },
+    {
+      "clause": "§14 item 8",
+      "requirement": "The green glow appears only on established cards.",
+      "status": "built",
+      "where": "core/src/project/build.ts:927-948 (markEstablished); webview/src/model/cardData.ts:147-150 (cardGlow)",
+      "note": "Slice 2's base mask keeps hidden results unglowing (slice2-plan §4.7)."
+    },
+    {
+      "clause": "§14 item 9 (never writes)",
+      "requirement": "telelean never writes a cycle of arrows.",
+      "status": "built",
+      "where": "core/src/edit/planArrows.ts:84-92 (your arrows); slice2-plan §4.9 B.3 'cycle' and proposeArrowProblems, §4.10 'cycle' (Claude's arrows)",
+      "note": "In slice 1 Claude adds no arrows."
+    },
+    {
+      "clause": "§14 item 9 (formalize)",
+      "requirement": "telelean refuses to formalize over a cycle.",
+      "status": "built",
+      "where": "core/src/formalize.ts:108-142 (formalizeCycleProblem); AP-13; slice2-plan §4.12 check 6",
+      "note": "Refused only when the target or a selected source lies on the cycle (slice1-plan §8 builder 1e). AR-3 says any cycle in your files blocks Formalize."
+    },
+    {
+      "clause": "§14 item 9 (apply)",
+      "requirement": "telelean refuses to apply over a cycle.",
+      "status": "contradicted",
+      "where": "slice2-plan §4.9 B.3 ('A cycle already in B is never counted (AP-13)'), §4.10 'cycle'",
+      "note": "Cycles a session would create are refused. But a hand-written cycle already in B that does not pass through the question (slice 1's start check allows that) is never counted, so Apply goes ahead; AR-3 says such a cycle blocks Apply. The scope of §4.12 check 6 is not stated."
+    },
+    {
+      "clause": "§14 item 9 (flagged)",
+      "requirement": "A cycle you write by hand is flagged (TL015).",
+      "status": "built",
+      "where": "core/src/project/build.ts:730",
+      "note": ""
+    },
+    {
+      "clause": "§14 item 10 (only you)",
+      "requirement": "Only you change a card's kind; Claude never does.",
+      "status": "built",
+      "where": "core/src/gate/rules.ts COMPARED_FIELDS 'type' (G5); slice2-plan §4.9 G5, §4.10 'kind'; slice3-plan §3.10 ('kind' refuses a non-PROPOSITION intermediate)",
+      "note": ""
+    },
+    {
+      "clause": "§14 item 10 (board ways)",
+      "requirement": "You change a kind by dragging, by drawing an arrow into an axiom, or by marking 'follows from nothing'.",
+      "status": "built",
+      "where": "slice1-plan §8 builders 1a, 1b, 1c2",
+      "note": ""
+    },
+    {
+      "clause": "§14 item 10 (transform)",
+      "requirement": "You can also change a kind in a transform.",
+      "status": "for-slice4",
+      "where": "AP-2; TR-11",
+      "note": ""
+    },
+    {
+      "clause": "§14 item 11 (base)",
+      "requirement": "During a session the session's base never changes.",
+      "status": "built",
+      "where": "slice1-plan §8 builder 1f ('The base never moves (checked)'); slice2-plan §3.1",
+      "note": ""
+    },
+    {
+      "clause": "§14 item 11 (drift)",
+      "requirement": "Nothing is applied while your files differ from the base.",
+      "status": "built",
+      "where": "runner/src/run/manager.ts:1677-1688 (Accept's drift refusal, atomic since 1e); slice2-plan §3.9, §3.10 (live drift disables Apply)",
+      "note": ""
+    },
+    {
+      "clause": "§14 item 11 (two stacks)",
+      "requirement": "Undo never reaches from one view's stack into the other's.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §5.12 (D2-38), §4.6; built part: the board stack is locked during a run (slice1-plan §8 builder 1f)",
+      "note": "Slice 1 has no session stack yet."
+    },
+    {
+      "clause": "§14 item 11 (Claude step)",
+      "requirement": "Undo never reaches back past a Claude step.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.6 (seals, D2-54), §3.6; seal action in core/src/review/reducer.ts:1006 (2a2, not wired in); slice3-plan D3-23 (answers also seal)",
+      "note": ""
+    },
+    {
+      "clause": "App B Kept (G0)",
+      "requirement": "G0, the forbidden-text scan, is kept.",
+      "status": "built",
+      "where": "core/src/gate/g0.ts; slice2-plan §4.9 ('G0 and G1 against B'), D2-52 (stray-command)",
+      "note": ""
+    },
+    {
+      "clause": "App B Kept (build)",
+      "requirement": "The build (G1) is kept.",
+      "status": "built",
+      "where": "runner G1; core/src/gate/rules.ts buildFindings; slice2-plan §4.9",
+      "note": ""
+    },
+    {
+      "clause": "App B Kept (sorry, example)",
+      "requirement": "No sorry and no example are kept.",
+      "status": "built",
+      "where": "core/src/gate/rules.ts sorryAxiomFindings, exampleFindings, proofBeforeFreezeFindings; slice2-plan §4.9",
+      "note": ""
+    },
+    {
+      "clause": "App B Kept (shape rule)",
+      "requirement": "The vocabulary shape rule now also applies to changed items.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.9 ('the vocabulary shape rule, for new and changed items')",
+      "note": "Slice 1 judges new items only (vocabularyShapeFindings); existing-changed refuses changed ones outright."
+    },
+    {
+      "clause": "App B Kept (definition questions)",
+      "requirement": "The definition questions now also cover changed definitions and items that change kind.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.2 (decl: items, vocabulary changes included), §4.4 b4, §4.10 own-accept (c), D2-18",
+      "note": "Changed definitions first occur with the whole model open (slice3-plan §3.10)."
+    },
+    {
+      "clause": "App B Kept (per inference)",
+      "requirement": "Per inference: the footprint within its permitted set, statements fixed, and Lean's comparator (G4).",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.3 steps 4-5 (D2-19), §4.9, §3.10 step 2; built for one target: core/src/gate/rules.ts footprintFindings, statementChangedFindings; runner G4",
+      "note": ""
+    },
+    {
+      "clause": "App B Kept (status-mismatch)",
+      "requirement": "In a step that does not finish proved, each target's .holds stays byte-identical to its version at the step's start, removals and changed theorems included.",
+      "status": "built",
+      "where": "core/src/gate/rules.ts statusMismatchFindings (tokens changed/removed; slice1-plan §8 fixer 1e); slice2-plan §4.9",
+      "note": ""
+    },
+    {
+      "clause": "App B Replaced (frozen and held check)",
+      "requirement": "'Existing declarations unchanged' and 'your words untouched' become the frozen and held check: text compared directly, meaning compared in Lean by term comparison or at least fully explicit printing.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.2-§3.5, D3-2 (meaningKey: a hash of the elaborated term; the printed fallback refuses Apply), D3-3",
+      "note": "Until then slice 2's step limits compare printed type and value plus constant sets (D2-41)."
+    },
+    {
+      "clause": "App B Replaced (type:)",
+      "requirement": "Data telelean keeps never changes: Claude may not change an existing block's type:.",
+      "status": "built",
+      "where": "core/src/gate/rules.ts COMPARED_FIELDS + markupFindings; slice2-plan §4.9 G5",
+      "note": ""
+    },
+    {
+      "clause": "App B Replaced (new blocks)",
+      "requirement": "Claude may add a block only for a proposed premise, when 'Claude may add cards' is on, for a Shaky split, or as new vocabulary.",
+      "status": "built",
+      "where": "core/src/gate/rules.ts markupFindings (only telelean's adoption blocks); slice2-plan §4.9 G5 ('new blocks only for ledger premises'); slice3-plan §3.10 add_card (3c2)",
+      "note": "Shaky splits are disallowed (D2-15); add_card may fall back to slice 4 (D3-43)."
+    },
+    {
+      "clause": "App B Generalised (new-axiom)",
+      "requirement": "new-axiom counts an axiom as new unless your files had one of that name and type when the session started.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.9 (new-axiom allowance 1, token 'type-changed')",
+      "note": "Slice 1 compares by name only (newAxiomFindings); existing-changed catches a changed type."
+    },
+    {
+      "clause": "App B Generalised (producing inference)",
+      "requirement": "Each declaration Claude adds is judged against the permitted set of the inference that produced it.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.9 footprint (ledger 'created'), D2-43",
+      "note": ""
+    },
+    {
+      "clause": "App B Generalised (accepted content)",
+      "requirement": "Accepted content is protected by the frozen check, not by the baseline.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.4 step 1, §3.7 (RV-4), D3-4",
+      "note": "Interim in slice 2: the step limits and the accepted content key at Apply (slice2-plan intro)."
+    },
+    {
+      "clause": "B.1 Q(T)",
+      "requirement": "The question Q(T) is the set of selected arrows into T.",
+      "status": "built",
+      "where": "core/src/formalize.ts:125 (host start check); slice1-plan §5; slice2-plan §2.2 (SessionInference.question, several targets)",
+      "note": "One target per Formalize in slice 1 (AP-9)."
+    },
+    {
+      "clause": "B.1 E(T)",
+      "requirement": "Claude's answer may add arrows E(T), each an item.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.8 (propose_arrow, D2-1), §4.2, §4.8",
+      "note": ""
+    },
+    {
+      "clause": "B.1 claim",
+      "requirement": "A source contributes its .holds if it is an axiom or pending.",
+      "status": "built",
+      "where": "core/src/gate/permitted.ts:50-59; slice2-plan §4.8 (claim)",
+      "note": ""
+    },
+    {
+      "clause": "B.1 own or accepted proof",
+      "requirement": "A source contributes its footprint if it is proved by your own proof or by a proof accepted earlier in the session.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.8 (own proof, session proof); own-proof half built: core/src/gate/permitted.ts:67-76",
+      "note": ""
+    },
+    {
+      "clause": "B.1 session proof in review",
+      "requirement": "A source proved earlier in this session whose Result is still in review contributes its footprint as judged in the current state, and the new Result depends on that Result (RV-5).",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.8 (throughResults), §4.5 rule 2 (core/src/review/deps.ts, built in 2a2), D2-48",
+      "note": "D2-48 also counts Shaky Results and to-be-redone ones not taken out."
+    },
+    {
+      "clause": "B.1 no .holds",
+      "requirement": "A source with no .holds contributes nothing (AR-8).",
+      "status": "built",
+      "where": "core/src/gate/permitted.ts:50-59 (unusable); slice2-plan §4.8 'no-holds'",
+      "note": ""
+    },
+    {
+      "clause": "B.1 exclusions",
+      "requirement": "T's own .holds and sorryAx are excluded.",
+      "status": "built",
+      "where": "core/src/gate/permitted.ts:111",
+      "note": ""
+    },
+    {
+      "clause": "B.2 subset",
+      "requirement": "direct(T) must be a subset of the sources of Q(T) ∪ E(T).",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.9 (undeclared-premise with E(T), D2-59); built for Q plus adopted ghosts: core/src/gate/rules.ts undeclaredPremiseFindings (token 'unselected')",
+      "note": ""
+    },
+    {
+      "clause": "B.2 elaborated walk",
+      "requirement": "direct(T) is computed from the elaborated proof by a Lean probe beside #print axioms, following the values of declarations no card owns until a card's .holds or another declaration bound to a card is reached.",
+      "status": "built",
+      "where": "runner/src/semantic/checkFile.ts (value probe); core/src/project/edges.ts:160 (directWalk); slice1-plan §8 builder and fixer 1d",
+      "note": ""
+    },
+    {
+      "clause": "B.2 no .ilean",
+      "requirement": ".ilean references are not used for direct(T); directUses over references stays only as a fallback while facts are missing, and then no band gets its ✓.",
+      "status": "built",
+      "where": "core/src/project/edges.ts (from: 'source'); webview/src/board/band.ts:95; core/src/gate/rules.ts undeclaredPremiseFindings (refuses 'source-only')",
+      "note": ""
+    },
+    {
+      "clause": "B.2 cross-check",
+      "requirement": "Every card whose .holds is in T's footprint is in direct(T) or the basis of a card in it; otherwise the state is refused in a session, or the board shows 'uses ‹card› in a way the arrows do not show' with no ✓.",
+      "status": "built",
+      "where": "core/src/project/edges.ts:283-296; core/src/project/build.ts (uses-unseen, TL123); webview/src/board/band.ts:94; gate token 'unseen'",
+      "note": ""
+    },
+    {
+      "clause": "B.2 fallback gap",
+      "requirement": "(same check) No proof rests on a card that no arrow shows.",
+      "status": "narrowed-by-decision",
+      "where": "AP-21",
+      "note": "Known gap on facts from the source text only: a card reached only through a simp lemma whose basis other cards explain escapes the board's cross-check. In that mode no band has a ✓, and the gate refuses 'source-only'."
+    },
+    {
+      "clause": "B.2 every judged state and Apply",
+      "requirement": "B.2 is checked on every state telelean judges, and at Apply for every proposition whose proof or Dependencies changed in the session, not only for targets.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.9 (per inference, every purpose), §3.10 step 2 (B.2 for every proposition whose .holds or Dependencies differ between B and F), §4.10 'b2'",
+      "note": "Slice 1 checks only the target."
+    },
+    {
+      "clause": "B.2 premise checks",
+      "requirement": "The Add premise scratch check and its completion run B.2 too.",
+      "status": "built",
+      "where": "runner/src/gate/engine.ts:840 (ghostDirectProblems); the completion is gated as gate-proved (slice1-plan §8 builder 1e); slice2-plan §3.8",
+      "note": ""
+    },
+    {
+      "clause": "B.3 acyclic",
+      "requirement": "The final arrow graph is acyclic.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.9 B.3, §4.10 'cycle'; built for your arrows: core/src/edit/planArrows.ts:84-92",
+      "note": "A cycle already in B is not counted (§4.9): see the row '§14 item 9 (apply)'."
+    },
+    {
+      "clause": "B.3 into targets",
+      "requirement": "Under the preset Claude adds arrows only into the targets.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.9 ('arrow' 'not-target', proposeArrowProblems), §2.8, D2-21, D2-50",
+      "note": "In slice 1 Claude adds no arrows (G5 compares premises)."
+    },
+    {
+      "clause": "B.3 whole model",
+      "requirement": "With the whole model open, Claude adds arrows into any unfrozen Dependencies.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §2.8 (propose_arrow), §3.10, D3-38",
+      "note": ""
+    },
+    {
+      "clause": "B.3 transform",
+      "requirement": "In a transform, Claude adds arrows into unfrozen Dependencies.",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": ""
+    },
+    {
+      "clause": "B.3 into an axiom",
+      "requirement": "Claude never adds an arrow into an axiom card.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.9 ('into-axiom'), §4.10 'arrow' (an arrow into an AXIOM card)",
+      "note": "In slice 1 Claude adds no arrows."
+    },
+    {
+      "clause": "B.3 removals",
+      "requirement": "Claude removes only unfrozen arrows, never a selected one, and only arrows that no proof in the working copy uses.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.10 (remove_arrow rules), §2.8, D3-14",
+      "note": "Slice 2 allows no removals."
+    },
+    {
+      "clause": "B.3 follows from nothing",
+      "requirement": "Claude never sets or removes 'follows from nothing'; the mark goes only as telelean's follow-on edit when you accept a premise into that card, and the check compares the follows_from field itself.",
+      "status": "built",
+      "where": "core/src/gate/rules.ts COMPARED_FIELDS 'follows_from'; core/src/gate/adoption.ts:147-150; slice1-plan §8 fixer 1a; slice2-plan §4.9 G5, §3.8, §4.10 'mark'",
+      "note": ""
+    },
+    {
+      "clause": "B.4 type:",
+      "requirement": "Claude never changes type:.",
+      "status": "built",
+      "where": "core/src/gate/rules.ts markupFindings (G5)",
+      "note": ""
+    },
+    {
+      "clause": "B.4 proving pending",
+      "requirement": "Proving a pending target replaces axiom T.holds with theorem T.holds of the identical type.",
+      "status": "built",
+      "where": "core/src/gate/rules.ts notProvedFindings, runner G4 comparator, TL114; explicit in slice2-plan §4.9 'holds-kind'",
+      "note": ""
+    },
+    {
+      "clause": "B.4 other changes",
+      "requirement": "Any other change of a .holds between axiom and theorem is refused.",
+      "status": "built",
+      "where": "core/src/gate/rules.ts existingChangedFindings (non-targets), statusMismatchFindings and notProvedFindings (target); slice2-plan §4.9 'holds-kind' ('theorem-to-axiom'), §4.10 'kind'",
+      "note": ""
+    },
+    {
+      "clause": "B.4 pending claims",
+      "requirement": "Claude never writes a Lean axiom .holds for a proposition; pending claims are written only by telelean, at your choice (AR-6, AR-8, RV-1, TR-14).",
+      "status": "built",
+      "where": "core/src/gate/rules.ts newAxiomFindings; core/src/edit/planArrows.ts:297 (claim-pending); slice2-plan §4.9 'axiom-for-proposition', §3.8 (holdAs)",
+      "note": "RV-1's pending premise arrives in slice 2; TR-14's 'make it pending' in slice 4 (D3-10)."
+    },
+    {
+      "clause": "B.5 established",
+      "requirement": "established(v) holds when the proof is proved with no hypotheses, no sorry and no axiom: entry, every card in its footprint is an axiom card (none pending), no .holds in its footprint or direct(v) is mismatched, and the facts are current.",
+      "status": "built",
+      "where": "core/src/project/build.ts:927-948",
+      "note": ""
+    },
+    {
+      "clause": "B.5 band",
+      "requirement": "band(v) is the drawn arrows into v whose source is in direct(v); it is complete (✓) only when every card in direct(v) has a drawn arrow, v takes no hypothesis and its footprint has no axiom: entry; otherwise it is open.",
+      "status": "built",
+      "where": "webview/src/board/band.ts:73-106",
+      "note": "It is also open for TL114, unseen uses and source-only facts (slice1-plan §8 fixer 1d)."
+    },
+    {
+      "clause": "B.5 out-of-date facts",
+      "requirement": "No band is drawn from out-of-date facts.",
+      "status": "built",
+      "where": "webview/src/board/band.ts:75,79",
+      "note": ""
+    },
+    {
+      "clause": "B.5 TL107",
+      "requirement": "TL107 fires for every card in direct(v) with no drawn arrow, covered or not.",
+      "status": "built",
+      "where": "core/src/project/edges.ts:362-372; slice1-plan §8 builder 1d",
+      "note": ""
+    },
+    {
+      "clause": "B.5 TL109",
+      "requirement": "TL109 no longer uses the warning colour.",
+      "status": "built",
+      "where": "core/src/project/edges.ts:360; slice1-plan §8 builder 1d",
+      "note": ""
+    },
+    {
+      "clause": "B.5 TL102",
+      "requirement": "TL102's 'rests on a goal asserted as an axiom' becomes 'rests on pending'.",
+      "status": "built",
+      "where": "core/src/project/build.ts:653-656; AP-16",
+      "note": ""
+    },
+    {
+      "clause": "B.6 kinds",
+      "requirement": "type: accepts AXIOM and PROPOSITION; ASSUMPTION, DERIVATION and GOAL are read as aliases and never rewritten except by a kind change.",
+      "status": "built",
+      "where": "core/src/model.ts:44-48; core/src/markup/parser.ts:233-234; AP-11",
+      "note": ""
+    },
+    {
+      "clause": "B.6 field",
+      "requirement": "'Follows from nothing' is its own field, follows_from: nothing, which is data telelean keeps.",
+      "status": "built",
+      "where": "core/src/markup/parser.ts:243-245; G5 COMPARED_FIELDS; AP-15",
+      "note": ""
+    },
+    {
+      "clause": "B.6 errors",
+      "requirement": "Any other follows_from value is a markup error, and so is the mark together with arrows; the mark is then ignored.",
+      "status": "built",
+      "where": "core/src/markup/parser.ts:180-185 (TL023), 245 (TL022)",
+      "note": ""
+    },
+    {
+      "clause": "B.6 premises",
+      "requirement": "A premises: line with no valid id is never the mark, and a missing premises: means no dependencies are declared.",
+      "status": "built",
+      "where": "slice1-plan §2.2",
+      "note": ""
+    },
+    {
+      "clause": "B.6 codes",
+      "requirement": "TL116 and TL105 go; TL106 stays, as 'has a proof'.",
+      "status": "built",
+      "where": "core/src/project/build.ts:640; slice1-plan §8 builder 1a",
+      "note": ""
+    },
+    {
+      "clause": "B.7 storage",
+      "requirement": "Canvas positions are kept in the subject's layout file, and the column order stays as today.",
+      "status": "built",
+      "where": "core/src/layout.ts:27,56-82; AP-12",
+      "note": ""
+    },
+    {
+      "clause": "B.7 writers",
+      "requirement": "Positions are written only by moves and Tidy layout, each one Undo step.",
+      "status": "contradicted",
+      "where": "slice1-plan §2.4 and §8 builder 1c1 (add-node.position)",
+      "note": "Slice 1 also stores a position when the A|P box adds a proposition (needed for CM-7's 'New proposition here'), in the add's own Undo step. Benign, but not in AP-12's list."
+    },
+    {
+      "clause": "App B Base (fixed)",
+      "requirement": "The diff base is your files at the session's start, and it never moves.",
+      "status": "built",
+      "where": "slice1-plan §8 builder 1f; slice2-plan §3.1",
+      "note": ""
+    },
+    {
+      "clause": "App B Base (watcher)",
+      "requirement": "A file watcher compares the real files with the base, and any difference disables Apply.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.9, §5.8; AP-18 ('Not in slice 1: a live file watcher')",
+      "note": "Slice 1 refuses at Accept only."
+    },
+    {
+      "clause": "App B Baseline (transforms)",
+      "requirement": "The baseline is the base plus what you typed and telelean's follow-on edits from your transforms, committed with Lean facts rebuilt.",
+      "status": "for-slice4",
+      "where": "AP-2; slice2-plan §3.1 ('The baseline is B')",
+      "note": ""
+    },
+    {
+      "clause": "App B Baseline (copied content)",
+      "requirement": "Content copied from Claude's proposal never joins the baseline and never counts as your proof.",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": ""
+    },
+    {
+      "clause": "App B Baseline (Claude's text)",
+      "requirement": "Claude's content never counts as your text (for G0 or new-axiom).",
+      "status": "built",
+      "where": "core/src/gate/g0.ts and rules.ts newAxiomFindings (both compare with B); slice2-plan §3.1",
+      "note": ""
+    },
+    {
+      "clause": "App B Baseline (accepted proof)",
+      "requirement": "A proof you accepted counts as yours only for later inferences' permitted sets (RV-11).",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.8 (session proof), §3.1",
+      "note": ""
+    },
+    {
+      "clause": "App B Backstop (list)",
+      "requirement": "At Apply, telelean lists each declaration of the final state that is new or changed relative to the session's baseline.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.10 ('unowned', with ownership re-derived from B, F and the ledger)",
+      "note": "core/src/review/backstop.ts is a stub."
+    },
+    {
+      "clause": "App B Backstop (a)",
+      "requirement": "Every new or changed Lean axiom, except new shape-passing sorts, predicates, constants and functions, belongs to an individually accepted item.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.10 own-accept (first bullet), D2-40",
+      "note": ""
+    },
+    {
+      "clause": "App B Backstop (b)",
+      "requirement": "Every definition, instance or coercion in the elaborated closure of any card's Lean statement (closure as for held sets) belongs to an individually accepted item.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.10 own-accept (second bullet, R_stmt(F)), §4.1, D2-30, D2-25",
+      "note": ""
+    },
+    {
+      "clause": "App B Backstop (c)",
+      "requirement": "Every existing name whose kind, type or value changed belongs to an individually accepted item.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.10 own-accept (third bullet)",
+      "note": ""
+    },
+    {
+      "clause": "App B Backstop (exempt)",
+      "requirement": "Exempt: an accepted presupposition's helper instance; lemmas, definitions or instances that no statement reaches; and the axiom-to-theorem change of a .holds that an accepted Result proves.",
+      "status": "narrowed-by-decision",
+      "where": "D2-24; slice2-plan §4.10",
+      "note": "Stricter than the spec: these need no own Accept, but must still belong to an accepted item ('not-accepted')."
+    },
+    {
+      "clause": "App B Backstop (individually)",
+      "requirement": "'Accepted individually' means by its own Accept where RV-7 requires one, and accepted as an item otherwise.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.10 'own-accept', 'class', 'not-accepted'; D2-32",
+      "note": ""
+    },
+    {
+      "clause": "App B Backstop (frozen terms)",
+      "requirement": "Every frozen and held declaration still elaborates to its frozen term.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.5 (Apply's backstop), D3-2, D3-51",
+      "note": ""
+    },
+    {
+      "clause": "App B Backstop (FZ-5 held change)",
+      "requirement": "A held item changed under FZ-5 passes only if it and all its 'meaning changed' items are accepted.",
+      "status": "narrowed-by-decision",
+      "where": "D3-9",
+      "note": "There are no such changes: held content changes only after its holders are unfrozen."
+    },
+    {
+      "clause": "App B Backstop (arrows)",
+      "requirement": "Every arrow of the final state is yours, or was accepted individually, or is an accepted removal.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.10 'arrow'/'mark'; slice3-plan §3.10 (removals and the new item kinds' ownership)",
+      "note": ""
+    },
+    {
+      "clause": "App B Backstop (B.2, B.3)",
+      "requirement": "B.2 and B.3 hold on the final state.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.10 'b2', 'cycle', 'kind'; D2-59",
+      "note": ""
+    },
+    {
+      "clause": "App B Backstop (refusal, never reused)",
+      "requirement": "Otherwise Apply is refused, naming the declaration or arrow, and the backstop's result is never reused.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.10, §3.10 step 4, §6.1 (2f)",
+      "note": ""
+    },
+    {
+      "clause": "S1 fix (preset)",
+      "requirement": "ES-2's preset applies to every inference, mid-stage ones included, keeping today's protection.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.7 (StepScope), §3.2-§3.3, §4.9 (step limits, D2-41); built for slice 1's single target: core/src/gate/rules.ts existingChangedFindings (token 'target') and G5",
+      "note": "A mid-stage Formalize waits until the results are shown (D2-65)."
+    },
+    {
+      "clause": "S1 fix (difference 1)",
+      "requirement": "Claude may propose premises as items.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.8 (Add premise items)",
+      "note": "Slice 1 keeps 'Claude suggests' ghosts."
+    },
+    {
+      "clause": "S1 fix (difference 2)",
+      "requirement": "Your existing proof of the target is never deleted by a step that fails to prove it.",
+      "status": "built",
+      "where": "core/src/gate/rules.ts statusMismatchFindings (slice1-plan §8 fixer 1e); slice2-plan §4.9",
+      "note": ""
+    },
+    {
+      "clause": "S2 fix (held)",
+      "requirement": "FZ-4 holds everything frozen Lean relies on after elaboration.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.2 (heldValue), §3.4 step 3, D3-3, §6.2 cheat 5",
+      "note": ""
+    },
+    {
+      "clause": "S2 fix (meaning)",
+      "requirement": "FZ-3 compares meaning in Lean.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.4-§3.5, D3-2 (meaningKey), §6.2 cheat 7",
+      "note": ""
+    },
+    {
+      "clause": "S3 fix",
+      "requirement": "Freezes live in telelean's own files, and Claude's working copy never contains them.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.1 (freezes.json under .telelean/, protected by the path guard and G0; session freezes in run.json), §6.2 cheat 16",
+      "note": ""
+    },
+    {
+      "clause": "S4 fix (RV-5)",
+      "requirement": "RV-5 enforces item dependencies.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.5-§4.6 (core/src/review/deps.ts and reducer.ts built in 2a2, not wired in), §6.2 S4",
+      "note": "Slice 1's all-or-nothing Accept avoids the problem."
+    },
+    {
+      "clause": "S4 fix (EN-2)",
+      "requirement": "EN-2 reruns every check on the exact final state.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.10 step 2",
+      "note": ""
+    },
+    {
+      "clause": "S5 fix (own items)",
+      "requirement": "Definitions and presuppositions get their own items.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.2 (decl: keys), §4.2 (core/src/review/items.ts built in 2a1)",
+      "note": ""
+    },
+    {
+      "clause": "S5 fix (own Accept)",
+      "requirement": "Each definition and presupposition item needs its own Accept.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.4 b3/b4 (core/src/review/classify.ts built in 2a2), §4.6, §4.10 own-accept, D2-30, §6.2 S5",
+      "note": ""
+    },
+    {
+      "clause": "S6 fix (premises outside)",
+      "requirement": "Premises Claude proposes stay outside the files until you accept them.",
+      "status": "built",
+      "where": "slice 1's 'Claude suggests' ghosts (slice1-plan intro); slice2-plan §3.1, §3.8",
+      "note": ""
+    },
+    {
+      "clause": "S6 fix (classification)",
+      "requirement": "Belief items are classified by their effect in Lean.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.4 (core/src/review/classify.ts built in 2a2), D2-30, D2-25",
+      "note": ""
+    },
+    {
+      "clause": "S6 fix (no kind change, no proof made an axiom)",
+      "requirement": "Claude never changes a Kind and never replaces a proof with an axiom.",
+      "status": "built",
+      "where": "core/src/gate/rules.ts markupFindings (type), existingChangedFindings, statusMismatchFindings, notProvedFindings; slice2-plan §4.9 'holds-kind', new-axiom 'type-changed'",
+      "note": ""
+    },
+    {
+      "clause": "S6 fix (backstop)",
+      "requirement": "Apply's backstop checks that every new or changed axiom, definition and instance was individually accepted.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.10",
+      "note": ""
+    },
+    {
+      "clause": "S7 fix (Result item)",
+      "requirement": "There is one Result item per inference, always present and kept neutral, and it carries the proof.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.2 (a Result for every inference whose step ended: core/src/review/items.ts:901-913, built in 2a1), §4.7 (D2-61)",
+      "note": "D2-44: an inference whose step never ended has no Result."
+    },
+    {
+      "clause": "S7 fix (premises after reveal)",
+      "requirement": "Proposed premises appear only when the Result is revealed.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.7 (Results' parts are hidden), §3.8",
+      "note": ""
+    },
+    {
+      "clause": "S8 fix (transform)",
+      "requirement": "Transform steps write no proofs.",
+      "status": "for-slice4",
+      "where": "AP-2; TR-14",
+      "note": ""
+    },
+    {
+      "clause": "S8 fix (Formalize only)",
+      "requirement": "Proofs come only from Formalize for dependencies, each with its own question, statements fixed and a comparator check.",
+      "status": "built",
+      "where": "slice 1 runs (one target, freeze_statements, G4); slice2-plan §3.1 ('One inference per step'), §3.3; slice3-plan §3.10 (non-target proofs fixed)",
+      "note": "Premise completions (slice2-plan §3.8) are gated as gate-proved with their own freeze."
+    },
+    {
+      "clause": "S9 fix (Delete item)",
+      "requirement": "A Delete removes the card, its Lean and its arrows, never leaving a .holds behind.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.10 (delete_card, ownership of card: Delete items, planItemRevert), D3-14",
+      "note": "The board already offers 'Delete card and its Lean code'."
+    },
+    {
+      "clause": "S9 fix (card-only Delete gone)",
+      "requirement": "Today's 'card only' Delete, which leaves axiom ….holds behind as an unmarked axiom, goes from the board (ES-9, Part 4).",
+      "status": "unassigned",
+      "where": "none",
+      "note": "Still offered: webview/src/dialogs/Dialogs.tsx:227,280 ('Delete card only, keep Lean'), core/src/edit/planDelete.ts keepLean. docs/user-guide.md still documents it, and no plan removes it."
+    },
+    {
+      "clause": "S9 fix (dependents)",
+      "requirement": "A deleted card's dependents are handled (TR-13).",
+      "status": "for-slice4",
+      "where": "AP-2; TR-13",
+      "note": ""
+    },
+    {
+      "clause": "S10 fix",
+      "requirement": "TR-12 checks the Lean you type.",
+      "status": "for-slice4",
+      "where": "AP-2",
+      "note": ""
+    },
+    {
+      "clause": "S11 fix (copied Lean frozen)",
+      "requirement": "Copied Lean starts frozen in a transform.",
+      "status": "for-slice4",
+      "where": "AP-2; TR-4",
+      "note": ""
+    },
+    {
+      "clause": "S11 fix (preset)",
+      "requirement": "Every inference, mid-stage ones included, uses ES-2's preset.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.2-§3.3, §4.9",
+      "note": ""
+    },
+    {
+      "clause": "S11 fix (own Accept)",
+      "requirement": "A change to existing Lean is a 'changes what is proved' item that needs its own Accept.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.4 c1 (core/src/review/classify.ts built in 2a2)",
+      "note": "Such changes first occur with the whole model open (slice 3) or in transforms (slice 4)."
+    },
+    {
+      "clause": "S12 fix",
+      "requirement": "A frozen card's references hold their targets (RF-5).",
+      "status": "for-slice5",
+      "where": "slice3-plan §3.4 step 3 (heldFields() returns [])",
+      "note": ""
+    },
+    {
+      "clause": "S13",
+      "requirement": "'Don't propose it again' and 'not identical' are checked for exact repeats only, as DO-1 and DO-3 say; a reworded repeat comes back as an item.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.3 (content keys; the residual), §4.9 'rejected-repeat', §3.5 (a reworded repeat comes back 'updated')",
+      "note": ""
+    },
+    {
+      "clause": "S14 fix (elaborated direct)",
+      "requirement": "direct(v) is computed from the elaborated proof term, following declarations no card owns, and cross-checked against the footprint.",
+      "status": "built",
+      "where": "core/src/project/edges.ts:160, 283-296; runner value probe; slice1-plan §8 builder and fixer 1d",
+      "note": ""
+    },
+    {
+      "clause": "S14 fix (band)",
+      "requirement": "telelean computes the band from Lean after every check, with its ✓ only when the band is complete.",
+      "status": "built",
+      "where": "webview/src/board/band.ts; core/src/project/build.ts (status.direct)",
+      "note": ""
+    },
+    {
+      "clause": "S14 fix (new check)",
+      "requirement": "Every card a proof uses directly must have an arrow into it on every judged state, so Claude must propose an arrow item for anything extra it uses.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.9 B.2, §2.8 (propose_arrow, system prompt), §6.2 S14; built for the run's target: core/src/gate/rules.ts undeclaredPremiseFindings",
+      "note": ""
+    },
+    {
+      "clause": "S14 fix (sufficiency only)",
+      "requirement": "The band claims sufficiency and nothing more.",
+      "status": "built",
+      "where": "webview/src/board/band.ts:46,98",
+      "note": ""
+    },
+    {
+      "clause": "S15 fix (existing arrows kept)",
+      "requirement": "The preset keeps every existing arrow.",
+      "status": "built",
+      "where": "core/src/gate/rules.ts COMPARED_FIELDS 'premises' (G5); slice2-plan §4.9 B.3",
+      "note": ""
+    },
+    {
+      "clause": "S15 fix (only into targets)",
+      "requirement": "In a Formalize step, Claude can only add arrows into the targets.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.9 ('not-target'), §2.8",
+      "note": ""
+    },
+    {
+      "clause": "S15 fix (whole model)",
+      "requirement": "Even with the whole model open, the selected arrows stay.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.10 (remove_arrow refuses an arrow a question selects), §2.8",
+      "note": ""
+    },
+    {
+      "clause": "S15 fix (own Accept)",
+      "requirement": "Each added arrow a proof uses is a 'changes what is proved' item with its own Accept.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.4 c4 (every Add arrow; core/src/review/classify.ts built in 2a2)",
+      "note": ""
+    },
+    {
+      "clause": "S15 fix (revealed with Result)",
+      "requirement": "An added arrow is revealed with the target's Result.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.7 (Results' parts)",
+      "note": ""
+    },
+    {
+      "clause": "S15 fix (Result after arrow)",
+      "requirement": "The Result can be accepted only after the arrow item.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.5 rule 2 (core/src/review/deps.ts, built in 2a2)",
+      "note": ""
+    },
+    {
+      "clause": "S15 fix (DO-0)",
+      "requirement": "Declining an arrow takes down what rests on it.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.6 DO-0 (core/src/review/reducer.ts, built in 2a2), D2-59",
+      "note": "Declining a card Claude added at the arrow's end is slice 3 (3c2), which D3-43 may move to slice 4."
+    },
+    {
+      "clause": "S15 fix (look)",
+      "requirement": "Claude's arrows are drawn translucent with a '+' until accepted, never dotted like yours.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §5.10, D2-34",
+      "note": ""
+    },
+    {
+      "clause": "S16 fix (two signals)",
+      "requirement": "The band certifies the inference, and the green glow certifies the card.",
+      "status": "built",
+      "where": "webview/src/board/band.ts; core/src/project/build.ts:927-948",
+      "note": ""
+    },
+    {
+      "clause": "S16 fix (rests on pending)",
+      "requirement": "A card that rests on a pending one says so and has no green glow.",
+      "status": "built",
+      "where": "core/src/project/build.ts:653-656 (rests-on-pending, TL102); webview/src/model/cardData.ts (chip 'proved, but rests on pending')",
+      "note": ""
+    },
+    {
+      "clause": "S16 fix (circularity, arrows)",
+      "requirement": "A pending claim is never usable in its own proof, and is usable only through an arrow, like any card.",
+      "status": "built",
+      "where": "core/src/gate/permitted.ts:57,111; core/src/gate/rules.ts undeclaredPremiseFindings",
+      "note": ""
+    },
+    {
+      "clause": "S16 fix (out-of-date facts)",
+      "requirement": "No green glow and no band are drawn from out-of-date facts; the card shows its last status dimmed.",
+      "status": "built",
+      "where": "webview/src/board/band.ts:75,79; webview/src/model/cardData.ts:147-150; core/src/project/build.ts (stale)",
+      "note": ""
+    },
+    {
+      "clause": "S17 fix",
+      "requirement": "★D7 (b): formalizing an arrow out of an unproved proposition asks you first, so nothing is assumed without your say.",
+      "status": "built",
+      "where": "AP-1, AP-10; slice1-plan §8 builder 1e (the AR-8 dialog; host start check in core/src/formalize.ts:117,125)",
+      "note": ""
+    },
+    {
+      "clause": "S17 fix (in a session)",
+      "requirement": "During a session the question offers only 'Select the arrows into ‹source› too' or Cancel; there is no pending mark.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.12 check 4, §5.11",
+      "note": ""
+    },
+    {
+      "clause": "S18 fix (only you set the mark)",
+      "requirement": "Only you set the 'follows from nothing' mark.",
+      "status": "built",
+      "where": "core/src/edit/planArrows.ts (set-from-nothing); core/src/gate/rules.ts COMPARED_FIELDS 'follows_from'",
+      "note": ""
+    },
+    {
+      "clause": "S18 fix (statements frozen)",
+      "requirement": "The preset keeps existing statements frozen.",
+      "status": "built",
+      "where": "core/src/gate/rules.ts existingChangedFindings (token 'target'); slice2-plan §4.9 step limits",
+      "note": ""
+    },
+    {
+      "clause": "S18 fix (own Accept)",
+      "requirement": "Changed statements and definitions are own-Accept items.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.4 c1, c2, b4 (classify.ts built in 2a2)",
+      "note": ""
+    },
+    {
+      "clause": "S18 fix (proved from nothing)",
+      "requirement": "Any Result proved without using a single arrow says 'proved from nothing: check what the statement says', whether or not you marked it.",
+      "status": "built",
+      "where": "runner/src/proposal/service.ts:257; webview/src/run/ReportCard.tsx:110; webview/src/model/cardData.ts:187; slice2-plan §2.2 (ResultFlag), §5.6",
+      "note": ""
+    },
+    {
+      "clause": "S19 fix (no arrow into an axiom)",
+      "requirement": "Claude never adds an arrow into an axiom.",
+      "status": "built",
+      "where": "G5 (in slice 1 Claude adds no arrows); slice2-plan §4.9 'into-axiom', §4.10",
+      "note": ""
+    },
+    {
+      "clause": "S19 fix (no moves)",
+      "requirement": "Claude never moves cards between the column and the canvas.",
+      "status": "built",
+      "where": "core/src/gate/rules.ts markupFindings (type); layout.json lives under .telelean/, outside ws/",
+      "note": ""
+    },
+    {
+      "clause": "S19 fix (no mark changes)",
+      "requirement": "Claude never changes the 'follows from nothing' mark.",
+      "status": "built",
+      "where": "core/src/gate/rules.ts COMPARED_FIELDS 'follows_from'; slice2-plan §4.9",
+      "note": ""
+    },
+    {
+      "clause": "S19 fix (can ask)",
+      "requirement": "Claude can ask you to make such changes.",
+      "status": "built",
+      "where": "Claude's questions to you (answerQuestions, kept in slice2-plan §2.4)",
+      "note": ""
+    },
+    {
+      "clause": "S19 fix (impact first)",
+      "requirement": "Your own drags and arrows state their impact before you let go.",
+      "status": "built",
+      "where": "slice1-plan §8 builders 1b (impact dialogs) and 1c2 (draw hint, the column's drop zone)",
+      "note": ""
+    },
+    {
+      "clause": "S20 fix (consistency unchecked)",
+      "requirement": "The band's tooltip and the stage report keep saying 'consistency unchecked'.",
+      "status": "built",
+      "where": "webview/src/board/band.ts:46,98; webview/src/run/ReportCard.tsx:126; slice2-plan §2.3, §5.4 (core/src/review/texts.ts)",
+      "note": ""
+    },
+    {
+      "clause": "S20 (future work)",
+      "requirement": "A consistency check (the model finder of M3).",
+      "status": "unassigned",
+      "where": "none",
+      "note": "Not a v4 obligation: the spec defers it to M3, and slice2-plan and slice3-plan list it as not in those slices."
+    },
+    {
+      "clause": "S21 fix (items)",
+      "requirement": "With the whole model open, every change is a belief or 'changes what is proved' item with its own Accept, shown before → after.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.10 (ownership of Change, Delete and Proof broken; c1); slice2-plan §4.4, §5.6",
+      "note": ""
+    },
+    {
+      "clause": "S21 fix (Result hidden)",
+      "requirement": "The target's Result stays hidden until those items are decided.",
+      "status": "planned-slice3",
+      "where": "slice2-plan §4.7 (D2-61); slice3-plan §3.10 (the base mask revisited), D3-12",
+      "note": ""
+    },
+    {
+      "clause": "S21 fix (changed-statement flag)",
+      "requirement": "The Result says 'proves a statement changed in this session'.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.2 (ResultFlag), §4.4 c2, §5.6",
+      "note": ""
+    },
+    {
+      "clause": "S21 fix (freezes, selected arrows)",
+      "requirement": "Your standing freezes and the selected arrows still hold.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.5 ('a freeze of any reason wins'), §3.10 (remove_arrow)",
+      "note": ""
+    },
+    {
+      "clause": "S21 fix (non-target proofs)",
+      "requirement": "Proofs of cards that are not targets stay closed, and a proof that a model-wide change breaks becomes a Proof broken item.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.10 (step limits, mark_proof_broken), D3-10",
+      "note": ""
+    },
+    {
+      "clause": "S21 fix (arrow removal)",
+      "requirement": "Claude may remove an arrow only if no proof uses it.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.10 (remove_arrow), D3-14",
+      "note": ""
+    },
+    {
+      "clause": "S21 fix (switch resets)",
+      "requirement": "The switch resets to off after each session.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.10 (Switches), D3-29",
+      "note": ""
+    },
+    {
+      "clause": "S22 fix (board stack locked)",
+      "requirement": "The board stack is locked during a session.",
+      "status": "built",
+      "where": "slice1-plan §8 builder 1f",
+      "note": ""
+    },
+    {
+      "clause": "S22 fix (sealed)",
+      "requirement": "The session stack is sealed at every Claude step.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.6 (seals), D2-54; core/src/review/reducer.ts:1006 (2a2); slice3-plan D3-23",
+      "note": ""
+    },
+    {
+      "clause": "S22 fix (discarded)",
+      "requirement": "The session stack is discarded when the session ends.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §4.6, §3.10",
+      "note": ""
+    },
+    {
+      "clause": "S22 fix (Current view)",
+      "requirement": "The Current view cannot be edited during a session.",
+      "status": "built",
+      "where": "slice1-plan §8 builder 1f (host and webview lock)",
+      "note": ""
+    },
+    {
+      "clause": "S22 fix (base)",
+      "requirement": "The base never moves.",
+      "status": "built",
+      "where": "slice1-plan §8 builder 1f",
+      "note": ""
+    },
+    {
+      "clause": "S22 fix (Apply waits)",
+      "requirement": "Apply waits while your files differ from the base.",
+      "status": "built",
+      "where": "runner/src/run/manager.ts:1677-1688; slice2-plan §3.9",
+      "note": ""
+    },
+    {
+      "clause": "A3",
+      "requirement": "If an instruction cannot be followed without changing frozen content, Claude makes an unfreeze request, and if you keep the content frozen the stage reports that the instruction could not be followed.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §2.4 (StageReportView.requests 'kept-frozen'), §3.9",
+      "note": "Instructions themselves come with slice 4 (TR-8)."
+    },
+    {
+      "clause": "A7",
+      "requirement": "Only the selected arrows into a target form its question; the others stay dotted, whatever the result.",
+      "status": "built",
+      "where": "slice1-plan §5 and §8 builder 1e; core/src/formalize.ts:125",
+      "note": ""
+    },
+    {
+      "clause": "A8",
+      "requirement": "If the proof uses fewer arrows than you selected, the band binds the ones it uses, and the others are listed as 'not needed' and stay dotted.",
+      "status": "built",
+      "where": "webview/src/board/band.ts; webview/src/run/ReportCard.tsx:113-116 (unused); slice2-plan §2.3 (band.notNeeded), §5.4",
+      "note": ""
+    },
+    {
+      "clause": "A9",
+      "requirement": "If the proof uses none of the selected arrows, the verdict is flagged 'proved from nothing'.",
+      "status": "built",
+      "where": "runner/src/proposal/service.ts:257; slice1-plan §8 fixer 1e",
+      "note": ""
+    },
+    {
+      "clause": "A10 (slice 2)",
+      "requirement": "From slice 2, when Claude needs a card you drew no arrow from, it proposes an arrow item.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.8 (propose_arrow, system prompt), §6.2 S14; D2-21",
+      "note": "D2-21: only from a card with a .holds; otherwise Claude finishes not proved, naming that card."
+    },
+    {
+      "clause": "A10 (frozen Dependencies)",
+      "requirement": "If the target's Dependencies are frozen, Claude makes an unfreeze request instead.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §2.8 (propose_arrow's refusal), §3.9, D3-36",
+      "note": ""
+    },
+    {
+      "clause": "A10 (slice 1)",
+      "requirement": "In slice 1 Claude finishes not proved, naming the card; the report offers 'Draw (or select) the arrow … and run again'; and Claude never proposes an existing card as a missing premise.",
+      "status": "built",
+      "where": "slice1-plan §8 builder 1e (prompts, report hints); webview/src/model/run.ts:555",
+      "note": ""
+    },
+    {
+      "clause": "A10 (drawn, not selected)",
+      "requirement": "An arrow you drew but did not select is listed under what is missing: 'select ‹card› → ‹target› too'.",
+      "status": "built",
+      "where": "webview/src/model/run.ts:555-577; slice2-plan §5.4",
+      "note": ""
+    },
+    {
+      "clause": "A11",
+      "requirement": "When you select arrows into an already proved proposition, a passing new proof replaces the old one ('replaces your proof'), the band moves, and the Result lists the cards whose basis changes.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §2.3 (flag replaces-your-proof, previousProof, basisChanged), §5.6",
+      "note": "Slice 1 replaces the proof on a proved finish and keeps it otherwise (fixer 1e), but has neither the label nor the list."
+    },
+    {
+      "clause": "A12",
+      "requirement": "For a chain X → L → A, L is proved first; if L fails, A's step reports 'L was not proved', and ★D7 applies if you retry A alone.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.3 item 3, §4.12 (formalizeOrder, check 4), D2-4",
+      "note": "D2-4 runs A's step as statements only."
+    },
+    {
+      "clause": "A16",
+      "requirement": "If you delete an arrow a proof uses, the proof still builds, the arrow shows solid in the warning colour (TL107), the band loses its ✓, and the delete confirmation says so.",
+      "status": "built",
+      "where": "slice1-plan §8 builder 1b (remove-arrows asks for confirmation) and 1d (notched warning head); core/src/project/edges.ts:362-372",
+      "note": ""
+    },
+    {
+      "clause": "A17",
+      "requirement": "If a proposal removes A → Z and adds Z → A, the addition depends on the removal, so declining the removal declines the addition.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §6.1 (3c1 tests, 'and A17'); slice2-plan §4.5 rule 4 (core/src/review/deps.ts:138: built, but inert until Remove arrow items exist)",
+      "note": ""
+    },
+    {
+      "clause": "A18",
+      "requirement": "Arrows between subjects are not allowed (TL121).",
+      "status": "built",
+      "where": "core/src/project/build.ts:693; core/src/edit/planArrows.ts:107; slice2-plan §4.9 (proposeArrowProblems); D3-41",
+      "note": ""
+    },
+    {
+      "clause": "A19 (aliases)",
+      "requirement": "In old files ASSUMPTION reads as an axiom, and DERIVATION and GOAL read as propositions; nothing is rewritten until you change that card's kind.",
+      "status": "built",
+      "where": "core/src/model.ts:44-48; core/src/markup/parser.ts:233-234",
+      "note": ""
+    },
+    {
+      "clause": "A19 (pending)",
+      "requirement": "An old DERIVATION or GOAL whose .holds is a Lean axiom reads as pending.",
+      "status": "built",
+      "where": "slice1-plan §8 builder 1a (statuses); core/src/run.ts upgradeLegacyProposal (fixer 1a)",
+      "note": ""
+    },
+    {
+      "clause": "A19 (old axiom with premises)",
+      "requirement": "An old axiom block with premises: stays an axiom: its arrows show as 'declared before v4' and cannot be selected, and a chip offers 'Make it a proposition (pending)' or 'Drop these arrows'.",
+      "status": "built",
+      "where": "slice1-plan §8 builder 1b (TL122, the chip, the details); core/src/project/subjectGraph.ts:65",
+      "note": ""
+    },
+    {
+      "clause": "A20",
+      "requirement": "When a hand-written proof uses a card with no arrow, that arrow shows solid in the warning colour (TL107), is never inside a band, and the band has no ✓ until you draw it.",
+      "status": "built",
+      "where": "core/src/project/edges.ts:362-372; webview/src/board/band.ts:82,87",
+      "note": ""
+    },
+    {
+      "clause": "A25",
+      "requirement": "With 'Claude may add cards' on, an intermediate card that fails to be proved gets a not-proved Result, and any target that needed it reports '‹card› was not proved'.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.10 (Intermediate cards), D3-13, §6.2 cheat 14",
+      "note": "D3-43's fallback may move it to slice 4."
+    },
+    {
+      "clause": "A26",
+      "requirement": "A missing premise accepted as a pending proposition leaves the target proved but resting on pending, with no green glow until the premise is proved.",
+      "status": "planned-slice2",
+      "where": "slice2-plan §3.8 (holdAs pending, 'never green (A26)'); the glow rule is built (core/src/project/build.ts:927-948)",
+      "note": ""
+    },
+    {
+      "clause": "A29",
+      "requirement": "A card used only through a @[simp] lemma or an instance is still found in direct(v), which is computed from the elaborated proof.",
+      "status": "built",
+      "where": "slice1-plan §8 builder 1d (runner test/semantic/valueProbe.test.ts, core test/project/direct.test.ts)",
+      "note": ""
+    }
+  ]
+}

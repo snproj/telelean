@@ -99,90 +99,112 @@ describe('kindChangeImpact (D-11 drop zones)', () => {
   const proved = spyroProvedGraph();
 
   it('code-less cards change only their type', () => {
-    const impact = kindChangeImpact(graph, 'pg-no-dark-past', 'GOAL');
-    expect(impact).toMatchObject({ leanChange: 'none', needsConfirmation: false, summary: 'Make Goal: no Lean change' });
+    const impact = kindChangeImpact(graph, 'pg-no-dark-past', 'PROPOSITION');
+    expect(impact).toMatchObject({ leanChange: 'none', needsConfirmation: false, summary: 'Becomes a proposition: no Lean change' });
   });
 
-  it('A->D keeps the axiom: promotion pending until proved', () => {
-    expect(kindChangeImpact(graph, 'cynder-dark-past', 'DERIVATION')).toMatchObject({
-      leanChange: 'pending-promotion',
-      summary: 'Make Derivation: promotion pending until proved',
+  it('A->P keeps the axiom: pending proof until proved (AR-6, for the arrow gestures)', () => {
+    expect(kindChangeImpact(graph, 'cynder-dark-past', 'PROPOSITION')).toMatchObject({
+      leanChange: 'pending',
+      summary: 'Becomes a proposition: pending proof until proved',
+      detail: '`axiom cynder_dark_past.holds` stays, marked pending proof, until a run proves it (`theorem cynder_dark_past.holds : … := …`).',
       needsConfirmation: false,
     });
   });
 
-  it('G->A adds the axiom and asks why; G->D needs a proof', () => {
-    expect(kindChangeImpact(graph, 'cynder-not-good', 'ASSUMPTION')).toMatchObject({
+  it('P->A adds the axiom, says that its arrows go (AR-7) and asks why', () => {
+    expect(kindChangeImpact(graph, 'cynder-not-good', 'AXIOM')).toMatchObject({
       leanChange: 'add-axiom',
-      summary: 'Make Assumption: adds axiom cynder_not_good.holds',
+      summary: 'Move to axioms: adds axiom cynder_not_good.holds',
+      detail: 'Adds `axiom cynder_not_good.holds : cynder_not_good` after the statement, so proofs may use it. Its 3 incoming arrows are removed.',
       asksRationale: true,
     });
-    expect(kindChangeImpact(graph, 'cynder-not-good', 'DERIVATION')).toMatchObject({ leanChange: 'none', summary: 'Make Derivation: counts as derived once proved' });
   });
 
-  it('a proved goal: ->A archives the proof, ->D is already proved', () => {
-    expect(kindChangeImpact(proved, 'cynder-not-good', 'ASSUMPTION')).toMatchObject({ leanChange: 'theorem-to-axiom' });
-    expect(kindChangeImpact(proved, 'cynder-not-good', 'DERIVATION')).toMatchObject({ summary: 'Make Derivation: already proved' });
+  it('a proved proposition: ->A archives the proof', () => {
+    expect(kindChangeImpact(proved, 'cynder-not-good', 'AXIOM')).toMatchObject({
+      leanChange: 'theorem-to-axiom',
+      summary: 'Move to axioms: its proof becomes an axiom',
+      detail: '`theorem cynder_not_good.holds` becomes `axiom cynder_not_good.holds`; the proof is kept in the attic. Its 3 incoming arrows are removed.',
+    });
   });
 
-  it('A->G with proof dependents needs a confirmation that names them', () => {
+  it('A->P with proof dependents names what loses its green glow (the gesture states it; no dialog)', () => {
     expect(proofDependents(proved, 'cynder-dark-past')).toEqual(['cynder-not-good']);
-    const impact = kindChangeImpact(proved, 'cynder-dark-past', 'GOAL');
-    expect(impact).toMatchObject({
-      leanChange: 'remove-holds',
-      needsConfirmation: true,
-      dependents: ['cynder-not-good'],
-      rewriteAvailable: true,
-      summary: 'Make Goal: 1 dependent needs a hypothesis rewrite',
-    });
-    // The hypothesis the rewrite really writes (`h_<statement>`), not a generic `h`.
-    expect(impact.detail).toContain('`(h_cynder_dark_past : cynder_dark_past)`');
-    const stale = kindChangeImpact({ ...proved, semantic: { state: 'stale' } }, 'cynder-dark-past', 'GOAL');
-    expect(stale.rewriteAvailable).toBe(false);
-    expect(stale.detail).toMatch(/Refresh Lean first/);
-  });
-
-  it('A->G without dependents just removes .holds', () => {
-    const impact = kindChangeImpact(graph, 'new-spyro-pg', 'GOAL');
-    expect(impact).toMatchObject({
-      leanChange: 'remove-holds',
-      needsConfirmation: false,
-      summary: 'Make Goal: removes new_spyro_pg.holds',
-    });
-    // Only what the graph shows: a lemma without a card may still use it (the host asks about those).
-    expect(impact.detail).toBe('A goal is not taken as given, so `new_spyro_pg.holds` is removed. No card on this board uses it.');
+    const impact = kindChangeImpact(proved, 'cynder-dark-past', 'PROPOSITION');
+    expect(impact).toMatchObject({ leanChange: 'pending', needsConfirmation: false, dependents: ['cynder-not-good'], rewriteAvailable: true });
+    expect(impact.detail).toContain('1 card that rests on it will lose its green glow until it is proved.');
+    expect(kindChangeImpact({ ...proved, semantic: { state: 'stale' } }, 'cynder-dark-past', 'PROPOSITION').rewriteAvailable).toBe(false);
+    // Only established cards glow (BD-6): a dependent that is not established loses nothing, and the text says nothing.
+    const unestablished = { ...proved, nodes: proved.nodes.map((n) => ({ ...n, status: { ...n.status, flags: n.status.flags.filter((f) => f !== 'established') } })) };
+    const quiet = kindChangeImpact(unestablished, 'cynder-dark-past', 'PROPOSITION');
+    expect(quiet.dependents).toEqual(['cynder-not-good']);
+    expect(quiet.detail).not.toContain('green glow');
   });
 
   it('refuses unknown cards and same-column moves', () => {
-    expect(() => kindChangeImpact(graph, 'nope', 'GOAL')).toThrow(ActionError);
-    expect(() => kindChangeImpact(graph, 'cynder-not-good', 'GOAL')).toThrow(/re-orders/);
+    expect(() => kindChangeImpact(graph, 'nope', 'PROPOSITION')).toThrow(ActionError);
+    expect(() => kindChangeImpact(graph, 'cynder-not-good', 'PROPOSITION')).toThrow(/re-orders/);
   });
 });
 
 describe('layout.json helpers', () => {
   const nodes = [
-    { id: 'a1', type: 'ASSUMPTION' as const },
-    { id: 'a2', type: 'ASSUMPTION' as const },
-    { id: 'g1', type: 'GOAL' as const },
-    { id: 'a3', type: 'ASSUMPTION' as const },
+    { id: 'a1', type: 'AXIOM' as const },
+    { id: 'a2', type: 'AXIOM' as const },
+    { id: 'g1', type: 'PROPOSITION' as const },
+    { id: 'a3', type: 'AXIOM' as const },
   ];
 
   it('orders by layout first, then file order; ignores unknown and misplaced ids', () => {
-    const layout = parseLayout(JSON.stringify({ columns: { ASSUMPTION: ['a3', 'gone', 'a1', 'a3'], GOAL: ['a2'] } }));
-    expect(layout.columns.ASSUMPTION).toEqual(['a3', 'gone', 'a1']);
-    expect(orderByLayout(nodes, layout)).toEqual({ ASSUMPTION: ['a3', 'a1', 'a2'], DERIVATION: [], GOAL: ['g1'] });
+    const layout = parseLayout(JSON.stringify({ columns: { AXIOM: ['a3', 'gone', 'a1', 'a3'], PROPOSITION: ['a2'] } }));
+    expect(layout.columns.AXIOM).toEqual(['a3', 'gone', 'a1']);
+    expect(orderByLayout(nodes, layout)).toEqual({ AXIOM: ['a3', 'a1', 'a2'], PROPOSITION: ['g1'] });
   });
 
   it('moves, removes and appends; serialises stably; tolerates junk', () => {
     const current = orderByLayout(nodes, emptyLayout());
-    const moved = moveInLayout(emptyLayout(), current, 'a3', 'ASSUMPTION', 'a1');
-    expect(moved.columns.ASSUMPTION).toEqual(['a3', 'a1', 'a2']);
-    expect(withoutIds(moved, ['a1']).columns.ASSUMPTION).toEqual(['a3', 'a2']);
-    expect(appendToLayout(moved, 'd1', 'DERIVATION').columns.DERIVATION).toEqual(['d1']);
+    const moved = moveInLayout(emptyLayout(), current, 'a3', 'AXIOM', 'a1');
+    expect(moved.columns.AXIOM).toEqual(['a3', 'a1', 'a2']);
+    expect(withoutIds(moved, ['a1']).columns.AXIOM).toEqual(['a3', 'a2']);
+    expect(appendToLayout(moved, 'd1', 'PROPOSITION').columns.PROPOSITION).toEqual(['g1', 'd1']);
     expect(parseLayout(serializeLayout(moved))).toEqual(moved);
     expect(serializeLayout(moved).endsWith('\n')).toBe(true);
     expect(parseLayout('{not json')).toEqual(emptyLayout());
     expect(parseLayout(null)).toEqual(emptyLayout());
+  });
+
+  it('reads a layout written before spec v4: ASSUMPTION -> AXIOM, DERIVATION then GOAL -> PROPOSITION', () => {
+    const old = JSON.stringify({ format: 'telelean-layout', version: 1, columns: { GOAL: ['g2', 'g1'], ASSUMPTION: ['a2', 'a1'], DERIVATION: ['d1', 'g2'] }, collapsed: { vocabulary: true } });
+    const layout = parseLayout(old);
+    expect(layout).toEqual({ format: 'telelean-layout', version: 1, columns: { AXIOM: ['a2', 'a1'], PROPOSITION: ['d1', 'g2', 'g1'] }, collapsed: { vocabulary: true } });
+    // Written back in the v4 shape; a v4 key comes before the old ones it absorbs.
+    expect(serializeLayout(layout)).toBe(
+      '{\n  "format": "telelean-layout",\n  "version": 1,\n  "columns": {\n    "AXIOM": [\n      "a2",\n      "a1"\n    ],\n    "PROPOSITION": [\n      "d1",\n      "g2",\n      "g1"\n    ]\n  },\n  "collapsed": {\n    "vocabulary": true\n  }\n}\n',
+    );
+    expect(parseLayout(JSON.stringify({ columns: { ASSUMPTION: ['a1'], AXIOM: ['a2'], PROPOSITION: ['p1'], GOAL: ['g1'], DERIVATION: 'junk' } })).columns).toEqual({ AXIOM: ['a2', 'a1'], PROPOSITION: ['p1', 'g1'] });
+    expect(orderByLayout(nodes, layout)).toEqual({ AXIOM: ['a2', 'a1', 'a3'], PROPOSITION: ['g1'] });
+  });
+
+  it('keeps canvas positions (numbers only; malformed entries dropped) and writes them sorted by id', () => {
+    // `__proto__` written as a key of the file (an object literal would set the prototype instead).
+    const json =
+      '{"columns":{"AXIOM":[],"PROPOSITION":["p1","p2"]},"positions":{"p2":{"x":10.5,"y":-3},"p1":{"x":0,"y":0,"extra":true},"bad":{"x":"1","y":2},"half":{"x":1},"list":[1,2],"__proto__":{"x":1,"y":1}}}';
+    const layout = parseLayout(json);
+    expect(layout.positions).toEqual({ p1: { x: 0, y: 0 }, p2: { x: 10.5, y: -3 } });
+    expect(Object.getPrototypeOf(layout.positions)).toBe(Object.prototype);
+    const text = serializeLayout(layout);
+    expect(text.indexOf('"p1"', text.indexOf('"positions"'))).toBeLessThan(text.indexOf('"p2"', text.indexOf('"positions"')));
+    expect(parseLayout(text)).toEqual(layout);
+    expect(serializeLayout(parseLayout(text))).toBe(text);
+    // An infinite number (1e400 in the file) is not a position; no position at all means no `positions` key.
+    expect(parseLayout('{"columns":{},"positions":{"p":{"x":1e400,"y":0}}}').positions).toBeUndefined();
+    expect(serializeLayout(emptyLayout())).not.toContain('positions');
+    // A deleted card's position goes with it; a move between columns keeps it.
+    expect(withoutIds(layout, ['p2']).positions).toEqual({ p1: { x: 0, y: 0 } });
+    expect(withoutIds(layout, ['p1', 'p2']).positions).toBeUndefined();
+    expect(appendToLayout(layout, 'p1', 'AXIOM').positions).toEqual(layout.positions);
+    expect(moveInLayout(layout, layout.columns, 'p2', 'PROPOSITION', 'p1').positions).toEqual(layout.positions);
   });
 });
 
@@ -243,7 +265,7 @@ describe('subjectScaffold (exact texts of docs/m1-plan.md section 7.1; verified 
 
 describe('graph helpers', () => {
   it('buildGraph fills the M1 graph fields', () => {
-    const graph = buildGraph({ subject: 'S', version: 1, nodes: [createUserNode({ id: 'x', type: 'GOAL', naturalName: 'X', subject: 'S' })] });
+    const graph = buildGraph({ subject: 'S', version: 1, nodes: [createUserNode({ id: 'x', type: 'PROPOSITION', naturalName: 'X', subject: 'S' })] });
     expect(graph.vocabulary).toEqual([]);
     expect(graph.diagnostics).toEqual([]);
     expect(graph.semantic).toEqual({ state: 'unavailable' });

@@ -1,0 +1,64 @@
+{
+  "verdicts": [
+    {
+      "id": "LC-1",
+      "real": true,
+      "severity": "blocker",
+      "reason": "Confirmed. §3.7 says only 'Edit… reopens it (edit mode)'. QueuedTransform has no previous or locked, and no text says how an edit window gets its original or provenance. planTypedWrite (§2.9, §3.5) takes only draft and original and writes every field that differs from original. Provenance is defined as 'the host's comparison with its own copy' (§4.1, D4-1). So re-copying original on Edit… turns an untouched Claude value that has since left W into a typed unit owned by typed:<card>. §3.10 then accepts it as yours with no Accept of its own, which breaks DO-2 ('submitting the window does not accept them'), TR-15 and §14.5. Keeping the queued original instead leaves §3.8's staleness true forever, so Edit… is a dead end and only Drop remains. The trigger does not need LC-6. A 'cards' window has no sources, so the person may Reject Claude's Change item Y on card C while T is queued; T copied Y's Why (open, marked). T is then stale, and Edit… with a re-copy writes the Why the person rejected back as theirs. No plan text gives a safe reading, and D4-30 makes Edit… the prescribed recovery. A field-by-field re-base with stored provenance (as proposed) is needed: a field the person never typed must never become a typed unit."
+    },
+    {
+      "id": "LC-2",
+      "real": true,
+      "severity": "major",
+      "reason": "Confirmed against slice-3 §2.3: FreezeDelta is { cleared, own }, and slice 4 adds only startCleared. TransformFreezes live in SessionFreezes.transform. So an Unfreeze that ends one (§3.11: 'ends only by Unfreeze') is not recorded, and its Undo cannot restore it, against UN-4 and A5. The user explicitly asked for a careful Undo. Slice-3 §3.7's dialog choices touch only standing and own reasons. §3.11's revalue makes a TransformFreeze override an own freeze's {from:'base'}, so neither [Unfreeze them and decline] nor [Keep them frozen at your version] clears the transform expectation. FZ-7 says an item's status change removes only that item's reason, so a Reject, cascade or withdrawal of a typed item leaves its transform freeze expecting the typed text against B: a frozen stage problem, and Apply is disabled. This is overstated as 'permanent': a manual Unfreeze from the Context Menu clears it. An accepted typed item is still protected after the Undo by its restored accepted freeze, which limits the harm of case (1). madeAt is defined only for standing and own reasons, so session-start and transform reasons restored during a step are neither fresh nor trigger the roll-back to S₀. That part is real but narrow (whole-model steps). As a cluster of freeze-lifecycle and Undo gaps in normal actions: major."
+    },
+    {
+      "id": "LC-3",
+      "real": true,
+      "severity": "major",
+      "reason": "§3.11's Revalue lists the reasons a TransformFreeze overrides (standing, foreign, session-start, own) and leaves out an earlier transform. Slice 3 §3.3 requires the state to equal every expectation on a key. §3.9's 'compared with that value only' applies only to the running step's own transform. So once T2's queue ends, TransformFreeze(T1, s1) and TransformFreeze(T2, s2) on one key give a frozen stage problem, and Apply is disabled. D4-23's 'replaces the expectation of every other reason' could be read to cover it, but it is symmetric (each transform freeze would replace the other) and contradicts §3.11's list, so a builder has no clear rule. The flow is mainstream: D4-26 offers Transform on typed items, and Transform cards… on a card typed earlier is allowed once T1 is done. In a session, this is the only way to re-edit your own text (ES-9). Recovery exists (Unfreeze, then freeze again), so it is not a blocker. A simpler fix than moving freezes into the step's record: the table reads only the newest TransformFreeze per key, so a rollback drops only the failed step's own freeze."
+    },
+    {
+      "id": "LC-4",
+      "real": true,
+      "severity": "minor",
+      "reason": "Each sub-claim checks out. §3.6 and §2.7 end the provisional session (terminal, dismissed) before the host's in-memory board step, with no recorded pending step or recover() replay. Slice 3 §5.4 has both for its end board step. The ES-9 lock is released once the run is terminal. planAction re-copies original from the model it plans on, so a hand edit to a field in the window made after the runner's drift check is overwritten (and frozen by D4-16), not refused as D4-3's residual claims. But each window is narrow: milliseconds, or at most the scratch's duration if drift is checked only before it. Case (b) needs a click on another subject's board within that instant. Nothing becomes accepted or misattributed, the files stay consistent, and a board Undo or the editor's undo recovers the overwritten hand edit. A lost submitted draft after a crash at that instant is a small extension of the loss D4-3 already accepts. The originalKey hash check is cheap and worth adopting, but the severity is minor."
+    },
+    {
+      "id": "LC-5",
+      "real": true,
+      "severity": "minor",
+      "reason": "Confirmed. The typed write (§3.9 step 2) is run.json, then the files, then the `typed` commit, inside a running step. It is not one of slice 2's four-write session writes, so recover() leaves a half-written ws/. §5.3's 'resumed or cancelled as slice 2's are' does not fit a no-Claude step: slice 2's Resume is --resume plus a resume turn, and today's resumeNow refuses without a session id. It also does not fit a session whose conversation was never opened (D4-27). A Claude step that crashed before its first turn would get a resume turn for a turn Claude never saw. Every case is fail-closed, though. Cancel step is offered on interrupted steps (D2-55), returns to step-start and drops the ledger entry and TransformFreezes (§3.9 step 5), and the transform stays queued with lastFailure, which the queued section shows. So 'nothing tells the person' is overstated. Ownership is by exact value, so a resumed Claude step cannot launder anything. The cost is Resume being unavailable, or quota spent on a resume that is bound to fail."
+    },
+    {
+      "id": "LC-6",
+      "real": true,
+      "severity": "major",
+      "reason": "§3.7 and D4-8 state that a source's status changes only by Drop or Edit…, but the only enforcement given (and 4f's test) refuses decisions on the source itself. Slice 2 §3.6's Reject and plain-decline cascade reaches dependents that are in review, to be redone or declined Shaky. The plan calls Transform-declined sources 'Shaky-like' without saying whether cascades include them. If they are excluded, the source's content stays in ws/, no longer builds without what was rejected, and the judge reverts it ('no longer builds', slice 2 §3.6); no rule prevents that. Either way the source becomes to be redone and reverted while its transform is queued. Drop's 'return to review, as a Shaky item does' then meets slice 2's refusal for reverted items. A judge revert does not change rev, so the queue's Undo can restore 'in review' for content not in ws/, breaking slice 2 §3.1's ws/ invariant and producing a 'disappeared' problem that disables Apply. The flow is realistic: decline-Transform a Formalize item, then Reject the vocabulary item its statement uses. The result is fail-closed, but it can leave Drop and Submit stuck, with Exit as the only way out."
+    },
+    {
+      "id": "LC-7",
+      "real": true,
+      "severity": "major",
+      "reason": "Confirmed. draftFromModel copies the view's model, masked while the results are hidden (§2.1, §3.7). Slice 2's base mask gives each target's .holds as in B and drops Claude's arrows. The draft keeps a target's Dependencies, and its Proof when present, with values: `locked` holds only the lock texts. §3.8 step 2 compares every copied value with W on the real, unmasked state, and Submit review requires the results to be shown. So any transform queued while the results are hidden, on a target that Claude proved or added arrows into (the normal case), is stale every time. That is exactly the use D4-19 was decided for. No plan text exempts masked or locked fields; reworkResults handles the Result but not the staleness test. It is not a safety issue, but a designed core flow systematically ends in 'needs a new look', and its recovery (Edit…) is itself undefined (LC-1)."
+    },
+    {
+      "id": "LC-8",
+      "real": true,
+      "severity": "major",
+      "reason": "Confirmed. §3.9 step 5 prescribes 'Retry step runs it again, with a new typed write', but nothing reruns §3.8 steps 2–3 (staleness, and RV-5 b3's cascade with its confirmation) before a Retry. The stage between the failure and Retry lets the person decide items, Edit… or Drop. Then: an item accepted since, whose content the transform replaces, fails the step again on its accepted freeze, which revalue never overrides, and the confirmation RV-5 b3 requires is never offered. The transform is carried out on a changed basis, bypassing D4-30's 'never merged'. drop-transform and replace do not touch `retry`, which slice 2 clears only at Submit review or a mid-stage Formalize (D2-44), so Retry can name a dropped or replaced transform: an undefined runner path. It is mostly fail-closed, and Submit review is a workaround, so it is borderline. It is major because the plan explicitly offers this Retry for transform steps, and it is the natural button after a failure."
+    },
+    {
+      "id": "LC-9",
+      "real": true,
+      "severity": "minor",
+      "reason": "Confirmed. The `premise` TypedUnit carries new values only (§2.2) and rewrites PersistedSession.premises, which is outside ws/. §3.9 step 5's rollback reverts ws/ and drops ledger entries and TransformFreezes, but says nothing about restoring a rewritten PremiseDraft. So a premise step that is cancelled, or fails on an environment failure, can leave the person's text (wordedBy 'user') in the draft while the transform stays queued, against D4-4's all-or-nothing. The harm is small. The text is the person's own, so leaving out worded_by: agent is right for it. The premise still needs its own Accept, with 'how you hold it', so nothing is adopted silently. And it takes a rare failure (a no-Claude premise step writes no files) followed by a Drop. Simplest fix: apply the premise rewrite only in the run.json write that ends the step as passed."
+    },
+    {
+      "id": "LC-10",
+      "real": true,
+      "severity": "minor",
+      "reason": "Confirmed on the text. claudeStarted is set only on D4-27's lazy path, §5.3 reads absent fields as empty (false), and §3.8 step 6 opens the conversation when it is false and the queue has a Claude step. Read literally, that covers every Formalize-started and pre-slice-4 session, breaking D2-22's one conversation. The impact is limited. Egress consent is remembered per root in globalState (extension logic/runs.ts), so no second prompt appears. The feedback and transform turns are largely self-contained, and nothing is accepted or misattributed. If the check is applied to every Claude step, slice 2's existing Submit tests would fail ('slices 2 and 3 stay green'), so the main residual is sessions recovered across the slice-4 update and the Formalize-session-plus-Claude-transform case. Fix: derive it from the recorded conversation id, or set it at every start that opens the conversation and read an absent value as true unless transform.start is set."
+    }
+  ]
+}

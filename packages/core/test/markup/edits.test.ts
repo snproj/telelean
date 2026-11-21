@@ -26,7 +26,7 @@ const blockOf = (file: ParsedFile, id: string): MarkupBlock => {
 };
 const MAIN = parse(mainLean);
 const mainLines = mainLean.split('\n');
-const NEW_CARD = renderBlock({ id: 'new-card', type: 'ASSUMPTION', naturalName: 'A new card' });
+const NEW_CARD = renderBlock({ id: 'new-card', type: 'AXIOM', naturalName: 'A new card' });
 
 /** `lines` with `count` lines at `at` replaced by `insert`. */
 const spliced = (lines: readonly string[], at: number, count: number, ...insert: string[]) => {
@@ -138,12 +138,12 @@ describe('AT1.6 setBlockField: derived ids, duplicates, indentation, closers', (
     const after = applyTextEdits(
       text,
       setBlockFields(file, block, [
-        { key: 'type', value: 'ASSUMPTION' },
+        { key: 'type', value: 'AXIOM' },
         { key: 'natural_name', value: 'y' },
         { key: 'rationale', value: 'r' },
       ]),
     );
-    expect(after).toBe('  /-\n  @@ telelean v1\n  id: a\n  kind: ASSUMPTION\n  natural_name: y\n  rationale: r\n  -/\n');
+    expect(after).toBe('  /-\n  @@ telelean v1\n  id: a\n  kind: AXIOM\n  natural_name: y\n  rationale: r\n  -/\n');
   });
 
   it('never glues a value to a closer on the same line', () => {
@@ -167,12 +167,12 @@ describe('AT1.6 setBlockField: derived ids, duplicates, indentation, closers', (
     const after = applyTextEdits(
       text,
       setBlockFields(file, block, [
-        { key: 'type', value: 'GOAL' },
+        { key: 'type', value: 'PROPOSITION' },
         { key: 'natural_name', value: 'x/' },
       ]),
     );
     const reparsed = parse(after, 'X.lean');
-    expect(reparsed.blocks[0]?.fields).toMatchObject({ type: 'GOAL', naturalName: 'x/' });
+    expect(reparsed.blocks[0]?.fields).toMatchObject({ type: 'PROPOSITION', naturalName: 'x/' });
     expect(reparsed.blocks[0]?.idWritten).toBe(true);
     expect(reparsed.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
   });
@@ -212,7 +212,7 @@ describe('AT1.6 insertBlockEdits', () => {
     const text = inbox?.text ?? '';
     const once = applyTextEdits(text, insertBlockEdits(parse(text, 'Model/Spyro/Inbox.lean'), NEW_CARD, { kind: 'end-of-namespace', namespace: 'Spyro' }));
     expect(once).toBe(`import Model.Spyro.Vocabulary\n\n-- New cards typed on the telelean board are added here.\nnamespace Spyro\n\n${NEW_CARD}\n\nend Spyro\n`);
-    const second = renderBlock({ id: 'second-card', type: 'GOAL', naturalName: 'Second' });
+    const second = renderBlock({ id: 'second-card', type: 'PROPOSITION', naturalName: 'Second' });
     const twice = applyTextEdits(once, insertBlockEdits(parse(once, 'Model/Spyro/Inbox.lean'), second, { kind: 'end-of-namespace', namespace: 'Spyro' }));
     expect(twice).toBe(`import Model.Spyro.Vocabulary\n\n-- New cards typed on the telelean board are added here.\nnamespace Spyro\n\n${NEW_CARD}\n\n${second}\n\nend Spyro\n`);
     const file = parse(twice, 'Model/Spyro/Inbox.lean');

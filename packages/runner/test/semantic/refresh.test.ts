@@ -45,24 +45,38 @@ function decl(f: LeanFacts, name: string): DeclFacts {
   return d;
 }
 
-/** The facts without what changes from run to run (times, durations, memory peaks). */
+/** The facts without what changes from run to run (times, durations, memory peaks; the probe job's since 2b3a). */
 function withoutVolatile(f: LeanFacts): LeanFacts {
   const strip = <T extends { durationMs: number; peakMemoryBytes?: number }>(run: T): T => {
     const { peakMemoryBytes: _peak, ...rest } = run;
     return { ...rest, durationMs: 0 } as T;
   };
-  return { ...f, startedAt: '1970-01-01T00:00:00.000Z', finishedAt: '1970-01-01T00:00:00.000Z', build: strip(f.build), check: strip(f.check) };
+  return {
+    ...f,
+    startedAt: '1970-01-01T00:00:00.000Z',
+    finishedAt: '1970-01-01T00:00:00.000Z',
+    build: strip(f.build),
+    check: strip(f.check),
+    ...(f.probe !== undefined ? { probe: strip(f.probe) } : {}),
+  };
 }
 
 /**
  * The facts equal `test-fixtures/semantic/recorded/<name>` (for core's tests and the integrator), apart from times,
  * durations and peaks. Regenerate with UPDATE_SEMANTIC_RECORDINGS=1 after changing a fixture or the semantic layer.
+ * Slice 1g: the recordings were regenerated with slice 1d's value probe, so they hold `valueConsts` and are compared
+ * whole (slice 1d's comparison without them is gone). Slice 2b3a: regenerated with the isolated probe, so they hold
+ * `typeConsts` and the probe's marker too.
  */
 function expectRecorded(name: string, f: LeanFacts): void {
   const normalised = `${JSON.stringify(withoutVolatile(f), null, 2)}\n`;
   const file = path.join(SEMANTIC_FIXTURES, 'recorded', name);
   if (process.env['UPDATE_SEMANTIC_RECORDINGS'] === '1') writeFileSync(file, normalised);
-  expect(normalised).toBe(readFileSync(file, 'utf8'));
+  const recordedText = readFileSync(file, 'utf8');
+  const recordedFacts = JSON.parse(recordedText) as LeanFacts;
+  expect(recordedFacts.decls.every((d) => d.valueConsts !== undefined && d.typeConsts !== undefined)).toBe(true);
+  expect(recordedFacts.probe).toEqual({ status: 'ok', durationMs: 0 });
+  expect(normalised).toBe(recordedText);
 }
 
 const states = (f: LeanFacts): Record<string, string> => Object.fromEntries(f.modules.map((m) => [m.name, m.state]));
@@ -162,6 +176,48 @@ describe('refreshLeanFacts (sandboxed Lean)', () => {
     expect(decl(f, 'Spyro.cynder_dark_past.holds').docstring).toBeUndefined();
     expect(f.decls.every((d) => d.parent === undefined)).toBe(true);
 
+    // Slice 1d (B.2): the value probe: every declaration's elaborated value, as declarations of the facts (Lean's own
+    // constants left out; an opaque's value is its `default`, through the instance).
+    expect(Object.fromEntries(f.decls.map((d) => [d.name, d.valueConsts]))).toEqual({
+      'Spyro.Character': [],
+      'Spyro.Game': [],
+      'Spyro.Character.exists': [],
+      'Spyro.instNonemptyCharacter': ['Spyro.Character.exists'],
+      'Spyro.Game.exists': [],
+      'Spyro.instNonemptyGame': ['Spyro.Game.exists'],
+      'Spyro.HasDarkPast': [],
+      'Spyro.IsPG': [],
+      'Spyro.GoodAddition': [],
+      'Spyro.cynder': ['Spyro.Character', 'Spyro.instNonemptyCharacter'],
+      'Spyro.newSpyro': ['Spyro.Game', 'Spyro.instNonemptyGame'],
+      'Spyro.cynder_dark_past': ['Spyro.HasDarkPast', 'Spyro.cynder'],
+      'Spyro.cynder_dark_past.holds': [],
+      'Spyro.new_spyro_pg': ['Spyro.IsPG', 'Spyro.newSpyro'],
+      'Spyro.new_spyro_pg.holds': [],
+      'Spyro.cynder_not_good': ['Spyro.GoodAddition', 'Spyro.cynder', 'Spyro.newSpyro'],
+    });
+    // Slice 2b3a: the isolated probe gives them (its own Lean job, the facts' marker) and the type constants too.
+    expect(f.probe).toMatchObject({ status: 'ok' });
+    expect(f.probe?.peakMemoryBytes).toBeGreaterThan(0);
+    expect(Object.fromEntries(f.decls.map((d) => [d.name, d.typeConsts]))).toEqual({
+      'Spyro.Character': [],
+      'Spyro.Game': [],
+      'Spyro.Character.exists': ['Spyro.Character'],
+      'Spyro.instNonemptyCharacter': ['Spyro.Character'],
+      'Spyro.Game.exists': ['Spyro.Game'],
+      'Spyro.instNonemptyGame': ['Spyro.Game'],
+      'Spyro.HasDarkPast': ['Spyro.Character'],
+      'Spyro.IsPG': ['Spyro.Game'],
+      'Spyro.GoodAddition': ['Spyro.Character', 'Spyro.Game'],
+      'Spyro.cynder': ['Spyro.Character'],
+      'Spyro.newSpyro': ['Spyro.Game'],
+      'Spyro.cynder_dark_past': [],
+      'Spyro.cynder_dark_past.holds': ['Spyro.cynder_dark_past'],
+      'Spyro.new_spyro_pg': [],
+      'Spyro.new_spyro_pg.holds': ['Spyro.new_spyro_pg'],
+      'Spyro.cynder_not_good': [],
+    });
+
     expect(await unitsOfRun(SEMANTIC_RUN_ID)).toEqual([]);
     expect(knownProjectsLines()).toBe(knownBefore);
 
@@ -183,6 +239,9 @@ describe('refreshLeanFacts (sandboxed Lean)', () => {
     expect(f.decls.map((d) => d.name)).toEqual(VOCABULARY_NAMES);
     expect(f.decls.every((d) => d.kind !== undefined && d.type !== undefined && d.error === undefined)).toBe(true);
     expect(f.check).toMatchObject({ status: 'ok', probed: 11 }); // only the fresh module was imported
+    // The isolated probe loads the fresh module only, and gives its constants (2b3a).
+    expect(f.probe).toMatchObject({ status: 'ok' });
+    expect(f.decls.every((d) => d.valueConsts !== undefined && d.typeConsts !== undefined)).toBe(true);
     expect(existsSync(path.join(root, '.lake/build/lib/lean/Model.olean'))).toBe(true); // the stale root artifact is still there, unused
 
     const errors = f.build.messages.filter((m) => m.severity === 'error');
@@ -223,6 +282,15 @@ describe('refreshLeanFacts (sandboxed Lean)', () => {
     expect(g2.axioms?.filter((a) => a.endsWith('.holds'))).toEqual(['Spyro.cynder_dark_past.holds', 'Spyro.new_spyro_pg.holds']);
     expect(decl(f, 'Spyro.g3.holds').refs.map((x) => x.name)).toEqual(['Spyro.g3', 'Spyro.helper_lemma']);
     expect(decl(f, 'Spyro.helper_lemma')).toMatchObject({ kind: 'theorem', docstring: 'An untracked lemma' });
+    // Slice 1d (B.2): elaborated values. `.2` is `And.right` (Lean's own: left out) with the two conjuncts, d0's
+    // unfolded statement, as its implicit arguments; a proof through an untracked lemma lists the lemma, whose own value
+    // lists the card's `.holds`; the private theorem's name is never listed.
+    expect(g2.valueConsts).toEqual(['Spyro.cynder_dark_past', 'Spyro.new_spyro_pg', 'Spyro.d0.holds']);
+    expect(decl(f, 'Spyro.g3.holds').valueConsts).toEqual(['Spyro.helper_lemma']);
+    expect(decl(f, 'Spyro.helper_lemma').valueConsts).toEqual(['Spyro.cynder_dark_past.holds']);
+    expect(decl(f, 'Spyro.hidden').valueConsts).toEqual([]);
+    expect(f.decls.every((d) => d.valueConsts !== undefined)).toBe(true);
+    expect(f.decls.some((d) => (d.valueConsts ?? []).some((c) => c.startsWith('_private.')))).toBe(false);
     expect(decl(f, 'Spyro.withSorry')).toMatchObject({ kind: 'theorem', usesSorry: true });
     expect(decl(f, 'Spyro.cynder_not_good.holds')).toMatchObject({ kind: 'theorem', usesSorry: false });
     expect(decl(f, 'Spyro.hidden')).toMatchObject({ kind: 'axiom', typeSort: 'Prop', docstring: 'A hidden assumption' });
@@ -244,6 +312,17 @@ describe('refreshLeanFacts (sandboxed Lean)', () => {
       docstring: 'A data instance',
     });
     expect(f.decls.filter((d) => d.error !== undefined)).toEqual([]);
+    // Slice 2b3a (D2-30): the type constants. A structure lists its constructor's field types; a field projection its
+    // parent; a conditional theorem its hypotheses; a data instance its class's argument; an axiom with a binder its type.
+    expect(f.decls.every((d) => d.typeConsts !== undefined)).toBe(true);
+    expect(f.probe).toMatchObject({ status: 'ok' });
+    expect(decl(f, 'Spyro.Rec').typeConsts).toEqual(['Spyro.Rec']);
+    expect(decl(f, 'Spyro.Rec.past').typeConsts).toEqual(['Spyro.Rec']);
+    expect(decl(f, 'Spyro.d1.holds').typeConsts).toEqual(['Spyro.cynder_not_good', 'Spyro.d1']);
+    expect(decl(f, 'Spyro.instInhabitedRec').typeConsts).toEqual(['Spyro.Rec']);
+    expect(decl(f, 'Spyro.hidden').typeConsts).toEqual(['Spyro.Character', 'Spyro.HasDarkPast']);
+    expect(decl(f, 'Spyro.uses_def').typeConsts).toEqual([]);
+    expect(decl(f, 'Spyro.f').typeConsts).toEqual(['Spyro.Character', 'Spyro.Game']);
     expectRecorded('extras-facts.json', f);
 
     // Again, with nothing changed: Lake replays the stored warning, and the facts are the same.
@@ -337,6 +416,11 @@ describe('refreshLeanFacts (sandboxed Lean)', () => {
     const odd = decl(f, 'Spyro.«odd name»');
     expect(odd.kind).toBeUndefined();
     expect(odd.type).toBeUndefined();
+    // The isolated probe probes what the check file probed: the odd name gets no constants (closures fail closed on it).
+    expect(f.probe).toMatchObject({ status: 'ok' });
+    expect(odd.valueConsts).toBeUndefined();
+    expect(odd.typeConsts).toBeUndefined();
+    expect(f.decls.filter((d) => d.name !== odd.name).every((d) => d.valueConsts !== undefined && d.typeConsts !== undefined)).toBe(true);
     expect(f.decls.filter((d) => d.name !== odd.name).every((d) => d.kind !== undefined && d.type !== undefined)).toBe(true);
   });
 

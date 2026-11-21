@@ -1,0 +1,21 @@
+namespace Spyro
+-- vocabulary in the style of test-fixtures/spyro
+axiom Character : Type
+axiom Game : Type
+axiom Character.exists : Nonempty Character
+axiom Game.exists : Nonempty Game
+instance : Nonempty Character := Character.exists
+instance : Nonempty Game := Game.exists
+axiom IsPG : Game → Prop
+axiom GoodAddition : Character → Game → Prop
+noncomputable opaque cynder : Character
+noncomputable opaque newSpyro : Game
+
+/-! S2: frozen text, changed meaning. HasDarkPast is (re)defined as `False`
+    instead of `axiom HasDarkPast : Character → Prop`. -/
+def HasDarkPast (_ : Character) : Prop := False
+abbrev cynder_dark_past : Prop := HasDarkPast cynder
+axiom cynder_dark_past.holds : cynder_dark_past
+abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro
+-- (a) the form quoted in the draft:
+theorem s2_dot : cynder_not_good := cynder_dark_past.holds.elim

@@ -1,15 +1,19 @@
 /**
  * The board's confirmations (one at a time, from the store's `dialog`):
- *  - dependents: a kind change whose Lean change breaks other proofs, listing them, with core's explanation:
- *    A->G / D->G removes a `.holds` they use (rewrite them to take it as a hypothesis), D->A / G->A of a proof that
- *    takes hypotheses makes `.holds` an axiom without them (rewrite them to use it directly); the rewrite needs fresh
- *    Lean facts. Or keep them marked broken, or cancel;
- *  - rationale: the optional "Why do you hold it?" of a change to Assumption (D-14: Skip is fine);
+ *  - dependents: a kind change whose Lean change breaks other proofs, listing them, with core's explanation: P->A of a
+ *    proof that takes hypotheses makes `.holds` an axiom without them (rewrite them to use it directly; the rewrite
+ *    needs fresh Lean facts), or keep them marked broken, or cancel (spec v4: no other kind change breaks a proof);
+ *  - rationale: the optional "Why do you hold it?" of a change to Axiom (D-14: Skip is fine), titled like the action,
+ *    "Move to axioms" (slice 1f carry-over 4);
  *  - delete: who declares it, which proofs use it, which statements mention it (D-18); delete the card with or
  *    without its Lean code (Cancel has the focus, so Delete then Enter deletes nothing). When the host refuses to
  *    delete the Lean code because other declarations use it, the dialog opens again listing them (they would stop
  *    compiling): "Delete anyway", card only, or cancel;
- *  - revert: "Revert to this" in the history dropdown (D-33).
+ *  - revert: "Revert to this" in the history dropdown (D-33);
+ *  - arrows (spec v4 slice 1b): an arrow change's impact, confirmed before it is sent (an axiom becomes a proposition,
+ *    AR-6; arrows that proofs use, A16);
+ *  - formalize (spec v4.1 AR-8, slice 1e): Formalize for dependencies asks about a source that is a proposition with
+ *    neither a proof nor a pending claim: mark it pending and continue, or cancel; without a Lean statement, Cancel only.
  * The host's lists name cards by id and other declarations by their Lean names: a card shows by its sentence (this
  * subject's from the board, another subject's from the host's `dependentCards`, with its subject), anything else by
  * its Lean name in code font.
@@ -66,22 +70,15 @@ function Dependent({ id, card }: { id: string; card?: DependentCard | undefined 
 
 /**
  * The dependents dialog's own words (carry-over 2): for exactly one dependent "that proof" / "it", otherwise "them".
- * Every dependent of a `.holds` is a proof (a card's or a lemma's), so "proof" fits both kinds of entry.
+ * Every dependent of a `.holds` is a proof (a card's or a lemma's), so "proof" fits both kinds of entry. Since spec v4
+ * the dialog is only for a change to Axiom (a proof that takes hypotheses becomes an axiom that states it directly, so
+ * its users stop passing it arguments; the change to Goal, with its hypothesis rewrite, is gone).
  */
-export function dependentsTexts(to: 'ASSUMPTION' | 'DERIVATION' | 'GOAL', count: number): { intro: string; rewrite: string; keep: string } {
+export function dependentsTexts(count: number): { intro: string; rewrite: string; keep: string } {
   const one = count === 1;
-  // To Goal: `.holds` goes, so its users take the statement as a hypothesis instead. To Assumption (a proof that
-  // takes hypotheses): `.holds` becomes an axiom that states it directly, so its users stop passing it arguments.
-  if (to === 'ASSUMPTION') {
-    return {
-      intro: one ? 'This passes it arguments:' : 'These pass it arguments:',
-      rewrite: one ? 'Rewrite that proof to use it directly' : 'Rewrite them to use it directly',
-      keep: one ? 'Keep that proof, marked broken' : 'Keep them, marked broken',
-    };
-  }
   return {
-    intro: one ? 'This uses it:' : 'These use it:',
-    rewrite: one ? 'Rewrite that proof to take it as a hypothesis' : 'Rewrite them to take it as a hypothesis',
+    intro: one ? 'This passes it arguments:' : 'These pass it arguments:',
+    rewrite: one ? 'Rewrite that proof to use it directly' : 'Rewrite them to use it directly',
     keep: one ? 'Keep that proof, marked broken' : 'Keep them, marked broken',
   };
 }
@@ -89,7 +86,7 @@ export function dependentsTexts(to: 'ASSUMPTION' | 'DERIVATION' | 'GOAL', count:
 function DependentsDialog({ dialog }: { dialog: Extract<DialogState, { kind: 'dependents' }> }) {
   const node = useBoard((s) => s.nodes[dialog.id]);
   const actions = useBoardActions();
-  const texts = dependentsTexts(dialog.to, dialog.dependents.length);
+  const texts = dependentsTexts(dialog.dependents.length);
   return (
     <Modal labelledBy="tl-dialog-title" testId="dialog-dependents" onCancel={() => actions.closeDialog()}>
       <h2 id="tl-dialog-title" className="tl-dialog__title">
@@ -130,11 +127,13 @@ function DependentsDialog({ dialog }: { dialog: Extract<DialogState, { kind: 'de
 function RationaleDialog({ dialog }: { dialog: Extract<DialogState, { kind: 'rationale' }> }) {
   const node = useBoard((s) => s.nodes[dialog.id]);
   const actions = useBoardActions();
-  const [reason, setReason] = useState('');
+  const [reason, setReason] = useState(dialog.initial ?? '');
+  // Spec v4: the only change to a kind left is P->A, the board's "Move to axioms" (AR-7).
+  const action = dialog.to === 'AXIOM' ? 'Move to axioms' : `Make ${KIND_NOUN[dialog.to]}`;
   return (
     <Modal labelledBy="tl-dialog-title" testId="dialog-rationale" onCancel={() => actions.closeDialog()}>
       <h2 id="tl-dialog-title" className="tl-dialog__title">
-        Make {KIND_NOUN[dialog.to]}
+        {action}
       </h2>
       {node ? <p className="tl-dialog__subject">“{node.naturalName}”</p> : null}
       <p className="tl-dialog__detail">
@@ -160,8 +159,8 @@ function RationaleDialog({ dialog }: { dialog: Extract<DialogState, { kind: 'rat
         />
       </label>
       <div className="tl-dialog__buttons">
-        <button type="button" className="tl-button" onClick={() => actions.confirmRationale(reason)}>
-          Make {KIND_NOUN[dialog.to]}
+        <button type="button" className="tl-button" data-testid="rationale-confirm" onClick={() => actions.confirmRationale(reason)}>
+          {action}
         </button>
         <button type="button" className="tl-button tl-button--secondary" onClick={() => actions.confirmRationale(null)}>
           Skip
@@ -289,6 +288,90 @@ function DeleteDialog({ dialog }: { dialog: Extract<DialogState, { kind: 'delete
   );
 }
 
+/**
+ * Spec v4 slice 1b: an arrow change whose impact the user confirms first (core's or the board's words): an axiom that
+ * becomes a proposition, with the cards that lose their green glow (AR-6), or arrows that proofs use (A16). Cancel
+ * has the focus, so Enter right away changes nothing.
+ */
+function ArrowsDialog({ dialog }: { dialog: Extract<DialogState, { kind: 'arrows' }> }) {
+  const node = useBoard((s) => s.nodes[dialog.id]);
+  const actions = useBoardActions();
+  return (
+    <Modal labelledBy="tl-dialog-title" testId="dialog-arrows" onCancel={() => actions.closeDialog()}>
+      <h2 id="tl-dialog-title" className="tl-dialog__title">
+        <InlineCode text={dialog.summary} />
+      </h2>
+      {node ? <p className="tl-dialog__subject">“{node.naturalName}”</p> : null}
+      <p className="tl-dialog__detail" data-testid="arrows-detail">
+        <InlineCode text={dialog.detail} />
+      </p>
+      {dialog.dependents.length > 0 ? (
+        <div data-testid="arrows-dependents">
+          <h3 className="tl-dialog__heading">{dialog.listTitle}</h3>
+          <ul className="tl-dialog__list">
+            {dialog.dependents.map((id) => (
+              <Dependent key={id} id={id} card={dialog.cards?.[id]} />
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      <p className="tl-dialog__note">Undo takes it back.</p>
+      <div className="tl-dialog__buttons">
+        <button type="button" className="tl-button" data-testid="arrows-confirm" onClick={() => actions.confirmArrows()}>
+          {dialog.confirm}
+        </button>
+        <button type="button" className="tl-button tl-button--secondary" data-autofocus onClick={() => actions.closeDialog()}>
+          Cancel
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+/**
+ * Spec v4.1 AR-8 (★D7 (b); slice 1e): before Formalize for dependencies starts, a source that is a proposition with
+ * neither a proof nor a pending claim is asked about, one at a time. With a Lean statement: "Mark pending and continue"
+ * (assumed until proved: `axiom n.holds`, the user's own edit, one Undo step, made before the run starts) or Cancel.
+ * Without one it must be formalised and proved first: Cancel only (AP-10). Cancel has the focus, so Enter right away
+ * changes nothing.
+ */
+function FormalizeDialog({ dialog }: { dialog: Extract<DialogState, { kind: 'formalize' }> }) {
+  const node = useBoard((s) => s.nodes[dialog.id]);
+  const actions = useBoardActions();
+  const sentence = `“${node?.naturalName ?? dialog.id}”`;
+  const asked = dialog.confirmed.length + 1;
+  const total = asked + dialog.queue.length;
+  const pending = dialog.mode === 'mark-pending';
+  return (
+    <Modal labelledBy="tl-dialog-title" testId="dialog-formalize" onCancel={() => actions.closeDialog()}>
+      <h2 id="tl-dialog-title" className="tl-dialog__title">
+        Formalize for dependencies{total > 1 ? ` (${asked} of ${total})` : ''}
+      </h2>
+      <p className="tl-dialog__detail" data-testid="formalize-question">
+        {pending
+          ? `${sentence} is not proved. Mark it pending (assumed until proved), or cancel?`
+          : `${sentence} has no Lean statement and no proof yet: formalize and prove it first.`}
+      </p>
+      {pending ? (
+        <p className="tl-dialog__note">
+          Marking it pending adds an axiom for its statement to your files before the run starts (your own edit: Undo takes it back). Cards that rest on it are
+          not established until it is proved.
+        </p>
+      ) : null}
+      <div className="tl-dialog__buttons">
+        {pending ? (
+          <button type="button" className="tl-button" data-testid="formalize-mark-pending" onClick={() => actions.confirmFormalizePending()}>
+            Mark pending and continue
+          </button>
+        ) : null}
+        <button type="button" className="tl-button tl-button--secondary" data-testid="formalize-cancel" data-autofocus onClick={() => actions.closeDialog()}>
+          Cancel
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
 function RevertDialog({ dialog }: { dialog: Extract<DialogState, { kind: 'revert' }> }) {
   const subject = useBoard((s) => s.subject);
   const actions = useBoardActions();
@@ -323,7 +406,11 @@ export function Dialogs() {
       return <RationaleDialog key={`${dialog.id}-${dialog.to}`} dialog={dialog} />;
     case 'delete':
       return <DeleteDialog key={`${dialog.id}-${dialog.dependents ? 'confirm' : 'ask'}`} dialog={dialog} />;
+    case 'arrows':
+      return <ArrowsDialog key={`${dialog.id}-${dialog.change.kind}`} dialog={dialog} />;
     case 'revert':
       return <RevertDialog key={dialog.entry.id} dialog={dialog} />;
+    case 'formalize':
+      return <FormalizeDialog key={`${dialog.target}-${dialog.id}-${dialog.mode}`} dialog={dialog} />;
   }
 }

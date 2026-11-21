@@ -1,0 +1,72 @@
+{
+  "summary": "Fidelity check of sub-slice 1d (read-only; no builds or tests run). To isolate 1d's own changes I diffed the working tree against the pre-1d snapshot in scratchpad/snap1c2. That gives exactly the 40 files the report lists; the per-file diffs are in /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/v1d_fid/.\n\nWhat the brief asks for is all there, as the plan and the v4.1 clauses say:\n- **Value probe (runner):** one #eval per check file, parsed into the optional `DeclFacts.valueConsts`. Facts without it still load. Any probe failure voids it and core falls back to the references.\n- **Walk and checks (core):** direct(v) is walked over `valueConsts`, with the reference walk as fallback, marked `from: 'source'`, and then no ✓. B.2's cross-check gives the `uses-unseen` flag and TL123. TL107 no longer has the coverage exemption; TL109 stays a hint. `established` still requires fresh facts and no TL114 on the card, its footprint and direct(v), and now also follows the stale flag of an outdated walk.\n- **Webview:**\n  - Glows and chips follow BD-6 v4.1.\n  - band(v) is computed as BD-7/B.5 say: complete versus open, the wording of what lies outside, the ∅-mark case, no band from out-of-date facts.\n  - Arrow looks follow BD-5: TL109 is plain dotted with \"Not used by the current proof\"; TL107 keeps the warning colour and gets a notched head.\n  - The legend has the 8 entries.\n  - RV-6 hides results by a per-card result signature, so downstream cards are covered.\n  - The five 1c2 carry-overs are in.\n\nSafety properties:\n- No markup, kind or arrow-writing path was touched.\n- The three core Spyro fixtures differ from before only by `valueConsts` (checked with a JSON comparison).\n- Old facts and pre-1d graphs fall back to an open band.\n- No test was deleted; only expectations changed, each keeping its intent.\n- The builder documented two deviations: the narrower imports (`Lean.CoreM` and `Lean.Util.FoldConsts` instead of `import Lean`, with RSS measurements), and \"another card's statement stops the walk without counting it\". Both are sound.\n\nThe blocker: the band's bracket is drawn only across arrows that arrive on the card's left edge, but the ✓ seal comes from the data. Simply expanding a source card (it widens to 420 px, the next layer starts 356 px to the right) routes its arrow to the target's right edge. A complete band then shows ✓ over only some of the arrows the proof needs, which Lean never checked. If every arrow in the band arrives on the right, the band disappears.\n\nSmaller problems:\n- A TL114 card in direct(v) still gives a ✓ band.\n- The outdated walk misses a lemma that was renamed or deleted in a changed file, so the card stays established until the next refresh.\n- `arrowLook` is tested but never used by the drawing code.\n- An RV-6 leak predating 1d (from 1c1): the AXIOMS header's pending-claims count.\n- Three nits.",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "blocker",
+      "where": "/home/zhengyew/telelean/packages/webview/src/board/geometry.ts:485 and :606-620",
+      "problem": "The band's bracket crosses only the band's arrows that arrive on the target's LEFT edge: pass 1 gives an arrival slot only when routeSides(sr, tr).t === 'L', and the bracket's span is built from the slots that exist (`band.arrows.map((id) => slots.get(id)).filter(defined)`). The seal is still drawn whenever `band.complete` (computed in band.ts from data). Any arrow whose source overlaps the target horizontally, or lies to its right, is routed to the target's right edge (a right-side loop, or right to left), so it gets no slot and is left out of the bracket. This needs no unusual layout: an expanded canvas card is 420 px wide (board.css:408, --tl-card-w-open), and the layered placement puts the next layer 356 px to the right. So expanding a source card in the layer before its target flips that arrow to a right-side loop. A complete band then shows its ✓ over a strict subset of the arrows the proof needs, i.e. \"these suffice together\" for a set Lean never checked: a misleading green under BD-7 and S14. If every arrow in the band arrives on the right, the band disappears. geometry.test.ts has no case for either.",
+      "fix": "Make every arrow of a band arrive on the target's left edge, so the bracket always spans the whole band. In computeFrame, for an edge listed in bands.get(edge.target).arrows, use t = 'L' both for the pass-1 slot and for the path (a curve from the source's side around to the left edge). As a guard, draw no seal (the open, dashed look) whenever the bracket spans fewer of the band's visible arrows than the band has. Add geometry tests for a complete band where one source overlaps the target horizontally (e.g. 420 px wide) and one source lies to the right of the target.",
+      "evidence": "routeSides (geometry.ts:243-248) returns {s:'R', t:'R', loop:true} when the rects overlap horizontally, and {s:'L', t:'R'} when the target lies to the left. Layer 1 source at x=356, expanded to 420 px, has its right edge at 776; the layer-2 target is at x=712, so the arrow loops on the right. The seal is set by `seal: band.complete ? { x, y: (y1 + y2) / 2 } : null` (geometry.ts:620), independent of how many arrows the bracket spans."
+    },
+    {
+      "id": "F2",
+      "severity": "minor",
+      "where": "/home/zhengyew/telelean/packages/webview/src/board/band.ts:77-90",
+      "problem": "bandOf drops the band only when a card in direct(v) ∪ hypotheses is stale or not-checked. If a card there has a `.holds` that states something else (holds-mismatch, TL114), the band is still complete with \"Together these suffice (checked by Lean)\". But Lean checked v from that `.holds`'s other type, not from the card's statement that the arrow stands for. Core already refuses `established` in this case (markEstablished's `unsure`), so the board shows a blue glow and a plain \"proved\" chip next to a ✓ band. BD-7's list of conditions does not name TL114, so this is a gap in the spec's letter, but the ✓ claims more than Lean checked.",
+      "fix": "In bandOf, for each id in direct ∪ on whose flags include holds-mismatch, push an outside entry such as `“‹card›”'s .holds states something else (TL114)`, which makes the band open. Add a band.test.ts case, and note the decision in plan §8 for the integrator."
+    },
+    {
+      "id": "F3",
+      "severity": "minor",
+      "where": "/home/zhengyew/telelean/packages/core/src/project/edges.ts:128",
+      "problem": "walkFrom skips a name with no usable facts (`if (!facts) continue`) without marking the walk outdated. By construction `valueConsts` lists only declarations of the facts. So on the valueConsts walk, a missing name means its file changed since the check and the name no longer matches: FactsIndex keeps a stale file's facts only by matching name and kind, so a renamed or deleted lemma, or one whose keyword changed, drops out. In that window, a card v in an unchanged file keeps fresh flags, the walk sees nothing through the lemma, `outdated` stays false, and markEstablished grants `established` (green glow) to a proof whose lemma no longer exists, until the next refresh. Only TL123 from the cross-check hints at it. direct.test.ts covers an edited lemma that keeps its name, not this case.",
+      "fix": "When walking `valueConsts` (not the reference fallback, which also lists Lean's own names), treat a listed name that is neither a card's declaration nor in declFacts as outdated (set outdated = true), e.g. via a flag passed to walkFrom. Add a direct.test.ts case: rename the lemma in the changed file, and expect v to be `stale` and not established."
+    },
+    {
+      "id": "F4",
+      "severity": "minor",
+      "where": "/home/zhengyew/telelean/packages/webview/src/board/edges.ts:93 (and test/unit/edges.test.ts, 'arrow looks (spec v4 BD-5, slice 1d)')",
+      "problem": "arrowLook is called only by tests. EdgeEngine.writePaths builds the arrow classes itself from edge.pattern, conditional and mismatch (EdgeEngine.ts:534), and markerVariant picks the head. So the 'arrow looks' tests check a copy of the rules, not what is drawn, and a change in writePaths would not fail them. The toDisplayEdges and markerVariant assertions do cover the TL109/TL107 split.",
+      "fix": "Have writePaths derive its line, head and warning classes from arrowLook, or extract the class string into a pure function (e.g. edgeClass(edge, state)) that writePaths uses, and test that. Otherwise delete arrowLook and its test."
+    },
+    {
+      "id": "F5",
+      "severity": "minor",
+      "where": "/home/zhengyew/telelean/packages/webview/src/board/assumed.ts:25 (used by AlsoAssumed.tsx:20-26)",
+      "problem": "Pre-existing since 1c1, but an RV-6 leak in the same hidden-set mechanism 1d extended. In the Proposed view before the reveal, the AXIOMS header's \"also assumed: K pending claims\" counts pending propositions from the proposal's real statuses, ignoring proposedOverlay(s).hidden. When the run proves a pending target, K drops by one and the menu no longer lists that target. That tells the user a proof exists, which RV-6 says must stay hidden (\"whether a proof exists at all … in the Proposed view\").",
+      "fix": "When counting pending claims, take the proof status of ids in proposedOverlay(s).hidden from the Current board (s.nodes), or pass the hidden set to alsoAssumed. Add a unit test that the count is unchanged before the reveal."
+    },
+    {
+      "id": "F6",
+      "severity": "nit",
+      "where": "/home/zhengyew/telelean/packages/webview/src/board/diagnostics.ts:34",
+      "problem": "themeColors().cardAura still reads the first `.tl-card[data-formal=\"formalized\"]`, which can now carry the green glow (established) or the dimmed blue one. The smoke checks that the formalised card uses the aura colour (extension test/suite/board.test.ts:143, webview e2e board.spec.ts:155) pass only because the first such card on the Spyro sample is an axiom.",
+      "fix": "Select `.tl-card[data-glow=\"formalized\"]:not([data-glow-dim])`. Optionally also report the green glow from `[data-glow=\"established\"]`."
+    },
+    {
+      "id": "F7",
+      "severity": "nit",
+      "where": "/home/zhengyew/telelean/packages/webview/src/board/NodeCard.tsx:223",
+      "problem": "`handleBlocked = proposed ? PROPOSED_ARROWS_LOCKED : lock` re-implements 1c2's already tested gestureGate(...).draw (same texts). Carry-over 1 (the disabled handle with its reason) has no test of its own.",
+      "fix": "Use `useBoard((s) => gestureGateOf(s).draw)` for the handle, so it follows the rule gestures.test.ts already checks."
+    },
+    {
+      "id": "F8",
+      "severity": "nit",
+      "where": "/home/zhengyew/telelean/packages/webview/test/e2e/m2-overlay.spec.ts:94",
+      "problem": "The report's list of e2e specs to update misses this line. After \"Show result\", the revealed goal's chip is now [data-chip=\"established\"] \"✓ established\", but line 94 still expects [data-chip=\"proved-goal\"] containing \"proved\". It was already outdated by 1a.",
+      "fix": "Add it to plan §8's list of e2e specs for 1g to update."
+    }
+  ],
+  "checks_run": [
+    "diff -rq of the working tree against scratchpad/snap1c2 (the pre-1d snapshot, 07:51): 40 differing or new files, the same set as the report",
+    "diff -u per file into scratchpad/v1d_fid/*.diff (4211 lines), all read; also read the current edges.ts computeEdges, build.ts (stale/not-checked, footprint, markEstablished), factsIndex.ts, checkFile.ts generateCheckFile, refresh.ts steps 6-8, band.ts, geometry.ts pass 1 and routing, cardData.ts cardChips, CardDetails and AlsoAssumed hiding",
+    "python3 -I JSON comparison of core/test/fixtures/project/spyro{,-proved,-derived}-facts.json against the snapshot with valueConsts removed: identical for all three",
+    "grep: StatusFlag and DerivedStatus validators or whitelists (none), graph.json schema flags are plain strings, graphJson status export is explicit (no `direct`)",
+    "grep: data-formal/data-glow and cardAura consumers; toDisplayEdges/arrowLook callers (arrowLook used only in tests); TL123 catalogue (none)",
+    "grep of e2e specs for texts and keys 1d changed ('✓ proved', 'conditional on', data-legend, mismatch, proved-goal)",
+    "grep for test cases removed in 1d's test diffs: none; only expectations changed (core edges.test, runner refresh.test, webview cardData.test and edges.test)",
+    "No builds, tsc or vitest run (this verifier's lens is read-only fidelity)"
+  ]
+}

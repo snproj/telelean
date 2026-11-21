@@ -4,11 +4,11 @@ import { webviewMessage, type TlGraph } from '@telelean/core';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
-import { currentEngineStats, stylesApplied, themeColors } from './board/diagnostics';
+import { currentEngineStats, partHeights, stylesApplied, themeColors } from './board/diagnostics';
 import { connectHost, reportCspViolations, type HostBridge } from './host/bridge';
-import { isTextEntry, shortcutFor } from './model/format';
+import { isTextEntry, selectionKeyFor, shortcutFor } from './model/format';
 import { BoardStoreProvider } from './state/context';
-import { createBoardStore, readSplit, type BoardStore, type PersistedState } from './state/store';
+import { createBoardStore, readSplit, readTopSplit, type BoardStore, type PersistedState } from './state/store';
 
 /**
  * Tells the host what is on screen once the edge engine has drawn a frame that measured this graph's cards (the
@@ -42,7 +42,8 @@ function reportRendered(host: HostBridge, graph: TlGraph, seq: number, latestSeq
       const cards = document.querySelectorAll('[data-node-id]').length;
       const edges = document.querySelectorAll('path[data-edge-id]').length;
       const stubs = document.querySelectorAll('path[data-edge-id][data-stub]').length;
-      const lists = [...document.querySelectorAll<HTMLElement>('.tl-col__list')].map((l) => l.clientHeight).join(',');
+      // Spec v4 slice 1c: the AXIOMS list and the canvas.
+      const lists = partHeights();
       const engine = currentEngineStats();
       const styled = stylesApplied();
       const theme = themeColors();
@@ -52,7 +53,7 @@ function reportRendered(host: HostBridge, graph: TlGraph, seq: number, latestSeq
           code: 'rendered',
           message:
             `graph v${graph.version} (#${seq}): ${cards} cards, ${edges} arrows drawn (${stubs} stubs); viewport ${innerWidth}x${innerHeight}, ` +
-            `column heights ${lists}, styled ${styled}, ${document.visibilityState}; aura ${theme.aura}, kinds ${theme.kindA} ${theme.kindD} ${theme.kindG}, vocabulary ${theme.vocabulary}, highlight ${theme.highlight}; ` +
+            `column heights ${lists}, styled ${styled}, ${document.visibilityState}; aura ${theme.aura}, kinds ${theme.kindA} ${theme.kindP}, proved ${theme.proved}, vocabulary ${theme.vocabulary}, highlight ${theme.highlight}; ` +
             `engine frames ${engine?.frames ?? '-'}, measures ${engine?.measures ?? '-'}, measured graph #${engine?.graphSeq ?? '-'}, ` +
             `culled ${engine?.culled ?? '-'}, missing ${engine?.missing ?? '-'}, cards measured ${engine?.cards ?? '-'}, ` +
             `lists connected ${engine?.listsConnected ?? '-'}, waited ${waited} frames`,
@@ -91,18 +92,32 @@ function readPersisted(host: HostBridge): PersistedState {
     ...(typeof raw.vocabCollapsed === 'boolean' ? { vocabCollapsed: raw.vocabCollapsed } : {}),
     ...(typeof raw.requestCounter === 'number' && Number.isSafeInteger(raw.requestCounter) && raw.requestCounter >= 0 ? { requestCounter: raw.requestCounter } : {}),
     ...(raw.runSplit !== undefined ? { runSplit: readSplit(raw.runSplit) } : {}),
+    ...(raw.topSplit !== undefined ? { topSplit: readTopSplit(raw.topSplit) } : {}),
   };
 }
 
 /**
  * Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z (or Ctrl+Y) on the board post undo/redo, except while typing in a field (the
- * field's own undo applies) or while a dialog is open.
+ * field's own undo applies) or while a dialog is open. Spec v4 slice 1b: Escape clears the selection (cards, arrows,
+ * marks), and Delete removes the selected arrows and marks, under the same conditions; a key a card or a popover
+ * already handled (Delete on a focused card, Escape closing a menu) is left alone. Slice 1f (UN-3, A27): while an edit
+ * session (a run) is active, or in the Proposed view, the store's undo and redo post nothing, so the keys do nothing
+ * (the disabled Undo button says why); Delete then sends nothing and its toast says why. Slice 1c2: Delete goes
+ * through the store's `pressDelete` (no card focused here: a focused card's Delete is the card's own), which also says
+ * why in the Proposed view, where arrows change only through review items and transforms.
  */
 function installShortcuts(store: BoardStore) {
   window.addEventListener('keydown', (event) => {
+    const busy = () => isTextEntry(event.target) || isTextEntry(document.activeElement) || document.querySelector('dialog[open]') !== null;
     const action = shortcutFor(event);
-    if (!action || event.repeat) return;
-    if (isTextEntry(event.target) || isTextEntry(document.activeElement) || document.querySelector('dialog[open]')) return;
+    if (!action) {
+      const key = selectionKeyFor(event);
+      if (!key || event.defaultPrevented || busy()) return;
+      if (key === 'clear') store.getState().clearSelection();
+      else if (store.getState().pressDelete(null)) event.preventDefault();
+      return;
+    }
+    if (event.repeat || busy()) return;
     event.preventDefault();
     if (action === 'undo') store.getState().undo();
     else store.getState().redo();

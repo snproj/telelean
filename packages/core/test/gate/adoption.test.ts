@@ -1,5 +1,5 @@
 /**
- * AT1.6 (docs/m2-plan.md sections 3.8 and 4.9): planGhostAdoption writes Claude's suggested premise as a new ASSUMPTION
+ * AT1.6 (docs/m2-plan.md sections 3.8 and 4.9): planGhostAdoption writes Claude's suggested premise as a new AXIOM
  * card right before the target's block, with exactly the collapsed checked statement, and refuses unsafe text.
  */
 import { describe, expect, it } from 'vitest';
@@ -39,7 +39,7 @@ describe('AT1.6 planGhostAdoption', () => {
       '/-',
       '@@ telelean v1',
       'id: a-character-who-cannot-be-in',
-      'type: ASSUMPTION',
+      'type: AXIOM',
       `natural_name: ${SENTENCE}`,
       'rationale: it seems obvious to me',
       'asserted: 2026-11-02',
@@ -73,13 +73,25 @@ describe('AT1.6 planGhostAdoption', () => {
     expect(model({ ...bare, [MAIN]: after }).nodes.get('cynder-not-good')?.node.premises).toEqual([planBare.nodeId]);
   });
 
-  it('the result parses to a new ASSUMPTION card: worded by Claude, pinned, docstring = sentence, the checked statement', () => {
+  it('replaces the target\'s "follows from nothing" mark (spec v4 AR-5: accepting a premise removes it; slice 1a fixer)', () => {
+    const marked = edit(LITERAL, MAIN, 'premises: cynder-dark-past, new-spyro-pg, pg-no-dark-past\n', 'follows_from: nothing\n');
+    expect(model(marked).nodes.get('cynder-not-good')?.node.fromNothing).toBe(true);
+    const plan = planGhostAdoption(model(marked), REQUEST);
+    const after = plan.changes[0]?.after as string;
+    expect(after).toContain(`id: cynder-not-good\ntype: GOAL\nnatural_name: Cynder would not be a good addition to the new Spyro game\npremises: ${plan.nodeId}\nasserted: 2026-11-01`);
+    expect(after).not.toContain('follows_from');
+    const target = model({ ...marked, [MAIN]: after }).nodes.get('cynder-not-good')?.node;
+    expect(target?.premises).toEqual([plan.nodeId]);
+    expect(target?.fromNothing).toBeUndefined();
+  });
+
+  it('the result parses to a new AXIOM card: worded by Claude, pinned, docstring = sentence, the checked statement', () => {
     const plan = planGhostAdoption(model(LITERAL), REQUEST);
     const after: Texts = { ...LITERAL, [MAIN]: plan.changes[0]?.after as string };
     const m = model(after);
     const entry = m.nodes.get(plan.nodeId);
     expect(entry?.node).toMatchObject({
-      type: 'ASSUMPTION',
+      type: 'AXIOM',
       naturalName: SENTENCE,
       rationale: 'it seems obvious to me',
       asserted: '2026-11-02',
@@ -130,6 +142,60 @@ describe('AT1.6 planGhostAdoption', () => {
     expect(refusal(() => planGhostAdoption(model(LITERAL), { ...REQUEST, session: 'bad session' })).code).toBe('invalid');
     expect(refusal(() => planGhostAdoption(model(LITERAL), { ...REQUEST, target: 'nope' })).code).toBe('not-found');
     expect(refusal(() => planGhostAdoption(model(LITERAL), { ...REQUEST, subject: 'Other' })).code).toBe('not-found');
+  });
+
+  it('2b2 (§3.8): `holdAs` as an axiom writes exactly what the default writes: an AXIOM card', () => {
+    const asAxiom = planGhostAdoption(model(LITERAL), { ...REQUEST, holdAs: 'axiom' });
+    expect(asAxiom).toEqual(planGhostAdoption(model(LITERAL), REQUEST));
+    const m = model({ ...LITERAL, [MAIN]: asAxiom.changes[0]?.after as string });
+    expect(m.nodes.get(asAxiom.nodeId)?.node).toMatchObject({ type: 'AXIOM', lean: { justificationKind: 'axiom' }, status: { proof: { kind: 'assumed' } } });
+  });
+
+  it('2b2 (§3.8): `holdAs` pending writes a PROPOSITION card with `axiom P.holds`, pending proof and never green (A26), in Claude’s words, with its arrow and the mark removal', () => {
+    const marked = edit(LITERAL, MAIN, 'premises: cynder-dark-past, new-spyro-pg, pg-no-dark-past\n', 'follows_from: nothing\n');
+    const plan = planGhostAdoption(model(marked), { ...REQUEST, holdAs: 'pending' });
+    const after = plan.changes[0]?.after as string;
+    expect(after).toContain(
+      [
+        '/-',
+        '@@ telelean v1',
+        'id: a-character-who-cannot-be-in',
+        'type: PROPOSITION',
+        `natural_name: ${SENTENCE}`,
+        'rationale: it seems obvious to me',
+        'asserted: 2026-11-02',
+        'lean: Spyro.not_in_game_not_good',
+        'origin: agent',
+        'session: rmabc123',
+        'worded_by: agent',
+        '-/',
+        `/-- ${SENTENCE} -/`,
+        'abbrev not_in_game_not_good : Prop := ∀ (c : Character) (g : Game), ¬ InGame c g → ¬ GoodAddition c g',
+        'axiom not_in_game_not_good.holds : not_in_game_not_good',
+      ].join('\n'),
+    );
+    expect(after).not.toContain('follows_from');
+    const m = model({ ...marked, [MAIN]: after });
+    const card = m.nodes.get(plan.nodeId)?.node;
+    expect(card).toMatchObject({
+      type: 'PROPOSITION',
+      naturalName: SENTENCE,
+      provenance: { wordedBy: 'agent', origin: 'agent', session: 'rmabc123' },
+      lean: { binding: 'pinned', statement: 'Spyro.not_in_game_not_good', justification: 'Spyro.not_in_game_not_good.holds', justificationKind: 'axiom' },
+      status: { formal: 'formalized', proof: { kind: 'pending' } },
+    });
+    expect(card?.status.flags).not.toContain('established');
+    const target = m.nodes.get('cynder-not-good')?.node;
+    expect(target?.premises).toEqual([plan.nodeId]);
+    expect(target?.fromNothing).toBeUndefined();
+  });
+
+  it('2b2 (§3.8): any other `holdAs` is refused (`invalid`), and nothing is planned', () => {
+    for (const holdAs of ['theorem', 'AXIOM', '', 'pending ']) {
+      const error = refusal(() => planGhostAdoption(model(LITERAL), { ...REQUEST, holdAs: holdAs as unknown as 'axiom' }));
+      expect(error.code, holdAs).toBe('invalid');
+      expect(error.message, holdAs).toBe(`A premise is held as an axiom or as a proposition pending proof, not ${JSON.stringify(holdAs)}.`);
+    }
   });
 
   it('a sentence with comment delimiters is written escaped, so the docstring and block stay one comment each', () => {

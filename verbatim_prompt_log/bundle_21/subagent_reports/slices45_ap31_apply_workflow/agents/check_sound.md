@@ -1,0 +1,176 @@
+# check:sound
+
+Agent `a0ca63ad8443bfede` of workflow `wf_7292b46b-740`. Verbatim output (JSON alongside).
+
+- **summary:** Read-only review of the AP-31 rewrites, through the soundness and lifecycle lens (I edited nothing). Several parts hold up:
+- One baseline for Claude's part.
+- Own freezes valued inside the judging write.
+- D4-47's interruption path.
+- The session stack is last-in-first-out, so a transform's Undo never meets later freezes or Accepts.
+- The confirmation's hidden-results trigger reads only the draft.
+
+Problems found: one blocker, seven majors and six minors.
+
+**Blocker.** Slice 2's reconcile rule (fixer 2a) takes content back out when it reappears under a record that is declined, reverted or withdrawn at a decision's judge. Two ordinary flows hit it:
+- Reject Claude's change, then transform that card: the judge-apply takes your typed content back out.
+- Undo then Redo of any transform: same result.
+
+**Majors:**
+- Un-reject of an item a transform declined merges the inverse of the whole transform commit. Un-reject after a plain Reject never restores the ledger values that Reject dropped.
+- The ids commit (D3-37) can come after the first decision in a transform-started session.
+- Typed Lean judged in place can leak hidden proof material (instances, shadowing names, Lean's messages in the take-back texts), beyond the logged D2-69 channel.
+- An emptied "Claude re-formalises it" dependent reads as "you typed it" and gets a plain Accept.
+- Slice 4 relies on slice 5's explicit judge subject, but the built judge derives the subject from the first target, which is empty in Claude's parts and in inference-less sessions.
+- Slice 5's reference holds on a session target's Dependencies are valued unmasked, which leaks hidden arrows.
+- Slice 5's normalise rule ("every docstring new or changed since B must equal mirrorText") conflicts with D4-56 and own-frozen typed statements, which can block every later Claude step.
+
+The minors are about lifecycle completeness. All findings, with fixes, are below.
+- **findings:**
+  - [1]
+    - **id:** L-01
+    - **severity:** blocker
+    - **plan:** slice4
+    - **where:** slice4 §3.8 step 5.2 (the reducer's `transform` records) and step 6 (its judge-apply), §2.10 A4, §5.1 (Redo); slice 2 §3.5's reconcile rule for a declined or reverted record (fixer 2a, V2A-C2, which also covers `withdrawn`)
+    - **problem:** Slice 2's built reconcile rule: a record that is declined (Reject or plain), to be redone and reverted, or withdrawn, whose draft reappears and differs from B, counts as a new proposal only at a queue end. At a decision's judge it keeps its status, and `reverts` takes the content out again ("Back in the working copy although declined or taken out"). The transform decision's records never change such a record, and A4 amends reconcile only for records in review. Three consequences:
+(1) Reject Claude's Change of card C, then Transform cards… on C and type a sentence. The decision passes, then its own judge-apply takes your typed sentence out again, leaving your typed own freeze violated: a `frozen` stage problem that disables Apply.
+(2) Undo of a transform leaves the records its judge-apply created in review with no draft, so the next judge withdraws them (D4-51). Redo writes the same content, and its judge-apply takes all of it out again. So Redo of any transform that created items is undone by telelean.
+(3) The same happens on a card whose record a judge reverted, or that D4-51 withdrew earlier.
+In every case the person's carried-out decision is lost.
+    - **fix:** In the decision's reducer action, return to in review (marked "updated", rejected versions kept) every record under a key the write changes that is declined (Reject or plain), withdrawn, or to be redone with its content taken out. Record this in the action's `changes`, so Undo restores it. Add a §2.10 row amending fixer 2a's rule: content equal to a live `transform` entry's value is never taken out as "back although declined". Tests in 4e and 4g:
+- Reject, then transform the same card: the typed value stays, in review, "you typed it".
+- Undo then Redo of a transform: its items are in review and its own freezes are met.
+  - [2]
+    - **id:** L-02
+    - **severity:** major
+    - **plan:** both
+    - **where:** slice4 §3.10 ("A Reject or take-out that restores a card drops…; Undo restores them"), §2.10 A6 and A13; slice 2 §3.6 Un-reject (fixer 2a: inverse merge of the decision commit of the newest done action that left the item declined); slice5 §3.5 (`added`, `revived` exemptions), cheat 14
+    - **problem:** (1) Un-reject of an item that a transform decision declined (an Add you trashed, an arrow chip you removed, Claude's arrows of a trashed card) merges the inverse of the whole "Transform: ‹label›" commit. That reverts every other field you typed in that transform and brings back cards you trashed. Their own freezes and ledger values then contradict the files, and unfrozen follow-on edits are reverted silently. The pre-AP-31 plan refused this (LC-15); the rewrite no longer mentions un-reject.
+(2) Un-reject of your own card item after a plain Reject brings the typed content back, but the `transform` values and lines that the Reject dropped are restored only by Undo, not by un-reject. Consequences:
+- The item loses "you typed it", so your text is shown as Claude's.
+- G5, B.3, new-axiom and the backstop find its `type:`, `premises:`, `worded_by` and `.holds` lines unowned, so Apply is blocked.
+- In slice 5, your own tokens become `added` ("a reference Claude added"), and your typed declaration of a dangling name becomes `revived`.
+    - **fix:** Refuse un-reject of an item whose declining action is a `transform`: "“‹c›” was declined by your transform “‹label›”: undo that transform, or transform the card again." (LC-15's rule). Make un-reject restore the `transformValues` that its declining decide action dropped (read from that action, as Undo does). Do not switch to liveness by item status: that would let Claude's re-proposal of your old value read as yours (T18). Slice 5 cheat 14 gains an un-reject case: your tokens are not `added` after un-reject.
+  - [3]
+    - **id:** L-03
+    - **severity:** major
+    - **plan:** slice4
+    - **where:** slice4 §3.1 (claude-step: the typed part is the session's first write, before the queue-start; start-session opens stage 1 with no queue-start), §3.7–§3.8 (stage windows before any Formalize), D4-50; slice 3 §3.10 "Ids" (D3-37: the ids commit is made at the first queue-start when `idsCommit` is absent)
+    - **problem:** In a transform-started session the first decision write runs before D3-37's ids commit:
+- the claude-step writes your typed part before its queue-start;
+- after start-session, stage windows carry out decisions before any queue-start.
+
+A card without an `id:` line has an id derived from its sentence and its same-sentence siblings, so retyping its sentence, or trashing a same-sentence sibling, moves its id in ws/. computeItems then sees one card vanish and another appear, and the decision is always taken back as an unowned difference. A transform-started session therefore cannot retype an id-less card's sentence until a Formalize has run. D4-50's id exemption also assumes the ids commit has already happened.
+    - **fix:** Make slice 3's recorded ids write part of the provisional session's opening, or the first part of every transform-started session's first write (the claude-step's decision, start-session's stage-1 write) when `idsCommit` is absent. Refuse a decision write while `idsCommit` is absent. Add 4h tests with id-less cards: retype a sentence; trash a sibling with the same sentence.
+  - [4]
+    - **id:** L-04
+    - **severity:** major
+    - **plan:** slice4
+    - **where:** slice4 §3.8 step 5.5 (`transformTakeBack` and the take-back texts), §3.3 (c) (pieces using session names checked only in place), D4-46, T15
+    - **problem:** R1 elaborates your typed Lean in ws/, beside hidden proof material, which may include declarations Claude made in a proof phase (D2-43). Such a declaration can change what your typed piece elaborates to in place:
+- an `instance` or coercion;
+- a declaration such as `S.foo` that shadows the B name `foo` you typed, where it is visible at the destination.
+
+The typed-meaning test then takes the write back in one twin only, and its text names the hidden constants ("elaborates differently …: ‹names›"). Build-error take-backs show Lean's message, which can quote hidden declarations; slice 2 withholds Lean's detail while results are hidden.
+
+A piece that uses session names has no scratch constants, so it can resolve silently to hidden proof material. `other-result` is not a take-back reason, so the decision stands and the leak surfaces as a visible stage problem or in its fully explicit form. D4-46 logs only the name-clash channel, and T15 as specified would not catch this.
+    - **fix:** While the results are hidden:
+(a) Take-back texts carry no Lean message and name only constants of the masked model: fixed sentences on the card and field.
+(b) Add a take-back reason: a typed piece whose in-place constants include a declaration hidden from the person (proof material, a target's `.holds`). This matches `other-result`.
+(c) Log the remaining one-bit channel in D4-46 with D2-69: hidden instances, coercions and shadowing names change typed Lean's elaboration.
+(d) Add T15 twins with a hidden proof-phase instance and a shadowing declaration.
+Or close the channel: refuse typed Lean statements and declarations while the results are hidden (D4-46's alternative, narrowed to typed Lean).
+  - [5]
+    - **id:** L-05
+    - **severity:** major
+    - **plan:** slice4
+    - **where:** slice4 §2.2 ledger `transform` `values` ("a dependent's emptied Lean"), §3.10 `whollyYours`, §2.4 `EndConfirmationView.typed`, D4-48, D4-49
+    - **problem:** The "Claude re-formalises it" choice empties the dependent's Lean, and the ledger records that emptiness as a value, just like a field you typed. If Claude's part fails, finishes with `cannot`, or you drop it, the dependent's item reads "wholly yours":
+- it is badged "you typed it";
+- it is listed under "What you typed yourself";
+- it takes a plain Accept, which a group Accept includes, instead of its class's own Accept.
+
+You typed nothing there; an emptied vocabulary declaration behaves the same way. This is less review than RV-7 requires, which D4-49 promises never to give.
+    - **fix:** Use the emptied `reformalise` keys only as allowances: `whollyYours` and EN-2's typed list ignore them. Such an item stays Claude's (classified as today) until you type its Lean yourself. The stage report lists dependents left empty: "Claude did not re-formalise “‹c›”: it has no Lean statement now."
+  - [6]
+    - **id:** L-06
+    - **severity:** major
+    - **plan:** both
+    - **where:** slice4 §3.1 (a session with no inference: target ''), §3.9 step 3 (a Claude part's target `transform:<id>`), §2.10 (no row for this); built `packages/core/src/review/judge.ts` (`firstTarget = scope?.target ?? ordered[0]?.target ?? ''`; subject from that node) and `review/backstop.ts`; slice5 §1.1 5a and §2.4
+    - **problem:** The built judge and backstop derive the session's subject from the first target. Slice 4 introduces exactly the two cases where that yields '':
+- every Claude part's step;
+- a transform-started session with no inference (the decision's judgement and Apply's backstop).
+
+Slice 5's 5a adds an explicit `JudgeInput.subject` and `BackstopInput.subject` for this reason (its IMP-1: "every rule … would check nothing there, silently"). But slice 4 is built, verified and installed first (AP-8), and nothing in slice 4 passes the subject. Slice 3's `other-subject` rule, and any other rule scoped to the subject, therefore run with subject '' in the installed slice 4. D4-57's protection for Claude's parts and T21's take-back rest on that rule.
+    - **fix:** Move 5a's subject change into slice 4:
+- add a §2.10 row amending slice 2's `JudgeInput` and `BackstopInput` with a required `subject` taken from the run (4a contract, 4d core, 4g runner);
+- run T4 and T21 in a Claude part's step of a transform-started session with no inference (mutation check: deriving the subject from the first target makes them fail).
+Slice 5's 5a then only adds `frozenFindings`' subject and verifies the rest.
+  - [7]
+    - **id:** L-07
+    - **severity:** major
+    - **plan:** slice5
+    - **where:** slice5 §2.5 (`holdingMap`, `heldValueOf` for a Dependencies key with `deps`), §2.6 and §3.6 typed holds (`valueOwnFreezes` on the decision's real judged model J), also `freezeAtAccept` and in-session own freezes
+    - **problem:** `#[card:T:dependencies]` holds T's `premises:` entries as they stand in the model it is valued on. While T's Result is hidden, these are valued on the unmasked state, so the held value includes Claude's hidden arrows into T. This applies to a sentence or Why typed in a transform (valued at the decision's judgement), and to an Accept or Freeze made while the results are hidden.
+
+When a hidden part is later taken out silently (a Reject cascade, a judge's revert, Submit's take-out), the removal appears, in the twin with the arrow only, as either:
+- a `held` stage problem naming T's Dependencies, or
+- a D3-48 row before the decline.
+
+The `{from:'base'}` test also differs between the twins. Slice 3's D3-6 avoids this by making a target's Dependencies unfreezable while hidden; references reopen the leak.
+    - **fix:** Value any hold on a session target's Dependencies without the arrows that are parts of its Results, as the base mask drops them. Apply this at every valuation: own freezes, a decision's own freezes, `freezeAtAccept`, and the base test. Never count a change confined to those arrows as a held finding or a D3-48 row; ES-2's exception already lets their addition through. Add a 5d twin test: two states differing only in a hidden arrow into T, followed by a cascade that removes it.
+  - [8]
+    - **id:** L-08
+    - **severity:** major
+    - **plan:** slice5
+    - **where:** slice5 §3.4 "Docstrings" ("normalise requires it of every docstring that is new or changed since B"), §2.3 note on `isMirrorOf`, D5-7; interacts with slice4 D4-56 and §3.5 steps 1 and 4
+    - **problem:** A statement you type carries the D-9 mirror of its sentence at the time it is written, and its own freeze covers that docstring (slice 3's statement value is the abbrev with its docstring; slice 4's `fieldText` likewise). Inside the session nothing re-mirrors (D4-56). The docstring becomes stale against `mirrorText` when either:
+- a later transform retypes the card's sentence (TR-13 b2 allows this with a warning), or
+- a name the sentence refers to changes.
+
+It is then "changed since B" and differs from `mirrorText`. Normalise must then either rewrite a frozen statement (a `frozen` finding at every later Claude step) or refuse a docstring Claude may not touch. Either way every later step of the session fails. Claude's own in-session statements whose sentence you retype meet the same rule.
+    - **fix:** Require `mirrorText` only of a docstring that the running step wrote or changed (new or changed since its S₀). Leave any docstring written earlier in the session (a decision's typed statement, an earlier step's statement) as it is, like a mirror unchanged since B (D4-56, D5-7). Test: type a statement, retype its sentence in a second transform, then run a Claude part, which must pass.
+  - [9]
+    - **id:** L-09
+    - **severity:** minor
+    - **plan:** slice4
+    - **where:** slice4 §2.1 `TransformAnalysis.hiddenNotice`, §3.8 step 4, D4-46
+    - **problem:** `hiddenNotice` is set only when the write changes or removes something that existed before the window. A decision that only adds Lean can still break a hidden accepted Result: for example a new vocabulary declaration or instance, or a new card's statement, that clashes with the Result's proof material or changes how it elaborates. The write's Lean job then takes the Result out silently, so its Accept is lost without D2-64's sentence, which slice 2 says always comes before an Accept is taken away.
+    - **fix:** While the results are hidden, set `hiddenNotice` whenever the decision writes any Lean (adds, changes or removes a declaration). This still reads the draft alone, so it reveals nothing.
+  - [10]
+    - **id:** L-10
+    - **severity:** minor
+    - **plan:** slice4
+    - **where:** slice4 §3.7 (D4-43; the runner's window checks allow any trashed key), §3.8, §2.2 `transform` SessionAction
+    - **problem:** D4-43 makes every decision whose cascade reaches a queued part's source ask first to drop that part, but the transform decision has no such step. Two paths bypass it:
+- its Rejects of Claude's Adds and arrows cascade under slice 2's rules, Shaky-like sources included;
+- "Delete it too" may move into the trash a card that a queued part holds.
+A source's status or content then changes while its part stays queued, against D4-43 and D4-59.
+    - **fix:** Refuse "Delete it too" on a card or vocabulary item that a queued part holds (D4-59's text). Add D4-43's question to Submit transform (`confirmed.drops`), record it on the `transform` action (`drops`), and restore it on Undo.
+  - [11]
+    - **id:** L-11
+    - **severity:** minor
+    - **plan:** slice4
+    - **where:** slice4 §3.7 premise window and §2.5 `openTransform` (no status condition); slice 2 §3.1 invariant (a premise in review is always outside ws/), §3.8 due writes
+    - **problem:** Nothing requires a premise window's item to be in review. Opened from the Context Menu's review-item entry on an accepted (written) premise, or a Shaky-declined one (still written), the records-only `edit-premise` step returns it to review without slice 2's take-out write. Its card then stays in ws/ under a record in review. A later Accept finds the ledger `premise` entry and writes nothing, so F keeps Claude's wording under a record marked "worded by you".
+    - **fix:** `openTransform` and Submit transform refuse a premise window unless the item is in review with its draft outside ws/: "Set it back to review first: a written premise is edited once it is out of your working copy."
+  - [12]
+    - **id:** L-12
+    - **severity:** minor
+    - **plan:** both
+    - **where:** slice4 §3.9 step 2 (scope recomputed at Submit review and Retry: "less keys that no longer exist … a freeze made since wins"), D4-39; slice5 §2.6 and §3.6 typed holds
+    - **problem:** When a part's scope is recomputed at Submit review, it only loses keys, and a partial loss is silent. A field you asked Claude to fill (a new card's fuzzy statement, an emptied dependent) can stay empty with no report line. The may-break proofs and "results you must not break" lines, computed on the masked view when the part was queued, are not recomputed once the results are shown. In slice 5, a later window's typed reference to a key that an earlier queued part leaves to Claude silently removes that key from the part: the typed hold makes `claudeMayChange` refuse it, and no window problem is raised.
+    - **fix:** Report every key a recomputed scope loses in the stage report: "Claude's part of “‹label›” left out ‹fields›: ‹reason›". Recompute D4-39's walk on the shown state at Submit review and at Retry. In slice 5, a typed hold on a key that a queued part leaves to Claude is a window problem, as for the window's own fuzzy fields.
+  - [13]
+    - **id:** L-13
+    - **severity:** minor
+    - **plan:** slice4
+    - **where:** slice4 §3.9 step 6, §2.10 A4 and A12 ("slice 2's F5 rule, generalised")
+    - **problem:** A source still declined `transform` may have no draft when its part's queue ends, for example a cleared field that Claude rewrote to your files' version. F5's rule returns only records that have a draft, and A4's withdrawal covers only records in review. So slice 2's "‹item› disappeared, and no decision removed it" problem disables Apply, and decisions on the source are still refused.
+    - **fix:** At a part's end, first return every source to review, then apply A4's withdrawal ("changed back to your files' version"). Test it in 4e and 4g.
+  - [14]
+    - **id:** L-14
+    - **severity:** minor
+    - **plan:** slice5
+    - **where:** slice5 §3.6 D5-22
+    - **problem:** While an accepted Add premise whose Why holds a token is unwritten (its write due after a failure), its Why holds nothing yet. D5-22 refuses Formalize, Retry and Submit review in that state, but not Submit transform. A transform can therefore change what that Why refers to with no holder problem and no cascade. The premise write later holds the new value, silently re-basing an Accept you gave to the earlier content.
+    - **fix:** Add Submit transform, and the Redo of a transform, to D5-22's refusals, with the same reload text.

@@ -94,17 +94,17 @@ describe('D-18 delete with its Lean asks first when other declarations use it', 
 
 describe('AT2.6 reorder and set-premises refusals (no text involved)', () => {
   it('reorder changes only the layout (layoutOnly), pinning the column order the board shows', () => {
-    const plan = planAction(model(), { kind: 'reorder', id: 'a2', column: 'ASSUMPTION', beforeId: 'a1' }, { ...CTX, layouts: { S: emptyLayout() } });
+    const plan = planAction(model(), { kind: 'reorder', id: 'a2', column: 'AXIOM', beforeId: 'a1' }, { ...CTX, layouts: { S: emptyLayout() } });
     expect(plan).toEqual({
       action: 'reorder',
       label: 'Move: A2',
       subject: 'S',
       nodes: ['a2'],
       changes: [],
-      layout: { subject: 'S', layout: { ...emptyLayout(), columns: { ASSUMPTION: ['a2', 'a1'], DERIVATION: ['dt'], GOAL: ['gt', 'both'] } } },
+      layout: { subject: 'S', layout: { ...emptyLayout(), columns: { AXIOM: ['a2', 'a1'], PROPOSITION: ['dt', 'gt', 'both'] } } },
       layoutOnly: true,
     });
-    expect(refusal(() => planAction(model(), { kind: 'reorder', id: 'a2', column: 'GOAL', beforeId: null }, CTX)).code).toBe('invalid');
+    expect(refusal(() => planAction(model(), { kind: 'reorder', id: 'a2', column: 'PROPOSITION', beforeId: null }, CTX)).code).toBe('invalid');
   });
 
   it('set-premises: a cycle, a self-reference, an unknown card or another subject is invalid; no premises is not-yet', () => {

@@ -1,0 +1,204 @@
+{
+ "key": "fidelity",
+ "verdict": "The revision covers the user's specification well. Every clause of it can be traced to a clause here, and nothing is dropped outright except 'cycle through' and 'delete permanently', which is parked in ★D4. His own terms are kept: Context Menu, FROZEN, fuzzy, shaky, submit review/transform, These suffice and Formalize. The clash with the run's internal freeze is solved by renaming the internal step, not his word (FZ-12). Most safety additions answer real problems: held content, dependency-closed acceptance, belief items, the These suffice preset and checks on typed Lean. What is not yet trustworthy is what he is told to approve by. At least eight substantive changes are tagged 'yours' or 'clarified', and two of them override his explicit words: the aura in FROZEN 1, and the 'Current tab' turned into the whole board. Three cited clause IDs (EDIT SESSIONS 6/7/8) do not exist in his text. The change log misses several behaviour changes: rejecting a change freezes the card, a blanket ban on instances and attributes sits in the 'not for approval' notes, results stay hidden longer than D-19 hides them, and Self-evident?, Card only and Show result disappear. Some additions also contradict each other. TR-15 can end a session in the middle of a review. RV-4's 'Accept with its N dependencies' collides with RV-7's rule that each belief is accepted on its own. FZ-7 contradicts DO-1. The ★D3 recommendation rests on a false 'exactly'. At about five times the original's length, with many unexplained D-, G- and M- codes, the text is more precise but not clearly more readable. The tags, the change log and these contradictions should be fixed before asking for approval.",
+ "findings": [
+  {
+   "id": "F1",
+   "clauses": "RV-4, RV-7, RV-6, ★D2, §11.5",
+   "severity": "major",
+   "kind": "inconsistency",
+   "problem": "RV-4's one-click 'Accept with its N dependencies' collides with RV-7's rule that each belief item is accepted on its own. RV-4's own example makes 'Prove G' depend on 'the premises' items' and on 'the Add item of any new assumption'. RV-7 counts 'formalising an assumption' and definitions as belief items. In the ordinary These suffice flow (premises with no Lean yet, as in the user's walkthrough), every premise item is 'Formalize ‹assumption›', a belief item. So pressing 'Accept with its 4 dependencies' on Prove G does one of two things. Either it accepts beliefs as a side effect, which breaks RV-7, guarantee §11.5 and the user's 'not without my approval'. Or it skips them, and then Prove G cannot be accepted because RV-4 needs every dependency, so the button only half-works. Separately, ★D2's wording ('new or changed assumptions, definitions, presuppositions') leaves out 'formalising an assumption'. A user answering ★D2 will not see that option (a) removes group Accept from nearly every item of a These suffice session, a large cut to his REVIEW 4.",
+   "suggested_fix": "RV-4: 'Accept with its N dependencies accepts only dependencies that are not belief items. If a dependency is a belief item, the button reads First accept ‹item› and selects it. A belief item is never accepted as a side effect.' RV-6: append '(belief items excepted: RV-7, ★D2)'. ★D2 question: 'Belief items are new or changed ASSUMPTION cards, formalisations of assumptions (every premise in a These suffice session), definitions and presuppositions. Under (a), group Accept still covers goal formalisations, proofs and plain vocabulary.'",
+   "evidence": "spec_v2.md:188-189 (RV-4 example; 'Accept with its N dependencies'); :197-198 (RV-7 list incl. 'formalising an assumption'; 'A group Accept skips them'); :257 (§11.5); spec_v2_part2.md:90 (★D2 wording); prompt20.md:27 (REVIEW 4)"
+  },
+  {
+   "id": "F2",
+   "clauses": "FZ-7, DO-1, EC-1, FZ-2, §15 DECLINE 1",
+   "severity": "major",
+   "kind": "inconsistency",
+   "problem": "FZ-7 makes 'rejecting a change' a session freeze. DO-1, tagged 'yours', says only that the card keeps its previous content and that Claude 'may not propose the same thing again'. The §15 row for DECLINE 1 mentions no freeze. The user's DECLINE 1 blacklists one proposal ('Don't create this card ... like a blacklist'); it does not lock the card. Scenario: Claude proposes 'Formalize ‹PG games cannot have characters with dark pasts›' with a reading the user dislikes, and he picks Reject. By FZ-7 the card's empty Lean statement is now session-frozen, and by FZ-2 a frozen empty field must stay empty. So in the next stage Claude may not offer any other formalisation, the goal cannot be proved from his selection, and the session waits on an unfreeze request he did not expect.",
+   "suggested_fix": "Delete 'by rejecting a change' from FZ-7. DO-1: 'Reject: this exact proposal is not applied and may not be proposed again in this session (checked for exact repeats). The card is not frozen, so Claude may propose something different. To stop all changes to the card, also Freeze it.' If the freeze is intended, say so in DO-1, add a §15 row, and offer it as a separate option ('Reject and freeze').",
+   "evidence": "spec_v2.md:75 (FZ-7 '...by rejecting a change...'); :220 (DO-1); :60 (FZ-2); spec_v2_part2.md:3 (EC-1 'Reject restores the previous version and keeps it frozen'); spec_v2_part2.md:112 (§15 DECLINE 1, no freeze); prompt20.md:34"
+  },
+  {
+   "id": "F3",
+   "clauses": "ES-9, FZ-11, TR-3, TR-8, DO-1, DO-3, RV-9, RV-6, §0, 'How to read it'",
+   "severity": "major",
+   "kind": "fidelity",
+   "problem": "'How to read it' defines 'yours' as 'your clause, reworded only' and 'changed' as 'differs in substance', and the user approves by number. Only 4 clauses carry 'changed' (ES-2, ES-3, RV-1's Vocabulary, RV-2), yet at least 8 substantive changes are tagged 'yours' or 'clarified'. (1) ES-9 'yours' turns 'on the Current tab' into 'on the board ... every change goes through a transform', which is ★D1(a) presented as his words. (2) FZ-11 'yours' replaces his explicit 'an aura that must not clash' with 'a solid inner ring and a lock badge' and 'never adds a second glow'. (3) TR-3 'yours' drops 'or delete it permanently'. (4) TR-8 'clarified' lets Claude add vocabulary cards, definitions included, even when the box is unticked, i.e. when Claude should 'strictly stick to the current set of cards'. (5) DO-1 'yours' extends the option to Change and Delete items. (6) DO-3 'clarified' adds an escape that returns the exact configuration he said Claude 'cannot' regenerate. (7) RV-9 'clarified' adds a whole new mid-stage Transform. (8) RV-6 'yours' says nothing of RV-7 removing group Accept for beliefs. Also §0 'yours' turns 'special cards' into 'special cases'. Scenario: skimming the tags, he approves FZ-11 and ES-9 as his own text.",
+   "suggested_fix": "Re-tag ES-9: '(changed: Current tab read as the whole board; depends on ★D1)'. Re-tag FZ-11: '(changed: FROZEN 1 asked for an aura; a second glow would compete with the blue Lean aura)', and offer the alternative as a choice: an outer ring in a new, non-blue theme colour plus the lock badge. Re-tag TR-3: '(changed: delete permanently pending ★D4)'. Re-tag TR-8: '(changed: vocabulary allowed even when unticked)', and say in TR-8 which vocabulary kinds are exempt. Tag DO-1, DO-3 and RV-9 'changed: …'. Re-tag RV-6: '(yours: REVIEW 4; restricted by RV-7, ★D2)'. Restore 'special cards' in §0. Then make it a rule: every §15 row other than 'kept' has a matching 'changed' tag on its clause.",
+   "evidence": "spec_v2.md:8-11 (tag definitions); :139 vs prompt20.md:60; :87-92 vs prompt20.md:51; :145 vs prompt20.md:41; :153 + :25 (vocabulary cards are cards) vs prompt20.md:44; :220, :227-231 vs prompt20.md:34, :36; :210; :195 vs :198; :17-19 vs prompt20.md:14"
+  },
+  {
+   "id": "F4",
+   "clauses": "ES-2, S1, ★D3, CF-2, §16",
+   "severity": "major",
+   "kind": "fidelity",
+   "problem": "S1 recommends ★D3 because the preset 'reproduce[s] today's protection exactly'. It does not, in either direction. (1) Today the target's .holds is exempt from the 'existing declarations unchanged' check, so Claude may write or replace the target's proof. ES-2 session-freezes every non-empty field of a selected card, the Proof included. Scenario: goal G is already proved from five premises; the user selects G and two of them to ask whether those two suffice. G's Proof is frozen, so Claude cannot write the new proof and must file an unfreeze request, where today it simply proves G again. For a claimed DERIVATION (axiom n.holds), CF-2 does not say whether the Proof counts as empty, so it is unclear whether These suffice can prove a claimed derivation at all. (2) ES-2's 'Claude may add cards' lets Claude write ASSUMPTION cards into the working copy, which today's gate refuses; S6 admits this. The user would decide ★D3 on a false premise.",
+   "suggested_fix": "ES-2, add: 'The Proof of each selected target stays open, as today (its .holds is exempt): Claude may replace a claimed axiom ….holds or an existing proof.' CF-2: 'A Proof is empty, claimed (an axiom .holds, which counts as empty) or proved.' S1: replace 'reproduce today's protection exactly' with 'keep today's protection of your words and your existing Lean, with one deliberate difference: Claude may now add cards, each a belief item you accept on its own (RV-7), where today it suggests them outside your files.'",
+   "evidence": "spec_v2_part2.md:25 (S1 'exactly'); spec_v2.md:119-125 (ES-2 preset); :48 (CF-2 Proof); gate-accept.md:96 (T.holds exempt from existing-changed); spec_v2_part2.md:49-51 (S6)"
+  },
+  {
+   "id": "F5",
+   "clauses": "TR-15, DO-2, RV-9, RV-10, REVIEW 3",
+   "severity": "major",
+   "kind": "inconsistency",
+   "problem": "TR-15 is not limited to the transform that starts a session. Any transform with no fuzzy fields, no instructions and the box off 'goes straight to the end confirmation'. But transforms also happen in the middle of a session: declining an item with the Transform option (DO-2) and the mid-stage Transform (RV-9). Scenario: with 4 items still 'in review', the user declines 'Change ‹A›' with Transform and just retypes A's sentence himself, so the field is frozen and nothing is fuzzy. TR-15 fires and the session jumps to the end confirmation, skipping the 4 pending items and any Shaky items that still need a Claude step. That contradicts his REVIEW 3 ('cannot end a review stage if any item is still in review') and RV-10.",
+   "suggested_fix": "TR-15: 'A transform that starts a session (ES-3) and needs nothing from Claude (no fuzzy fields, no instructions, Claude may add cards off) runs without Claude: its changes become accepted items and the session goes to the end confirmation (EN-2). Inside a session (DO-2, RV-9), such a transform also needs no Claude step: its changes join the current stage as accepted items, and the stage continues.'",
+   "evidence": "spec_v2.md:164 (TR-15); :226 (DO-2 'runs at Submit review'); :204 (RV-9); :211 (RV-10); prompt20.md:26"
+  },
+  {
+   "id": "F6",
+   "clauses": "§15, §16, RV-2, RV-6, CF-1..CF-6, FZ-3, ES-1, ES-5, ES-6, RV-9, TR-8, RF-4, EN-2",
+   "severity": "minor",
+   "kind": "fidelity",
+   "problem": "§15 and §16 are the user's requested 'summary of the areas you have changed', but they are incomplete and in places wrong. The REVIEW 4 row says 'kept', although RV-7 and RV-4 restrict group Accept. The REVIEW 1–2 row gives 'S5, S7' as the reason for merging the list with the status table, but neither safety issue concerns the merge. The same row does not mention that 'The user can cycle through these review items' was dropped: RV-2 has click-to-open only, with no Back/Next. No row covers TRANSFORM 10, although §2 (CF-1..CF-6) is new, makes Kind a transform field (CF-4) and adds a rule for marking Claude's wording (CF-6). Not listed at all: FZ-3; ES-1; ES-5 (the premises declaration moves from run start to Apply); ES-6; RV-9's 'disabled while a Claude step is running'; TR-8's default 'off'; RF-4. §16 says nothing about today's 'Self-evident?', 'Add to its premises ▶' and its replacement warning, M1's 'Card only' delete, or 'Show result'; none of them appears anywhere in the revision. The new keep ticks (the 'EDIT SESSIONS 8' row) have no reason, although 'How to read it' promises every change 'is listed with its reason'. Scenario: the user approves believing REVIEW 4 is untouched and that the review still has Next/Back.",
+   "suggested_fix": "Open §15 with a five-line summary of the biggest changes. Then add or fix these rows: 'REVIEW 2 | the stepper becomes a list' (better still, restore cycling in RV-2: 'Back and Next, or ↑/↓, move through the items in list order'); 'REVIEW 4 | group Accept skips belief items (RV-7, ★D2); Accept with its dependencies (RV-4)'; 'TRANSFORM 10 | made precise in §2; Kind becomes a transform field (CF-4); telelean marks Claude's wording (CF-6)'; '(new) | FZ-3, ES-1, ES-5, ES-6, the RV-9 restriction, TR-8's default, RF-4'. In §16, add rows for Self-evident?, Add to its premises ▶, Card only and Show result, each saying what replaces it. Give the keep ticks a reason, or drop them.",
+   "evidence": "spec_v2_part2.md:105, :106, :108 (rows); spec_v2.md:40-55 (§2, no §15 row); :61, :117, :135, :136, :208, :153, :248; neither file contains 'Self-evident', 'Add to its premises', 'Card only', 'Show result', 'cycle', 'Back' or 'Next'; prompt20.md:25"
+  },
+  {
+   "id": "F7",
+   "clauses": "ES-8, FZ-7, FZ-8, EN-2, S11, §15",
+   "severity": "minor",
+   "kind": "fidelity",
+   "problem": "The user's EDIT SESSIONS list has items 1–3 only; items 6–8 are under REVIEW STAGE. The revision cites 'EDIT SESSIONS 6', '7' and '8', which do not exist, and also cites the same item 6 as 'REVIEW 6'. So §15 has two rows for one clause with different descriptions, and no row labelled REVIEW 7 or 8. Scenario: the user checks the row 'EDIT SESSIONS 7 | made precise as standing vs session freezes' against his text, finds that EDIT SESSIONS ends at 3, and cannot tell which sentence was changed.",
+   "suggested_fix": "Replace 'EDIT SESSIONS 6/7/8' with 'REVIEW 6/7/8' in the tags of ES-8, FZ-7, FZ-8 and EN-2, in S11 and in §15. Merge the two REVIEW 6 rows: 'REVIEW 6 | split into Submit review (RV-10) and Exit session (ES-8, EN-4); cards which are not accepted reads declined items | at submit nothing is in review'.",
+   "evidence": "prompt20.md:18-31 (EDIT SESSIONS 1–3; REVIEW STAGE 1–8); spec_v2.md:78, :79, :138, :236; spec_v2_part2.md:73, :103-105, :110"
+  },
+  {
+   "id": "F8",
+   "clauses": "§17 Enforcement, FZ-5, ES-2, ES-3",
+   "severity": "minor",
+   "kind": "fidelity",
+   "problem": "§17 is labelled 'not for approval', yet it contains a rule the user will feel: 'New instances and attributes are refused while anything is frozen.' ES-2 and ES-3 session-freeze every non-selected card, so the rule applies in every session. Claude could then never add an instance or attribute, including harmless proof-only ones such as @[simp] lemmas, or a DecidableEq instance a definition needs. Today's gate allows these. FZ-5, the clause the user approves, says only 'such as a new instance'. The ban is also too broad: an attribute that affects only proofs cannot change how frozen statements read. It is missing from §15.",
+   "suggested_fix": "Move the rule into FZ-5 and narrow it: 'While anything is frozen (which, in a session, is always), Claude may not add instances, coercions, notation or other declarations that change how existing Lean is read. telelean checks this by comparing the fully explicit form of frozen and held statements before and after. Attributes that affect only proofs (such as @[simp]) are allowed.' Add a §15 row.",
+   "evidence": "spec_v2_part2.md:148, :151 (§17); spec_v2.md:71 (FZ-5); :121, :126 (ES-2/ES-3 freeze everything else); gate-accept.md:144 (instances allowed today)"
+  },
+  {
+   "id": "F9",
+   "clauses": "RV-5, RV-3, S7, §16",
+   "severity": "minor",
+   "kind": "fidelity",
+   "problem": "RV-5 says it 'keeps D-19's order', but it is stricter and drops an escape. Today the result appears once you step past the statements, and a 'Show result' button reveals it earlier. RV-5 hides it until the statement items are accepted, and by RV-3 accepting freezes them for the session. Scenario: the user wants to know whether Claude proved G before deciding whether its formalisation is worth refining. He must Accept (and so freeze) Formalize G, look, and then un-accept it. D-19 never required that commitment, and his REVIEW 2 lets him move through the items freely. The change is not in §15 or §16.",
+   "suggested_fix": "Either: 'A Prove item's result stays hidden until you have opened the items for the statements it proves. Show result reveals it sooner, with the note: You are seeing the result before judging the meaning.' This is closest to D-19 as built. Or keep the acceptance rule, tag it 'changed: stricter than today's D-19; no Show result', and add a §15 row.",
+   "evidence": "spec_v2.md:194 (RV-5); :182 (RV-3); review-ui.md:43-44, :65 (result revealed on navigation; Show result)"
+  },
+  {
+   "id": "F10",
+   "clauses": "DO-3, RV-6",
+   "severity": "minor",
+   "kind": "fidelity",
+   "problem": "The user's constraint is about 'the exact configuration of shaky cards' in a stage, and he explicitly allows that 'some might be the same'. DO-3 says what Claude proposes 'in their place ... must not be identical to the declined proposal', which can be read per decline. Scenario: following his own example, the user accepts 2 of 5 items and marks the other 3 Shaky one at a time. Read per decline, each of the 3 must come back different. That contradicts 'some might be the same' and forces exactly the cosmetic changes DO-3's escape was added to avoid.",
+   "suggested_fix": "DO-3: 'All items marked Shaky in a stage are taken together, however you declined them: the cards Claude proposes in their place must not be identical, as a set, to the ones it proposed before. Any single card may come back unchanged.'",
+   "evidence": "prompt20.md:36; spec_v2.md:227-228 (DO-3)"
+  },
+  {
+   "id": "F11",
+   "clauses": "★D1, ES-9, ES-1, TR-15, EN-2",
+   "severity": "minor",
+   "kind": "fidelity",
+   "problem": "★D1 calls option (c) 'Read it narrowly', but given ES-1 it is the literal reading. The user wrote 'on the Current tab', and ES-1 defines Current as a view that exists only while a session is active. ★D1(a) also understates its cost. It says 'quick edits become a transform that runs without Claude (TR-15)', but TR-15 ends in the end confirmation (EN-2). A typo fix goes from F2, type, Enter (with an Undo toast) to: select, Transform cards…, edit, Submit transform, a confirmation popup (listing freeze changes for every other card, see F12), Apply. This matters to a user who turned down D-19's option (a) because of its click cost. Meanwhile ES-9 is already written as option (a).",
+   "suggested_fix": "In ★D1, add: '(c) is the literal reading: under ES-1 the Current view exists only during a session.' Add to (a): 'Each quick edit then takes about five steps, including the end confirmation, against F2, type, Enter today.' Write ES-9 neutrally: 'Card fields cannot be edited directly on the Current view; how far this goes is ★D1.'",
+   "evidence": "prompt20.md:60; spec_v2.md:117 (ES-1), :139 (ES-9), :164 (TR-15); spec_v2_part2.md:89 (★D1); design-rationale.md:47 (click cost was D-19's reason)"
+  },
+  {
+   "id": "F12",
+   "clauses": "EN-2, FZ-7, FZ-8, ES-2, ES-3, REVIEW 8",
+   "severity": "minor",
+   "kind": "gap",
+   "problem": "The user asked that the end popup 'tell him which cards / card fields will be automatically frozen / unfrozen'. FZ-7 counts the freezes made when a session starts as session freezes, and ES-2/ES-3 freeze every card that was not selected. So EN-2(3) lists nearly the whole subject as 'becomes unfrozen', each with a keep tick. Scenario: a transform of one card, in a subject with 30 cards and 15 vocabulary items, ends with a popup of about 44 rows. The row that matters, such as an accepted assumption about to become unfrozen, is buried. Also, EN-2's items 1–2 ('the changes that will be applied', 'the final check') only fit a successful end. The user wants the warning 'successfully or not', and the text for Exit is never given.",
+   "suggested_fix": "EN-2(3): 'Freezes made by starting the session are summarised in one line: The 44 cards frozen because you did not select them return to how they were. Listed one by one: the freezes and unfreezes you made or caused (Accept, filled fields, your own Freeze and Unfreeze).' Add: 'On Exit the popup warns: Exit discards N accepted and M pending items; your files are not changed. The same freeze list follows.'",
+   "evidence": "prompt20.md:31; spec_v2.md:75 (FZ-7 'by starting a session'); :121, :126; :236-239 (EN-2)"
+  },
+  {
+   "id": "F13",
+   "clauses": "CM-1, CM-4, FZ-9, RV-10, ES-4, EC-7",
+   "severity": "minor",
+   "kind": "inconsistency",
+   "problem": "CM-1, the user's own definition, makes the Context Menu depend on the selection: 'If nothing is selected, it should say Select some items…'. Yet CM-4 puts actions that need no selection in it ('Raw Lean diff… · Exit session | — | while a session is active'). Scenario: the user presses Esc to clear the selection, and Exit session vanishes until he selects some card. Meanwhile Submit review (his own button), Cancel step and Resume have no stated place at all. The EN-2 popup is modal, so the toolbar Context Menu cannot be reached while it is open, although his FROZEN 4 says freeze 'at all stages in all interfaces'. FZ-9 narrows that to four named views.",
+   "suggested_fix": "Delete CM-4's last row and add: 'CM-6 Session controls (Submit review, Exit session, Cancel step, Resume, Raw Lean diff…) sit in the session bar above the board (today's proposal banner). The Context Menu only ever shows actions for the selection.' FZ-9: '…and in every dialog that lists cards (the end confirmation, unfreeze requests, transform warnings), each listed card offers Freeze and Unfreeze.'",
+   "evidence": "spec_v2.md:97 (CM-1), :111 (CM-4), :211 (Submit review), :131 (Cancel step), :81 (FZ-9); spec_v2_part2.md:9 (Resume); prompt20.md:16, :54"
+  },
+  {
+   "id": "F14",
+   "clauses": "ES-2, CM-5, RV-9, S8",
+   "severity": "minor",
+   "kind": "gap",
+   "problem": "ES-2 says 'If you select several goals, each is a separate inference with its own premises', but does not say where 'its own premises' come from when the user makes a single selection. CM-5's tray shows 'premises ⊢ goal', with a single goal. ES-2 also drops two things today's tray offers: proving a Derivation (chosen as the target with ⊢), and 'Self-evident?' when no premises are selected. Scenario: 3 assumptions and 2 goals are selected. Do both goals get all 3 premises? And if he selects only a DERIVATION and 2 assumptions, what gets proved?",
+   "suggested_fix": "ES-2: 'If you select several targets (goals, or derivations you mark with ⊢), each is proved separately from exactly the same selected premises. No target's proof may use another selected target, or a proof written for one. With no premises selected, These suffice asks whether the target is self-evident (today's Self-evident?).' CM-5: 'premises ⊢ targets'.",
+   "evidence": "spec_v2.md:124 (ES-2), :113 (CM-5); board-ui.md:226, :233-236 (today's ⊢ target and Self-evident?)"
+  },
+  {
+   "id": "F15",
+   "clauses": "§11.1, §11.2",
+   "severity": "minor",
+   "kind": "fidelity",
+   "problem": "The user wants 'proved' to mean proved from exactly what is shown, and §11 is not precise enough for that. (1) 'Your files change only when a session ends successfully' is false: under ★D1(a) the A|D|G box still writes immediately, ES-7 allows hand edits, and Undo and History write files. (2) 'For These suffice, that is only your selected premises (plus vocabulary and the presuppositions you accepted)' leaves out Lean's standard axioms (propext, Classical.choice, Quot.sound) and what selected proved derivations rest on. Today's permitted set includes both. The existence presuppositions of the statements involved are also permitted automatically, not 'accepted'. Scenario: he sees Classical.choice under 'Rests on' and concludes that guarantee 2 is broken.",
+   "suggested_fix": "§11.1: 'A session's changes reach your files only when it ends successfully, and only as a state that passed every check.' §11.2: '…resting on exactly what it lists. For These suffice, that is: the selected premises, what your selected proved derivations rest on, Lean's standard axioms (propext, Classical.choice, Quot.sound), plain vocabulary, and the existence presuppositions of the statements involved.'",
+   "evidence": "spec_v2.md:253-254; spec_v2_part2.md:89 (★D1(a) keeps the box); gate-accept.md:82-89 (permitted set)"
+  },
+  {
+   "id": "F16",
+   "clauses": "FZ-5, FZ-6, CM-3, RV-3",
+   "severity": "minor",
+   "kind": "gap",
+   "problem": "Held content (FZ-5) is 'not frozen itself', yet FZ-6 offers only the user's FROZEN 2 procedure for releasing content: select it, then Unfreeze. Scenario: Claude asks to redefine the vocabulary item HasDarkPast, which 3 frozen cards hold. If 'Select them' selects HasDarkPast, Unfreeze does nothing because it is not frozen, and Claude stays blocked. The user has to work out that he must unfreeze the 3 cards that hold it. If those are accepted items, unfreezing them also sends them back to 'in review' (RV-3).",
+   "suggested_fix": "FZ-6: 'For held content, Select them selects the frozen cards that hold it, and the request lists them (held by ‹card›, ‹card›). Unfreezing those cards releases it; accepted ones return to in review (RV-3).' CM-3: Unfreeze on an item that is only held is disabled, with the reason 'Held by ‹card›: unfreeze that card instead'.",
+   "evidence": "spec_v2.md:29 (Held), :67-72 (FZ-5, FZ-6), :182 (RV-3); prompt20.md:52"
+  },
+  {
+   "id": "F17",
+   "clauses": "RV-9, DO-2, RV-8, EC-5",
+   "severity": "minor",
+   "kind": "fidelity",
+   "problem": "The user's REVIEW 4 names the way to transform during a review: 'by declining multiple cards together and choosing the TRANSFORM option'. His REVIEW 5 adds only These suffice. RV-9 adds a second path, 'Transform cards…' from the Context Menu, which runs Claude at once, while a transform opened from Decline (DO-2) 'runs at Submit review'. Scenario: the same window on the same card runs Claude now or later depending on how it was opened, and by EC-5 the immediate result replaces the pending item. The user cannot predict when Claude, and so his quota, will run. The addition is tagged only 'clarified'.",
+   "suggested_fix": "Either drop the mid-stage Transform (RV-8's 'Ask me instead' then fills in the instructions of a transform opened from Decline), or give both paths the same timing: 'A transform made during a review stage, from Decline or from the Context Menu, runs when you press Submit review.' Keep the Context Menu path only for cards that have no item in review, and tag it 'changed'.",
+   "evidence": "prompt20.md:27-28; spec_v2.md:204, :210 (RV-9), :226 (DO-2), :202 (RV-8); spec_v2_part2.md:7 (EC-5)"
+  },
+  {
+   "id": "F18",
+   "clauses": "RV-10, DO-1, EN-1, EC-6, RV-11",
+   "severity": "minor",
+   "kind": "gap",
+   "problem": "RV-10 starts a Claude step whenever anything was declined. The user's REVIEW 6 asks Claude to 'take appropriate actions for those cards', and for a plain Reject no action is needed: telelean can drop a rejected Add, Change or Delete itself. Scenario: 9 items are accepted and one Add, which nothing depends on, is rejected. Submit review spends a Claude step with nothing to do (the user has said 'I need to save quota for now'), then shows an empty stage (RV-11), then needs another Submit review.",
+   "suggested_fix": "RV-10: 'If every declined item is a Reject and no remaining item depends on one (EC-6), telelean drops the rejected proposals itself and the session goes to the end confirmation, with no Claude step.'",
+   "evidence": "spec_v2.md:213 (RV-10), :216 (RV-11); spec_v2_part2.md:8 (EC-6); prompt20.md:29; design-rationale.md:344"
+  },
+  {
+   "id": "F19",
+   "clauses": "★D4, TR-3",
+   "severity": "minor",
+   "kind": "fidelity",
+   "problem": "The user's sentence, 'drag a card into a trash section, where the card is still visible if he wants to drag it back, or delete it permanently', reads like a recycle bin: the trash is a soft delete and 'delete permanently' is the hard one. ★D4 offers only (a) drop it and (b) hide the card from Claude. The user's most likely meaning is not among the options, so he may accept (a) without seeing it.",
+   "suggested_fix": "Add ★D4 option (c): 'The trash archives the card: its Lean is kept in the attic and can be restored later, like D-18's planned Suspend. Delete permanently deletes the card and its Lean.'",
+   "evidence": "prompt20.md:41; spec_v2_part2.md:92 (★D4); spec_v2.md:145 (TR-3)"
+  },
+  {
+   "id": "F20",
+   "clauses": "§1, FZ-8, RV-2, CF-5, FZ-11, FZ-12, TR-12, ★D5, §12-§13",
+   "severity": "minor",
+   "kind": "readability",
+   "problem": "The revision runs to about 7,200 words (4,165 in spec_v2.md alone) and 70 clauses, against the original's 1,357 words. Its clarity suffers from codes that are never explained: D-3, D-11, D-15, D-16, D-17, D-19, D-21, G5 and M1/M2, plus terms such as 'report card', 'the tray', '.holds' and 'the Spyro model'. RV-2 relies on 'the Fully explicit toggle', which the user's own question 1 says he does not understand. §1 defines 'Derived information', but no clause uses it. FZ-8 says the end of a session 'is the only time telelean changes a freeze by itself'. But ES-2 and ES-3 freeze at the start, RV-3 freezes on Accept and unfreezes when a status changes, TR-6 freezes a field you fill, and FZ-7 freezes on Reject. A reader who checks FZ-8 against these will distrust the rest.",
+   "suggested_fix": "Explain each code in a few words at first use (for example 'D-11, telelean's rules for changing a card's kind'), or add one 'Earlier decisions' table. Drop 'Derived information', or use it in CF-3. FZ-8: 'Apart from EN-2's keep ticks, the end of a session is the only time freezes change without a direct action of yours.' RV-2: add '(Fully explicit shows the Lean without notation, with every argument written out)'. Move §12–§13 into an appendix so that §0–§11 read as one spec to approve.",
+   "evidence": "word counts: prompt20.md:14-63 = 1,357; spec_v2.md = 4,165; spec_v2_part2.md = 3,029; spec_v2.md:27 ('Derived information', unused), :79 (FZ-8), :177 (RV-2); prompt20.md:69 (question 1)"
+  },
+  {
+   "id": "F21",
+   "clauses": "RF-4, §14",
+   "severity": "nit",
+   "kind": "fidelity",
+   "problem": "RF-4 is a decision ('your call, but not a ★'). But §14's reply, 'approve, with the ★ recommendations', adopts 'search by sentence, no numbers' without the user ever choosing it. He asked for a system 'similar to Github's for pull requests, issues', whose best-known feature is the #12 number.",
+   "suggested_fix": "Make it ★D6: 'Short card numbers such as #12? (a) No: search by sentence. (b) Yes: every card shows a number.' Or state the default in RF-1 and list it in §15.",
+   "evidence": "spec_v2.md:248 (RF-4); spec_v2_part2.md:85 (§14 approval line); prompt20.md:63"
+  },
+  {
+   "id": "F22",
+   "clauses": "TR-4, FZ-11, CF-6",
+   "severity": "nit",
+   "kind": "gap",
+   "problem": "The user asked that ''fuzzy' should be demarcated clearly for all affected fields'. TR-4 only repeats 'each clearly marked'. FZ-11, by contrast, works out a look for FROZEN that avoids every visual signal already in use. Italics already mean Claude's wording (CF-6), dashing means declared by you, and translucency means suggested. An implementer picking the easy italic or dashed placeholder would blur those meanings.",
+   "suggested_fix": "TR-4, add: 'A fuzzy field shows the placeholder Claude fills this, with its own icon. It never uses italics, dashing or translucency, which already mean Claude's wording, declared by you and suggested.'",
+   "evidence": "prompt20.md:42; spec_v2.md:146-147 (TR-4), :87-89 (FZ-11), :55 (CF-6); board-ui.md:357-359"
+  }
+ ]
+}

@@ -1,0 +1,1172 @@
+{
+  "summary": "Coverage audit of spec v4.1 §5 FROZEN (FZ-1 to FZ-13), §6 Context Menu (CM-1 to CM-7) and §12 Undo and Redo (UN-1 to UN-7). It also covers the Appendix A items on freezing, selection and undo: A2, A3, A5, A6, A7, A10, A19, A21, A22, A23, A24, A27 and A28. Every source was read only, and no file was written.\n\nThere are 183 rows:\n- built: 44\n- planned for slice 2: 26\n- planned for slice 3: 84\n- left to slice 4: 8\n- left to slice 5: 2\n- narrowed by a logged decision: 16\n- contradicted: 3\n- unassigned: 0\n\n**Built in slice 1.**\n- The Context Menu section: fixed height, empty text, summary, labelled Formalize button, icons and the '…' overflow.\n- Selecting cards, arrows and ∅ marks: Ctrl adds, the selection rectangle, Select incoming arrows, Esc.\n- The right-click menu, apart from fields, vocabulary items and the band.\n- The board Undo stack (100 steps per subject, refusing with 'use History') and its lock during a run (UN-3, A27).\n- UN-7: hand edits never enter telelean's stacks.\n\n**FROZEN.** None of it is built yet; no core/src/freeze exists. Every FZ clause is committed to by the slice-3 plan, except:\n- the transform parts, left to slice 4;\n- `#` holding, left to slice 5;\n- the logged narrowings: D3-1 (no binding start freezes), D3-4, D3-5, D3-6/7/8/45/46, D3-9 (no 'Allow this change' and no 'meaning changed' items), D3-16/D3-21, D3-27, D3-30 and D3-50.\n\nI read the slice-3 plan at its 21:08 version: /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/plans/slice3-plan.md, identical to slice3-plan.after_design.md. It is under review, so its section numbers may move.\n\n**Session Undo.** Only core's reducer is built (2a2 and fixer 2a: seal, undo, redo, move, reveal); 2b1a is now amending it. The runner (2e) and the per-view routing (2h) are planned. Three decisions change the spec here:\n- D2-54: Submit seals only when it queues Claude steps.\n- D2-62: no Undo of decisions while a step runs.\n- D3-23: puts back the answer seal that slice 2 leaves out.\n\n**Contradicted.**\n1. CM-3 in the built Context Menu: with a mixed selection, actions that fit only part of it stay enabled. Formalize ignores selected cards, and one card's actions stay enabled beside selected arrows or marks. This is unlogged, and slice 2 §5.11 keeps it.\n2. CM-3 in slice3-plan §3.6 and §4.3: the freeze actions freeze the freezable part and report the rest as `left`, instead of being shown disabled.\n3. CM-7 'everywhere else': the built code deliberately keeps VS Code's default menu on the Vocabulary/Definitions band. Slice 3 adds menus on vocabulary items only.\n\n**Small unlogged departures, noted in the rows.**\n- CM-1: on an empty board the section shows the first-step hint instead of the empty text.\n- CM-7: the 4 px rule counts any movement, not only press-to-release distance.\n- A19: old arrows are not drawn at all.\n- FZ-10: the version offers differ by item kind.\n- FZ-4: the Result's list of cards whose basis changes does not mark which are frozen.",
+  "rows": [
+    {
+      "clause": "FZ-1 sentence 1",
+      "requirement": "Claude cannot change a frozen field.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.4 (frozenFindings, token `field`), §3.5 (every judged state), §1.1 3a; §6.2 cheat 1"
+    },
+    {
+      "clause": "FZ-1 sentence 1b",
+      "requirement": "Claude cannot delete a card that has any frozen field.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.4 token `deleted`; §2.8 and §3.10 (`delete_card` refused for frozen fields, frozen arrows or held content; 3c1/3e2); §6.2 cheat 8",
+      "note": "Claude can delete cards only with the whole model open; narrow steps already refuse any deletion through slice 2's step limits."
+    },
+    {
+      "clause": "FZ-1 sentence 2",
+      "requirement": "Freezing a card freezes all its fields, including a proposition's Dependencies.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.6 (expansion: a card becomes its eight fields), §2.2 CARD_FIELDS; D3-20",
+      "note": "D3-20 stores all eight CF-2 fields, even on an axiom (a superset)."
+    },
+    {
+      "clause": "FZ-1 sentence 3",
+      "requirement": "Frozen binds Claude only: you can always change a field yourself, and it then stays frozen.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.1 ('Frozen binds Claude only': a record names a target, not a value); §2.6 and D3-44",
+      "note": "Your own changes inside a session go through transforms; that the frozen value then becomes your version is slice 4 (§3.12 `revalue` hook). D3-44 goes further: a board edit of a sentence, Why, stance or source also freezes that field (the user's FROZEN 1)."
+    },
+    {
+      "clause": "FZ-1 bullet",
+      "requirement": "An arrow belongs to its target's Dependencies, so freezing a card does not freeze the arrows out of it.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.6 (Dependencies cover the arrows into the card and its mark, not those out of it), §3.2 (the dependencies value)"
+    },
+    {
+      "clause": "FZ-2",
+      "requirement": "Freezing an empty field means 'keep it empty': Claude may not fill it.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.2 (no binding counts as empty), §3.4 token `keep-empty`, §3.10 (keep-empty wins over whole-model fuzzy), §4.3 'Freeze (keep empty)', §4.5 '— kept empty'; cheat 2"
+    },
+    {
+      "clause": "FZ-3 bullet 1",
+      "requirement": "telelean records what is frozen in its own files, which Claude can neither see nor change.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §2.2 (.telelean/subjects/<S>/freezes.json), §3.1 'Out of Claude's reach' (the shadow never copies .telelean; path guard; G0), §5.2 (session freezes in run.json), §2.4 (graph.json never exports freezes); cheat 16"
+    },
+    {
+      "clause": "FZ-3 bullet 2a",
+      "requirement": "A standing freeze's frozen value is your files' value.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.3 (Standing: B's value), §2.2 SessionFreezes.standing snapshot"
+    },
+    {
+      "clause": "FZ-3 bullet 2a (start)",
+      "requirement": "A session's starting freeze's frozen value is your files' value.",
+      "status": "narrowed-by-decision",
+      "where": "D3-1; slice3-plan §2.2 (reason `session-start` exists as a type but is never made), §7.1",
+      "note": "Formalize sessions make no binding start freezes. Slice 2's per-step limits, at each step's S₀ (slice2-plan §4.9), enforce the preset instead. Transform-started sessions are slice 4."
+    },
+    {
+      "clause": "FZ-3 bullet 2b",
+      "requirement": "An accepted item's frozen value is the content you accepted.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.7 (ItemRecord.frozen = {fingerprint, held}), §3.3 Accepted, §3.4 step 1; D3-4, D3-51"
+    },
+    {
+      "clause": "FZ-3 bullet 2c",
+      "requirement": "Your own freeze during a session keeps the value shown when you froze it.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.6 (the value of the judged state the view shows: J during a queue, the stage judgement, F in confirming; {from:'base'} or {from:'state'}, R2-1), §3.8; D3-5"
+    },
+    {
+      "clause": "FZ-3 bullet 2d",
+      "requirement": "An inference's step limits use each value as it was when the step started.",
+      "status": "planned-slice2",
+      "where": "docs/slice2-plan.md §4.9 step limits (relative to S₀; `existing-changed` token `session`, D2-41; sub-slice 2b1b, not built yet); slice3-plan §3.5 (exact meaning comparison by meaningKey)",
+      "note": "Slice 1's single-step run already keeps existing declarations and card text unchanged against the run's base (M2's gate and G5)."
+    },
+    {
+      "clause": "FZ-3 bullet 2e",
+      "requirement": "When you change frozen content yourself in a transform, its frozen value becomes your version (TR-15).",
+      "status": "for-slice4",
+      "where": "slice3-plan §0 'Not in slice 3', §3.12 (the `revalue` freeze op is a slice-4 hook)"
+    },
+    {
+      "clause": "FZ-3 bullet 3",
+      "requirement": "Every state telelean judges (each check, statements fixed, the finish, Apply) must leave frozen and held content exactly at its frozen value; otherwise the state is refused.",
+      "status": "narrowed-by-decision",
+      "where": "D3-5 (slice3-plan §3.4 step 4, the two-value rule), D3-48 (§3.5: the judge's reverts become stage problems); the checks themselves: §3.5 (judgeState at every purpose, Apply's backstop), §3.8 (finish re-check)",
+      "note": "At step purposes a step may leave a difference it found at its S₀, but may not change it further. At `stage` such differences, and the judge's reverts of frozen content, become stage problems that disable Apply instead of being refused. The final check and Apply refuse."
+    },
+    {
+      "clause": "FZ-3 bullet 3b",
+      "requirement": "Text is compared directly, and meaning is compared in Lean.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §2.1 (meaningKey: sha256 of the elaborated Repr; probe in 3p), §3.2, §3.4 token `meaning`; D3-2",
+      "note": "Without a meaningKey it falls back to D2-41's comparison, and the final check and Apply refuse (fail closed)."
+    },
+    {
+      "clause": "FZ-3 bullet 3c",
+      "requirement": "The one exception is a provisional meaning change you allowed under FZ-5.",
+      "status": "narrowed-by-decision",
+      "where": "D3-9; slice3-plan §0 'Not built, by decision', §3.9",
+      "note": "There is no 'Allow this change': held content changes only after you unfreeze what holds it."
+    },
+    {
+      "clause": "FZ-3 bullet 4",
+      "requirement": "Claude is told what is frozen, but nothing depends on whether it complies.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §2.8 (turns' FROZEN BY THE PERSON and HELD sections, tool results, system prompt), §3.1, §3.5 (the mechanical check)"
+    },
+    {
+      "clause": "FZ-4 bullet 1",
+      "requirement": "Claude may not change anything frozen Lean relies on after elaboration: other cards' statements, definitions, lemmas, vocabulary, and inserted instances and coercions.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.4 step 3 (held maps over the elaborated meaning closure), §3.2 heldValue, §2.3 token `held`; D3-3; cheats 5 and 6",
+      "note": "D3-3 keeps held non-theorem declarations' text too, not only their meaning."
+    },
+    {
+      "clause": "FZ-4 bullet 1b",
+      "requirement": "For a .holds only its type is held; proofs are not.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.2 heldValue (theorems, axioms, opaques and Prop-valued declarations by their type's meaning only), §3.4 step 3; D3-3"
+    },
+    {
+      "clause": "FZ-4 bullet 2",
+      "requirement": "The field that a frozen card's sentence or Why references with # is held.",
+      "status": "for-slice5",
+      "where": "slice3-plan §0 'References (slice 5): heldFields() returns []', §3.4 step 3 (slice-5 hook)"
+    },
+    {
+      "clause": "FZ-4 para 2",
+      "requirement": "Any other way of changing what frozen Lean means (an instance, an open or an attribute placed before it) is caught by FZ-3's meaning comparison.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §2.1 (meaningKey), §3.4 token `meaning`, §6.1 (3a and 3p tests), cheat 7; an `open` is also slice 2's `stray-command` (docs/slice2-plan.md §4.9)"
+    },
+    {
+      "clause": "FZ-4 para 3a",
+      "requirement": "Held never overrides ES-2's exceptions: a target's Proof stays open, an empty statement at a selected arrow stays fuzzy, and a target's Dependencies stay open for additions.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.4 step 3 ('FZ-4's exceptions hold by construction'), §6.1 3a test"
+    },
+    {
+      "clause": "FZ-4 para 3b",
+      "requirement": "The Result lists any frozen card whose 'Rests on' changes as a consequence.",
+      "status": "planned-slice2",
+      "where": "docs/slice2-plan.md §2.3 (the Result detail's `basisChanged`), §5.6 ('the cards whose basis changes')",
+      "note": "Slice 2 lists every card whose basis changes but does not mark which are frozen; slice 3 adds nothing for frozen cards."
+    },
+    {
+      "clause": "FZ-4 para 4",
+      "requirement": "Held items show a chain mark: 'held by ‹card›'.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.5 Held (a link glyph and 'held by “‹A›”'), §2.4 (SessionFreezesView.held, BoardFreezesView.held)"
+    },
+    {
+      "clause": "FZ-5 para 1",
+      "requirement": "If Claude wants to change frozen or held content, it must ask first.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §2.8 (`request_unfreeze` tool, system prompt), §3.9; the check (§3.5) refuses any state that changes such content"
+    },
+    {
+      "clause": "FZ-5 bullet 1",
+      "requirement": "A request card says what Claude wants to change and why, and offers Select them, Continue and Keep frozen.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.9, §4.6 (run/UnfreezeRequest.tsx, 3g), §2.4 UnfreezeRequestView"
+    },
+    {
+      "clause": "FZ-5 bullet 2a",
+      "requirement": "The step pauses while the request is open, as it does for a question.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.9 (pendingUnfreeze, waiting-for-answer, agent clock paused)"
+    },
+    {
+      "clause": "FZ-5 bullet 2b",
+      "requirement": "Continue tells Claude exactly which requested items are now unfrozen; Keep frozen tells it that none are.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.9 (answers computed from the freeze table); D3-24",
+      "note": "D3-24: Keep frozen is enabled only while every requested item is still frozen or held."
+    },
+    {
+      "clause": "FZ-5 bullet 3",
+      "requirement": "A request still open when its step ends is listed in the stage report.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.9 (recorded as `withdrawn` and listed), §2.4 StageReportView.requests, §4.6"
+    },
+    {
+      "clause": "FZ-5 bullet 4a",
+      "requirement": "For held content, the request card names what holds it.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §2.4 (request items' `holders`), §3.9 (row state 'held by ‹cards›'; Select them selects the holders)"
+    },
+    {
+      "clause": "FZ-5 bullet 4b",
+      "requirement": "The card offers 'Allow this change' on the held item X: X is exempt from the held check, and its holders are compared against X's new version.",
+      "status": "narrowed-by-decision",
+      "where": "D3-9",
+      "note": "Not built: to let Claude change a held X, you unfreeze what holds it (slice3-plan §3.9)."
+    },
+    {
+      "clause": "FZ-5 bullet 4c",
+      "requirement": "Every frozen card whose held closure contains X gets a 'meaning changed by X' item, a belief item if the card is an axiom.",
+      "status": "narrowed-by-decision",
+      "where": "D3-9",
+      "note": "RV-7's b5 stays unused; X's own item lists the statements that rely on it instead."
+    },
+    {
+      "clause": "FZ-5 bullet 4d",
+      "requirement": "X's item is accepted only after all its 'meaning changed' items; declining any of them declines X; accepting X makes it X's frozen value.",
+      "status": "narrowed-by-decision",
+      "where": "D3-9"
+    },
+    {
+      "clause": "FZ-6",
+      "requirement": "Only you unfreeze, by selecting cards, fields or arrows and choosing Unfreeze in the Context Menu; Claude may then change them only because they are no longer frozen.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.1 ('Only the person unfreezes', a property test), §3.6 Unfreeze, §4.3, §3.9 (Select them, then Unfreeze)"
+    },
+    {
+      "clause": "FZ-7 para 1",
+      "requirement": "A field can be frozen for several reasons at once, and stays frozen while any reason remains.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §2.2 FreezeReason, §3.3 (several reasons in one entry), §2.4"
+    },
+    {
+      "clause": "FZ-7 reason 1",
+      "requirement": "Reason 'standing': you froze it outside a session.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §2.2, §2.6 set-freezes, §3.3, §5.1; D3-44",
+      "note": "D3-44 also creates standing reasons when you edit a sentence, Why, stance or source on the board."
+    },
+    {
+      "clause": "FZ-7 reason 2",
+      "requirement": "Reason: the session's start froze it.",
+      "status": "narrowed-by-decision",
+      "where": "D3-1; slice3-plan §2.2",
+      "note": "Formalize sessions get no binding start reason; `session-start` is a slice-4 type for transform sessions."
+    },
+    {
+      "clause": "FZ-7 reason 3",
+      "requirement": "Reason: you accepted an item that covers it.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.7 (RV-4 through acceptCovers), §3.3"
+    },
+    {
+      "clause": "FZ-7 reason 4",
+      "requirement": "Reason: you filled it in a transform.",
+      "status": "for-slice4",
+      "where": "slice3-plan §0, §2.2 (reason `transform` exists as a type but is never made), §3.12"
+    },
+    {
+      "clause": "FZ-7 reason 5",
+      "requirement": "Reason: you froze it during the session.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §2.2 (`yours`, OwnFreeze), §3.6"
+    },
+    {
+      "clause": "FZ-7 para 2",
+      "requirement": "Changing an item's status removes only that item's reason.",
+      "status": "narrowed-by-decision",
+      "where": "D3-4; slice3-plan §3.7",
+      "note": "The accepted reason ends only with your own status change of the item, an Unfreeze that covers it, or a cascade you confirmed. telelean's automatic returns to review (D2-23, RV-11) keep it."
+    },
+    {
+      "clause": "FZ-7 para 3",
+      "requirement": "Unfreeze removes every reason at once, and an accepted item covering the field returns to 'in review' (RV-5).",
+      "status": "narrowed-by-decision",
+      "where": "D3-7, D3-35; slice3-plan §3.6 (Unfreeze, phases table)",
+      "note": "This works in a stage. Unfreezing accepted content is refused while a step runs (D3-7) and in the end confirmation (D3-35)."
+    },
+    {
+      "clause": "FZ-8 para 1",
+      "requirement": "When a session ends, successfully or not, every card and field of its subject returns to its standing state recorded at the session's start.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §5.4, §2.2 (the SessionFreezes.standing snapshot), §3.1, §5.2; sub-slice 3e1"
+    },
+    {
+      "clause": "FZ-8 bullet 1",
+      "requirement": "Session reasons disappear, and unfreezes of standing freezes are undone.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §5.4 (rows compare the end state with the start snapshot), §2.4 FreezeChangeRow"
+    },
+    {
+      "clause": "FZ-8 bullet 2",
+      "requirement": "Cards created in the session end up unfrozen.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §5.4 (their freezes are 'keep frozen' rows, unticked by default, D3-33)"
+    },
+    {
+      "clause": "FZ-8 bullet 3",
+      "requirement": "The exception is what you tick 'keep' in the end confirmation (EN-2).",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.7, §5.4, §2.5 (endSession keep and keepAll); D3-32, D3-33",
+      "note": "Exit offers keep only for values equal to your files' (B's) version."
+    },
+    {
+      "clause": "FZ-8 bullet 4",
+      "requirement": "Apart from your own actions, a session's end is the only time freezes change.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.1 (reconcile, judges, steps and requests never remove a reason; a property test)"
+    },
+    {
+      "clause": "FZ-9 para 1",
+      "requirement": "Wherever a card, field or arrow is shown, you can select it and choose Freeze, Unfreeze, Freeze all other cards or Unfreeze all other cards in the Context Menu.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.3 (the four actions in the section and in every right-click menu), §4.2 (selection); sub-slice 3f"
+    },
+    {
+      "clause": "FZ-9 para 1 (Proposed view)",
+      "requirement": "Freezing works in the board's Proposed view.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.1 (routed to `sessionFreeze`, the session stack); relies on docs/slice2-plan.md §5.10's Proposed-view selection (2h)"
+    },
+    {
+      "clause": "FZ-9 para 1 (Current view, no session)",
+      "requirement": "Freezing works on the Current view outside a session.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.1 (`setFreezes`, the board stack), §2.5, §2.6, §5.1"
+    },
+    {
+      "clause": "FZ-9 para 1 (review items)",
+      "requirement": "Freezing works from review items.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.6 (an item freezes what its Accept would cover, at Claude's proposal), §4.2 (lock slots in the item detail); D3-30, D3-34",
+      "note": "Hidden Results and their parts cannot be selected (D3-6); an unaccepted 'Claude suggests' premise cannot be frozen (D3-45)."
+    },
+    {
+      "clause": "FZ-9 para 1 (transform window)",
+      "requirement": "Freezing works in the transform window.",
+      "status": "for-slice4",
+      "where": "slice3-plan §0 (the transform window is slice 4)"
+    },
+    {
+      "clause": "FZ-9 para 1 (end confirmation)",
+      "requirement": "Freezing works from the end confirmation.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.7 (rows link to the board and are selectable), §3.6 phases table (confirming: freeze at F); D3-35"
+    },
+    {
+      "clause": "FZ-9 para 1 (request cards)",
+      "requirement": "Freezing works from request cards.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.6, §3.9 (Select them, then the Context Menu)"
+    },
+    {
+      "clause": "FZ-9 para 1 (time)",
+      "requirement": "The freeze actions work at any time, including while Claude works.",
+      "status": "narrowed-by-decision",
+      "where": "D3-6, D3-7, D3-8, D3-45, D3-46; slice3-plan §3.6 phases table",
+      "note": "Freezing works during steps, at J. It is refused while telelean re-checks (D3-8) and while Apply writes (D3-46). A target's Proof, Dependencies and mark cannot be frozen while results are hidden or while its step is queued or running (D3-6). 'Your version' and un-accepting wait for the step's end (D3-7)."
+    },
+    {
+      "clause": "FZ-9 bullet 1",
+      "requirement": "The exception is the Current view during a session, where nothing can change.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.1 (disabled: 'During an edit session your files can't change: freeze on the Proposed view.'), §2.5 (setFreezes is ES-9-locked)",
+      "note": "Slice 1's run lock already refuses every board edit during a run (packages/webview/src/state/store.ts:670-672; packages/extension/src/logic/boardSession.ts:409-425)."
+    },
+    {
+      "clause": "FZ-9 bullet 2",
+      "requirement": "'All other cards' means every card of the subject that contains none of the selected items, with all its fields and Dependencies; a selected arrow or mark counts as contained in the cards at both its ends.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.6 'All other cards'"
+    },
+    {
+      "clause": "FZ-9 bullet 3a",
+      "requirement": "Unfreeze all other cards asks first if it would remove standing freezes, and says how many.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.4, §2.6 (needs-confirmation with the counts); D3-25 (it always asks)"
+    },
+    {
+      "clause": "FZ-9 bullet 3b",
+      "requirement": "Unfreeze all other cards leaves accepted content frozen unless you tick 'also un-accept'.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.6, §4.4",
+      "note": "The tick is offered only in a stage (D3-7 during a step, D3-35 in the end confirmation)."
+    },
+    {
+      "clause": "FZ-9 bullet 4a",
+      "requirement": "Freeze changes go on the Undo stack of the view you make them in.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §5.1 (board stack), §5.3 (session stack), §4.9; D3-21, D3-22"
+    },
+    {
+      "clause": "FZ-9 bullet 4b",
+      "requirement": "Freeze changes change no file and make no History snapshot.",
+      "status": "narrowed-by-decision",
+      "where": "D3-21, D3-16; slice3-plan §2.6, §5.1",
+      "note": "A board freeze writes freezes.json, read as 'no model file'. Freezing a card whose id is derived first writes its `id:` line, a model-file change with a History snapshot."
+    },
+    {
+      "clause": "FZ-10 para 1",
+      "requirement": "Freezing while Claude works freezes the version you see.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.8 (J: the state the queue started from; the base during the first queue), §3.6, §2.5 (`view` must match); D3-5"
+    },
+    {
+      "clause": "FZ-10 bullet 1a",
+      "requirement": "Claude is told about the freeze in its next tool result.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §2.8 (`personChangedFreezes`), §3.8"
+    },
+    {
+      "clause": "FZ-10 bullet 1b",
+      "requirement": "A check that fails only because of such a freeze does not count as one of Claude's attempts.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.8, §3.4 step 5 (`fresh` through SessionFreezes.madeAt); D3-19"
+    },
+    {
+      "clause": "FZ-10 bullet 1c",
+      "requirement": "A freeze made while Claude works costs Claude only an uncounted check (case: content the step can no longer change back).",
+      "status": "narrowed-by-decision",
+      "where": "D3-50; slice3-plan §3.8 'A freeze the step cannot meet' (core `unmeetable`)",
+      "note": "This covers content that freeze_statements already fixed or that the step's own ledger entries write. The step ends at once as given up, not counted, and rolls back to S₀."
+    },
+    {
+      "clause": "FZ-10 bullet 2",
+      "requirement": "Freezing a card that has an item in review asks which version to freeze: Claude's proposal (the item stays in review) or yours (which rejects the item).",
+      "status": "narrowed-by-decision",
+      "where": "D3-7, D3-30; slice3-plan §3.6 Versions, §4.4",
+      "note": "'Your version' is refused while a step runs (D3-7) and offered only when one item is involved (D3-30). §3.6 also offers one version only for some kinds (Add, Add arrow, Proof broken, new vocabulary: proposal; Delete, Remove arrow: yours); that rule is not logged as a decision."
+    },
+    {
+      "clause": "FZ-10 bullet 3",
+      "requirement": "Rejecting an item whose proposal you froze first asks whether to unfreeze it.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.7 (decline dialog: Unfreeze them and decline / Keep them frozen at your version / Cancel), §4.4; D3-48"
+    },
+    {
+      "clause": "FZ-10 bullet 4",
+      "requirement": "Freezing an empty field that Claude is filling asks you to confirm.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.8 'Filling now', §4.4"
+    },
+    {
+      "clause": "FZ-11 bullet 1",
+      "requirement": "A frozen card gets an inner aura in the theme colour telelean.frozen (never blue or green), combining with glows and diff halos, plus a lock badge.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.5 (colour; `.tl-card__frost` inset aura; card lock badge), sub-slice 3f; D3-26, D3-20",
+      "note": "D3-26: a partly frozen card gets field locks and a lock chip, no aura."
+    },
+    {
+      "clause": "FZ-11 bullet 2",
+      "requirement": "The frozen look never uses dashing or translucency.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.5"
+    },
+    {
+      "clause": "FZ-11 bullet 3a",
+      "requirement": "A frozen field shows a small lock.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.5 (FieldLock slots)"
+    },
+    {
+      "clause": "FZ-11 bullet 3b",
+      "requirement": "A frozen arrow has a lock badge at its middle.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.5 (an EdgeEngine badge at the path's midpoint, through docs/slice2-plan.md §5.10's setBadges)"
+    },
+    {
+      "clause": "FZ-11 bullet 3c",
+      "requirement": "Frozen Dependencies show a lock where the arrows enter the card, and a 'dependencies frozen' chip.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.5 (a `deps` badge at the card's left edge, plus the chip)"
+    },
+    {
+      "clause": "FZ-11 bullet 4a",
+      "requirement": "In high-contrast themes a lock badge and a 'frozen' chip replace the aura.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.5 High contrast"
+    },
+    {
+      "clause": "FZ-11 bullet 4b",
+      "requirement": "The legend gets a 'frozen' entry.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.5 Legend `frozen`",
+      "note": "docs/slice1-plan.md §8, builder 1d: 'Frozen comes with slice 3'."
+    },
+    {
+      "clause": "FZ-11 bullet 5a",
+      "requirement": "During a session the starting freezes appear as one banner whose text depends on how the session started (Formalize, or Formalize with the whole model open).",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.5 Session banner (both texts verbatim; chosen by the running or last queue's mode, F16), sub-slice 3g; D3-1"
+    },
+    {
+      "clause": "FZ-11 bullet 5a (transform)",
+      "requirement": "Banner 'Everything except the selected cards is frozen' for sessions started by Transform cards….",
+      "status": "for-slice4",
+      "where": "slice3-plan §0 (the 'Transform cards…' banner is a hook), §3.12"
+    },
+    {
+      "clause": "FZ-11 bullet 5b",
+      "requirement": "During a session the board marks what Claude may change, rather than putting an aura on every card.",
+      "status": "narrowed-by-decision",
+      "where": "D3-27; slice3-plan §4.5 'May change', §2.4 SessionFreezesView.open",
+      "note": "The may-change chips show only while a narrow (preset) step runs."
+    },
+    {
+      "clause": "FZ-11 bullet 5c",
+      "requirement": "During a session, standing freezes and your own keep their aura.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.5 (accepted content shows field locks instead); D3-27"
+    },
+    {
+      "clause": "FZ-12",
+      "requirement": "The run's 'statements frozen before proving' step is renamed 'statements fixed', with its own icon.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.12 (runner texts in 3d; webview and `milestone` icon in 3g); D3-17 (the tool keeps the name freeze_statements)",
+      "note": "The code still says 'Statements frozen': packages/runner/src/gate/engine.ts:626, run/manager.ts:2042, llm/toolSchemas.ts:250."
+    },
+    {
+      "clause": "FZ-13 bullet 1a",
+      "requirement": "You can select arrows and freeze them; Claude may then not remove them.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §2.2 FreezeTarget `arrow`, §3.4 token `arrow`, §2.8 (`remove_arrow` refuses); cheat 3"
+    },
+    {
+      "clause": "FZ-13 bullet 1b",
+      "requirement": "A frozen 'follows from nothing' mark means no premise item may replace it.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §2.8 (`propose_assumption` refuses), §3.7 (an earlier draft's Accept is gated, with Gate.frozen), §3.4 token `mark`; D3-36"
+    },
+    {
+      "clause": "FZ-13 bullet 2",
+      "requirement": "Dependencies are frozen by selecting that field or freezing the whole card; Claude may then neither add nor remove arrows into the card, nor change its mark.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.2 (the dependencies value: premises and follows_from), §3.4 token `dependencies`, §2.8 (`propose_arrow` refuses), §3.6, §4.5 (Dependencies lock slot); cheat 4"
+    },
+    {
+      "clause": "FZ-13 bullet 3",
+      "requirement": "Reasons, frozen values, Undo and the rest of §5 apply to arrows, marks and Dependencies as to any field.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §2.2 (one FreezeKey space), §3.3, §5.1, §5.3"
+    },
+    {
+      "clause": "CM-1 a",
+      "requirement": "A section of the toolbar labelled 'Context Menu' shows the actions that fit the current selection.",
+      "status": "built",
+      "where": "packages/webview/src/header/ContextSection.tsx:89-170, rendered right under the toolbar (header/Header.tsx:118-137); docs/slice1-plan.md §8 builder 1e"
+    },
+    {
+      "clause": "CM-1 b",
+      "requirement": "The section has a fixed height, so it does not reflow the toolbar.",
+      "status": "built",
+      "where": "packages/webview/src/styles/board.css:1153-1160 (height 30px); header/ContextSection.tsx:2-4"
+    },
+    {
+      "clause": "CM-1 c",
+      "requirement": "With nothing selected the section reads 'Select some items to see possible actions here.'",
+      "status": "built",
+      "where": "packages/webview/src/board/contextActions.ts:36; header/ContextSection.tsx:89-95",
+      "note": "On a board with no cards it shows the first-step hint instead (ContextSection.tsx:26-33, 93; builder 1e), a small departure that is not logged."
+    },
+    {
+      "clause": "CM-2 a1",
+      "requirement": "You can select cards.",
+      "status": "built",
+      "where": "packages/webview/src/state/store.ts:1767-1777 (clickCard)"
+    },
+    {
+      "clause": "CM-2 a2",
+      "requirement": "You can select vocabulary cards.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.2 (`selectedVocab`: a vocabulary item's header selects it), sub-slice 3f"
+    },
+    {
+      "clause": "CM-2 a3 / bullet 1",
+      "requirement": "You can select single fields, by clicking a field's lock icon or Alt-clicking the field.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.2, §4.5 (FieldLock slots; a click only selects, D3-28); lock slots in the item detail come in 3g"
+    },
+    {
+      "clause": "CM-2 a4 / bullet 2",
+      "requirement": "You select an arrow by clicking it; its clickable area is wider than the line.",
+      "status": "built",
+      "where": "packages/webview/src/styles/board.css:1009-1015 (12 px transparent hit stroke); board/EdgeEngine.ts:602-608; board/gestures.ts:33 (hitRole); state/store.ts:2138-2154 (selectArrow)"
+    },
+    {
+      "clause": "CM-2 a5",
+      "requirement": "You can select 'follows from nothing' marks.",
+      "status": "built",
+      "where": "packages/webview/src/state/store.ts:2156-2168 (selectMark); docs/slice1-plan.md §8 builder 1c2 (12 px hit line on the ∅ stub)"
+    },
+    {
+      "clause": "CM-2 a6",
+      "requirement": "You can select review items.",
+      "status": "planned-slice2",
+      "where": "docs/slice2-plan.md §5.2 (`selectedItems`), §5.5 (row checkboxes, Space, 'Select all in review'); sub-slice 2g"
+    },
+    {
+      "clause": "CM-2 bullet 3",
+      "requirement": "Ctrl adds to the selection, and a selection may mix kinds.",
+      "status": "built",
+      "where": "packages/webview/src/state/store.ts:1767-1777, 2138-2168, 2239-2256 (cards, arrows and marks)",
+      "note": "Fields and vocabulary cards join in slice3-plan §4.2. When there is both a board selection and a review-item selection, freeze actions act on the board selection (D3-34)."
+    },
+    {
+      "clause": "CM-2 bullet 4",
+      "requirement": "On the canvas, a selection rectangle selects the cards and arrows inside it.",
+      "status": "built",
+      "where": "packages/webview/src/board/gestures.ts:218 (areaSelection); state/store.ts:2239-2256 (selectArea); docs/slice1-plan.md §8 builder 1c2 (D)"
+    },
+    {
+      "clause": "CM-2 bullet 5; CM-4 row 5",
+      "requirement": "'Select incoming arrows' on a card selects every arrow into it.",
+      "status": "built",
+      "where": "packages/webview/src/board/menu.ts:186; state/store.ts:2188-2204 (the card's ∅ mark too)"
+    },
+    {
+      "clause": "CM-2 bullet 6",
+      "requirement": "Esc first closes whatever is open, then clears the selection.",
+      "status": "built",
+      "where": "packages/webview/src/main.tsx:99-118; model/format.ts:102-107; common/Popover.tsx:110 (a popover closes on Escape first)"
+    },
+    {
+      "clause": "CM-2 (Proposed view)",
+      "requirement": "Selection works in the Proposed view during a session.",
+      "status": "planned-slice2",
+      "where": "docs/slice2-plan.md §5.10 Selection (cards, drawn and accepted Claude arrows, marks and items, by click or rectangle); sub-slice 2h",
+      "note": "In slice 1 the Proposed view selects nothing (store.ts:2143, 2159, 2242); the locked Current view stays selectable (builder 1f)."
+    },
+    {
+      "clause": "CM-3 sentence 1 (built menus)",
+      "requirement": "An action that fits only some of the selected items is shown disabled, with the reason on hover.",
+      "status": "contradicted",
+      "where": "packages/webview/src/board/contextActions.ts:78-97, 214-239; board/useFormalize.ts; docs/slice1-plan.md §8 builder 1e",
+      "note": "With several cards selected, the card actions are disabled with 'Select one card for this action.' (contextActions.ts:228-236), as required. With a mixed selection, actions that fit only part of it stay enabled and act on that part: Formalize ignores selected cards (builder 1e: 'Selected cards neither block Formalize nor add a source'), and one card's actions stay enabled beside selected arrows or marks. Not logged as a decision; slice2-plan §5.11 keeps it. Delete ignoring cards is AR-1's own rule."
+    },
+    {
+      "clause": "CM-3 sentence 1 (freeze actions)",
+      "requirement": "An action that fits only some of the selected items is shown disabled, with the reason on hover (the four freeze actions).",
+      "status": "contradicted",
+      "where": "slice3-plan §4.3, §3.6 (planFreeze `left`), §2.4 (ok branch `freeze.left`)",
+      "note": "The plan enables a freeze action whenever anything selected is freezable. It freezes that part and reports the rest as `left` (for example a provisional card, or a hidden target's Proof, Dependencies and mark under D3-6) instead of showing the action disabled. D3-6 logs what cannot be frozen, not this partial application."
+    },
+    {
+      "clause": "CM-3 bullet 1a",
+      "requirement": "Formalize for dependencies is a labelled button.",
+      "status": "built",
+      "where": "packages/webview/src/header/ContextSection.tsx:133-143"
+    },
+    {
+      "clause": "CM-3 bullet 1b",
+      "requirement": "Transform cards… is a labelled button.",
+      "status": "for-slice4",
+      "where": "docs/slice1-plan.md header ('Not in slice 1: the transform window (slice 4)'); slice3-plan §0"
+    },
+    {
+      "clause": "CM-3 bullet 1c",
+      "requirement": "Accept and Decline… are labelled buttons in the Context Menu section.",
+      "status": "planned-slice2",
+      "where": "docs/slice2-plan.md §5.7 (the Context Menu section in 2h: 'N review items', Accept / Decline…)",
+      "note": "The plan names the entries but not their form. Per D2-32 this Accept is always a group Accept (own: false), so it never gives an RV-7 item its own Accept."
+    },
+    {
+      "clause": "CM-3 bullet 2",
+      "requirement": "The other actions are icons, with their labels on hover.",
+      "status": "built",
+      "where": "packages/webview/src/header/ContextSection.tsx:112-125; board/contextActions.ts:186-211 (CONTEXT_ICONS)",
+      "note": "Icons for the freeze actions: slice3-plan §4.3."
+    },
+    {
+      "clause": "CM-3 bullet 3",
+      "requirement": "On a narrow window, extra actions overflow into a '…' menu.",
+      "status": "built",
+      "where": "packages/webview/src/header/ContextSection.tsx:64-79, 149-167; board/contextActions.ts:242-245 (fittingActions); fixer 1g's min-width fix in styles/board.css"
+    },
+    {
+      "clause": "CM-4 row 1",
+      "requirement": "Freeze / Unfreeze and Freeze all other cards / Unfreeze all other cards apply to cards, fields, arrows and marks.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.3, §3.6; sub-slice 3f"
+    },
+    {
+      "clause": "CM-4 row 2a",
+      "requirement": "Formalize for dependencies applies to arrows into propositions and to 'follows from nothing' marks.",
+      "status": "built",
+      "where": "packages/webview/src/board/contextActions.ts:78-97; header/ContextSection.tsx:133-143; board/menu.ts:208-211 (arrow and mark menus)",
+      "note": "One target at a time (AP-9). Several targets and mid-stage Formalize: docs/slice2-plan.md §5.11 (2h)."
+    },
+    {
+      "clause": "CM-4 row 2b",
+      "requirement": "Formalize's ▾ offers Open the whole model.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.8, §3.10 (3e2); deferred from slice 2 by D2-12"
+    },
+    {
+      "clause": "CM-4 row 2c",
+      "requirement": "Formalize's ▾ offers Claude may add cards.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.8, §3.10 (3c2, 3e3); D2-12",
+      "note": "Under D3-43's fallback it moves to slice 4 if 3c2 or 3e3 still has a blocker or major finding."
+    },
+    {
+      "clause": "CM-4 row 3",
+      "requirement": "Transform cards… applies to cards: it starts a session if none is active (ES-3), otherwise it is queued (RV-9).",
+      "status": "for-slice4",
+      "where": "docs/slice1-plan.md header; docs/slice2-plan.md header ('Not in slice 2'); slice3-plan §0"
+    },
+    {
+      "clause": "CM-4 row 4",
+      "requirement": "Follows from nothing / Remove 'follows from nothing' applies to a proposition with no incoming arrows or to an axiom, outside a session.",
+      "status": "built",
+      "where": "packages/webview/src/board/menu.ts:182-194 (disabled with the session's reason during a run, menu.ts:167); board/contextActions.ts:174-184"
+    },
+    {
+      "clause": "CM-4 row 6",
+      "requirement": "Draw arrows from the selection, on the target's right-click menu, outside a session.",
+      "status": "built",
+      "where": "packages/webview/src/board/menu.ts:180-181; state/store.ts:2082 (drawArrowsFromSelection); docs/slice1-plan.md §8 builder 1c2 (C)"
+    },
+    {
+      "clause": "CM-4 row 7",
+      "requirement": "Delete removes the selected arrows and marks, outside a session.",
+      "status": "built",
+      "where": "packages/webview/src/board/contextActions.ts:219-221; board/menu.ts:219-248; state/store.ts:2206-2237 (one removeArrows plan, one Undo step)"
+    },
+    {
+      "clause": "CM-4 row 8",
+      "requirement": "Move to axioms applies to propositions, outside a session.",
+      "status": "built",
+      "where": "packages/webview/src/board/menu.ts:188; board/contextActions.ts:179"
+    },
+    {
+      "clause": "CM-4 row 9",
+      "requirement": "Accept / Decline… apply to review items.",
+      "status": "planned-slice2",
+      "where": "docs/slice2-plan.md §5.7 (the Context Menu section in 2h; a group decideItems), §5.10 (a proposed arrow's right-click menu)",
+      "note": "D2-32: the section's Accept is always a group Accept."
+    },
+    {
+      "clause": "CM-4 row 10",
+      "requirement": "Copy reference applies to cards and fields.",
+      "status": "for-slice5",
+      "where": "docs/slice1-plan.md header ('references (slice 5)'); docs/slice2-plan.md header; slice3-plan §0 ('References (slice 5)')"
+    },
+    {
+      "clause": "CM-4 row 11",
+      "requirement": "Show on board / Open in editor apply to cards.",
+      "status": "built",
+      "where": "packages/webview/src/board/menu.ts:195-197; board/contextActions.ts:182-183"
+    },
+    {
+      "clause": "CM-4 para 2",
+      "requirement": "Today's tray controls go: ⊢, 'Self-evident?', 'Add to its premises ▶' and the dropped-premises warning.",
+      "status": "built",
+      "where": "docs/slice1-plan.md §8 builder 1e (tray/SelectionTray.tsx, the ⊢ target state and 'Add to its premises ▶' deleted) and builder 1g (their tests deleted)"
+    },
+    {
+      "clause": "CM-5",
+      "requirement": "The bottom tray goes, and its selection summary moves into the Context Menu section as 'N arrows into M propositions'.",
+      "status": "built",
+      "where": "packages/webview/src/board/contextActions.ts:107-130 (selectionSummary); header/ContextSection.tsx:130-132"
+    },
+    {
+      "clause": "CM-6",
+      "requirement": "The session's controls sit in a session bar above the board (today's proposal banner): Submit review, Exit session, Cancel step / Resume, Raw Lean diff… and the Current | Proposed switch.",
+      "status": "planned-slice2",
+      "where": "docs/slice2-plan.md §5.8 (SessionBar replaces ProposalBanner), §1.1 2g",
+      "note": "Today's run/ProposalBanner.tsx still carries M2's Accept, Feedback and Discard."
+    },
+    {
+      "clause": "CM-7 para 1",
+      "requirement": "A right click without movement opens, at the cursor, the Context Menu's actions for what is under it.",
+      "status": "built",
+      "where": "packages/webview/src/board/BoardInput.ts:462-470, 558-566; board/menu.ts:214-258; board/ContextMenu.tsx"
+    },
+    {
+      "clause": "CM-7 bullet 1",
+      "requirement": "'Without movement' means less than 4 px between press and release.",
+      "status": "built",
+      "where": "packages/webview/src/board/canvas/gesture.ts:8 (CLICK_SLOP = 4); BoardInput.ts:558-566",
+      "note": "Slightly stricter: a press that ever moved 4 px stays a drag, even if it comes back (builder 1c1)."
+    },
+    {
+      "clause": "CM-7 bullet 2a",
+      "requirement": "The thing under the cursor can be a card, an arrow, a mark or the empty canvas.",
+      "status": "built",
+      "where": "packages/webview/src/board/menu.ts:27-33 (MenuThing), 214-258"
+    },
+    {
+      "clause": "CM-7 bullet 2b",
+      "requirement": "The thing under the cursor can be a field.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.2 (a right click on a lock slot, or with Alt on a field, opens the field's menu; Shift+F10 on a lock slot)"
+    },
+    {
+      "clause": "CM-7 bullet 2c",
+      "requirement": "A right click on a vocabulary card opens telelean's menu for it.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §4.2 ('on a vocabulary item, its menu')",
+      "note": "In slice 1 the Vocabulary/Definitions band keeps VS Code's menu (builder 1c1)."
+    },
+    {
+      "clause": "CM-7 bullet 2d",
+      "requirement": "The thing is selected first, unless it is already part of the selection.",
+      "status": "built",
+      "where": "packages/webview/src/board/menu.ts:45-64 (menuSelection); state/store.ts:2170-2186 (selectForMenu)"
+    },
+    {
+      "clause": "CM-7 bullet 2e",
+      "requirement": "A right click on a card while other cards are selected keeps the selection and offers Draw arrows from the selection into it, plus that card's own actions.",
+      "status": "built",
+      "where": "packages/webview/src/board/menu.ts:49-51, 180-181"
+    },
+    {
+      "clause": "CM-7 bullet 2f",
+      "requirement": "A right click on empty canvas keeps the selection.",
+      "status": "built",
+      "where": "packages/webview/src/board/menu.ts:61-62"
+    },
+    {
+      "clause": "CM-7 bullet 3",
+      "requirement": "On empty canvas the menu offers New proposition here (the A|P box set to Proposition, the card placed at the clicked point), Fit all and Tidy layout.",
+      "status": "built",
+      "where": "packages/webview/src/board/menu.ts:249-255; state/store.ts:1990 (newPropositionAt); docs/slice1-plan.md §8 builder 1c1"
+    },
+    {
+      "clause": "CM-7 bullet 4a",
+      "requirement": "Over a text field or selected text, VS Code's own menu stays.",
+      "status": "built",
+      "where": "packages/webview/src/board/BoardInput.ts:107-117 (textContextAt), 671-673"
+    },
+    {
+      "clause": "CM-7 bullet 4b",
+      "requirement": "Everywhere else telelean's menu replaces VS Code's default webview menu.",
+      "status": "contradicted",
+      "where": "packages/webview/src/board/BoardInput.ts:671-690, 791 (the listener sits on the board element only); docs/slice1-plan.md §8 builder 1c1 ('the band above keeps VS Code's menu')",
+      "note": "Done for the AXIOMS column and the canvas. The Vocabulary/Definitions band deliberately keeps VS Code's default menu. slice3-plan §4.2 adds menus on vocabulary items only; nothing plans the rest of the band."
+    },
+    {
+      "clause": "CM-7 bullet 5; A21",
+      "requirement": "A right-drag only pans: it never selects anything or opens the menu, even when it ends on a card.",
+      "status": "built",
+      "where": "packages/webview/src/board/BoardInput.ts:520-524, 558-566; docs/slice1-plan.md §8 builder 1c1; e2e s1-canvas (builder 1g)"
+    },
+    {
+      "clause": "CM-7 bullet 6",
+      "requirement": "The toolbar's Context Menu section stays.",
+      "status": "built",
+      "where": "packages/webview/src/header/Header.tsx:118-137"
+    },
+    {
+      "clause": "UN-1 bullet 1a",
+      "requirement": "The board stack holds your edits to your files: today's in-board Undo, per subject, 100 steps, with History behind it.",
+      "status": "built",
+      "where": "packages/runner/src/workspace/undo.ts:1-98 (UNDO_LIMIT 100, per subject); runner/src/workspace/modelWorkspace.ts:885-928"
+    },
+    {
+      "clause": "UN-1 bullet 1b",
+      "requirement": "The board stack also holds your standing freezes.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §5.1 (set-freezes as board steps), §2.6; D3-21"
+    },
+    {
+      "clause": "UN-1 bullet 2",
+      "requirement": "The session stack holds your actions in the active edit session.",
+      "status": "planned-slice2",
+      "where": "docs/slice2-plan.md §4.6 'The stack', §2.2 SessionAction, §2.6 (persisted); runner in 2e, webview in 2h",
+      "note": "Core reducer built in 2a2 and fixer 2a: packages/core/src/review/reducer.ts:832-1224."
+    },
+    {
+      "clause": "UN-1 bullet 3",
+      "requirement": "Ctrl+Z, Ctrl+Shift+Z and the toolbar's Undo and Redo act on the stack of the view you are in: the Current view uses the board stack; the Proposed view, the review list and the session's windows use the session stack.",
+      "status": "planned-slice2",
+      "where": "docs/slice2-plan.md §5.12 (undoScope, 2h), §5.5 (keys in the list); D2-38",
+      "note": "Built so far: the keys and buttons act on the board stack (packages/webview/src/main.tsx:109-125; header/Header.tsx:82-113). The Proposed view posts nothing (state/store.ts:657-661, PROPOSED_NO_UNDO, which 2h removes)."
+    },
+    {
+      "clause": "UN-1 bullet 4 (board)",
+      "requirement": "The board stack's Undo/Redo tooltip names the step.",
+      "status": "built",
+      "where": "packages/webview/src/state/store.ts:702-710 ('Undo: ‹label› (Ctrl+Z)')"
+    },
+    {
+      "clause": "UN-1 bullet 4 (session)",
+      "requirement": "The session stack's Undo/Redo tooltip names the step, e.g. 'Undo: Accept ‹item›'.",
+      "status": "planned-slice2",
+      "where": "docs/slice2-plan.md §2.3 (SessionView.undo/redo labels), §5.12 (step labels, 2h); slice3-plan §4.9 (labels of freeze actions)"
+    },
+    {
+      "clause": "UN-1 bullet 5",
+      "requirement": "The two stacks never share a step, and an action on one never changes the other.",
+      "status": "planned-slice2",
+      "where": "docs/slice2-plan.md §4.6 (a separate session stack, discarded at the end), §5.12 (the board scope stays locked); slice3-plan §5.1 and §5.3 (each freeze goes on its view's stack)",
+      "note": "The board stack's lock during a run is built (slice 1f)."
+    },
+    {
+      "clause": "UN-2 bullet 1",
+      "requirement": "Each board edit is one Undo step: a sentence, Why, stance or source edit; a kind change; drawing or deleting arrows and 'follows from nothing'; adding or deleting a card; moving cards.",
+      "status": "built",
+      "where": "packages/runner/src/workspace/modelWorkspace.ts:885-899 (one plan, one undo entry); docs/slice1-plan.md §2.4 ('Each new action is one Undo step'), §8 builder 1f (one Delete of arrows and marks is one plan); AP-12 (moves)"
+    },
+    {
+      "clause": "UN-2 bullet 1 (freezes)",
+      "requirement": "Freezing or unfreezing outside a session is one board step.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §5.1, §2.6; D3-21, D3-16",
+      "note": "D3-44: an edit of a sentence, Why, stance or source carries its field's new standing freeze in the same step."
+    },
+    {
+      "clause": "UN-2 para 2",
+      "requirement": "Each Apply is one board step, so one Undo takes back a whole session.",
+      "status": "planned-slice2",
+      "where": "docs/slice2-plan.md §3.10 step 4 (D2-67: one history entry and one Undo step), §5.9; slice3-plan §5.4 (kept freezes in the same step, D3-32)",
+      "note": "Slice 1's Accept is already one step (packages/runner/src/workspace/modelWorkspace.ts:957-959). D2-39: an Apply with nothing accepted makes no Undo step."
+    },
+    {
+      "clause": "UN-2 para 3",
+      "requirement": "Undo refuses a step whose files changed since, and points to History.",
+      "status": "built",
+      "where": "packages/runner/src/workspace/modelWorkspace.ts:912-913 ('‹path› changed since; use History to revert')",
+      "note": "For freeze steps the refusal will say to freeze or unfreeze by hand instead, since freezes.json is not in History (slice3-plan §5.1, D3-15)."
+    },
+    {
+      "clause": "UN-3 para 1",
+      "requirement": "While a session is active, the board stack can neither undo nor redo.",
+      "status": "built",
+      "where": "packages/extension/src/logic/boardSession.ts:166-167, 409-425; core/src/run.ts:140-143; webview/src/state/store.ts:670-685; docs/slice1-plan.md §8 builder 1f; AP-18",
+      "note": "History revert is locked too (ES-9). docs/slice2-plan.md §5.12 keeps the lock."
+    },
+    {
+      "clause": "UN-3 bullet 1",
+      "requirement": "On the Current view the Undo and Redo buttons are disabled, with the reason.",
+      "status": "built",
+      "where": "packages/webview/src/state/store.ts:696-710; header/Header.tsx:82-113; main.tsx:99-125",
+      "note": "docs/slice2-plan.md §5.12 gives the new reason text for sessions."
+    },
+    {
+      "clause": "UN-3 bullet 2",
+      "requirement": "The board stack unlocks when the session ends, with Apply as its newest step.",
+      "status": "planned-slice2",
+      "where": "docs/slice2-plan.md §3.10 step 4 ('the run ends accepted, the stack is discarded, and the board unlocks')",
+      "note": "Slice 1 already unlocks after Accept, which is the newest board step. D2-39: an empty Apply adds no step."
+    },
+    {
+      "clause": "UN-4 bullet 1",
+      "requirement": "An item's status change (Accept, Decline with its option, back to 'in review'), with its cascade, is one session step.",
+      "status": "planned-slice2",
+      "where": "docs/slice2-plan.md §4.6, §3.6, §5.12 (runner 2e, webview 2h)",
+      "note": "Core built: packages/core/src/review/reducer.ts:832 (decide), 1060 (undo), 1188 (redo)."
+    },
+    {
+      "clause": "UN-4 bullet 2",
+      "requirement": "Show result is one step; undoing it hides the result again, but the note that you saw it early stays.",
+      "status": "planned-slice2",
+      "where": "docs/slice2-plan.md §4.6, §4.7 (one step; the seen-early markers stay)",
+      "note": "Core built: reducer.ts:940 (reveal). D2-61: Show results reveals the whole stage at once."
+    },
+    {
+      "clause": "UN-4 bullet 3",
+      "requirement": "Freezing and unfreezing are session steps.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §5.3 (3b), §4.9 (3g); D3-22"
+    },
+    {
+      "clause": "UN-4 bullet 4a",
+      "requirement": "Queueing or dropping a transform is a session step.",
+      "status": "for-slice4",
+      "where": "docs/slice2-plan.md header and slice3-plan §0 (the transform window is slice 4)"
+    },
+    {
+      "clause": "UN-4 bullet 4b",
+      "requirement": "Inside the transform window, text fields have their own undo while you type.",
+      "status": "for-slice4",
+      "where": "slice3-plan §0 (the transform window is slice 4)",
+      "note": "Text fields on the board already keep their own undo: the board ignores Ctrl+Z while you type (packages/webview/src/main.tsx:111)."
+    },
+    {
+      "clause": "UN-4 bullet 5",
+      "requirement": "Moving cards on the Proposed view is a session step.",
+      "status": "planned-slice2",
+      "where": "docs/slice2-plan.md §4.6, §5.10 (`moveProposed`), §5.12; D2-33",
+      "note": "Core built: reducer.ts:979 (move)."
+    },
+    {
+      "clause": "UN-4 para 2a",
+      "requirement": "Undoing an action is the same as doing its inverse by hand, with RV-5's list of dependents.",
+      "status": "planned-slice2",
+      "where": "docs/slice2-plan.md §3.6 'Undo and Redo', §4.6; D2-73",
+      "note": "Core built: reducer.ts:1060-1186 checks the restored statuses against the current state and asks with the cascade."
+    },
+    {
+      "clause": "UN-4 para 2b",
+      "requirement": "Undoing a freeze action follows FZ-7's reasons, as by hand.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §5.3 (per-key deltas; Undo follows planFreeze's rules; `violates`); D3-22",
+      "note": "D3-48: an Undo or Redo of a decision that would change frozen content is refused, not asked."
+    },
+    {
+      "clause": "UN-4 para 2c",
+      "requirement": "Undoing while Claude works follows FZ-10.",
+      "status": "narrowed-by-decision",
+      "where": "D2-62, D3-23, D3-8; docs/slice2-plan.md §3.6; slice3-plan §5.3, §4.9",
+      "note": "While a step runs, only freeze actions can be undone or redone (D3-23), with madeAt set to now so FZ-10's 'fresh' rule applies. Decisions cannot be undone until the step ends (D2-62), and nothing while telelean re-checks (D3-8)."
+    },
+    {
+      "clause": "UN-5 para 1",
+      "requirement": "Anything that starts or feeds a Claude step seals the session stack, and Undo stops there.",
+      "status": "planned-slice2",
+      "where": "docs/slice2-plan.md §4.6 (seals), §3.2, §3.4 and §3.7 (queue-start writes), §5.12",
+      "note": "Core built: packages/core/src/review/reducer.ts:1003-1007 (seal), 1064 (Undo refused at a seal); text at core/src/review/texts.ts:104-105."
+    },
+    {
+      "clause": "UN-5 bullet 1a",
+      "requirement": "Submit review seals the session stack.",
+      "status": "narrowed-by-decision",
+      "where": "D2-54; docs/slice2-plan.md §3.7",
+      "note": "Submit seals only when it queues Claude steps; going to the end confirmation does not seal."
+    },
+    {
+      "clause": "UN-5 bullet 1b",
+      "requirement": "A mid-stage Formalize for dependencies seals the session stack.",
+      "status": "planned-slice2",
+      "where": "docs/slice2-plan.md §3.2 (its queue-start write seals), §4.6"
+    },
+    {
+      "clause": "UN-5 bullet 1c",
+      "requirement": "Retry step seals the session stack.",
+      "status": "planned-slice2",
+      "where": "docs/slice2-plan.md §3.4 (Retry step seals the stack), §4.6"
+    },
+    {
+      "clause": "UN-5 bullet 1d",
+      "requirement": "Answering a question seals the session stack.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §2.3 (SealBy `answer`), §5.3; D3-23",
+      "note": "Slice 2 adds no seal on answers (docs/slice2-plan.md §2.5; AP-24): the queue's own seal covers them, because nothing can be decided while a step runs (D2-62)."
+    },
+    {
+      "clause": "UN-5 bullet 1e",
+      "requirement": "Answering an unfreeze request seals the session stack.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.9, §5.3; D3-23"
+    },
+    {
+      "clause": "UN-5 bullet 2",
+      "requirement": "Earlier decisions can still be changed directly (RV-3).",
+      "status": "planned-slice2",
+      "where": "docs/slice2-plan.md §3.6, §4.6 (decisions in a stage); the seal message says so (core/src/review/texts.ts:105)"
+    },
+    {
+      "clause": "UN-5 bullet 3",
+      "requirement": "While a step runs, use Cancel step; after it, decline its items.",
+      "status": "planned-slice2",
+      "where": "docs/slice2-plan.md §2.5 (cancel becomes Cancel step), §3.4, §5.8; D2-55"
+    },
+    {
+      "clause": "UN-6 para 1",
+      "requirement": "When the session ends, its stack is discarded.",
+      "status": "planned-slice2",
+      "where": "docs/slice2-plan.md §4.6, §3.10 step 4"
+    },
+    {
+      "clause": "UN-6 bullet 1",
+      "requirement": "Exit cannot be undone, and its confirmation says so.",
+      "status": "planned-slice2",
+      "where": "docs/slice2-plan.md §5.9 (the Exit modal: 'Exit cannot be undone.'), §4.6"
+    },
+    {
+      "clause": "UN-6 bullet 2",
+      "requirement": "Apply can be undone, as one board step.",
+      "status": "planned-slice2",
+      "where": "docs/slice2-plan.md §3.10 step 4, §5.9 ('One Undo takes the whole session back'); D2-67",
+      "note": "D2-39: an empty Apply has no Undo step. slice3-plan §5.4 adds kept freezes to the step (D3-32)."
+    },
+    {
+      "clause": "UN-7",
+      "requirement": "Hand edits in VS Code's editor use the editor's own undo; telelean's stacks never contain them.",
+      "status": "built",
+      "where": "packages/runner/src/workspace/modelWorkspace.ts:885-899, 957-959, 986-988 (only telelean's own operations are recorded); hand edits become 'Manual edits' History snapshots (modelWorkspace.ts:1084-1090)"
+    },
+    {
+      "clause": "A2",
+      "requirement": "When your frozen Lean no longer builds, Claude makes an unfreeze request instead of retrying forever, and the stage reports it.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.9 (`request_unfreeze` in any step), §2.8 (system prompt), §2.4 (StageReportView.requests)",
+      "note": "The plan does not cite A2. It relies on Claude asking, and the 3-attempt cap stops retrying. Its usual trigger, typed Lean that names something undefined, comes with transforms (slice 4)."
+    },
+    {
+      "clause": "A3",
+      "requirement": "An instruction that needs frozen content changed makes Claude ask; if you keep it frozen, the stage reports that the instruction could not be followed.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §2.4 (StageReportView.requests 'kept-frozen', citing A3), §3.9",
+      "note": "The stage report lists the request you kept frozen, not the instruction itself. Instructions (TR-8) come with slice 4."
+    },
+    {
+      "clause": "A5",
+      "requirement": "Ctrl+Z after an accidental 'Unfreeze all other cards' restores the freezes and the statuses together.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §5.3 ('A5 holds'), §5.1 (as a board step), §1 (3b)"
+    },
+    {
+      "clause": "A6a",
+      "requirement": "A freeze record whose card no longer exists is listed under 'Frozen items not found', never dropped silently.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §2.2 (parseFreezesFile `problems`), §2.4 (`notFound`), §3.3, §4.5 (header chip), §5.1, §5.5"
+    },
+    {
+      "clause": "A6b",
+      "requirement": "Deleting a card through telelean removes its freeze record.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §2.6 (delete-node and remove-arrows drop the records in the same plan), §5.4 (Apply drops the records of what F deletes)"
+    },
+    {
+      "clause": "A7",
+      "requirement": "Only the selected arrows into a target form its question; unselected ones are not part of it.",
+      "status": "built",
+      "where": "packages/webview/src/board/contextActions.ts:87 (the question's sources are the selected arrows into the target); the host's start check (docs/slice1-plan.md §8 builder 1e)"
+    },
+    {
+      "clause": "A10 (select hint)",
+      "requirement": "An arrow you drew but did not select, which the proof needed, is reported as 'select ‹card› → ‹target› too'.",
+      "status": "built",
+      "where": "packages/webview/src/model/run.ts:555-578 (missingArrowHints); docs/slice1-plan.md §8 builder 1e",
+      "note": "docs/slice2-plan.md §5.4 adds a 'Select these arrows' button."
+    },
+    {
+      "clause": "A10 (frozen Dependencies)",
+      "requirement": "If the target's Dependencies are frozen, Claude makes an unfreeze request instead of proposing an arrow.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §2.8 (`propose_arrow` refuses: 'ask with request_unfreeze first'); D3-36"
+    },
+    {
+      "clause": "A19 (selection)",
+      "requirement": "An old axiom's pre-v4 arrows cannot be selected.",
+      "status": "built",
+      "where": "packages/webview/src/state/store.ts:2140-2145, 2188-2191 (only a proposition's declared premises can be selected); docs/slice1-plan.md §8 builder 1b (subjectGraph leaves out edges into AXIOM cards)",
+      "note": "They are not drawn at all (a 'declared before v4' chip instead), whereas A19 says they are shown."
+    },
+    {
+      "clause": "A22a",
+      "requirement": "Drawing an arrow into a card marked 'follows from nothing' removes the mark, and Undo restores it.",
+      "status": "built",
+      "where": "packages/core/src/edit/planArrows.ts:158-159 (the same plan, so one Undo step)"
+    },
+    {
+      "clause": "A22b",
+      "requirement": "The mark goes even if it is frozen, because freezes bind only Claude.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.1 ('the person's arrow into a card replaces its mark, even a frozen one (A22)')"
+    },
+    {
+      "clause": "A23",
+      "requirement": "With the whole model open, Claude makes an unfreeze request to change something under a standing freeze.",
+      "status": "planned-slice3",
+      "where": "slice3-plan §3.10 (standing freezes hold in whole-model steps), §3.9, §2.8 (system prompt)",
+      "note": "The plan does not cite A23, but it commits to the mechanism."
+    },
+    {
+      "clause": "A24",
+      "requirement": "Tidy layout moves only the selected cards (all of them when none is selected).",
+      "status": "built",
+      "where": "packages/webview/src/board/canvas/placement.ts:142-145 (tidyPositions over the selection); board/menu.ts:250-254"
+    },
+    {
+      "clause": "A27",
+      "requirement": "Ctrl+Z on the Current view during a session does nothing, and the disabled Undo button says why.",
+      "status": "built",
+      "where": "packages/webview/src/state/store.ts:679-710; main.tsx:99-125; header/Header.tsx:82-113; docs/slice1-plan.md §8 builder 1f"
+    },
+    {
+      "clause": "A28",
+      "requirement": "After Claude's next step, Ctrl+Z stops at the step; to take an Accept back you set the item back to 'in review'.",
+      "status": "planned-slice2",
+      "where": "docs/slice2-plan.md §3.6, §4.6, §5.12",
+      "note": "Core built: packages/core/src/review/reducer.ts:1064; core/src/review/texts.ts:104-105."
+    }
+  ]
+}

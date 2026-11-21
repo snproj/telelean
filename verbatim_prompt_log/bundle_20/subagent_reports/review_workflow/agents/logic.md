@@ -1,0 +1,312 @@
+# review:logic
+
+## Verdict
+
+The building blocks are mostly sound, but the state machine is not closed: several transitions are undefined and some clauses contradict each other. One gap makes the proposal unsafe as written. RV-7 decides which items are belief items by card kind. But CF-4, TR-4 and DO-3 let Claude change the Kind (and Proof) of cards you opened. So Claude can turn a derivation or goal into an assumption, or change what a claimed (pending-promotion) derivation asserts, and you can accept that in a group. That falsifies §11.5. The item and freeze model is missing: (a) a cascade for every way an item leaves 'accepted', so §11.4 breaks; (b) a record of why each field is frozen, so un-accepting silently lifts a freeze you set by hand; (c) a rule that re-takes the frozen copy after your own edits, which leaves deadlocks; (d) a decision floor for rollbacks; (e) when declines take effect relative to mid-stage steps; (f) a status for items that depend on declined items; (g) a lifecycle for unfreeze requests; (h) a failure path for the end confirmation. Direct contradictions: TR-15 vs RV-10 and EC-2; EC-5 vs RV-1 and RV-4; FZ-7 vs DO-1; EC-1 vs FZ-10; RV-4 vs RV-7 vs CM-3; ES-4's 'every check runs as today' vs §16. Two claimed guarantees leak. §11.2 does not say whether a proof may use a premise Claude proposed. §11.6 fails because the presence of a Prove item reveals the result. A mid-stage These suffice in a session started by Transform cards bypasses S1's fix. Most fixes are local rewordings. Some concepts can be dropped or merged: immediate mid-stage transforms, the blacklist for Change and Delete items, and full sessions for Claude-free edits made outside a session.
+
+## Findings
+
+### F1 [blocker] (safety) — RV-7, §11.5, CF-4, CF-2, TR-4, TR-12, DO-3
+
+**Problem.** RV-7 decides which items are belief items by card kind. But the revision lets Claude change Kind and Proof on cards you opened, and RV-7's list does not cover those changes. Scenario: in an ES-3 session you select a proved DERIVATION D to reword it. Its Kind field is copied 'open' (TR-4), and Claude proposes 'Change D: Kind DERIVATION → ASSUMPTION'. Under D-11, a D→A change on a theorem `.holds` becomes `axiom D.holds` (holds-theorem-to-axiom), so D is now assumed rather than derived. No RV-7 case covers this: it adds no ASSUMPTION card, and D was not an ASSUMPTION when its Lean changed. A group Accept therefore takes it, and §11.5 ('Nothing becomes something the model assumes without your individual Accept') is false. Three more routes the list misses: (1) GOAL → ASSUMPTION, which asserts the goal; (2) a Lean-statement change on a DERIVATION or GOAL that still carries `axiom S.holds` after an A→D or G→D move ('pending promotion'), which changes what is assumed; (3) Claude writing `axiom D.holds : D` into an open or fuzzy Proof field, since nothing says a Proof must be a theorem. TR-12 makes telelean run D-11 only for 'a kind change you make yourself'; no clause says who applies D-11 to Claude's kind change.
+
+**Evidence.** RV-7 'adding an ASSUMPTION card, changing an ASSUMPTION's sentence or Lean, formalising an assumption, adding or changing a definition, or adding a presupposition'; CF-4 'Kind is a field'; TR-4 'Copied fields start open, unless already frozen'; DO-3 'Claude may do anything with the card(s)'; TR-12 'A kind change you make yourself'; packages/core/src/edit/planKind.ts:5-10 (D->A with a theorem: holds-theorem-to-axiom; A->D and G->D with an axiom: pending promotion).
+
+**Suggested fix.** Replace RV-7's definition: 'A belief item is any item whose Lean result adds an axiom or changes what an existing axiom asserts: adding an ASSUMPTION card; changing any card's Kind to ASSUMPTION, or turning a proved .holds into an axiom; changing the sentence or Lean statement of any card whose .holds is an axiom (an ASSUMPTION, or a DERIVATION/GOAL awaiting promotion); adding or changing a definition or presupposition. telelean classifies items by their Lean effect, never by column.' Add to CF-4: 'Claude never changes the Kind of an existing card. Kind is open to Claude only as a fuzzy field of a new card. telelean carries out every kind change under D-11 (TR-12), including one that results from a fuzzy Kind.' Add to CF-2: 'Proof is a theorem .holds. An axiom .holds on a DERIVATION or GOAL counts as no proof (claimed). Claude may never write one.'
+
+### F2 [major] (inconsistency) — ES-2, §11.2, RV-1 (Add), RV-7, ES-5
+
+**Problem.** ES-2 and §11.2 say each goal is proved 'from exactly the selected premises'. But ES-2 also lets Claude add premise cards, RV-1 puts them in the working copy as ordinary Add items, and RV-7 says 'A proof that rests on a pending belief item counts only once that item is accepted'. The revision never says whether a These-suffice proof may rest on a premise Claude proposed, and both answers break something. (a) If it may: G does not follow from {P1, P2}, so Claude adds 'Add A' and proves G with A.holds in the same step. You accept both. Apply writes `premises: P1, P2` (ES-5), and the history label and attempts both record 'These suffice → proved', yet G rests on A. §11.2 is then false, and TL107 used-undeclared fires on G. (b) If it may not (today's rule: a suggested premise enters the permitted set only after adoption and a re-freeze): accepting Add A starts nothing, whereas today 'I hold this' starts a new proving round. If everything else is accepted, the session ends 'successfully' with A adopted and G still unproved.
+
+**Evidence.** ES-2 'Claude may add cards, so that it can propose a missing premise' / 'prove each selected goal from exactly the selected premises'; §11.2 'For These suffice, that is only your selected premises'; RV-7 last bullet; ES-5; run-engine.md §1.8 (adoption runs startNewRound('prove') and adoptionTurn); design-rationale.md §1.3 point 3.
+
+**Suggested fix.** Add to ES-2: 'A premise Claude proposes is checked in a scratch file only (as today: closes the gap; alone entails) and is never used by a proof in the working copy. Accepting it (individually, RV-7) adds it to that goal's selection and immediately runs a mid-stage step that proves the goal from the extended selection. At Apply, each goal's declared premises are its final selection, including accepted proposed premises. The report then reads "proved from your selection plus ‹A› (Claude's wording, adopted by you)".'
+
+### F3 [major] (safety) — RV-9, ES-2, ES-3, TR-4, S1, ★D3
+
+**Problem.** The revision says ES-2's preset (the selected goals' and premises' existing fields are frozen) is what closes S1. But the preset applies only when These suffice starts a session. A mid-stage These suffice (RV-9) runs under whatever freezes exist, and in a session started by Transform cards the selected cards' fields are 'open' (TR-4). Scenario: you start an ES-3 session on {G, P} to reword P. At the review stage you select P ⊢ G and press These suffice. G's existing Lean `¬ GoodAddition cynder newSpyro` is open. Claude may rewrite it to `¬ GoodAddition cynder newSpyro ∨ True` before 'statements fixed' and prove it with `Or.inr trivial`. That is S1's attack, caught only if you read the 'Change G' item closely. Unfreezing during an ES-2 session (FZ-9) reopens the same window.
+
+**Evidence.** S1 'Revision: ES-2's preset freezes … reproduce today's protection exactly'; RV-9 'select cards and choose These suffice … Claude runs a step at once'; TR-4 'Copied fields start open'; gate-accept.md §6.2(g)(2) 'the target's and selected premises' existing statements locked for the inference even if unfrozen'.
+
+**Suggested fix.** RV-9: 'A mid-stage These suffice applies ES-2's inference locks whatever started the session: the selected goals' and premises' existing sentence and Lean statement are session-frozen (listed in the step's notice). Only their empty Lean statements and the goals' Proof fields are fuzzy. To let Claude revise an existing statement, transform it first; These suffice never changes the statements it is asked to connect.'
+
+### F4 [major] (safety) — RV-1, RV-2, RV-5, RV-8, §11.6
+
+**Problem.** The review list reveals the outcome before you judge the statements. A 'Prove ‹G›' item exists only if Claude produced a proof. An 'Add ‹premise›' marked 'closes the gap (checked)' exists only if it did not. RV-2 shows the whole list, with counts, from the start. So you see 'Prove G' beside 'Formalize G' before judging what G's statement says. That is the automation bias D-19 hides the result to prevent, and §11.6 claims it as a guarantee. Separately, RV-5 reveals the result once 'the statements it proves are accepted', which reads as the goal's statement only. But the proof's meaning depends just as much on the premises' formalisations, which RV-4 lists as its dependencies. Today the result is revealed only after every statement step.
+
+**Evidence.** RV-1 'Prove ‹card›: a Change that adds or replaces a proof'; RV-2 'counts at the top'; RV-5 'until the statements it proves are accepted'; §11.6; review-ui.md §1.2 and §7 item 6 (today's reveal rule; ghost cards already leak a small hint of the result).
+
+**Suggested fix.** RV-1/RV-5: 'Each inference has exactly one item, "Result for ‹goal›", whatever the outcome. Its label, badges, the counts and the board's proof chips stay neutral until revealed. Premises Claude proposes for that goal are listed under it and appear on reveal. The result is revealed when every statement item in its dependency closure (the goal's and each premise's Formalize or statement Change) is accepted, or when you press Show result.'
+
+### F5 [major] (inconsistency) — RV-4, RV-7, RV-6, CM-3, RV-5
+
+**Problem.** Three clauses give three answers for the same click. RV-4 says 'Accept offers "Accept with its N dependencies"'. RV-7 says each belief item 'needs its own Accept. A group Accept skips them'. CM-3 says an action that fits only some selected items 'is shown disabled'. Scenario (S5's cheat): Prove G depends on Formalize P (an assumption) and on Add def InGame. If 'Accept with its 4 dependencies' includes them, InGame is adopted by one click on a different item. If it skips them (RV-7), Prove G cannot become accepted, so the click does nothing for the item you clicked. Under CM-3, a mixed group Accept is disabled, while RV-7 says it runs and skips. The same cascade also accepts plain statement items (e.g. Formalize G for a goal) without your judging them, and RV-5 then reveals Prove G. One click thus bypasses meaning before proof.
+
+**Evidence.** RV-4 'Accept offers "Accept with its N dependencies" and lists them'; RV-7 'Each needs its own Accept. A group Accept skips them and says so.'; CM-3 'An action that fits only some of the selected items is shown disabled'; S5 (def InGame).
+
+**Suggested fix.** RV-4: 'Accept on an item with unaccepted dependencies lists them and accepts only the plain ones (vocabulary, and items that change no statement). Belief items (RV-7) and statement items (Formalize, or a change to a sentence or Lean statement) are shown as "accept each first". The clicked item stays in review until they are accepted. Accept is disabled on a Result item whose result is hidden.' RV-6/CM-3: 'A group Accept accepts the plain items in the selection and leaves belief and statement items in review, saying so. It is never disabled for that reason.'
+
+### F6 [major] (inconsistency) — RV-3, RV-4, §11.4, FZ-3, FZ-9
+
+**Problem.** RV-4 keeps the accepted items self-contained only when you Decline ('Declining an item that accepted items depend on asks you to return those to "in review"'). Two other routes take an item out of 'accepted' with no cascade: RV-3's 'Unfreezing that content returns the item to "in review"', and RV-3's 'You can change any status until you submit'. Scenario: you accept 'Vocabulary (3)' and then 'Formalize G', which depends on it. You set the Vocabulary item back to 'in review', or unfreeze one of its terms. Formalize G stays accepted while its dependency is not, so §11.4 is false. If you then transform that term yourself mid-stage (FZ-3 allows it), G's accepted formalisation means something else while still showing 'accepted'. EN-2's final check re-verifies the build and 'proved', but never the meaning judgement.
+
+**Evidence.** RV-3 'Unfreezing that content returns the item to "in review"' / 'You can change any status until you submit'; RV-4 third and fourth bullets; §11.4.
+
+**Suggested fix.** Add to RV-4: 'Any transition of an item out of "accepted" (Decline, a status change, or an Unfreeze of any part of its content, including through "Unfreeze all other cards") first lists every accepted item that depends on it and returns those to "in review" too, with their results hidden again (RV-5). Cancelling the list cancels the transition.' Reword §11.4 to state this.
+
+### F7 [major] (inconsistency) — RV-3, FZ-6, FZ-7, FZ-8, EC-1, FZ-9
+
+**Problem.** A freeze is modelled as a single on/off bit, but it can come from five sources (FZ-7: starting a session, accepting an item, filling a transform field, rejecting a change, your own Freeze). Yet RV-3 says an Accept freezes 'until you change its status again'. Scenario: during a review you select card X, whose 'Change X' is in review, and choose Freeze (EC-1: this freezes the proposed version). You Accept the item, then later set it back to 'in review'. The freeze is lifted, including the one you set by hand, and the next mid-stage step may change X. This contradicts FZ-6 ('Only you can unfreeze: select … choose Unfreeze') and FROZEN 2. FZ-8's sentence 'this is the only time telelean changes a freeze by itself' is also inaccurate: session start, Accept, Reject, un-accepting and the RV-4 cascade all change freezes.
+
+**Evidence.** RV-3 'session-freezes the content it produces until you change its status again'; FZ-6 'Only you can unfreeze'; FZ-7 list of session-freeze sources; FZ-8 last sentence; EC-1.
+
+**Suggested fix.** Add FZ-7a: 'A frozen field records why it is frozen: standing, session start, transform fill, Accept of item N, Reject of item N, your Freeze. It stays frozen while any reason remains. Changing an item's status removes only that item's reason. Unfreeze removes every reason, and returns any accepted item covering the field to "in review" (RV-3).' Reword FZ-8's last sentence: 'Apart from the effects of your own actions (Freeze, Unfreeze, Accept, a status change, Reject, starting a session, filling a transform field) and the keep ticks of EN-2, this is the only time freezes change.'
+
+### F8 [major] (gap) — FZ-3, FZ-4, FZ-5, TR-12, ES-7, EC-8, EN-2.2
+
+**Problem.** FZ-3 lets you change frozen or held content yourself. But FZ-4 and FZ-5 check every state against 'telelean's frozen copy', and EN-2.2 requires 'no frozen content changed'. Nothing says the frozen copy follows your own changes. (a) In an ES-2 session every card is frozen, so vocabulary item V is held by card C. You transform V mid-stage, typing its new body, and ask Claude to adjust card X. Every Claude state now differs from the held copy of V and is refused. Claude may not revert your frozen value (TR-6), so the step deadlocks: 3 attempts, then a rollback. (b) You hand-edit a frozen card in VS Code (ES-7). At Apply, the rebased state differs from the frozen copy, so EN-2's final check fails every time; EC-8 covers only conflicts with accepted items. (c) A D-11 'rewrite' you confirm (TR-12) edits frozen dependents' proofs (planKind.ts:12-13), with the same result. If instead the copy does follow your edits, accepted items whose meaning your edit changed stay 'accepted' (see F6).
+
+**Evidence.** FZ-3 'Frozen binds Claude only. You can always change a field yourself'; FZ-4 'checks every state … refuses any state that changes them'; EN-2.2; packages/core/src/edit/planKind.ts:12-13 (rewrite adds a hypothesis to every user); design-rationale.md §1.12 (D-21: hand edits drop the edited item from any frozen set).
+
+**Suggested fix.** Add FZ-4a: 'When you change frozen or held content yourself (in a transform, by a D-11 rewrite you confirmed, or by a hand edit), telelean at once re-takes the frozen copy from your version, and returns to "in review" every accepted item whose dependency closure contains what you changed. Your own Lean counts as signed off by you (D-21).' Reword EN-2.2: '… and no frozen content changed except by you.'
+
+### F9 [major] (inconsistency) — ES-4, FZ-10, EC-3, §11.3
+
+**Problem.** 'The step rolls back to its last passing state' and 'A rollback never undoes your decisions' cannot both hold. (a) Your decisions written into the working copy (a submitted transform, a decline-Transform, a Reject restoration) need not build until Claude fills the fuzzy fields. If Claude then fails 3 times, the last passing state predates your decision. Rolling back undoes the decision; not rolling back shows a failing state. EC-3 ('the stage reports it') does not say what the stage shows. (b) With FZ-10 you may freeze, mid-step, a field that Claude had already changed before a passing commit, such as the 'statements fixed' commit (today 'freeze' is a passing kind). Claude's later attempts are refused, and the rollback lands on that commit, which still contains the change to the now-frozen field. That violates FZ-1 and §11.3.
+
+**Evidence.** ES-4 'rolls back to its last passing state' / 'A rollback never undoes your decisions'; FZ-10; EC-3; gate-accept.md §1 (PASSING_COMMIT_KINDS = gate-pass, freeze, base); design-rationale.md §1.11 (user decisions need a commit of a passing kind as a revert floor).
+
+**Suggested fix.** ES-4: 'telelean commits each of your decisions to the working copy as a decision floor. A rollback goes to the newest state that is at or after the floor and passes every check under the freezes now in force. If there is none, it goes to the floor itself. A stage built on a state that did not pass is headed "Claude's step did not pass: …" and lists the failing checks. It allows Decline, Unfreeze, mid-stage actions and Exit, but no Accept, until a step produces a passing state.'
+
+### F10 [major] (gap) — ES-4, §16, §17 Enforcement, CF-3
+
+**Problem.** ES-4 says 'Every check runs as today (the gate), plus the frozen checks'. But today's gate forbids exactly what the revision needs. existing-changed and G5 forbid any change to pre-session content, any new block and any deletion. new-axiom allows only selected ASSUMPTIONs' .holds, so a Claude-added ASSUMPTION's .holds could never pass. The target-centric rules (permitted set, G4, not-proved, fixing exactly the target) mean nothing in a Transform step that has no target. vocabulary-shape and the definition questions judge only new names, so in-place changes to unfrozen existing vocabulary escape both. §16 replaces only 'your words byte-identical' and 'existing declarations unchanged'. Nowhere does the revision say what a proof written in a Transform step may rest on.
+
+**Evidence.** ES-4 'Every check runs as today (the gate)'; §16 row 'Your words byte-identical … the preset freezes'; gate-accept.md §2 (new-axiom, existing-changed, G5 block/formalised) and §4.2/§4.5 (flagged and vocabulary-shape judge new names only, rules.ts:603, 824); run-engine.md §5.5.
+
+**Suggested fix.** Replace ES-4's check bullet with a rule table. 'Kept: G0, G1 build, sorry, examples, and, per These-suffice inference, footprint ⊆ permitted set, G4 and "statements fixed". Replaced: existing-changed and G5 by the frozen and held checks (FZ-4/5), plus "telelean-kept fields never change" (CF-3). Generalised: new-axiom allows the .holds telelean writes for an ASSUMPTION card Claude added; that axiom enters no permitted set until the card is accepted. vocabulary-shape and the definition rule judge changed names as well as new ones. In Transform steps, a proof may rest on existing or accepted content and is reported with its footprint as a Prove item.'
+
+### F11 [major] (gap) — DO-1, DO-2, DO-3, RV-9, EC-5, EC-6
+
+**Problem.** Declined items wait for Submit review (DO-2: 'It runs at Submit review'), but a mid-stage step may change any unfrozen content. EC-5 lets a newer proposal replace any 'pending' item, and EC-6 defines pending as '(not accepted)', which includes declined items. Scenario: you decline 'Change P' with Transform and fill in the transform window. Before submitting, you run a mid-stage These suffice that touches P. Claude's new proposal for P replaces the declined item, and your transform and decline vanish 'with a note'. Shaky has the same problem: the Submit step would regenerate from a proposal that no longer exists. For Reject, the revision never says whether the restoration happens immediately (as EC-1 implies) or at Submit; in the latter case the mid-stage step builds on content you rejected.
+
+**Evidence.** DO-2 'It runs at Submit review'; RV-9 'items whose proposal changed return to "in review"'; EC-5 'the newer proposal replaces the older item, which disappears with a note'; EC-6 'a pending (not accepted) item'.
+
+**Suggested fix.** Add DO-0: 'Declining takes effect at once. Reject restores the previous version in the working copy immediately. A card declined with Transform or Shaky is reserved for the Submit-review step: a mid-stage step treats it as frozen. "Previous version" always means the version before the item's current proposal.' Simpler alternative (see F37): every transform made during a stage is queued until Submit review, and only These suffice runs at once.
+
+### F12 [major] (gap) — EC-6, RV-4, RV-10, DO-1..3
+
+**Problem.** Only Reject has a rule for pending dependents (EC-6), and even that leaves the dependent 'marked … and Claude must revise it' with no status. A dependent cannot be accepted (RV-4), and Submit review stays disabled while it is 'in review' (RV-10). So you must choose a decline option for an item you never objected to, and if you pick Reject, Claude may not propose it again. A Transform or Shaky decline leaves its pending dependents with no rule at all. Scenario: you decline 'Formalize G' with Transform and type your own Lean. 'Prove G', which depends on it, can neither be accepted nor submitted until you decline it too.
+
+**Evidence.** EC-6 'the dependent item is marked "depends on a rejected item" and Claude must revise it in the next step'; RV-4 'Accepting an item also needs everything it depends on'; RV-10 'Submit review is enabled once no item is "in review"'.
+
+**Suggested fix.** EC-6: 'Declining an item with any option marks every pending item that depends on it "to be redone". That status is set by telelean, is not "in review", and does not block Submit review. The next step must re-propose each such item. If it comes back unchanged, it is marked "unchanged after your change to ‹item›".'
+
+### F13 [major] (inconsistency) — TR-15, RV-10, DO-2, RV-9, EN-1, EC-2, TR-14, RV-7, ★D1(a)
+
+**Problem.** TR-15 has no conditions: every Claude-free transform's changes 'become items you have already accepted, and the session goes straight to the end confirmation'. (a) A mid-stage or decline-Transform that needs no Claude would therefore jump to the end confirmation while other items are still in review, contradicting RV-10 and EN-1. Conversely, at Submit review RV-10 starts a Claude step for a decline-Transform that needs nothing from Claude. (b) EC-2 says that when you trash a card others rely on, 'Claude must deal with the dependents'. But a TR-15 transform runs no Claude, so the session goes to the end confirmation with broken dependents. (c) TR-15's test ignores open fields. If you change only the sentence of a formalised card whose Lean is open, there are no fuzzy fields and no instructions, so no Claude runs. The Lean is never revisited, and TR-14 warns only when the Lean 'stays frozen'. The card keeps its 'proved' status for a sentence its Lean may not express. (d) Literally, RV-7 forbids TR-15's automatic acceptance of a belief you typed yourself.
+
+**Evidence.** TR-15 full text; RV-10; EN-1; EC-2 'Claude must deal with the dependents'; TR-14 'changing a sentence whose Lean stays frozen'; ★D1(a) 'quick edits become a transform that runs without Claude (TR-15)'.
+
+**Suggested fix.** TR-15: 'A transform needs Claude if it has a fuzzy field, instructions, "Claude may add cards" on, an open field on a card whose sentence or Lean you changed, or a trashed card that others rely on. Otherwise telelean applies it. Outside a session, that is a direct edit: no session, one confirmation listing its changes, one Undo step. Inside a session, its changes join the current stage as accepted items and the stage continues.' Add to RV-7: 'RV-7 applies to content Claude wrote; content you typed counts as your Accept.'
+
+### F14 [major] (gap) — EN-2.2, EN-3, §11.1, TR-12, EC-2, TR-3, ★D1(a)
+
+**Problem.** EN-2 requires 'everything builds' on the final result, and its failure path is undefined. TR-12 keeps D-11, whose 'mark broken' option deliberately leaves dependents that no longer compile ('mark-broken removes H and lists what will no longer compile'). Your own trash of a card others rely on, which EC-2 allows, does the same. Under ★D1(a) every such edit goes through a session, so a choice that is legal today (a delete with confirmed broken dependents, a kind change marked broken) can never be applied. More generally, the final check can fail for other reasons: drift, a freeze made while the confirmation is open, or a TR-15 state no step ever judged. EN-2 does not say whether Apply is then disabled, whether you return to the stage, or how to fix it.
+
+**Evidence.** EN-2.2 'everything builds'; TR-12 'rewriting or marking dependents'; packages/core/src/edit/planKind.ts:12 (mark-broken); edit-model.md §2.1 delete-node 'refuses with needs-confirmation … unless confirmed'.
+
+**Suggested fix.** EN-2.2: '… Declarations you chose to break (a D-11 "mark broken", a deletion whose broken dependents you confirmed) are expected failures, listed as "will not compile (your choice)". Every "proved" must still hold. If the final check fails for any other reason, Apply is disabled and the failures are listed. "Back to review" returns you to the last stage with the failing items marked. Nothing is applied.'
+
+### F15 [major] (inconsistency) — RV-1, RV-4, EC-5, RV-9
+
+**Problem.** RV-4's own example has two pending items for one card ('Prove G depends on Formalize G'), and a typical These-suffice step both formalises and proves the goal. But RV-1 defines Formalize as a Change 'with nothing else changed', and here a proof is also added. EC-5 says that when the same card is in two pending items 'the newer proposal replaces the older item, which disappears'. Taken literally, Formalize G and Prove G cannot coexist, or one silently disappears. RV-9 ('return to "in review", marked "updated"') and EC-5 ('replaces … disappears with a note') also describe the same event in two incompatible ways.
+
+**Evidence.** RV-4 'For example, "Prove G" depends on "Formalize G"'; RV-1 'Formalize ‹card›: a Change that only fills in an empty Lean statement, with nothing else changed'; EC-5; RV-9.
+
+**Suggested fix.** RV-1: 'An item covers one aspect of one card: its statement (sentence, Kind, Why, stance, source, Lean statement) or its proof. Formalize is a statement item that only fills an empty Lean statement. Prove is a proof item.' EC-5: 'A newer proposal for the same card and aspect updates the existing item in place: same item id, back to "in review", marked "updated", with the previous proposal viewable. An item is never deleted.'
+
+### F16 [major] (inconsistency) — FZ-7, DO-1, EC-1
+
+**Problem.** FZ-7 lists 'by rejecting a change' as a session freeze, so Reject freezes the card's previous content. DO-1 says only that 'Claude may not propose the same thing again', and that 'a near-repeat simply appears as a new item, which you can reject again'. That is impossible if the content is frozen. The two readings differ greatly. Scenario: you Reject Claude's rewording of your premise P, hoping for a better one. Under FZ-7, P is now locked and Claude cannot offer any alternative. Under DO-1, Claude may offer anything except the exact same text.
+
+**Evidence.** FZ-7 'by rejecting a change'; DO-1 'Claude may not propose the same thing again' / 'A near-repeat simply appears as a new item'; EC-1 'Reject restores the previous version and keeps it frozen'.
+
+**Suggested fix.** Choose one and state it in DO-1. Suggested (simpler): 'Reject keeps the previous version. For a Change or Delete, it session-freezes the fields concerned, so Claude cannot touch them again unless you unfreeze them. For an Add, the exact card is blocked for the session.' Keep the "Rejected in this session" list and un-reject for Add items only; un-rejecting lifts the block. Delete DO-1's near-repeat sentence for Change and Delete items.
+
+### F17 [major] (inconsistency) — EC-1, FZ-10, FZ-9, FZ-2
+
+**Problem.** What Freeze freezes depends on which clause you read. Scenario: on the Current view you select your card X, which has a pending 'Change X', and choose Freeze, meaning 'don't let Claude touch my card'. In a review stage, EC-1 freezes Claude's proposed version, which you are not looking at, and Shaky disappears. You may then Accept it believing it is harmless. If a mid-stage step is running, FZ-10 instead freezes 'the version you can see', i.e. yours. The working copy already violates that, so every check of the step is refused. A second case: during the first ES-2 step, freezing the goal's empty Lean statement means 'keep it empty' (FZ-2), which silently makes the inference impossible.
+
+**Evidence.** EC-1 'freezes the proposed version'; FZ-10 'applies to the version you can see'; FZ-9 'the board's Current and Proposed views'; FZ-2 'keep it empty'.
+
+**Suggested fix.** EC-1: 'Freeze on a card or field that has a pending item asks which version to freeze: "Claude's proposal (the item stays in review)" or "Your version (rejects the item, DO-1)".' FZ-2: 'Freezing an empty field that Claude is filling in the running step warns: "Keep it empty? Claude will not be able to formalise ‹card›."'
+
+### F18 [major] (gap) — FZ-6, ES-4, RV-9
+
+**Problem.** Unfreeze requests have no lifecycle. The revision does not say: whether the step waits, as it does for a question (state waiting-for-answer, clock paused); what resolves a request, given there is no 'Done' and you unfreeze through the Context Menu, which tells Claude nothing; what happens if you unfreeze only some of the requested items; whether an unresolved request survives into the review stage and the next step; or what Claude is told after 'Keep frozen'. Scenario: Claude asks to unfreeze V and C. You unfreeze V only and carry on. The step either hangs indefinitely or continues without knowing V is now free.
+
+**Evidence.** FZ-6 'offers Select them and Keep frozen'; ES-4 'Claude may ask you questions and make unfreeze requests'; run-engine.md §1.4 ask_user (waiting-for-answer).
+
+**Suggested fix.** FZ-6: '… A request pauses the step, as a question does. It is resolved when you press Continue (a third button on the request card), which tells Claude exactly which of the requested items are now unfrozen. Keep frozen tells Claude that none are. A request still unresolved when the step ends is listed in the stage report and is not carried into later steps.'
+
+### F19 [major] (gap) — FZ-5, FZ-6, FZ-9, FZ-11, ES-2, EC-4
+
+**Problem.** Held content can be released only by unfreezing everything that holds it. Under ES-2's preset every card is frozen, so a predicate used by ten cards is held by all ten. To let Claude fix that one predicate (EC-4), you must unfreeze all ten cards, sentences and Lean included, which lets Claude change every one of them as well. The design forces you to expose far more than needed for a narrow change. 'Unfreeze all other cards' does not help either: a selected holder still holds.
+
+**Evidence.** FZ-5 'These items are held'; FZ-6 'If Claude wants to change frozen or held content … Only you can unfreeze'; ES-2 'every other card … session-frozen'; design-rationale.md §1.7 (D-18: redefining vocabulary lists every card whose meaning changes).
+
+**Suggested fix.** Add FZ-5a: 'Release: select a held item and choose Release in the Context Menu. Claude may then change it while its holders stay frozen. Any change becomes a Change item that lists every frozen card whose meaning changes with it (RV-1); each such card gets a "meaning changed" item needing your Accept (D-18). A release is a session change, undone at the end (FZ-8).'
+
+### F20 [major] (gap) — ES-2, CM-4, CM-5, CF-2
+
+**Problem.** ES-2 never says which selected cards are goals. 'Goal' could mean GOAL-kind cards; then a DERIVATION target, allowed today via ⊢, is excluded, and a selected GOAL cannot serve as a premise. Or it could mean targets chosen with ⊢, but CM-5's tray shows 'premises ⊢ goal', singular. 'Each is a separate inference with its own premises' cannot be expressed, because the selection is one flat set. 'Every empty … Proof field of a selected card is fuzzy' also makes the empty Proof of a selected DERIVATION premise into a task, proved from no defined selection. CF-2 does not say what Proof is for a DERIVATION or GOAL whose .holds is an axiom (pending promotion). If that Proof counts as non-empty, ES-2 freezes it and the promotion can never be proved: today the target's .holds is exempt precisely for this. 'Self-evident?' (no premises) is missing from CM-4.
+
+**Evidence.** ES-2 'If you select several goals, each is a separate inference with its own premises' / 'every empty Lean statement or Proof field of a selected card is fuzzy'; CM-5 '(premises ⊢ goal)'; board-ui.md §4 (target rules, Self-evident?); planKind.ts:7,9; gate-accept.md §3.2 (T.holds exemption).
+
+**Suggested fix.** ES-2: 'Targets are the cards you mark with ⊢ in the tray (default: every selected GOAL). An ASSUMPTION cannot be a target. Each target is proved from all selected non-target cards, and from none of the other targets. Fuzzy fields: every selected card's empty Lean statement, and each target's Proof (empty, or an axiom awaiting promotion). With no premises, the action is "Self-evident?".' CM-5: 'The tray shows premises ⊢ target1, target2 …'. For CF-2, see F1.
+
+### F21 [major] (gap) — §17 Items, RV-1, ES-7, ★D1(a), EC-8
+
+**Problem.** Items are derived from 'the proposal's graph diff'. Today that diff compares the live board with the working copy (service.ts:5, 165, 'diffGraphs against the current board'). Under ★D1(a) the A|D|G box keeps writing your files during a session, and ES-7 allows hand edits. Scenario: during a review you add a card with the A|D|G box. It is in Current but not in the working copy, so the next stage shows 'Delete ‹your new card›', a change Claude never made. Rejecting it ('the card stays') would make telelean copy the card into the working copy, and Apply would then merge it twice. Hand edits likewise appear as spurious Change items.
+
+**Evidence.** §17 'Items come from the proposal's graph diff'; packages/runner/src/proposal/service.ts:5 and :165 (diffGraphs against the current board); review-ui.md 'uncertainties' (cards added during a run would show as '− removed').
+
+**Suggested fix.** RV-1: 'Items are computed between the session's base (your files when the session started, plus your own transform changes) and the working copy. Changes you make outside the session (A|D|G box, hand edits, Undo, History) never become items. They are merged at Apply (EC-8), and the end confirmation lists them separately as "your edits during the session".'
+
+### F22 [major] (gap) — RV-10, EN-1, DO-1
+
+**Problem.** RV-10 and EN-1 end a session only when every item is accepted; any decline, including a Reject, starts a Claude step. Take a stage where everything is accepted except two Rejects, which telelean can restore by itself. It still costs a full Claude step. During that step Claude may propose new changes to other open content, which then need another stage to review. That is extra quota (the user: 'I need to save quota for now') and an unrequested stage.
+
+**Evidence.** RV-10 'Otherwise a Claude step handles each declined item according to its decline option'; EN-1; design-rationale.md §2 item 25.
+
+**Suggested fix.** RV-10: '… If every item is accepted or rejected, telelean restores the rejected ones and the session goes to the end confirmation (§9). Otherwise a Claude step handles each Transform or Shaky item …'. EN-1: 'A session ends successfully when you submit a stage in which every item is accepted or rejected.'
+
+### F23 [minor] (gap) — RV-9, ES-2, RV-8, §11.2
+
+**Problem.** Two gaps arise when one session holds several inferences. (a) Stale verdicts: step 1 proves G1 from P, with Formalize P and Prove G1 in review. A mid-stage These suffice for G2 re-formalises P, marking it 'updated'. G1's proof still builds, but its verdict and 'rests on' were certified in step 1 against step 1's fixed statements. Nothing says they are re-checked, so the stage shows a step-1 verdict beside the new P. (b) Chaining: after you accept G1's proof, a mid-stage These suffice of G2 from {G1, Q} fails. Today a derivation's footprint widens a permitted set only for proofs you already had, so P is not permitted for G2. If accepted proofs counted as yours, G2's report would need to say it rests on P through G1.
+
+**Evidence.** RV-9 'its results join the current stage'; gate-accept.md §3.1 (derivationFootprints only for the user's own proof, permitted.ts:61-76).
+
+**Suggested fix.** RV-9: 'Every step re-runs the per-inference checks for every inference of the session on the new working copy. An inference whose verdict or dependencies changed has its Result item returned to "in review", marked "updated", with its result hidden again. An accepted proof counts as yours for later inferences of the same session; their reports list what they rest on through it.'
+
+### F24 [minor] (gap) — RV-3, RV-1, EC-2, RV-4
+
+**Problem.** 'The content it produces' is undefined for several item kinds. For a Delete, the content is an absence. For Vocabulary (N), sub-items can be expanded, but the revision says nothing about their status. For Prove, it is unclear whether the 'make it a Derivation' tick is part of the content. For statement items, it is unclear whether the sentence is frozen together with an accepted Formalize. Scenario: in an ES-3 session you select X, so its sentence is open. You accept 'Formalize X', judged against sentence S. Next step, Claude proposes 'Change X: sentence S → S'' to fit the Lean. The item shows only the sentence before and after, so the pair (S', Lean) is never judged.
+
+**Evidence.** RV-3 'session-freezes the content it produces'; RV-1 Vocabulary 'which you can expand into per-term sub-items'; RV-1 Prove 'offers make it a Derivation (ticked)'.
+
+**Suggested fix.** RV-3: 'What an Accept freezes: for Add, every field of the new card. For Change or Formalize, the card's sentence and Lean statement together, plus any other changed field. For Prove, the proof and the kind tick. For Delete, nothing is frozen, but Claude may not re-add the card. For Vocabulary (N), each term. Sub-items have their own status, and the group item shows "k of N accepted".'
+
+### F25 [minor] (safety) — CF-3, §16
+
+**Problem.** CF-3 says premises:, ids and provenance are 'kept by telelean'. But §16 replaces G5, which today protects exactly these keys, with 'the preset freezes', and these keys are not fields (CF-2), so no freeze covers them. Unless a rule says so, Claude could edit an open card's premises: in the working copy, silencing TL107 used-undeclared. It could also edit worded_by, so that Claude's words display as yours.
+
+**Evidence.** CF-3; §16 row 'Your words byte-identical … the preset freezes'; gate-accept.md §3.4 (G5 COMPARED_FIELDS rules.ts:60 cover premises, worded_by, origin, session, ids).
+
+**Suggested fix.** CF-3: '… Claude may never change these. The gate refuses any change to them in every step, independently of freezes; G5's rule for these keys stays.'
+
+### F26 [minor] (gap) — ES-4, ES-6, ES-8, EC-7, EN-2
+
+**Problem.** Only Apply and Exit are defined as session ends. Today a run also ends by environment failure, by recover() ('superseded by a newer run') and by Cancel. ES-4 says 'Cancel step stops it' and 'The step ends in a review stage', but not which state that stage shows: Claude's partial, unjudged work, or the previous stage. If a failure ends the session, FZ-8 restores freezes with no confirmation, contradicting EDIT SESSIONS 8 ('a warning/confirmation popup before an edit session ends, successfully or not'). EC-7 does not cover a reload during an open transform window (ES-3 before the session, or decline-Transform) or during the end confirmation.
+
+**Evidence.** ES-4; run-engine.md §1.5 (environment failure fails the run), §1.9 (recover).
+
+**Suggested fix.** ES-4: 'A step never ends the session. After Cancel step, a cap or an environment failure, the working copy returns to the previous stage's state (or the decision floor, F9), and the stage shows "Step cancelled" or "Step failed: …" with Retry step. Only Apply and Exit end a session, both through the confirmation.' EC-7: 'A transform window's draft and an open confirmation survive a reload.'
+
+### F27 [minor] (fidelity) — EN-2.3, FZ-8, §15, EDIT SESSIONS 7
+
+**Problem.** (a) The keep ticks change the substance of EDIT SESSIONS 7 ('must be restored'), yet they are tagged '(keep ticks: new)' rather than '(changed: …)', and §15 lists them only under EDIT SESSIONS 8. (b) ES-2 and ES-3 session-freeze every other card, so EN-2.3 will list every card of the subject as 'becomes unfrozen' after every session, even a one-word edit. The handful of changes you actually caused get buried. (c) On Exit, a keep tick on accepted content would freeze your old version, not the content you saw and accepted.
+
+**Evidence.** EN-2.3 '(keep ticks: new)'; prompt20.md EDIT SESSIONS 7 'must be restored'; ES-2/ES-3 preset freezes; §15 row EDIT SESSIONS 8.
+
+**Suggested fix.** EN-2.3: 'Lists, each with a keep tick: freezes and unfreezes you made by hand, content you accepted, and new cards. The preset freezes of ES-2 and ES-3 are summarised in one line ("N cards frozen because you started the session return to unfrozen"), with no ticks. On Exit, keep ticks are offered only for freezes on content in your files.' Retag EN-2 as '(changed: EDIT SESSIONS 7)' and add it to §15's EDIT SESSIONS 7 row.
+
+### F28 [minor] (inconsistency) — §1 (Fuzzy), TR-4, TR-5, FZ-2, ES-2
+
+**Problem.** §1 defines Fuzzy as 'A field with no value yet, which Claude is to fill in'. But FZ-2 and ES-2 freeze many empty fields ('keep it empty'). TR-4 defines open as 'has a value', so a copied empty field (a code-less card's Lean, an empty Why) has no defined starting state. If it starts fuzzy, transforming any code-less card makes Claude formalise it and write your reason for it. If it starts frozen, you must notice and unfreeze it. D-16's code-less cards ('no Lean code has been generated yet') depend on this choice.
+
+**Evidence.** §1 Fuzzy row; TR-4 'open: has a value'; FZ-2; design-rationale.md §1.9 (third field state 'leave empty').
+
+**Suggested fix.** §1: 'Fuzzy: an empty field that Claude is asked to fill.' TR-4: 'Copied empty fields start "keep empty" (frozen-empty). Click one to make it fuzzy. New cards' fields start fuzzy (TRANSFORM 4).' Add 'open' to §1.
+
+### F29 [minor] (gap) — ES-3, TR-1, TR-15, FZ-7, §15 (EDIT SESSIONS 1 / INITIATING 2)
+
+**Problem.** (a) ES-3 session-freezes non-selected cards when the window opens, yet 'cancelling it means no session starts'. So it is unclear whether a Freeze you make inside that window is a standing or a session freeze (FZ-7), and whether it survives Cancel. (b) §15 claims the 'transform cards' button and 'initiate edit session' are the same action. But with TR-1 and TR-15, submitting the first transform unchanged runs no Claude and goes straight to the end confirmation. So you can no longer open a session with these cards editable and the rest frozen, then run These suffice inside it, which is a natural reading of INITIATING 2 together with REVIEW 5.
+
+**Evidence.** ES-3; TR-1 'Submitting it unchanged makes no changes'; TR-15 'goes straight to the end confirmation'; prompt20.md INITIATING 2.
+
+**Suggested fix.** ES-3: 'The session starts when the window opens. Cancel ends it at once, with nothing to apply and no confirmation, and undoes its freezes. Submitting the first transform unchanged starts the session with an empty first review stage (no Claude step), from which you can run These suffice or further transforms.' Mark the merge in §15 as '(changed)' and ask whether INITIATING 2 meant an empty session.
+
+### F30 [minor] (gap) — ES-1, CF-1, TR-11, FZ-7, FZ-9, EC-4, ★D1(a)
+
+**Problem.** (a) CF-1 and TR-11 ('every card … transform it') include other subjects' vocabulary, which the board shows read-only. A session on subject S cannot change it (G0 outside-subject). (b) FZ-7 makes any freeze 'made during' a session a session freeze, so freezing a card of subject T while a session on S is active is undone when S's session ends. (c) Under ★D1(a) every edit is a transform, and ES-1 allows one session per folder, so while a session on S is active no card of T can be edited at all.
+
+**Evidence.** ES-1; CF-1; board-ui.md §1.4 ('items from other subjects … read-only'); gate-accept.md §2 G0 outside-subject.
+
+**Suggested fix.** ES-1: '… A session concerns one subject. Freezes made during it on other subjects' cards are standing. Other subjects' vocabulary shown on the board can be frozen and referenced, but not transformed; Claude reports this as under EC-4.' State in ★D1 that, during a session, other subjects are read-only.
+
+### F31 [minor] (gap) — FZ-8, EN-2.3, EN-3, §17 Storage
+
+**Problem.** FZ-8 undoes 'session unfreezes' for every card, including a standing-frozen card the session deleted. Its standing record then outlives the card. Ids are re-derived from the sentence (edit-model.md §1.4 caveat (b)), so a later card with the same sentence is born frozen. Keep-ticked new cards leave the same dangling record if Apply is undone. Separately, if the standing-freeze file under .telelean/ is committed to git, a checkout during a session changes standing freezes outside the Context Menu, against FROZEN 3, and FZ-8 then restores a stale snapshot over them.
+
+**Evidence.** FZ-8 'session unfreezes are undone'; §17 'Standing freezes go in a per-subject file under .telelean/'; edit-model.md §1.4 caveat (b), §3.2 option B.
+
+**Suggested fix.** FZ-8: '… Records of cards that no longer exist are dropped at Apply, and when Undo removes a card. A standing freeze is keyed by written id together with the card's asserted date, so a re-created card does not inherit it. If the standing-freeze file changes on disk during a session, Apply asks which version to keep.'
+
+### F32 [minor] (gap) — RV-8, TR-1, TR-8, ES-3, RV-9, §16 (Feedback)
+
+**Problem.** 'Ask me instead … opens a mid-stage transform with the question prefilled'. But a transform works on selected cards (TR-1; ES-3 'one or more cards'; RV-9 'select cards'), and with 'Claude may add cards' off, Claude 'must stick to the cards in the window'. With no cards, Claude can change nothing. The same applies to §16's replacement for free-text Feedback. The intent of Ask me instead is also that Claude asks you a question, not that it transforms cards.
+
+**Evidence.** RV-8; TR-8 'must stick to the cards in the window'; §16 row 'Feedback… → Decline → Transform with instructions, or a mid-stage transform'.
+
+**Suggested fix.** RV-8: 'Ask me instead opens a mid-stage transform on the cards that assumption affects, with "Ask me about: …" prefilled.' TR-1: 'A transform may have no cards. It then carries only instructions, and Claude may change any unfrozen card of the session; each change is an item.'
+
+### F33 [minor] (gap) — RV-1 (Add), DO-2, RV-9, TR-11
+
+**Problem.** RV-1 keeps the marks 'closes the gap (checked)' and 'may simply restate the goal' on proposed premises. These hold only for the exact text that was checked. After a transform of the premise (DO-2, RV-9 or TR-11), or after the goal or another premise changes, 'checked' is stale and misleads.
+
+**Evidence.** RV-1 'It keeps the marks'; gate-accept.md §2 'ghost check (engine.ts:722-783)'; design-rationale.md §1.3 point 4.
+
+**Suggested fix.** RV-1: '… telelean re-runs the gap check whenever the premise, the goal or the selection changes. Until then the marks read "not re-checked since the change".'
+
+### F34 [minor] (gap) — EC-9, FZ-9, RV-3
+
+**Problem.** 'Unfreeze all other cards' during a review un-accepts every accepted item outside the selection, because unfreezing returns items to 'in review' (RV-3). EC-9's Undo toast 'restores the previous freezes', but not the statuses. So after an accidental click, Undo leaves frozen items that are 'in review' (EC-1 state), and you must re-accept them all, belief items one by one.
+
+**Evidence.** EC-9; RV-3 'Unfreezing that content returns the item to "in review"'.
+
+**Suggested fix.** FZ-9: '"Unfreeze all other cards" leaves accepted content frozen unless you tick "also un-accept". The Undo toast restores freezes and statuses together.'
+
+### F35 [minor] (fidelity) — §11.1, §11.2
+
+**Problem.** §11.1 says 'Your files change only when a session ends successfully', which is false under ★D1(a): the A|D|G box writes directly, and so do Undo, History and hand edits. §11.2's 'plus vocabulary and the presuppositions you accepted' leaves out Lean's standard axioms. It also leaves out presuppositions that already existed, which are permitted automatically, and the footprints of your own proved derivations. The user cares about exactly what 'proved' rests on.
+
+**Evidence.** §11.1; §11.2; ★D1(a); gate-accept.md §3.1 (permitted set: standard ∪ signature ∪ selected ∪ presuppositions ∪ derivationFootprints; permitted.ts:95, 101).
+
+**Suggested fix.** §11.1: 'A session changes your files only when it ends successfully …'. §11.2: '… only your selected premises' .holds, Lean's standard axioms (propext, Classical.choice, Quot.sound), the vocabulary's signature, the existence presuppositions of the cards involved (existing ones, and new ones you accepted), and the footprints of proofs you already had.'
+
+### F36 [minor] (safety) — RV-2, S1
+
+**Problem.** The badges cover 'belief' and 'changes your words', but not a change to your existing Lean, for example a GOAL's statement in a transform session where you left it open. S1 says a weakened goal is caught 'only by your attention in the review', and no badge draws that attention.
+
+**Evidence.** RV-2 badges; S1 'only your attention in the review would catch it'.
+
+**Suggested fix.** RV-2: add the badges 'changes your Lean' (any change to Lean you wrote) and 'changes a goal's statement'. Both are excluded from group Accept, like belief items.
+
+### F37 [minor] (readability) — RV-9, DO-2, DO-1, EC-5, TR-15, §1
+
+**Problem.** Several concepts duplicate each other and cause the races and contradictions above. (1) A proposed card can be transformed by two routes with different timing: Decline → Transform runs at Submit review (DO-2), while Transform cards… runs at once (RV-9). (2) The 'Rejected in this session' blacklist and un-reject exist for every item kind, though for Change and Delete a Reject is just 'freeze the old version' (FZ-7). (3) EC-5's 'replaces … disappears' and RV-9's 'marked "updated"' describe one event. (4) A Claude-free edit outside a session gets a full session: standing-state snapshot, preset freezes, EN-2 with a gate run (TR-15). (5) Item statuses are scattered across clauses: in review, accepted, declined(option), the rejected list, 'updated', 'depends on a rejected item', 'Claude found no alternative', and frozen-in-review.
+
+**Evidence.** DO-2; RV-9; DO-1; EC-5; TR-15; EC-6; DO-3 'Claude found no alternative'.
+
+**Suggested fix.** (1) During a stage, only These suffice runs at once (REVIEW 5). Every transform, whether from Decline or from the Context Menu, is queued until Submit review; drop RV-9's immediate Transform. (2) Keep the blacklist and un-reject for Add items only (F16). (3) Keep RV-9's update-in-place and delete EC-5's 'disappears' (F15). (4) Outside a session, a Claude-free transform is a direct edit (F13). (5) Define one status set in §1 (in review, accepted, declined(Reject|Transform|Shaky), to be redone) plus markers (updated, no alternative found, frozen), and use only those.
+
+### F38 [nit] (readability) — §1, EC-2, EC-5, EC-6, RV-5, RV-7, DO-1, DO-2, DO-3, TR-8, TR-10, RF-5, FZ-9
+
+**Problem.** Several terms are undefined or used inconsistently. 'Pending' means 'in review' in RV-7, 'not accepted' in EC-6, and 'two items' in EC-5. 'Previous version' (DO-1, DO-2, EC-1) is unclear across stages. 'Rest on' (EC-2) could mean the proof footprint only, or also statement mentions, declared premises and # references. 'Updated' and 'open' are not in §1. 'The statements it proves' (RV-5) is unclear. Other small gaps: Shaky's 'split' (DO-3) may conflict with 'Claude may add cards' being off (TR-8); Cancel in a decline-Transform window is undefined (TR-10); RF-5 holds sentence references but not Why references (RF-1 allows # in Why). FZ-9 lists four places to freeze, while FROZEN 4 says 'all interfaces' (the end confirmation, request cards, stage report and Rejected list are missing). Board Ctrl+Z undoes file edits, while the toast undoes freezes.
+
+**Evidence.** RV-7 'a pending belief item'; EC-6 'a pending (not accepted) item'; EC-5; EC-2 'rest on'; RF-1 'Prose fields are sentences, Why, …'; RF-5 'a frozen card's sentence'; FZ-9.
+
+**Suggested fix.** Add to §1: 'pending = in review'; 'previous version = the version before the item's current proposal (your files' version for content first changed this session)'; 'rests on = its proof footprint, a statement mention, a declared premise or a # reference'; 'open'; 'updated'. DO-3: 'Splitting is allowed whatever "Claude may add cards" says; the new cards replace the shaky ones.' TR-10: 'Cancelling a decline-Transform window returns the item to "in review".' RF-5: 'sentence or Why'. FZ-9: list every interface, or say 'wherever a card or field is shown'.
+

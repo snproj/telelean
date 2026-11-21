@@ -53,7 +53,7 @@ describe('AT1.3 the permitted set', () => {
     expect(permitted.unusable).toEqual([]);
   });
 
-  it('unusable: an unproved goal, a code-less card, a conditional proof, and a derivation resting on the target\'s own claimed .holds', () => {
+  it('unusable: an unproved proposition, a code-less card, a conditional proof, and a proposition resting on the target\'s own pending .holds', () => {
     const body = [
       block({ id: 'a1', type: 'ASSUMPTION', name: 'A1', rationale: 'r', lean: 'S.a1' }),
       'abbrev a1 : Prop := Good t',
@@ -82,7 +82,7 @@ describe('AT1.3 the permitted set', () => {
     ].join('\n');
     const { model } = build({ 'Model/S/Vocabulary.lean': VOCAB_S, 'Model/S/Main.lean': mainS(body) });
     expect(model.nodes.get('c')?.node.status.proof.kind).toBe('conditional');
-    expect(model.nodes.get('d')?.node.status.proof.kind).toBe('pending-promotion');
+    expect(model.nodes.get('d')?.node.status.proof.kind).toBe('pending');
     const permitted = computePermittedAxioms(model, { subject: 'S', target: 'd', premises: ['e', 'g0', 'c', 'cl', 'f', 'a1'], adoptedGhosts: [] });
     expect(permitted.unusable).toEqual(['e', 'g0', 'c', 'cl']);
     expect(permitted.selected).toEqual(['S.a1.holds']);

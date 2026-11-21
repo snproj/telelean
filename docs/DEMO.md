@@ -1,6 +1,6 @@
 # telelean demo: your own example in 5 minutes
 
-You type a few sentences as cards, select them, press **These suffice ▶**, answer Claude's questions, and get a checked result: **proved** (with a proposal to Accept) or **not proved** (with a suggested missing premise). The user guide (`docs/user-guide.md`, section 10) has the details.
+You type a few sentences as cards, draw arrows from your axioms to the proposition you want shown, press **Formalize for dependencies**, answer Claude's questions, and get a checked result: **proved** (with a proposal to Accept) or **not proved** (with a suggested missing premise). The user guide (`docs/user-guide.md`, sections 3 and 10) has the details. (Updated for spec v4's slice 1 board, 2026-11-19: the AXIOMS column, the PROPOSITIONS canvas, your arrows, and the Context Menu section in place of the tray.)
 
 ## Before you start (once)
 
@@ -14,11 +14,11 @@ You type a few sentences as cards, select them, press **These suffice ▶**, ans
 1. **Load the current build.** A new window loads it: use **File → New Window** for the demo. (**Developer: Reload Window** does it too, but it also restarts everything running in that window, Claude Code included.)
 2. **Open a fresh folder.** In that window, use **File → Open Folder…** and create a new empty folder, e.g. `~/telelean-demo/socrates`. If VS Code asks whether you trust the folder, answer **Yes** (telelean does not run in restricted mode).
 3. **Initialize.** In the Command Palette (Ctrl+Shift+P), run **telelean: Initialize Model Here**. Pick the folder, keep or type a subject name (a capitalised name such as `Demo`), and answer **Initialize git** (this gives you history). The board opens and soon shows **Lean: up to date**. If it does not open, run **telelean: Open Board**.
-4. **Type your cards** in the A|D|G box at the bottom of the board:
-   - With **Assumption** chosen, type `All humans are mortal` and press Enter. Do the same for `Socrates is a human`.
-   - Switch to **Goal**, type `Socrates is mortal`, and press Enter.
-5. **Select.** Click the first assumption, then Ctrl+click the other assumptions and the goal. The tray reads `3 selected … ⊢ "Socrates is mortal"`.
-6. **Press These suffice ▶.**
+4. **Type your cards** in the A|P box at the bottom of the board:
+   - With **Axiom** chosen, type `All humans are mortal` and press Enter. Do the same for `Socrates is a human`.
+   - Switch to **Proposition**, type `Socrates is mortal`, and press Enter.
+5. **Draw the arrows.** Click the first axiom and Ctrl+click the second, then right-click the proposition (on the canvas, right of the AXIOMS column) and choose **Draw 2 arrows from the selection**. (Or hover an axiom and drag the small circle at its right edge onto the proposition, once per axiom.) Two dotted arrows now lead into the proposition.
+6. **Select them and press Formalize for dependencies.** Right-click the proposition and choose **Select incoming arrows**: the Context Menu section under the toolbar reads `2 arrows into “Socrates is mortal”`. Press **Formalize for dependencies** there.
 7. **Consent.** The first run in a folder asks **"Run Claude on this model?"** and says what is sent. Press **Run with Claude**.
 8. **Watch the run panel** on the right. Its status line shows the state ("Working · formalising"), round, Lean checks, turns, Claude's working time, tokens and a cost estimate. Its count of output tokens is known to be far too low (user guide, 10.12); the cost estimate is Claude Code's own. **Cancel** stops the run at any time and writes nothing.
 9. **Answer Claude's questions, if it asks any.** In the live Socrates and penguin runs it asked none; it listed its readings under "assumed without asking" in the review instead. Each question has a tag (e.g. *genericity*) and options with their consequences. You can also choose **In my own words**, **Leave it open** or **Decide for me**, and set **Remember for** (this run, these cards, or the whole subject). Then press **Send answer**. Claude's own guess appears only after you have answered.
@@ -27,12 +27,11 @@ You type a few sentences as cards, select them, press **These suffice ▶**, ans
     - **New vocabulary:** the types, predicates and constants Claude added.
     - **Definitions:** for example `Demo.Being.exists`, an *existence assumption* (there is at least one being) that comes with naming Socrates, shown with its Lean code. Each needs your **Yes, I endorse it** before Accept is possible.
     - **Result:** proved or not proved, what the proof rests on, Claude's summary, anything it assumed without asking, and suggested premises.
-    - **Card changes:** "make the goal a Derivation" is ticked when it was proved.
 11. **Decide.**
-    - **Accept** writes exactly the checked files. Lean checks them again, and the goal moves to **Derivations** marked **proved**. One **Undo** reverts the whole Accept.
+    - **Accept** writes exactly the checked files. Lean checks them again, and the proposition shows its proof: its arrows turn solid and a green bracket with a ✓ binds them (these suffice together); with everything it rests on checked, it reads **✓ established** and glows green. One **Undo** reverts the whole Accept.
     - **Feedback…** starts a new round in the same session with your text (Ctrl+Enter sends it).
     - **Discard** writes nothing.
-    - **Not proved?** Claude may suggest a premise: a translucent **Claude suggests** card marked **closes the gap (checked)**. Press **I hold this** (a reason is optional). A second round then proves the goal with it, and you can Accept.
+    - **Not proved?** Claude may suggest a premise: a translucent **Claude suggests** card at the top of the AXIOMS column, marked **closes the gap (checked)**. Press **I hold this** (a reason is optional). A second round then proves the proposition with it (its arrow is drawn too), and you can Accept.
 
 ## What to expect
 
@@ -46,7 +45,7 @@ You type a few sentences as cards, select them, press **These suffice ▶**, ans
 
   The status line counts only Claude's working time, never the time it waits for your answer. Each round is capped at 20 minutes, 80 turns and 25 Lean checks.
 - For a faster demo, set **telelean.effort** to `medium` in Settings, then reload the demo window (**Developer: Reload Window**).
-- **What changes on disk:** after Accept, the Lean goes into `Model/<Subject>/Inbox.lean` (statements and the proof) and `Vocabulary.lean` (new vocabulary). Your answers are in `.telelean/subjects/<Subject>/decisions.json`. History lists *accept · These suffice → proved: …*.
+- **What changes on disk:** your arrows are written at once, as the proposition's `premises:` line (your own edit, before the run). After Accept, the Lean goes into `Model/<Subject>/Inbox.lean` (statements and the proof) and `Vocabulary.lean` (new vocabulary). Your answers are in `.telelean/subjects/<Subject>/decisions.json`. History lists *accept · Formalize → proved: …*.
 
 ## Tips for good simple examples
 
@@ -69,7 +68,8 @@ Examples that work well:
 
 ## If something goes wrong
 
-- **"Not started: telelean sends nothing to Claude until you allow it"**: you pressed Cancel on the consent. Press These suffice again.
+- **"Not started: telelean sends nothing to Claude until you allow it"**: you pressed Cancel on the consent. Press Formalize for dependencies again.
+- **Formalize for dependencies is disabled**: the reason is beside it. Cards alone are no question: select the arrows into the proposition (right-click it, **Select incoming arrows**).
 - **"Claude could not be started: …"**: Claude Code is missing, too old or not logged in. Fix that, or set `telelean.claude.path`, then reload.
 - **The question is not visible**: click the **Claude** badge in the board's header.
 - **telelean's commands are missing from the Command Palette**: the folder is open in Restricted Mode. telelean needs a trusted folder (Lean can run code while it compiles): run **Workspaces: Manage Workspace Trust** and trust the folder.
@@ -79,6 +79,8 @@ Examples that work well:
 ## The automated driver (for rehearsals)
 
 `packages/extension/scripts/demo-driver.mjs` plays the whole demo in a separate, isolated VS Code window. It types the cards, selects them, presses These suffice, gives consent, answers the questions (your `--answer` specs, otherwise option 1), steps through the review, adopts a suggested premise, Accepts and waits for Lean. It then prints a JSON summary (also saved as `<work>/summary.json`) and saves screenshots to `<work>/screenshots/`.
+
+**Not yet updated for the slice 1 board (2026-11-19):** the driver (and `packages/extension/scripts/demo-ui.mjs`) still selects the cards and waits for the tray to count them, then presses the tray's **These suffice ▶**. Slice 1 replaced the tray with the Context Menu section and the question with your arrows, so the driver now stops at the selection step. It needs to draw the arrows and press **Formalize for dependencies**, as in steps 5 and 6 above. Its scripted Claude (`test/demo/demoClaude.ts`) already reads the new first line of a run (`Run: "Formalize for dependencies" …`).
 
 ```sh
 cd /home/zhengyew/telelean

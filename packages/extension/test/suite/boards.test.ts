@@ -146,16 +146,16 @@ suite('model boards (fake model workspace, real VS Code adapters)', () => {
     const inbox = path.join(mental, 'Model', 'Spyro', 'Inbox.lean');
     const before = read(inbox);
     const graph = nextPost(api, (e) => e.root === mental && e.message.type === 'graph' && e.message.payload.graph.nodes.length === 5, 30_000, 'a graph with 5 cards');
-    const outcome = await request(mental, 'addNode', { clientId: 'tmp-1', type: 'ASSUMPTION', naturalName: 'Cynder can fly', requestId: 'add1' });
-    assert.deepEqual(outcome, { ok: true, label: 'Add assumption: Cynder can fly', undoable: true, nodeId: 'cynder-can-fly' });
+    const outcome = await request(mental, 'addNode', { clientId: 'tmp-1', type: 'AXIOM', naturalName: 'Cynder can fly', requestId: 'add1' });
+    assert.deepEqual(outcome, { ok: true, label: 'Add axiom: Cynder can fly', undoable: true, nodeId: 'cynder-can-fly' });
     assert.match(read(inbox) ?? '', /natural_name: Cynder can fly\n/);
     await graph;
     // (Post events fire once VS Code reports delivery; the change event inside perform publishes this graph before
     // the notice is even posted, so wait for the notice itself.)
     await waitFor(
-      () => postsOf(recorder.posts, 'notice', mental).some((n) => n.payload.text === 'Add assumption: Cynder can fly' && n.payload.undoable),
+      () => postsOf(recorder.posts, 'notice', mental).some((n) => n.payload.text === 'Add axiom: Cynder can fly' && n.payload.undoable),
       10_000,
-      'the undoable "Add assumption" notice',
+      'the undoable "Add axiom" notice',
     );
     const doc = vscode.workspace.textDocuments.find((d) => d.uri.fsPath === inbox);
     assert.ok(!doc?.isDirty, 'the edited file must be saved');
@@ -169,11 +169,11 @@ suite('model boards (fake model workspace, real VS Code adapters)', () => {
     this.timeout(60_000);
     const { mental } = paths();
     const inbox = path.join(mental, 'Model', 'Spyro', 'Inbox.lean');
-    assert.equal((await request(mental, 'addNode', { clientId: 'tmp-2', type: 'GOAL', naturalName: 'Spyro is purple', requestId: 'add2' })).ok, true);
+    assert.equal((await request(mental, 'addNode', { clientId: 'tmp-2', type: 'PROPOSITION', naturalName: 'Spyro is purple', requestId: 'add2' })).ok, true);
     const editor = await vscode.window.showTextDocument(vscode.Uri.file(inbox), { preview: false });
     assert.ok(await editor.edit((b) => b.insert(new vscode.Position(0, 0), '-- my unsaved note\n')));
     assert.equal(editor.document.isDirty, true);
-    assert.equal((await request(mental, 'addNode', { clientId: 'tmp-3', type: 'DERIVATION', naturalName: 'Sparx follows Spyro', requestId: 'add3' })).ok, true);
+    assert.equal((await request(mental, 'addNode', { clientId: 'tmp-3', type: 'PROPOSITION', naturalName: 'Sparx follows Spyro', requestId: 'add3' })).ok, true);
     const disk = read(inbox) ?? '';
     assert.match(disk, /^-- my unsaved note\n/);
     assert.match(disk, /natural_name: Sparx follows Spyro/);
@@ -247,13 +247,13 @@ suite('model boards (fake model workspace, real VS Code adapters)', () => {
 
     const inbox = path.join(mental, 'Model', 'Spyro', 'Inbox.lean');
     const beforeAdd = read(inbox);
-    assert.equal((await request(mental, 'addNode', { clientId: 'tmp-4', type: 'ASSUMPTION', naturalName: 'Cynder is a dragon', requestId: 'add4' })).ok, true);
+    assert.equal((await request(mental, 'addNode', { clientId: 'tmp-4', type: 'AXIOM', naturalName: 'Cynder is a dragon', requestId: 'add4' })).ok, true);
     const listed = nextPost(api, (e) => e.root === mental && e.message.type === 'history', 10_000, 'the history listing');
     await api.simulateBoardMessage(mental, message('historyList', { subject: 'Spyro', limit: 20 }));
     const event = await listed;
     assert.ok(event.message.type === 'history');
     const listing: HistoryListing = event.message.payload.listing;
-    assert.deepEqual(listing.entries.map((e) => e.label), ['Add assumption: Cynder is a dragon', 'Initial state']);
+    assert.deepEqual(listing.entries.map((e) => e.label), ['Add axiom: Cynder is a dragon', 'Initial state']);
     const [added, initial] = listing.entries;
     assert.ok(added && initial);
 
@@ -264,12 +264,12 @@ suite('model boards (fake model workspace, real VS Code adapters)', () => {
     const boardColumn = boardPanel?.viewColumn;
     await api.simulateBoardMessage(mental, message('historyPreview', { subject: 'Spyro', entryId: added.id, compare: 'parent' }));
     await waitFor(
-      () => vscode.window.tabGroups.all.flatMap((g) => g.tabs).some((t) => t.label.startsWith('History: Add assumption: Cynder is a dragon (')),
+      () => vscode.window.tabGroups.all.flatMap((g) => g.tabs).some((t) => t.label.startsWith('History: Add axiom: Cynder is a dragon (')),
       15_000,
       'the history diff editor',
     );
     // The preview opens beside the board, not over it: another editor group, and the board stays visible.
-    const previewGroup = vscode.window.tabGroups.all.find((g) => g.tabs.some((t) => t.label.startsWith('History: Add assumption')));
+    const previewGroup = vscode.window.tabGroups.all.find((g) => g.tabs.some((t) => t.label.startsWith('History: Add axiom')));
     assert.ok(previewGroup && boardColumn !== undefined && previewGroup.viewColumn !== boardColumn, `preview in column ${previewGroup?.viewColumn}, board in ${boardColumn}`);
     assert.equal(api.boardFor(mental)?.panel.visible, true, 'the board must stay visible');
 

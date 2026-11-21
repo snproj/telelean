@@ -8,10 +8,11 @@
  * rely on it. It is the canonical example of the M1 card data: `lean.uses` (the "uses:" line), `lean.refs` (hover
  * glosses), `lean.presupposes` (tray chips) and the Vocabulary group.
  *
- *  - pg-no-dark-past   ASSUMPTION  code-less (stance: rule, so its badge reads "no source yet")
- *  - cynder-dark-past  ASSUMPTION  formalised (abbrev + axiom .holds)
- *  - new-spyro-pg      ASSUMPTION  formalised
- *  - cynder-not-good   GOAL        formalised statement, not proved; declares the three premises
+ *  - pg-no-dark-past   AXIOM        code-less (stance: rule, so its badge reads "no source yet")
+ *  - cynder-dark-past  AXIOM        formalised (abbrev + axiom .holds)
+ *  - new-spyro-pg      AXIOM        formalised
+ *  - cynder-not-good   PROPOSITION  formalised statement, not proved; declares the three premises
+ * (The fixture's blocks still say `type: ASSUMPTION` and `type: GOAL`: spec v4 reads them as aliases.)
  */
 import { buildGraph, PRESUPPOSITION_PREFIX } from '../graph.js';
 import type { DerivedStatus, FileRange, LeanRef, SemanticSummary, SourceLocation, TlGraph, TlNode, VocabItem } from '../model.js';
@@ -80,7 +81,7 @@ function spyroNodes(): TlNode[] {
   return [
     {
       id: 'pg-no-dark-past',
-      type: 'ASSUMPTION',
+      type: 'AXIOM',
       role: 'node',
       subject: SPYRO_SUBJECT,
       naturalName: 'PG games cannot have characters with dark pasts',
@@ -95,7 +96,7 @@ function spyroNodes(): TlNode[] {
     },
     {
       id: 'cynder-dark-past',
-      type: 'ASSUMPTION',
+      type: 'AXIOM',
       role: 'node',
       subject: SPYRO_SUBJECT,
       naturalName: 'Cynder is a character who has a dark past',
@@ -126,7 +127,7 @@ function spyroNodes(): TlNode[] {
     },
     {
       id: 'new-spyro-pg',
-      type: 'ASSUMPTION',
+      type: 'AXIOM',
       role: 'node',
       subject: SPYRO_SUBJECT,
       naturalName: 'The new Spyro game is PG',
@@ -153,7 +154,7 @@ function spyroNodes(): TlNode[] {
     },
     {
       id: 'cynder-not-good',
-      type: 'GOAL',
+      type: 'PROPOSITION',
       role: 'node',
       subject: SPYRO_SUBJECT,
       naturalName: 'Cynder would not be a good addition to the new Spyro game',
@@ -323,7 +324,9 @@ export function spyroProvedGraph(version = 2): TlGraph {
               `${PRESUPPOSITION_PREFIX}Spyro.Game.exists`,
             ],
           },
-          flags: ['proved-goal'],
+          flags: ['established'],
+          // Slice 1d (B.2): direct(v), from the elaborated proof (the facts' value probe).
+          direct: { ids: ['pg-no-dark-past', 'new-spyro-pg', 'cynder-dark-past'], from: 'proof' },
         },
       };
     }

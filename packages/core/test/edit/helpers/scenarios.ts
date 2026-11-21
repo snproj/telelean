@@ -5,11 +5,12 @@
  */
 import { describe, expect, it } from 'vitest';
 import { ActionError, type EditPlan, type FileChange } from '../../../src/actions.js';
+import { AXIOM_TO_PROPOSITION_REFUSAL } from '../../../src/kindChange.js';
 import { planAction, type PlanContext } from '../../../src/edit/index.js';
 import { emptyLayout } from '../../../src/layout.js';
 import { buildProjectModel, type ProjectModel } from '../../../src/project/index.js';
 import { fakeFacts, freshHashes } from '../../project/helpers/fakeFacts.js';
-import { SPYRO_TEXTS, spyroInput, spyroProvedInput, type Parser } from '../../project/helpers/spyro.js';
+import { SPYRO_TEXTS, spyroFiles, spyroInput, spyroProvedInput, type Parser } from '../../project/helpers/spyro.js';
 
 const CTX: PlanContext = { today: '2026-11-02', now: '2026-11-02T10:00:00.000Z', layouts: {} };
 
@@ -33,7 +34,7 @@ const ZELDA_MAIN = [
   '',
 ].join('\n');
 
-/** A small subject `S` with an adjacently bound, id-less assumption (D-8 pinning and derived ids). */
+/** A small subject `S` with an adjacently bound, id-less axiom (D-8 pinning and derived ids; its `type: ASSUMPTION` is the old alias). */
 const ADJ_VOCAB = 'namespace S\n\n/-- things -/\naxiom T : Type\n/-- is good -/\naxiom Good : T → Prop\n\nend S\n';
 const ADJ_MAIN = [
   'import Model.S.Vocabulary',
@@ -75,8 +76,8 @@ export function planScenarios(parse: Parser): void {
 
   describe('AT2.6 add-node', () => {
     it('creates a missing Inbox from the scaffold text, imports it from the library root (legacy layout), appends the card', () => {
-      const plan = planAction(spyro(), { kind: 'add-node', subject: 'Spyro', type: 'ASSUMPTION', naturalName: '  Spyro is purple ', rationale: 'seen it', stance: 'believe' }, CTX);
-      expect(plan).toMatchObject({ action: 'add-node', label: 'Add assumption: Spyro is purple', subject: 'Spyro', nodes: ['spyro-is-purple'], nodeId: 'spyro-is-purple' });
+      const plan = planAction(spyro(), { kind: 'add-node', subject: 'Spyro', type: 'AXIOM', naturalName: '  Spyro is purple ', rationale: 'seen it', stance: 'believe' }, CTX);
+      expect(plan).toMatchObject({ action: 'add-node', label: 'Add axiom: Spyro is purple', subject: 'Spyro', nodes: ['spyro-is-purple'], nodeId: 'spyro-is-purple' });
       expect(plan.changes.map((c) => [c.path, c.before === null])).toEqual([
         ['Model.lean', false],
         ['Model/Spyro/Inbox.lean', true],
@@ -92,7 +93,7 @@ export function planScenarios(parse: Parser): void {
           '/-',
           '@@ telelean v1',
           'id: spyro-is-purple',
-          'type: ASSUMPTION',
+          'type: AXIOM',
           'natural_name: Spyro is purple',
           'rationale: seen it',
           'stance: believe',
@@ -105,7 +106,7 @@ export function planScenarios(parse: Parser): void {
       );
       expect(plan.layout).toEqual({
         subject: 'Spyro',
-        layout: { ...emptyLayout(), columns: { ASSUMPTION: ['pg-no-dark-past', 'cynder-dark-past', 'new-spyro-pg', 'spyro-is-purple'], DERIVATION: [], GOAL: ['cynder-not-good'] } },
+        layout: { ...emptyLayout(), columns: { AXIOM: ['pg-no-dark-past', 'cynder-dark-past', 'new-spyro-pg', 'spyro-is-purple'], PROPOSITION: ['cynder-not-good'] } },
       });
     });
 
@@ -118,9 +119,9 @@ export function planScenarios(parse: Parser): void {
         'Model/Zelda/Main.lean': ZELDA_MAIN,
         'Model/Zelda/Vocabulary.lean': ZELDA_VOCAB,
       });
-      const plan = planAction(model, { kind: 'add-node', subject: 'Spyro', type: 'GOAL', naturalName: 'Spyro is purple' }, CTX);
+      const plan = planAction(model, { kind: 'add-node', subject: 'Spyro', type: 'PROPOSITION', naturalName: 'Spyro is purple' }, CTX);
       expect(plan.nodeId).toBe('spyro-is-purple-2');
-      expect(plan.label).toBe('Add goal: Spyro is purple');
+      expect(plan.label).toBe('Add proposition: Spyro is purple');
       expect(plan.changes.map((c) => c.path)).toEqual(['Model/Spyro.lean', 'Model/Spyro/Inbox.lean']);
       expect(after(plan, 'Model/Spyro.lean')).toBe('import Model.Spyro.Main\nimport Model.Spyro.Inbox\n');
     });
@@ -128,14 +129,14 @@ export function planScenarios(parse: Parser): void {
     it('adds to an existing Inbox at the end of its namespace, verbatim (trimmed) sentence, escaped when needed', () => {
       const inbox = 'import Model.S.Vocabulary\n\n-- New cards typed on the telelean board are added here.\nnamespace S\n\nend S\n';
       const model = project(parse, { 'Model/S/Vocabulary.lean': ADJ_VOCAB, 'Model/S/Inbox.lean': inbox, 'Model/S/Main.lean': ADJ_MAIN });
-      const plan = planAction(model, { kind: 'add-node', subject: 'S', type: 'DERIVATION', naturalName: 'It follows -/ really' }, CTX);
+      const plan = planAction(model, { kind: 'add-node', subject: 'S', type: 'PROPOSITION', naturalName: 'It follows -/ really' }, CTX);
       expect(plan.changes.map((c) => c.path)).toEqual(['Model/S/Inbox.lean']);
       expect(after(plan, 'Model/S/Inbox.lean')).toBe(
-        'import Model.S.Vocabulary\n\n-- New cards typed on the telelean board are added here.\nnamespace S\n\n/-\n@@ telelean v1\nid: it-follows-really\ntype: DERIVATION\nnatural_name: "It follows -\\/ really"\nasserted: 2026-11-02\n-/\n\nend S\n',
+        'import Model.S.Vocabulary\n\n-- New cards typed on the telelean board are added here.\nnamespace S\n\n/-\n@@ telelean v1\nid: it-follows-really\ntype: PROPOSITION\nnatural_name: "It follows -\\/ really"\nasserted: 2026-11-02\n-/\n\nend S\n',
       );
-      expect(plan.layout?.layout.columns.DERIVATION).toEqual(['it-follows-really']);
-      expect(refusal(() => planAction(model, { kind: 'add-node', subject: 'S', type: 'GOAL', naturalName: '   ' }, CTX)).code).toBe('invalid');
-      expect(refusal(() => planAction(model, { kind: 'add-node', subject: 'Nope', type: 'GOAL', naturalName: 'x' }, CTX)).code).toBe('not-found');
+      expect(plan.layout?.layout.columns.PROPOSITION).toEqual(['it-follows-really']);
+      expect(refusal(() => planAction(model, { kind: 'add-node', subject: 'S', type: 'PROPOSITION', naturalName: '   ' }, CTX)).code).toBe('invalid');
+      expect(refusal(() => planAction(model, { kind: 'add-node', subject: 'Nope', type: 'PROPOSITION', naturalName: 'x' }, CTX)).code).toBe('not-found');
     });
   });
 
@@ -204,6 +205,14 @@ export function planScenarios(parse: Parser): void {
       expect(after(plan, 'Model/Spyro/Main.lean')).toBe(SPYRO_TEXTS.main.replace('premises: cynder-dark-past, new-spyro-pg, pg-no-dark-past', 'premises: cynder-dark-past, new-spyro-pg'));
     });
 
+    it('set-premises on a card marked "follows from nothing" replaces the mark (spec v4 AR-5; both at once would be TL023)', () => {
+      const marked = SPYRO_TEXTS.main.replace('premises: cynder-dark-past, new-spyro-pg, pg-no-dark-past', 'follows_from: nothing');
+      const model = buildProjectModel({ ...spyroInput(parse), files: spyroFiles(parse, marked) });
+      expect(model.nodes.get('cynder-not-good')?.node.fromNothing).toBe(true);
+      const plan = planAction(model, { kind: 'set-premises', target: 'cynder-not-good', premises: ['cynder-dark-past'] }, CTX);
+      expect(after(plan, 'Model/Spyro/Main.lean')).toBe(SPYRO_TEXTS.main.replace('premises: cynder-dark-past, new-spyro-pg, pg-no-dark-past', 'premises: cynder-dark-past'));
+    });
+
     it('create-subject writes the scaffold and imports the subject root after the last import of Model.lean', () => {
       const plan = planAction(spyro(), { kind: 'create-subject', name: 'Zelda' }, CTX);
       expect(plan).toMatchObject({ action: 'create-subject', label: 'New subject: Zelda', subject: 'Zelda', nodes: [], layout: { subject: 'Zelda', layout: emptyLayout() } });
@@ -252,61 +261,45 @@ export function planScenarios(parse: Parser): void {
   });
 
   describe('AT2.8 change-kind', () => {
-    it('G->A adds the axiom and the rationale; the card moves to the Assumptions column', () => {
-      const plan = planAction(spyro(), { kind: 'change-kind', id: 'cynder-not-good', to: 'ASSUMPTION', beforeId: null, rationale: 'it follows from lore' }, CTX);
-      expect(plan.label).toBe('Make Assumption: Cynder would not be a good addition to the new Spyro game');
+    it('P->A (a `type: GOAL` alias) adds the axiom and the rationale, writes `type: AXIOM` and drops its arrows (AR-7); the card moves to the Axioms column', () => {
+      const plan = planAction(spyro(), { kind: 'change-kind', id: 'cynder-not-good', to: 'AXIOM', beforeId: null, rationale: 'it follows from lore' }, CTX);
+      expect(plan.label).toBe('Move to axioms: Cynder would not be a good addition to the new Spyro game');
       expect(after(plan, 'Model/Spyro/Main.lean')).toBe(
         SPYRO_TEXTS.main
           .replace(
-            'type: GOAL\nnatural_name: Cynder would not be a good addition to the new Spyro game\n',
-            'type: ASSUMPTION\nnatural_name: Cynder would not be a good addition to the new Spyro game\nrationale: it follows from lore\n',
+            'type: GOAL\nnatural_name: Cynder would not be a good addition to the new Spyro game\npremises: cynder-dark-past, new-spyro-pg, pg-no-dark-past\n',
+            'type: AXIOM\nnatural_name: Cynder would not be a good addition to the new Spyro game\nrationale: it follows from lore\n',
           )
           .replace('abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro\n', 'abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro\naxiom cynder_not_good.holds : cynder_not_good\n'),
       );
-      expect(plan.layout?.layout.columns).toEqual({ ASSUMPTION: ['pg-no-dark-past', 'cynder-dark-past', 'new-spyro-pg', 'cynder-not-good'], DERIVATION: [], GOAL: [] });
+      expect(plan.layout?.layout.columns).toEqual({ AXIOM: ['pg-no-dark-past', 'cynder-dark-past', 'new-spyro-pg', 'cynder-not-good'], PROPOSITION: [] });
+      // It leaves the canvas: its position goes (AR-6 places it anew if it becomes a proposition again); others stay.
+      const positions = { 'cynder-not-good': { x: 10, y: 20 }, 'some-other-card': { x: 30, y: 40 } };
+      const placed = planAction(spyro(), { kind: 'change-kind', id: 'cynder-not-good', to: 'AXIOM', beforeId: null, rationale: 'it follows from lore' }, { ...CTX, layouts: { Spyro: { ...emptyLayout(), positions } } });
+      expect(placed.layout?.layout.positions).toEqual({ 'some-other-card': { x: 30, y: 40 } });
+      const alone = planAction(spyro(), { kind: 'change-kind', id: 'cynder-not-good', to: 'AXIOM', beforeId: null, rationale: 'r' }, { ...CTX, layouts: { Spyro: { ...emptyLayout(), positions: { 'cynder-not-good': { x: 1, y: 2 } } } } });
+      expect(alone.layout?.layout).not.toHaveProperty('positions');
     });
 
-    it('G->A on a proved goal turns the theorem into the axiom and archives the proof', () => {
-      const plan = planAction(proved(), { kind: 'change-kind', id: 'cynder-not-good', to: 'ASSUMPTION', beforeId: 'pg-no-dark-past' }, CTX);
+    it('P->A on a proved proposition turns the theorem into the axiom, archives the proof and drops the arrows', () => {
+      const plan = planAction(proved(), { kind: 'change-kind', id: 'cynder-not-good', to: 'AXIOM', beforeId: 'pg-no-dark-past' }, CTX);
       expect(after(plan, 'Model/Spyro/Main.lean')).toBe(
         SPYRO_TEXTS.provedMain
-          .replace('type: GOAL', 'type: ASSUMPTION')
+          .replace('type: GOAL', 'type: AXIOM')
+          .replace('premises: cynder-dark-past, new-spyro-pg, pg-no-dark-past\n', '')
           .replace('theorem cynder_not_good.holds : cynder_not_good :=\n  pg_no_dark_past.holds newSpyro cynder new_spyro_pg.holds cynder_dark_past.holds', 'axiom cynder_not_good.holds : cynder_not_good'),
       );
-      expect(plan.archive).toMatchObject([{ declName: 'Spyro.cynder_not_good.holds', reason: 'Goal -> Assumption', nodeId: 'cynder-not-good' }]);
-      expect(plan.layout?.layout.columns.ASSUMPTION).toEqual(['cynder-not-good', 'pg-no-dark-past', 'cynder-dark-past', 'new-spyro-pg']);
+      expect(plan.archive).toMatchObject([{ declName: 'Spyro.cynder_not_good.holds', reason: 'Proposition -> Axiom', nodeId: 'cynder-not-good' }]);
+      expect(plan.layout?.layout.columns.AXIOM).toEqual(['cynder-not-good', 'pg-no-dark-past', 'cynder-dark-past', 'new-spyro-pg']);
     });
 
-    it('A->G with rewrite: the dependent takes the hypothesis as its first binder and the result is conditional after re-parse', () => {
-      const plan = planAction(proved(), { kind: 'change-kind', id: 'cynder-dark-past', to: 'GOAL', beforeId: null, dependents: 'rewrite', confirmedDependents: ['cynder-not-good'] }, CTX);
-      expect(plan.label).toBe('Make Goal: Cynder is a character who has a dark past (dependents rewritten)');
-      const text = after(plan, 'Model/Spyro/Main.lean') ?? '';
-      expect(text).toBe(
-        SPYRO_TEXTS.provedMain
-          .replace('id: cynder-dark-past\ntype: ASSUMPTION', 'id: cynder-dark-past\ntype: GOAL')
-          .replace('axiom cynder_dark_past.holds : cynder_dark_past\n', '')
-          .replace(
-            'theorem cynder_not_good.holds : cynder_not_good :=\n  pg_no_dark_past.holds newSpyro cynder new_spyro_pg.holds cynder_dark_past.holds',
-            'theorem cynder_not_good.holds (h_cynder_dark_past : cynder_dark_past) : cynder_not_good :=\n  pg_no_dark_past.holds newSpyro cynder new_spyro_pg.holds h_cynder_dark_past',
-          ),
-      );
-      // Re-parse the result and let (stand-in) Lean check it: the goal is now conditional on cynder-dark-past.
-      const files = [parse('Model.lean', SPYRO_TEXTS.root), parse('Model/Spyro/Main.lean', text), parse('Model/Spyro/Vocabulary.lean', SPYRO_TEXTS.vocabulary)];
-      const model = buildProjectModel({ files, fileHashes: freshHashes(files), facts: fakeFacts(files), library: 'Model' });
-      expect(model.nodes.get('cynder-not-good')?.node.status.proof).toMatchObject({ kind: 'conditional', on: ['cynder-dark-past'] });
-      expect(model.nodes.get('cynder-dark-past')?.node.type).toBe('GOAL');
-    });
-
-    it('A->G with mark-broken removes the axiom and keeps the dependent as is', () => {
-      const plan = planAction(proved(), { kind: 'change-kind', id: 'cynder-dark-past', to: 'GOAL', beforeId: null, dependents: 'mark-broken', confirmedDependents: ['cynder-not-good'] }, CTX);
-      expect(plan.label).toBe('Make Goal: Cynder is a character who has a dark past (dependents marked broken)');
-      expect(after(plan, 'Model/Spyro/Main.lean')).toBe(SPYRO_TEXTS.provedMain.replace('id: cynder-dark-past\ntype: ASSUMPTION', 'id: cynder-dark-past\ntype: GOAL').replace('axiom cynder_dark_past.holds : cynder_dark_past\n', ''));
-    });
-
-    it('A->D keeps the axiom (pending promotion): only type: changes', () => {
-      const plan = planAction(spyro(), { kind: 'change-kind', id: 'new-spyro-pg', to: 'DERIVATION', beforeId: null }, CTX);
-      expect(plan.changes).toEqual([{ path: 'Model/Spyro/Main.lean', before: SPYRO_TEXTS.main, after: SPYRO_TEXTS.main.replace('id: new-spyro-pg\ntype: ASSUMPTION', 'id: new-spyro-pg\ntype: DERIVATION') }]);
-      expect(plan.label).toBe('Make Derivation: The new Spyro game is PG');
+    it('A->P is refused as a change-kind (AR-6: an arrow or "follows from nothing" makes an axiom a proposition); nothing is planned', () => {
+      const error = refusal(() => planAction(spyro(), { kind: 'change-kind', id: 'new-spyro-pg', to: 'PROPOSITION', beforeId: null }, CTX));
+      expect(error.code).toBe('invalid');
+      expect(error.message).toBe(AXIOM_TO_PROPOSITION_REFUSAL);
+      expect(error.message).toBe("To make an axiom a proposition, draw an arrow into it, or mark it 'follows from nothing'.");
+      // A re-order into the other column is refused with the same words.
+      expect(refusal(() => planAction(spyro(), { kind: 'reorder', id: 'new-spyro-pg', column: 'PROPOSITION', beforeId: null }, CTX)).message).toBe(AXIOM_TO_PROPOSITION_REFUSAL);
     });
   });
 }

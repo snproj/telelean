@@ -7,8 +7,8 @@ const css = readFileSync(new URL('../../src/styles/board.css', import.meta.url),
 const colors = contributedColors();
 const escapeRe = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-/** The colours of the M0 board. */
-const M0_COLOURS = ['telelean.formalizedAura', 'telelean.kindAssumption', 'telelean.kindDerivation', 'telelean.kindGoal'];
+/** The colours of the board's cards (spec v4 BD-9: the two kinds' stripes and green for "proved", with M0's aura). */
+const M0_COLOURS = ['telelean.formalizedAura', 'telelean.kindAxiom', 'telelean.kindProposition', 'telelean.proved'];
 /**
  * The colours M1 adds (docs/m1-plan.md 13.1 #19: the extension contributes them; WP5 owns the manifest). The board
  * reads them with fallbacks, so it also works with a manifest that does not contribute them yet.
@@ -16,7 +16,7 @@ const M0_COLOURS = ['telelean.formalizedAura', 'telelean.kindAssumption', 'telel
 const M1_COLOURS = ['telelean.vocabulary', 'telelean.highlight'];
 
 describe('contributed theme colours (packages/extension/package.json) and board.css', () => {
-  it('the extension contributes the four M0 board colours, and nothing the board does not know', () => {
+  it('the extension contributes the four card colours, and nothing the board does not know', () => {
     const ids = colors.map((c) => c.id);
     expect(ids).toEqual(expect.arrayContaining(M0_COLOURS));
     for (const id of ids) expect([...M0_COLOURS, ...M1_COLOURS]).toContain(id);
@@ -40,6 +40,14 @@ describe('contributed theme colours (packages/extension/package.json) and board.
 
   it('board.css reads the M1 colours (vocabulary, highlight) with theme-token fallbacks', () => {
     for (const id of M1_COLOURS) expect(css).toMatch(new RegExp(`var\\(${escapeRe(vscodeColorVariable(id))}, var\\(--vscode-[\\w-]+, `));
+  });
+
+  it('every colour the "rendered" diagnostic reports (board/diagnostics.ts themeColors) is a variable board.css declares', () => {
+    // A name board.css no longer declares resolves to the inherited text colour, silently (slice 1a fixer: kind-d/g).
+    const source = readFileSync(new URL('../../src/board/diagnostics.ts', import.meta.url), 'utf8');
+    const names = [...source.matchAll(/resolveColor\('var\((--tl-[\w-]+)\)'\)/g)].map((m) => m[1] ?? '');
+    expect(names).toEqual(expect.arrayContaining(['--tl-aura', '--tl-kind-a', '--tl-kind-p', '--tl-proved', '--tl-vocab', '--tl-highlight']));
+    for (const name of names) expect(css, name).toMatch(new RegExp(`${escapeRe(name)}\\s*:`));
   });
 
   it('board.css reads no telelean colour variable that is neither contributed nor an M1 colour', () => {

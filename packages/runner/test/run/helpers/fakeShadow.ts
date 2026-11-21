@@ -158,6 +158,19 @@ export class FakeShadow implements ShadowWorkspace {
     return undefined;
   }
 
+  async lastCommitSince(since: string, kinds: readonly ShadowCommitKind[]): Promise<ShadowCommit | undefined> {
+    const start = this.stored.findIndex((x) => x.id === since);
+    if (start < 0) return undefined;
+    for (let i = this.stored.length - 1; i >= start; i--) {
+      const c = this.stored[i];
+      if (c !== undefined && kinds.includes(c.kind)) {
+        const { files: _files, ...commit } = c;
+        return commit;
+      }
+    }
+    return undefined;
+  }
+
   async filesAt(commitId: string): Promise<Map<string, string>> {
     const c = this.stored.find((x) => x.id === commitId);
     if (c === undefined) throw new ShadowLayoutError('git', `unknown commit ${commitId}`);

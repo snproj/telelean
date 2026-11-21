@@ -1,0 +1,200 @@
+# recheck:r1
+
+Agent `a3057c69181158377` of workflow `wf_3842fba8-348`. Verbatim output (JSON alongside).
+
+- **summary:** Re-review of slice5-plan.md after the fix round. I checked each finding against the plan text, the slice-2 and slice-3 contracts, the built core and webview code, and the slice-4 plan's current draft. Note that slice 4's plan is being revised in parallel: it was modified at 05:50 and 05:51, after this plan's 05:37 save.
+
+Nearly every disposition holds. These are reflected in the plan as described:
+- the required run subject on JudgeInput and BackstopInput;
+- D5-19's revalue defined in slice 5;
+- pending holds;
+- absent holds and `revived`;
+- the ledger premise `rationale` and the premise-unit allowance;
+- the widened `takenIds`, the lenient registry and D5-20;
+- F1 through one EditSession hook;
+- the raw spans and `renderForPerson`;
+- the resolver getter;
+- the UI fixes, from focus, portal and keys through to node-only tests.
+
+The partial and rejected dispositions are reasonable logged decisions. One fix is incomplete, so I re-raise checks-S5-SOUND-09: the window still lists a statement or vocabulary declaration as open when a reference holds it through Lean names, and it still offers TR-13 dependents to Claude when a reference holds them.
+
+New problems, two of them major, both in how holding meets the person's own transforms:
+1. LC-10's fix limits the detach's TransformFreeze to fields frozen for another reason. D5-19 revalues only through live TransformFreezes. So a field that is held but not frozen (an A|P-box card that a frozen card refers to) is rewritten, and every holder still expects B's value: the person's own trash fails at its step. Separately, heldFields' transitive walk on B ignores revalued intermediates.
+2. Slice 4's current draft values TransformFreezes at a typed judgement before Claude's turn. Slice 5 attaches the transform step's reference holds only to the pending form and to the queue-end value. Read literally, a typed sentence's references hold nothing for the rest of the session, which reopens the S12 hole that SOUND-03 and LC-1 closed.
+
+Six minors follow:
+- `revived`'s "uses" exemption contradicts the absent hold, and Claude gets the wrong text;
+- the held mark is compared even when AR-5's premise replaces it, and refExceptions is session-wide at step purposes;
+- the re-mirror is computed on the pre-plan model, and runs inside freeze actions;
+- 5d's runner scope and two signatures are missing;
+- the detach writes "deleted card" for a target created in the session;
+- the picker's keys break with IME, Tab and caret movement.
+
+Slice 4's draft has also changed shape (typedKeys now carries `typed: boolean`, and follow-on TransformFreezes exist under D4-34). Several (S4) names here lag it; §0's mapping rule should catch these, and finding 1's fix uses D4-34.
+- **findings:**
+  - [1]
+    - **id:** S5R2-01
+    - **severity:** major
+    - **where:** §3.7 (detach: 'gives a TransformFreeze only to a field frozen for another reason'); §2.6 (typedKeys bullet); §2.5 heldFields (transitive walk on B); §3.6 'The person's own changes' and D5-19; D5-12; §6.1 5c2/5d tests ('only the frozen referrer's field gets a TransformFreeze'; 'a detached holder that another frozen card refers to … passes')
+    - **problem:** Two gaps, both from the fix round.
+(1) D5-19 revalues a held key only through a live TransformFreeze. LC-10's fix gives a detached field a TransformFreeze only when it is frozen for another reason. A field that is held but not frozen therefore loses its old words to the detach, while every holder still expects B's value. Such a field is common: D3-44 never freezes an A|P-box card, which is where most cards and their references are typed, and a frozen card's reference can hold it. The person's own trash then fails at its step, and the analysis does not block it, since D5-19 says a referrer is never a problem. Slice 4's Submit cascade misses accepted holders of that field too, because it is no typed key.
+(2) heldFields walks transitively on B, and D5-19 sets aside only the revalued key itself, not what was reached through it. A chain B → A → c keeps expecting c's B value after A is detached or retyped. So trashing c still fails unless slice 4 happens to give the trashed card's own fields TransformFreezes; its current typedKeys text lists typed fields and follow-on edits of other cards. And retyping A to refer to d keeps c held for no holder.
+    - **scenario:** 1. Standing-frozen B (edited on the board, D3-44) reads '#[card:a] is false'.
+2. A was added with the A|P box, so it is not frozen: '#[card:c] is too strong'.
+3. In a stage the person opens a transform on c, trashes it, gives Claude nothing to do, and presses Submit review.
+4. The analysis lists A as a reference dependent ('Its reference becomes words: ‹Spyro is PG› is too strong.'). Nothing blocks.
+5. The no-Claude step's typed write detaches a.sentence, which gets no TransformFreeze, so D5-19 sets nothing aside.
+6. B's heldFields entry still expects a.sentence, and c.sentence reached through A, at B's values. S₀ precedes the typed write, so the two-value rule excuses nothing: `held` (changed), 'Your transform “…” could not be carried out'. Every Retry fails the same way.
+7. An accepted item whose frozen.held names a.sentence is not in the cascade either, and fails the step through its frozen.held.
+8. With A frozen, the plan's own 5d test still fails on c.sentence, which B holds through A, unless the trash freezes c's fields.
+    - **fix:** (1) In §3.7 and §2.6: every field a detach writes gets slice 4's follow-on TransformFreeze (`typed: false`, D4-34 in its current draft: no reason of its own, no 'frozen: you typed it' row, no keep tick). D5-19 then sets aside every holder's expectation of it, and the Submit cascade sees the key. Such a TransformFreeze holds its field's own references (pendingHolds or its valued map) only when the field is frozen for another reason, since an unfrozen card's references hold nothing.
+(2) In §2.5 heldFields and §3.6: the transitive walk stops at any key a live TransformFreeze covers. What lies beyond that key is held only through that TransformFreeze's own map, never from B.
+(3) The analysis lists the referrers of a detached field as warnings ('Refers to it, and will read: ‹text›.').
+Tests (5c2, 5d):
+- unfrozen A held by standing-frozen B, then trash c: the no-Claude step passes, and B's hold takes A's detached words;
+- the same with A frozen;
+- an accepted holder of a.sentence joins the cascade;
+- A retyped to refer to d: c is no longer held;
+- an unfrozen detached A's other references hold nothing.
+  - [2]
+    - **id:** S5R2-02
+    - **severity:** major
+    - **where:** §2.5 ('slice 4's TransformFreeze values, whose pending form gains held?'); §2.6 ('TransformFreeze's pending value gains held? … set at the typed write'); §3.6 Holders ('a TransformFreeze's full value on the queue-end state') and 'During a transform step'; D5-19 ('its text while pending, its full value from the queue end'); slice-4 plan's current §2.3 (TransformFreeze.value pending only 'until a judgement with a meaningKey for every declaration it covers values it: the typed judgement (§3.9 step 4), else a later judge-apply'; `typed: boolean`, D4-34) and its `typed-meaning` failure 'before any Claude turn'
+    - **problem:** Since this plan was written, slice 4's draft has started valuing a TransformFreeze at a judgement of the typed commit, before Claude's turn, as soon as every declaration it covers has a meaningKey.
+
+A sentence or Why covers no declaration, so it is valued at once. Slice 3's rule then gives it the held map heldMap(m, []) = {}.
+
+Slice 5 hooks the transform step's reference holds only in two places:
+- the pending form (pendingHolds), which such a TransformFreeze no longer has;
+- 'the queue-end value', which is never computed for it, because it is no longer pending.
+
+As written, a sentence or Why the person types with a reference holds nothing from the typed judgement for the rest of the session. heldFields also skips the standing entry that this TransformFreeze revalues. This reopens the S12 hole that SOUND-03 and LC-1 closed, and makes it last longer. Within the step itself, only transformScopeOf's exclusion of referenced fields, enforced through the step limits, keeps it closed.
+    - **scenario:** 1. In stage 1 the person queues a transform that types A's Why '#[card:t] is too strong', with Instructions, so it is a Claude step.
+2. At Submit review the typed judgement values A.why's TransformFreeze before Claude's turn, with held = {} (slice 3's heldMap of no declarations). The queue end does not value it again.
+3. In stage 2 the person runs Formalize for dependencies with Open the whole model, and Claude rewords T's sentence.
+4. A's TransformFreeze holds nothing, and A's standing entry has been revalued out of heldFields. The step passes, and the Why the person typed now refers to Claude's sentence.
+    - **fix:** In §2.5, §2.6, §3.6 and D5-19, state the rule by valuation rather than by phase. Wherever slice 4 values a TransformFreeze (its typed judgement before Claude's turn, a later judge-apply, the queue end), its held map is:
+- for a sentence or Why target, holdingMap(that judgement's model, subject, { decls: [], fields: [target] });
+- for any other target, holdingMap with that target's declarations.
+
+pendingHolds covers only a TransformFreeze that is still pending, because its judgement could not value it.
+
+Add slice 4's valuation points to §2.6 as single calls, and correct D5-19's 'from the queue end'.
+
+5d tests:
+- a typed Why valued at the typed judgement keeps holding its references through a later whole-model step;
+- one left pending (failed probe) holds through pendingHolds.
+  - [3]
+    - **id:** checks-S5-SOUND-09
+    - **severity:** minor
+    - **where:** §3.6 'During a transform step' (transformScopeOf leaves out 'every field key held at S₀' and the referenced fields); §2.6 (transformScopeOf; the analysis's marks and problems); slice-4 plan §3.4 (dependents left to Claude)
+    - **problem:** Only partly fixed: the subtraction covers held field keys only.
+- When the card has a Lean statement, a reference to it (`#[card:c:statement]`) holds Lean names, namely the statement's declarations (D5-9), not a field key. So do `#[lean:n]` and `#[lean:n:declaration]`. The window therefore still lists that statement or declaration as open, and the turn tells Claude it may change it. Every change is then refused as held.
+- Likewise, a TR-13 statement or definition dependent can be left to Claude even though a frozen card's reference holds the very declaration Claude must change. Slice 4 makes only frozen dependents a problem, and held is not frozen.
+    - **scenario:** (a) Standing-frozen A reads '#[card:c:statement] is too weak'. The person transforms c, sets its Lean statement to open, and writes 'strengthen it' in Instructions. The turn lists c's statement as open. Every rewrite gets `held` on c's statement abbrev, held by A. After three attempts the step fails.
+(b) The person changes vocabulary X. d's statement uses X and breaks, so d is an unfrozen statement dependent, and 'Leave it to Claude' is offered. Frozen A reads '#[card:d:statement] …'. Claude can never change d's statement, so the step always fails.
+    - **fix:** In transformScopeOf, also leave out of `open` any statement or vocabulary-declaration field whose declarations are reference-held names at S₀ (from heldFields and from own, accepted and TransformFreeze maps). The turn lists these under HELD, the window marks them 'held by “‹A›” (it refers to this)', and a fuzzy one is a problem, with §2.8's texts.
+
+A TR-13 dependent left to Claude whose statement or definition is reference-held is a problem: '“‹d›” relies on ‹x›, but frozen “‹A›” refers to its Lean statement: unfreeze “‹A›”, or delete “‹d›” too.'
+
+Add 5d tests for both cases.
+  - [4]
+    - **id:** S5R2-03
+    - **severity:** minor
+    - **where:** §3.5 `revived` ('unless the person's live typed text declares or uses that name'); §3.6 and D5-21 (absent holds); slice-4 TR-12 (c) mustDefine; §2.8 Claude texts; slice 3's one-message rule
+    - **problem:** The two halves of D5-21 disagree.
+- `revived` exempts a name that the person's typed text merely uses.
+- A frozen referrer's absent hold has no such exemption, and no TransformFreeze covers a name that Claude must define.
+
+So a transform whose typed statement uses a deleted name that a frozen card still refers to can never pass, and the window gives no warning.
+
+Also, because the hold reports it first, the one-message rule sends Claude slice 3's held text ('frozen Lean relies on it … Restore it'). That text is wrong for an absent name; `revived`'s 'Choose another name' is the right one.
+    - **scenario:** 1. S.InGame was deleted earlier. Standing-frozen A reads '#[lean:S.InGame] requires a rating', and its chip shows 'deleted card'.
+2. In a stage the person transforms card g and types its Lean statement `InGame spyro dragon`. TR-12 (c) lists 'Claude must define: InGame'.
+3. Claude defines S.InGame. `revived` lets it pass, because the typed text uses the name. But A's absent hold gives `held` on every attempt, and Claude is told to restore a name that frozen Lean supposedly relies on.
+4. The step fails three times.
+    - **fix:** In slice 4's analysis (5c2), make a mustDefine name that a frozen card's dangling `lean:` token names a problem: '‹name› was deleted, and frozen “‹A›” still refers to it: if Claude declared it, “‹A›” would refer to Claude's declaration. Declare it yourself in this transform, unfreeze “‹A›”, or use another name.' A typed declaration of the name is revalued through its own TransformFreeze (D5-19).
+
+State in D5-21 that 'uses' exempts only referrers that are not frozen.
+
+For a held key whose expected value is absent and that a reference holds, send Claude `revived`'s text instead of slice 3's held text.
+
+Add tests.
+  - [5]
+    - **id:** S5R2-04
+    - **severity:** minor
+    - **where:** §3.6 'ES-2's exceptions, inside the check' ('removals and the mark are still compared'); §2.5 refExceptions ('each inference's target; each end of each selected arrow'); D5-9; FZ-4 ('Held never overrides ES-2's exceptions'); AR-5
+    - **problem:** (a) For a target whose question is its 'follows from nothing' mark, AR-5 says that accepting Claude's premise removes the mark as part of the Accept. Because the plan compares the mark of a held Dependencies key, that addition becomes a held problem. FZ-4 says held never does this: 'a target's Dependencies stays open for additions'.
+(b) refExceptions takes every inference of the session, at step purposes too. So in one target's step, Claude may add arrows into another target's held Dependencies, although ES-2's exceptions belong only to the running step's target.
+    - **scenario:** (a) T's question is its mark. Standing-frozen A's Why reads '#[card:T:dependencies] are what it rests on'. T does not follow from nothing, so Claude proposes premise P (RV-1, AR-5). The person accepts it. The write adds P→T and removes the mark. The next judgement shows '“T” › Dependencies is held by frozen “A” …', and Apply waits until A is unfrozen or P is declined.
+(b) With the whole model open, there are two targets, T1 and T2, and T2's Dependencies are referenced by frozen A. In T1's step Claude adds X→T2. It passes as 'an arrow added into an inference's target'.
+    - **fix:** (a) In §3.6 and D5-9: the mark may also go when an arrow is added into an inference's target whose question is its mark (AR-5's premise replacing it). Removals are still compared.
+(b) At step purposes, refExceptions comes from the running step's inference only (scope.target and the ends of its selected arrows). At stage, at final and in the backstop, it comes from every inference. The two-value rule then excuses an earlier step's allowed addition at later steps.
+
+Add 5d tests for both.
+  - [6]
+    - **id:** S5R2-05
+    - **severity:** minor
+    - **where:** §3.4 'Docstrings' (outside sessions every board plan … rewrites each D-9 mirror … that differs from mirrorText); §1.1 5c1 ('through the same edit/session.ts hook'); §5 Board stack; FZ-9 ('They change no file')
+    - **problem:** The re-mirror runs in EditSession's changes() hook, whose model is the one the plan started from, and the plan does not say that names come from the plan's result.
+
+On the starting model, rewording the referenced card, which is the main way a mirror goes stale, renders each referrer's mirror with the old name. That equals the stale docstring, so nothing changes until some later write.
+
+Also, set-freezes now runs the same hook whenever it writes an id. A freeze action can therefore rewrite docstrings across the subject, although FZ-9 says freeze changes change no file.
+    - **scenario:** 1. A's docstring is '‹Spyro is PG› is too strong'.
+2. The person rewords spyro-pg on the board to 'Spyro is rated E10+'.
+3. The hook resolves #[card:spyro-pg] on the model from before the edit and gets 'Spyro is PG'. It finds A's docstring equal to mirrorText and leaves it. A's expanded Lean code, the hovers and the files Claude reads keep the old name.
+4. Later, freezing an id-less card on the board rewrites A's docstring inside the freeze's step.
+    - **fix:** In §3.4: the re-mirror resolves names on the plan's result, meaning each card's sentence as the session's edits leave it (re-parse the changed files, or overlay the plan's new natural_name values on the resolver).
+
+set-freezes writes ids only and never re-mirrors.
+
+5c1 tests:
+- an edit-node of the referenced card re-mirrors A in the same plan;
+- a freeze action changes no docstring.
+  - [7]
+    - **id:** S5R2-06
+    - **severity:** minor
+    - **where:** §1.1 5d ('Core, then two runner files': run/session.ts, run/prompts.ts); §2.5 ('Additive to slice 3' list); §3.7 and §2.4 detachRefs ('in B when its current sentence is Claude's'); slice-4 plan §1.1 4h (run/step.ts holds the typed write and the step start) and §2.9 planTypedWrite
+    - **problem:** Three contract gaps that builders will hit:
+(1) The pending holds are set at slice 4's typed write, and transformScopeOf gets its held keys at the step start. Both happen in run/step.ts, which 5d's runner part does not name. 5d runs with nothing beside it, so editing an unnamed file is a scope breach.
+(2) heldFields now takes `subject`, but its only caller, frozenFindings, has no subject input, and §2.5's list of additions to slice 3 does not add one.
+(3) detachRefs must take its words from B when the target's current sentence is Claude's. But planTypedWrite, where 5c2 puts the detach, receives the head's model and the ledger, not B.
+    - **scenario:** The 5d builder edits run/session.ts and run/prompts.ts, as listed. TransformFreeze.held is never set at the typed write, and transformScopeOf never receives the held keys, so cheat 11 passes only if someone edits run/step.ts off-plan.
+
+The 5c2 builder cannot tell Claude's sentence from B's inside planTypedWrite.
+    - **fix:** 1. Add run/step.ts to 5d's runner files: pendingHolds (or the valued holds, per S5R2-02) at the typed write, and the held keys for transformScopeOf at the step start.
+2. Add `subject` to frozenFindings' input in §2.5's list of additions (5a, together with moving the hook).
+3. Add `base: ProjectModel` to planTypedWrite's session input, beside its ledger, for detachRefs' resolver choice (5c2).
+  - [8]
+    - **id:** S5R2-07
+    - **severity:** minor
+    - **where:** §3.7 ('The words come from the target's label in the judged state, or in B when its current sentence is Claude's'); D5-12; §2.4 detachRefs
+    - **problem:** A card made in the session, such as Claude's written premise or an add_card card, has no version in B, and its sentence is Claude's. The rule therefore takes its label from B, where the card does not exist. The detach then writes 'deleted card' into the person's text as their own words.
+    - **scenario:** 1. Stage 1: Claude's premise P is accepted and written as card p, 'Spyro is rated E'.
+2. Stage 2: in a transform, the person types A's Why 'because #[card:p]'. refProblems allows it, since p is on the Proposed view.
+3. Stage 3: the person trashes p in another transform.
+4. p's sentence differs from B's (there is none) and from every typed unit, so detachRefs takes B's label. A's Why becomes 'because ‹deleted card›', and this is recorded as the person's typed text.
+    - **fix:** In §3.7 and D5-12: when B lacks the trashed target, do not detach the referrer. Instead, show a problem in the window: '“‹A›” refers to “‹c›”, which Claude made in this session: take the reference out of “‹A›” in this transform, or delete “‹A›” too.'
+
+Add a 5c2 test.
+  - [9]
+    - **id:** S5R2-08
+    - **severity:** minor
+    - **where:** §4.1 Keys and Preview; §6.1 5f1 (pickerReduce cases, Playwright list)
+    - **problem:** The capture-phase key handler has three defects:
+- It takes Enter during IME composition. In Chromium, the keydown that commits an IME candidate can carry key 'Enter' with isComposing set. A query typed with an IME is then replaced by the highlighted row, or the picker closes, instead of the text being committed. Under RF-4 the query is the main way to find a card.
+- It handles Tab 'with preventDefault' and then says Tab 'moves the focus as usual', which preventDefault prevents.
+- It always takes ← and →, so the caret cannot move inside '#query' to fix a typo.
+
+Separately, the preview blocks only Enter. A blur still commits InlineEdit while a problem is shown, and the host's refusal throws the text away: UI-16's case, triggered by a click instead of Enter.
+    - **scenario:** 1. The person types '#' and composes 'ドラゴン' with a Japanese IME.
+2. They press Enter to commit the composition. The picker inserts the '#[card:…]' token of whichever row matched the half-composed text.
+3. Or they press Tab to leave the field, and focus does not move.
+    - **fix:** In §4.1:
+- The window handler ignores keydown while event.isComposing is set (or keyCode is 229).
+- It takes ← and → only in the field list; → opens the field list only when the caret is at the end of the query.
+- Tab closes the picker without preventDefault.
+- A blur while the preview shows a problem does not commit: the editor stays open with the problem shown.
+
+Add pickerReduce unit cases and a Playwright IME case.

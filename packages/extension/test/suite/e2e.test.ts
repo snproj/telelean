@@ -6,16 +6,17 @@
  * files are checked on disk, statuses in the graphs the host posts.
  *
  *   open the board -> the graph from the files, with Lean statuses -> "Initialize git" in the History dropdown ->
- *   add an Assumption with stance and why in the A|D|G box -> edit a sentence (docstring mirror) -> Make Assumption
- *   on the goal (D-11 impact text, the "why" dialog, axiom added; Lean says assumed) -> Undo x3 restores the files
+ *   add an axiom with stance and why in the A|P box -> edit a sentence (docstring mirror) -> "Move to axioms" on the
+ *   goal (spec v4 AR-7: the D-11 impact text, the "why" dialog, axiom added, its arrows removed; Lean says assumed) ->
+ *   Undo x3 restores the files
  *   byte-exactly, Redo x3 -> History lists the snapshots; revert to "Initial state" (byte-exact) and undo the revert
  *   -> "New subject…": a second subject in the picker -> the "uses:" line and its dropdown -> Copy writes the
  *   clipboard -> hovering an identifier shows its gloss, clicking it highlights the Vocabulary item -> a mouse drag
  *   inside the expanded Lean code selects text and never moves the card -> deleting a card with its Lean code while
- *   other declarations use it (a derivation card and a lemma without a card, saved in the editor): the host asks, the
+ *   other declarations use it (a proposition card and a lemma without a card, saved in the editor): the host asks, the
  *   delete dialog lists them, "Delete anyway" deletes exactly what core plans, Undo restores the files byte-exactly.
  *
- * VS Code's own notification toasts sit over the board's bottom-right corner (the A|D|G box's Add button) and take
+ * VS Code's own notification toasts sit over the board's bottom-right corner (the A|P box's Add button) and take
  * its clicks, so they are cleared first: the startup one about `--disable-extensions` once it has appeared, and any
  * other before each test.
  */
@@ -139,10 +140,11 @@ suite('end to end on a copy of mental_model (real workspace, Lean, git, the boar
     assert.deepEqual(
       latest.nodes.map((n) => [n.id, n.type, n.status.formal, n.status.proof.kind]),
       [
-        ['pg-no-dark-past', 'ASSUMPTION', 'informal', 'none'],
-        ['cynder-dark-past', 'ASSUMPTION', 'formalized', 'assumed'],
-        ['new-spyro-pg', 'ASSUMPTION', 'formalized', 'assumed'],
-        ['cynder-not-good', 'GOAL', 'formalized', 'none'],
+        ['pg-no-dark-past', 'AXIOM', 'informal', 'none'],
+        ['cynder-dark-past', 'AXIOM', 'formalized', 'assumed'],
+        ['new-spyro-pg', 'AXIOM', 'formalized', 'assumed'],
+        // The files say GOAL (spec v4 reads ASSUMPTION, DERIVATION and GOAL as aliases of the two kinds).
+        ['cynder-not-good', 'PROPOSITION', 'formalized', 'none'],
       ],
     );
     assert.equal(node('pg-no-dark-past')?.stance, 'rule');
@@ -183,17 +185,18 @@ suite('end to end on a copy of mental_model (real workspace, Lean, git, the boar
     assert.ok(refs.some((ref) => ref.endsWith('/subjects/Spyro')), `refs: ${refs.join(', ')}`);
   });
 
-  test('the A|D|G box adds an Assumption with stance and why: the block is written to the Inbox', async function () {
+  test('the A|P box adds an axiom with stance and why: the block is written to the Inbox', async function () {
     this.timeout(60_000);
     const f = await frame();
-    await f.getByRole('radio', { name: 'Assumption' }).click();
-    await f.getByLabel('New assumption').fill('Cynder can breathe fire');
+    await f.getByRole('radio', { name: 'Axiom' }).click();
+    await f.getByLabel('New axiom').fill('Cynder can breathe fire');
     await f.getByRole('group', { name: 'Stance' }).getByRole('button', { name: 'I believe it' }).click();
     await f.getByLabel('Why (optional)').fill('seen in the games');
-    await f.getByRole('button', { name: 'Add assumption' }).click();
+    await f.getByRole('button', { name: 'Add axiom' }).click();
     await waitFor(() => read('inbox').includes('natural_name: Cynder can breathe fire'), UI_TIMEOUT_MS, 'the block in Inbox.lean');
     const block = blockOf(read('inbox'), 'cynder-can-breathe-fire');
-    assert.match(block, /\ntype: ASSUMPTION\nnatural_name: Cynder can breathe fire\n/);
+    // Spec v4: telelean writes AXIOM or PROPOSITION whenever it writes a type: line.
+    assert.match(block, /\ntype: AXIOM\nnatural_name: Cynder can breathe fire\n/);
     assert.match(block, /\nrationale: seen in the games\n/);
     assert.match(block, /\nstance: believe\n/);
     assert.match(block, /\nasserted: \d{4}-\d{2}-\d{2}\n/);
@@ -219,33 +222,40 @@ suite('end to end on a copy of mental_model (real workspace, Lean, git, the boar
   });
 
   let beforeKindChange: Snapshot;
-  test('Make Assumption on the goal: the D-11 impact, the "why" dialog, the axiom; Lean then says assumed', async function () {
+  test('"Move to axioms" on the goal: the D-11 impact, the "why" dialog, the axiom, its arrows removed; Lean then says assumed', async function () {
     this.timeout(LEAN_TIMEOUT_MS + 60_000);
     beforeKindChange = snapshot();
     await expand('cynder-not-good');
-    const make = (await card('cynder-not-good')).locator('.tl-details__actions').getByRole('button', { name: 'Make Assumption' });
+    const make = (await card('cynder-not-good')).getByTestId('make-axiom');
+    assert.equal(await make.textContent(), 'Move to axioms');
     assert.equal(
       await make.getAttribute('title'),
-      // (a tooltip shows no markup: core's backtick spans arrive as plain text)
-      'Make Assumption: adds axiom cynder_not_good.holds. Adds axiom cynder_not_good.holds : cynder_not_good after the statement, so proofs may use it.',
+      // (a tooltip shows no markup: core's backtick spans arrive as plain text; spec v4 AR-7: the arrows it loses)
+      'Move to axioms: adds axiom cynder_not_good.holds. Adds axiom cynder_not_good.holds : cynder_not_good after the statement, so proofs may use it. Its 3 incoming arrows are removed.',
     );
-    await make.click();
+    // The same action from the goal's right-click menu (a right click without movement, CM-7): the canvas clips an
+    // expanded card, so its details' button may be out of reach.
+    await (await card('cynder-not-good')).locator('.tl-card__text').click({ button: 'right' });
+    const menu = (await frame()).getByTestId('board-menu');
+    await menu.waitFor({ timeout: UI_TIMEOUT_MS });
+    await menu.locator('[data-action="move-to-axioms"]').click();
     const dialog = (await frame()).getByTestId('dialog-rationale');
     await dialog.waitFor({ timeout: UI_TIMEOUT_MS });
     assert.match((await dialog.locator('.tl-dialog__detail').textContent()) ?? '', /Adds axiom cynder_not_good\.holds : cynder_not_good after the statement/);
     await dialog.getByLabel('Why do you hold it?').fill('too dark for a PG game');
-    await dialog.getByRole('button', { name: 'Make Assumption' }).click();
+    await dialog.getByTestId('rationale-confirm').click();
     await waitFor(() => /\naxiom cynder_not_good\.holds : cynder_not_good\n/.test(read('main')), UI_TIMEOUT_MS, 'the axiom in Main.lean');
     const block = blockOf(read('main'), 'cynder-not-good');
-    assert.match(block, /\ntype: ASSUMPTION\n/);
+    assert.match(block, /\ntype: AXIOM\n/);
     assert.match(block, /\nrationale: too dark for a PG game\n/);
+    assert.doesNotMatch(block, /\npremises:/, 'AR-7: its incoming arrows are removed');
     await waitFor(
-      () => fresh() && node('cynder-not-good')?.type === 'ASSUMPTION' && node('cynder-not-good')?.status.proof.kind === 'assumed',
+      () => fresh() && node('cynder-not-good')?.type === 'AXIOM' && node('cynder-not-good')?.status.proof.kind === 'assumed',
       LEAN_TIMEOUT_MS,
       `cynder-not-good assumed after the refresh (now ${node('cynder-not-good')?.type} ${node('cynder-not-good')?.status.proof.kind}, ${latest?.semantic.state})`,
       250,
     );
-    await waitFor(async () => (await (await card('cynder-not-good')).getAttribute('data-kind')) === 'ASSUMPTION', UI_TIMEOUT_MS, 'the card in the Assumptions column');
+    await waitFor(async () => (await (await card('cynder-not-good')).getAttribute('data-kind')) === 'AXIOM', UI_TIMEOUT_MS, 'the card in the AXIOMS column');
   });
 
   let afterRedo: Snapshot;
@@ -253,7 +263,7 @@ suite('end to end on a copy of mental_model (real workspace, Lean, git, the boar
     this.timeout(90_000);
     const afterKindChange = snapshot();
     await (await undoButton()).click();
-    await waitFiles(beforeKindChange, 'Undo of Make Assumption: the files as before it, byte for byte');
+    await waitFiles(beforeKindChange, 'Undo of Move to axioms: the files as before it, byte for byte');
     await (await undoButton()).click();
     await waitFiles({ main: pristine.main }, 'Undo of the edit: Main.lean as in the copy');
     await (await undoButton()).click();
@@ -262,7 +272,7 @@ suite('end to end on a copy of mental_model (real workspace, Lean, git, the boar
       await (await redoButton()).click();
       await sleep(300);
     }
-    await waitFiles(afterKindChange, 'Redo x3: the files as after Make Assumption');
+    await waitFiles(afterKindChange, 'Redo x3: the files as after Move to axioms');
     afterRedo = snapshot();
   });
 
@@ -273,7 +283,7 @@ suite('end to end on a copy of mental_model (real workspace, Lean, git, the boar
     const entries = f.getByTestId('history-entry');
     await waitFor(async () => (await entries.count()) >= 8, UI_TIMEOUT_MS, 'the history entries');
     const lines = await entries.locator('.tl-history__line').allTextContents();
-    for (const label of ['Initial state', 'Add assumption: Cynder can breathe fire', 'Edit sentence: Cynder has a dark past', 'Make Assumption: Cynder would not be a good addition', 'Undo: ', 'Redo: ']) {
+    for (const label of ['Initial state', 'Add axiom: Cynder can breathe fire', 'Edit sentence: Cynder has a dark past', 'Move to axioms: Cynder would not be a good addition', 'Undo: ', 'Redo: ']) {
       assert.ok(lines.some((line) => line.includes(label)), `no "${label}" entry in:\n${lines.join('\n')}`);
     }
     assert.match((await f.getByTestId('history-storage').textContent()) ?? '', /^This subject: .+ · All subjects: .+/);
@@ -356,7 +366,7 @@ suite('end to end on a copy of mental_model (real workspace, Lean, git, the boar
     await ref.click();
     const item = (await frame()).locator('.tl-vocab__item[data-vocab="Spyro.HasDarkPast"]');
     await waitFor(async () => (await item.getAttribute('data-highlight')) === 'true', UI_TIMEOUT_MS, 'the highlighted vocabulary item');
-    assert.equal(node('cynder-dark-past')?.type, 'ASSUMPTION'); // the click selected nothing and moved nothing
+    assert.equal(node('cynder-dark-past')?.type, 'AXIOM'); // the click selected nothing and moved nothing
     await wb.page.mouse.move(0, 0);
   });
 
@@ -369,7 +379,7 @@ suite('end to end on a copy of mental_model (real workspace, Lean, git, the boar
     await code.scrollIntoViewIfNeeded();
     const box = await code.boundingBox();
     assert.ok(box && box.width > 20 && box.height > 10, JSON.stringify(box));
-    const column = f.locator('.tl-col[data-kind="ASSUMPTION"] [data-node-id]');
+    const column = f.locator('.tl-col[data-kind="AXIOM"] [data-node-id]');
     const orderBefore = await column.evaluateAll((els) => els.map((e) => e.getAttribute('data-node-id')));
     await f.evaluate('window.getSelection()?.removeAllRanges()'); // (a string: this file has no DOM typings)
     const sent: WebviewToHostMessage[] = [];
@@ -393,20 +403,20 @@ suite('end to end on a copy of mental_model (real workspace, Lean, git, the boar
     const moves = sent.filter((m) => m.type === 'reorder' || m.type === 'kindChange');
     assert.deepEqual(moves, [], 'the drag posted a move');
     assert.deepEqual(await column.evaluateAll((els) => els.map((e) => e.getAttribute('data-node-id'))), orderBefore);
-    assert.equal(node('cynder-dark-past')?.type, 'ASSUMPTION');
+    assert.equal(node('cynder-dark-past')?.type, 'AXIOM');
     assert.equal(await f.locator('.tl-board').getAttribute('data-dragging'), null);
   });
 
   test('deleting a card with its Lean code while others use it: the dialog lists them, "Delete anyway" deletes what core plans, Undo restores it (D-18)', async function () {
     this.timeout(3 * LEAN_TIMEOUT_MS + 60_000);
     assert.ok(wb);
-    // In the editor: a derivation card whose proof uses cynder_dark_past.holds, and a lemma without a card using it.
+    // In the editor: a proposition card whose proof uses cynder_dark_past.holds, and a lemma without a card using it.
     const extra = [
       '',
       '/-',
       '@@ telelean v1',
       'id: dark-lemma',
-      'type: DERIVATION',
+      'type: PROPOSITION',
       "natural_name: Cynder's dark past is on record",
       'lean: Spyro.dark_lemma',
       '-/',
@@ -441,7 +451,7 @@ suite('end to end on a copy of mental_model (real workspace, Lean, git, the boar
     await dialog.getByRole('button', { name: 'Delete card and its Lean code' }).click();
     const breaks = dialog.getByTestId('delete-breaks');
     await breaks.waitFor({ timeout: UI_TIMEOUT_MS });
-    assert.deepEqual(await breaks.locator('li').allTextContents(), ["DCynder's dark past is on record", 'Spyro.helper_lemma']);
+    assert.deepEqual(await breaks.locator('li').allTextContents(), ["PCynder's dark past is on record", 'Spyro.helper_lemma']);
     assert.deepEqual(await breaks.locator('code').allTextContents(), ['Spyro.helper_lemma']);
     assert.equal(await dialog.getByTestId('delete-breaks-explanation').textContent(), 'These 2 declarations use its Lean code. They stop compiling if the code is deleted:');
     assert.equal(await (await frame()).getByTestId('toast').filter({ hasText: 'stop compiling' }).count(), 0, 'the question is not an error toast');
@@ -450,13 +460,14 @@ suite('end to end on a copy of mental_model (real workspace, Lean, git, the boar
     await dialog.getByRole('button', { name: 'Delete anyway' }).click();
     await waitFor(() => !read('main').includes('id: cynder-dark-past'), UI_TIMEOUT_MS, 'the delete in Main.lean', 100);
     // Exactly what core plans: the block, its docstring, abbrev and axiom go in one piece with the blank line after
-    // them; the goal's premises lose the id; the layout loses the card; the users stay (now broken); nothing else.
+    // them; the goal's premises (if it still has them) lose the id; the layout loses the card; the users stay (now
+    // broken); nothing else. (Spec v4 AR-7: "Move to axioms" above removed the goal's premises: line with its arrows,
+    // so after the earlier tests there is none; when they did not run, the line is there and loses the id.)
     const blockStart = beforeDelete.main.indexOf('/-\n@@ telelean v1\nid: cynder-dark-past\n');
     const axiomLine = 'axiom cynder_dark_past.holds : cynder_dark_past\n';
     const blockEnd = beforeDelete.main.indexOf(axiomLine, blockStart) + axiomLine.length;
     assert.ok(blockStart > 0 && blockEnd > blockStart && beforeDelete.main[blockEnd] === '\n', 'the block of cynder-dark-past, as written');
     const premises = 'premises: cynder-dark-past, new-spyro-pg, pg-no-dark-past\n';
-    assert.ok(beforeDelete.main.includes(premises));
     const expectedMain = (beforeDelete.main.slice(0, blockStart) + beforeDelete.main.slice(blockEnd + 1)).replace(premises, 'premises: new-spyro-pg, pg-no-dark-past\n');
     // The layout loses the card wherever it lists it. (It does after the earlier tests' moves; built from the layout
     // as it was, the expectation also holds when they did not run, and then the layout must stay as it is.)

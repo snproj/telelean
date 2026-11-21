@@ -96,6 +96,32 @@ export function mergeFile(path: string, base: string | null, shown: string | nul
   return restored === undefined ? { ok: false } : { ok: true, text: restored };
 }
 
+/**
+ * Slice 2e (docs/slice2-plan.md 3.6 un-reject, 4.6 Undo): a shadow commit's inverse merged onto the head. For every file
+ * the commit changed (its parent's text -> its own), the change back (its own text -> its parent's) is merged onto the
+ * head's text with `mergeFile` (a head that still holds the commit's text gets the parent's at once; otherwise the inverse
+ * patch, 3 context lines, no fuzz). Files the commit did not change keep the head's text. The merged file set, or the
+ * first file (in path order) whose merge conflicts: content a later write changed next to it, so "This version can't be
+ * restored any more" (fail closed: nothing is merged).
+ */
+export function inverseMerge(
+  commit: ReadonlyMap<string, string>,
+  parent: ReadonlyMap<string, string>,
+  head: ReadonlyMap<string, string>,
+): { ok: true; files: Map<string, string> } | { ok: false; file: string } {
+  const files = new Map(head);
+  for (const rel of [...new Set([...commit.keys(), ...parent.keys()])].sort()) {
+    const mine = commit.get(rel) ?? null;
+    const before = parent.get(rel) ?? null;
+    if (mine === before) continue;
+    const merged = mergeFile(rel, mine, before, files.get(rel) ?? null);
+    if (!merged.ok) return { ok: false, file: rel };
+    if (merged.text === null) files.delete(rel);
+    else files.set(rel, merged.text);
+  }
+  return { ok: true, files };
+}
+
 /** The board's edits of one file, taken out of the user's text (`rest`) and put back into a merged text. */
 export interface BoardEdits {
   /** The user's text without those edits (the 3-line patch is applied to it). */

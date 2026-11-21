@@ -1,11 +1,12 @@
 /**
- * M1 board content: the Vocabulary group (AT6.2), card faces with every status chip (AT6.3), the "uses:" line
- * (AT6.17, the user's request 2), "Depends on / Used by" and the legend (AT6.21).
+ * M1 board content, on the spec v4 board: the Vocabulary and Definitions band above the board (AT6.2, BD-1), card
+ * faces with every status chip (AT6.3, BD-6), the "uses:" line (AT6.17, the user's request 2), "Depends on / Used by"
+ * and the legend (AT6.21, BD-9).
  */
 import { expect, test } from '@playwright/test';
 import { spyroGraph, spyroProvedGraph } from '@telelean/core';
 import { statusGallery } from '../shared/graphs';
-import { card, inColumnView, list, openBoard, postedOfType, settle, shotPath, type OpenedBoard } from './helpers';
+import { card, inView, list, openBoard, panToShow, postedOfType, settle, shotPath, type OpenedBoard } from './helpers';
 
 let board: OpenedBoard | undefined;
 
@@ -15,19 +16,22 @@ test.afterEach(async () => {
   board = undefined;
 });
 
-test('AT6.2 the Vocabulary group lists the 9 Spyro items by kind, with presupposition chips, and stays collapsed across a reload', async ({ page }) => {
+test('AT6.2 the band above the board lists the 9 Spyro vocabulary items by kind, with presupposition chips, and stays collapsed across a reload', async ({ page }) => {
   board = await openBoard(page, spyroGraph(), 'dark');
-  const group = page.getByTestId('vocabulary');
-  // It sits at the top of the Assumptions column, collapsed until opened, with its count.
-  await expect(list(page, 'ASSUMPTION').locator('> *').first()).toHaveAttribute('data-testid', 'vocabulary');
-  await expect(group).toHaveAttribute('data-collapsed', 'true');
-  await expect(group.locator('.tl-vocab__toggle')).toContainText('Vocabulary9');
-  await expect(group.locator('[data-vocab]')).toHaveCount(0);
+  const band = page.getByTestId('vocabulary');
+  // Spec v4 BD-1: it sits above the board (the AXIOMS column and the canvas), collapsed to one line with its counts.
+  await expect(page.locator('.tl-board-area > *').first()).toHaveAttribute('data-testid', 'vocabulary');
+  await expect(band).toHaveAttribute('data-collapsed', 'true');
+  await expect(band.locator('.tl-vocab__toggle')).toContainText('Vocabulary9');
+  await expect(band.locator('.tl-vocab__toggle')).toContainText('Definitions0');
+  await expect(band.locator('[data-vocab]')).toHaveCount(0);
 
-  await group.locator('.tl-vocab__toggle').click();
-  await expect(group).not.toHaveAttribute('data-collapsed', /.*/);
-  await expect(group.locator('[data-vocab]')).toHaveCount(9);
-  const sections = await group.locator('.tl-vocab__section').evaluateAll((els) =>
+  await band.locator('.tl-vocab__toggle').click();
+  await expect(band).not.toHaveAttribute('data-collapsed', /.*/);
+  const vocabulary = page.getByTestId('vocabulary-column');
+  await expect(vocabulary.locator('[data-vocab]')).toHaveCount(9);
+  await expect(page.getByTestId('definitions-column')).toContainText('None yet.');
+  const sections = await vocabulary.locator('.tl-vocab__section').evaluateAll((els) =>
     els.map((el) => [el.querySelector('.tl-vocab__heading')?.textContent, [...el.querySelectorAll('[data-vocab]')].map((i) => i.getAttribute('data-vocab'))]),
   );
   expect(sections).toEqual([
@@ -37,13 +41,13 @@ test('AT6.2 the Vocabulary group lists the 9 Spyro items by kind, with presuppos
     ['Presuppositions', ['Spyro.Character.exists', 'Spyro.Game.exists']],
   ]);
   // Box-shaped items: short name, type (mono), gloss (the user's wording: plain, no marker).
-  const item = group.locator('.tl-vocab__item[data-vocab="Spyro.GoodAddition"]');
+  const item = band.locator('.tl-vocab__item[data-vocab="Spyro.GoodAddition"]');
   await expect(item.locator('.tl-vocab__name')).toHaveText('GoodAddition');
   await expect(item.locator('.tl-vocab__type')).toHaveText('Spyro.Character → Spyro.Game → Prop');
   await expect(item.locator('.tl-vocab__gloss')).toHaveText('would be a good addition to');
   expect(await item.locator('.tl-vocab__type').evaluate((el) => getComputedStyle(el).fontFamily)).toContain('Mono');
   expect(await item.locator('.tl-vocab__gloss').evaluate((el) => getComputedStyle(el).fontStyle)).toBe('normal');
-  await expect(group.locator('.tl-presup')).toHaveText(['assumes characters exist', 'assumes games exist']);
+  await expect(band.locator('.tl-presup')).toHaveText(['assumes characters exist', 'assumes games exist']);
   // An item shows its code and who uses it.
   await item.locator('.tl-card__chevron').click();
   await expect(item.locator('pre')).toContainText('axiom GoodAddition : Character → Game → Prop');
@@ -51,41 +55,46 @@ test('AT6.2 the Vocabulary group lists the 9 Spyro items by kind, with presuppos
   await page.screenshot({ path: shotPath('m1-vocabulary-open.png') });
 
   // Collapsing is remembered in the webview state (setState), not in a model file: it survives a reload.
-  await group.locator('.tl-vocab__toggle').click();
-  await expect(group).toHaveAttribute('data-collapsed', 'true');
+  await band.locator('.tl-vocab__toggle').click();
+  await expect(band).toHaveAttribute('data-collapsed', 'true');
   await page.reload();
   await expect(page.locator('[data-node-id]')).toHaveCount(4);
   await expect(page.getByTestId('vocabulary')).toHaveAttribute('data-collapsed', 'true');
   await page.getByTestId('vocabulary').locator('.tl-vocab__toggle').click();
   await page.reload();
   await expect(page.locator('[data-node-id]')).toHaveCount(4);
-  await expect(page.getByTestId('vocabulary').locator('[data-vocab]')).toHaveCount(9);
+  await expect(page.getByTestId('vocabulary-column').locator('[data-vocab]')).toHaveCount(9);
   // No message about it went to the host: it is not a model edit.
   expect((await postedOfType(page, 'editNode')).length + (await postedOfType(page, 'reorder')).length).toBe(0);
 });
 
-test('AT6.3 cards show the aura, a chip per proof status and flag, the attention badge and the D-13 hint', async ({ page }) => {
+test('AT6.3 cards show their glow, a chip per proof status and flag, the attention badge and the "declared before v4" chip', async ({ page }) => {
   const graph = statusGallery();
   board = await openBoard(page, graph, 'dark');
   const chip = (id: string, key: string) => card(page, id).locator(`[data-chip="${key}"]`);
 
-  // The aura marks formalised cards.
-  for (const id of ['cynder-dark-past', 'cynder-not-good', 'd-pending', 'g-sorry']) {
+  // The blue aura marks formalised cards; the established proposition glows green instead (BD-6).
+  for (const id of ['cynder-dark-past', 'd-pending', 'g-sorry']) {
     expect(await card(page, id).evaluate((el) => getComputedStyle(el).boxShadow)).toContain('rgb(55, 148, 255)');
   }
+  await expect(card(page, 'cynder-not-good')).toHaveAttribute('data-glow', 'established');
+  expect(await card(page, 'cynder-not-good').evaluate((el) => getComputedStyle(el).boxShadow)).toContain('rgb(115, 201, 145)'); // the proved green's fallback
   await expect(chip('cynder-dark-past', 'lean')).toHaveText('λ Lean');
   await expect(chip('cynder-dark-past', 'proof')).toHaveText('assumed');
-  await expect(chip('cynder-not-good', 'proved-goal')).toHaveText('✓ proved: make Derivation?');
-  await expect(chip('d-pending', 'pending-promotion')).toHaveText('promotion pending');
-  await expect(chip('d-conditional', 'conditional')).toHaveText('conditional on Cynder is not PG material');
+  await expect(chip('cynder-not-good', 'established')).toHaveText('✓ established');
+  await expect(chip('d-pending', 'pending')).toHaveText('pending proof');
+  await expect(chip('d-conditional', 'conditional')).toHaveText('proved, given: Cynder is not PG material');
   await expect(chip('g-sorry', 'uses-sorry')).toHaveText('uses sorry');
   await expect(chip('a-missing', 'missing-holds')).toHaveText('missing .holds');
   await expect(chip('g-unchecked', 'not-checked')).toHaveText('not checked by Lean');
   await expect(card(page, 'g-unchecked')).not.toContainText('✓');
   await expect(chip('a-stale', 'stale')).toHaveText('changed since last check'); // "checking…" only while Lean checks
   await expect(chip('a-stale', 'proof')).toHaveAttribute('data-dim', 'true');
-  await expect(chip('a-premised', 'hint-d13')).toHaveText('you think this follows from those: prove it?');
-  await expect(card(page, 'cynder-dark-past').locator('[data-chip="hint-d13"]')).toHaveCount(0);
+  // An axiom whose premises: line was written before v4 (A19): its arrows are not drawn, the chip says what to do.
+  await expect(chip('a-premised', 'declared-before-v4')).toHaveText('declared before v4: make it a proposition, or drop these arrows');
+  await expect(page.locator('path[data-edge-id="cynder-dark-past->a-premised"]')).toHaveCount(0);
+  await expect(page.locator('path[data-edge-id][data-target="a-premised"]')).toHaveCount(0);
+  await expect(card(page, 'cynder-dark-past').locator('[data-chip="declared-before-v4"]')).toHaveCount(0);
 
   // One "needs attention" badge counting the node's errors and warnings (infos do not count).
   await expect(card(page, 'g-sorry').getByTestId('attention')).toHaveText('2');
@@ -97,10 +106,12 @@ test('AT6.3 cards show the aura, a chip per proof status and flag, the attention
   expect(await postedOfType(page, 'select')).toEqual([]);
   await page.screenshot({ path: shotPath('m1-status-gallery.png') });
 
-  // "proved: make Derivation?" starts the same kind change as the drop zone (G->D: no dialog).
-  await chip('cynder-not-good', 'proved-goal').click();
-  await expect(list(page, 'DERIVATION').locator('[data-node-id="cynder-not-good"]')).toHaveCount(1);
-  expect((await postedOfType(page, 'kindChange')).at(-1)?.payload).toMatchObject({ id: 'cynder-not-good', from: 'GOAL', to: 'DERIVATION' });
+  // The "declared before v4" card's details offer its two ways out; "Drop these arrows" removes them (one edit).
+  const premised = card(page, 'a-premised');
+  await premised.locator('.tl-card__chevron').click();
+  await expect(premised.getByTestId('legacy-make-proposition')).toHaveText('Make it a proposition (pending)');
+  await premised.getByTestId('legacy-drop-arrows').click();
+  expect((await postedOfType(page, 'removeArrows')).map((m) => m.payload)).toEqual([{ arrows: [{ source: 'cynder-dark-past', target: 'a-premised' }], requestId: 'r1' }]);
 });
 
 test('AT6.17 the "uses:" line truncates after two names and its dropdown lists all, highlighting the item (request 2)', async ({ page }) => {
@@ -124,12 +135,12 @@ test('AT6.17 the "uses:" line truncates after two names and its dropdown lists a
     ['cynder', 'constant', 'Cynder'],
     ['newSpyro', 'constant', 'the new Spyro game'],
   ]);
-  // Clicking an entry closes the menu, opens the Vocabulary group, scrolls the item into view and flashes it.
+  // Clicking an entry closes the menu, opens the Vocabulary band, scrolls the item into view and flashes it.
   await menu.locator('[data-vocab="Spyro.newSpyro"]').click();
   await expect(menu).toHaveCount(0);
   const item = page.locator('.tl-vocab__item[data-vocab="Spyro.newSpyro"]');
   await expect(item).toHaveAttribute('data-highlight', 'true');
-  expect(await inColumnView(page, '.tl-vocab__item[data-vocab="Spyro.newSpyro"]')).toBe(true);
+  expect(await inView(page, '.tl-vocab__item[data-vocab="Spyro.newSpyro"]')).toBe(true);
   await expect(item).not.toHaveAttribute('data-highlight', /.*/, { timeout: 4000 }); // ~2 s flash
   expect(await postedOfType(page, 'select')).toEqual([]); // the card was not selected by any of this
 
@@ -152,36 +163,54 @@ test('AT6.21 Depends on / Used by in the expanded cards (proved Spyro), each ent
   ]);
   await expect(goal.getByTestId('depends-on').locator('.tl-rel__why').first()).toHaveText('declared, used by the proof');
   await expect(goal.getByTestId('used-by')).toContainText('Nothing uses it yet.');
-  // The footprint: the three assumptions and the two presuppositions (not repeated as the statement's own).
+  // The footprint: the three axioms and the two presuppositions (not repeated as the statement's own).
   await expect(goal.getByTestId('footprint').locator('.tl-presup')).toHaveText(['assumes characters exist', 'assumes games exist']);
   await expect(goal.getByTestId('presuppositions')).toHaveCount(0);
   await expect(card(page, 'cynder-dark-past').getByTestId('presuppositions')).toHaveCount(0); // not expanded yet
 
   const dark = card(page, 'cynder-dark-past');
   await dark.locator('.tl-card__chevron').click();
-  await expect(dark.getByTestId('presuppositions').locator('.tl-presup')).toHaveText(['assumes characters exist']); // an assumption: no footprint
+  await expect(dark.getByTestId('presuppositions').locator('.tl-presup')).toHaveText(['assumes characters exist']); // an axiom: no footprint
   await expect(dark.getByTestId('used-by').locator('.tl-rel__text')).toHaveText(['Cynder would not be a good addition to the new Spyro game']);
   await expect(dark.getByTestId('depends-on')).toContainText('Nothing');
 
-  // Each entry reveals and flashes its card (scrolling only that card's column).
-  await list(page, 'ASSUMPTION').evaluate((el) => {
+  // Each entry reveals and flashes its card: scrolling the AXIOMS column to an axiom, panning the canvas to a proposition.
+  await list(page, 'AXIOM').evaluate((el) => {
     el.scrollTop = el.scrollHeight;
   });
   await settle(page);
-  await goal.getByTestId('depends-on').locator('.tl-rel[data-rel-id="pg-no-dark-past"]').click();
+  const entry = goal.getByTestId('depends-on').locator('.tl-rel[data-rel-id="pg-no-dark-past"]');
+  await panToShow(page, entry);
+  await entry.click();
   await expect(card(page, 'pg-no-dark-past')).toHaveAttribute('data-highlight', 'true');
-  expect(await inColumnView(page, '[data-node-id="pg-no-dark-past"]')).toBe(true);
+  await expect.poll(() => inView(page, '[data-node-id="pg-no-dark-past"]')).toBe(true);
+  await dark.getByTestId('used-by').locator('.tl-rel').scrollIntoViewIfNeeded();
   await dark.getByTestId('used-by').locator('.tl-rel').click();
   await expect(card(page, 'cynder-not-good')).toHaveAttribute('data-highlight', 'true');
   expect(await postedOfType(page, 'select')).toEqual([]);
 
-  // The legend: declared, verified, conditional and mismatch arrows, and the aura.
+  // The legend (BD-9): declared, verified, conditional and mismatch arrows, the two glows, the band, pending proof.
   const legend = page.locator('.tl-legend');
-  await expect(legend.locator('[data-legend]')).toHaveText(['declared', 'verified by Lean', 'conditional', 'mismatch', 'formalised']);
+  expect(await legend.locator('[data-legend]').evaluateAll((els) => els.map((el) => el.getAttribute('data-legend')))).toEqual([
+    'declared',
+    'verified',
+    'conditional',
+    'mismatch',
+    'formalised',
+    'established',
+    'band',
+    'pending',
+  ]);
+  for (const label of ['declared', 'verified by Lean', 'conditional', 'mismatch', 'formalised', 'established', 'these suffice together', 'pending proof']) {
+    await expect(legend).toContainText(label);
+  }
   expect(await legend.locator('.tl-legend__line--declared').evaluate((el) => getComputedStyle(el).strokeDasharray)).not.toBe('none');
-  expect(await legend.locator('.tl-legend__line--verified').evaluate((el) => getComputedStyle(el).strokeDasharray)).toBe('none');
+  expect(await legend.locator('.tl-legend__line--verified').first().evaluate((el) => getComputedStyle(el).strokeDasharray)).toBe('none');
   expect(await legend.locator('.tl-legend__head--hollow').evaluate((el) => getComputedStyle(el).fill)).toBe('rgb(31, 31, 31)');
   expect(await legend.locator('.tl-legend__line--mismatch').evaluate((el) => getComputedStyle(el).stroke)).toBe('rgb(204, 167, 0)');
-  await expect(legend.locator('.tl-legend__aura')).toHaveCount(1);
+  await expect(legend.locator('.tl-legend__head--mismatch')).toHaveCount(1); // the notched head: never colour alone
+  await expect(legend.locator('.tl-legend__aura')).toHaveText('λ');
+  await expect(legend.locator('.tl-legend__glow')).toHaveText('✓');
+  await expect(legend.locator('.tl-legend__pending')).toHaveText('⧗');
   await page.screenshot({ path: shotPath('m1-depends-used-by.png') });
 });

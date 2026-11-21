@@ -1,0 +1,76 @@
+[
+  {
+    "label": "build:2b3a",
+    "agentId": "a3155c1599dc38713",
+    "file": "agents/build_2b3a.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Edit",
+      "Write"
+    ]
+  },
+  {
+    "label": "verify:2b3a:spec",
+    "agentId": "a3c761a32995e835c",
+    "file": "agents/verify_2b3a_spec.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "verify:2b3a:adv",
+    "agentId": "ae25847510608ef79",
+    "file": "agents/verify_2b3a_adv.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "verify:2b3a:code",
+    "agentId": "ad49e5cab45cde3ab",
+    "file": "agents/verify_2b3a_code.json",
+    "toolsUsed": [
+      "Bash",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "fix:2b3a:r1",
+    "agentId": "ac581a32f82dcdd31",
+    "file": "agents/fix_2b3a_r1.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Edit",
+      "Write",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "reverify:2b3a:r1",
+    "agentId": "a14a0c956a7d6793d",
+    "file": "agents/reverify_2b3a_r1.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "ToolSearch",
+      "Monitor",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "integrate:2b3a",
+    "agentId": "a79617b2ef67d1298",
+    "file": "agents/integrate_2b3a.json",
+    "toolsUsed": [
+      "Read",
+      "Bash",
+      "StructuredOutput"
+    ]
+  }
+]

@@ -25,38 +25,59 @@ export function resolveColor(expression: string): string {
   return color;
 }
 
+/** A card's glow as it computed: its box-shadow, or in high contrast (no shadow) its outline colour; '' without a card. */
+function glowOf(card: HTMLElement | null): string {
+  if (!card) return '';
+  const style = getComputedStyle(card);
+  return style.boxShadow !== 'none' ? style.boxShadow : `outline ${style.outlineColor}`;
+}
+
 /**
- * The board's theme colours as they resolved, including the ones the extension contributes (M0's four, plus M1's
- * `telelean.vocabulary` and `telelean.highlight`, which the VS Code smoke test checks end to end).
+ * The board's theme colours as they resolved, including the ones the extension contributes (the formalised aura, the
+ * kind stripes `telelean.kindAxiom` and `telelean.kindProposition` and spec v4's `telelean.proved` green, plus M1's
+ * `telelean.vocabulary` and `telelean.highlight`), which the VS Code smoke test checks end to end. `cardAura` is the
+ * blue glow of the first formalised card that shows it at full strength (slice 1d: an established card glows green
+ * instead, `cardEstablished`, and out-of-date facts dim the blue one).
  */
-export function themeColors(): { aura: string; kindA: string; kindD: string; kindG: string; vocabulary: string; highlight: string; cardAura: string } {
-  const card = document.querySelector<HTMLElement>('.tl-card[data-formal="formalized"]');
-  let cardAura = '';
-  if (card) {
-    const style = getComputedStyle(card);
-    // High contrast draws the aura as an outline instead of a glow.
-    cardAura = style.boxShadow !== 'none' ? style.boxShadow : `outline ${style.outlineColor}`;
-  }
+export function themeColors(): {
+  aura: string;
+  kindA: string;
+  kindP: string;
+  proved: string;
+  vocabulary: string;
+  highlight: string;
+  cardAura: string;
+  cardEstablished: string;
+} {
   return {
     aura: resolveColor('var(--tl-aura)'),
     kindA: resolveColor('var(--tl-kind-a)'),
-    kindD: resolveColor('var(--tl-kind-d)'),
-    kindG: resolveColor('var(--tl-kind-g)'),
+    kindP: resolveColor('var(--tl-kind-p)'),
+    proved: resolveColor('var(--tl-proved)'),
     vocabulary: resolveColor('var(--tl-vocab)'),
     highlight: resolveColor('var(--tl-highlight)'),
-    cardAura,
+    cardAura: glowOf(document.querySelector<HTMLElement>('.tl-card[data-glow="formalized"]:not([data-glow-dim])')),
+    cardEstablished: glowOf(document.querySelector<HTMLElement>('.tl-card[data-glow="established"]')),
   };
 }
 
 /**
- * Whether webview.css was applied: a refused or missing stylesheet leaves the columns unstyled (no own scrolling,
- * unequal heights) while the cards and arrows still render, which a card count alone would not notice.
+ * Whether webview.css was applied: a refused or missing stylesheet leaves the board unstyled (the AXIOMS column does
+ * not scroll on its own, the canvas does not clip, its layer is not positioned) while the cards and arrows still
+ * render, which a card count alone would not notice. Spec v4 slice 1c: the AXIOMS column and the PROPOSITIONS canvas.
  */
 export function stylesApplied(): boolean {
-  const lists = [...document.querySelectorAll<HTMLElement>('.tl-col__list')];
-  return (
-    lists.length === 3 &&
-    lists.every((list) => getComputedStyle(list).overflowY === 'auto') &&
-    new Set(lists.map((list) => list.clientHeight)).size === 1
-  );
+  const list = document.querySelector<HTMLElement>('.tl-col__list[data-kind="AXIOM"]');
+  const canvas = document.querySelector<HTMLElement>('.tl-canvas');
+  const layer = canvas?.querySelector<HTMLElement>('.tl-canvas__layer');
+  if (!list || !canvas || !layer) return false;
+  const clip = getComputedStyle(canvas).overflowX;
+  return getComputedStyle(list).overflowY === 'auto' && (clip === 'clip' || clip === 'hidden') && getComputedStyle(layer).position === 'absolute' && canvas.clientHeight > 0;
+}
+
+/** The heights of the board's two scrolling parts (the AXIOMS list, the canvas), for the "rendered" diagnostic. */
+export function partHeights(): string {
+  const list = document.querySelector<HTMLElement>('.tl-col__list[data-kind="AXIOM"]');
+  const canvas = document.querySelector<HTMLElement>('.tl-canvas');
+  return [list?.clientHeight ?? 0, canvas?.clientHeight ?? 0].join(',');
 }

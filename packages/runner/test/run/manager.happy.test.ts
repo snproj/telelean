@@ -3,6 +3,9 @@
  * FakeBackend: start -> working -> ask_user -> waiting-for-answer (clock paused) -> answer (decision recorded, guess
  * revealed) -> freeze -> finish -> gate pass -> review with a proposal; change events in order; run.json at every
  * step; usage summed from usage events; the cost estimate is the latest result's value (0.01, then 0.03 -> 0.03).
+ * Slice 2d: the start is an edit session with one step; the step ends at the gate pass, the queue's judge runs, and the
+ * stage opens with the step's items (no proposal; the step's outcome and attempt record on its own record, D2-11).
+ * Feedback's second round is Submit review's queue now (manager.rounds.test.ts: moves to 2e).
  */
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -10,7 +13,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { PersistedRun } from '../../src/run/types.js';
-import { ALL_PREMISES, makeHarness, readJson, round1, START, state, step, waitForRun, type Harness } from './helpers/harness.js';
+import { ALL_PREMISES, makeHarness, rawRun, rawStep, readJson, round1, START, state, step, waitForRun, waitForStage, type Harness } from './helpers/harness.js';
 
 const A3_OLD = 'stance: rule\nasserted: 2026-11-01\n-/\n\n';
 const A3_NEW =
@@ -30,7 +33,7 @@ function runs<T>(xs: readonly T[]): T[] {
 }
 
 describe('RunManager happy path (AT3.1)', () => {
-  it('runs a round from start to review, records the answer and reveals the guess only afterwards', async () => {
+  it('runs a session\'s one step from start to its stage, records the answer and reveals the guess only afterwards', async () => {
     let clock = Date.parse('2026-11-01T10:00:00.000Z');
     const advance = (ms: number) => {
       clock += ms;
@@ -52,10 +55,6 @@ describe('RunManager happy path (AT3.1)', () => {
           step.finish('proved', 'Proved from the three premises under the normative reading.'),
           step.result(0.01),
         ),
-        {
-          match: 'Feedback from the person',
-          steps: [step.usage('m3', 50, 5), step.freeze(), step.finish('proved', 'Re-proved after the feedback.'), step.result(0.03)],
-        },
       ],
     });
     const { manager, sidecars, engine, proposals } = h;
@@ -110,63 +109,59 @@ describe('RunManager happy path (AT3.1)', () => {
     expect(afterAnswer?.pendingQuestions).toBeUndefined();
     expect(afterAnswer?.answered[0]).toMatchObject({ setId: 'q1', claudesGuess: { option: 0, note: 'rating rules are norms' }, answer: { question: 0, scope: 'subject' } });
 
-    const review = await waitForRun(manager, state('review'));
-    expect(review.verdict).toBe('proved');
+    const review = await waitForStage(manager, 1);
+    // A session's RunView carries no verdict and no freeze (D2-68): the step's outcome is on its record.
+    expect(review.verdict).toBeUndefined();
     expect(review.round).toBe(1);
     expect(review.stage).toBe('prove');
-    expect(review.frozen?.round).toBe(1);
-    expect(review.frozen?.permitted.selected).toEqual(['Spyro.cynder_dark_past.holds', 'Spyro.new_spyro_pg.holds', 'Spyro.pg_no_dark_past.holds']);
+    expect(review.frozen).toBeUndefined();
+    expect(review.step).toEqual({ index: 1, of: 1, target: 'cynder-not-good', kind: 'formalize', statementsFixed: true });
+    expect(review.session).toEqual({ stage: 1, phase: 'stage' });
+    const s1 = rawStep(h, 's1');
+    expect(s1).toMatchObject({ state: 'passed', queue: 1, stage: 1, round: 1, counters: { checks: 3, gateAttempts: 1, turns: 2 } });
+    expect(s1.freezes.map((f) => f.round)).toEqual([1]);
+    expect(s1.freezes[0]?.snapshot.permitted.selected).toEqual(['Spyro.cynder_dark_past.holds', 'Spyro.new_spyro_pg.holds', 'Spyro.pg_no_dark_past.holds']);
     expect(review.counters).toMatchObject({ checks: 3, gateAttempts: 1, turns: 2 });
-    expect(review.proposalId).toBe('p1');
-    expect(manager.proposal()).toMatchObject({ proposalId: 'p1', runId: review.runId, report: { verdict: 'proved' } });
-    // Claude's words in the activity feed, telelean's checks too.
-    expect(review.activity.some((a) => a.kind === 'claude-text' && a.text === 'Reading the subject first.')).toBe(true);
-    expect(review.activity.filter((a) => a.kind === 'check').length).toBe(2);
+    expect(review.proposalId).toBeUndefined();
+    expect(manager.proposal()).toBeNull();
+    // Claude's words and telelean's checks are in run.json; the RunView withholds them while the results are hidden.
+    expect(review.activity).toEqual([]);
+    const raw = rawRun(h);
+    expect(raw.view.activity.some((a) => a.kind === 'claude-text' && a.text === 'Reading the subject first.')).toBe(true);
+    expect(raw.view.activity.filter((a) => a.kind === 'check').length).toBe(2);
 
-    // The engine saw the run's context: base check first, a freeze in round 1, then normalise + gate(proved).
-    expect(engine.methods()).toEqual(['checkBase', 'check', 'freeze', 'check', 'normalise', 'gate']);
+    // The engine saw the step's context: base check first, a freeze in round 1, normalise + gate(proved), then the
+    // queue's judge and the renderings of the new statement items (§3.12, cached by content key).
+    expect(engine.methods()).toEqual(['checkBase', 'check', 'freeze', 'check', 'normalise', 'gate', 'judge', 'renderStatements']);
+    expect(engine.calls.at(-1)?.names).toEqual(['Spyro.pg_no_dark_past']);
     expect(engine.calls.find((c) => c.method === 'gate')).toMatchObject({ status: 'proved', frozen: true, freezeRound: 1, stage: 'prove', runId: review.runId, leanJobMs: 120_000 });
     expect(engine.calls.filter((c) => c.method === 'check')[1]?.files).toEqual(['Model/Spyro/Main.lean']);
-    // The proposal was built from the gate-pass files (the formalisation and the proof).
-    const built = proposals.builds[0];
-    expect(built?.input.verdict).toBe('proved');
-    expect(built?.files.get('Model/Spyro/Main.lean')).toContain('theorem cynder_not_good.holds');
-    expect(built?.input.selection).toEqual({ subject: 'Spyro', target: 'cynder-not-good', premises: ALL_PREMISES, adoptedGhosts: [] });
-    expect(h.shadow().kinds()).toEqual(['base', 'freeze', 'checkpoint', 'gate-pass']);
+    // No proposal: the stage's items come from the queue's judge (the formalised premise, and the Result, hidden).
+    expect(proposals.builds).toEqual([]);
+    expect(h.shadow().kinds()).toEqual(['base', 'step-start', 'freeze', 'checkpoint', 'gate-pass']);
+    expect(manager.session()?.items.map((i) => [i.kind, i.status])).toEqual([
+      ['formalize', 'in-review'],
+      ['result', null],
+    ]);
 
     // Usage: two API responses, summed; the cost estimate is the result's figure.
     expect(review.usage).toMatchObject({ requests: 2, inputTokens: 220, outputTokens: 30, cacheReadInputTokens: 2000, cacheCreationInputTokens: 100, costEstimateUsd: 0.01 });
-    // attempts.jsonl got the round.
-    expect(sidecars.attempts).toHaveLength(1);
-    expect(sidecars.attempts[0]).toMatchObject({ id: `${review.runId}.1`, round: 1, verdict: 'proved', premises: ALL_PREMISES, gateAttempts: 1, model: 'claude-opus-5-5', summary: 'Proved from the three premises under the normative reading.' });
-    expect(h.workspace.reloaded).toContain('Spyro');
+    // D2-11: attempts.jsonl gets nothing while the session is open; the step keeps its record for the end.
+    expect(sidecars.attempts).toEqual([]);
+    expect(s1.attempt).toMatchObject({ id: `${review.runId}.1`, round: 1, verdict: 'proved', premises: ALL_PREMISES, gateAttempts: 1, model: 'claude-opus-5-5', summary: 'Proved from the three premises under the normative reading.' });
 
     // State changes, in order (and run.json said the same at each step).
     const states = runs(h.views.map((v) => v.state));
     expect(states).toEqual(['starting', 'working', 'waiting-for-answer', 'working', 'gate', 'working', 'review']);
     expect(runs(fileStates)).toEqual(states);
-
-    // Feedback: round 2 resets the counters; the cost estimate becomes the latest result's 0.03 (never a sum).
-    const fb = await manager.feedback(review.runId, 'Please re-check with the same premises.');
-    expect(fb).toMatchObject({ ok: true });
-    const r2 = await waitForRun(manager, (v) => v.state === 'review' && v.round === 2);
-    expect(r2.usage.costEstimateUsd).toBe(0.03);
-    expect(r2.usage.requests).toBe(3);
-    expect(r2.counters).toMatchObject({ turns: 1, checks: 1, gateAttempts: 1 });
-    expect(r2.proposalId).toBe('p2');
-    expect(sidecars.resolutions).toEqual([expect.objectContaining({ round: 1, resolution: 'superseded' })]);
-    expect(sidecars.attempts.map((a) => a.round)).toEqual([1, 2]);
-    // The feedback reached Claude as a user turn, with the budget.
-    expect(h.player?.played.map((p) => p.scripted)).toEqual([0, 1]);
-    expect(h.player?.played[1]?.turn).toContain('Feedback from the person on your previous result:\n"Please re-check with the same premises."');
-    expect(h.player?.played[1]?.turn).toContain('Budget for this round: 25 Lean checks, 80 turns, 20 minutes.');
-    // Only one session: Feedback continues it.
+    // Only one session, one turn.
+    expect(h.player?.played.map((p) => p.scripted)).toEqual([0]);
     expect(h.backend?.sessions).toHaveLength(1);
 
     // The transcript holds every user turn verbatim.
     const transcript = readFileSync(path.join(h.shadow().paths.sessionDir, 'transcript.jsonl'), 'utf8');
     expect(transcript).toContain('"kind":"turn"');
-    expect(transcript).toContain('Run: \\"These suffice\\" for the subject Spyro');
+    expect(transcript).toContain('Run: \\"Formalize for dependencies\\" for the subject Spyro');
     expect(transcript).toContain('"kind":"tool-call","tool":"finish"');
   });
 
@@ -182,6 +177,6 @@ describe('RunManager happy path (AT3.1)', () => {
     expect(cfg?.model).toBe('claude-opus-5-5');
     expect(cfg?.effort).toBe('high');
     expect(cfg?.sessionId).toMatch(/^[0-9a-f-]{36}$/);
-    expect(h.player?.played[0]?.turn.startsWith('Run: "These suffice" for the subject Spyro (namespace Spyro;')).toBe(true);
+    expect(h.player?.played[0]?.turn.startsWith('Run: "Formalize for dependencies" for the subject Spyro (namespace Spyro;')).toBe(true);
   });
 });

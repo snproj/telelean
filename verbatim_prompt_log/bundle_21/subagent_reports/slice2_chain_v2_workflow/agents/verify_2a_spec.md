@@ -1,0 +1,106 @@
+# verify:2a:spec
+
+Agent `ae1e96904b4c107ad` of workflow `wf_ae5f1188-533`. Verbatim output (JSON alongside).
+
+- **summary:** I did a read-only fidelity review of 2a1 and 2a2 against the slice-2 plan (§1.1, §2/§2.9, §3.5–3.6, §4.1–4.7, §6.1, §7, §8), the spec (RV-1–RV-13, §14) and AP-24/AP-26. I ran no builds or tests.
+
+How I isolated the work: I took a snapshot with snapdiff.sh; it is byte-identical to after_slice_2a2_built.patch. I compared it file by file with after_slice_1g.patch and rebuilt the slice-1g versions of the five files that changed again.
+
+What matches the plan:
+- The contract files (types.ts, view.ts, actions.ts, run.ts, facts.ts, index.ts) match §2.2, §2.3, §2.7 and §2.9. The stubs have the §2.9 signatures. The extra fields (`created.draft`, `ReviewState.results`/`labels`, `changes[].rev`) are all recorded in §8.
+- Ownership (`computeItems`) and content keys follow §4.2/§4.3 and the 2a1 fixer's amendments, and fail closed.
+- `classify` covers b1–b4 and c1–c4 with both class maps.
+- `itemDeps` implements rules 1–5.
+- `resultsState` implements the one-reveal-per-stage rule with AF4.
+- `reconcile` implements §3.5: AF1, F5, D2-17, RV-3, RV-7, defensive RV-5, the force and the reverts.
+- The reducer implements the §4.6 table, D2-28/48/59/60/64, RV-8 groups and the stack with Undo/Redo checked against the rules.
+- Every §6.1 test for 2a1 and 2a2 exists, and the ones I read test what they claim, except the AF2 Undo case (finding V2A-S3).
+
+Safety review: I found no blocker. Nothing can be accepted as a belief or proof-changing item without its own Accept, and a missing class counts as both. Accepts keep RV-5. Hidden Results never appear in cascades or events. The user's declines survive a re-judge.
+
+Findings (1 major, 5 minor, 2 nits):
+- **Major:** reconcile applies RV-11 only to accepted Results. A Result in review whose verdict or "rests on" changes is not marked "updated", keeps its rev, and does not end Show results' force. The plan's contract gives reconcile no earlier verdict to compare, so the fix needs a small added field.
+- **Minor:**
+  - Conflict answers can name a hidden Result and depend on its hidden state, through stale requests or an Undo after a judge.
+  - Undo of a Reject that took a written premise out leaves the record's `card` and `fingerprint` unrestored, which can bounce the premise back to review at the next judge.
+  - Undo of Show results does not restore the Accepts that D2-23 took away in that same action.
+  - `ReviewState.results` is optional, so an Accept without it records no verdict, silently.
+  - Helpers that 2e and the host are told to use are not exported, and 2e's obligations are not written in §8.
+- **Nits:** a missing AP-26 text, and a few text and precedence oddities.
+- **findings:**
+  - [1]
+    - **id:** V2A-S1
+    - **severity:** major
+    - **where:** packages/core/src/review/reconcile.ts:242-248 (and the force check at 355-361); plan §3.5 l.1365 and l.1375, §4.7 l.1706; spec RV-11; §8 l.2832
+    - **problem:** RV-11 is applied only to accepted Results, by comparing the verdict and Rests on recorded in `accepted.result`. The plan says otherwise. §3.5: "a Result whose verdict, 'rests on' or dependencies changed (RV-11): the same as a changed content key", i.e. rev + 1, back in review, marked "updated". It also says such a Result ends Show results' force ("with its result hidden again", §3.5 step 3 and §4.7). In the code, a Result in review whose verdict or Rests on changes without a content change gets no "updated" marker. Its rev stays the same, so a decision sent with the rev the user saw is not a `conflict`, although that rev check exists to stop exactly this. The force is not ended either, so under Show results the changed outcome is shown with no new reveal. A dependency change is ignored for every Result. The cause is a contract gap: SessionRecords and reconcile's inputs hold no earlier verdict for Results that are not accepted. The builder's §8 decision narrowed RV-11 to fit, instead of adding the data that RV-11 and the meaning-before-proof rule need. This happens in practice: rejecting a source's Result, or a DO-0 decline, changes other Results' contributions (B.1), and with them their verdict or Rests on, without changing their content.
+    - **fix:** Add a field to the contract and record it in §8. For example, `ItemRecord.judged?: { verdict; restsOn: string[]; deps: string[] }` on Results, which reconcile sets from each judgement (verdict and restsOn from `judgement.inferences[T]`, deps from `judgement.deps`). In reconcile, compare it for every Result whatever its status; D2-48 still keeps Shaky Results and those to be redone with their content kept. When it differs, apply `changedKey` (rev + 1, "updated", accepted dependents back) and end the force, as for an accepted Result now. Add a reconcile test with a Result in review whose verdict changes under a force.
+    - **evidence:** reconcile.ts:246 `if (r.kind === 'result' && r.status === 'accepted' && accepted !== undefined && judged !== undefined)` is the only RV-11 path. endsForce (l.358) ends the force for a Result only on `newContent` or a return from a decided status. Test reconcile.test.ts:240 covers only an accepted Result.
+  - [2]
+    - **id:** V2A-S2
+    - **severity:** minor
+    - **where:** packages/core/src/review/reducer.ts:696-705 (decide) and 882-886 (undo)
+    - **problem:** Conflict answers can name a hidden Result and depend on its hidden state, contrary to §4.6/D2-64 (a hidden Result is "never in cascade, a left reason, a label or an event") and to builder 2a2's own §8 decision ("a hidden item that fails them gives conflict naming only the action"). Two code paths do this.
+- `decide` checks `d.rev !== r.rev` before any hidden check. Suppose a request on a Result, or a Result's part, now hidden still carries the rev from when it was shown (a stale detail panel, a crafted message). The answer is `conflict` "“Result “T”” changed since you looked at it: look again." (or "Claude proposed a newer version: review that one." for an un-reject) when the hidden Result was re-versioned meanwhile. Otherwise it is "The results are not shown yet: show them first." So the answer tells whether the hidden outcome changed.
+- `undo` checks rev and decision for every changed item and returns `conflict(REVIEW_TEXTS.conflict(w.label(r.id)), r.id)` even when that item is a hidden Result. The refusal then names it and shows that a judge changed it.
+The host-side reducer is where RV-6 is enforced (D2-5), so it should not rely on the webview to disable these controls.
+    - **fix:** In `decide`, refuse a hidden item (`hiddenIn(shown)(r)`) with `REVIEW_TEXTS.showResultsFirst` before comparing its rev. In `undo`, when the item whose rev or decision changed is hidden now, return `conflict(REVIEW_TEXTS.conflict(top.label))` without `item`. Add a test that pairs a proved and a not-proved copy, re-versions the hidden Result, and checks that the answers are byte-identical.
+    - **evidence:** reducer.ts:700-702 returns conflict, or refused(unrejectNewer, r.id), before decline(), backToReview() or ownAcceptRefusal() check `hiddenIn(shown)`. reducer.ts:885 names the item with no hidden check, while the later hidden branch at l.920-921 names only the action.
+  - [3]
+    - **id:** V2A-S3
+    - **severity:** minor
+    - **where:** packages/core/src/review/reducer.ts:893-896 and writeOf 548-566; test packages/core/test/review/reducer.test.ts:391-408; plan §6.1 l.2155, §3.6 l.1407, §3.8 l.1469-1472
+    - **problem:** Undo of a Reject (or of a cascade) that took a written Add premise out restores only the ItemState: status, `accepted` (with `accepted.fingerprint` = the written key) and the rejected keys. The record keeps `card: undefined` and `fingerprint` = the draft key that the take-out's step 4 set, so `fingerprint` and `accepted.fingerprint` now differ on an accepted item. `writeOf` also lists the item in `premises.write`, because it is accepted and `card` is undefined. §6.1 says this test should check that Undo "puts its card, key and ledger entries back (AF2)". The test checks only the status, holdAs, the rejected keys and that `takenOut` was kept, so the record state is never checked. Restoring `card`/`fingerprint` from `takenOut` is left to 2e, and §8 says nothing about it. If 2e only inverts the commits and puts the ledger entries back, the next reconcile rebuilds the item from ws/ with the written key. That key differs from the record's draft key, so `changedKey` sends the restored premise, and T's accepted Result with it, back to review "updated": telelean undoes the user's Undo.
+    - **fix:** In `undo()`, for each `top.takenOut` entry set the record's `card` and `fingerprint` back to the recorded values. These are fields of the record that the reducer returns; the files and ledger stay 2e's. Leave an item restored this way out of `premises.write`. Extend the AF2 test to assert `card`, `fingerprint` and `write.premises`. Add a 'For 2e' bullet to §8 saying the Undo write must restore the ledger entries before any premise write that is due runs.
+    - **evidence:** Test l.403 sets `{ card: undefined, fingerprint: 'fp:draft' }` and asserts only `{ status: 'accepted', accepted: { holdAs: 'axiom' }, rejectedFingerprints: [] }`. Following writeOf l.557 on that state puts the premise in premises.write.
+  - [4]
+    - **id:** V2A-S4
+    - **severity:** minor
+    - **where:** packages/core/src/review/reducer.ts:875-879 (undo of 'reveal') and 808; types.ts:228; plan §2.2 l.343-347, §4.6 l.1677 and l.1689-1690, l.1695
+    - **problem:** Show results applies D2-23 within the same action (`badgesGrew`): items accepted by a group whose badges grow under `classes` go back to review. The 'reveal' SessionAction records only `force`, so its Undo removes the force but leaves those items in review, with their Accepts lost. A decide action that shows the results, by contrast, records the same D2-23 returns in `changes`, and its Undo restores them (test reducer.test.ts:263-275). §2.2/§4.6 (F4) say every stack action records every effect so that Undo restores it. The §4.6 property "undoing every action of a sequence gives back the records it started from" is tested only with `reveals: false`, so this case is never exercised.
+    - **fix:** Add a `changes` array to the 'reveal' SessionAction, shaped like decide's (with rev, before and after), and record it in §8. Fill it with D2-23's returns. On Undo, restore them through the same checks as a decide Undo. Extend the property test to sequences with Show results in which no Result is decided under the force.
+    - **evidence:** reducer.ts:878 `return { ...(unchanged(state) as Ok), forced: same ? null : state.forced, stack, label: top.label }` and its comment "D2-23's returns were telelean's, and stay"; reducer.test.ts:632 `run(seed, false)`.
+  - [5]
+    - **id:** V2A-S5
+    - **severity:** minor
+    - **where:** packages/core/src/review/types.ts:453 (`ReviewState.results?`); reducer.ts:494-501; reconcile.ts:245-246; plan §2.2 l.276-281
+    - **problem:** `ReviewState.results` was added as optional. When it is missing, or has no entry for a Result, `accept()` accepts the Result anyway and records no `accepted.result`. §2.2 says `accepted.result` holds the verdict and Rests on at the Accept, and the backstop compares them on F. Without it, reconcile's RV-11 skips that Result (it requires `accepted !== undefined`), and the backstop's verdict and Rests-on comparison has nothing to compare. A runner that forgets to fill the field (2e) therefore silently turns off these checks: the gap fails open, not closed.
+    - **fix:** Make `results` required in ReviewState, or refuse (fail closed) an Accept, own or group, of a Result that has no entry in it. In reconcile, treat an accepted Result without `accepted.result` as changed. Record the change in §8.
+    - **evidence:** reducer.ts:494 `const result = r.kind === 'result' && w.state.results !== undefined && Object.hasOwn(w.state.results, r.id) ? ... : undefined;`, then the Accept goes ahead without `result`.
+  - [6]
+    - **id:** V2A-S6
+    - **severity:** minor
+    - **where:** packages/core/src/review/index.ts:33-37; reducer.ts:1006 (acceptGate); records.ts (depsById, isMeaningItem, isResultOrPart, fallbackLabel); plan §0 l.61, §1.1 l.102
+    - **problem:** The builder's notes say the host should use `acceptGate` for its early answers and 2e (the runner) should build ReviewState.deps with `depsById`. Neither is exported from `review/index.ts`. `@telelean/core` resolves only to core/src/index.ts (every tsconfig and vitest alias, and package.json `exports: '.'`). §1.1 forbids a later sub-slice to edit an index file. So the host and runner must either break that rule or copy the reducer's Accept rules, and a copied host gate can drift from the reducer. Several obligations for 2e also appear only in the builder's report, not in §8. They are: how to process an Undo's ItemWrite (invert the action's commits and restore `takenOut`), and, after un-reject's inverse merge, taking back out the dependents whose status the reducer leaves reverted. Without that last step, ws/ holds content whose record says it is out, and the next reconcile turns those dependents into 'in review'. §0 says contract changes go in §8.
+    - **fix:** Export `acceptGate`, `depsById`, `isMeaningItem`, `isResultOrPart` and `fallbackLabel` from review/index.ts now; 2a2 is allowed to edit core. Add a 'For 2e' bullet to the builder 2a2 entry in §8 listing the ItemWrite and Undo obligations and the take-out after an inverse merge (with the AF2 point of V2A-S3).
+    - **evidence:** index.ts exports only classify, itemDeps, resultsState, reconcile, planGroupAccept, planGroupDecline and reduceReview from the 2a2 modules. In §8, l.2824-2836 records no 2e obligation besides filling `results` and `labels`.
+  - [7]
+    - **id:** V2A-N1
+    - **severity:** nit
+    - **where:** packages/core/src/review/texts.ts:447-463 (CLAUDE_SESSION_TEXTS); plan §4.9 l.1790 (AP-26)
+    - **problem:** The stray-comment message that AP-26 added to §4.9 ("‹file›:‹line›: this comment is not next to a declaration this step wrote or changed: put it directly above the declaration it describes, or remove it.") is not in texts.ts. §0 says texts.ts holds every text the plan quotes. This text was added after 2a1 was built, and it is the only quoted text missing.
+    - **fix:** Add `strayComment(file, line)` to CLAUDE_SESSION_TEXTS, now or in 2b1b (a core sub-slice).
+    - **evidence:** A script check of every quoted string in plan §0–§5 against texts.ts: everything else is present or is an example with N/T placeholders.
+  - [8]
+    - **id:** V2A-N2
+    - **severity:** nit
+    - **where:** packages/core/src/review/reducer.ts:871, 966 (conflict('Undo'/'Redo')), 239 (planGroupDecline 'blocked'), 1013-1018 vs 509-523; texts.ts:91
+    - **problem:** Small text and consistency problems:
+- `REVIEW_TEXTS.conflict` wraps labels that already carry curly quotes, giving "“Formalize “b”” changed since you looked at it".
+- A stale Undo or Redo is reported as "“Undo” changed since you looked at it: look again.".
+- planGroupDecline leaves a non-arrow item under the reason 'blocked' for a plain decline. That reason's text is "‹item› can't be accepted now", which is wrong for a decline.
+- acceptGate checks 'blocked' before 'depends', but ownAcceptRefusal checks missing dependencies before 'waits'. The board's gate and the reducer's refusal can therefore give different reasons for the same item.
+    - **fix:** Pass the item's bare name, not its label, to `conflict` (or add a label-aware variant). Add a text for a stale stack step. Give a refused plain decline its own reason and text. Check acceptGate's conditions in the same order as ownAcceptRefusal.
+    - **evidence:** Test reducer.test.ts:463-464 expects `conflict('Accept: Definition D')` and `conflict('Redo')`.
+- **checks_run:**
+  - snapdiff.sh snapshot -> v2a-spec/now.diff; byte-identical (cmp) to after_slice_2a2_built.patch
+  - Per-file comparison of now.diff vs after_slice_1g.patch: 2a1/2a2 changed docs/slice2-plan.md, core actions.ts, facts.ts, run.ts, index.ts, test/project/helpers/fakeFacts.ts, plus new review/* sources and tests
+  - Rebuilt the slice-1g versions of the changed files (git show HEAD + per-file 1g hunks via git apply, in the scratch dir) and diffed them against the working tree
+  - Read reports_2a.md, verify_common.md, brief 2a.md, builder_rules.md in full
+  - Read plan §0, §1, §1.1, §2.1–§2.9, §3.1–§3.13, §4.1–§4.12, §6.1 (2a1/2a2), §7.1–§7.4, §8 (all entries incl. builder/fixer 2a1, builder 2a2), §9
+  - Read spec v4 RV-1–RV-13, DO-0–DO-3, UN-1–UN-7, §14; autopilot decisions AP-24–AP-27
+  - Read every 2a1/2a2 source file: review/types.ts, view.ts, texts.ts, keys.ts, hash.ts, closure.ts, items.ts, classify.ts, deps.ts, reveal.ts, records.ts, scc.ts, reconcile.ts, reducer.ts, index.ts, and the stub modules
+  - Compared every §2.2/§2.3/§2.9 type and function signature with the code; checked ActionOutcome/RunView/DeclFacts additions
+  - Checked every §6.1 2a1/2a2 test item against the test titles; read reconcile, reducer, reveal, classify and deps tests and most of items.test.ts for what they assert
+  - Scripted check of every quoted string in plan §0–§5 against texts.ts (only the AP-26 comment message is truly missing)
+  - Checked how runner, extension and webview resolve @telelean/core (tsconfig paths, vitest aliases, package exports)
+  - No builds, typechecks or tests run (per the brief); only read-only git commands used; all files written under /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/v2a-spec

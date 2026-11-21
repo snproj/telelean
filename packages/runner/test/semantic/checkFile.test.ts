@@ -8,7 +8,11 @@ import {
   generateCheckFile,
   parseCheckOutput,
   parsePrintMessage,
+  parseValueProbe,
   toDeclFacts,
+  TYPE_PROBE_KEY,
+  VALUE_PROBE_KEY,
+  valueProbeLines,
   type ProbeResult,
 } from '../../src/semantic/index.js';
 import { recorded } from './helpers.js';
@@ -162,6 +166,121 @@ describe('parseCheckOutput (recorded runs)', () => {
     expect(silent.results.get('A.b')?.problems).toHaveLength(4);
     const odd = parseCheckOutput(check, parseLeanJsonMessages('{"severity":"information","data":"something else","pos":{"line":5,"column":0}}'));
     expect(odd.results.get('A.b')?.problems[1]).toMatch(/^unreadable #print output for A\.b/u);
+  });
+});
+
+/**
+ * Slice 1d (spec v4.1 B.2): the value probe's line, recorded on 2026-11-19 from Lean 4.35 on a scratch copy of the
+ * Spyro fixture, when the probe was still the check file's `#eval` (line 76): a line from before 2b3a, without the type
+ * key, as old recordings hold.
+ */
+const SPYRO_VALUE_LINE =
+  '{"caption":"","data":"{\\"telelean-value-consts\\":[[],[],[],[\\"Spyro.Character.exists\\"],[],[\\"Spyro.Game.exists\\"],[],[],[],[\\"Spyro.Character\\",\\"Spyro.instNonemptyCharacter\\"],[\\"Spyro.Game\\",\\"Spyro.instNonemptyGame\\"],[\\"Spyro.HasDarkPast\\",\\"Spyro.cynder\\"],[],[\\"Spyro.IsPG\\",\\"Spyro.newSpyro\\"],[],[\\"Spyro.GoodAddition\\",\\"Spyro.cynder\\",\\"Spyro.newSpyro\\"],null]}\\n","endPos":{"column":5,"line":76},"fileName":"<stdin>","isSilent":false,"keepFullRange":false,"kind":"[anonymous]","pos":{"column":0,"line":76},"severity":"information"}';
+
+describe('the check file without the probe (slice 2b3a, D2-75)', () => {
+  it('has no #eval and imports only the model\'s modules: the recorded Spyro check file exactly', () => {
+    const check = generateCheckFile(IMPORTS, SPYRO_DECLS);
+    expect(check.source).toBe(recorded('check-spyro.lean'));
+    expect(check.source).not.toContain('#eval');
+    expect(check.source.split('\n').filter((l) => l.startsWith('import '))).toEqual(IMPORTS.map((m) => `import ${m}`));
+    expect(check.headerLines).toBe(IMPORTS.length + 2);
+    // The value probe's old shape is gone from it (its keys never appear).
+    expect(check.source).not.toContain(VALUE_PROBE_KEY);
+    expect(Object.keys(check).sort()).toEqual(['headerLines', 'probeAt', 'probed', 'source', 'unwritable']);
+    // A probe line in the output is no longer read: an information message off every probe line is ignored.
+    const out = parseCheckOutput(check, parseLeanJsonMessages([recorded('check-spyro.jsonl'), SPYRO_VALUE_LINE].join('\n')));
+    expect(out.headerErrors).toEqual([]);
+    expect(Object.keys(out).sort()).toEqual(['headerErrors', 'results']);
+    expect([...out.results.values()].every((r) => !('valueConsts' in r))).toBe(true);
+  });
+});
+
+describe('valueProbeLines: the value walk and the type walk, in-file and isolated (slices 1d, 1e, 2b3a)', () => {
+  it('the isolated form loads the modules with importModules (4.35\'s defaults written out) and walks that environment; the in-file form reads its own', () => {
+    const isolated = valueProbeLines(SPYRO_DECLS, 'Model', { modules: IMPORTS });
+    expect(isolated[0]).toBe('#eval show IO Unit from do');
+    expect(isolated[1]).toContain(JSON.stringify(IMPORTS.join(' ')));
+    expect(isolated[2]).toBe('  let env ← Lean.importModules mods {} (loadExts := false) (level := .private)');
+    expect(isolated.join('\n')).not.toContain('Lean.getEnv');
+    const inFile = valueProbeLines(SPYRO_DECLS, 'Model');
+    expect(inFile.slice(0, 2)).toEqual(['#eval show Lean.CoreM Unit from do', '  let env ← Lean.getEnv']);
+    expect(inFile.join('\n')).not.toContain('importModules');
+    // The walk is the same text after the environment: the names as one string literal, then both walks.
+    expect(isolated.slice(3)).toEqual(inFile.slice(2));
+    expect(inFile[2]).toContain(JSON.stringify(SPYRO_DECLS.join(' ')));
+    const walk = inFile.join('\n');
+    expect(walk).toContain('  let typeOf (ci : Lean.ConstantInfo) : Array Lean.Name :=');
+    expect(walk).toContain('    | .inductInfo v => v.ctors.foldl (fun acc c => match env.find? c with');
+    // The value walk follows an unprobed library constant's value (1d); the type walk its type and value (2b3a).
+    expect(walk).toContain('      values := values.push (walk (valueOf ci) valueOf)');
+    expect(walk).toContain('      types := types.push (walk (typeOf ci) (fun cj => typeOf cj ++ valueOf cj))');
+    expect(inFile.at(-1)).toBe(`  IO.println ("{\\"${VALUE_PROBE_KEY}\\":[" ++ ",".intercalate values.toList ++ "],\\"${TYPE_PROBE_KEY}\\":[" ++ ",".intercalate types.toList ++ "]}")`);
+    // followMain: the ghost check's own declarations are followed; the isolated environment has none of its own.
+    expect(valueProbeLines(['A.b'], 'Model', { followMain: true })).toContain('    | none => true');
+    expect(inFile).toContain('    | none => false');
+    expect(isolated).toContain('    | none => false');
+    // Single and many names: the literal is the names joined by spaces, in order (no name is refused, below).
+    expect(valueProbeLines(['A.b'], 'Model', { modules: ['Model'] })[3]).toContain('(("A.b").splitOn " ")');
+    expect(valueProbeLines(['A.b', 'C.d', 'E'], 'Model')[2]).toContain('(("A.b C.d E").splitOn " ")');
+  });
+
+  it('refuses what it cannot pass: no name, a name with whitespace or guillemets, a module that is not plain, no module, followMain with modules', () => {
+    // No name (fixer 2b3a r1, C-V2B3A-C4): Lean splits `""` into one empty name, so the line would list one entry (null)
+    // for no declaration, in either form.
+    expect(() => valueProbeLines([], 'Model', { modules: ['Model'] })).toThrow(new TypeError('the value probe needs at least one name'));
+    expect(() => valueProbeLines([], 'Model')).toThrow(TypeError);
+    expect(() => valueProbeLines([], 'Model', { followMain: true })).toThrow(TypeError);
+    expect(() => valueProbeLines(['A.b c'], 'Model')).toThrow(TypeError);
+    expect(() => valueProbeLines(['A.«b»'], 'Model', { modules: ['Model'] })).toThrow(TypeError);
+    expect(() => valueProbeLines(['A.b'], 'Not A Module')).toThrow(TypeError);
+    expect(() => valueProbeLines(['A.b'], 'Model', { modules: ['Not A Module'] })).toThrow(TypeError);
+    expect(() => valueProbeLines(['A.b'], 'Model', { modules: [] })).toThrow(TypeError);
+    expect(() => valueProbeLines(['A.b'], 'Model', { modules: ['Model'], followMain: true })).toThrow(TypeError);
+  });
+});
+
+describe('parseValueProbe: both keys, and old lines without the type key (slice 2b3a)', () => {
+  it('reads the recorded 1d line (no type key: no typeConsts), the constants of each value, none for a name Lean does not know', () => {
+    const line = parseLeanJsonMessages(SPYRO_VALUE_LINE)[0]?.data ?? '';
+    const parsed = parseValueProbe(line, SPYRO_DECLS);
+    if (typeof parsed === 'string') throw new Error(parsed);
+    expect(parsed.typeConsts).toBeUndefined();
+    expect(parsed.valueConsts.get('Spyro.Character')).toEqual([]);
+    expect(parsed.valueConsts.get('Spyro.cynder')).toEqual(['Spyro.Character', 'Spyro.instNonemptyCharacter']);
+    expect(parsed.valueConsts.get('Spyro.cynder_not_good')).toEqual(['Spyro.GoodAddition', 'Spyro.cynder', 'Spyro.newSpyro']);
+    expect(parsed.valueConsts.has('Spyro.nonexistent')).toBe(false);
+    const module = { name: 'Model.Spyro.Main', file: 'Model/Spyro/Main.lean' };
+    const range = { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } };
+    expect(toDeclFacts(module, { name: 'Spyro.cynder', range, selectionRange: range, refs: [] }, undefined, { valueConsts: parsed.valueConsts.get('Spyro.cynder') })).toMatchObject({
+      valueConsts: ['Spyro.Character', 'Spyro.instNonemptyCharacter'],
+    });
+  });
+
+  it('reads both keys, each list deduplicated; empty, single and many declarations', () => {
+    const both = parseValueProbe(`{"${VALUE_PROBE_KEY}":[["X.y","X.y"],null,[]],"${TYPE_PROBE_KEY}":[["X.t"],null,["X.u","X.u","X.v"]]}`, ['A.b', 'A.c', 'A.d']);
+    expect(both).toEqual({
+      valueConsts: new Map([
+        ['A.b', ['X.y']],
+        ['A.d', []],
+      ]),
+      typeConsts: new Map([
+        ['A.b', ['X.t']],
+        ['A.d', ['X.u', 'X.v']],
+      ]),
+    });
+    expect(parseValueProbe(`{"${VALUE_PROBE_KEY}":[],"${TYPE_PROBE_KEY}":[]}`, [])).toEqual({ valueConsts: new Map(), typeConsts: new Map() });
+    expect(parseValueProbe(`{"${VALUE_PROBE_KEY}":[["Z.z"]],"${TYPE_PROBE_KEY}":[[]]}`, ['A.b'])).toEqual({ valueConsts: new Map([['A.b', ['Z.z']]]), typeConsts: new Map([['A.b', []]]) });
+  });
+
+  it('every deviation is a problem, the type key\'s too: not JSON, no value key, the wrong number of entries, an entry that is not a list of names', () => {
+    expect(parseValueProbe('not json', ['A.b'])).toMatch(/^unreadable value probe output/u);
+    expect(parseValueProbe('[1]', ['A.b'])).toBe('the value probe listed no entries for 1 declarations');
+    expect(parseValueProbe(`{"${TYPE_PROBE_KEY}":[[]]}`, ['A.b'])).toBe('the value probe listed no entries for 1 declarations');
+    expect(parseValueProbe(`{"${VALUE_PROBE_KEY}":[[]]}`, ['A.b', 'A.c'])).toBe('the value probe listed 1 entries for 2 declarations');
+    expect(parseValueProbe(`{"${VALUE_PROBE_KEY}":[[1]]}`, ['A.b'])).toBe('unreadable value probe entry for A.b');
+    expect(parseValueProbe(`{"${VALUE_PROBE_KEY}":[[]],"${TYPE_PROBE_KEY}":[[],[]]}`, ['A.b'])).toBe('the type probe listed 2 entries for 1 declarations');
+    expect(parseValueProbe(`{"${VALUE_PROBE_KEY}":[[]],"${TYPE_PROBE_KEY}":[{"x":1}]}`, ['A.b'])).toBe('unreadable type probe entry for A.b');
+    expect(parseValueProbe(`{"${VALUE_PROBE_KEY}":[[]],"${TYPE_PROBE_KEY}":null}`, ['A.b'])).toBe('the type probe listed no entries for 1 declarations');
   });
 });
 

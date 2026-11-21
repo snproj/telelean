@@ -1,0 +1,76 @@
+[
+  {
+    "label": "design:ui-protocol",
+    "agentId": "a28d77c0267c98b22",
+    "file": "agents/design_ui-protocol.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "design:engine-checks",
+    "agentId": "a2f6a50621d1d091d",
+    "file": "agents/design_engine-checks.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "synthesize:plan",
+    "agentId": "aedca81a0623ccc22",
+    "file": "agents/synthesize_plan.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Write",
+      "Edit",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "critique:r1",
+    "agentId": "a94f068da5ddd5b25",
+    "file": "agents/critique_r1.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "fix:r1",
+    "agentId": "afc9c704a090ca40b",
+    "file": "agents/fix_r1.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Edit",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "critique:r2",
+    "agentId": "a0abbc6b24c872b82",
+    "file": "agents/critique_r2.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "fix:r2",
+    "agentId": "affe7eaa5d6e60563",
+    "file": "agents/fix_r2.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Edit",
+      "StructuredOutput"
+    ]
+  }
+]

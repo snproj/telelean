@@ -1,0 +1,272 @@
+# find:ui
+
+Agent `a3c57848884fddf9a` of workflow `wf_3842fba8-348`. Verbatim output (JSON alongside).
+
+- **summary:** I reviewed the plan through the UI and interaction lens. I checked it against the spec (§13 RF-1..RF-5, CM-2/3/4/7, BD-3, FZ-4/9/11, ES-9, UN-4), the user's own words, the built webview code (OneLineInput/InlineEdit, NodeCard, BoardInput, dragGuard, Popover, Modal, PromptBox, Dialogs, CardDetails, menu/contextActions, reveal, Toasts, main.tsx, vitest config, harness) and the slice 2/3/4 UI plans.
+
+I found no blocker. RV-6 holds by construction, because the webview only receives masked session data, so the picker cannot offer a hidden card. The storage and chip model is consistent with slices 1–3: chips never carry a status, held marks are in descriptionForeground with the link glyph, and Copy reference stays enabled during a session.
+
+The UI integration, however, has six major gaps:
+1. The plan never says where RefPicker renders or how the input keeps the focus. The only existing dropdown (Popover) steals the focus, so InlineEdit's blur commit fires as soon as `#` is typed. A portal to document.body sits under native modal dialogs (the hold-as Why, the transform window). Rendered inside the card instead, the picker is scaled and clipped by the canvas.
+2. Key precedence is specified only for InlineEdit. Other hosts take the same keys first: the A|P box's form submits on Enter, Why dialogs confirm on Enter, and the Modal and Popover handle Escape.
+3. The Move to axioms dialog's "Why do you hold it?" writes the card's Why, but it is not a `#` field and is not validated.
+4. No sub-slice renders TR-13's reference rows. Slice 4's ImpactPanel would show them with choices that D5-12 forbids.
+5. A chip click selects the target. Every other reveal only flashes, and by D3-34 the new selection redirects the Context Menu's Freeze and Unfreeze. The stated pointerdown mechanism also fails to stop NodeCard's click selection.
+6. 5f1 lists DOM tests, but the webview's unit setup is DOM-free and installs are forbidden.
+
+Minor issues cover:
+- the keyboard path, which goes in the wrong direction
+- Copy reference: two toasts, missing G12 texts, the right-click target rule, the icon
+- TL203 enablement and the lost A|P text
+- trashed cards and the Dependencies search in the picker
+- the picker never closing
+- the DOM-scan scope
+- the delete dialog's contradiction
+- qualified names for vocabulary of other subjects
+- reveals inside the modal window
+- refusals that discard typed text
+
+Nits cover how held marks combine, the guide's narrowings, and the chip colour next to the blue glow.
+- **findings:**
+  - [1]
+    - **id:** UI-1
+    - **severity:** major
+    - **where:** §4.1 (RefInput/RefPicker), §4.4, §1.1 5f1/5f2
+    - **problem:** The plan never says where RefPicker renders or how the input keeps the focus. Its only blur guard is "Rows use onMouseDown with preventDefault". The codebase's one dropdown, common/Popover, does not work as is:
+(a) On open it moves the focus into itself: its second layout effect focuses the first menu item, or the root, which has tabIndex −1. Its tooltip mode has pointer-events: none.
+(b) It portals into document.body. That is beneath the top layer of native modal dialogs (common/Modal calls showModal()), so it is invisible and inert in slice 2's hold-as dialog (the premise Accept's Why) and in slice 4's transform window, a Modal (D4-18).
+(c) Inside slice 2's decline menu (the Popover holding the Shaky note), a separately portaled picker counts as "outside" for that menu's capture-phase pointerdown handler.
+Rendered inside the card instead, the picker is scaled by the canvas layer's transform and clipped by the viewport's overflow: clip, and BoardInput's wheel handler zooms the canvas instead of scrolling the list. Presses on parts other than rows also blur the input and so commit InlineEdit: the hint, padding, the scrollbar, "No card … matches", and the "Shows as:" chips.
+    - **scenario:** The builder reuses Popover. The person types "#" in a card's sentence editor, and Popover focuses its first row. The input blurs, and InlineEdit's onBlur commits "Cynder says #" and closes. In the hold-as dialog the picker sits behind the modal: typing "#cyn" shows nothing, and nothing can be clicked. In the decline menu, clicking a row closes the menu as an outside press, and the Shaky note is lost.
+    - **fix:** Add to §4.1:
+"RefPicker is a listbox that never takes the focus. The input keeps it, with role=combobox, aria-expanded, aria-controls, aria-autocomplete=list and aria-activedescendant on the highlighted row. Rows are role=option and show the kind glyph.
+
+The picker's root, not only its rows, prevents mousedown's default. So does the 'Shows as:' line, whose chips are inert while editing (tooltip only).
+
+It renders through Popover's `container` (slice 4) into the nearest open <dialog> or .tl-popover that holds the input, else into document.body, and never inside the canvas layer. It is placed from the input's client rect, follows the tl-canvas-view, scroll and resize events, and closes when the input leaves view.
+
+Popover gains `keepFocus` for it: no focus move on open and no tabIndex. Alternatively, RefPicker has its own portal that reuses Popover's `place`."
+
+List Playwright cases per host: the board InlineEdit on the canvas at 50 % zoom, the A|P box, the hold-as dialog, the decline menu, and the transform window.
+  - [2]
+    - **id:** UI-2
+    - **severity:** major
+    - **where:** §4.1 Keys; §4.4
+    - **problem:** Key handling is specified only against InlineEdit. The other hosts of RefInput take the same keys first:
+- The A|P box is a <form> with a submit button, so Enter in its input submits the form and adds the card.
+- The existing Why dialog (RationaleDialog) confirms on Enter, and slice 2's hold-as dialog has the same one-line Why.
+- A native modal's Escape fires `cancel`, which closes the dialog through Modal's onCancel.
+- Popover registers Escape on document in the capture phase, which runs before any React handler, so the decline menu closes on the first Esc.
+
+RF-3 and CM-2 need the first Esc to close only the picker, and Enter must insert rather than submit or confirm. Tab is unspecified: it blurs the input, so InlineEdit commits "#query".
+    - **scenario:** The person accepts a suggested premise. In the hold-as dialog's Why they type "#spyro" and press Enter to pick "Spyro is PG". If the dialog confirms on Enter, as RationaleDialog does, the belief Accept is sent with "#spyro" as the Why. In the decline menu, pressing Esc to dismiss the picker closes the whole menu, and the Shaky note is lost.
+    - **fix:** Add to §4.1:
+"While the picker is open, RefInput listens for keydown on window in the capture phase, before Popover's and Modal's document-level and native handlers. It handles ↑ ↓ → ← Enter Tab Escape there, with preventDefault and stopPropagation. So InlineEdit's commit, the A|P box's form submission, a dialog's Enter-to-confirm, a modal's cancel, a Popover's Escape and slice 2's list keys never see them.
+
+Enter with no row closes the picker and inserts nothing. Tab closes it and moves the focus as usual. The first Esc closes only the picker; the next Esc goes to the host as before."
+
+Add a Playwright case per host:
+- Enter in the A|P box adds no card.
+- Enter in the hold-as Why posts no decideItems.
+- Esc in the decline menu keeps the menu and its note.
+- Esc in the transform window keeps the window and its selection.
+  - [3]
+    - **id:** UI-3
+    - **severity:** major
+    - **where:** §4.5 reveal bullet (labelled §4.3), §2.8 Chips
+    - **problem:** (a) "A card is selected and panned to" and "a vocabulary item … is selected" make a chip click change the selection. Every existing reveal only flashes and pans: Show on board, the details' Depends on/Used by buttons (revealNode) and presupposition chips (highlightVocab). By D3-34 the Context Menu section's freeze actions act on the board selection when it is not empty, else on the checked review items. The section's icons show their labels only on hover (CM-3).
+(b) "A chip's pointerdown stops propagation, so it never starts a drag or a selection" does not work. NodeCard selects the card on its React onClick (clickCard), which a pointerdown handler does not stop. BoardInput's native pointerdown listener on the board runs before React's root-level dispatch. A column card's HTML drag is blocked only by dragGuard's NO_DRAG_SELECTOR.
+    - **scenario:** In a stage, the person ticks three review items to unfreeze them. They click a chip in one item's detail to see what it names. The reveal selects that card, so the board selection is no longer empty, and the Unfreeze icon now unfreezes the referenced card instead of the three items. Claude may then change that card.
+
+Separately, clicking a chip on card A's face selects A as well, because the click bubbles to NodeCard.
+    - **fix:** Replace the bullet with:
+"A click reveals the target without changing the selection, as Show on board does:
+- a card: revealNode's flash and pan; a field also expands its card and flashes its row;
+- a vocabulary item: highlightVocab;
+- a deleted target: the toast.
+
+A chip is a <button type=button data-nodrag>, so dragGuard and BoardInput's startMove skip it, as they skip the chevron. Its onClick stops propagation, so NodeCard's clickCard never runs. Ctrl+click selects the target instead."
+
+Tests:
+- Store: revealRef leaves selected, selectedFields and selectedItems unchanged.
+- Playwright: a chip click on a selected card's face keeps the selection, flashes the target and posts no moveCards.
+  - [4]
+    - **id:** UI-4
+    - **severity:** major
+    - **where:** §3.7, §2.4, §1.1 5c2 and 5f2, §2.8 "Transform rows (S4)"
+    - **problem:** RF-5 (b)'s warning is something the person sees in slice 4's ImpactPanel, but no sub-slice renders it:
+- 5c2 is core only.
+- 5f2's window work is limited to `#` in draft sentences, Whys, Instructions and Dependencies.
+- Slice 4's ImpactPanel shows "the dependents with their choices and Set all to …".
+- Slice 4's TransformDependent has `via`, `frozen` and `choices`, but no text.
+
+D5-12 says a reference dependent has no choice of its own, and §2.8 defines three row texts. Yet the plan names neither the carrier of those texts nor the panel change.
+    - **scenario:** The person trashes "Spyro is PG", which the frozen card "#[card:spyro-pg] is too strong" refers to. Two outcomes are possible:
+- The panel lists the referrer with slice 4's choices (Leave it to Claude, Rewrite it (telelean), Leave it broken), and "Set all to …" applies one of them, contradicting D5-12's detach.
+- The row appears with no explanation, and "Its reference becomes words: …" is never shown.
+    - **fix:** In §2.4, name the carrier: `TransformDependent.reference?: { text: string }` with `choices: []` ("Delete it too" stays available). Carry the other-subject row ("“‹card›” of ‹S› refers to it …") and "Refers to it, and will read: …" as `warnings` entries with their texts.
+
+Add `transform/ImpactPanel.tsx` to 5f2's files. Reference rows show their §2.8 text and the frozen mark, offer only "Delete it too", and are skipped by "Set all to …".
+
+Add a pure test of the row model and a Playwright draft case.
+  - [5]
+    - **id:** UI-5
+    - **severity:** major
+    - **where:** §4.4 (where # works), §1.1 5c1 (the person's validation), 5f1 files
+    - **problem:** The Move to axioms dialog's "Why do you hold it? (optional)" (RationaleDialog in dialogs/Dialogs.tsx) writes the card's Why. confirmRationale sends change-kind with `rationale`, and core's edit/planAction.ts (lines 203–204) writes it as the block's `rationale:`.
+
+RF-1 wants `#` in any prose field, Why included, but §4.4 omits this one. 5c1 validates only planEditNode, planAddNode, adoption and slice 4's drafts, so a token pasted here is written without refProblems.
+    - **scenario:** The person uses Copy reference on board S2. On S1 they drag a proposition into the AXIOMS column and paste #[card:s2-card] into "Why do you hold it?". change-kind writes it unchecked, and the Why then shows "deleted card" with TL124. The board's own Why editor would have refused the same token. Typing "#" in this field opens nothing.
+    - **fix:** Add to §4.4 (5f1): "the Move to axioms dialog's Why (RationaleDialog), with the picker rendered inside its dialog (UI-1) and the key rules of UI-2 (its Enter-to-confirm)". Add dialogs/Dialogs.tsx to 5f1's files.
+
+Add change-kind's `rationale` to 5c1's refProblems callers, refused with the same texts. Add a 5c1 test (a forged token and a cross-subject token are refused) and a Playwright case.
+  - [6]
+    - **id:** UI-6
+    - **severity:** major
+    - **where:** §6.1 5f1 and 5f2; §4.1's undo hedge
+    - **problem:** The webview's unit tests are DOM-free. vitest.config.ts says "Unit tests for the DOM-free parts … Layout-dependent behaviour is covered by Playwright"; it runs in the Node environment on test/unit/**/*.test.ts only. No jsdom or happy-dom is installed, and §0 forbids installs. Playwright belongs to the integrator, and only when RAM allows.
+
+Yet 5f1 lists DOM behaviour as the sub-slice's own tests:
+- `#` never opening on paste or during IME
+- Enter inserting through execCommand
+- Esc, then a second Esc
+- Backspace past `#`
+- a row click not committing InlineEdit
+- Ctrl+Z restoring the text
+- RefText rendering
+- "pointerdown starts no drag"
+
+§4.1's "if 5f1 finds the webview does not record it" needs a real browser. 5f2 is "Playwright draft only", so none of its UI runs before the slice end either.
+    - **scenario:** The 5f1 builder cannot run these tests without installing jsdom (forbidden) or running Playwright (not theirs). They report them as not run, or weaken them. The execCommand-undo decision stays open until an integrator Playwright run that RAM may not allow.
+    - **fix:** Rewrite §6.1 5f1 in two parts.
+
+Unit tests (Node), for the pure parts written as functions:
+- refTrigger(before, after, caret, inputType, composing): word start, paste, IME;
+- pickerReduce(state, key): ↑ ↓ → ← Enter Tab Esc, including the no-row and auto-close cases;
+- insertionRange(text, caret);
+- refSegments(text, resolver) for RefText: labels, the 60-character cut, deleted;
+- searchRefs;
+- the Copy reference entry model;
+- revealRef's store effects.
+
+Playwright cases in s5-refs.spec.ts, named one by one and run by the integrator: focus and blur, execCommand insertion and Ctrl+Z, each host's keys (UI-2), chip drag and selection (UI-3), the three themes.
+
+Say that the integrator's run decides whether RefInput keeps its own one-step undo, not 5f1.
+  - [7]
+    - **id:** UI-7
+    - **severity:** minor
+    - **where:** §4.5 reveal bullet (labelled §4.3): "Keyboard path"
+    - **problem:** CardDetails' "Referred to by" lists the cards that refer to this card, which is the incoming direction. It gives no keyboard access to the targets of this card's own chips, which is what the reveal needs. Chips also have no accessible name. Slice 3 keeps Tab moving card to card, with a roving focus inside a card (U14).
+    - **scenario:** A keyboard user focuses "#[card:spyro-pg] is too strong" and opens its details. "Referred to by" lists the cards that refer to it. Nothing reaches "Spyro is PG".
+    - **fix:** Say instead: "Keyboard path: the face's chips join slice 3's roving focus inside the focused card (←/→; Enter or Space reveals; Tab still goes card to card). CardDetails gains a 'Refers to' row listing this card's sentence and Why references as focusable chips, and 'Referred to by' may stay as the inverse list. A chip's aria-label is 'Reference: ‹label›[ › ‹field›]', or 'Reference to a deleted card'." Add these texts to §2.8.
+  - [8]
+    - **id:** UI-8
+    - **severity:** minor
+    - **where:** §4.6 Copy reference (labelled §4.5), §2.8 "Copy", §2.7 "No new message"
+    - **problem:** (a) The host's copyText always posts its own notice "Copied" (extension boardSession.copy; the Playwright harness does the same). 5f1 is webview-only with no new message, so the §2.8 toast "Reference copied: …" is a second toast, shown even when the host answers "Could not copy: …".
+(b) G12's left-out label has no verbatim text, unlike slice 3's "Freeze 3 of 4 items" and slice 4's "Transform 2 of 3 selected…", and the toast has no plural.
+(c) "Copies every selected card" contradicts slice 3's right-click rule (U1): a right-click menu acts on the clicked thing when it is not part of the selection CM-7 kept.
+(d) No icon is named, and the held mark already uses `link`.
+    - **scenario:** With A and B selected, the person right-clicks C and chooses Copy reference. A's and B's tokens are copied instead of C's, and two toasts appear: "Copied" and "Reference copied: …".
+    - **fix:** (a) Either drop the webview toast and keep "Copied", or add an optional `notice` field to copyText's payload (validated text) that the host posts instead of "Copied", with that host change in 5f1's scope.
+(b) Add the texts "Copy ‹n› of ‹m› references" (tooltip: one line per item left out, "‹label›: arrows, marks and review items have no reference.") and "‹n› references copied: paste them into a sentence, a Why or a message to Claude."
+(c) Write: "The section's entry copies the selection; a right-click menu's entry copies its target, as slice 3's freeze group does (U1)."
+(d) Use the `copy` codicon, never `link`.
+  - [9]
+    - **id:** UI-9
+    - **severity:** minor
+    - **where:** §2.7 TL203, D5-17, §4 (no enablement rule)
+    - **problem:** D5-17 refuses every allocation and every session start in a subject whose ids.json cannot be read. The UI still keeps the A|P box, "New proposition here", Formalize for dependencies and Transform cards… enabled, and reports only after the press, against CM-3's "disabled, with the reason on hover".
+
+PromptBox clears its text as soon as addNode returns the provisional id, so the refused sentence is lost. TL203's text mentions only adding cards, so a refused Formalize gets a reason that does not mention sessions.
+    - **scenario:** ids.json has a merge conflict. The person types a long axiom and presses Enter. The card appears ("saving…"), then vanishes with an error toast, and the box is empty. Formalize is refused with "…Until then no card can be added to S1."
+    - **fix:** Give the graph a structured flag, e.g. `TlGraph.idsUnreadable?: string` holding TL203's text. In 5f1, disable the A|P box's Add, New proposition here, Formalize for dependencies and Transform cards… on that subject, with that text as the reason. TL203 then reads: "… Until then no card can be added to ‹S›, and no edit session can start on it."
+  - [10]
+    - **id:** UI-10
+    - **severity:** minor
+    - **where:** §4.2 Candidates; §4.4 Dependencies
+    - **problem:** (a) In the transform window, prose candidates include trashed cards, since only Dependencies get `exclude`. The person can pick one and is then refused by refProblems' trash text.
+(b) §4.2 has the Dependencies editor use RefPicker's search with options, while §4.4 says `#` opens "its search, as its button does". Slice 4's CardSearch shows a source that would close a cycle as disabled, with the cycle named (AR-3); RefPicker has no disabled-row state, so that would be lost.
+    - **scenario:** The person trashes "Spyro is PG", then types "#spyro" in another draft's Why and picks it from the list. The draft then shows "“Spyro is PG” is in this transform's trash …", and Submit is disabled.
+    - **fix:** (a) Add: "In the window, candidates leave out trashed cards (or show them disabled with the trash text)."
+(b) Add: "`#` in the Dependencies editor opens slice 4's CardSearch, seeded with the text typed after `#`; RefPicker is not used there, so its cycle-disabled rows stay."
+  - [11]
+    - **id:** UI-11
+    - **severity:** minor
+    - **where:** §4.1 (when the picker closes)
+    - **problem:** The query runs "up to the caret, spaces included", and the picker closes only on Esc, on Backspace past `#`, or on blur. A literal "#" at a word start in prose ("the #1 dragon", "#check" in a Why about Lean) keeps the picker open with "No card or vocabulary matches …" for the rest of the sentence. What Enter does with no rows is unspecified.
+    - **scenario:** The person types "Spyro is the #1 dragon of the series". The empty picker covers the cards below the whole time. Pressing Enter is either swallowed or commits, depending on the build.
+    - **fix:** Add: "The picker closes by itself when its query matches nothing and ends with a space, and the text stays as typed, as after Esc. Enter with no row closes it and inserts nothing." Cover both in pickerReduce's unit tests (UI-6).
+  - [12]
+    - **id:** UI-12
+    - **severity:** minor
+    - **where:** §6.1 5f2 DOM scan; §4.6 Names
+    - **problem:** The scan covers "panels, dialogs, toasts and menus", apparently text only. But many card names live on the board surface and in attributes today:
+- NodeCard's aria-label (naturalName);
+- the BD-6 chips' titles in model/cardData.ts ("It rests on: …", "…takes these unproved statements…");
+- band.ts tooltips;
+- the AXIOMS header's "also assumed" links (AlsoAssumed.tsx);
+- the Context Menu summary (menuName);
+- CardDetails' relation buttons and its Attempts list.
+
+Some texts also quote the stored form on purpose (refProblems' refusals quote “‹token›”; Lean code; History previews), so a naive scan fails on them. Fixtures also need `name` computed as the build does, or nameOf falls back to raw tokens.
+    - **scenario:** 5f2's scan passes, while the card's aria-label and the band's tooltip still read "#[card:spyro-pg] is too strong" (RF-2 c).
+    - **fix:** Write: "The scan covers the whole document, the board included: text, every title, aria-label and aria-description attribute, SVG <title>, and the tooltips shown on hover. It has an allowlist: RefInput values, refProblems' refusal texts, .tl-lean code and History previews. Fixtures get `name` through one helper that calls core's renderRefs, as the build does."
+
+Add NodeCard, model/cardData.ts, band.ts, AlsoAssumed.tsx and menuName to §4.6's sites.
+  - [13]
+    - **id:** UI-13
+    - **severity:** minor
+    - **where:** §3.7 board Delete; §4.6; §2.8 "Delete"
+    - **problem:** The board's first delete dialog is computed in the webview from the graph (deleteDependents), before any host message. DeletePlan.referencedBy, which the host computes, reaches the dialog only through a needs-confirmation, and core's referencedBy takes a ProjectModel, which the webview does not have.
+
+The dialog prints "Nothing else refers to it." when its other lists are empty, which would then sit next to "Referred to by …". The new line also breaks the dialog's pattern of headed sections with linked Dependent items, and "‹n› cards" has no singular.
+    - **scenario:** The person deletes "Spyro is PG", which only "#[card:spyro-pg] is too strong" refers to. The dialog says both "Nothing else refers to it." and "Referred to by 1 cards: …".
+    - **fix:** Write: "The webview computes the referrers from the view's graph, with a graph-level referencedBy in webview refs/resolve.ts. The dialog shows them as a section, 'Referred to by (their references will show “deleted card”)', with linked Dependent items, and counts them in 'Nothing else refers to it.'"
+
+Add the singular text: "Referred to by 1 card: ‹name›. Its reference will show “deleted card”."
+  - [14]
+    - **id:** UI-14
+    - **severity:** minor
+    - **where:** §2.3 refLabel / RefResolver.lean; §4.2 search haystacks
+    - **problem:** refLabel names every vocabulary item by its short name. The board names another subject's item by its qualified name: model/cardData.ts displayName gives the short name for the subject's own items and the full name for foreign ones. Since TR-10 (c) lets both be referenced, `#[lean:S1.InGame]` and `#[lean:S2.InGame]` both read "InGame".
+    - **scenario:** A sentence refers to both S1.InGame and S2.InGame. Both chips, both picker rows and both plain names read "InGame".
+    - **fix:** Write: "A vocabulary item's label follows displayName: its short name in its own subject, the qualified name elsewhere (the resolver takes the viewing subject)." Apply this to refLabel, the picker rows and the 'plain' rendering for the person.
+  - [15]
+    - **id:** UI-15
+    - **severity:** minor
+    - **where:** §4.5 reveal bullet (labelled §4.3), with slice 4's modal transform window
+    - **problem:** The transform window is a native modal dialog over the board (D4-18), and Esc never closes it. A reveal from a chip shown inside it pans a board the person cannot see: chips can appear in PreviousVersion values, in Claude's proposal text and in impact rows.
+    - **scenario:** In a decline window, the person clicks the chip "Spyro is PG" in Claude's proposed Why. The board behind the modal pans, and nothing visible happens.
+    - **fix:** Add: "Inside the transform window, a chip click shows the target in place. If it is one of the window's draft cards, that card is scrolled to and flashed. Otherwise a read-only peek popover, rendered in the window's container, shows its sentence and the referenced field."
+  - [16]
+    - **id:** UI-16
+    - **severity:** minor
+    - **where:** §4.1, §4.4 (the person's refusals in editors)
+    - **problem:** References are checked only by the host, after the editor has closed. InlineEdit commits on Enter; the board shows the edit optimistically, then rolls it back with an error toast, and the person's typed text is gone. References make such refusals common: a token pasted from another subject, or a typo in a slug. Slice 2 §5.1's principle is to preview a rule with the same function the host enforces it with.
+    - **scenario:** The person pastes a token copied on board S2 into a sentence on S1 and presses Enter. The sentence flashes and reverts, a toast says "‹token› names a card of the subject S2 …", and they must retype the sentence.
+    - **fix:** Add: "RefInput previews refProblems on the view's graph, through a graph-level adapter of 5c1's function, and shows each problem under 'Shows as:'. Enter does not commit while a problem exists; Esc still cancels."
+  - [17]
+    - **id:** UI-17
+    - **severity:** nit
+    - **where:** §4.6 held marks; §2.8 "Held"
+    - **problem:** A statement can be held both by frozen Lean (slice 3's "held by “‹A›”") and by a reference ("held by “‹B›” (it refers to this)"). The plan does not say how the two marks combine, or how slice 3's "and ‹n› more" counts them.
+    - **fix:** Write: "One mark per field, 'held by “‹first holder›” (and ‹n› more)', with a tooltip line per holder saying 'its Lean relies on it' or 'it refers to this'."
+  - [18]
+    - **id:** UI-18
+    - **severity:** nit
+    - **where:** §4.6 user guide
+    - **problem:** The "References" section covers the mechanics but not the narrowings a person will run into:
+- D5-6: cards are referenced only within their own subject;
+- D5-7: docstrings may keep older names;
+- D5-11: no `#` in glosses, notes after `---` or Lean fields;
+- D5-12: a transform turns references to trashed cards into words;
+- D5-14: `#` opens only at a word start.
+Slice 4's guide states its own narrowings in plain words.
+    - **fix:** Add these five, in plain words, to the guide's "References" section.
+  - [19]
+    - **id:** UI-19
+    - **severity:** nit
+    - **where:** §4.5 Chips look (labelled §4.3)
+    - **problem:** On the card face, chips use --vscode-textLink-foreground. In the harness's Dark Modern theme that is #4daafc, close to the formalised glow's charts.blue #3794ff, and D-15 makes blue mean "has Lean". Today link blue appears only in the details and header links, never inside a glowing face, so a chip naming an unformalised card can read as a status, which D5-16 rules out.
+    - **fix:** Give face chips a non-colour cue that marks them as references: a leading `#` glyph, or .tl-link's dotted underline. Include a card with the formalised glow and one with the established glow in 5f1's three-theme chip screenshots.

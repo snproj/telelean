@@ -14,6 +14,7 @@ import {
   moveInLayout,
   NODE_TYPES,
   orderByLayout,
+  parseNodeType,
   slugId,
   subjectOfPath,
   subjectScaffold,
@@ -24,7 +25,6 @@ import {
   type GraphJsonOptions,
   type MarkupBlock,
   type ModelNode,
-  type NodeType,
   type ParsedFile,
   type PlanContext,
   type ProjectInput,
@@ -49,7 +49,8 @@ export function fakeParseLeanFile(path: string, text: string): ParsedFile {
       id: field('id') ?? slugId(naturalName, () => false),
       idWritten: field('id') !== undefined,
       version: 1,
-      fields: { type: (field('type') ?? 'ASSUMPTION') as NodeType, naturalName },
+      // Spec v4: AXIOM or PROPOSITION, the old kinds read as aliases (as the real parser does).
+      fields: { type: parseNodeType(field('type') ?? 'AXIOM')?.type ?? 'AXIOM', naturalName },
       extensions: {},
       span: { start, end: start + match[0].length },
       binding: { mode: 'none' },
@@ -78,7 +79,7 @@ export function fakeBuildProjectModel(input: ProjectInput): ProjectModel {
       if (nodes.has(block.id)) continue;
       const node = createUserNode({
         id: block.id,
-        type: block.fields.type ?? 'ASSUMPTION',
+        type: block.fields.type ?? 'AXIOM',
         naturalName: block.fields.naturalName ?? '',
         subject: inSubject && subject !== undefined ? subject : '',
       });
@@ -203,9 +204,30 @@ export function fakePlanAction(model: ProjectModel, action: BoardAction, ctx: Pl
       };
     }
     case 'change-kind':
-      throw new ActionError('needs-confirmation', 'Make Goal: 2 declarations use this .holds.', ['cynder-not-good', 'Spyro.helper_lemma']);
+      throw new ActionError('needs-confirmation', 'Make Axiom: 2 declarations apply this .holds to arguments.', ['cynder-not-good', 'Spyro.helper_lemma']);
     case 'set-premises':
       throw new ActionError('not-yet', 'Proving from no premises is available from M2.');
+    case 'move-cards': {
+      // Spec v4 slice 1b: layout only, like reorder.
+      const ids = Object.keys(action.positions);
+      const found = nodeOf(model, ids[0] ?? '');
+      const subject = found.node.subject;
+      const layout = ctx.layouts[subject] ?? emptyLayout();
+      return {
+        action: 'move-cards',
+        label: ids.length === 1 ? `Move: ${found.node.naturalName}` : `Move: ${ids.length} cards`,
+        subject,
+        nodes: ids,
+        changes: [],
+        layout: { subject, layout: { ...layout, positions: { ...(layout.positions ?? {}), ...action.positions } } },
+        layoutOnly: true,
+      };
+    }
+    case 'add-arrows':
+    case 'remove-arrows':
+    case 'set-from-nothing':
+    case 'claim-pending':
+      throw new ActionError('not-yet', `the fake core does not plan ${action.kind}`);
   }
 }
 

@@ -20,6 +20,7 @@ import {
   mcpToolName,
   renderAdoption,
   renderAnswers,
+  renderArrowProposal,
   renderCheckResult,
   renderFreezeResult,
   renderGateVerdict,
@@ -33,6 +34,7 @@ import {
   type CheckLeanArgs,
   type FinishArgs,
   type FreezeStatementsArgs,
+  type ProposeArrowArgs,
   type ProposeAssumptionArgs,
   type LlmBackend,
   type LlmEvent,
@@ -177,7 +179,7 @@ export class FakeSession implements LlmSession {
           sessionId: this.id,
           model: this.cfg.model,
           cwd: this.rootReal,
-          tools: ['Read', 'Glob', 'Grep', 'Edit', 'Write', ...['check_lean', 'freeze_statements', 'ask_user', 'propose_assumption', 'finish'].map((t) => mcpToolName(t as AgentToolName))],
+          tools: ['Read', 'Glob', 'Grep', 'Edit', 'Write', ...['check_lean', 'freeze_statements', 'ask_user', 'propose_assumption', 'propose_arrow', 'finish'].map((t) => mcpToolName(t as AgentToolName))],
           mcpServers: [{ name: 'telelean', status: 'connected' }],
           apiKeySource: 'none',
         });
@@ -316,6 +318,8 @@ export class FakeSession implements LlmSession {
           return { isError: false, text: renderFreezeResult(await host.freeze_statements(data as FreezeStatementsArgs, ctx)) };
         case 'propose_assumption':
           return { isError: false, text: renderAdoption(await host.propose_assumption(data as ProposeAssumptionArgs, ctx)) };
+        case 'propose_arrow':
+          return { isError: false, text: renderArrowProposal(await host.propose_arrow(data as ProposeArrowArgs, ctx)) };
         case 'finish':
           return { isError: false, text: renderGateVerdict(await host.finish(data as FinishArgs, ctx)) };
       }

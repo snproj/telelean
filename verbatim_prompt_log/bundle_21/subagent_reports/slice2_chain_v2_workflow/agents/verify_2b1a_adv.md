@@ -1,0 +1,92 @@
+# verify:2b1a:adv
+
+Agent `a503f8f7db27ccd47` of workflow `wf_ae5f1188-533`. Verbatim output (JSON alongside).
+
+- **summary:** I found two major defects and one minor test gap, all in the 2a carry-over code in packages/core/src/review/reducer.ts. The gate refactor (2b1a's own work) is sound.
+
+**Gate refactor checks.**
+- A normalised line diff shows each helper is a verbatim move of the old `evaluate()` body. The only restructured lines are the ones the builder declared: `buildFailed`, `readyCards`, `orderFindings`, and `flagged` / `formalisedThisRun` / `targetProofNew` moved into the context.
+- I re-ran the builder's differential harness myself, from my scratch dir, on all 12 core gate test files: 133 tests passed and all 295 `evaluate` calls were byte-identical to the pre-2b1a original.
+- Core tsc is clean, and core vitest gives 65 files / 776 tests passed, matching the report.
+
+**Major 1: the S-V2A-S2 fix is incomplete (meaning-before-proof leak).** `listedAcceptRefusal` checks RV-7 against the classes in force after the Undo. So an Undo asked while the results are hidden, which would show them, checks against the classes that count hidden premise drafts. When it refuses, the results stay hidden, and the refusal depends on and reveals a hidden premise draft. This contradicts the builder's claim that a listed item gets "the refusal an Accept by hand would get".
+
+**Major 2: Undo writes back premises that stay out.** Undo's `takenOut` loop restores a premise's card and written key (and lists it in `reapply`) whenever its current state counts as "in ws/" with the recorded card. That is wrong for two kinds of entry:
+- Entries the Undo does not restore at all: one the silent path or the conflict check kept, or a premise R1-1's un-reject took out without changing it.
+- Entries in review, where the check falls into the rule meant only for converted v1 ghosts.
+
+This path is newly reachable through R1-1 (un-reject, then its Undo; no judge needed) and R1-2 (Undo of Show results). It breaks §3.1 ("a premise in review is always outside ws/"), gives a false "already written as an axiom card" refusal, and skips the due premise write.
+
+**Minor: test gap.** The "listed after the action" half of the new answer rule is untested.
+
+**How I verified.** I wrote probe tests in my scratch dir that use the repo's own test helpers; 6 of the 8 fail on the current code. A scratch copy of reducer.ts, aliased into the 9 review test files (169 tests), shows that each proposed fix keeps all 169 green and makes every probe pass. Nothing in the repo was written; no processes are left running.
+- **findings:**
+  - [1]
+    - **id:** ADV-2b1a-1
+    - **severity:** major
+    - **where:** packages/core/src/review/reducer.ts:1051 (`const cls = w.classOf(r, after)` in listedAcceptRefusal, called from undo at :1140); docs/slice2-plan.md §8 l.2888 and the builder 2b1a S-V2A-S2 entry
+    - **problem:** S-V2A-S2 is still open for RV-7. An Undo asked while the results are hidden, which would show them, checks each restored listed Accept's badges against `classes`. That map counts every premise draft's statement, and premise drafts are Results' parts, hidden until the results are shown. When it refuses, the results stay hidden, so the refusal depends on and reveals a hidden Result's content: that Claude proposed a missing premise reaching D. That is RV-6 / D2-64's leak. An Accept by hand at that moment reads `classesBeforeReveal` and goes through; D2-23 then returns the item once the results are shown. So the claim in §8 that a listed item gets the refusal an Accept by hand would get is false here. No existing test pins this choice: replacing `after` by `now && after` leaves all 169 review tests green.
+    - **evidence:** Probe 1b: /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/v2b1a-adv/probes/probe1b.test.ts. The results are hidden from the queue's end, so the person never saw T's outcome. The two copies differ only in `classes['decl:D']`: copy A has a hidden premise draft of T reaching D (BELIEF), copy B proved T without one (PLAIN). `classesBeforeReveal` and every listed record are identical.
+
+Steps: M is accepted and D group-accepted while hidden; M2, a belief definition in review, keeps the results hidden. X = back to review [card:m, decl:D], confirmed. A judge started by an earlier Reject then lands and makes M2 no longer a belief (the same listed change in both copies). Then Undo X.
+
+Result:
+- Copy A: `{ok:false, code:'refused', error:'Definition D needs its own Accept (belief)'}`, and the results stay hidden.
+- Copy B: ok, 'Back to review: 2 items', and the results are shown.
+- Probe 1 in probes.test.ts gives the same split, and a group Accept of the same two items by hand is ok in both copies.
+
+Scratch harness (/tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/v2b1a-adv/mut/runmut.sh, logs log_*.txt there):
+- `classOf(r, now)` breaks 4 review tests, because Undo of Show results must restore D2-23's returns against the class after.
+- `classOf(r, now && after)` keeps all 169 green and fixes probes 1 and 1b.
+    - **fix:** In listedAcceptRefusal use `const cls = w.classOf(r, now && after);`. This reads `classesBeforeReveal` whenever the results are hidden when the Undo is asked or after it. When the Undo shows them, the existing `if (!shown && w.reveal().shown) showResults(w, at)` already applies D2-23 with `classes` (returning D, with the `decided` force if needed), exactly as an Accept by hand would. Then:
+- Add probe 1b to test/review/reducer.test.ts: both copies go through, or both refuse with the same text.
+- Correct §8 (the fixer 2a hidden-items line and builder 2b1a's S-V2A-S2 entry): RV-7 reads the class in force both when the Undo is asked and after it; D2-23 at the show reads `classes`.
+  - [2]
+    - **id:** ADV-2b1a-2
+    - **severity:** major
+    - **where:** packages/core/src/review/reducer.ts:1157-1165 (undo's `for (const t of top.takenOut)` with `inWorkingCopy(r.kind, r, t.card)`); reached through R1-1's premisesOut branch (:581-587) and R1-2's reveal `takenOut`
+    - **problem:** For each premise in the undone action's `takenOut`, Undo puts its card and written key back on the record and lists it in `reapply` whenever `inWorkingCopy(kind, currentState, t.card)` holds. Two cases go wrong:
+- (a) A premise the Undo does not restore: one the silent path or the conflict check kept as it is, or one the action never changed. The second covers every premise R1-1's un-reject took out with `premises.takeOut` because its status keeps it out.
+- (b) A premise whose state is in review, where `inWorkingCopy`'s converted-v1-ghost rule makes it count as written.
+
+The record then claims a written card for a premise that stays out. Either ws/ has no card at all (the inverse of the un-reject's merge removes it again), or the inverted take-out brings the card and its ledger entries back for a premise in review. That breaks §3.1 ("A premise in review is always outside ws/") and R1-2's own contract ("premises.takeOut the written premises it brings back that must go out again"). Knock-on effects:
+- An Accept as pending is refused with writtenAsAxiom ("already written as an axiom card"), which is false.
+- An Accept as axiom schedules no premise write, because writeOf skips a premise that has a card. Apply is then refused (`not-written`) until a reload.
+- With probes 2/3, an unaccepted premise sits in ws/ and in E(T), and the board shows its card.
+
+No existing test covers these cases: the builder's R1-3 test uses a Reject cascade (to be redone, reverted), where the check happens to be right.
+    - **evidence:** Scratch probes in /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/v2b1a-adv/probes/ (outputs in ../mut/log_baseline3.probes.txt):
+- probe4.test.ts, no judge needed. Reject V takes the written p out (step 4 records `takenOut`). A seal and Submit queue follow; F5 brings p back to review. Un-reject V: R1-1 puts p's card on its record and lists it in premises.takeOut. Step 4 of that write runs (commits c2, c3; p taken out, ledger []). Then Undo of the un-reject. After it: p `{status:'in-review', card:'p-card'}`, write `{reapply:[p], premises:{takeOut:[]}}`.
+- probe4b.test.ts: the same with p to be redone; the stale card is restored the same way.
+- probes.test.ts probe 2, R1-2's path: Show results returns E and the written p; step 4 records p as taken out; a judge then adds a dependency of p that is in review; Undo of Show results. After it: p `{status:'in-review', card:'p-card', fingerprint:'fp:written-p'}`, write reapply [p].
+- probes.test.ts probe 3: the same through a decision's Undo.
+- probe5.test.ts: Undo of a Reject of a converted v1 ghost written in review must write it again. It passes today, but the naive fix `r.status === 'in-review' ? r.card : t.card` breaks it.
+    - **fix:** Count a takenOut premise as back only when this Undo restores it, and its state after the Undo keeps it in ws/. In review, it counts only when the restored `before` was in review (a converted v1 ghost). Every other entry goes to premises.takeOut, which is a harmless no-op when the card is already out. For example:
+```ts
+const change = top.changes.find((x) => x.item === r.id);
+const restoredHere = change !== undefined && !skipped.has(r.id) && (r.status !== 'in-review' || change.before.status === 'in-review');
+if (restoredHere && inWorkingCopy(r.kind, r, t.card)) { /* card, key, premisesBack */ } else w.premisesOut.add(r.id);
+```
+Verified in the scratch harness: all 169 review tests and probes 2, 3, 4, 4b and 5 pass.
+
+Tests to add:
+- probes 2, 4 and 5 as reducer tests;
+- extend the random property test to simulate each write's step 4 (premise write, take-out, `takenOut`), and assert after every step that no Add premise in review holds a card unless it was written in review.
+  - [3]
+    - **id:** ADV-2b1a-3
+    - **severity:** minor
+    - **where:** packages/core/src/review/reducer.ts:923 (decide) and :1171 (undo), `const listed = shown && w.reveal().shown`
+    - **problem:** The new answer rule (name only items listed both when the request came and after the action) has an untested half: "listed after". Replacing `shown && w.reveal().shown` by `shown` in decide, or in Undo, leaves all 169 review tests green. With that change, a decision asked while the results are shown that hides them names the now-hidden Result in its cascade. That breaks §2.9 ("a Result or a Result's part is never named while the results are hidden"). No information leaks, because the Result was visible when the request came, which is why this is only minor; but the rule the builder states has no test.
+    - **evidence:** /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/v2b1a-adv/probes/probe6.test.ts: card:a and proof:t (resting on it) accepted, the results shown; back to review of card:a, confirmed. The results are hidden after and proof:t is back in review. It passes on the current code. Under the mutation `listed = shown` in decide, probe 6 fails while all 169 review tests pass (mut/log_M-decide-listed-shown-only2.*). The mutation in Undo also survives the suite (mut/log_M-undo-listed-shown-only.*).
+    - **fix:** Add probe 6 to test/review/reducer.test.ts: an action asked while the results are shown that hides them names no Result or Result's part in `cascade` or `events`. Add an Undo case too, e.g. Undo of a decision whose restored statuses make a meaning item undecided, with a Result among the restored changes, asserting no Result is named in `cascade` or `events`.
+- **checks_run:**
+  - Read verify_common.md, the 2b1a brief (with the carry-over findings), builder_rules.md, plan §0/§1/§1.1, §2.2, §2.9, §3.1, §3.5–3.8, §4.5–4.7, §6.1 (2a2 and 2b1a), §8 (fixer 2a and builder 2b1a entries)
+  - Diffed reducer.ts, types.ts, reducer.test.ts and reconcile.test.ts against the builder's pre-2b1a backup (b2b1a/backup/orig); reconcile.ts, texts.ts and records.ts are unchanged
+  - Gate refactor: a normalised line diff of the original evaluate() body against the helpers; only the declared restructures differ
+  - Re-ran the differential harness independently from my scratch dir on all 12 core gate test files: 133 tests passed, 295 evaluate calls byte-identical to the original
+  - Core tsc --noEmit -p tsconfig.test.json (capped): exit 0, no output
+  - Core vitest from a scratch config (capped, one worker, --no-cache, scratch fsModuleCachePath and TMPDIR): Test Files 65 passed (65), Tests 776 passed (776)
+  - Probe tests in scratch: probe1 and 1b (RV-7 leak), probes 2 and 3 (silent path), 4 and 4b (R1-1 un-reject Undo, no judge), 5 (v1 ghost), 6 (answer rule)
+  - Scratch mutation/fix harness: a copy of reducer.ts aliased into the 9 review test files (169 tests). Baseline green. Candidate fixes: classOf(now) breaks 4 tests; classOf(now && after) is green and fixes probes 1/1b; the r.card-only fix breaks probe 5; the restoredHere fix is green and passes every probe
+  - Mutations: quiet reduced to hidden-only is caught (1 test); removing showResults from Undo is caught; `listed = shown` in decide and in Undo both survive
+  - Confirmed no repo file or node_modules/.vite-temp was written by my runs, and no process of mine is left running

@@ -1,19 +1,31 @@
 import { expect, test } from '@playwright/test';
-import { largeGraph, spyroGraph, spyroProvedGraph } from '@telelean/core';
+import { AXIOM_DROP_REFUSAL, AXIOM_TO_PROPOSITION_REFUSAL, largeGraph, spyroGraph, spyroProvedGraph } from '@telelean/core';
 import { contributedColors, vscodeColorVariable } from '../shared/vscode-theme';
 import {
   badgeReport,
+  boardMenu,
+  canvas,
+  canvasPoint,
+  canvasView,
   card,
+  cardPoint,
   checkArrows,
+  columnPoint,
+  columnScroll,
+  dragCard,
   edgePairs,
+  inView,
   list,
+  menuItem,
   openBoard,
+  order,
   posted,
   postedOfType,
   renderedDiagnostic,
-  scrollTops,
+  rightClick,
   settle,
   shotPath,
+  viewSettled,
   type OpenedBoard,
 } from './helpers';
 
@@ -25,23 +37,28 @@ test.afterEach(async () => {
   board = undefined;
 });
 
-test('renders the Spyro sample: sentence first, kind glyph, aura on formalised cards, dashed declared arrows', async ({ page }) => {
+test('renders the Spyro sample: the AXIOMS column and the canvas, sentence first, kind glyph, aura on formalised cards, dotted declared arrows', async ({ page }) => {
   const graph = spyroGraph();
   board = await openBoard(page, graph, 'dark');
 
   const ready = await postedOfType(page, 'ready');
   expect(ready).toEqual([{ v: 1, type: 'ready', payload: { lastVersion: null } }]);
 
-  // Column membership and order.
-  await expect(list(page, 'ASSUMPTION').locator('[data-node-id]')).toHaveCount(3);
-  await expect(list(page, 'GOAL').locator('[data-node-id]')).toHaveCount(1);
+  // Spec v4 BD-1: the axioms in the AXIOMS column (in the files' order), the proposition on the canvas.
+  expect(await order(page, 'AXIOM')).toEqual(['pg-no-dark-past', 'cynder-dark-past', 'new-spyro-pg']);
+  expect(await order(page, 'PROPOSITION')).toEqual(['cynder-not-good']);
+  await expect(page.locator('.tl-axioms .tl-col__title')).toHaveText('Axioms');
+  await expect(page.locator('.tl-axioms .tl-col__count')).toHaveText('3');
+  // The column's header also counts what is assumed outside it (BD-1): here the two existence presuppositions.
+  await expect(page.locator('.tl-axioms')).toContainText(/also assumed:\s*2 existence assumptions/);
 
-  // The sentence is the first thing on the card; the kind glyph follows.
+  // The sentence is the first thing on the card; the kind glyph follows (A, P).
   const first = card(page, 'cynder-dark-past');
   const rowTexts = await first.locator('.tl-card__row > *').allTextContents();
   expect(rowTexts[0]).toBe('Cynder is a character who has a dark past');
   expect(rowTexts[1]).toBe('A');
-  await expect(card(page, 'cynder-not-good').locator('.tl-glyph')).toHaveText('G');
+  await expect(card(page, 'cynder-not-good').locator('.tl-glyph')).toHaveText('P');
+  await expect(card(page, 'cynder-not-good')).toHaveAttribute('data-place', 'canvas');
 
   // Blue aura on formalised cards only.
   const shadow = (id: string) => card(page, id).evaluate((el) => getComputedStyle(el).boxShadow);
@@ -52,29 +69,21 @@ test('renders the Spyro sample: sentence first, kind glyph, aura on formalised c
   await expect(card(page, 'pg-no-dark-past')).toHaveAttribute('data-formal', 'informal');
   await expect(card(page, 'pg-no-dark-past').locator('.tl-chip--attention')).toHaveText('no source yet');
 
-  // Three declared arrows into the goal: dashed, endpoints on the card edges.
+  // Three declared arrows into the proposition: dotted (round dots), the ends on the card edges.
   const paths = page.locator('path[data-edge-id]');
   await expect(paths).toHaveCount(3);
   for (const pattern of await paths.evaluateAll((els) => els.map((el) => el.getAttribute('data-pattern')))) expect(pattern).toBe('declared');
-  const dash = await paths.first().evaluate((el) => getComputedStyle(el).strokeDasharray);
-  expect(dash).not.toBe('none');
+  const line = await paths.first().evaluate((el) => ({ dash: getComputedStyle(el).strokeDasharray, cap: getComputedStyle(el).strokeLinecap }));
+  expect(line.dash).not.toBe('none');
+  expect(line.cap).toBe('round');
   const arrows = await checkArrows(page, edgePairs(graph));
   expect(arrows.problems).toEqual([]);
   expect(arrows.missing).toEqual([]);
   expect(arrows.full).toBe(3);
 
-  // The empty Derivations column shows an opaque placeholder (arrows that skip the column pass under it, as under a
-  // card), centred in the column, away from the top where the arrows of a small graph run.
-  const empty = list(page, 'DERIVATION').locator('.tl-col__empty');
-  await expect(empty).toHaveText('No derivations yet');
-  expect(await empty.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(31, 31, 31)'); // editor background
-  const [emptyBox, dList] = [await empty.boundingBox(), await list(page, 'DERIVATION').boundingBox()];
-  if (!emptyBox || !dList) throw new Error('missing boxes');
-  expect(emptyBox.y).toBeGreaterThan(dList.y + dList.height / 3);
-
   // What the board reports to the host (the smoke test asserts the same fields inside VS Code).
   const rendered = await renderedDiagnostic(page);
-  expect(rendered.payload.data).toMatchObject({ cards: 4, edges: 3, styled: true, aura: 'rgb(55, 148, 255)', kindA: 'rgb(177, 128, 215)' });
+  expect(rendered.payload.data).toMatchObject({ cards: 4, edges: 3, styled: true, aura: 'rgb(55, 148, 255)', kindA: 'rgb(177, 128, 215)', kindP: 'rgb(209, 134, 22)' });
   expect((await postedOfType(page, 'diagnostic')).filter((m) => m.payload.level !== 'info')).toEqual([]);
 
   await page.screenshot({ path: shotPath('board-dark-spyro.png') });
@@ -106,23 +115,22 @@ test('"rendered" always describes the graph it names, and a graph replaced befor
 });
 
 test('the colours the extension contributes reach the board under the variable names VS Code gives them', async ({ page }) => {
-  // One distinctive colour per board colour id, set under the name VS Code 1.140 derives from the id. M1 adds
-  // telelean.vocabulary and telelean.highlight (the extension's manifest may not contribute them yet: the board
-  // reads them with fallbacks).
+  // One distinctive colour per board colour id, set under the name VS Code 1.140 derives from the id (spec v4: the two
+  // kinds' stripes and telelean.proved, the green of the established glow and the band).
   const custom: Record<string, string> = {
     'telelean.formalizedAura': '#ff00ff',
-    'telelean.kindAssumption': '#00ff00',
-    'telelean.kindDerivation': '#00ffff',
-    'telelean.kindGoal': '#ffff00',
+    'telelean.kindAxiom': '#00ff00',
+    'telelean.kindProposition': '#ffff00',
+    'telelean.proved': '#00ffff',
     'telelean.vocabulary': '#ff8000',
     'telelean.highlight': '#123456',
   };
   const contributed = contributedColors().map((c) => c.id);
-  expect(contributed).toEqual(expect.arrayContaining(['telelean.formalizedAura', 'telelean.kindAssumption', 'telelean.kindDerivation', 'telelean.kindGoal']));
+  expect(contributed).toEqual(expect.arrayContaining(Object.keys(custom)));
   for (const id of contributed) expect(Object.keys(custom)).toContain(id);
   const vars = Object.fromEntries(Object.entries(custom).map(([id, colour]) => [vscodeColorVariable(id), colour]));
-  board = await openBoard(page, spyroGraph(), 'dark', { vars, state: { vocabCollapsed: false } });
-  // M1 colours: the Vocabulary group's accent, and the highlight flash (here from a card's "uses:" dropdown).
+  board = await openBoard(page, spyroProvedGraph(), 'dark', { vars, state: { vocabCollapsed: false } });
+  // M1 colours: the Vocabulary items' accent, and the highlight flash (here from a card's "uses:" dropdown).
   expect(await page.locator('.tl-vocab__item').first().evaluate((el) => getComputedStyle(el).borderLeftColor)).toBe('rgb(255, 128, 0)');
   await card(page, 'cynder-dark-past').locator('.tl-uses__toggle').click();
   await page.getByTestId('uses-menu').locator('[data-vocab="Spyro.cynder"]').click();
@@ -132,27 +140,28 @@ test('the colours the extension contributes reach the board under the variable n
   expect(flashed.outline).toBe('rgb(18, 52, 86)');
   expect(flashed.tint).toContain('color(srgb 0.0705882 0.203922 0.337255 / 0.16)'); // #123456 at 16 %
 
+  // The blue aura on a formalised axiom, the green glow on the established proposition, and the legend's swatches.
   expect(await card(page, 'cynder-dark-past').evaluate((el) => getComputedStyle(el).boxShadow)).toContain('rgb(255, 0, 255)');
+  expect(await card(page, 'cynder-not-good').evaluate((el) => getComputedStyle(el).boxShadow)).toContain('rgb(0, 255, 255)');
   expect(await page.locator('.tl-legend__aura').evaluate((el) => getComputedStyle(el).boxShadow)).toContain('rgb(255, 0, 255)');
-  const headerGlyph = (kind: string) =>
-    page.locator(`.tl-col[data-kind="${kind}"] .tl-col__header .tl-glyph`).evaluate((el) => getComputedStyle(el).backgroundColor);
-  expect(await headerGlyph('ASSUMPTION')).toBe('rgb(0, 255, 0)');
-  expect(await headerGlyph('DERIVATION')).toBe('rgb(0, 255, 255)');
-  expect(await headerGlyph('GOAL')).toBe('rgb(255, 255, 0)');
-  // The kind stripe on each card.
+  expect(await page.locator('.tl-legend__glow').evaluate((el) => getComputedStyle(el).boxShadow)).toContain('rgb(0, 255, 255)');
+  expect(await page.locator('.tl-axioms .tl-col__header .tl-glyph').evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(0, 255, 0)');
+  // The kind stripe and glyph on each card.
   expect(await card(page, 'cynder-dark-past').evaluate((el) => getComputedStyle(el, '::before').backgroundColor)).toBe('rgb(0, 255, 0)');
   expect(await card(page, 'cynder-not-good').evaluate((el) => getComputedStyle(el, '::before').backgroundColor)).toBe('rgb(255, 255, 0)');
+  expect(await card(page, 'cynder-not-good').locator('.tl-glyph').evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(255, 255, 0)');
 
   const rendered = await renderedDiagnostic(page);
   expect(rendered.payload.data).toMatchObject({
     aura: 'rgb(255, 0, 255)',
     kindA: 'rgb(0, 255, 0)',
-    kindD: 'rgb(0, 255, 255)',
-    kindG: 'rgb(255, 255, 0)',
+    kindP: 'rgb(255, 255, 0)',
+    proved: 'rgb(0, 255, 255)',
     vocabulary: 'rgb(255, 128, 0)',
     highlight: 'rgb(18, 52, 86)',
   });
   expect(String(rendered.payload.data?.cardAura)).toContain('rgb(255, 0, 255)');
+  expect(String(rendered.payload.data?.cardEstablished)).toContain('rgb(0, 255, 255)');
 });
 
 test('a stylesheet the CSP refuses while the page loads is reported through boot.js, and "rendered" says the board is unstyled', async ({ page }) => {
@@ -186,10 +195,10 @@ test('the arrow checker used below is not vacuous: it reports an arrow moved 10 
   });
   const report = await checkArrows(page, edgePairs(graph));
   expect(report.problems).toHaveLength(1);
-  expect(report.problems[0]).toMatch(/start .* not on the source's right edge/);
+  expect(report.problems[0]).toMatch(/start .* not on a side edge of the source/);
 });
 
-test('verified dependencies are drawn solid', async ({ page }) => {
+test('verified dependencies are drawn solid; the established proposition says so', async ({ page }) => {
   const graph = spyroProvedGraph();
   board = await openBoard(page, graph, 'dark');
   const paths = page.locator('path[data-edge-id]');
@@ -199,30 +208,29 @@ test('verified dependencies are drawn solid', async ({ page }) => {
     expect(pattern).toBe('verified');
     expect(dash).toBe('none');
   }
-  await expect(card(page, 'cynder-not-good').locator('.tl-chip', { hasText: 'proved' })).toBeVisible();
+  await expect(card(page, 'cynder-not-good').locator('[data-chip="established"]')).toHaveText('✓ established');
+  expect((await checkArrows(page, edgePairs(graph))).problems).toEqual([]);
 });
 
-test('scrolling one column leaves the other columns alone; arrows follow scrolling and resizing; off-screen ends become stubs', async ({ page }) => {
+test('scrolling the AXIOMS column leaves the canvas alone, the wheel over the canvas zooms it; arrows follow scrolling, zooming and resizing; ends out of view are cut', async ({ page }) => {
   const graph = largeGraph();
   const pairs = edgePairs(graph);
   board = await openBoard(page, graph, 'dark');
 
-  const before = await scrollTops(page);
-  expect(before).toEqual({ ASSUMPTION: 0, DERIVATION: 0, GOAL: 0 });
+  expect(await columnScroll(page)).toBe(0);
+  const view = await canvasView(page);
   let arrows = await checkArrows(page, pairs);
   expect(arrows.problems).toEqual([]);
   expect(arrows.missing).toEqual([]);
 
-  // Real wheel input over the Assumptions column: the overlay must not swallow it.
-  const a = await list(page, 'ASSUMPTION').boundingBox();
-  if (!a) throw new Error('no Assumptions column');
+  // Real wheel input over the AXIOMS column scrolls it (the overlay must not swallow it); the canvas does not move.
+  const a = await list(page, 'AXIOM').boundingBox();
+  if (!a) throw new Error('no AXIOMS column');
   await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
   await page.mouse.wheel(0, 900);
-  await expect.poll(async () => (await scrollTops(page)).ASSUMPTION).toBeGreaterThan(300);
+  await expect.poll(() => columnScroll(page)).toBeGreaterThan(300);
   await settle(page);
-  let tops = await scrollTops(page);
-  expect(tops.DERIVATION).toBe(0);
-  expect(tops.GOAL).toBe(0);
+  expect(await canvasView(page)).toEqual(view);
 
   arrows = await checkArrows(page, pairs);
   expect(arrows.problems).toEqual([]);
@@ -233,16 +241,14 @@ test('scrolling one column leaves the other columns alone; arrows follow scrolli
   expect(stubCount).toBe(arrows.stubs);
   await expect(page.locator('.tl-badge:not([hidden])').first()).toBeVisible();
 
-  // Scroll the Derivations column too: Assumptions keeps its position, Goals stays at the top.
-  const d = await list(page, 'DERIVATION').boundingBox();
-  if (!d) throw new Error('no Derivations column');
-  await page.mouse.move(d.x + d.width / 2, d.y + d.height / 2);
-  await page.mouse.wheel(0, 500);
-  await expect.poll(async () => (await scrollTops(page)).DERIVATION).toBeGreaterThan(200);
+  // The wheel over the canvas zooms it: the column keeps its scroll position; the arrows follow.
+  const scrolled = await columnScroll(page);
+  const at = await canvasPoint(page, 0.5, 0.5);
+  await page.mouse.move(at.x, at.y);
+  await page.mouse.wheel(0, 300);
+  await expect.poll(async () => (await canvasView(page)).s).toBeLessThan(view.s);
   await settle(page);
-  const after = await scrollTops(page);
-  expect(after.ASSUMPTION).toBe(tops.ASSUMPTION);
-  expect(after.GOAL).toBe(0);
+  expect(await columnScroll(page)).toBe(scrolled);
   arrows = await checkArrows(page, pairs);
   expect(arrows.problems).toEqual([]);
   expect(arrows.missing).toEqual([]);
@@ -256,15 +262,13 @@ test('scrolling one column leaves the other columns alone; arrows follow scrolli
   arrows = await checkArrows(page, pairs);
   expect(arrows.problems).toEqual([]);
   expect(arrows.missing).toEqual([]);
-  tops = await scrollTops(page);
-  expect(tops.GOAL).toBe(0);
 });
 
-test('"n linked" buttons sit in the column header (▲) and footer (▼), cover no card, and scroll only their own column', async ({ page }) => {
+test('"n linked" buttons: the column’s in its header (▲) and footer (▼), covering no card, scrolling only the column; the canvas’s at its edges (BD-4)', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' }); // the button scrolls instantly instead of smoothly
   const graph = largeGraph();
   board = await openBoard(page, graph, 'dark');
-  await list(page, 'ASSUMPTION').evaluate((el) => {
+  await list(page, 'AXIOM').evaluate((el) => {
     el.scrollTop = 600;
   });
   await settle(page);
@@ -272,26 +276,17 @@ test('"n linked" buttons sit in the column header (▲) and footer (▼), cover 
 
   const report = await badgeReport(page);
   expect(report.problems).toEqual([]);
-  expect(report.badges.map((b) => b.key)).toEqual(expect.arrayContaining(['ASSUMPTION:up', 'ASSUMPTION:down', 'GOAL:down']));
+  expect(report.badges.map((b) => b.key)).toEqual(expect.arrayContaining(['column:up', 'column:down']));
 
-  // ▼ in the Goals footer: Goals scrolls until the nearest hidden linked card is in view; the other columns stay.
-  const target = report.hiddenEnds['GOAL:down']?.[0];
-  if (!target) throw new Error('no hidden linked Goals card below the fold');
-  const before = await scrollTops(page);
-  await page.locator('.tl-col[data-kind="GOAL"] .tl-col__footer .tl-badge').click();
-  await expect
-    .poll(() =>
-      card(page, target).evaluate((el) => {
-        const r = el.getBoundingClientRect();
-        const v = (el.closest('.tl-col__list') as HTMLElement).getBoundingClientRect();
-        return r.top >= v.top - 1 && r.bottom <= v.bottom + 1;
-      }),
-    )
-    .toBe(true);
-  const after = await scrollTops(page);
-  expect(after.GOAL).toBeGreaterThan(before.GOAL ?? 0);
-  expect(after.ASSUMPTION).toBe(before.ASSUMPTION);
-  expect(after.DERIVATION).toBe(before.DERIVATION);
+  // ▼ in the column's footer: the column scrolls until the nearest hidden linked card is in view; the canvas stays.
+  const target = report.hiddenEnds['column:down']?.[0];
+  if (!target) throw new Error('no hidden linked axiom below the fold');
+  const before = await columnScroll(page);
+  const view = await canvasView(page);
+  await page.locator('.tl-axioms .tl-col__footer .tl-badge').click();
+  await expect.poll(() => inView(page, `[data-node-id="${target}"]`)).toBe(true);
+  expect(await columnScroll(page)).toBeGreaterThan(before);
+  expect(await canvasView(page)).toEqual(view);
   await settle(page);
   await settle(page);
   expect((await badgeReport(page)).problems).toEqual([]);
@@ -299,7 +294,16 @@ test('"n linked" buttons sit in the column header (▲) and footer (▼), cover 
   expect(arrows.problems).toEqual([]);
   expect(arrows.missing).toEqual([]);
 
-  // A narrow board shortens the column titles, not the buttons, and the buttons still cover nothing.
+  // Zoomed in on the canvas, cards leave the view: their arrows are cut at the canvas edges, which get their buttons.
+  await canvas(page).focus();
+  for (let i = 0; i < 4; i++) await page.keyboard.press('+');
+  await settle(page);
+  await settle(page);
+  const zoomed = await badgeReport(page);
+  expect(zoomed.problems).toEqual([]);
+  expect(zoomed.badges.some((b) => b.key.startsWith('canvas:'))).toBe(true);
+
+  // A narrow board shortens the column title, not the buttons, and the buttons still cover nothing.
   await page.setViewportSize({ width: 700, height: 520 });
   await settle(page);
   await settle(page);
@@ -308,90 +312,73 @@ test('"n linked" buttons sit in the column header (▲) and footer (▼), cover 
   expect(narrow.badges.length).toBeGreaterThan(0);
 });
 
-test('dragging an Assumptions card onto Goals highlights the drop zone, moves the card and posts kindChange', async ({ page }) => {
-  const graph = spyroGraph();
-  board = await openBoard(page, graph, 'dark');
+test('drags: a proposition dropped on the AXIOMS column runs "Move to axioms"; an axiom dropped on the canvas is refused; within the column a drop re-orders (AR-6, AR-7, D-17)', async ({ page }) => {
+  board = await openBoard(page, spyroGraph(), 'dark');
 
-  const source = card(page, 'pg-no-dark-past');
-  const from = await source.boundingBox();
-  const goals = await list(page, 'GOAL').boundingBox();
-  if (!from || !goals) throw new Error('missing boxes');
-
-  await page.mouse.move(from.x + from.width / 2, from.y + 12);
-  await page.mouse.down();
-  await page.mouse.move(from.x + from.width / 2 + 30, from.y + 20, { steps: 4 });
-  await page.mouse.move(goals.x + goals.width / 2, goals.y + goals.height - 60, { steps: 12 });
-  // While dragging: the column under the pointer is the active drop zone, the other one is a labelled candidate.
-  await expect(page.locator('.tl-col[data-kind="GOAL"]')).toHaveAttribute('data-drop', 'active');
-  await expect(page.locator('.tl-col[data-kind="DERIVATION"]')).toHaveAttribute('data-drop', 'candidate');
-  await expect(page.locator('.tl-col[data-kind="GOAL"] .tl-col__drop-label')).toHaveText('Drop to make Goal');
-  await page.mouse.up();
-
-  await expect(list(page, 'GOAL').locator('[data-node-id="pg-no-dark-past"]')).toHaveCount(1);
-  await expect(list(page, 'ASSUMPTION').locator('[data-node-id="pg-no-dark-past"]')).toHaveCount(0);
-  await expect(page.locator('.tl-col[data-drop]')).toHaveCount(0);
-  const changes = await postedOfType(page, 'kindChange');
-  // M1: every mutation carries a request id (the host answers with an actionResult).
-  expect(changes).toEqual([{ v: 1, type: 'kindChange', payload: { id: 'pg-no-dark-past', from: 'ASSUMPTION', to: 'GOAL', beforeId: null, requestId: 'r1' } }]);
-
-  // The arrow into the goal is now a within-column arrow through the gutter, still attached to the card edges.
-  await settle(page);
-  await settle(page);
-  let arrows = await checkArrows(page, edgePairs(graph));
-  expect(arrows.problems).toEqual([]);
-  expect(arrows.missing).toEqual([]);
-
-  // Dropping onto the upper half of a card inserts above it (closest-edge hitbox) and says so in beforeId.
-  const second = await card(page, 'new-spyro-pg').boundingBox();
-  const over = await card(page, 'cynder-not-good').boundingBox();
-  if (!second || !over) throw new Error('missing boxes');
-  await page.mouse.move(second.x + second.width / 2, second.y + 12);
-  await page.mouse.down();
-  await page.mouse.move(second.x + second.width / 2 + 30, second.y + 20, { steps: 4 });
-  await page.mouse.move(over.x + over.width / 2, over.y + 8, { steps: 12 });
-  await expect(card(page, 'cynder-not-good')).toHaveAttribute('data-drop-edge', 'top');
-  await page.mouse.up();
-  await expect(list(page, 'GOAL').locator('[data-node-id]')).toHaveCount(3);
-  const goalOrder = await list(page, 'GOAL').locator('[data-node-id]').evaluateAll((els) => els.map((el) => el.getAttribute('data-node-id')));
-  expect(goalOrder).toEqual(['new-spyro-pg', 'cynder-not-good', 'pg-no-dark-past']);
-  expect((await postedOfType(page, 'kindChange')).at(-1)).toEqual({
-    v: 1,
-    type: 'kindChange',
-    payload: { id: 'new-spyro-pg', from: 'ASSUMPTION', to: 'GOAL', beforeId: 'cynder-not-good', requestId: 'r2' },
+  // A proposition moved over the column: the column is the drop zone and states the impact; the release asks first.
+  await dragCard(page, 'cynder-not-good', await columnPoint(page), async () => {
+    await expect(page.locator('.tl-axioms')).toHaveAttribute('data-drop', /.+/);
+    await expect(page.locator('.tl-axioms .tl-col__drop-label')).toHaveText('Drop to move to axioms');
+    await expect(page.locator('.tl-dropzone[data-kind="AXIOM"] .tl-dropzone__summary')).toHaveText('Move to axioms: adds axiom cynder_not_good.holds');
+    await expect(page.locator('.tl-dropzone[data-kind="AXIOM"] .tl-dropzone__detail')).toContainText('Its 3 incoming arrows are removed.');
   });
-  await settle(page);
-  await settle(page);
-  arrows = await checkArrows(page, edgePairs(graph));
-  expect(arrows.problems).toEqual([]);
-  expect(arrows.missing).toEqual([]);
+  await expect(page.locator('.tl-dropzone')).toHaveCount(0);
+  const dialog = page.getByTestId('dialog-rationale');
+  await expect(dialog).toBeVisible();
+  expect(await postedOfType(page, 'kindChange')).toEqual([]);
+  await dialog.getByRole('button', { name: 'Skip' }).click();
+  // M1: every mutation carries a request id (the host answers with an actionResult).
+  expect(await postedOfType(page, 'kindChange')).toEqual([{ v: 1, type: 'kindChange', payload: { id: 'cynder-not-good', from: 'PROPOSITION', to: 'AXIOM', beforeId: null, requestId: 'r1' } }]);
+  await expect(list(page, 'AXIOM').locator('[data-node-id="cynder-not-good"]')).toHaveCount(1);
+  await expect(list(page, 'PROPOSITION').locator('[data-node-id]')).toHaveCount(0);
+  // Its arrows went with its premises (AR-7); nothing else is drawn.
+  await expect(page.locator('path[data-edge-id]')).toHaveCount(0);
+
+  // An axiom dragged onto the canvas: the canvas refuses it and says how to make it a proposition; nothing is posted.
+  await dragCard(page, 'pg-no-dark-past', await canvasPoint(page, 0.5, 0.6), async () => {
+    await expect(page.locator('.tl-canvas')).toHaveAttribute('data-drop', 'active');
+    const zone = page.locator('.tl-dropzone[data-kind="PROPOSITION"]');
+    await expect(zone).toHaveAttribute('data-refused', 'true');
+    await expect(zone.locator('.tl-dropzone__summary')).toHaveText(AXIOM_DROP_REFUSAL);
+    await expect(zone.locator('.tl-dropzone__detail')).toHaveText(AXIOM_TO_PROPOSITION_REFUSAL);
+  });
+  await expect(page.getByTestId('toast').filter({ hasText: AXIOM_TO_PROPOSITION_REFUSAL })).toHaveAttribute('data-level', 'info');
+  expect(await postedOfType(page, 'kindChange')).toHaveLength(1);
+  await expect(list(page, 'AXIOM').locator('[data-node-id="pg-no-dark-past"]')).toHaveCount(1);
+
+  // Within the column, dropping onto the upper half of a card inserts above it (closest-edge hitbox): beforeId.
+  const over = await card(page, 'cynder-dark-past').boundingBox();
+  if (!over) throw new Error('no box');
+  await dragCard(page, 'new-spyro-pg', { x: over.x + over.width / 2, y: over.y + 8 }, async () => {
+    await expect(card(page, 'cynder-dark-past')).toHaveAttribute('data-drop-edge', 'top');
+  });
+  expect(await order(page, 'AXIOM')).toEqual(['pg-no-dark-past', 'new-spyro-pg', 'cynder-dark-past', 'cynder-not-good']);
+  expect((await postedOfType(page, 'reorder')).map((m) => m.payload)).toEqual([{ id: 'new-spyro-pg', column: 'AXIOM', beforeId: 'cynder-dark-past', requestId: 'r2' }]);
 });
 
-test('click selects, Ctrl/Cmd-click multi-selects, the tray counts and "These suffice" posts startRun with the selected ids', async ({ page }) => {
+test('click selects, Ctrl/Cmd-click multi-selects, the Context Menu section counts; the selected cards’ arrows are highlighted; Formalize posts startRun with the selected arrows', async ({ page }) => {
   const graph = spyroGraph();
   board = await openBoard(page, graph, 'light');
+  const summary = page.getByTestId('context-summary');
 
   await card(page, 'cynder-dark-past').click();
-  await expect(page.getByTestId('tray-count')).toHaveText('1 selected');
+  await expect(summary).toHaveText('“Cynder is a character who has a dark pa…”');
   await card(page, 'new-spyro-pg').click(); // plain click replaces the selection
-  await expect(page.getByTestId('tray-count')).toHaveText('1 selected');
+  await expect(summary).toHaveText('“The new Spyro game is PG”');
   await expect(card(page, 'cynder-dark-past')).not.toHaveAttribute('data-selected', /.*/);
   await expect(card(page, 'new-spyro-pg')).toHaveAttribute('data-selected', 'true');
 
   await card(page, 'cynder-dark-past').click({ modifiers: ['ControlOrMeta'] });
   await card(page, 'pg-no-dark-past').click({ modifiers: ['ControlOrMeta'] });
-  await expect(page.getByTestId('tray-count')).toHaveText('3 selected');
-  const suffice = page.getByRole('button', { name: /These suffice/ });
-  await expect(suffice).toBeDisabled(); // no target yet
+  await expect(summary).toHaveText('3 cards');
   await card(page, 'cynder-not-good').click({ modifiers: ['ControlOrMeta'] });
-  await expect(page.getByTestId('tray-count')).toHaveText('4 selected');
-  await expect(page.locator('.tl-chipcard[data-role="premise"]')).toHaveCount(3);
-  await expect(page.getByTestId('tray-target').locator('.tl-chipcard')).toHaveAttribute('data-id', 'cynder-not-good');
+  await expect(summary).toHaveText('4 cards');
 
   // Ctrl/Cmd-click toggles a card off again, and back on.
   await card(page, 'pg-no-dark-past').click({ modifiers: ['ControlOrMeta'] });
-  await expect(page.getByTestId('tray-count')).toHaveText('3 selected');
+  await expect(summary).toHaveText('3 cards');
   await card(page, 'pg-no-dark-past').click({ modifiers: ['ControlOrMeta'] });
-  await expect(page.getByTestId('tray-count')).toHaveText('4 selected');
+  await expect(summary).toHaveText('4 cards');
 
   // The selection keeps click order, so the re-added card is now last.
   const selects = await postedOfType(page, 'select');
@@ -405,48 +392,61 @@ test('click selects, Ctrl/Cmd-click multi-selects, the tray counts and "These su
   await settle(page);
   await page.screenshot({ path: shotPath('board-light-spyro-selection.png') });
 
-  await expect(suffice).toBeEnabled();
-  await suffice.click();
-  // M2: "These suffice ▶" asks Claude to prove the target from exactly these premises (the host declares them first).
+  // Cards are no question (spec v4.1 ES-2): Formalize asks about the arrows. The proposition's right-click menu
+  // selects its incoming arrows; Formalize then asks Claude to prove it from exactly their sources.
+  const formalize = page.getByTestId('formalize');
+  await expect(formalize).toBeDisabled();
+  await rightClick(page, await cardPoint(page, 'cynder-not-good'));
+  await menuItem(page, 'select-incoming').click();
+  await expect(boardMenu(page)).toHaveCount(0);
+  await expect(summary).toHaveText('3 arrows into “Cynder would not be a good addition to …”');
+  await expect(formalize).toBeEnabled();
+  await formalize.click();
   const sent = await postedOfType(page, 'startRun');
   expect(sent).toEqual([
     {
       v: 1,
       type: 'startRun',
-      payload: { target: 'cynder-not-good', premises: ['new-spyro-pg', 'cynder-dark-past', 'pg-no-dark-past'], requestId: 'r1' },
+      payload: { target: 'cynder-not-good', premises: ['cynder-dark-past', 'new-spyro-pg', 'pg-no-dark-past'], requestId: 'r1' },
     },
   ]);
   expect(await postedOfType(page, 'theseSuffice')).toEqual([]);
 });
 
-test('the A|D|G box adds a card to the chosen column and posts addNode', async ({ page }) => {
+test('the A|P box adds a proposition to the canvas (in view) and an axiom to the column, and posts addNode', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   const graph = spyroGraph();
   board = await openBoard(page, graph, 'dark');
-  const input = page.getByRole('textbox', { name: /New assumption/ });
+  const input = page.getByRole('textbox', { name: /New axiom/ });
 
-  await page.getByRole('radio', { name: 'Goal' }).click();
-  await expect(page.getByRole('radio', { name: 'Goal' })).toHaveAttribute('aria-checked', 'true');
-  const goalInput = page.getByRole('textbox', { name: /New goal/ });
-  await goalInput.fill('Cynder should get her own spin-off');
-  await expect(page.getByRole('button', { name: 'Add goal' })).toBeEnabled();
-  await goalInput.press('Enter');
-  await expect(list(page, 'GOAL').locator('[data-node-id]')).toHaveCount(2);
-  await expect(list(page, 'GOAL').locator('[data-node-id]').last()).toContainText('Cynder should get her own spin-off');
-  await expect(goalInput).toHaveValue('');
+  await page.getByRole('radio', { name: 'Proposition' }).click();
+  await expect(page.getByRole('radio', { name: 'Proposition' })).toHaveAttribute('aria-checked', 'true');
+  const propositionInput = page.getByRole('textbox', { name: /New proposition/ });
+  await propositionInput.fill('Cynder should get her own spin-off');
+  await expect(page.getByRole('button', { name: 'Add proposition' })).toBeEnabled();
+  await propositionInput.press('Enter');
+  await expect(list(page, 'PROPOSITION').locator('[data-node-id]')).toHaveCount(2);
+  await expect(card(page, 'cynder-should-get-her-own-spin')).toContainText('Cynder should get her own spin-off');
+  await expect(card(page, 'cynder-should-get-her-own-spin')).toHaveAttribute('data-place', 'canvas');
+  await expect(propositionInput).toHaveValue('');
+  await viewSettled(page);
+  expect(await inView(page, '[data-node-id="cynder-should-get-her-own-spin"]')).toBe(true); // BD-8: placed in view
 
-  await page.getByRole('radio', { name: 'Derivation' }).click();
-  await page.getByRole('textbox', { name: /New derivation/ }).fill('Cynder cannot appear in a PG game');
-  await page.getByRole('textbox', { name: /New derivation/ }).press('Enter');
-  await expect(list(page, 'DERIVATION').locator('[data-node-id]')).toHaveCount(1);
+  await page.getByRole('radio', { name: 'Axiom' }).click();
+  await page.getByRole('textbox', { name: /New axiom/ }).fill('Cynder cannot appear in a PG game');
+  await page.getByRole('textbox', { name: /New axiom/ }).press('Enter');
+  await expect(list(page, 'AXIOM').locator('[data-node-id]')).toHaveCount(4);
+  await expect(list(page, 'AXIOM').locator('[data-node-id]').last()).toContainText('Cynder cannot appear in a PG game');
 
-  const added = await postedOfType(page, 'addNode');
-  expect(added).toEqual([
-    { v: 1, type: 'addNode', payload: { clientId: 'cynder-should-get-her-own-spin', type: 'GOAL', naturalName: 'Cynder should get her own spin-off', requestId: 'r1' } },
-    { v: 1, type: 'addNode', payload: { clientId: 'cynder-cannot-appear-in-a-pg', type: 'DERIVATION', naturalName: 'Cynder cannot appear in a PG game', requestId: 'r2' } },
-  ]);
+  const added = (await postedOfType(page, 'addNode')).map((m) => m.payload);
+  expect(added).toHaveLength(2);
+  // A proposition is stored with its place on the canvas (one Undo step, BD-8); an axiom has none.
+  expect(added[0]).toMatchObject({ clientId: 'cynder-should-get-her-own-spin', type: 'PROPOSITION', naturalName: 'Cynder should get her own spin-off', requestId: 'r1' });
+  expect(Number.isInteger(added[0]?.position?.x) && Number.isInteger(added[0]?.position?.y)).toBe(true);
+  expect(added[1]).toEqual({ clientId: 'cynder-cannot-appear-in-a-pg', type: 'AXIOM', naturalName: 'Cynder cannot appear in a PG game', requestId: 'r2' });
   // New cards are comment-only: no aura.
   await expect(card(page, 'cynder-should-get-her-own-spin')).toHaveAttribute('data-formal', 'informal');
-  await expect(input).toHaveCount(0); // the box now names the derivation kind
+  await expect(input).toHaveCount(1); // the box names the axiom kind again
 });
 
 test('the chevron expands a card to show its Lean code without selecting it', async ({ page }) => {

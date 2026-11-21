@@ -1,0 +1,87 @@
+{
+  "summary": "Fidelity verdict on sub-slice 1e (read-only). I rebuilt the after-1d tree in my scratch folder (/tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/v1e_fid/before) and checked 1e's own diff (69 files) against the brief, the plan's contracts and the cited spec clauses.\n\nImplemented as asked:\n- **Context Menu section (CM-1–5, A).** It replaces the tray, and it shares one action model with the right-click menu (`contextActions.ts`, `cardActions`, `runAction.ts`).\n- **Formalize enablement and the AR-8 dialog (B).** The run-active, none, several-targets, provisional and cycle reasons are in place. In the dialog, \"Mark pending and continue\" sends claimPending first; a card without a Lean statement gets Cancel only. startRun is posted only after the host has answered every mark ok.\n- **Host check and runner (C).** `formalizeStartProblem` runs before the consent question. The run no longer writes `premises:`, ghost adoption is unchanged, and the labels are renamed.\n- **Gate rule B.2, `undeclared-premise` (D).** It reads the shadow's elaborated `status.direct` and refuses, never guesses, when values are missing or stale. It also runs in the ghost scratch check, through the same probe and walk.\n- **Prompts (E)**, including A10.\n- **Tests (F)** cover all of the above.\n- **v4.1 updates and carry-overs 1–3** are all done: the plan's drift is authoritative at Accept, the host numbers messages by arrival, and the notes are added.\n\nSafety properties:\n- **Kinds and arrows:** Claude still cannot change kinds or arrows. The run writes nothing at start, and G5 is unchanged.\n- **No over-claimed status:** B.2 closes the S14 hole.\n- **Markup and aliases:** nothing is rewritten.\n- **Old files:** old history labels and attempt records still read as written.\n- **Deleted tests:** every deleted test is for tray or set-premises behaviour that v4 removes, and each is listed. No test file was deleted; rewritten tests keep their intent.\n- **Git and the user's build:** nothing is staged (the tray file shows as an unstaged ` D`), and `extension/dist` and `out` are untouched.\n\nDeviations the builder documented are acceptable:\n- `.holds` is required of proposition premises only.\n- The arrow checks run on the host only, not in the runner's preflight.\n- B.2 at gate-other judges only a proof the run added or changed.\n\nProblems found: one major and several minor issues, plus two nits. The major one: the remedy text of B.2 (judged at check_lean and gate-proved, also on the user's own unchanged target proof) tells Claude to remove the target's proof. Gate-other lets that removal through, so a not-proved proposal can delete the user's existing proof, against ES-2 and A11. Decision 3 assumes this cannot happen, but nothing enforces it.",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "major",
+      "where": "packages/core/src/gate/rules.ts:637 (with :618, packages/runner/src/gate/engine.ts:761, rules.ts:369, packages/runner/src/run/systemPrompt.ts:36)",
+      "problem": "The `unselected` message of B.2 always tells Claude to \"remove the proof of the target and finish with status not_proved\". B.2 runs at check_lean (stage prove) and gate-proved even when the target's proof is the user's own, unchanged from the base. This is the A11 case: a proved card re-run with a different selection whose proof uses an unselected card, including the S14 sub-case that only B.2 catches. At check_lean this finding also blocks \"Claude suggests\": checkGhost needs a clean check and answers \"The files do not pass check_lean … Fix these first: <B.2 message>\". Gate-other then accepts the removal: the target's .holds is exempt from existing-changed (\"except the target's .holds\"), and status-mismatch fires only for an added or changed theorem. So a not-proved proposal can delete the user's existing proof. That breaks ES-2 (\"In a step that does not end in a proof, it stays exactly as it was\"), A11 and Appendix B (status-mismatch \"extended to removals\"). Decision 3 skips B.2 at gate-other on the premise that \"a not-proved finish leaves it as it was\", but nothing enforces that premise. Part of this predates 1e (step 6 says \"remove any proof of the target\"), but 1e's message and its check_lean judging add a direct instruction in exactly this case.",
+      "fix": "(1) When the target's .holds is the base theorem unchanged (`!targetProofNew`), word B.2's remedy as: \"the existing proof of the target uses X, which is not selected: write a new proof from the selected premises (it replaces the existing one), or finish not_proved and leave the existing proof exactly as it is\". (2) Stop a B.2 finding on an unchanged base proof from blocking checkGhost: judge it at check_lean only when `targetProofNew`, as at gate-other, or leave it out of the cleanliness test. (3) Enforce the invariant: at gate-other, refuse when B had `theorem T.holds` and S removed or changed it (Appendix B's extension of status-mismatch). In step 6, say \"remove any proof of the target that you added\". Add a core test: base proof uses an unselected proved card, S removes it, gate-other refuses.",
+      "evidence": "rules.ts:618 judges B.2 for `purpose === 'gate-proved' || checkProve || (gate-other && targetProofNew)`; rules.ts:637 has the message text; rules.ts:461-470 sets `targetProofNew` false when the entry is gone; rules.ts:361/369 exempt the target's .holds from existing-changed; engine.ts:755-761 refuses the ghost check unless check_lean is clean."
+    },
+    {
+      "id": "F2",
+      "severity": "minor",
+      "where": "packages/runner/src/proposal/service.ts:252 (shown by packages/webview/src/run/ReportCard.tsx:107-111)",
+      "problem": "S18 says that any Result proved without using a single arrow shows \"proved from nothing: check what the statement says\", \"whether or not you marked it\"; A9 says the same for selected arrows that the proof never uses. But `selfEvident` requires `selected.length === 0`. A proof that uses none of the selected arrows therefore gets only \"Not used by the proof: …\" in the report. The flag's new wording, \"(the proof uses none of your arrows)\", implies the wider case. After the reveal, the board's \"proved from nothing\" chip partly makes up for this.",
+      "fix": "Compute the report flag from the proof alone: proved, no card id and no `axiom:` entry in the footprint, and no verified edge into the target, whatever the selection. Add a proposal-service test with premises selected but unused (A9).",
+      "evidence": "selfEvident: proved && proof?.kind === 'proved' && selected.length === 0 && footprint.every((x) => x.startsWith('presup:'))"
+    },
+    {
+      "id": "F3",
+      "severity": "minor",
+      "where": "packages/webview/test/e2e/m2-review.spec.ts:177; packages/webview/test/e2e/m2-overlay.spec.ts:185",
+      "problem": "The report's list of e2e specs that need updating misses two assertions that the renames in 1e break. The run panel now shows \"Follows from nothing?\", but m2-review expects 'Self-evident?'. The attempts list now reads \"from no premises (follows from nothing?)\", but m2-overlay expects 'from no premises (self-evident?)'.",
+      "fix": "Add both to the list in slice1-plan §8 for 1g (expect 'Follows from nothing?' and 'from no premises (follows from nothing?)').",
+      "evidence": "grep over test/e2e: `toContainText('Self-evident?')` at m2-review.spec.ts:177 and `toHaveText('from no premises (self-evident?)')` at m2-overlay.spec.ts:185. RunPanel.tsx and CardDetails.tsx now render the new texts."
+    },
+    {
+      "id": "F4",
+      "severity": "minor",
+      "where": "packages/webview/src/board/contextActions.ts:197",
+      "problem": "With two or more cards selected, the section shows no card action at all. CM-3 says an action that fits only part of the selection is shown disabled, with the reason on hover. CM-4 lists \"Select incoming arrows\" and \"Show on board / Open in editor\" for cards, plural. The brief asks for actions \"disabled with the reason on hover when they fit only partly\". Hiding them means the user gets neither the action nor the reason.",
+      "fix": "For several cards, list the card actions disabled with a reason, e.g. \"One card at a time\" (Move to axioms already uses this wording), or make \"Select incoming arrows\" act on every selected card. Add contextActions tests for a selection of several cards.",
+      "evidence": "`if (cards.length === 1) { for (const entry of cardActions(...)) … }`; the test asserts `entries({ selected: ['a', 'u'] })` equals `[]`."
+    },
+    {
+      "id": "F5",
+      "severity": "minor",
+      "where": "packages/webview/src/header/ContextSection.tsx:57",
+      "problem": "D-3b regression. The tray showed visible \"+ presupposes\" chips for the run's question: the existence assumptions the run may use (they are in the permitted set). The section's summary tooltip computes presuppositions from `selected` (cards) only. A Formalize question is made of arrows or a mark, and selecting an arrow clears `selected`, so a question's presuppositions are now never shown.",
+      "fix": "Compute the presuppositions from the question's cards: the target and sources of `formalizeState`, plus any selected cards. Show them in the summary tooltip (or as a small chip), and add a unit test.",
+      "evidence": "`presuppositionsOf(selected, nodes)`; `selectArrow` sets `selected: []`."
+    },
+    {
+      "id": "F6",
+      "severity": "minor",
+      "where": "packages/core/src/gate/rules.ts:628; packages/runner/src/run/manager.ts:183",
+      "problem": "B.2's `source-only` refusal (no elaborated values, e.g. a failed probe or a model whose names clash with Lean.CoreM) is fed back to Claude as an ordinary retryable footprint finding. Claude cannot fix it, so every attempt of the round is spent against the user's quota, and the run then gives up. Compare AP-13 (\"never counts as a failed Claude attempt\") and A2.",
+      "fix": "Turn a `source-only` finding into an environment outcome of the gate (GateReport.environment, \"telelean could not see which cards the proof uses …\") so it is not counted as Claude's attempt, or end the round with that message. Add a manager or engine test.",
+      "evidence": "Manager gate loop: every finding maps through `gateCheckOf` ('undeclared-premise' → 'footprint'), and `next = attempt >= max ? 'give_up' : 'retry'`."
+    },
+    {
+      "id": "F7",
+      "severity": "minor",
+      "where": "packages/runner/src/run/prompts.ts:211",
+      "problem": "Plan §2.6 says the prompt wording moves to arrows and \"follows from nothing\" instead of \"These suffice\". The context bundle's first line still reads `Run: \"These suffice\" …`, so Claude sees the old action name beside the new headings. This is documented: the FakeBackend scripts in test-fixtures/ match that line, and test-fixtures was outside 1e's write set.",
+      "fix": "Integrator: rename the line (e.g. `Run: \"Formalize for dependencies\" …`) together with the `match` strings of the FakeBackend scripts in test-fixtures/, packages/runner/src/llm/fakeScripts.ts and the demo's demoClaude.ts.",
+      "evidence": "prompts.ts:209-211; slice1-plan §8 builder 1e, \"Kept: the bundle's first line …\"."
+    },
+    {
+      "id": "F8",
+      "severity": "nit",
+      "where": "packages/webview/src/model/run.ts:524",
+      "problem": "The new A10 code was inserted between `suggestedGhosts` and its JSDoc. That comment (\"The suggestions waiting for a decision …\") now sits on top of `MissingArrowHint`'s own JSDoc, and `suggestedGhosts` (line 583) has none.",
+      "fix": "Move the comment back above `export function suggestedGhosts`."
+    },
+    {
+      "id": "F9",
+      "severity": "nit",
+      "where": "packages/webview/src/header/ContextSection.tsx:78",
+      "problem": "The section picks the card an action is about from the raw `selected` (it needs length 1), but `contextActions` builds the entries from `selected` filtered by `nodes`. If one of two selected ids is not on the board shown (e.g. the Proposed view), the card's actions are listed but run with `thing = null` and do nothing.",
+      "fix": "Take the card from the same filtered list `contextActions` uses, e.g. expose `card` on the ContextActions model."
+    }
+  ],
+  "checks_run": [
+    "git archive HEAD | tar -x into scratch v1e_fid/before, then git apply after_slice_1d.patch → 'applied' (the after-1d tree, outside the repo)",
+    "diff -rq before vs working tree (packages, docs) → 69 entries: changed files, 10 new files, packages/webview/src/tray deleted",
+    "diff -ruN → v1e_fid/1e.diff, 4982 lines; read in full by area (core, runner, extension, webview, docs)",
+    "Python test-name diff for every touched test file → removed: 3 in store.test.ts, 2 in store-run.test.ts plus 1 rewritten, 3 in manager.start; renames in runRouting, prompts and m2flow (d); matches the report",
+    "comm of the *.test.ts/*.spec.ts file lists before vs now → only 4 new files, none deleted",
+    "git status --short packages/webview/src/tray; git diff --cached --name-only → ' D SelectionTray.tsx', nothing staged",
+    "find packages/extension/dist packages/extension/out -newer briefs/1e.md → no files",
+    "grep for old texts and tray testids in webview e2e, extension suite and scripts → 2 unlisted failing assertions (m2-review:177, m2-overlay:185)",
+    "grep for 'These suffice|Self-evident' in non-comment source → only prompts.ts:211 (documented) and core planAction for the old set-premises path",
+    "Read the engine's runCheck, gateNow and checkGhostNow, the manager's acceptNow, gate loop and adoption, the proposal service's planAccept and reportCard, and core gate rules (existing-changed and status-mismatch) to check B.2's context and decision 3"
+  ]
+}

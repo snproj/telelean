@@ -1,0 +1,364 @@
+{
+  "summary": "Implementability review of spec v4 (01_spec_v4.md), with a build map for slice 1. I read the spec, the turn-21 prompts and the autopilot log, and the slice-1 code in core, runner, extension and webview. Nothing was written or run.\n\nSlice 1 can be built on the current code. A lot carries over:\n- arrows: the arrow graph (`directUses`, footprints) and the \"rests-on-claimed\" and \"self-evident\" flags;\n- kind changes: the planner for kind changes and its dialogs, and the cycle check in `planSetPremises`;\n- Claude: ghost adoption, which already adds the arrow to the target, and the whole run, gate and review loop;\n- the board: the edge overlay's per-frame loop and pooled paths, and pragmatic-dnd for the AXIOMS column.\n\n**One blocker.** Slice 1 asks for several targets per run \"on today's machinery\". Today a run, the gate, the comparator challenge, the report card and the review all handle one target. The baseline protects only declarations that existed at run start. Read as one run with several steps, the spec is unsound:\n- a later step can rewrite an earlier target's new statement or proof;\n- no check judges that earlier target again before the all-or-nothing Accept;\n- B.1's \"proved by an earlier step of this run\" also contradicts `footprintSinceBase`, which deliberately gives nothing for proofs made in the run.\n\nThe spec must choose: a chain of single-target runs (recommended), or one run that judges every target again on the final state.\n\n**Five major gaps:**\n- the right-click route in AR-1 contradicts CM-7's selection rule;\n- AR-8's \"Mark it pending\" is undefined for a source with no Lean, and today's gate forbids that new axiom;\n- slice 1's share of the Context Menu, the tray and the two switches is not stated;\n- position storage, Undo and placement are not stated, and non-undoable moves in `layout.json` would make Undo of earlier edits conflict;\n- old ASSUMPTION blocks with `premises:` would show arrows into axioms, which AR-2 forbids.\n\nThe minor findings tighten the band and status rules, the canvas details, keyboard and menu behaviour, and the guarantees.\n\n**Size.** Roughly 65 source files and 40 test files: about 5,000–7,500 source lines plus 2,500–4,000 test lines, mostly in the webview. Most test churn is mechanical (about 940 A/D/G occurrences in tests). Splitting slice 1 into 1a and 1b is advised.",
+  "findings": [
+    {
+      "id": "V4-I01",
+      "severity": "blocker",
+      "clauses": "Part 2 ★D8 (a) slice 1; ES-2 'Order'; Appendix B B.1, 'Sessions are runs with rounds'; §13 item 2",
+      "problem": "Slice 1 runs Formalize for dependencies 'on today's review … today's checks plus the new arrow checks', but ES-2/B.1 need several targets proved in sequence, each against its own question. Today's run, gate, comparator challenge, report card and review are single-target end to end, and today's baseline protects only declarations that existed at run start. Read as one run with several steps, the spec is unsound:\n- a later step may change an earlier target's newly formalised statement, or rewrite its proof;\n- the rewritten proof is judged only against the later target's permitted set, which B.1 widens with the earlier footprint;\n- nothing judges the earlier target's inference again on the final state, yet the all-or-nothing Accept applies it.\nThe result can be L proved from a card with no arrow into L, or a statement changed after its step. It is also not buildable as written: B.1's 'footprint … proved by an earlier step of this run' contradicts footprintSinceBase, which deliberately gives nothing for a proof made in the run, and a challenge takes a single permitted list for all its targets.",
+      "evidence": "core/src/gate/types.ts:151-158 (Selection has one target), :171 (FrozenSnapshot.targetStatement); core/src/gate/permitted.ts:61-76 (footprintSinceBase: a proof Claude wrote 'gives nothing'); runner/src/gate/engine.ts:578-599 (freezeChallenge targets [one], permittedAxioms one list); core/src/gate/rules.ts:348-364 (existing-changed only vs B: 'only the target's .holds may change'); core/src/run.ts:279, 423, 491 (RunView.target, ReportCard.target, AttemptRecord.target); runner/src/proposal/service.ts:184-202; webview/src/model/run.ts:616",
+      "fix": "Add to ★D8 (a) slice 1: \"Several targets run as a chain of today's single-target runs, sources first. Each target gets its own run (question = its selected arrows), reviewed and accepted all-or-nothing before the next starts, so an earlier target's proof is your own proof when the next run starts. Discard, Cancel or 'not proved' stops the chain and lists the targets not started. One run with several steps arrives with sessions (slice 2), together with RV-11.\" If one run is kept instead, add: \"a statement or proof made by an earlier step is fixed for later steps (any change fails the gate), and before the proposal is shown every target's inference is judged again on the final state: its permitted set (B.1), B.2, its own freeze and G4.\""
+    },
+    {
+      "id": "V4-I02",
+      "severity": "major",
+      "clauses": "AR-1, CM-4 ('Draw arrows from the selection'), CM-7",
+      "problem": "AR-1's second gesture is 'select one or more cards, right-click the target, and choose Draw arrows from the selection'. But CM-7 says the thing under the cursor 'is selected first, unless it is already part of the selection'. Right-clicking an unselected target therefore replaces the selected sources with the target, so the menu item has no sources. The gesture cannot be built as written.",
+      "evidence": "AR-1 and CM-7 text; webview/src/state/store.ts clickCard (L1123-1131) replaces the selection without Ctrl",
+      "fix": "CM-7, after 'It is selected first, unless it is already part of the selection': \"Exception: a right click on a card while other cards are selected keeps that selection and makes the clicked card the menu's target; the menu then offers Draw arrows from the selection.\""
+    },
+    {
+      "id": "V4-I03",
+      "severity": "major",
+      "clauses": "AR-8, ★D7 (b), CF-2 (pending = axiom .holds), B.1, B.4",
+      "problem": "'Mark it pending' needs `axiom L.holds : L`, which requires L to have a Lean statement. For an unformalised source there is nothing to write, and the spec does not say who writes the axiom, when, or how it is persisted. Today's gate allows a new `.holds` axiom in a run only for selected ASSUMPTION cards and adopted ghosts, so Claude cannot add one for a proposition. Also, 'also formalize the arrows into it' is impossible when L has neither arrows nor the 'follows from nothing' mark (AR-5).",
+      "evidence": "core/src/gate/rules.ts:268-276 (allowedHolds only for selected ASSUMPTION or ghost); runner/src/run/systemPrompt.ts:27,36 (a GOAL/DERIVATION premise gets no .holds axiom); CF-2 'pending, i.e. an axiom ….holds'",
+      "fix": "AR-8, add: \"'Mark it pending' for a source with a Lean statement: telelean writes `axiom ‹L›.holds : ‹L›` at once, as your edit (one Undo step and a History entry), before the step starts. For a source without Lean: the step formalises it and may add exactly that axiom; the gate allows it only for sources you marked pending, and the review lists it as a new pending claim. 'Also formalize the arrows into it' is offered only when the source has arrows into it or the 'follows from nothing' mark; it adds the source as a target whose question is all of those arrows (or the mark).\""
+    },
+    {
+      "id": "V4-I04",
+      "severity": "major",
+      "clauses": "★D8 (a) slice 1; CM-1, CM-3, CM-4, CM-5, CM-7; ES-2 switches",
+      "problem": "Slice 1 needs a control for Formalize for dependencies and a right-click menu, but D8 (a) does not say:\n- whether the tray is removed in slice 1 (CM-5);\n- which CM-4 actions exist then: Freeze (slice 3), Transform (slice 4), Accept/Decline (slice 2) and Copy reference (slice 5) cannot;\n- whether the ▾ appears. Only 'Open the whole model' is deferred; 'Claude may add cards' adds proposition cards with arrows, which slice 1 forbids ('Claude adds no arrows').",
+      "evidence": "D8 (a) slice 1 text; CM-4 table; webview/src/tray/SelectionTray.tsx (today's only run control)",
+      "fix": "Add to D8 (a) slice 1: \"The Context Menu section (CM-1, CM-3, CM-5, CM-7) replaces the tray. Slice 1 actions: Formalize for dependencies (no ▾: neither switch exists yet), Follows from nothing / Remove, Select incoming arrows, Draw arrows from the selection, Delete (arrows), Move to axioms, Show on board / Open in editor; on empty canvas: New proposition here, Fit all, Tidy layout. The other CM-4 actions arrive with their slices.\""
+    },
+    {
+      "id": "V4-I05",
+      "severity": "major",
+      "clauses": "BD-3 'Placement', BD-8, ES-9, Appendix B B.7",
+      "problem": "Three things are unspecified:\n- Undo: whether a canvas move or Tidy layout is an Undo step. Today a reorder is a layout-only Undo entry. With frequent moves, Undo would mostly undo moves, and ES-9 says Undo covers only freezes during a session.\n- Storage: whether placements are stored. Storing them writes layout.json merely by opening a board; not storing them lets unplaced cards shift as arrows change.\n- Placement: who computes it. Only the webview knows card sizes and the view ('placed in view', 'cards do not overlap').\nThere is also a trap. If positions stay in layout.json (B.7) and moves are not Undo steps, Undo of any earlier add, kind change or delete can conflict. Those plans also write layout.json, and Undo applies their reverse patch with no fuzz, so a nearby position line breaks it.",
+      "evidence": "runner/src/workspace/modelWorkspace.ts:891-898 (layoutOnly entries recorded on the undo stack); runner/src/workspace/undo.ts:41-48 (reverse patch, fuzzFactor 0, else conflict); core/src/edit/planAction.ts:101, 205, 237 (add, delete and kind change write layout.json)",
+      "fix": "Replace B.7 and extend BD-3: \"Canvas positions are kept in their own file, `.telelean/subjects/<S>/positions.json`, written only by moves, Tidy layout and placement, never by an undoable edit. Moves and Tidy layout are neither Undo steps nor History entries. The board computes placements with the cards' measured sizes and the current view, and stores a placement the first time it makes it. A card added from the A|P box, or moved to the canvas by AR-6, gets its position written right after that action, by the same path. The AXIOMS order stays in layout.json and is undoable, as today.\""
+    },
+    {
+      "id": "V4-I06",
+      "severity": "major",
+      "clauses": "A19, AR-2, AR-7",
+      "problem": "Old files can hold an ASSUMPTION with a `premises:` field. Today this is a supported state: the 'you think this follows from those: prove it?' chip, and the parser allows premises on every type. Under A19 such a block reads as an axiom with incoming arrows, which contradicts AR-2 ('Y must be a proposition'). The board would draw arrows into the AXIOMS column that can never be formalized, and the spec does not say how they are shown.",
+      "evidence": "webview/src/model/cardData.ts:174-176 (hint-d13); webview/test/shared/graphs.ts:62 ('a-premised'); webview/test/e2e/m1-cards.spec.ts:87; core/src/markup/parser.ts:5 ('premises: is allowed on every type')",
+      "fix": "Add to A19: \"An axiom block (ASSUMPTION or AXIOM) with a `premises:` field reads as an axiom; its premises are not drawn as arrows. The card shows 'declared support: make it a proposition?', which performs AR-6 with those arrows (one Undo step). Nothing is rewritten until then.\""
+    },
+    {
+      "id": "V4-I07",
+      "severity": "minor",
+      "clauses": "A10, ★D8 (a) slice 1, B.2",
+      "problem": "A10 has Claude propose an arrow item when it needs a card you drew no arrow from. Slice 1 has no arrow items, and B.2 rejects such a proof. The spec does not say what happens instead. Without a rule, Claude may propose an existing card as a missing premise (a duplicate ghost), or keep failing the gate.",
+      "evidence": "runner/src/run/prompts.ts:224 ('OTHER CARDS … never use them as premises'); A10; D8 (a)",
+      "fix": "Add to D8 (a) slice 1: \"If a proof needs a card you did not select, Claude finishes 'not proved' with a gap naming that card; the report offers 'Draw (or select) the arrow from ‹card› and run again'. Claude never proposes an existing card as a missing premise.\""
+    },
+    {
+      "id": "V4-I08",
+      "severity": "minor",
+      "clauses": "AR-3, B.3, A15",
+      "problem": "Two cycle cases are unspecified:\n- Arrows a proof uses. The cycle check covers drawn arrows only. Drawing Y → X while Y's proof uses X (A15's situation, with Y as the source) passes the check, but makes X pending on a card that rests on X, so formalizing it can only fail.\n- Cycles already in the files. A cycle written by hand (TL015) would fail B.3 on every state the gate judges, counted against Claude.",
+      "evidence": "core/src/edit/planAction.ts:270-280 (checks premises only); core/src/project/build.ts:700-728 (TL015 for hand-made cycles)",
+      "fix": "AR-3: \"The check runs on the arrows you drew together with the arrows a checked proof uses (solid ones). A cycle already in your files (TL015) is reported before any Claude step ('remove one arrow of this cycle first') and never counts as a failed attempt.\""
+    },
+    {
+      "id": "V4-I09",
+      "severity": "minor",
+      "clauses": "B.5, BD-5, BD-7, A20, S18",
+      "problem": "Three band rules disagree or are open:\n- B.5 says band(v) = 'the arrows from direct(v)', but A20 says a used card with no drawn arrow is never inside a band.\n- BD-5's 'not used by the current proof' does not say direct or transitive.\n- BD-7 puts the band of a card proved from nothing on its ∅ mark, but S18 allows proofs from nothing on cards without the mark, which leaves the band nowhere.",
+      "evidence": "B.5, A20, BD-7, S18 text; core/src/project/edges.ts:80-81 (direct computed for proved and conditional cards)",
+      "fix": "B.5: \"band(v) = the drawn arrows into v whose source is in direct(v). A source in direct(v) with no drawn arrow gets the warning arrow and is never in the band.\" BD-5: \"'not used by the current proof' = its source is not in direct(v).\" BD-7: \"A card proved from nothing without a ∅ mark shows a ∅ stub carrying the band and the 'proved from nothing' chip.\""
+    },
+    {
+      "id": "V4-I10",
+      "severity": "minor",
+      "clauses": "BD-4",
+      "problem": "'Today's ▲ n linked stub badges' are one-dimensional: up or down, in a column's header or footer. On a panned canvas an arrow's far end can be off-screen in any direction, so the badge's place and direction are undefined.",
+      "evidence": "webview/src/board/geometry.ts:229-241 (BadgeDir 'up' | 'down', one per column); EdgeEngine.ts:341-371 (header and footer slots)",
+      "fix": "BD-4: \"On the canvas a cut-off arrow stops at the canvas edge it leaves through; each canvas edge has a badge ('◀ 2 linked', '▲ 1 linked' …) that pans to the nearest hidden card. The AXIOMS column keeps ▲/▼.\""
+    },
+    {
+      "id": "V4-I11",
+      "severity": "minor",
+      "clauses": "§13 items 7 and 9; A16; A20",
+      "problem": "Items 7 and 9 are stated as mechanical guarantees, but A16 and A20 (arrows you delete, proofs you write) and hand-made cycles (TL015) break them by design. A builder may try to enforce them, for example by refusing A16's delete.",
+      "evidence": "§13.7, §13.9 vs A16, A20; core/src/project/build.ts:700-728",
+      "fix": "§13 item 7: append \"for every proof checked in a Formalize step; for proofs you write and arrows you delete (A16, A20) the board flags each missing arrow (TL107)\". Item 9: append \"for every state telelean writes or judges; a cycle you write by hand is flagged (TL015) and blocks Formalize until removed\"."
+    },
+    {
+      "id": "V4-I12",
+      "severity": "minor",
+      "clauses": "RV-6, S7, D-19 (slice 1 review)",
+      "problem": "RV-6 hides 'bands, glows and solid arrows into that target'. Glows and 'rests on pending' chips of downstream cards also change when the target's proof status changes, for example when a pending target is proved, and they would reveal the result. Today's overlay already hides every card whose proof status changed, but the spec's wording is narrower, so a builder of the new glows may hide only the target's.",
+      "evidence": "webview/src/model/run.ts:614-619 (hidden = target + every card whose diff has 'proof'); core/src/proposal/diff.ts:51-53",
+      "fix": "RV-6 hidden list: \"…the glows, bands, established and 'rests on pending' chips and solid arrows of the target and of every card whose proof status the proposal changes (today's hidden set)\"."
+    },
+    {
+      "id": "V4-I13",
+      "severity": "minor",
+      "clauses": "BD-6, B.5",
+      "problem": "The definition of established ignores whether the facts are current. Proof status survives on stale facts, so a card whose file has changed since Lean last checked it could glow green.",
+      "evidence": "core/src/project/build.ts:542-543 ('stale', 'not-checked' flags); webview/src/model/cardData.ts:153 (stale chips dimmed)",
+      "fix": "B.5: add \"the card is not 'not-checked'\". BD-6: \"while the card is 'changed since last check' its glow is drawn dimmed\"."
+    },
+    {
+      "id": "V4-I14",
+      "severity": "minor",
+      "clauses": "AR-1 ('select them and press Delete'), CM-2, CM-4",
+      "problem": "Today Delete on a focused card opens the card's delete dialog. With a mixed selection of cards and arrows, the spec does not say what Delete does.",
+      "evidence": "webview/src/board/NodeCard.tsx:177-180",
+      "fix": "AR-1: \"Delete removes the selected arrows and marks, with A16's confirmation when a proof uses one. Cards are never deleted together with arrows: a focused card's Delete opens its dialog only when no arrow or mark is selected.\""
+    },
+    {
+      "id": "V4-I15",
+      "severity": "minor",
+      "clauses": "CM-7; Appendix B canvas note ('The browser's own contextmenu event is suppressed')",
+      "problem": "Suppressing the context menu everywhere also removes VS Code's Cut/Copy/Paste webview menu from inline edits, the A|P box and selected Lean code.",
+      "evidence": "webview/src/board/dragGuard.ts:20 (inputs and .tl-lean are text zones); common/OneLineInput.tsx",
+      "fix": "Canvas note: \"…suppressed, except over a text field and over selected text, where VS Code's own menu stays.\""
+    },
+    {
+      "id": "V4-I16",
+      "severity": "minor",
+      "clauses": "B.2, BD-7 (definition of direct(T))",
+      "problem": "`directUses` counts only a card's `.holds`. When the traversal reaches any other declaration bound to another card (an extra `lean:` name, such as a pinned lemma), it stops without counting that card. So a proof can reach L.holds through card M's pinned lemma while direct(T) shows neither L nor M. The board then has no band arrow and may show 'proved from nothing', and B.2 lets it pass.",
+      "evidence": "core/src/project/edges.ts:56-62; core/src/project/build.ts:359 (extra pinned names are owned by the card)",
+      "fix": "B.2: \"direct(T) counts a card as used when T's proof reaches its `.holds` or any other declaration bound to it, following only declarations that belong to no card.\""
+    },
+    {
+      "id": "V4-I17",
+      "severity": "minor",
+      "clauses": "BD-3",
+      "problem": "Cards expand in place to show their Lean code and details. On a free canvas, expanding a card overlaps its neighbours and their arrows, and the spec says nothing about it.",
+      "evidence": "webview/src/board/NodeCard.tsx:293",
+      "fix": "BD-3: \"On the canvas an expanded card opens its details over the cards below it (raised above them and the arrows) without moving them; placement and Tidy layout use collapsed sizes.\""
+    },
+    {
+      "id": "V4-I18",
+      "severity": "minor",
+      "clauses": "CM-7 ('New proposition here'), BD-8",
+      "problem": "The spec does not say how the new card's sentence is entered. The A|P box is the only way to type a new card (D-16: your words verbatim).",
+      "evidence": "webview/src/prompt/PromptBox.tsx",
+      "fix": "CM-7: \"New proposition here focuses the A|P box set to Proposition; the card it adds is placed at the clicked point.\""
+    },
+    {
+      "id": "V4-I19",
+      "severity": "minor",
+      "clauses": "AR-6",
+      "problem": "'Its axiom n.holds stays, marked pending proof' assumes the axiom has one. An axiom with no Lean, or with a missing .holds (TL117), has nothing to keep pending. One whose .holds is a theorem (TL106) is already proved.",
+      "evidence": "core/src/project/build.ts:548-559 (TL117), 640-642 (TL106)",
+      "fix": "AR-6: \"An axiom without `axiom n.holds` becomes an unproved proposition; one whose `.holds` is a theorem becomes a proved proposition; only an `axiom n.holds` stays as a pending claim. The gesture's impact says which.\""
+    },
+    {
+      "id": "V4-I20",
+      "severity": "minor",
+      "clauses": "ES-2 'The question', CM-2, BD-5",
+      "problem": "'Select one or more arrows' does not exclude the derived warning arrow ('used but not drawn') or the thin mention arrows. Neither is a drawn arrow, and CF-7 says derived things cannot be acted on.",
+      "evidence": "BD-5 table; webview/src/board/edges.ts:23-58",
+      "fix": "ES-2: \"Only drawn arrows (dotted or solid) and ∅ marks can be selected for Formalize. The warning arrow's menu offers Draw this arrow; mention arrows are not selectable.\""
+    },
+    {
+      "id": "V4-I21",
+      "severity": "minor",
+      "clauses": "★D8 (a); 02_autopilot_decisions AP-4 (one patch per slice)",
+      "problem": "Slice 1 bundles the board rewrite (canvas, overlay, Context Menu, store) with run-engine and gate changes (several targets, AR-8, B.2). It is likely 2–3 times larger than any later slice, which leaves no reversible checkpoint between the risky board work and the soundness-relevant engine work. The machine has about 2 GB free for builds and tests.",
+      "evidence": "size estimate in slice1_map; AP-6 memory caps",
+      "fix": "★D8 (a): split slice 1 into 1a (board, arrows, kinds, pending, follows from nothing, glows, bands, A|P box, Context Menu; Formalize for one target on today's run, with B.2 and B.3) and 1b (several targets as a chain, the AR-8 dialog), each with its own patch."
+    }
+  ],
+  "slice1_map": {
+    "areas": [
+      {
+        "area": "Core kinds, markup and node model",
+        "files": [
+          "packages/core/src/model.ts",
+          "packages/core/src/markup/parser.ts",
+          "packages/core/src/markup/serializer.ts",
+          "packages/core/src/markup/edits.ts",
+          "packages/core/src/graph.ts",
+          "packages/core/src/gate/adoption.ts",
+          "packages/core/src/export/graphJson.ts",
+          "packages/core/schema/telelean-graph-1.0.schema.json",
+          "packages/core/src/samples/spyro.ts",
+          "packages/core/src/samples/large.ts"
+        ],
+        "changes": "- Kinds: `type:` accepts AXIOM/PROPOSITION. The parser maps ASSUMPTION to AXIOM and DERIVATION/GOAL to PROPOSITION; the raw line is kept, so G5's raw field compare is unaffected.\n- NodeType, NODE_TYPES and isNodeType become two-valued (or stay three-valued internally; see open questions).\n- 'Follows from nothing': add TlNode.followsFromNothing, set when `premises:` is present and empty. Today `premises: []` already parses to [], but build.ts collapses it.\n- Writing: renderBlock and setBlockFields need an explicit-empty form, because both drop empty lists today. New blocks are written as AXIOM/PROPOSITION.\n- Adoption writes AXIOM, and its re-parse check compares the normalised type.\n- graph.json kinds: change the schema enum, or map back.",
+        "reuse": "normaliseKey alias pattern; splitList already parses `[]`; renderBlock/insertBlockEdits; adoptionPlan (already appends the ghost to the target's premises, adoption.ts:143-165)",
+        "risks": "- NodeType is a frozen contract used by protocol, layout and webview; about 940 A/D/G occurrences in tests.\n- serializer.test.ts:67 pins that empty lists are omitted.\n- graph.json schema consumers.\n- build.ts:749 collapses missing and empty premises."
+      },
+      {
+        "area": "Core status, edges, glows and bands",
+        "files": [
+          "packages/core/src/project/build.ts",
+          "packages/core/src/project/edges.ts",
+          "packages/core/src/project/subjectGraph.ts",
+          "packages/core/src/model.ts"
+        ],
+        "changes": "- Pending: any proposition whose .holds is an axiom is pending-promotion, GOAL included. Drop TL116, TL105 and 'proved-goal'; keep TL106 as 'has a proof'.\n- Established: add an established flag (B.5: proved, not conditional, no sorry, no `axiom:` entries, every footprint card an axiom card, not stale; see V4-I13).\n- Band data per proposition: drawn arrows from direct(v), plus definitions and presuppositions passed through, for 'also by definition'.\n- TL107 fires for every used-not-drawn source: remove the 'covered' exemption at edges.ts:157. TL109 becomes a tooltip, not a warning.\n- 'self-evident' becomes 'proved from nothing'.\n- TlGraph carries axiom order and positions.",
+        "reuse": "computeEdges' `direct` map; the footprint split in build.ts:609-638; flags rests-on-claimed and self-evident; proofDependents",
+        "risks": "- edges.test.ts, status.test.ts, cards.test.ts and spyro.test.ts pin TL107/TL109/TL105/TL116.\n- directUses misses cards reached through extra pinned names (V4-I16).\n- established must be hidden in the proposed overlay (V4-I12)."
+      },
+      {
+        "area": "Core planning: arrows, kind changes, positions",
+        "files": [
+          "packages/core/src/actions.ts",
+          "packages/core/src/edit/planAction.ts",
+          "packages/core/src/edit/planKind.ts",
+          "packages/core/src/kindChange.ts",
+          "packages/core/src/edit/planDelete.ts",
+          "packages/core/src/layout.ts"
+        ],
+        "changes": "New BoardActions:\n- add-arrows (sources, target): checks cycles and subject; into an axiom, one plan also does the A-to-P type change (axiom stays as pending), AR-6;\n- remove-arrows: with A16's confirmation when a proof uses one;\n- set-follows-from-nothing: on an axiom it is AR-6;\n- change-kind to AXIOM: also removes `premises:` and the mark (AR-7);\n- position write: layout-only, not undoable (V4-I05);\n- add-node with a position.\nAlso:\n- Layout: AXIOM order, with parseLayout reading the old ASSUMPTION key and ignoring the DERIVATION/GOAL orders; positions go to their own file.\n- kindChangeImpact texts for AR-6/AR-7: arrows removed, proof dropped, 'N cards lose their green glow', computed from established and proofDependents.\n- HistoryActionKind additions.",
+        "reuse": "planSetPremises' cycle and subject checks (planAction.ts:259-291); planKind's D-to-A and G-to-A ops and the dependents and rationale confirmations; EditSession; moveInLayout and withoutIds",
+        "risks": "- Undo conflicts if non-undoable position writes share layout.json with undoable plans (undo.ts:41-48).\n- kindTexts.test.ts and contracts.test.ts pin impact texts and the layout shape.\n- The to-GOAL path (remove-holds rewrite) becomes unreachable from the board but stays in planKind."
+      },
+      {
+        "area": "Protocol and extension routing",
+        "files": [
+          "packages/core/src/protocol.ts",
+          "packages/core/src/run.ts",
+          "packages/extension/src/logic/actionMapping.ts",
+          "packages/extension/src/logic/boardSession.ts",
+          "packages/extension/src/logic/runs.ts"
+        ],
+        "changes": "New webview-to-host messages, each with a hand-written guard:\n- drawArrows {sources, target, position?}\n- deleteArrows {arrows: [{source, target}]}\n- followsFromNothing {id, on}\n- setPositions {positions: {id: {x, y}}}, with finite, bounded numbers and LIMITS\n- moveToAxioms, or kindChange to AXIOM\n- addNode.position\n- formalize {targets: [{target, sources, mark?}], pending?: ids}, replacing startRun and theseSuffice\nAlso:\n- the nodeType validator becomes AXIOM/PROPOSITION;\n- update ACTION_MESSAGE_TYPES and RUN_MESSAGE_TYPES;\n- boardSession routes position writes without an Undo toast;\n- formalize goes through the run queue with the consent flow;\n- RunView gains chain info (target i of n).",
+        "reuse": "guards id, ids, record, requestId and int; webviewMessage/hostMessage; enqueueRun and the consent modal; parseHostToWebview passes unknown graph fields through",
+        "risks": "protocol.test.ts, protocol.m2.test.ts, actionMapping.test.ts, boardSession.test.ts and runRouting.test.ts pin message shapes."
+      },
+      {
+        "area": "Runner workspace: layout and position writes",
+        "files": [
+          "packages/runner/src/workspace/modelWorkspace.ts",
+          "packages/runner/src/workspace/files.ts",
+          "packages/runner/src/workspace/sidecars.ts",
+          "packages/runner/src/workspace/types.ts"
+        ],
+        "changes": "- A position write path: no undo entry, no snapshot.\n- Load and watch the positions file, and pass positions into graph(S).\n- Re-publish on change, as changed.layouts does today.",
+        "reuse": "the layoutOnly branch of performNow; LayoutFile cache; layoutSubject/listLayoutFiles; withTipLayout",
+        "risks": "- Every move goes through the EditApplier (openTextDocument, WorkspaceEdit, save) and re-publishes the whole graph, which means a full React re-render and an EdgeEngine re-measure.\n- Optimistic moves need seq-based rollback.\n- Tests: perform.test.ts, undo.test.ts, scan.test.ts, refresh.test.ts."
+      },
+      {
+        "area": "Run engine and gate: Formalize on today's machinery",
+        "files": [
+          "packages/runner/src/run/manager.ts",
+          "packages/runner/src/run/types.ts",
+          "packages/runner/src/run/preflight.ts",
+          "packages/runner/src/run/prompts.ts",
+          "packages/runner/src/run/systemPrompt.ts",
+          "packages/runner/src/proposal/service.ts",
+          "packages/core/src/gate/rules.ts",
+          "packages/core/src/gate/permitted.ts",
+          "packages/core/src/gate/types.ts",
+          "packages/core/src/gate/describe.ts"
+        ],
+        "changes": "start():\n- no set-premises (manager.ts:856-866; AR-4);\n- Selection.premises = sources of the selected arrows;\n- preflight: the target is a proposition, every selected arrow is declared in the files (or the mark exists), and the arrows have no cycle.\nGate and run:\n- several targets as a chain of runs (V4-I01);\n- AR-8: Selection.pending; telelean writes add-holds-axiom when L is formalised; otherwise rules.ts allowedHolds (L268-276) accepts pending sources;\n- B.2: a new GateFindingCode 'hidden-edge' at gate-proved, directUses(target) ⊆ selection.premises ∪ adoptedGhosts, with a describeFinding text;\n- drop the GOAL-to-DERIVATION lifecycle item (service.ts:184-187).\nPrompts:\n- AXIOM/PROPOSITION wording and the 'question';\n- other arrows into the target are not part of it;\n- the gap names an unselected card.",
+        "reuse": "the M2 loop: freeze, normalise, gate, G4, ghost check and adoption, Feedback, Accept rebase; permittedAxioms (selected .holds of axioms and pending, B-only derivation footprints) needs no change for a chain",
+        "risks": "- manager.ts (2339 lines) is single-target throughout.\n- One run with several steps needs the V4-I01 extra rules.\n- Prompt changes cannot be tried on real Claude on autopilot (AP-3).\n- system-prompt-5.1.txt fixture.\n- Each target adds a build, a freeze and a comparator Lean job under about 2 GB free."
+      },
+      {
+        "area": "Webview shell, canvas and interaction",
+        "files": [
+          "packages/webview/src/App.tsx",
+          "packages/webview/src/board/Board.tsx",
+          "packages/webview/src/board/Column.tsx",
+          "packages/webview/src/board/VocabularyGroup.tsx",
+          "packages/webview/src/board/reveal.ts",
+          "packages/webview/src/board/dnd.ts",
+          "packages/webview/src/board/dragGuard.ts",
+          "packages/webview/src/header/Header.tsx",
+          "packages/webview/src/styles/board.css",
+          "new: packages/webview/src/board/Canvas.tsx, viewport.ts, placement.ts, ContextMenu.tsx"
+        ],
+        "changes": "Layout:\n- top: Vocabulary and Definitions columns (split VocabularyGroup by kind 'definition'), a draggable divider, a one-line collapse with counts;\n- bottom: the AXIOMS column (with ghosts at its top) and the canvas: a clipped viewport with one transformed layer.\nCanvas:\n- a non-passive wheel listener zooms about the cursor (offset' = cursor − (cursor − offset)·s'/s); Ctrl+wheel deltas are scaled up;\n- right-drag pans with pointer capture; contextmenu is suppressed and the menu opens on release (under 4 px);\n- keys: +/−, arrows, Tab follows focus;\n- a selection rectangle; left-drag moves cards with pointer events;\n- Fit all and Zoom to selection; placement of unpositioned cards (layered: sources left of targets, no overlap);\n- reveal pans and zooms; the view is kept per subject in webview state.\nCross-part drop:\n- a proposition dropped on the AXIOMS column is hit-tested on release and shows the AR-7 drop zone;\n- the column itself keeps pragmatic-dnd.",
+        "reuse": "RunPanel's setPointerCapture split drag (run/RunPanel.tsx:145); DropZone and the impactOf UI; PersistedState/persist; revealCardSoon; the vocabCollapsed toggle",
+        "risks": "- Native HTML5 DnD inside a CSS-scaled layer (drag image, coordinates): use pointer events on the canvas, so two drag systems coexist.\n- The wheel listener must be on an ancestor of the SVG overlay, or arrow hit-strokes swallow wheel events.\n- Linux fires contextmenu on press. VS Code's webview menu skips only events whose default was prevented, so register on the board or document, not window.\n- Text can blur with will-change: transform.\n- A trackpad pinch may produce no Ctrl+wheel on Linux X11."
+      },
+      {
+        "area": "Arrow overlay (EdgeEngine and geometry)",
+        "files": [
+          "packages/webview/src/board/EdgeEngine.ts",
+          "packages/webview/src/board/geometry.ts",
+          "packages/webview/src/board/edges.ts",
+          "packages/webview/src/board/Board.tsx"
+        ],
+        "changes": "- Two parts: the AXIOMS column (scrolls) and the canvas (pans and zooms). Card boxes are cached in list-content or canvas space and transformed each frame.\n- Sides follow relative x; off-screen ends on the canvas get 2-D stubs and edge badges (V4-I10).\n- Clip to the union of the column and canvas viewports.\n- Transparent wide hit-strokes for click, hover and right-click.\n- A rubber-band arrow while dragging from a handle; ∅ mark stubs.\n- Band: arrows into one card need fanned entry points, so the band's arrows can be grouped and bound.\n- Warning colour only for used-but-not-drawn; unused drawn arrows stay dotted with a tooltip.",
+        "reuse": "the rAF read/compute/write loop; the path pool and attribute diffing; markerVariant/MARKER_VARIANTS; toDisplayEdges' per-pair merge; budget and focus ranking",
+        "risks": "- geometry.ts is keyed by NodeType and COLUMN_INDEX (routing through the DERIVATION column, up/down badges), so it is mostly rewritten along with geometry.test.ts.\n- Today endpoint() gives every arrow into a card the same anchor, so a band cannot bind a subset.\n- The overlay's pointer-events: none (board.css:721) must allow hit-strokes."
+      },
+      {
+        "area": "Cards, chips, store, Context Menu, A|P box and dialogs",
+        "files": [
+          "packages/webview/src/board/NodeCard.tsx",
+          "packages/webview/src/board/CardDetails.tsx",
+          "packages/webview/src/model/cardData.ts",
+          "packages/webview/src/labels.ts",
+          "packages/webview/src/state/store.ts",
+          "packages/webview/src/tray/SelectionTray.tsx",
+          "packages/webview/src/prompt/PromptBox.tsx",
+          "packages/webview/src/dialogs/Dialogs.tsx"
+        ],
+        "changes": "Cards:\n- glows: blue for formalised, green for established;\n- chips: pending proof, rests on pending, given, uses a hidden assumption, proved from nothing;\n- an arrow handle marked data-nodrag; A/P glyphs.\nStore:\n- a typed selection of cards, arrows and marks; positions and view;\n- actions for draw/delete arrows, the mark, Move to axioms, and formalize with the AR-8 dialog;\n- order = AXIOMS order only.\nUI:\n- the tray becomes the Context Menu section plus the right-click menu (the slice-1 subset, V4-I04);\n- the A|P box places new cards in view;\n- Delete rules (V4-I14).",
+        "reuse": "clickCard and Ctrl selection; impactOf/requestKindChange and the dependents and rationale dialogs; the pending/track/rollback machinery; chip infrastructure; the GhostSuggestion 'I hold this' flow",
+        "risks": "- store.ts (1699 lines) and store.test.ts are built around Record<NodeType, …> order and drop kinds.\n- NodeCard's Delete opens the card delete dialog.\n- The hint-d13 chip and its e2e test (V4-I06)."
+      },
+      {
+        "area": "Review and proposed view under slice 1",
+        "files": [
+          "packages/webview/src/model/run.ts",
+          "packages/webview/src/run/Review.tsx",
+          "packages/webview/src/run/ReportCard.tsx",
+          "packages/webview/src/run/RunPanel.tsx",
+          "packages/webview/src/run/ProposalBanner.tsx",
+          "packages/webview/src/board/GhostCards.tsx"
+        ],
+        "changes": "- Hidden cards also hide glows, bands and established chips (V4-I12).\n- Remove the lifecycle ('Card changes') step.\n- Wording: 'Formalize for dependencies', 'proved from nothing', 'target i of n' for a chain.\n- Ghosts show at the top of the AXIOMS column.",
+        "reuse": "buildOverlay's hidden set (it already includes every card whose proof status changed); RESULT_CHIP_KEYS",
+        "risks": "run.test.ts, store-run.test.ts and the m2-review, m2-overlay and m2-run e2e tests."
+      },
+      {
+        "area": "Theme colours and test infrastructure",
+        "files": [
+          "packages/extension/package.json",
+          "packages/webview/test/unit/theme.test.ts",
+          "packages/webview/test/shared/graphs.ts",
+          "packages/webview/test/shared/runs.ts",
+          "packages/webview/test/e2e/helpers.ts"
+        ],
+        "changes": "- Add the telelean.proved colour.\n- Remove or repurpose telelean.kindDerivation: the theme test requires board.css to read every contributed colour.\n- Move fixtures to AXIOM/PROPOSITION.",
+        "reuse": "the M1 fallback pattern for colour variables",
+        "risks": "Playwright and VS Code-instance suites are heavy (AP-6), so pan, zoom, right-click and drag e2e tests may stay unrun."
+      }
+    ],
+    "tests_affected": [
+      "core: test/contracts.test.ts, protocol.test.ts, protocol.m2.test.ts, samples.test.ts",
+      "core markup: test/markup/serializer.test.ts, edits.test.ts, spyro.test.ts",
+      "core project: test/project/status.test.ts, edges.test.ts, cards.test.ts, spyro.test.ts, facts.test.ts",
+      "core edit: test/edit/kindChange.test.ts, plans.fake.test.ts, plans.wp1.test.ts, conditional.test.ts; test/carryover/kindTexts.test.ts, confirmedDependents.test.ts",
+      "core gate: test/gate/rules.test.ts, permitted.test.ts, adoption.test.ts, premiseCheats.test.ts, describe.test.ts",
+      "core export and proposal: test/export/graphJson.test.ts, schema.test.ts; test/proposal/diff.test.ts",
+      "runner run: test/run/manager.start.test.ts (set-premises at start), prompts.test.ts with fixtures/system-prompt-5.1.txt, manager.happy/gate/rounds tests",
+      "runner other: test/gate/rules.test.ts; test/proposal/build.test.ts, accept.test.ts, apply.test.ts (GOAL-to-DERIVATION lifecycle); test/workspace/perform.test.ts, undo.test.ts, scan.test.ts, refresh.test.ts; test/integration/m2flow.test.ts",
+      "extension: test/unit/actionMapping.test.ts, boardSession.test.ts, runRouting.test.ts, packageJson.test.ts, fakes.ts; test/suite/board.test.ts, e2e.test.ts, e2e-runs.test.ts, runs.test.ts (VS Code instance, heavy)",
+      "webview unit: test/unit/store.test.ts, store-run.test.ts, cardData.test.ts, edges.test.ts, geometry.test.ts, run.test.ts, theme.test.ts, format.test.ts; test/shared/graphs.ts, runs.ts",
+      "webview e2e (Playwright): board.spec.ts, m1-drag.spec.ts, m1-cards.spec.ts, m1-edits.spec.ts, m1-fixes.spec.ts, m1-lean-code.spec.ts, m1-store.spec.ts, m2-layout.spec.ts, m2-overlay.spec.ts, m2-carryover.spec.ts, m2-review.spec.ts, m2-run.spec.ts",
+      "fixtures: test-fixtures/fresh/*.json, test-fixtures/gate/*, core/test/fixtures (kinds only)"
+    ],
+    "size_estimate": "About 65 source files: webview ~28 (4 new), core ~25, runner ~10, extension ~4. Plus about 40 test files.\n\nRoughly 5,000–7,500 source lines added or changed, about 60% in the webview:\n- canvas and view ~800;\n- overlay and geometry ~700;\n- store ~400;\n- Context Menu and dialogs ~450;\n- CSS ~400;\n- core status, planning and protocol ~1,200;\n- runner ~400–700.\n\nPlus 2,500–4,000 test lines. Much of the test churn is mechanical: about 940 A/D/G occurrences in tests.\n\nSeveral targets as one run, rather than a chain, adds about 800–1,200 lines in runner, core and the review UI.",
+    "open_questions": [
+      "Several targets in slice 1: a chain of single-target runs with Accept between them (recommended), or one run with steps plus a final re-check of every target (V4-I01)?",
+      "Internal kinds: make NodeType AXIOM|PROPOSITION everywhere (protocol, layout keys, graph.json schema enum), or keep three internal values in slice 1 and map them in the UI?",
+      "Positions: a separate positions file, or B.7's layout.json? Are moves and Tidy layout Undo steps? Are the first automatic placements stored, which writes a file merely on opening a board (V4-I05)?",
+      "Placement: computed in the webview with measured card sizes (recommended), or in core with nominal sizes?",
+      "AR-8 'Mark it pending' for a source with no Lean: refuse it, or let the run formalise it and add the pending axiom (V4-I03)?",
+      "Is the tray removed in slice 1, and exactly which Context Menu actions exist then (V4-I04)?",
+      "What does expanding a card do on the canvas (V4-I17)?",
+      "Does the AR-3 cycle check include arrows a proof uses (V4-I08)?",
+      "Theme: drop telelean.kindDerivation, or reuse its id for the green 'proved' colour (users may have customised it)?",
+      "Which heavy suites (Playwright, the VS Code instance) must pass for slice 1 under the memory cap, and which may be listed as not run?"
+    ]
+  }
+}

@@ -98,6 +98,17 @@ export function shortcutFor(event: ShortcutEvent): 'undo' | 'redo' | null {
   return null;
 }
 
+/**
+ * Spec v4 slice 1b, the board's selection keys (without modifiers): Escape clears the selection (CM-2: after whatever
+ * is open has closed, which handles its own Escape), Delete removes the selected arrows and marks (AR-1).
+ */
+export function selectionKeyFor(event: ShortcutEvent): 'clear' | 'delete' | null {
+  if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return null;
+  if (event.key === 'Escape') return 'clear';
+  if (event.key === 'Delete') return 'delete';
+  return null;
+}
+
 /** Whether keyboard focus is somewhere text is typed (where Ctrl+Z belongs to the field, not the board). */
 export function isTextEntry(target: EventTarget | null): boolean {
   if (typeof Element === 'undefined' || !(target instanceof Element)) return false;

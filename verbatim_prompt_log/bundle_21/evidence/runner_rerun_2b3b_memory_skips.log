@@ -1,0 +1,70 @@
+
+ RUN  v5.0.5 /home/zhengyew/telelean/packages/runner
+
+ ✓ test/integration/m2flow.test.ts > M2 flows end to end (real workspace, engine, proposals, git; FakeBackend) > (a) normative: Accept, Undo, Redo; a History revert of the Accept restores the files and can itself be undone 11273ms
+ ✓ test/integration/m2flow.test.ts > M2 flows end to end (real workspace, engine, proposals, git; FakeBackend) > (b) literal: not proved with a ghost; adopted, re-frozen and proved; Accept writes the card worded by Claude 16951ms
+ ✓ test/integration/m2flow.test.ts > M2 flows end to end (real workspace, engine, proposals, git; FakeBackend) > (c) Accept while the files differ from the run's base (ES-7, slice 1f): refused with the file named, nothing merged; once the edit is undone the same Accept goes through 19507ms
+ ✓ test/integration/m2flow.test.ts > M2 flows end to end (real workspace, engine, proposals, git; FakeBackend) > (d) slice 1e: a start writes no premises (no history entry; the base is the user’s files); a start refused by preflight writes nothing 5289ms
+ ✓ test/integration/m2flow.test.ts > M2 flows end to end (real workspace, engine, proposals, git; FakeBackend) > (e) recovery from run.json: a new RunManager shows the pending question and starts no session; the answer resumes it 10666ms
+ ✓ test/proposal/build.test.ts > AT4.1-AT4.3 build from real Lean facts > AT4.1 reading A proved: target proved, files summary, one statement review, footprint, report 10ms
+ ✓ test/proposal/build.test.ts > AT4.1-AT4.3 build from real Lean facts > AT4.1 statements fall back to their source text when Lean could not print them; drift; an unused selected card 4ms
+ ✓ test/proposal/build.test.ts > AT4.1-AT4.3 build from real Lean facts > AT4.2 reading B not proved: the new vocabulary (InGame), the ghost, verdict not-proved 3ms
+ ✓ test/proposal/build.test.ts > AT4.1-AT4.3 build from real Lean facts > reading B after adopting the ghost: Claude's card is reviewed as Claude's words, it is in the footprint 2ms
+ ✓ test/proposal/build.test.ts > AT4.1-AT4.3 build from real Lean facts > AT4.3 the definition cheat: the flagged definition becomes question d1 with its code, gloss and statements 3ms
+ ✓ test/proposal/build.test.ts > AT4.1-AT4.3 build from real Lean facts > a check without facts gives the syntactic board and source-text reviews 2ms
+ ✓ test/proposal/build.test.ts > AT4.1-AT4.3 build from real Lean facts > WP1's diffGraphs > AT4.1 the diff marks pg-no-dark-past changed (statement, binding) and the target changed (proof, status) 2ms
+ ✓ test/workspace/refresh.test.ts > AT4.2 Lean refresh scheduling and states > debounces bursts, coalesces requests made while running into one follow-up, never runs two at once 450ms
+ ✓ test/workspace/refresh.test.ts > AT4.2 Lean refresh scheduling and states > refreshNow cancels the pending debounce, runs at once and resolves with the resulting state 125ms
+ ✓ test/workspace/refresh.test.ts > AT4.2 Lean refresh scheduling and states > reports phases while checking 15ms
+ ✓ test/workspace/refresh.test.ts > AT4.2 Lean refresh scheduling and states > maps every FactsStatus per plan section 4 19ms
+ ✓ test/workspace/refresh.test.ts > AT4.2 Lean refresh scheduling and states > keeps the previous facts after failed refreshes and marks changed files stale 6ms
+ ✓ test/workspace/refresh.test.ts > AT4.2 Lean refresh scheduling and states > another toolchain or an uncheckable project drops the previous facts (D-7 syntactic mode) and names the current pin 4ms
+ ✓ test/workspace/refresh.test.ts > AT4.2 Lean refresh scheduling and states > fires onDidChange when checking starts and when the result is in, and rewrites graph.json each time 4ms
+ ✓ test/workspace/refresh.test.ts > AT4.2 Lean refresh scheduling and states > rewrites graph.json after a perform (fake core) 8ms
+ ✓ test/workspace/refresh.test.ts > AT4.2 Lean refresh scheduling and states > does nothing while Lean checking is switched off 51ms
+ ✓ test/workspace/refresh.test.ts > AT4.2 Lean refresh scheduling and states > dispose cancels a pending debounce and aborts a running refresh 133ms
+ ✓ test/workspace/refresh.test.ts > AT4.2 Lean refresh scheduling and states > closing round 1: a refresh records what it left in .lake/build (the only tree a run may seed from); any other outcome forgets it 55ms
+ ✓ test/workspace/refresh.test.ts > AT4.2 Lean refresh scheduling and states > the real semantic layer > refreshNow builds and checks a scratch copy in place and hands the facts to core 1773ms
+ ✓ test/workspace/refresh.test.ts > AT4.2 Lean refresh scheduling and states > graph.json with the real core > is written after a perform and parses 17ms
+ ✓ test/integration/session.test.ts > WP2 hand-written facts vs WP3 real facts (plan 11.3) > the fixture, the proved overlay and the derivation variant give the same boards from Lean as from the hand-written facts 4054ms
+ ✓ test/integration/session.test.ts > a board session with real Lean on a copy of mental_model/ (plan 11.3) > loads 4 cards; Lean: the proposition is proved from the three axioms (verified arrows), 9 vocabulary items 1746ms
+ ✓ test/integration/session.test.ts > a board session with real Lean on a copy of mental_model/ (plan 11.3) > P->A on the proved proposition: the theorem becomes the axiom (archived), its arrows go, Lean agrees; undo is byte-exact; A->P is refused 2904ms
+ ✓ test/integration/session.test.ts > a board session with real Lean on a copy of mental_model/ (plan 11.3) > a proposition used by a proof (hand-written): the verified arrow comes from it; the outer proof is established 1420ms
+ ✓ test/integration/session.test.ts > a board session with real Lean on a copy of mental_model/ (plan 11.3) > set-premises declares support (a proof using an undeclared assumption is flagged), reorder changes only the layout 1220ms
+ ✓ test/integration/session.test.ts > a board session with real Lean on a copy of mental_model/ (plan 11.3) > delete removes the block and its declarations, keeping the proof in the attic; Lean is fresh again 1477ms
+ ✓ test/integration/session.test.ts > a board session with real Lean on a copy of mental_model/ (plan 11.3) > history: snapshots per action, a storage counter, revert to "Initial state" (byte-exact) and undo of the revert 160ms
+ ✓ test/integration/session.test.ts > a board session with real Lean on a copy of mental_model/ (plan 11.3) > graph.json validates against the schema; the user branch, index and hooks are untouched 1024ms
+ ✓ test/workspace/initialize.test.ts > AT4.6 inspectFolder > empty: nothing but hidden files and .git, with the current .gitignore 6ms
+ ✓ test/workspace/initialize.test.ts > AT4.6 inspectFolder > model: already opted in 2ms
+ ✓ test/workspace/initialize.test.ts > AT4.6 inspectFolder > lake-project: lakefile.toml with [[lean_lib]], a manifest without packages, no [[require]] (any toolchain) 5ms
+ ✓ test/workspace/initialize.test.ts > AT4.6 inspectFolder > unsupported: Lake dependencies ([[require]] or manifest packages), named, with the M4 opt-in note 5ms
+ ✓ test/workspace/initialize.test.ts > AT4.6 inspectFolder > unsupported: lakefile.lean only, both lakefiles, no [[lean_lib]], no manifest, a bad manifest, other files 7ms
+ ✓ test/workspace/initialize.test.ts > AT4.6 inspectFolder > reads just enough TOML: comments, quoting, array tables, inline require 0ms
+ ✓ test/workspace/initialize.test.ts > AT4.6 planInitialize > empty folder: exactly the files of section 7.1, in order, all created 1ms
+ ✓ test/workspace/initialize.test.ts > AT4.6 planInitialize > an existing .gitignore gets only the missing lines (before = its text) 0ms
+ ✓ test/workspace/initialize.test.ts > AT4.6 planInitialize > lake project: only .telelean/ files (config with its library, one layout per subject) and .gitignore lines 0ms
+ ✓ test/workspace/initialize.test.ts > AT4.6 planInitialize > refuses model and unsupported folders and invalid subject names 0ms
+ ✓ test/workspace/initialize.test.ts > AT4.6 planInitialize > suggests a subject name from the folder name 0ms
+ ✓ test/workspace/initialize.test.ts > AT4.6 planInitialize > initGitRepository refuses inside an existing repository 16ms
+ ✓ test/workspace/initialize.test.ts > AT4.6 planInitialize > Lean > the empty-folder scaffold builds under runLean in a scratch copy 888ms
+ ✓ test/workspace/initialize.test.ts > AT4.8 findModelRoots > finds nested roots, skipping node_modules, .lake, .git, verbatim_prompt_log, test-fixtures and dot-dirs 2ms
+ ✓ test/workspace/initialize.test.ts > AT4.8 findModelRoots > honours maxDepth and custom excludes (dot-dirs stay skipped) 3ms
+ ✓ test/integration/fixes.test.ts > the M1 fixes with real Lean on a copy of mental_model/ > loads; Lean: d1 and d-col0 proved, the cards show the whole proof and the whole multi-line statement 1844ms
+ ✓ test/integration/fixes.test.ts > the M1 fixes with real Lean on a copy of mental_model/ > P->A on a proof with a column-0 comment replaces the whole proof (attic: all of it); Lean builds 1451ms
+ ✓ test/integration/fixes.test.ts > the M1 fixes with real Lean on a copy of mental_model/ > delete with Lean of a statement with a column-0 comment removes all of it; Lean builds 1402ms
+ ✓ test/integration/fixes.test.ts > the M1 fixes with real Lean on a copy of mental_model/ > P->A on a conditional proposition (hand-written) asks first, and "rewrite" drops the arguments its users pass; Lean builds 4263ms
+ ✓ test/integration/fixes.test.ts > the M1 fixes with real Lean on a copy of mental_model/ > delete with its Lean lists an untracked lemma and another subject's proof first; confirmed, it deletes 1737ms
+ ✓ test/workspace/sample.test.ts > AT4.7 the sample mental_model/ > holds exactly the files of plan 7.4, and no .lake or .git 2ms
+ ✓ test/workspace/sample.test.ts > AT4.7 the sample mental_model/ > has the project files of 7.1, byte for byte 1ms
+ ✓ test/workspace/sample.test.ts > AT4.7 the sample mental_model/ > has the scaffold root and Inbox, the fixture Vocabulary, and the fixture Main plus one import line 1ms
+ ✓ test/workspace/sample.test.ts > AT4.7 the sample mental_model/ > is the walkthrough's starting state: three assumptions and one goal in Spyro 1ms
+ ✓ test/workspace/sample.test.ts > AT4.7 the sample mental_model/ > is a model root (Initialize sees it as opted in) and the only one in the repository 6ms
+ ✓ test/workspace/sample.test.ts > AT4.7 the sample mental_model/ > parsed with the real core > a scratch copy parses to the 4 Spyro nodes, pg-no-dark-past code-less, the others pinned 11ms
+ ✓ test/workspace/sample.test.ts > AT4.7 the sample mental_model/ > built with Lean > a scratch copy builds under runLean 982ms
+ ✓ test/integration/escapes.test.ts > markup escapes survive a Lean build (plan 11.4) > add-node and a docstring-mirrored edit with delimiters build with Lean and re-parse to the same sentences 1942ms
+
+ Test Files  8 passed (8)
+      Tests  61 passed (61)
+   Start at  18:47:05
+   Duration  105.94s (tests 98%, import 1%, transform 1%)
+

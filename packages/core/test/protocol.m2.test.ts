@@ -23,7 +23,7 @@ describe('M2 webview -> host messages', () => {
     ok(webviewMessage('answerQuestions', { runId: 'r1', setId: 'q2', answers: [{ question: 0, choice: { kind: 'decide-for-me' }, scope: 'run' }] }));
     ok(webviewMessage('cancelRun', { runId: 'r1' }));
     ok(webviewMessage('resumeRun', { runId: 'r1', requestId: 'x' }));
-    ok(webviewMessage('acceptProposal', { runId: 'r1', proposalId: 'p1', lifecycle: ['l1'], definitions: [], requestId: 'r3' }));
+    ok(webviewMessage('acceptProposal', { runId: 'r1', proposalId: 'p1', definitions: ['d1'], requestId: 'r3' }));
     ok(webviewMessage('feedback', { runId: 'r1', text: 'Use the literal reading.' }));
     ok(webviewMessage('discardProposal', { runId: 'r1' }));
     ok(webviewMessage('adoptGhost', { runId: 'r1', ghostId: 'ghost-1', rationale: 'obvious to me' }));
@@ -32,8 +32,10 @@ describe('M2 webview -> host messages', () => {
     ok(webviewMessage('openProposalDiff', { runId: 'r1', proposalId: 'p1', file: 'Model/Spyro/Main.lean' }));
     ok(webviewMessage('openProposalDiff', { runId: 'r1', proposalId: 'p1' }));
     ok(webviewMessage('dismissRun', { runId: 'r1' }));
-    ok(webviewMessage('kindChange', { id: 'a', from: 'ASSUMPTION', to: 'GOAL', beforeId: null, dependents: 'rewrite', confirmedDependents: ['g', 'Spyro.lemma1'] }));
-    expect(RUN_MESSAGE_TYPES.length).toBe(11);
+    ok(webviewMessage('kindChange', { id: 'a', from: 'PROPOSITION', to: 'AXIOM', beforeId: null, dependents: 'rewrite', confirmedDependents: ['g', 'Spyro.lemma1'] }));
+    // Slice 2 (2c1) appends the session's messages (docs/slice2-plan.md 2.4); M2's eleven stay first.
+    expect(RUN_MESSAGE_TYPES.slice(0, 11)).toEqual(['startRun', 'answerQuestions', 'cancelRun', 'resumeRun', 'acceptProposal', 'feedback', 'discardProposal', 'adoptGhost', 'rejectGhost', 'openProposalDiff', 'dismissRun']);
+    expect(RUN_MESSAGE_TYPES.length).toBe(21);
   });
 
   it('refuses malformed run messages', () => {
@@ -47,12 +49,12 @@ describe('M2 webview -> host messages', () => {
     bad(webviewMessage('answerQuestions', { runId: 'r1', setId: 'q1', answers: [{ question: 0, choice: { kind: 'free-text', text: '   ' }, scope: 'run' }] } as never), 'blank');
     bad(webviewMessage('answerQuestions', { runId: 'r1', setId: 'q1', answers: [{ question: 0, choice: { kind: 'leave-open' }, scope: 'forever' }] } as never), 'scope');
     bad(webviewMessage('answerQuestions', { runId: 'r1', setId: 'q1', answers: [{ question: 0, choice: { kind: 'guess' }, scope: 'run' }] } as never), 'kind');
-    bad(webviewMessage('acceptProposal', { runId: 'r1', proposalId: 'p1', lifecycle: ['l1', 'l1'], definitions: [] } as never), 'more than once');
+    bad(webviewMessage('acceptProposal', { runId: 'r1', proposalId: 'p1', definitions: ['d1', 'd1'] } as never), 'more than once');
     bad(webviewMessage('feedback', { runId: 'r1', text: '' } as never), 'payload.text');
     bad(webviewMessage('adoptGhost', { runId: 'r1', ghostId: 'g/1' } as never), 'payload.ghostId');
     bad(webviewMessage('adoptGhost', { runId: 'r1', ghostId: 'ghost-1', rationale: 'two\nlines' } as never), 'single line');
     bad(webviewMessage('openProposalDiff', { runId: 'r1', proposalId: 'p1', file: '../x.lean' } as never), 'payload.file');
-    bad(webviewMessage('kindChange', { id: 'a', from: 'ASSUMPTION', to: 'GOAL', beforeId: null, confirmedDependents: 'g' } as never), 'confirmedDependents');
+    bad(webviewMessage('kindChange', { id: 'a', from: 'PROPOSITION', to: 'AXIOM', beforeId: null, confirmedDependents: 'g' } as never), 'confirmedDependents');
   });
 
   it('strips unknown properties', () => {

@@ -1,0 +1,330 @@
+{
+  "summary": "I edited only /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/plans/slice3-plan.md. Nothing was run, built or published, and git state is untouched. All 65 findings are applied (6 major, 54 minor, 5 nits); I rejected none. Five parts of findings were deliberately not adopted, each with a reason in its note: S3-1's instance rule, IMP-3's `planEditNode` context, L2's answer-path and reducer-in-chain parts, and FID-4's Apply path for printed comparisons. Before choosing fixes I checked against the built code: runner semantic/checkFile.ts (the value probe's #eval is elaborated beside the model, so S3-1 holds), gate/scratch.ts, core facts.ts, review/types.ts (decide's `rev`/`endedForce`), review/items.ts (premise and arrow ownership, `partOfResult`) and slice 2's §3.8 (premise step 4).\n\nMain changes:\n- **S3-1 (D3-52):** the meaning probe (`meaningKey`, `typeConsts`, `valueConsts`) now runs as its own Lean job. Its file imports only Lean's own modules and loads the model at run time with `Lean.importModules`. 3p's builder must confirm this works first; if it does not, the integrator switches to D3-52's alternative, hashing the kernel export. The check file loses its in-file probe, so AP-21's second run without the probe goes. The ghost check keeps its in-file probe as a stated residual. New cheat 24.\n- **S3-2, S3-6, FID-4:** a key the judged state lacks where the expected side has one is refused at every purpose (`no-key`, with a cause from the new `meaningMissing`). The printed fallback (`approx`) stays only for gaps the base itself has. Facts carry a `meaning` marker, and the base is checked again at most once per window load. The meaning walk never follows a theorem's value and renames auxiliaries canonically.\n- **FID-1:** other boards' freezes of this subject's vocabulary join the session's table as read-only `foreign` records. §3.1 is corrected, D3-41 revised, new cheat 25.\n- **IMP-1, IMP-2:** `freezeAtAccept` covers every draft, and reconcile sets `heldAtJudge` on every record it leaves in review. An accepted Add premise's key is read from `accepted.fingerprint`, and the premise being written is left to its write's own check, so 3b needs no runner change. A premise write's step 4 sets `frozen.held` in 3d.\n- **IMP-6:** with the whole model open, B.3, the backstop and computeItems accept arrows into non-targets.\n- **U1:** a right-click menu's freeze group acts on what was right-clicked.\n- **Lifecycle:** the upgrade of a slice-2 session runs a fresh check first; recovery decides by comparing freezes.json with `end.before`; the board step at the end is ordered before the board unlocks; `startedAt` and `since` are persisted; the `ids` write is recorded; Undo works in the end confirmation and the frozen check re-runs there.\n- **Process:** the regenerated recordings and core's Spyro facts are a gate before 3b; the cheats are assigned to sub-slices; the host's `not-yet` answers move to 3b.\n- **UI:** U2 to U19 as listed in the dispositions.\n\nNew decisions: D3-52 and D3-53. Revised: D3-2, D3-6, D3-7, D3-26, D3-27, D3-33, D3-34, D3-35, D3-36, D3-41, D3-48, D3-49, D3-50, D3-51. Each new or revised one has its alternative and how to reverse it. One dated \"ultra review round 1\" line is added to §8. A backup of the pre-edit text sits next to the plan as slice3-plan.after_design.md (written before my round).",
+  "dispositions": [
+    {
+      "id": "checks-S3-1",
+      "action": "fixed",
+      "note": "§2.1, §1.1 3p and new D3-52: the probe that gives meaningKey, typeConsts and valueConsts runs as its own Lean job. Its file imports only Lean.CoreM and Lean.Util.FoldConsts and loads the model with Lean.importModules at run time. 3p's builder first confirms this works; if not, the alternative (hashing leanexport's output) is in D3-52. The check file's in-file probe and AP-21's second run go. The ghost check's in-file probe is kept as a stated residual. Cheat 24 is built by hand in 3a and with real Lean in 3p; §0 and §7.3 note the change. Not added: the rule against instances on Lean's own types, because the refuter showed an abbrev evades it and isolation makes it unneeded."
+    },
+    {
+      "id": "checks-S3-2",
+      "action": "fixed",
+      "note": "§2.1, §3.4 step 2, §3.5: where the expected side has a meaningKey and the judged state lacks one, the comparison refuses at every purpose (`no-key`), naming the cause from the new DeclFacts.meaningMissing. Only a probe that failed as a whole is an environment outcome. approx is kept only where the expected side has no key (gaps in the base, or values stored without one). The base is checked again only when the new LeanFacts.meaning marker is absent or its probe failed, at most once per load. The final-check and backstop texts name the declaration and the cause. Isolation (S3-1) removes the import-clash path. Tests in 3a and 3p."
+    },
+    {
+      "id": "checks-S3-3",
+      "action": "fixed",
+      "note": "§3.4 step 3: every held expectation of every holder is compared, roots of standing and own entries included. A held 'changed' finding is dropped only when the name's own entry already has a finding; a conflict is never dropped. A 3a test replays the scenario: the problem stays until A is unfrozen."
+    },
+    {
+      "id": "checks-S3-4",
+      "action": "fixed",
+      "note": "Took option (b): §3.7's 'Residual' paragraph, D3-48 (option (a), wider ownership, logged as the alternative with its reversal), D3-49, the §6.2 lead-in, the header and the frozenChangesOf doc state that changes through elaboration order show as stage problems at the next judge. A 3c1 test covers the instOld case: no dialog, then a stage problem, which the decision's Undo resolves."
+    },
+    {
+      "id": "checks-S3-5",
+      "action": "fixed",
+      "note": "§3.7: a premise write or completion fails only on a frozen or held finding its write introduces (the two-value rule with S₀ = the write's parent commit, as complete's gate already has); an existing stage problem never fails an unrelated premise write. D3-48 updated; 3d test."
+    },
+    {
+      "id": "checks-S3-6",
+      "action": "fixed",
+      "note": "§2.1's meaningKey doc and D3-2: the walk follows types, definitions' values and constructors, never a theorem's value. Unprobed auxiliaries are renamed by their place in the walk with macro scopes erased before hashing. 3p real-Lean tests: an unrelated deriving declaration added above, and a nested proof change, leave the keys unchanged."
+    },
+    {
+      "id": "lifecycle-L1",
+      "action": "fixed",
+      "note": "§5.2: when the facts lack the marker, recover()'s upgrade first runs checkBase and a judge with a build, and the session is judging until both end. It then sets `frozen` from that judgement, and its reconcile sets heldAtJudge. For stored inexact entries I took the finding's alternative: §2.1's final and backstop texts name the cause ('frozen before telelean could read its meaning: unfreeze/accept again', or the base's cause). 'Reload' is kept only for a base whose probe failed. 3d test."
+    },
+    {
+      "id": "lifecycle-L2",
+      "action": "fixed",
+      "note": "§3.6 Writes: after the checked run.json write, the written copy's freezes, stack and nextAction (every field the outcome changed) replace the in-memory ones. Undo and Redo of a freeze action during a step use the same checked task. 3d test, including a reload. Not adopted, per the refuter: routing answers through this path (the manager's own write persists the seal) and running the reducer inside the chain task (the host already serialises session messages)."
+    },
+    {
+      "id": "lifecycle-L3",
+      "action": "fixed",
+      "note": "§2.2 SessionFreezes.end gains `before: string | null`. §5.4: recovery decides applied or not by the model files, then makes freezes.json follow (write end.freezes or end.before; otherwise a notice). freezes.json is the last change of Apply's change set. Both crash cases are tested in 3e1."
+    },
+    {
+      "id": "lifecycle-L4",
+      "action": "fixed",
+      "note": "§5.4: the board step runs before end() resolves and before the board unlocks; the ES-9 lock and startRun wait for it. A replay never merges `keep` again: it compares freezes.json with end.before and end.freezes, else gives a notice; a failure on the normal path gives the same notice. Adapted: `before` is recorded in the run-ending write (with the planned text), not in the `written: true` write, so a failed `written` write cannot lead to a stale merge. Tests in 3e1."
+    },
+    {
+      "id": "lifecycle-L5",
+      "action": "fixed",
+      "note": "§2.3: PersistedStep gains startedAt (in its step-start record) and a persisted since, which is set to the resume turn's time on Resume. §2.9 unmeetable, §3.8 'Times that survive a reload' and §5.5 updated. 3d test: freeze, reload, Resume."
+    },
+    {
+      "id": "lifecycle-L6",
+      "action": "fixed",
+      "note": "§3.6 'Confirming': after each freeze action, Undo or Redo in confirming, the pure frozen part of the final check runs again and updates `confirmation`. The check id hashes the end table, so §5.4 now says keep ticks do not change the id but freeze actions do. 3d test."
+    },
+    {
+      "id": "lifecycle-L7",
+      "action": "fixed",
+      "note": "§4.9, §2.5, §5.3 and D3-35 (with alternative and reversal): in confirming, Undo and Redo work on a top freeze action with no item changes. They are refused while F's facts are rebuilt and re-run the check. Slice 2's §5.13 Undo column is amended. Tests in 3d and 3g."
+    },
+    {
+      "id": "lifecycle-L8",
+      "action": "fixed",
+      "note": "§2.3: the freeze SessionAction's changes take decide's shape { item, rev, before, after } and the action gains endedForce. §5.3: Undo gives `conflict` on a rev change and restores the force. 3b test."
+    },
+    {
+      "id": "lifecycle-L9",
+      "action": "fixed",
+      "note": "§4.7: whenever `session` arrives, ticks without a row are dropped, and Back to review clears every tick of the run. 3g test."
+    },
+    {
+      "id": "lifecycle-L10",
+      "action": "fixed",
+      "note": "§1.1 3d and §5.1: ModelWorkspace re-reads freezes.json inside reread after every write it makes itself. §5.2: start reads the snapshot from disk after the board queue drains, in the same step as the base commit. 3d test: freeze, then start at once."
+    },
+    {
+      "id": "lifecycle-L11",
+      "action": "fixed",
+      "note": "§3.10 Ids and §1.1 3e1: the ids write is a recorded session write (inFlight, the commit, then head and PersistedSession.idsCommit in one run.json write). Any queue-start write, and recover() before Resume, makes it when idsCommit is absent. 3e1 crash test."
+    },
+    {
+      "id": "lifecycle-L12",
+      "action": "fixed",
+      "note": "§4.7: with ticks, the Exit dialog's sentence says that freezes.json and the id: lines of the affected cards are written, as one step you can undo. FreezeChangeRow gains writesId. 3g test."
+    },
+    {
+      "id": "intent-FID-1",
+      "action": "fixed",
+      "note": "Took the refuter's read-only option. SessionFreezes.foreign is read at session start from other subjects' freezes.json (expected at B, never unfrozen in the session). FreezeReason/FreezeReasonView standing gains `from`, BoardFreezesView gains `foreign`, and PlanContext.freezes and boardFreezesView take the foreign records. Updated §3.1 (claim corrected), §3.3, §3.6, §4.3 ('Frozen on ‹S›'s board: unfreeze it there.'), §4.5 and §5.4. D3-41 is revised, with storing the record in the owner's file as the alternative. Cheat 25 is built by hand in 3a and as a FakeBackend script in 3e2; tests also in 3b and 3d."
+    },
+    {
+      "id": "intent-FID-4",
+      "action": "fixed",
+      "note": "Covered by S3-1 and S3-2: with the probe isolated there is no probe-off mode; the base is checked again at most once per load (marker); refusal texts name the real cause. D3-2 records that nothing is applied on printed comparisons alone (D2-25 kept), and no Apply path was added, per the refuter. 3d test with a base whose probe failed."
+    },
+    {
+      "id": "intent-FID-5",
+      "action": "fixed",
+      "note": "§3.9 and §4.6: a request row for accepted or accepted-held content says 'Cancel step, return it to review, then Retry step' and the card offers [Cancel step]. StageReportView gains `continued-still-frozen` requests, with Select them. D3-7 now states that it narrows REVIEW 5. Tests in 3b and 3g."
+    },
+    {
+      "id": "intent-FID-6",
+      "action": "fixed",
+      "note": "§3.8 and §4.4: while any step of the running queue has the whole model open, every action that gives subject content a reason first asks the question in the finding's words (needs-confirmation `wholeModel`, sharing a dialog with Filling now). D3-50 revised; the user guide says so (3g). Tests in 3e2 and 3g."
+    },
+    {
+      "id": "intent-FID-7",
+      "action": "fixed",
+      "note": "§3.6 'Not freezable', §2.9 (planFreeze's session input is now withResult and running) and D3-6 revised: a queued target whose step has not started and that has no Result can have its Proof, Dependencies and mark frozen. Only the running target is refused, with its real reason; targets with a hidden Result stay refused. 3b test."
+    },
+    {
+      "id": "intent-FID-8",
+      "action": "fixed",
+      "note": "§4.7: the Exit text lists the id: writes when kept rows have writesId. Apply's confirmation adds 'telelean also writes the id: line of ‹n› cards into ‹m› files (no change in meaning).', from the new EndConfirmationView.ids (filled in 3e1). Tests in 3e1 and 3g."
+    },
+    {
+      "id": "intent-FID-9",
+      "action": "fixed",
+      "note": "§4.8's ▾ text now names held content, lemmas and other proofs, Shaky cards, vocabulary another subject uses and arrows a proof uses. §4.5's whole-model banner adds '· held content too'."
+    },
+    {
+      "id": "intent-FID-10",
+      "action": "fixed",
+      "note": "§5.2: the upgrade's build judge goes through judge-apply, whose reconcile sets heldAtJudge on every in-review record, so items can be accepted at once. 3d test."
+    },
+    {
+      "id": "intent-FID-11",
+      "action": "fixed",
+      "note": "§4.5 'Result detail': in a shown Result, the list of cards whose basis changes marks frozen cards with the lock and 'frozen' (3g)."
+    },
+    {
+      "id": "intent-FID-12",
+      "action": "fixed",
+      "note": "§4.7: each row states its default, and ticks read 'keep it frozen (standing)' or 'keep it unfrozen', under group headings that say what happens without a tick; D3-33. 3g test."
+    },
+    {
+      "id": "build-IMP-2",
+      "action": "fixed",
+      "note": "Core-only variant. §3.4 step 1 reads an accepted Add premise's key from accepted.fingerprint, which slice 2's step 4 already moves to the written key. The premise being written is recognised in its own write's judgement (a ledger premise entry while its fingerprint is still premiseDraftKey) and left to the write's render. That also cures the refuter's point that every premise write would fail its own judgement. Step 4 sets frozen.held in 3d (run/premises.ts). 3b runs the 2f premise suite (§0, §1.1); 3a tests. The runner-exception route is D3-51's logged alternative."
+    },
+    {
+      "id": "build-IMP-1",
+      "action": "fixed",
+      "note": "§2.3 and §3.5: freezeAtAccept holds an entry for every draft, whether or not it has a record yet. For an unwritten Add premise, the entry holds the held values of what its statement reaches and their closure. Reconcile sets heldAtJudge on every record it leaves in review, new and returned ones included. D3-51 revised; tests in 3a and 3b."
+    },
+    {
+      "id": "build-IMP-3",
+      "action": "fixed",
+      "note": "§2.6: EditPlan.freezes is now a delta { subject, add, remove } that materialisePlan merges into the file as read at write time; the board stack keeps the whole-file change (§5.1). PlanContext.freezes is optional until 3d makes it required, and set-freezes is refused `internal` without it (§0). The edit-node freeze and A6's drops need no context. The planEditNode signature change is not needed for that reason. 3b test."
+    },
+    {
+      "id": "build-IMP-4",
+      "action": "fixed",
+      "note": "§0, §1 and §1.1 3b: the host's not-yet answers for sessionFreeze, answerUnfreeze, setFreezes, formalize.options and endSession keep/keepAll, in extension logic/boardSession.ts and logic/runs.ts, with a host test per message. 3d, 3e1, 3e2 and 3e3 replace them with routing."
+    },
+    {
+      "id": "build-IMP-5",
+      "action": "fixed",
+      "note": "§2.3: the undo/redo ReviewAction gains freeze { plan, values, left }, computed by the runner (3d) with planFreeze and the value functions. The reducer refuses an Undo with a non-empty `left` and a freeze action's Redo without plan and values (§5.3). Reducer tests in 3b, runner side in 3d."
+    },
+    {
+      "id": "build-IMP-6",
+      "action": "fixed",
+      "note": "§3.10 'Whole-model arrows' plus §1.1 3c1/3c2 and §2.8: B.3 at every purpose and the backstop admit the step's ledger arrows into unfrozen non-target propositions (and intermediates in 3c2). computeItems sets partOfResult only for an inference's target (or an intermediate) and takes the origin's target from the entry's step. Tests in 3c1, 3c2 and 3e2."
+    },
+    {
+      "id": "build-IMP-7",
+      "action": "fixed",
+      "note": "§2.3 SessionStep: SessionRecords.steps gains `options` and `queue`. §2.4: `mode` reads the newest queue's steps. §3.10: a re-ask replaces its inference's options, and its Submit and Retry steps follow. Filled by toSessionRecords (3d, 3e2). Tests in 3b and 3e2."
+    },
+    {
+      "id": "build-IMP-8",
+      "action": "fixed",
+      "note": "§0 and §2.4: from 3a to 3b, slice 2's buildSessionView fills SessionView.freezes, ItemView.covers and StageReportView.requests with empty placeholders and never calls a stub. 3a test."
+    },
+    {
+      "id": "build-IMP-10",
+      "action": "fixed",
+      "note": "§1.1 3a names gate/permitted.ts: snapshotOf copies meaningKey (§2.1). A key the snapshot has and the state lacks is refused as `no-key` under the S3-2 rule, which is stricter than the finding's inexact. The 3a test builds the snapshot through frozenSnapshot() from fakeFacts({ meaningKey: true })."
+    },
+    {
+      "id": "build-IMP-16",
+      "action": "fixed",
+      "note": "§0 and §1.1 3d: one helper, frozenInputOf(session), builds every runner freeze input (judge, backstop, planSubmit, PlanContext, ReviewState, SessionRecords), and these are required after the upgrade. The 3d spy test covers recover(), judge-apply's re-run and toSessionRecords. D3-51 revised."
+    },
+    {
+      "id": "build-IMP-11",
+      "action": "fixed",
+      "note": "§3.12: 3a rewords core describe.ts's 'frozen statement(s)' and 'frozen declaration' sentences. A test in each of 3a, 3d and 3g searches user-facing texts for /\\bfreez|\\bfrozen/i, allowing only FREEZE_TEXTS. §0 lists the slice-1/2 text change."
+    },
+    {
+      "id": "build-IMP-13",
+      "action": "fixed",
+      "note": "§5.4 and §1.1 3e1: the end's board step goes through ModelWorkspace.applyChanges with action set-freezes (the freezes.json merge plus planIdWrites). ExternalChangeSet gains snapshot?: boolean, false when only freezes.json changes. The replay uses the same path. 3e1 test."
+    },
+    {
+      "id": "build-IMP-14",
+      "action": "fixed",
+      "note": "§2.6: ActionError gains freeze (the error-branch shape) and EditPlan gains freezeLeft; 3b's planAction fills both; 3d's refusal() and performNow copy them (§2.4, §1.1). Tests in 3b and 3d."
+    },
+    {
+      "id": "build-IMP-9",
+      "action": "fixed",
+      "note": "§2.9 frozenFindings doc: S₀'s drafts use the ledger without the running step's own entries (step === scope.step) and without that step's premise drafts. They are memoised per stepStart model object (a WeakMap). 3a test."
+    },
+    {
+      "id": "build-IMP-12",
+      "action": "fixed",
+      "note": "Same change as L8: rev on the freeze action's changes and a conflict on Undo (§2.3, §5.3); 3b test."
+    },
+    {
+      "id": "build-IMP-15",
+      "action": "fixed",
+      "note": "§0 and §1's table: the regenerated recordings and core's hand-written Spyro facts (with meaningKey) are a hard gate before 3b, recorded in §8; 3b waits if RAM does not allow."
+    },
+    {
+      "id": "build-IMP-18",
+      "action": "fixed",
+      "note": "§0 and the §6.2 lead-in assign every hand-built cheat: 3a takes 1, 2, 5–9, 11, 18, 24, 25; 3b takes 4 and 19–23; 3c1 takes 3, 8 (delete_card), 12, 13, 15, 17; 3c2 takes 14; 10 and 16 are runner-only (3d). Cheat 4, which the finding's list omitted, goes to 3b via proposeArrowProblems' new optional table. §6.1 lists them per sub-slice."
+    },
+    {
+      "id": "build-IMP-19",
+      "action": "fixed",
+      "note": "FinalCheckRule is now placed in review/view.ts. sessionFreeze.view is bounded by Number.MAX_SAFE_INTEGER. The slice-3 field on JudgeInput, BackstopInput and SessionCheckContext is renamed frozenInput throughout (§0, §1.1, §2.3, §3.5, §6.1)."
+    },
+    {
+      "id": "ui-U1",
+      "action": "fixed",
+      "note": "§4.3 'What they act on': a right-click menu's freeze group acts on the menu's target, never on a kept selection (a proposed arrow maps to its item), and entries name what they act on. §4.2: the menu state moves up to the board area. D3-34 revised; 3f tests for each case."
+    },
+    {
+      "id": "ui-U2",
+      "action": "fixed",
+      "note": "§4.1: during a session every freeze is a sessionFreeze, with subjects decided by selection origin (FieldRef.from), not by focus. A Current-view board selection is disabled with the ES-9 text. The Proposed view exists from stage 0, and the Select buttons switch to it. 3f tests."
+    },
+    {
+      "id": "ui-U3",
+      "action": "fixed",
+      "note": "New FreezeConfirmed { counts, versions, fillingNow, wholeModel, cascade } (§2.2), used in sessionFreeze (§2.5), RunManager.freeze (§2.7) and the reducer's freeze action (§2.3). The host asks again whenever it computed a list `confirmed` does not name (§2.4); §4.1 and §4.3 updated. Tests in 3b, 3d and 3f."
+    },
+    {
+      "id": "ui-U4",
+      "action": "fixed",
+      "note": "§4.5 Locks: the details list a row with a lock slot for every CF-2 field of the card's kind, empty ones included, on the Proposed view too. The gloss is listed even when empty, and 'kept empty' also shows on the face. 3f tests."
+    },
+    {
+      "id": "ui-U5",
+      "action": "fixed",
+      "note": "§4.3 'Partly freezable': the entry stays enabled with the 'Freezes ‹n› of ‹m›' tooltip, and a toast lists `left`. New D3-53 logs this as a narrowing of CM-3, with the alternative and reversal. D3-6's text now names Proof, Dependencies and mark. 3f test."
+    },
+    {
+      "id": "ui-U6",
+      "action": "fixed",
+      "note": "§4.2: vocabulary boxes and presupposition chips are selectable, focusable cards (click, Ctrl, Space, Shift+F10), and the band gets its own context-menu handler. §4.5: a wholly frozen vocabulary card gets the frost and a lock badge; a chip gets a lock and 'held by' in its tooltip. Vocabulary.tsx tests and an s3-freeze presupposition case."
+    },
+    {
+      "id": "ui-U7",
+      "action": "fixed",
+      "note": "§4.5 Aura: `whole` counts every reason shown, accepted ones included, so an accepted Add gets the aura per FROZEN 1. D3-27 revised, with 'locks only' as the alternative and its reversal. 3g twin-pair test."
+    },
+    {
+      "id": "ui-U8",
+      "action": "fixed",
+      "note": "§4.5: a proposition's details get a 'Dependencies' row (drawn arrows, follows from nothing, or no stated basis) with its slot; 'Depends on' stays without one. The deps badge gets a hit target, placed at the middle of the left edge when the card has no arrival slot. 3f test."
+    },
+    {
+      "id": "ui-U9",
+      "action": "fixed",
+      "note": "§4.8: runId is null until the starting Formalize is answered. A different runId, session:null, or a load with no session resets both switches. store-formalize tests in 3e2."
+    },
+    {
+      "id": "ui-U10",
+      "action": "fixed",
+      "note": "§2.4: mode gains `submit` and open gains `rework`. §4.5: the Submit-queue banner text and the 'Claude reworks this' chips. Tests in 3b and 3g."
+    },
+    {
+      "id": "ui-U11",
+      "action": "fixed",
+      "note": "§4.7: two headed groups, one tick per card group (collapsed by default, expanding per row), arrows under their target card and vocabulary under 'Vocabulary' (FreezeChangeRow.card doc), and EN-2's summary line built from `start`. D3-33 revised; 3g test."
+    },
+    {
+      "id": "ui-U12",
+      "action": "fixed",
+      "note": "§3.12: the checks counter's tooltip says 'fix-statements', and every activity line about the tool uses the 'Fix statements:' prefix. The search is widened as in IMP-11."
+    },
+    {
+      "id": "ui-U13",
+      "action": "fixed",
+      "note": "The buttons now read 'Select the frozen targets' and 'Select the missing items' (§4.5, §3.7, D3-36; §0 lists slice 2's label change). The refusal toast gets [Select the frozen targets] and stays until dismissed (toasts/Toasts.tsx added to 3g, §4.4). 3g test."
+    },
+    {
+      "id": "ui-U14",
+      "action": "fixed",
+      "note": "§4.5 'Selected and accessible': data-selected with an outline and check glyph, the FieldLock and NodeCard aria-labels, aria-pressed, and a roving focus for slots so Tab still goes card to card. s1-canvas's Tab test is listed as touched; 3f tests."
+    },
+    {
+      "id": "ui-U15",
+      "action": "fixed",
+      "note": "§4.3 Reasons: 'Held by “‹A›” (and ‹n› more): unfreeze what holds it.' with a 'Select what holds it' entry, and a text for content fixed only by a narrow step's limits. 3f test."
+    },
+    {
+      "id": "ui-U16",
+      "action": "fixed",
+      "note": "§4.6: request rows are selectable one by one with their own menu; Keep frozen gives its disabled reason; Continue and Keep frozen are disabled while freezeBusy. 3g test."
+    },
+    {
+      "id": "ui-U17",
+      "action": "fixed",
+      "note": "§1.1 3f and §4.5: setFreezes, sessionFreeze and answerUnfreeze join the harness's MUTATIONS (3g adds endSession's keep). Each harness theme gets its own telelean-frozen default. The CSS fallback becomes #F07CB8, and a new SLICE3_COLOURS list goes in theme.test.ts."
+    },
+    {
+      "id": "ui-U18",
+      "action": "fixed",
+      "note": "§2.9: planFreeze and frozenNeeds take reasons typed as FreezeReasonView; neither reads `at`. Board callers map keys to standing. 3b test passes view data unchanged."
+    },
+    {
+      "id": "ui-U19",
+      "action": "fixed",
+      "note": "§4.5: the chip uses codicon-lock in --tl-frozen (no emoji), and the frost gets border-radius: inherit and z-index 0, with the card's rows at z-index 1. D3-26 text updated; 3f test."
+    }
+  ]
+}

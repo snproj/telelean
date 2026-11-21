@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-// telelean M2 walkthrough (docs/m2-plan.md section 12): "These suffice" on the Spyro sample, driven like a user.
+// telelean M2 walkthrough (docs/m2-plan.md section 12): "Formalize for dependencies" (spec v4.1; M2's "These suffice")
+// on the Spyro sample's goal and its three drawn arrows, driven like a user.
 //
-//   normative  "PG games cannot have characters with dark pasts" read as a rule: the goal is proved, the proposal
-//              offers Goal -> Derivation, the script accepts it.
+//   normative  "PG games cannot have characters with dark pasts" read as a rule: the goal is proved, the script
+//              accepts it (spec v4: no Goal -> Derivation step; the goal stays a proposition).
 //   literal    the same sentence read literally: not proved; Claude suggests the missing premise; the script adopts
 //              it ("I hold this"); round 2 proves the goal; the script accepts.
 //
@@ -24,9 +25,9 @@
 // cannot run the codebase's parameter properties), copies mental_model/ to <work>/model-<reading>/, initialises git
 // there (isolated config), runs one Lean refresh, and drives the RunManager like a user: a question whose phenomenon
 // is `modality` or whose text mentions "cannot" gets the reading's free-text answer, any other question "Decide for
-// me"; in the literal reading the first gap-closing suggestion is adopted; a proved proposal is accepted with its
-// recommended lifecycle items (definition questions only with --approve-definitions, otherwise the script stops and
-// reports them); a live run stops (cancels) at the first rate_limit event whose status is not "allowed".
+// me"; in the literal reading the first gap-closing suggestion is adopted; a proved proposal is accepted (spec v4: no
+// lifecycle items; definition questions only with --approve-definitions, otherwise the script stops and reports them);
+// a live run stops (cancels) at the first rate_limit event whose status is not "allowed".
 // Output: progress on stderr; a JSON summary on stdout, also saved as <work>/summary.json (and per reading
 // <work>/summary-<reading>.json). Exit code: 0 when every reading met its pass criteria, 1 otherwise, 2 on a refusal
 // or setup error.
@@ -319,7 +320,6 @@ async function walk(reading) {
           gap: p?.report.gap,
           assumedWithoutAsking: p?.report.assumedWithoutAsking ?? [],
           definitions: (p?.definitions ?? []).map((d) => ({ id: d.id, name: d.name, kind: d.kind })),
-          lifecycle: p?.lifecycle ?? [],
           reverted: p?.report.reverted,
         });
         summary.ghosts = v.ghosts;
@@ -330,7 +330,7 @@ async function walk(reading) {
             summary.stopped = `the proposal has ${p.definitions.length} definition question(s); rerun with --approve-definitions to accept them`;
             break;
           }
-          const accepted = await manager.accept(v.runId, p.proposalId, p.lifecycle.filter((l) => l.recommended).map((l) => l.id), p.definitions.map((d) => d.id));
+          const accepted = await manager.accept(v.runId, p.proposalId, p.definitions.map((d) => d.id));
           summary.accept = accepted;
           log(`${reading}: accept -> ${JSON.stringify(accepted)}`);
           break;
@@ -381,11 +381,11 @@ async function walk(reading) {
   summary.diff = changedFiles(root);
   workspace.dispose();
   const target = Array.isArray(summary.finalStatuses) ? summary.finalStatuses.find((n) => n.id === TARGET) : undefined;
-  const provedAndAccepted = summary.finalState === 'accepted' && target?.proof === 'proved' && target?.type === 'DERIVATION';
+  const provedAndAccepted = summary.finalState === 'accepted' && target?.proof === 'proved' && target?.type === 'PROPOSITION';
   if (reading === 'normative') summary.passed = provedAndAccepted && summary.rounds.at(-1)?.verdict === 'proved';
   else {
     const r1 = summary.rounds[0];
-    const adoptedCard = Array.isArray(summary.finalStatuses) && summary.finalStatuses.some((n) => n.wordedBy === 'agent' && n.type === 'ASSUMPTION');
+    const adoptedCard = Array.isArray(summary.finalStatuses) && summary.finalStatuses.some((n) => n.wordedBy === 'agent' && n.type === 'AXIOM');
     summary.passed = provedAndAccepted && r1?.verdict !== 'proved' && summary.adopted?.outcome?.ok === true && adoptedCard;
   }
   return summary;

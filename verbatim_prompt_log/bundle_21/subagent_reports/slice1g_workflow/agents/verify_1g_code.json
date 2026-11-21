@@ -1,0 +1,96 @@
+{
+  "summary": "Verdict: 1g's own code changes are correct, and every typecheck and unit-test number in the builder's report reproduces. Nothing blocks. I found one major problem, but it lies outside 1g's diff and write set: scripts/walkthrough-claude.mjs no longer works since slice 1, and the 1g report wrongly calls it fine. The other findings are three minor test-fidelity problems and some nits.\n\nHow I checked:\n- **Isolating 1g's changes.** I rebuilt the tree as it was before 1g (HEAD plus verbatim_prompt_log/bundle_21/evidence/patches/after_slice_1e.patch) in my scratch folder and diffed it against the working tree. The set of changed files matches the report exactly.\n- **Product changes.** Only two, and both are right:\n  - board.css: `.tl-context__actions` gets `min-width: 26px`. The \"…\" button is 22 px, and fittingActions(26, …) then shows the \"…\" alone.\n  - runner prompts.ts: `RUN_NAME` sets the bundle's first line. The bundle is rendered only for round 1, so the new line agrees with the start activity and the run panel.\n- **Fixtures.** All 32 FakeBackend matchers agree with each script's premises: arith.json and self-evident-not.json have none and match \"Follows from nothing?\"; every other script matches \"Formalize for dependencies\". The regenerated recordings are byte-identical to the originals once `valueConsts` is removed (16 and 42 declarations; 9 and 15 of them empty).\n- **B.2 on the new recordings.** A scratch probe (my own file, not in the repo) confirms the realFacts change: with all three premises selected, B.2 finds nothing. Without new-spyro-pg selected, B.2 reports `unselected` new-spyro-pg.\n- **Counts and markers.** The specs hold 107 Playwright tests (81 before; 3 deleted, 1 replacement, 28 new). No test.only, skip or fixme. Every matcher of the bundle's first line in src and test was updated, except m2Harness's self-contained one.\n- **No side effects.** My runs wrote nothing in the repo (vitest ran with `--no-cache` and its module cache in my scratch folder), and no processes are left.\n- **Not run (verifier rules):** Playwright, the VS Code suites, and the walkthrough script. I did read the builder's Playwright logs: each spec's latest summary line matches the report, and the re-runs come after the 12:28 helpers.ts fix.\n\nAlready flagged by the builder, confirmed: packages/extension/scripts/demo-driver.mjs and demo-ui.mjs still use the removed tray (`tray-count`, `tray-these-suffice`), so `npm run demo` stops at the selection step.\n\nOn the user's question (\"What are the various slices again?\"): the builder's list in report section 8 matches docs/slice1-plan.md §1 and spec ★D8 (a). The slices are:\n- **Slice 1, the new board**, in sub-slices:\n  - 1a: two kinds (AXIOM and PROPOSITION).\n  - 1b: arrows as board edits.\n  - 1c1: the canvas and the columns above it.\n  - 1c2: arrow gestures.\n  - 1d: glows, bands and arrow looks.\n  - 1e: Formalize for dependencies.\n  - 1f: the read-only board during a run, and Accept refusing on drift.\n  - 1g: end-to-end tests and the user guide.\n- **Later slices:**\n  - 2: the review list, arrow items and the session Undo stack.\n  - 3: FROZEN.\n  - 4: the transform window.\n  - 5: references.\n\nTwo small omissions in the builder's list:\n- 1e also stopped the run from writing `premises:` itself (the arrows are already there).\n- The sub-slices were built in the order 1a, 1b, 1f, 1c1, 1c2, 1d, 1e, 1g.",
+  "findings": [
+    {
+      "id": "V1g-C1",
+      "severity": "major",
+      "where": "/home/zhengyew/telelean/scripts/walkthrough-claude.mjs:333 (also :322, :384, :388)",
+      "problem": "The M2 walkthrough driver no longer works since slice 1, and the 1g report says the opposite. Open item 7 says the script \"mentions 'These suffice' in a comment only. Its dry run plays the updated walkthrough fixtures\" (the builder did not run it). In fact:\n- At Accept it calls `manager.accept(v.runId, p.proposalId, p.lifecycle.filter((l) => l.recommended).map((l) => l.id), p.definitions.map(...))`. Proposals have no `lifecycle` since 1a, and `RunManager.accept` is now `(runId, proposalId, definitions)`. So the first proved review throws `TypeError: Cannot read properties of undefined (reading 'filter')`.\n- Even without the throw, its pass checks require `target?.type === 'DERIVATION'` and an adopted card with `type === 'ASSUMPTION'`. The two-kind model never reports these, so neither reading can pass.\n- A `--live` run would spend the user's Claude quota before failing.\nThe cause is slice-wide (1a's lifecycle removal and kind rename, 1e), not 1g's diff, and scripts/ is outside the builders' write set. But the report's open item misleads the integrator.",
+      "fix": "Integrator (scripts/ is outside the builders' write set):\n- Call `manager.accept(v.runId, p.proposalId, p.definitions.map((d) => d.id))`.\n- Drop `lifecycle` from the round summary.\n- Make the pass criteria `target?.type === 'PROPOSITION'` (or check only that it is proved and accepted) and the adopted card `n.type === 'AXIOM'`.\n- Update the header comment: Formalize for dependencies, no Goal -> Derivation step, no lifecycle items.\n- Run `node scripts/walkthrough-claude.mjs --dry-run --work-dir <scratch>` once.\n- Correct the open item in the 1g entry of docs/slice1-plan.md §8.",
+      "evidence": "core ProposalView (packages/core/src/run.ts ~L466) has no `lifecycle`; packages/runner/src/run/manager.ts:1659 `async accept(runId: string, proposalId: string, definitions: readonly string[])`; 1g's own extension suite runs.test.ts:272 asserts `'lifecycle' in proposal === false`."
+    },
+    {
+      "id": "V1g-C2",
+      "severity": "minor",
+      "where": "/home/zhengyew/telelean/packages/webview/test/e2e/s1-glows.spec.ts:42 (openBandGraph), used at :143-151",
+      "problem": "The \"open band\" fixture shows a board the host never sends.\n- `openBandGraph` uses `mapNode` to drop new-spyro-pg from the goal's `premises`, but keeps `graph.edges`. The `premise` edge new-spyro-pg -> goal and a plain `verified` edge stay.\n- The band's code reads drawn arrows from `node.premises` (band.ts:80), while the overlay draws from `graph.edges`.\n- So the board still draws a solid arrow from \"The new Spyro game is PG\" into the goal, not in the warning colour, while the band says \"also uses “The new Spyro game is PG” (no arrow)\".\n- The host's subjectGraph would drop the premise edge and mark the use as TL107 (used-undeclared).\nThe test passes on the band's attributes, but its \"an arrow missing\" state is not what is on screen. The TL107 arrow lying outside the open band (BD-7) is unchecked.",
+      "fix": "Build the fixture as the host would:\n- `buildGraph({ subject, version, nodes: <mapped nodes>, vocabulary, semantic })`, so the edges follow the premises.\n- Set `mismatch: 'used-undeclared'` on the verified edge new-spyro-pg -> cynder-not-good.\n- Assert that `path[data-edge-id=\"new-spyro-pg->cynder-not-good\"]` has `data-mismatch=\"used-undeclared\"`, and that the band's bar spans only the two drawn arrows' ends.",
+      "evidence": "The builder's screenshot /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/b1g/shots/s1-band-open.png shows three plain solid arrows into the goal beside the open band."
+    },
+    {
+      "id": "V1g-C3",
+      "severity": "minor",
+      "where": "/home/zhengyew/telelean/packages/webview/test/shared/graphs.ts:73 and /home/zhengyew/telelean/packages/webview/test/e2e/m1-cards.spec.ts:93",
+      "problem": "AT6.3 says an axiom with a pre-v4 `premises:` line has \"its arrows ... not drawn\" (A19), but nothing checks that, and in this test it is false.\n- statusGallery explicitly adds a `premise` edge cynder-dark-past -> a-premised. The host's subjectGraph drops such edges (core/src/project/subjectGraph.ts:66), and the webview draws whatever edges it receives.\n- So the board shows a dotted loop between two axioms.\n- The report says it dropped the assertion because \"such an arrow is drawn when the graph has one (AR-6)\". AR-6 is about drawing a new arrow into an axiom, not about A19's pre-v4 arrows.\nA19's \"not drawn\" therefore has no browser coverage, and the gallery screenshot shows an arrow the product never draws.",
+      "fix": "- Remove the explicit premise edge from statusGallery (graphs.ts:73), since the host never sends it. a-premised's `premises` still drives the chip and \"Drop these arrows\".\n- Add to AT6.3: `await expect(page.locator('path[data-edge-id=\"cynder-dark-past->a-premised\"]')).toHaveCount(0)`.",
+      "evidence": "/tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/b1g/shots/m1-status-gallery.png shows a dotted arrow from “Cynder is a character who has a dark past” looping into “Ratings follow content”."
+    },
+    {
+      "id": "V1g-C4",
+      "severity": "minor",
+      "where": "/home/zhengyew/telelean/packages/webview/test/e2e/s1-formalize.spec.ts:57",
+      "problem": "The test title says \"Formalize enabled or disabled with each reason\", and the report says \"each of its disabled reasons\". The builder-1e list for 1g (plan §8) asked for exactly that: \"Formalize enabled and each disabled reason\".\n- The spec covers 3 of formalizeState's 5 reasons: a run is active (another subject's), no arrow or mark selected, and several targets.\n- Not covered in the browser:\n  - the cycle reason (AP-13: \"This card is on a cycle of arrows (…): remove one arrow first.\");\n  - \"Waiting for the extension to write this card.\";\n  - \"A run is active. It is starting.\".\n- These three appear only in webview unit tests.",
+      "fix": "Either add the missing cases, or reword the title, the report and the plan §8 entry to the three reasons covered. The cases to add:\n- a graph with a TL015 cycle of drawn arrows: select an arrow on it and expect Formalize disabled with core's cycle text;\n- with `autoReply: false`, a proposition added in the A|P box, with an arrow drawn into it before the host answers: expect \"Waiting for the extension to write this card.\";\n- with `autoReply: false`, press Formalize: expect \"A run is active. It is starting.\".",
+      "evidence": "grep finds \"on a cycle\", MENU_PROVISIONAL and \"It is starting\" only in test/unit (contextActions.test.ts:69-83, store-run.test.ts:132), never in test/e2e."
+    },
+    {
+      "id": "V1g-C5",
+      "severity": "nit",
+      "where": "/home/zhengyew/telelean/packages/webview/test/e2e/s1-arrows.spec.ts:297",
+      "problem": "The title says the selection rectangle \"selects the cards and arrows wholly inside\". Neither rectangle wholly contains an arrow (the goal's arrows start in the AXIOMS column), and no arrow selection is asserted. Only the card half of CM-2's rectangle is tested in the browser; gestures.test.ts:129 covers the arrows as a unit test.",
+      "fix": "Draw an arrow between two nearby canvas cards and drag the rectangle round both. Assert that the arrow's path has `tl-edge--selected` and that the summary counts it. Or drop \"and arrows\" from the title."
+    },
+    {
+      "id": "V1g-C6",
+      "severity": "nit",
+      "where": "/home/zhengyew/telelean/packages/core/test/gate/realFacts.test.ts:69",
+      "problem": "The regeneration removed realFacts' only B.2 (`undeclared-premise`) expectation on real recorded facts, and added no positive case. The data now supports one: my scratch probe on the regenerated recordings gives, with SEL_NO_PG at both gate-other and gate-proved, exactly one finding `{code: 'undeclared-premise', token: 'unselected', nodeId: 'new-spyro-pg', names: ['Spyro.new_spyro_pg.holds']}`. The SEL_NO_PG test filters only `footprint` findings.",
+      "fix": "In the SEL_NO_PG test, also assert that one finding (token `unselected`, nodeId `new-spyro-pg`) is in report.findings. That pins B.2 on Lean's real elaborated values."
+    },
+    {
+      "id": "V1g-C7",
+      "severity": "nit",
+      "where": "/home/zhengyew/telelean/packages/webview/test/e2e/m1-edits.spec.ts:326; m2-run.spec.ts:48; m2-layout.spec.ts:61",
+      "problem": "The report's list \"Parts dropped inside tests that were kept\" leaves out three removed checks:\n- AT6.11: clicking a presupposition chip highlights the item in the Vocabulary. The new comment says the band's chip \"highlights in place\", but nothing clicks it.\n- AT6.1: the axiom-target refusal (\"An assumption is something you hold…\"), now host-only as FORMALIZE_START_TEXTS.axiomTarget.\n- m2-layout: \"the A|D|G box keeps working during a run (D-16)\", now replaced by ES-9's lock.",
+      "fix": "Add the three to the 1g entry in docs/slice1-plan.md §8. In AT6.11, after opening the band, click the first `vocabulary-column .tl-presup` and assert `data-highlight=\"true\"`."
+    },
+    {
+      "id": "V1g-C8",
+      "severity": "nit",
+      "where": "/home/zhengyew/telelean/packages/webview/src/styles/board.css:122 (.tl-legend)",
+      "problem": "With BD-9's eight legend entries, `.tl-legend` (`inline-flex`, no wrap) overflows the header on a 560 px board. \"established\" is cut, and \"these suffice together\" and \"pending proof\" cannot be seen. This came with 1d, but it shows in 1g's own narrow screenshots, and m1-fixes' \"a narrow board stays readable\" test does not check the header.",
+      "fix": "Let the legend wrap (`flex-wrap: wrap`), or fold it into a popover on narrow widths. In m1-fixes' narrow-board test, assert that every `.tl-legend [data-legend]` box lies within the header's box.",
+      "evidence": "/tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/b1g/shots/m1-fix-narrow-board.png and s1-context-narrow.png"
+    },
+    {
+      "id": "V1g-C9",
+      "severity": "nit",
+      "where": "/home/zhengyew/telelean/node_modules/.vitest-cache",
+      "problem": "vitest 5's file-system module cache (on by default) wrote 14 new entries into the repository root's node_modules/.vitest-cache during the builder's runs (11:50–12:36). That folder is outside the write set (packages, docs, test-fixtures and the scratch folder), and the report does not mention it. It only lists results.json under packages/*/node_modules/.vite.",
+      "fix": "In later briefs, run vitest with `--no-cache --fsModuleCachePath=<scratch>/vitest-fs-cache` (I did, and nothing in the repo changed). The existing entries are a cache and safe to delete; the user decides."
+    }
+  ],
+  "checks_run": [
+    "Pre-1g tree: `git archive HEAD` + `git apply after_slice_1e.patch` in the scratch folder, then `diff -rq` against the working tree: the changed files equal the report's list (35 changed in packages/, 5 new s1-* specs, 5 docs (slice2-plan.md by another writer), 36 in test-fixtures)",
+    "CAP=/tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/capped.sh; `cd packages/core && CAP 1500 tsc --noEmit -p tsconfig.test.json`: exit 0, 0 'error TS' lines",
+    "`cd packages/runner && CAP 1500 tsc --noEmit -p tsconfig.test.json`: exit 0, 0 errors",
+    "`cd packages/webview && CAP 1500 tsc --noEmit -p tsconfig.json`: exit 0, 0 errors",
+    "`cd packages/webview && CAP 1500 tsc --noEmit -p tsconfig.node.json`: exit 0, 0 errors",
+    "`cd packages/extension && CAP 1500 tsc --noEmit -p tsconfig.json`: exit 0, 0 errors",
+    "`cd packages/core && CAP 1800 timeout 1200 vitest run --maxWorkers=1 --no-cache --fsModuleCachePath=<scratch>`: 'Test Files 55 passed (55) Tests 597 passed (597)'",
+    "`cd packages/webview && (same)`: 'Test Files 19 passed (19) Tests 313 passed (313)'",
+    "`cd packages/extension && (same, --no-cache)`: 'Test Files 22 passed (22) Tests 203 passed (203)'",
+    "runner (TELELEAN_TEST_TMP=<scratch>/runner-tmp, CAP 1800 timeout 900, one worker): test/run/{prompts,manager.accept,manager.caps,manager.gate,manager.happy,manager.lifecycle,manager.rounds,manager.start,walkthroughScript,smokeScript}.test.ts and test/llm/m2Harness.test.ts: 'Test Files 11 passed (11) Tests 86 passed (86)'",
+    "runner test/semantic/refresh.test.ts (real Lean, compare mode, no UPDATE variable): 'Test Files 1 passed (1) Tests 9 passed (9)' (8.1 s)",
+    "runner test/integration/m2flow.test.ts: 'Test Files 1 passed (1) Tests 5 passed (5)' (48.5 s)",
+    "runner test/run/walkthrough.e2e.test.ts: 'Test Files 1 passed (1) Tests 22 passed (22)' (181.4 s)",
+    "runner test/run/fresh.e2e.test.ts: 'Test Files 1 passed (1) Tests 9 passed (9)' (100.3 s)",
+    "Scratch probe /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/v1g_corr/b2check/b2.check.ts (vitest with --root in scratch): 'Test Files 1 passed (1) Tests 1 passed (1)'; B.2 with SEL finds nothing at gate-other or gate-proved; with SEL_NO_PG, one 'unselected' new-spyro-pg finding",
+    "python3 -I: the regenerated spyro-facts.json and extras-facts.json are identical to the pre-1g originals once valueConsts is removed (16/16 and 42/42 declarations; every declaration has valueConsts; 9 and 15 empty)",
+    "python3 -I over test-fixtures/fresh/*.json: arith and self-evident-not have premises [] and match 'Run: \"Follows from nothing?\"'; the other 8 have premises and match 'Run: \"Formalize for dependencies\"'; all 22 walkthrough scripts match the latter",
+    "grep: 107 Playwright tests in 20 specs (81 before 1g); no test.only, test.skip or test.fixme; no stale tray, ASSUMPTION, DERIVATION or GOAL selectors in webview e2e or the extension suites (only comments, and m1-header's stored M1 history label)",
+    "Builder logs (b1g/logs/*.spec.log): each spec's latest summary line matches the report, and the six specs that use checkArrows or badgeReport were re-run after the 12:28 helpers.ts fix",
+    "Not run (verifier rules): Playwright, the VS Code instance suites, scripts/walkthrough-claude.mjs",
+    "Side effects: `find /home/zhengyew/telelean -newermt <my start>`: nothing outside verbatim_prompt_log; nothing new in /tmp/node-compile-cache; no processes of mine left"
+  ]
+}

@@ -1,0 +1,273 @@
+# recheck:r1
+
+Agent `a9022bb3ee0e3af95` of workflow `wf_67531371-ae0`. Verbatim output (JSON alongside).
+
+- **summary:** Round-1 check: I compared all 89 dispositions with the plan text. Every fix marked "fixed" is present in §2–§7. The five "partly" dispositions (S4M-10, LC-2, LC-4, LC-12, UI-13) are adequately reasoned and logged as residuals or decisions, so nothing is re-raised with its old id. One exception: the adopted IMP-4 fix ("transform steps are never computeItems' active step") opens a new gap, filed below as R2-3.
+
+New problems, mostly introduced by the round-1 fixes:
+
+Blockers:
+- **R2-1.** Line-by-line ownership collides with slice 3's rule that an accepted item's covered-but-unowned targets keep B's value. Once a transform has typed a field, accepting Claude's Formalize, Change or Add item that covers the same card leaves an expectation no state can meet, so Apply is permanently disabled. This hits TR-15's re-formalise flow and S4M-4's own Add flow, and `acceptCovers` is undefined for typed items.
+- **R2-2.** Slice 2's step rule that every S₀ item outside `openItems` keeps its content key still applies, with S₀ before the typed write and empty `openItems`. Every transform step that replaces or removes Claude's content, or lets Claude revise its own open content, therefore fails. In effect Decline → Transform can never carry out a change to Claude's proposals.
+
+Majors:
+- **R2-3.** Because transform steps are never `active`, Claude's new unbound declarations (MUST DEFINE names, vocabulary, definitions) are unowned during the gate attempts, and each attempt fails on slice 2's fresh-unowned rule.
+- **R2-4.** Units supersede one another unit by unit, so trashing a card whose fields an earlier transform typed can never pass the "typed units hold" check.
+- **R2-5.** `decl` units include the docstring. The S4M-7 mirror follow-on therefore locks the person's statement for the rest of the session with no possible Unfreeze. A typed gloss also fixes an open declaration, and a typed declaration fixes an open gloss.
+- **R2-6.** If `originalKey` hashes the stored original (field states included), the direct path is falsely refused for every card with a standing freeze, which D3-44 makes common.
+
+Minors and a nit cover the rest: trashed names passing the visibility rule; a typed gloss on a new vocabulary card whose declaration is left to Claude; stale source revisions after a status-only Unfreeze made in the window; the `premise` unit's owner and hold check; typed Prop-valued declarations; and `data-undo-scope`.
+- **findings:**
+  - [1]
+    - **id:** R2-1
+    - **severity:** blocker
+    - **where:** §3.10 typed items (no `acceptCovers` for kind `typed`); §3.11 Revalue ('every other reason but accepted ones'); §3.8 step 3 (cascade covers only items accepted before the transform); slice-3 plan §3.3 'Accepted: … the others (a Formalize item's sentence) keep B's value' and §3.7 Accept (RV-4: Formalize/Change cover sentence and statement; Add covers every field of its card); §3.10's S4M-4 rule
+    - **problem:** Ownership is now line by line. On one card, the person's typed lines belong to `typed:<c>` and Claude's lines to `card:<c>`.
+
+Under RV-4, accepting a Claude item freezes targets its content does not own:
+- an accepted Formalize or Change freezes the card's sentence together with its statement;
+- an accepted Add freezes every field of its card.
+
+Slice 3 §3.3 gives each such unowned covered target B's value. Slice 4 never amends this. Revalue skips accepted reasons, and the Submit cascade handles only items accepted *before* a transform.
+
+So when the person accepts Claude's item after a transform has typed a field that item covers, the key carries two expectations: B's value (from the Accept) and the typed value (from the TransformFreeze). Slice 3 requires both to hold, and no state can, so the stage keeps a `frozen` problem.
+
+Unfreezing and accepting again recreates the same B's-value expectation. The only exit is to Reject one of the two changes.
+
+Separately, `acceptCovers` is undefined for the new `typed` kind. If it is built like a Change, the queue end's automatic "accepted as yours" freezes Claude's new statement at B's value at once.
+    - **scenario:** (a) TR-15's own needs-Claude case:
+1. Transform C, retype its sentence, and click [Let Claude redo its Lean statement].
+2. At Submit review, typed:C owns the sentence line and Claude's reformalisation is card:C (a Change).
+3. The person accepts card:C. C.sentence now expects B's sentence (accepted) and the typed sentence (transform).
+4. Apply is disabled for good.
+
+(b) S4M-4's own flow:
+1. Decline → Transform on Claude's "Add Spyro is brave" and retype its Why.
+2. typed:N waits for the Add to be accepted.
+3. Accepting the Add freezes N.why at B's value (absent), while the working copy holds the typed Why. Same dead end.
+
+(c) If acceptCovers(typed) follows Change, the queue end's automatic Accept of typed:C freezes C.statement at B's value, against Claude's reformalised statement.
+    - **fix:** §3.10 and §3.11 (4d, 4e):
+1. `acceptCovers` of a typed draft is the freeze keys of its units that must hold, with no RV-4 pairing; its TransformFreezes already hold them.
+2. `acceptCovers` of any other item leaves out every key that a live typed unit owns while that unit's typed item is in review or accepted.
+3. Amend slice 3 §3.3 for the remaining unowned covered targets: they expect the stage judgement's value at Accept time, stored in `frozen` like an own freeze's value, not B's value.
+4. RV-5: a Formalize or Change of card c made by a transform step depends on typed:c when that transform typed c's sentence. Rejecting the typed sentence then lists the reformalisation, which keeps RV-4's pairing.
+
+Tests (4e, 4h): flows (a) and (b) reach Apply with no stage problem.
+  - [2]
+    - **id:** R2-2
+    - **severity:** blocker
+    - **where:** §3.9 step 2 (S₀ = the judged head, before the typed write) and step 6 ('every rule of slices 2 and 3 with the transform scope'; S₀ᵗ only for G5, B.4, new-axiom, no-proofs); §2.2 StepScope ('openItems the rework items (rework steps only)'); slice-2 plan §4.9 step limits, last bullet (A-V2B2-ADV-4, built as `frozenItemFindings` in core review/judge.ts)
+    - **problem:** Slice 2's step limits include an item rule: every item of S₀ that the scope does not open (`openItems`) must keep its content key, or the step gets an `existing-changed` finding (token `session`). In a transform step, S₀ is before the typed write and `openItems` is empty.
+
+These therefore differ from S₀ at every check:
+- every item whose content the typed write replaces or removes. This is the plan's own `touched` list: a Claude value the person typed over, a Claude Add they trashed, Claude's arrows out of a trashed card, an earlier typed item that a follow-on edit changes;
+- every Claude item whose open field Claude legitimately revises.
+
+D4-33's S₀ᵗ list does not include this rule. A no-Claude step fails at its typed judgement. A Claude step cannot repair the difference, because the typed units must hold.
+
+So Decline → Transform (DO-2, and REVIEW 4's multi-card transform) can never carry out a change to Claude's content.
+    - **scenario:** 1. Decline → Transform on Claude's "Formalize C" and type a different statement. No Claude is needed; the transform is queued.
+2. At Submit review, the typed write replaces Claude's abbrev. X = card:C had content key k at S₀; now it has no draft, because the abbrev belongs to typed:C.
+3. frozenItemFindings reports X (`existing-changed`, session). The typed judgement is the step's check, so the result is "Your transform … could not be carried out" at every Submit and every Retry.
+
+The same happens when the person trashes Claude's Add, and in a decline window that leaves Claude's Why open with instructions: Claude rewrites the Why, and its Change item's key changes.
+    - **fix:** §3.9 step 6 (4e): in a transform step, the S₀ item rule reads the items of the `typed` commit (S₀ᵗ) instead of S₀'s. Its open set is `openItems` plus every item that owns content under:
+- a key in `TransformScope.open`;
+- the Dependencies of an `arrowsInto` card;
+- `dependents`.
+
+Add the rule to D4-33's S₀ᵗ list.
+
+4h tests: each of the three flows above passes, and Claude changing an item outside the scope still fails.
+  - [3]
+    - **id:** R2-3
+    - **severity:** major
+    - **where:** §2.9 'computeItems (… transform steps never active, IMP-4)'; §3.9 steps 6 and 8; §3.10 computeItems; built core review/items.ts `ownerOf` (owner only from a `created` entry or `active`) and review/judge.ts's fresh-`unowned` step rule (A-ADV-3); judgeState passes `active` whenever a StepScope exists
+    - **problem:** The adopted IMP-4 fix keeps transform steps out of computeItems' `active`. Their new declarations get an owner only through the `created` entries written at the step's end.
+
+During the step's gate attempts nothing owns them. `ownerOf` finds no `created` entry and no active step, so it reports `unowned`. Slice 2's step rule (A-ADV-3) then turns each unowned difference that S₀ lacked into a step finding.
+
+So every Claude declaration not bound to a card fails every attempt:
+- MUST DEFINE names (D4-7, and 4h's own test "whose names Claude defines, passes");
+- plain vocabulary (TR-7 b);
+- definitions added with the tick.
+
+If a builder passes `active` after all (built judgeState does so automatically when a scope exists), a transform step has no freeze snapshot. Its declarations then take phase `proof` and become material of a phantom `proof:transform:<id>` Result, which is IMP-4's original problem.
+    - **scenario:** 1. The person types "Wicked cynder" (MUST DEFINE: Wicked).
+2. In the transform step, Claude adds `axiom Wicked : Character → Prop` to Vocabulary.lean.
+3. The gate's computeItems reports Wicked as unowned and fresh since S₀, giving `existing-changed` (token `unowned`).
+4. All three attempts fail, and the whole transform is taken back with `lastFailure` (D4-4). Retry repeats the same failure.
+    - **fix:** §2.9 and §3.10 (4d, 4e): add `ComputeItemsInput.active.transform?: true`.
+- A transform step is passed as active, with target `transform:<id>`.
+- Its declarations new since S₀ that are not bound to a card are owned as statement-phase items (`vocab:` or `decl:`, origin the transform step), never as proof material.
+- It gets no Result draft.
+- `stepTarget` also maps transform steps (SessionRecords.steps of kind `transform`), so their `created` entries (phase `statements`) resolve after the step.
+
+Correct "never active" in §2.9 and §3.9 step 6.
+
+4d test: during a transform step's gate, a MUST DEFINE term and a definition added with the tick are owned, with no unowned finding and no Result draft.
+  - [4]
+    - **id:** R2-4
+    - **severity:** major
+    - **where:** §3.10 ('a later entry supersedes an earlier one unit by unit'); §3.9 step 6 'typed units hold'; §3.5 step 8 (a trash records the block, its statement and `.holds`, and the entries naming it in other cards' `premises:`)
+    - **problem:** Units supersede one another only by identity:
+- a line, by card and field;
+- an entry, by its two ends;
+- a decl, by name;
+- a block, by card.
+
+A trash records:
+- a `block` unit (absent);
+- its statement and `.holds` as `decl` null;
+- the entries naming the card in other cards' `premises:`.
+
+It records no unit for the card's own lines, and none for its own `premises:` entries.
+
+So when a later transform trashes a card whose sentence, Why or Dependencies an earlier transform typed, the earlier `line` and `entry` units stay the newest of their identities. Their typed item is accepted (or in review, after the Submit cascade). "Typed units hold" therefore requires those lines to exist, in a block that the new block unit requires to be absent. No state meets both.
+
+The step fails at its own check every time, with the misleading message "What you typed in “‹T1›” was changed".
+    - **scenario:** 1. Stage 1: T1 retypes C's sentence. It is carried out, and typed:C is accepted as yours.
+2. Stage 2: Transform cards… on C, drag C to the trash, Submit review.
+3. T2's typed write removes C's block, but the hold rule still requires T1's `natural_name` unit on C.
+4. The no-Claude step fails, and so does every Retry. Only rejecting typed:C first (losing the sentence) lets the trash through.
+
+The same happens for a new card that T1 made, or a card whose Dependencies T1 typed.
+    - **fix:** §3.5 step 8 and §3.10 (4c, 4d): a `block` unit with `present: false` supersedes every earlier unit on that card: its lines, its own `premises:` entries and its bound declarations. From then on they read as absent.
+
+An equivalent alternative: the trash records each line and each own entry of the removed block as a `line` or `entry` unit with an absent value.
+
+4c/4h test: T1 types C's sentence, T2 trashes C, and T2 passes.
+  - [5]
+    - **id:** R2-5
+    - **severity:** major
+    - **where:** §2.2 TypedUnit `decl` ('a whole declaration, docstring included'); §3.5 step 2 (a gloss by `set-docstring`) and step 3 (S4M-7: the mirror update is a follow-on); §3.9 step 6 'typed units hold' (exempt only when the person removed the key's TransformFreeze); §2.3 / D4-34 (a follow-on gives the key no reason, so Unfreeze is disabled)
+    - **problem:** Every typed change to a docstring is recorded as a `decl` unit holding the whole declaration. Two consequences:
+
+(a) S4M-7's mirror update is the case of a retyped sentence on a card whose statement is the person's and stays kept. It is recorded as a follow-on `decl` unit over the whole abbrev, and that unit must hold while typed:c lives. A follow-on gives the key no reason, so:
+- Unfreeze is disabled ("Not frozen.");
+- the exemption for "units whose transform freeze you removed" can never apply.
+
+For the rest of the session no step can change that statement: not a later transform that sets it open (TR-13 b2's own remedy), not a whole-model Formalize, not an answered `request_unfreeze`.
+
+(b) A typed gloss is also recorded as the whole declaration. With the declaration left open, Claude's change to it fails the hold rule at every attempt. A typed declaration likewise fixes an open gloss.
+
+Slice 3 keeps declaration and gloss as separate values, but the units do not.
+    - **scenario:** (a)
+1. Stage 1: the person retypes C's sentence with the statement kept, so telelean updates the mirror (a `decl` unit).
+2. Stage 2: following TR-13 b2's warning, the person opens C again and clicks [Let Claude redo its Lean statement].
+3. Claude rewrites the abbrev, and "typed units hold" fails on T1's mirror unit at every attempt.
+4. C.statement shows no lock, and Unfreeze is disabled. Only rejecting typed:C (and with it the sentence) frees it.
+
+(b)
+1. On a vocabulary card, type a new gloss, set the declaration open, and add the instruction "make it match".
+2. Every attempt fails, and the transform is taken back.
+    - **fix:** §2.2 and §3.5 (4c, 4e):
+1. Write a docstring-mirror follow-on as a `soft` unit: never required to hold, and no TransformFreeze. D4-29 already calls the mirror cosmetic.
+2. Split vocabulary units the way slice 3 splits the values:
+   - a `decl` unit excludes the docstring;
+   - a gloss is its own unit (`{ kind: 'docstring'; name; text }`, key `vocab:<n>.gloss`);
+   - a card statement's `decl` unit includes its docstring only when the statement itself is typed.
+
+Tests (4c, 4e): both scenarios pass.
+  - [6]
+    - **id:** R2-6
+    - **severity:** major
+    - **where:** §2.6 `originalKey` ('the hash of the original the runner analysed'); §3.6 planAction ('recomputes original with draftFromModel(model, keys) and refuses when its hash is not originalKey'); §2.1 draftFromModel starting states ('a field the session freezes (any reason in frozen) kept'); D3-44
+    - **problem:** `original` is a TransformDraft whose fields carry `kept`, and draftFromModel sets `kept` from the session's freeze reasons.
+- The runner copied `original` at opening, with the provisional session's reasons (its standing snapshot).
+- The planner re-copies it after the session has ended, with no reasons (§3.6 also passes `frozen: {}` to the analysis).
+
+As specified, `originalKey` is a hash of that stored original. The two copies then differ on every field with a standing freeze, so the direct path is refused with "Your files changed since you submitted the transform" although nothing changed.
+
+D3-44 gives a standing freeze to every field the person ever edited on the board, so this hits most cards. The 4c and 4i tests cover only a real hand edit.
+    - **scenario:** 1. The person once edited card A's Why on the board, so A.why has a standing freeze (D3-44).
+2. With no session, they open Transform cards… on A, retype its sentence, submit and confirm.
+3. The runner's original has `why.kept = true`; the planner's re-copy has `why.kept = false`. The hashes differ.
+4. "Your transform was not applied: Your files changed since you submitted the transform…", every time.
+    - **fix:** §2.6 and §3.6 (4a, 4c): define `originalKey` as a hash of the copied values only: each key's field values in canonical form, Dependencies as sorted entries plus the mark, and the set of keys. It never includes states, provenance, locks or masks.
+
+`transform/draft.ts` exports that hash function, and the runner and the planner both use it.
+
+4c test: a window on a card with a standing-frozen field applies directly.
+  - [7]
+    - **id:** R2-7
+    - **severity:** minor
+    - **where:** §3.3 (b) Visibility ('So the direct path never writes Lean the scratch passed but its place cannot build'); §3.4 dependents (computed from the view's facts)
+    - **problem:** The scratch imports the person's files as they are, and the visibility rule asks only whether a constant's module is imported or the constant sits above the write position.
+
+A declaration that the same draft deletes (a trashed vocabulary card, or a trashed card's statement abbrev) passes both checks. The dependents walk reads the view's facts, where the typed text does not exist yet, so it misses this too.
+
+So typed Lean that uses something the same transform deletes passes every window check:
+- on the direct path, the files telelean writes do not build;
+- in a session, the step fails at Submit review with a build error.
+    - **scenario:** 1. Outside a session, in one window, the person trashes the vocabulary card `IsSly` and retypes C's statement as `IsSly cynder ∧ …`.
+2. TR-12 (b) passes, because IsSly is in the imported Vocabulary module.
+3. The outcome is direct. The write puts in C's new statement and removes `IsSly`, and Main.lean no longer builds.
+    - **fix:** §3.3 (4g, 4b): a typed piece whose scratch `consts` include a name that the draft deletes (trashed cards' statement and `.holds`, trashed vocabulary) is a problem on its field: "“‹c›” uses ‹name›, which this transform deletes."
+
+4g test.
+  - [8]
+    - **id:** R2-8
+    - **severity:** minor
+    - **where:** §3.5 step 2 ('a gloss by set-docstring'); §3.2 problems (D4-15's rule covers only sentences); TR-4 (a new card's fields start fuzzy)
+    - **problem:** A new vocabulary card's declaration starts fuzzy. If the person types only its gloss, telelean has no declaration to put the docstring on, so `planTypedWrite`'s LeanOp cannot apply. The whole plan is then refused at Submit review (or at the provisional claude-step), and the window never shows a problem.
+    - **scenario:** 1. [+ New card ▾] → Vocabulary… "IsSly"; type the gloss "cunning and deceitful"; leave the declaration to Claude.
+2. The window reads "Needs Claude (1 fields for Claude to fill)".
+3. At Submit review the plan fails before the step starts. The transform stays queued with `lastFailure`, and every Retry fails the same way.
+    - **fix:** §3.2 (4b): add the vocabulary counterpart of D4-15's problem: "Type the declaration of a new vocabulary card whose gloss you write, or leave both to Claude."
+
+Alternatively, pass such a gloss to Claude in its turn rather than as a typed unit.
+
+4b test.
+  - [9]
+    - **id:** R2-9
+    - **severity:** minor
+    - **where:** §2.7 TW-1 (status-only freeze actions allowed while a window is open, F4); §2.1 TransformWindowRecord.items[].rev; §2.2 `queue-transform`; §5.1 ('An item whose rev changed gives conflict')
+    - **problem:** F4's fix lets the window's Unfreeze return accepted items to review while a window is open, and the runner then recomputes only the window's analysis.
+
+A decline window records its sources with their revs at opening. If such an Unfreeze changes a source's status (its own covered field, or a cascade through it), `queue-transform` carries a stale rev. It is refused as a conflict at every Submit, and the person's only way out is Cancel, which discards the draft.
+    - **scenario:** 1. Decline → Transform on the accepted "Formalize C".
+2. Clear C's statement so Claude can redo it. The panel says it is frozen (accepted): unfreeze it.
+3. [Unfreeze]: the item returns to review (rev + 1).
+4. Submit transform: conflict, every time.
+    - **fix:** §2.7 and §3.7 (4i): the records-only write of a freeze action made while a window is open also updates the window record's `items[].rev` for every source whose status it changed.
+
+Alternatively, refuse un-accepting a decline window's own source while that window is open, with its reason.
+
+4i test.
+  - [10]
+    - **id:** R2-10
+    - **severity:** minor
+    - **where:** §2.2 TypedUnit `premise` (`owner` required); §3.5 ('owner is typed:<card> or typed:vocab:<name>'); §3.9 step 6 'typed units hold'; §3.10 queue end step 1; §3.3 (c) and §3.7 (a premise window never needs Claude)
+    - **problem:** The `premise` unit's owner, its typed item and its hold check are undefined:
+- Read literally, §3.10 makes a typed draft for the unit and accepts it "as yours". That skips the premise's own Accept with "how you hold it" (RV-1, D4-14).
+- Read literally, §3.9 checks the unit against the records. LC-9's fix rewrites those only in the write that ends a passed step, so the step's own check fails.
+- A typed premise statement that names something undefined gives a needs-Claude reason (`mustDefine`), which a premise window cannot have.
+    - **fix:** §2.2, §3.9 and §3.10:
+- A `premise` unit makes no typed item. Its owner is the premise item, which returns to review "updated".
+- The hold rule and the queue end's "accepted as yours" skip `premise` units.
+- In a premise window, an unknown name in the statement is a problem: "A suggested premise's Lean may use only what exists or what this session shows."
+
+4h test.
+  - [11]
+    - **id:** R2-11
+    - **severity:** minor
+    - **where:** §2.1 typedLeanProblems ('never a theorem'); §3.3 (b); D4-37; §2.8 `no-proofs` (S4M-19's `isProof`)
+    - **problem:** S4M-19 made `no-proofs` use `isProof`, because a Prop-valued def, abbrev, instance or opaque is a proof. TR-12, however, refuses only the `theorem` keyword in typed declarations.
+
+So a new vocabulary card typed as `def p : IsEvil cynder := ‹proof term›`:
+- passes TR-12 (a) and (b);
+- is written by telelean;
+- is exempt from `no-proofs` as a typed unit.
+
+That is a proof made in a transform, which TR-14 and D4-37's own reason ("a transform writes no proofs") rule out.
+    - **fix:** §3.3 (b) (4g): refuse a typed declaration whose elaborated type is a proposition (checked on the scratch's facts with `isProof`), using D4-37's text.
+
+4g test.
+  - [12]
+    - **id:** R2-12
+    - **severity:** nit
+    - **where:** §4.2 (the dialog has `data-undo-scope="session"`); §4.5 Undo and D4-41 (the window's own timeline); slice-2 plan §5.12 (`undoScope` sends focus inside `data-undo-scope="session"` to the session stack)
+    - **problem:** The attribute §4.2 gives the window routes Ctrl+Z to the session stack under slice 2's `undoScope`. §4.5 and D4-41 route it to the window's own timeline instead.
+    - **fix:** The dialog carries `data-undo-scope="transform"`, and `undoScope` gains a `transform` result, routed to the window's timeline (4j, 4l).

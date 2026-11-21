@@ -1,14 +1,15 @@
 /**
- * A deterministic, generated graph with about 25 cards per column, for scrolling and edge-overlay tests.
- * It mixes code-less and formalised nodes, declared (dashed) and verified (solid) arrows, arrows that skip the
- * Derivations column (A -> G) and within-column arrows (D -> D, allowed by D-13b). Sentences vary in length so
- * cards have different heights.
+ * A deterministic, generated graph for scrolling and edge-overlay tests: `perColumn` axioms (`a01`…) and twice as
+ * many propositions (`d01`… and `g01`…, generated as before spec v4's two kinds, when they were the derivations and
+ * the goals; the same seed still yields the same ids, sentences and arrows). It mixes code-less and formalised nodes,
+ * declared (dashed) and verified (solid) arrows, arrows from axioms into propositions and between propositions
+ * (D-13b). Sentences vary in length so cards have different heights.
  */
 import { buildGraph } from '../graph.js';
 import type { NodeType, TlGraph, TlNode } from '../model.js';
 
 export interface LargeGraphOptions {
-  /** Cards per column (default 25). */
+  /** Axioms, and half the propositions (default 25). */
   perColumn?: number;
   /** PRNG seed (default 7): the same seed always yields the same graph. */
   seed?: number;
@@ -98,7 +99,7 @@ export function largeGraph(options: LargeGraphOptions = {}): TlGraph {
   const assumptions: TlNode[] = [];
   for (let i = 1; i <= perColumn; i++) {
     const [x, y] = [pick(TOPICS), pick(TOPICS)];
-    let node = base(`a${pad(i)}`, 'ASSUMPTION', pick(A_TEMPLATES)(x, y));
+    let node = base(`a${pad(i)}`, 'AXIOM', pick(A_TEMPLATES)(x, y));
     if (i % 2 === 1) node = { ...node, rationale: pick(['personal experience', 'read it in an interview', 'common knowledge among fans']) };
     else node = { ...node, status: { ...node.status, flags: ['no-rationale'] } };
     if (i % 3 === 0) {
@@ -112,9 +113,9 @@ export function largeGraph(options: LargeGraphOptions = {}): TlGraph {
   const derivations: TlNode[] = [];
   for (let i = 1; i <= perColumn; i++) {
     const [x, y] = [pick(TOPICS), pick(TOPICS)];
-    let node = base(`d${pad(i)}`, 'DERIVATION', pick(D_TEMPLATES)(x, y));
+    let node = base(`d${pad(i)}`, 'PROPOSITION', pick(D_TEMPLATES)(x, y));
     const premises = pickDistinct(aIds, 1 + Math.floor(rand() * 3));
-    if (i > 1 && rand() < 0.3) premises.push(`d${pad(1 + Math.floor(rand() * (i - 1)))}`); // within-column arrow
+    if (i > 1 && rand() < 0.3) premises.push(`d${pad(1 + Math.floor(rand() * (i - 1)))}`); // an arrow between propositions
     node = { ...node, premises: [...new Set(premises)] };
     if (i % 2 === 0) node = formalise(node, `Shapes ${pick(LEAN_WORDS)} ${pick(LEAN_WORDS)}`, i % 4 === 0 ? 'theorem' : null);
     if (i % 4 === 0) {
@@ -130,9 +131,9 @@ export function largeGraph(options: LargeGraphOptions = {}): TlGraph {
   const goals: TlNode[] = [];
   for (let i = 1; i <= perColumn; i++) {
     const [x, y] = [pick(TOPICS), pick(TOPICS)];
-    let node = base(`g${pad(i)}`, 'GOAL', pick(G_TEMPLATES)(x, y));
+    let node = base(`g${pad(i)}`, 'PROPOSITION', pick(G_TEMPLATES)(x, y));
     const premises = pickDistinct(dIds, 1 + Math.floor(rand() * 2));
-    if (rand() < 0.3) premises.push(pick(aIds)); // skips the Derivations column
+    if (rand() < 0.3) premises.push(pick(aIds)); // an arrow straight from an axiom
     node = { ...node, premises: [...new Set(premises)] };
     if (i % 3 === 0) node = formalise(node, `Predicts ${pick(LEAN_WORDS)} ${pick(LEAN_WORDS)}`, null);
     goals.push(node);

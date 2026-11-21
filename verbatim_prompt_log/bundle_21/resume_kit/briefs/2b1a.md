@@ -1,0 +1,68 @@
+You are the BUILDER for sub-slice 2b1a of telelean slice 2 ("the review list"). Work in /home/zhengyew/telelean. Your scratch dir: /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/b2b1a (create it).
+
+READ FIRST, in this order:
+1. /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/builder_rules.md — mandatory safety and resource rules (no git changes, no npx/npm, never real Claude, never write packages/extension/dist or out, memory cap via capped.sh, vitest one worker, extension vitest with --no-cache, TELELEAN_TEST_TMP in your scratch dir, delete files with plain rm).
+2. /home/zhengyew/telelean/docs/slice2-plan.md — the plan. Read §0 (rules), §1 (the order of sub-slices and YOUR sub-slice's entry in full), §2 and §2.9 (contracts: implement them exactly as written), every section your sub-slice's entry points to, §6 (tests for your sub-slice), §7 (decisions) and §8 (the change log, including what earlier sub-slices of slice 2 decided).
+3. The spec, for meaning: /home/zhengyew/telelean/verbatim_prompt_log/bundle_21/user_requested_documents/01_spec_v4.md — the clauses your sub-slice cites. The autopilot decisions that override the spec are in /home/zhengyew/telelean/verbatim_prompt_log/bundle_21/user_requested_documents/02_autopilot_decisions.md (notably AP-24: stage-level reveal, no decisions while a Claude step runs, a Formalize queue runs to completion before its stage opens).
+4. /home/zhengyew/telelean/docs/slice1-plan.md §8 — what slice 1 built and decided (the code you build on).
+
+GOAL: implement sub-slice 2b1a exactly as the plan's §1 entry and its sections describe — no more (later sub-slices exist), no less. Earlier sub-slices of slice 2 are in the working tree. Keep the product working: every package compiles and every unit test passes at the end of your sub-slice (the plan's §0/§1 say how tests that move to a later sub-slice are handled — follow that, and list every such test). Where the plan leaves a detail open, decide it, keep it minimal, and append a dated line to the plan's §8 change log ("builder 2b1a: …").
+
+VERIFY before you finish (capped.sh, one heavy job at a time, node_modules/.bin binaries): tsc --noEmit clean for core and runner (tsconfig.test.json), webview (tsconfig.json and tsconfig.node.json) and extension (tsconfig.json); vitest pass for core, webview, extension (--no-cache) and for the runner test files your change touches (with real Lean only if MemAvailable allows, capped 3000, timeout 900 each); if you touched the webview, one scratch build with TELELEAN_WEBVIEW_OUT into your scratch dir (never dist) — and if MemAvailable is above 6 GB you may run the Playwright specs your change affects, one at a time, against that build (`TELELEAN_WEBVIEW_OUT=… capped.sh 3000 sh -c 'ulimit -c 0; /home/zhengyew/telelean/node_modules/.bin/playwright test test/e2e/<spec>'` from packages/webview), moving any packages/webview/test-results folder to your scratch dir afterwards.
+
+REPORT (your final message): files changed (one line each), tests added/updated/skipped-for-later/deleted (names), the exact verification commands and their summary lines, decisions you made (also in the plan's §8), and every effect outside the repo and your scratch dir. Do not claim anything you did not run.
+
+ULTRACODE ADDITIONS (the user asked for maximum thoroughness; these are mandatory):
+- MUTATION CHECKS: for each key rule or safety property your sub-slice implements (every gate rule, every status transition, every refusal, every ownership/visibility rule), temporarily break it in the source (invert or drop the key condition), run the test file(s) that should catch it, confirm at least one test FAILS, then restore the file byte for byte (keep a copy in your scratch dir and check with `cmp`). Report each mutation as: file:line, what you broke, which test failed. A rule no test catches needs a new test.
+- EDGE CASES: for every function you add, test the empty case, the single case, the many case, and the boundary the spec or plan names (e.g. a removal, an unchanged state, a duplicate, a cycle, a reload mid-way).
+- RUNNER: if you touched packages/runner, run every runner test file your change touches with real Lean where needed (capped 3000, timeout 900 each); the integrator runs the full runner suite after you.
+
+CARRY-OVERS FROM THE 2a REVIEW (mandatory, do these FIRST, before 2b1a's own work): the review-only pass over 2a1+2a2 (three verifiers, a fixer and a re-verifier; reports in /home/zhengyew/telelean/verbatim_prompt_log/bundle_21/subagent_reports/ once saved, and the fixer's notes in the plan's §8) left the findings below open. Fix each one as its "fix" says (or better, if you find a simpler sound fix; record it in §8 as "builder 2b1a (carry-over ‹id›): …"), each with a test that fails without the fix (mutation-checked). S-V2A-S2 matters most: a refusal text or decision must never depend on, or name, a hidden Result (D2-64, RV-6). List each carry-over in your report as fixed / not fixed (why).
+
+- S-V2A-S2 (minor) at packages/core/src/review/reducer.ts:1073-1091 (undo: shownAfter, the hidden-Accepts loop, listedAcceptRefusal) and 987-1010; plan §8 l.2875
+  PROBLEM: The decide path (no rev compare for hidden items) and the Undo conflict path are fixed. The check of restored Accepts in Undo is not. It decides 'hidden' by the visibility after the Undo (`hiddenAfter`). An Undo asked while the results are hidden, which would show them, therefore runs listedAcceptRefusal on items that are hidden now. Its refusal names hidden Results or Result's parts, as the refused item or as the missing dependency, and whether it is refused depends on a judge's change to a hidden item. The results stay hidden after the refusal. This breaks D2-64 and §4.7's byte-identical Undo outcomes, and contradicts §8's claim that 'an Undo's answer depends on listed items only'. A by-hand Accept made now would instead get 'waits for the results' (D2-73: the same as by hand).
+  FIX: Check each restored Accept against the visibility at request time.
+- An item hidden now or after the Undo (`hidden(r) || hiddenAfter(r)`) takes the silent path: it is kept as it was if its Accept no longer stands.
+- A listed item gets the refusal a by-hand Accept would get now: compute its dependency gate with `shown && shownAfter`, so a missing dependency hidden now reads 'waits for the results' and is never named. Keep the RV-7 badge check on the class in force after the Undo.
+- Add a reducer test pairing copies that differ only in a judge's change to a hidden Result (P1) or to a hidden written premise (P1b), and assert byte-identical Undo answers.
+- Correct §8 l.2875.
+
+- R1-1 (minor) at packages/core/src/review/reducer.ts:406-431 (takenOutIn skips add-premise; mergedBackBy never reads the action's `takenOut`) and 532-556; types.ts ItemWrite comment; plan §8 'For 2e' l.2887-2889; items.ts:694-699
+  PROBLEM: When a Reject (or plain decline) cascade takes out a written Add premise, the take-out is part of the same decision commit (§3.8: 'in its own write'). Under the new contract, un-reject merges that commit's whole inverse patch first, so the premise's card comes back into ws/. The reducer neither restores the premise (card, written key; its ledger entries are not put back) nor lists it in `revert` or `premises.takeOut`. The record stays to be redone, reverted, with no card. At the next judge, reconcile sees the premise's unwritten draft as unchanged, so it makes no revert. computeItems finds a card with no ledger `premise` entry and reports it unowned, which disables Apply with no item to act on. This is the premise variant of V2A-C2/ADV-2. The For-2e line 'after any inverse merge, an item whose status keeps it out is in revert; reconcile also takes such content out again' is false for it.
+  FIX: In un-reject, also read the declining action's `takenOut`.
+- A premise that comes back (to be redone without revert, nothing else keeping it out): restore `card` and the written `fingerprint` from the entry, as Undo does, and list it in `reapply`. The runner puts its ledger entries back.
+- Otherwise: set `card` from the entry, so the runner can plan the take-out, and list it in `premises.takeOut`, run after the merge.
+- Alternative: keep a written premise's take-out out of the decision commit that un-reject inverts.
+
+Fix the For-2e bullet and ItemWrite's comment, and add a reducer test with probe P2's shape.
+
+- R1-2 (minor) at packages/core/src/review/types.ts:255 (reveal SessionAction); reducer.ts:900-934 (reveal) and 1107 (`top.kind === 'decide' ? top.takenOut : []`)
+  PROBLEM: Show results' D2-23 returns can take a written premise out: a premise resting on a returned definition is returned to review with it, and the reveal's write lists it in `premises.takeOut`. The reveal SessionAction has no `commits` or `takenOut`, although ItemWrite.action's contract says its commit joins the action's commits so that Undo inverts it. Undo of Show results therefore restores the premise's Accept, with `accepted.fingerprint` = the written key, onto a record that holds the draft key and no card. This is the inconsistency V2A-S3 fixed for decide actions. The Undo then schedules a fresh premise write instead of inverting the take-out and putting the ledger entries back.
+  FIX: Give the reveal SessionAction `takenOut` and `commits`, shaped like decide's. Let undo's takenOut loop, and the non-null write, handle both kinds. Record this in §2.2 and §8, and extend the V2A-S4 test with a written premise returned at Show results.
+
+- R1-3 (minor) at packages/core/test/review/reducer.test.ts and reconcile.test.ts; code at reducer.ts:1065, 268/291 of reconcile.ts, reducer.ts:538-541, 1119-1123, 1114, 1092, reconcile.ts:181
+  PROBLEM: Several paths the fixer added are untested: each of these mutations leaves all 155 review tests passing.
+- Undo no longer removes the decided force it started (ADV1-undo-startedForce). The test 'Undo goes back step by step… telelean's force included' only passes because a later Undo ends the force first. Probe P3 shows that with this mutation, an Undo right after the Accept that set the force leaves the results shown while E is in review: a leak.
+- F5's content refresh (C1-F5-no-refresh).
+- The proposed-again content refresh (C2-again-no-refresh).
+- Un-reject's `back` guard (C2-back-ignored).
+- Undo's write when only commits are inverted (S3-inverts-ignored).
+- Undo's `premisesOut` (S3-premisesOut-dropped).
+- noteJudged skipping a partial judgement (ADV3-noteJudged-partial).
+- `taken` leaving out silently skipped items (S2-decided-skip-ignored).
+  FIX: Add tests:
+- An Undo right after the decided-force Accept: forced null, results hidden (P3's shape).
+- F5 and proposed-again records carry their current draft content.
+- Un-reject of an item that stays reverted brings back no dependent.
+- An Undo whose action had commits but changes no ws/ status still returns a write naming the action.
+- An Undo whose takenOut premise stays out lists it in premises.takeOut.
+- A new Result created by a partial judgement has no `judged`.
+- An Undo whose decided item is silently skipped does not list it in `taken`.
+
+- R1-4 (minor) at docs/slice2-plan.md §8 l.2886 ('For 2e': ReviewState.deps 'from the last converged stage judgement: never one whose drafts lack facts'); types.ts:474; plan §2.6 (one persisted `judged`, recomputed on load)
+  PROBLEM: The guidance contradicts ReviewState.deps' contract, which says 'from the stage judgement' (the same one as `classes`). It also contradicts §2.6, which persists only the current stage judgement, recomputed from judged-facts.json, so an older map is not available after a reload. A runner that follows it would pair the records and classes of one judgement with an older dependency map. Records created or re-linked by the partial judgement would then lack edges, or carry stale ones, and RV-5's gate and cascades fail open for them. Meanwhile the partial map's only gap is the missing outgoing edges of facts-missing items, whose Accepts are refused anyway; the next judge's reverts correct a cascade it misses.
+  FIX: State one source: depsById from the stage judgement the records were reconciled with, partial included. If missing outgoing edges matter, persist each record's last full-judgement edges (as `judged.deps` does for Results) and union them in for records whose class has factsMissing. Never use a whole older map. Update §8 l.2886.
+
+- R1-5 (nit) at packages/core/src/review/texts.ts:424 (leftNeedsOption) vs reducer.ts:332-333; docs/slice2-plan.md §3.5 l.1388
+  PROBLEM: `REVIEW_TEXTS.leftNeedsOption` is listed in §8's new texts but never used: leftText returns plainOnlyArrows for 'needs-option', so 2c2 has two candidate texts for one reason. Separately, §3.5 still says 'the same key and content key: unchanged', but V2A-C1 now refreshes the record's content from its draft there; only §8 says so.
+  FIX: Use leftNeedsOption in leftText's 'needs-option' case, or delete it and drop it from §8. Add a pointer to the content refresh in §3.5's bullet.

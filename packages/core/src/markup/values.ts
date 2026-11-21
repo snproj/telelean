@@ -15,12 +15,12 @@ const KNOWN_KEYS: ReadonlySet<string> = new Set(FIELD_ORDER);
 /** True for keys with a meaning in v1 (03 section 3.2; `kind` is an alias, not a key of its own). */
 /**
  * TL011's text, worded like the board's chip: a rule's `rationale:` says where the rule comes from ("no source yet"),
- * any other assumption's why the user holds it ("no reason yet").
+ * any other axiom's why the user holds it ("no reason yet").
  */
 export function noRationaleMessage(stance: string | undefined): string {
   return stance === 'rule'
     ? 'This rule has no `rationale:` yet (no source yet: where does it come from?).'
-    : 'This assumption has no `rationale:` yet (no reason yet: why do you hold it?).';
+    : 'This axiom has no `rationale:` yet (no reason yet: why do you hold it?).';
 }
 
 /** Fields whose repeated lines add up to one list (`premises:`, `lean:`, `tags:`); any other repeated field is TL005. */

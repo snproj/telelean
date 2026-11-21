@@ -4,13 +4,13 @@
  *   -> new vocabulary (auto-approved, revocable: revoking is prefilled Feedback)
  *   -> definition questions (yes / no; Accept needs every "yes", a "no" opens Feedback)
  *   -> the report card (shown once the statements are done, or on "Show result": meaning before proof status)
- *   -> lifecycle items (D-21: a proved goal becomes a Derivation only when ticked; recommended ones start ticked)
- * with Accept / Feedback / Discard / Raw Lean diff always at hand.
+ * with Accept / Feedback / Discard / Raw Lean diff always at hand. (Spec v4 removed the lifecycle items, the "Card
+ * changes" ticks: a proved proposition stays a proposition.)
  */
 import { LIMITS, type DefinitionQuestion, type ProposalView, type StatementReview, type TlNode, type VocabKind, type VocabularyReview } from '@telelean/core';
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import { AgentText, UserText } from '../common/AgentText';
-import { KIND_GLYPH, KIND_NOUN, VOCAB_KIND_NOUN } from '../labels';
+import { KIND_GLYPH, VOCAB_KIND_NOUN } from '../labels';
 import { acceptTitle, definitionsApproved, isRunOutcomeVerdict, reviewSteps, statementBody, STEP_TITLE, type ReviewStep } from '../model/run';
 import { useBoard, useBoardActions } from '../state/context';
 import type { ReviewUi } from '../state/store';
@@ -183,35 +183,6 @@ function ResultStep({ proposal, review }: { proposal: ProposalView; review: Revi
   return <ReportCard proposal={proposal} />;
 }
 
-function LifecycleStep({ proposal, review }: { proposal: ProposalView; review: ReviewUi }) {
-  const actions = useBoardActions();
-  const nodes = useMemo(() => Object.fromEntries(proposal.graph.nodes.map((n) => [n.id, n])), [proposal.graph.nodes]);
-  return (
-    <div data-testid="lifecycle-review">
-      <p className="tl-review__lead">Changes to cards that Accept makes too, only when ticked:</p>
-      <ul className="tl-details__list">
-        {proposal.lifecycle.map((item) => {
-          const node = nodes[item.nodeId];
-          return (
-            <li key={item.id}>
-              <label className="tl-check tl-lifecycle" data-testid="lifecycle-item" data-lifecycle-id={item.id}>
-                <input type="checkbox" checked={review.lifecycle[item.id] === true} onChange={(event) => actions.setLifecycleTick(item.id, event.target.checked)} />
-                <span>
-                  Make {node ? <>“<Sentence text={node.naturalName} wordedBy={node.provenance.wordedBy} />”</> : <code>{item.nodeId}</code>} a {KIND_NOUN[item.to]}{' '}
-                  <span className="tl-run__hint">
-                    ({item.reason}
-                    {item.recommended ? '; recommended' : ''})
-                  </span>
-                </span>
-              </label>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-}
-
 function FeedbackComposer({ review }: { review: ReviewUi }) {
   const actions = useBoardActions();
   const sending = useBoard((s) => s.runBusy?.action === 'feedback');
@@ -276,7 +247,7 @@ export function ReviewActions({ proposal, review }: { proposal: ProposalView; re
           className={outcome ? 'tl-button tl-button--secondary' : 'tl-button'}
           data-testid="accept"
           disabled={!approved || busy !== null}
-          title={approved ? acceptTitle(proposal, review.lifecycle) : 'Answer every definition question with yes first (a no is Feedback)'}
+          title={approved ? acceptTitle(proposal) : 'Answer every definition question with yes first (a no is Feedback)'}
           onClick={() => actions.acceptProposal()}
         >
           {busy?.action === 'accept' ? 'Accepting…' : 'Accept'}
@@ -351,15 +322,14 @@ export function Review({ proposal }: { proposal: ProposalView }) {
       </ol>
       {proposal.baseChanged ? (
         <p className="tl-review__note" data-testid="review-base-changed">
-          <span className="codicon codicon-info" aria-hidden="true" /> Your files changed since the run started: Accept re-checks Claude’s changes on top of them first.
+          {/* Spec v4 ES-7 (slice 1f): nothing is merged; Accept waits until the files match the run's base again. */}
+          <span className="codicon codicon-warning" aria-hidden="true" /> Your files changed since the run started: Accept is refused until they match
+          again. Undo those edits in the editor, or discard the run.
         </p>
       ) : null}
       {proposal.empty ? (
         <p className="tl-review__note" data-testid="review-empty">
-          <span className="codicon codicon-info" aria-hidden="true" />{' '}
-          {proposal.lifecycle.length > 0
-            ? 'This round changed no file: Accept records the outcome and makes only the card changes you tick.'
-            : 'This round changed no file: Accept only records the outcome.'}
+          <span className="codicon codicon-info" aria-hidden="true" /> This round changed no file: Accept only records the outcome.
         </p>
       ) : null}
       <div className="tl-review__body" data-testid="review-step" data-step={step.kind}>
@@ -367,7 +337,6 @@ export function Review({ proposal }: { proposal: ProposalView }) {
         {step.kind === 'vocabulary' ? <VocabularyStep item={step.item} /> : null}
         {step.kind === 'definitions' ? <DefinitionsStep proposal={proposal} review={review} /> : null}
         {step.kind === 'result' ? <ResultStep proposal={proposal} review={review} /> : null}
-        {step.kind === 'lifecycle' ? <LifecycleStep proposal={proposal} review={review} /> : null}
       </div>
       <div className="tl-review__nav">
         <button type="button" className="tl-button tl-button--secondary tl-button--small" data-testid="review-back" disabled={index === 0} onClick={() => actions.reviewGo(index - 1)}>

@@ -23,12 +23,12 @@ import {
 } from '../run.js';
 
 /** See `proposalLabel` in ./index.ts. */
-export function label(verdict: RunVerdict, targetSentence: string, extras: { lifecycle: number; adoptedGhosts: number; premises?: number }): string {
+export function label(verdict: RunVerdict, targetSentence: string, extras: { adoptedGhosts: number; premises?: number }): string {
   const outcome = verdict === 'proved' ? 'proved' : 'not proved';
-  const action = extras.premises === 0 ? 'Self-evident?' : 'These suffice';
+  // Spec v4.1 ES-2, AR-5 (slice 1e): "Formalize for dependencies", or its question being a "follows from nothing" mark.
+  const action = extras.premises === 0 ? 'Follows from nothing?' : 'Formalize';
   let text = `${action} → ${outcome}: ${cutText(targetSentence, 60)}`;
-  if (extras.lifecycle > 0) text += ' (+ Make Derivation)';
-  if (extras.adoptedGhosts > 0) text += ` (+ ${extras.adoptedGhosts} adopted assumption${extras.adoptedGhosts === 1 ? '' : 's'})`;
+  if (extras.adoptedGhosts > 0) text += ` (+ ${extras.adoptedGhosts} adopted axiom${extras.adoptedGhosts === 1 ? '' : 's'})`;
   return text;
 }
 

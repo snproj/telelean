@@ -1,10 +1,13 @@
 /**
  * G0 (docs/m2-plan.md sections 3.1 and 3.8): the token denylist over Claude's lines, the file rules over a change set,
  * and the single-term rule for Claude's ghost text. Text only: nothing here runs Lean, and only `lexLean` tokens count,
- * so words in comments, strings, docstrings and telelean blocks never do.
+ * so words in comments, strings, docstrings and telelean blocks never do. Since 2b2 (docs/slice2-plan.md 2.1, AP30-1)
+ * the denylist also refuses the `init` and `builtin_init` attributes in any attribute list (`metaprogramming`), read as
+ * Lean reads them (after `eraseMacroScopes`), the list judged as a whole, and any hand-written hygienic name (a `«_@»`
+ * component or a last `_hyg` one, AP30-1 r3).
  */
 import { scanDecls } from '../markup/decls.js';
-import { canonicalName, lexLean } from '../markup/lexer.js';
+import { canonicalName, lexLean, nameComponents } from '../markup/lexer.js';
 import { relativeName } from '../markup/names.js';
 import { Lines } from '../markup/text.js';
 import type { DeclInfo, LeanToken } from '../markup/types.js';
@@ -46,6 +49,95 @@ const WORD_CODES: ReadonlyMap<string, GateFindingCode> = new Map<string, GateFin
 /** Constants of Lean's `Lean` namespace behind native evaluation: refused however they are written (`Lean.ofReduceBool`). */
 const NATIVE_CONSTANTS: ReadonlySet<string> = new Set(['ofReduceBool', 'ofReduceNat', 'reduceBool', 'reduceNat']);
 
+/**
+ * Attributes that run code when a module that has them is imported (docs/slice2-plan.md 2.1, "No Claude code runs at
+ * import", AP30-1; 2b2): what `initialize` expands to. Refused as `metaprogramming` wherever an attribute list names
+ * them, by canonical name (`«init»` too).
+ */
+const INIT_ATTRIBUTES: ReadonlySet<string> = new Set(['init', 'builtin_init']);
+/** The attribute kinds that may stand before an attribute's name in its list (`attribute [local init] x`). */
+const ATTRIBUTE_KINDS: ReadonlySet<string> = new Set(['scoped', 'local']);
+const LIST_OPENERS = '([{⟨';
+const LIST_CLOSERS = ')]}⟩';
+
+/** A name's components with their «» escapes taken off (`init.«_@».x._hyg` -> init, _@, x, _hyg). */
+const componentValues = (name: string) => nameComponents(name).map((part) => (part.length >= 2 && part.startsWith('«') && part.endsWith('»') ? part.slice(1, -1) : part));
+
+/**
+ * Lean's `Name.eraseMacroScopes` (4.35) on a written name (AP30-1 r3): a name whose last component is `_hyg` has macro
+ * scopes, and loses its last `_@` component and everything after it (`init.«_@».x._hyg` is `init`); no `_@` leaves
+ * nothing. Any other name is unchanged. Lean names an attribute this way (Elab/Attributes.lean), so G0 does too.
+ */
+export function eraseMacroScopes(name: string): string {
+  const values = componentValues(name);
+  if (values[values.length - 1] !== '_hyg') return name;
+  const at = values.lastIndexOf('_@');
+  return at <= 0 ? '' : nameComponents(name).slice(0, at).join('.');
+}
+
+/**
+ * A hand-written hygienic name (AP30-1 r3): a component `_@`, or a last component `_hyg`. No model needs one, and the
+ * spelling gets any word G0 guards past its comparison (`macro.«_@».x._hyg` is Lean's `macro`).
+ */
+export function isHygienicName(name: string): boolean {
+  const values = componentValues(name);
+  return values.includes('_@') || values[values.length - 1] === '_hyg';
+}
+
+/**
+ * The `init` attributes of a text's attribute lists (2b2, AP30-1 and AP30-1 r2): in `@[…]` and in `attribute […] x`
+ * alike, an attribute whose name is `init` or `builtin_init`, first in its list or after a comma, `scoped` or `local`
+ * (so `@[simp, init]`, `@[local init]`, `@[init f]` and `attribute [simp, init] x`). The identifier `init` anywhere
+ * else is no attribute: `foldl (init := 0)`, a binder named `init`, `simp [init]`, `attribute [simp] init`. AP30-1 r3:
+ * the name is compared as Lean reads it, after `eraseMacroScopes` (`@[init.«_@».x._hyg]` is `init`), and each finding
+ * carries its list's span, so the list is judged as a whole against B's lines.
+ */
+function initAttributes(tokens: readonly LeanToken[]): RawToken[] {
+  const out: RawToken[] = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const tok = tokens[i] as LeanToken;
+    const next = tokens[i + 1];
+    const at = tok.kind === 'symbol' && tok.text === '@' && next?.kind === 'symbol' && next.text === '[';
+    const command = tok.kind === 'ident' && canonicalName(tok.text) === 'attribute' && next?.kind === 'symbol' && next.text === '[';
+    if (!at && !command) continue;
+    const prefix = at ? '@[' : 'attribute [';
+    const found: RawToken[] = [];
+    let depth = 0;
+    let entryStart = true;
+    let j = i + 1;
+    for (; j < tokens.length; j++) {
+      const t = tokens[j] as LeanToken;
+      if (t.kind === 'symbol' && LIST_OPENERS.includes(t.text)) {
+        depth++;
+        entryStart = depth === 1;
+        continue;
+      }
+      if (t.kind === 'symbol' && LIST_CLOSERS.includes(t.text)) {
+        depth--;
+        if (depth <= 0) break;
+        entryStart = false;
+        continue;
+      }
+      if (depth === 1 && t.kind === 'symbol' && t.text === ',') {
+        entryStart = true;
+        continue;
+      }
+      if (depth === 1 && entryStart && t.kind === 'ident' && ATTRIBUTE_KINDS.has(canonicalName(t.text))) continue;
+      // As Lean reads the name: after `eraseMacroScopes` (AP30-1 r3).
+      if (depth === 1 && entryStart && t.kind === 'ident' && INIT_ATTRIBUTES.has(eraseMacroScopes(canonicalName(t.text)))) {
+        found.push({ code: 'metaprogramming', start: t.span.start, end: t.span.end, token: `${prefix}${t.text}]` });
+      }
+      entryStart = false;
+    }
+    // The list is judged as a whole (AP30-1 r3): its span, from `@` or `attribute` to its closing bracket (or the end).
+    const end = tokens[j]?.span.end ?? tokens[tokens.length - 1]?.span.end ?? tok.span.end;
+    for (const item of found) out.push({ ...item, list: { start: tok.span.start, end } });
+    // The list's closing bracket (or the text's end, for a list that never closes): scanning goes on after it.
+    i = j;
+  }
+  return out;
+}
+
 /** What each token code means, for Claude's message. */
 const TOKEN_ADVICE: Readonly<Partial<Record<GateFindingCode, string>>> = {
   'hash-command': 'is not allowed in the model files (only #check and #print may be used): remove it',
@@ -83,6 +175,13 @@ interface RawToken {
   start: number;
   end: number;
   token: string;
+  /** What it is, for Claude's message, when not the code's usual advice (a hygienic name, AP30-1 r3). */
+  advice?: string;
+  /**
+   * An `init` attribute's list (AP30-1 r3): judged as a whole against B's lines, so it is refused when any line of the
+   * list is Claude's, also on a line whose text B has.
+   */
+  list?: { start: number; end: number };
 }
 
 /** The offending tokens of a text (no line filtering), in text order. */
@@ -114,6 +213,11 @@ function forbiddenTokens(tokens: readonly LeanToken[], projectModules: ReadonlyS
       }
       continue;
     }
+    // AP30-1 r3: a hand-written hygienic name, whatever word it spells.
+    if (isHygienicName(canonical)) {
+      out.push({ code: 'metaprogramming', start: tok.span.start, end: tok.span.end, token: tok.text, advice: 'is a hygienic name, which is not allowed in the model files: rename it' });
+      continue;
+    }
     const code = WORD_CODES.get(tok.text) ?? WORD_CODES.get(canonical) ?? (NATIVE_CONSTANTS.has(lastComponent(canonical)) ? 'native-code' : undefined);
     if (code === undefined) continue;
     const previous = tokens[i - 1];
@@ -123,7 +227,11 @@ function forbiddenTokens(tokens: readonly LeanToken[], projectModules: ReadonlyS
       out.push({ code, start: tok.span.start, end: tok.span.end, token: tok.text });
     }
   }
-  return out;
+  // 2b2 (AP30-1): the `init` attributes, in text order with the rest; a hygienic `init` is one finding, the attribute's.
+  const attributes = initAttributes(tokens);
+  if (attributes.length === 0) return out;
+  const atAttribute = new Set(attributes.map((a) => a.start));
+  return [...out.filter((item) => !(item.advice !== undefined && atAttribute.has(item.start))), ...attributes].sort((a, b) => a.start - b.start);
 }
 
 /** The innermost declaration whose span contains `offset`. */
@@ -153,19 +261,25 @@ export function scanForbiddenText(file: string, text: string, ctx: G0Context, ba
     });
   }
   const out: GateFinding[] = [];
+  /** The line is the user's: B's version has that exact text at least as often, up to this occurrence. */
+  const inBase = (line: number) => base !== undefined && (rank.get(line) ?? 1) <= (base.get(current[line] ?? '') ?? 0);
   for (const item of raw) {
     const line = lines.lineOf(item.start);
-    if (base !== undefined) {
-      const lineText = current[line] ?? '';
-      if ((rank.get(line) ?? 1) <= (base.get(lineText) ?? 0)) continue;
-    }
+    if (item.list !== undefined) {
+      // AP30-1 r3: an `init` attribute's list is the user's only when every line of it is.
+      const first = lines.lineOf(item.list.start);
+      const last = lines.lineOf(Math.max(item.list.start, item.list.end - 1));
+      let all = true;
+      for (let k = first; k <= last && all; k++) all = inBase(k);
+      if (all) continue;
+    } else if (inBase(line)) continue;
     const range = lines.range({ start: item.start, end: item.end });
     const decl = declAt(decls, item.start);
     const inDecl = decl?.fullName !== undefined ? ` (in ${relativeName(decl.fullName, decl.namespace)})` : '';
     const advice =
       item.code === 'import'
         ? `\`${item.token}\` imports a module from outside the project${inDecl}: only the project's own modules may be imported`
-        : `\`${item.token}\` ${TOKEN_ADVICE[item.code] ?? 'is not allowed'}${inDecl}`;
+        : `\`${item.token}\` ${item.advice ?? TOKEN_ADVICE[item.code] ?? 'is not allowed'}${inDecl}`;
     out.push({
       step: 'G0',
       code: item.code,

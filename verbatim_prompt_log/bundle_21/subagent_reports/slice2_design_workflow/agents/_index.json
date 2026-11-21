@@ -1,0 +1,54 @@
+[
+  {
+    "label": "design:engine",
+    "agentId": "a6d6e0e2863b0ccbf",
+    "file": "agents/design_engine.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "design:safety",
+    "agentId": "ac2352bda8e4d2fcc",
+    "file": "agents/design_safety.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "design:review-ui",
+    "agentId": "ae02409363ac53491",
+    "file": "agents/design_review-ui.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "synthesize:plan",
+    "agentId": "a6b6b39ecd77294a9",
+    "file": "agents/synthesize_plan.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Write",
+      "Edit",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "critique:plan",
+    "agentId": "a2443b6e54f0556d1",
+    "file": "agents/critique_plan.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  }
+]

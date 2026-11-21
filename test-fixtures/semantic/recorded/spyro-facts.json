@@ -77,7 +77,9 @@
       ],
       "usesSorry": false,
       "docstring": "characters",
-      "refs": []
+      "refs": [],
+      "valueConsts": [],
+      "typeConsts": []
     },
     {
       "name": "Spyro.Game",
@@ -111,7 +113,9 @@
       ],
       "usesSorry": false,
       "docstring": "games",
-      "refs": []
+      "refs": [],
+      "valueConsts": [],
+      "typeConsts": []
     },
     {
       "name": "Spyro.Character.exists",
@@ -175,6 +179,10 @@
             }
           }
         }
+      ],
+      "valueConsts": [],
+      "typeConsts": [
+        "Spyro.Character"
       ]
     },
     {
@@ -253,6 +261,12 @@
             }
           }
         }
+      ],
+      "valueConsts": [
+        "Spyro.Character.exists"
+      ],
+      "typeConsts": [
+        "Spyro.Character"
       ]
     },
     {
@@ -317,6 +331,10 @@
             }
           }
         }
+      ],
+      "valueConsts": [],
+      "typeConsts": [
+        "Spyro.Game"
       ]
     },
     {
@@ -395,6 +413,12 @@
             }
           }
         }
+      ],
+      "valueConsts": [
+        "Spyro.Game.exists"
+      ],
+      "typeConsts": [
+        "Spyro.Game"
       ]
     },
     {
@@ -445,6 +469,10 @@
             }
           }
         }
+      ],
+      "valueConsts": [],
+      "typeConsts": [
+        "Spyro.Character"
       ]
     },
     {
@@ -495,6 +523,10 @@
             }
           }
         }
+      ],
+      "valueConsts": [],
+      "typeConsts": [
+        "Spyro.Game"
       ]
     },
     {
@@ -560,6 +592,11 @@
             }
           }
         }
+      ],
+      "valueConsts": [],
+      "typeConsts": [
+        "Spyro.Character",
+        "Spyro.Game"
       ]
     },
     {
@@ -611,6 +648,13 @@
             }
           }
         }
+      ],
+      "valueConsts": [
+        "Spyro.Character",
+        "Spyro.instNonemptyCharacter"
+      ],
+      "typeConsts": [
+        "Spyro.Character"
       ]
     },
     {
@@ -662,6 +706,13 @@
             }
           }
         }
+      ],
+      "valueConsts": [
+        "Spyro.Game",
+        "Spyro.instNonemptyGame"
+      ],
+      "typeConsts": [
+        "Spyro.Game"
       ]
     },
     {
@@ -732,7 +783,12 @@
             }
           }
         }
-      ]
+      ],
+      "valueConsts": [
+        "Spyro.HasDarkPast",
+        "Spyro.cynder"
+      ],
+      "typeConsts": []
     },
     {
       "name": "Spyro.cynder_dark_past.holds",
@@ -784,6 +840,10 @@
             }
           }
         }
+      ],
+      "valueConsts": [],
+      "typeConsts": [
+        "Spyro.cynder_dark_past"
       ]
     },
     {
@@ -854,7 +914,12 @@
             }
           }
         }
-      ]
+      ],
+      "valueConsts": [
+        "Spyro.IsPG",
+        "Spyro.newSpyro"
+      ],
+      "typeConsts": []
     },
     {
       "name": "Spyro.new_spyro_pg.holds",
@@ -906,6 +971,10 @@
             }
           }
         }
+      ],
+      "valueConsts": [],
+      "typeConsts": [
+        "Spyro.new_spyro_pg"
       ]
     },
     {
@@ -992,7 +1061,17 @@
             }
           }
         }
-      ]
+      ],
+      "valueConsts": [
+        "Spyro.GoodAddition",
+        "Spyro.cynder",
+        "Spyro.newSpyro"
+      ],
+      "typeConsts": []
     }
-  ]
+  ],
+  "probe": {
+    "status": "ok",
+    "durationMs": 0
+  }
 }

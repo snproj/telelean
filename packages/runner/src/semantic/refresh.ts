@@ -8,8 +8,16 @@
  *   4. parse Lake's log (messages with full text, failed modules), convert positions to LSP;
  *   5. module states from Lake's failures and the source headers;
  *   6. read the fresh modules' `.ilean` (declarations, ranges, references, parents) and docstrings;
- *   7. one generated check file (`#check`, `#print`, `#print axioms`, `type_of%`) via `lake env lean --stdin`;
- *   8. re-hash the sources: modules that changed meanwhile become `stale`.
+ *   7. one generated check file (`#check`, `#print`, `#print axioms`, `type_of%`) via `lake env lean --stdin`,
+ *      importing only the model's modules;
+ *   8. slice 2b3a (docs/slice2-plan.md 2.1, D2-75): the isolated probe, its own Lean job right after the check (the
+ *      memory guard again, then the check's options): the constants of each elaborated value and type
+ *      (`DeclFacts.valueConsts`, `typeConsts`), read from the model's built modules as data (./probeFile.ts), and the
+ *      job itself as the facts' marker (`LeanFacts.probe`). A probe that is `cut` or `failed` gives no declaration
+ *      constants and is a check problem naming the cause; a sandbox failure ends the refresh with its status, as the
+ *      check's does. (1d's second check run without the probe, AP-21, is gone: nothing the check file imports can
+ *      clash with the model any more.)
+ *   9. re-hash the sources: modules that changed meanwhile become `stale`.
  *
  * Never throws for Lean or sandbox failures: they become statuses with a `detail`. Throws TypeError for invalid
  * arguments. Not self-serialising: callers use `runExclusive`.
@@ -22,6 +30,7 @@ import {
   LEAN_FACTS_FORMAT,
   LEAN_FACTS_VERSION,
   parseLeanFile,
+  probeFailure,
   type BuildFacts,
   type CheckRunFacts,
   type DeclFacts,
@@ -31,6 +40,7 @@ import {
   type LeanFacts,
   type LeanMessageFact,
   type ModuleFacts,
+  type ProbeRunFacts,
   type Range,
 } from '@telelean/core';
 
@@ -40,6 +50,7 @@ import { memoryMaxToBytes, runLean, type RunLeanOptions, type RunLeanResult } fr
 import { resolveToolchain, toolchainExe, type LeanToolchain } from '../lean/toolchain.js';
 import { generateCheckFile, parseCheckOutput, type ProbeResult } from './checkFile.js';
 import { parseIlean, type IleanData } from './ilean.js';
+import { generateProbeFile, readProbeOutput } from './probeFile.js';
 import { mergeLakeLogs, parseLakeLog, succeededCaptions, type LakeLog, type LakeMessage } from './lakeLog.js';
 import {
   computeModuleStates,
@@ -277,8 +288,16 @@ export function declDrafts(src: { readonly text: string; readonly starts: readon
   });
 }
 
-/** One DeclFacts from its draft and its check results, in a stable key order. */
-export function toDeclFacts(module: { readonly name: string; readonly file: string }, draft: DeclDraft, probe?: ProbeResult): DeclFacts {
+/**
+ * One DeclFacts from its draft, its check results and (2b3a) the isolated probe's constants for it, in a stable key
+ * order.
+ */
+export function toDeclFacts(
+  module: { readonly name: string; readonly file: string },
+  draft: DeclDraft,
+  probe?: ProbeResult,
+  consts?: { readonly valueConsts?: readonly string[]; readonly typeConsts?: readonly string[] },
+): DeclFacts {
   const kind = probe?.kind === undefined ? undefined : draft.keyword === 'instance' ? 'instance' : probe.kind;
   const value = probe?.value !== undefined && probe.value !== '⋯' && (kind === 'def' || kind === 'instance') ? probe.value : undefined;
   const sortCounts = probe?.printedKeyword === 'axiom' || probe?.printedKeyword === 'opaque';
@@ -300,6 +319,10 @@ export function toDeclFacts(module: { readonly name: string; readonly file: stri
     ...(draft.docstring !== undefined ? { docstring: draft.docstring } : {}),
     refs: draft.refs,
     ...(draft.parent !== undefined ? { parent: draft.parent } : {}),
+    // Slice 1d (B.2) and 2b3a (D2-30): the elaborated value's and type's constants, from the isolated probe when it read
+    // its line (never from a probe that failed: §2.1).
+    ...(consts?.valueConsts !== undefined ? { valueConsts: [...consts.valueConsts] } : {}),
+    ...(consts?.typeConsts !== undefined ? { typeConsts: [...consts.typeConsts] } : {}),
   };
 }
 
@@ -330,8 +353,18 @@ function buildSummary(build: RunLeanResult, log: LakeLog, states: ReadonlyMap<st
   return `lake build failed without naming a model module: ${why}`;
 }
 
+/**
+ * Test seams of `refresh` (2b3a), outside the frozen RefreshRequest: `runLean` replaces the sandbox wrapper for every Lean
+ * job of the refresh (the build, the check and the probe), so a test can count the jobs or give the probe job an
+ * outcome no small model produces (a cut output, a failed or killed job) while the build and the check run for real.
+ */
+export interface RefreshHooks {
+  readonly runLean?: (options: RunLeanOptions) => Promise<RunLeanResult>;
+}
+
 /** Runs one refresh. `defaultReadMemAvailable` is used when the request has no `readMemAvailable` hook. */
-export async function refresh(request: RefreshRequest, defaultReadMemAvailable: () => number | undefined): Promise<LeanFacts> {
+export async function refresh(request: RefreshRequest, defaultReadMemAvailable: () => number | undefined, hooks: RefreshHooks = {}): Promise<LeanFacts> {
+  const leanJob = hooks.runLean ?? runLean;
   const options = validate(request);
   const { root, library } = options;
   const startedAt = options.now().toISOString();
@@ -388,7 +421,7 @@ export async function refresh(request: RefreshRequest, defaultReadMemAvailable: 
   const sourceByFile = new Map(sources.map((s) => [s.file, s]));
   const runOptions = buildRunOptions(request, options, spawnMemoryMax(options.memoryMax, available, options.minAvailableBytes));
   phase('build');
-  const build = await runLean(runOptions);
+  const build = await leanJob(runOptions);
 
   // 4. Lake's log.
   const log = mergeLakeLogs(parseLakeLog(build.stdout), parseLakeLog(build.stderr));
@@ -433,15 +466,15 @@ export async function refresh(request: RefreshRequest, defaultReadMemAvailable: 
     drafts.set(s.name, declDrafts(s, parsed.data));
   }
 
-  // 7. The check file.
+  // 7. The check file: only the model's modules and the four probes per declaration (2b3a).
   const probeNames = fresh.flatMap((s) => (drafts.get(s.name) ?? []).map((d) => d.name));
   let checkFacts: CheckRunFacts = SKIPPED_CHECK;
   let results = new Map<string, ProbeResult>();
+  let probeFacts: ProbeRunFacts | undefined;
+  let consts: { readonly valueConsts: ReadonlyMap<string, string[]>; readonly typeConsts: ReadonlyMap<string, string[]> } | undefined;
   if (probeNames.length > 0) {
-    const checkFile = generateCheckFile(
-      fresh.map((s) => s.name),
-      probeNames,
-    );
+    const imports = fresh.map((s) => s.name);
+    const checkFile = generateCheckFile(imports, probeNames);
     const availableForCheck = readAvailable();
     if (availableForCheck !== undefined && availableForCheck < options.minAvailableBytes) {
       return facts(
@@ -451,24 +484,24 @@ export async function refresh(request: RefreshRequest, defaultReadMemAvailable: 
       );
     }
     phase('check');
-    const run = await runLean({
+    const run = await leanJob({
       ...runOptions,
       argv: [toolchainExe(options.toolchain, 'lake'), 'env', 'lean', '--stdin', '--json'],
       stdin: checkFile.source,
       timeoutMs: options.checkTimeoutMs,
       memoryMax: spawnMemoryMax(options.memoryMax, availableForCheck, options.minAvailableBytes),
     });
-    checkFacts = { ...runFacts(run), probed: checkFile.probed.length };
+    const buildPart = build.status === 'failed' ? ` (after: ${buildSummary(build, log, states)})` : '';
     if (isSandboxFailure(run.status)) {
-      const buildPart = build.status === 'failed' ? ` (after: ${buildSummary(build, log, states)})` : '';
-      return facts(run.status, `check: ${run.detail ?? run.status}${buildPart}`, { build: buildFacts, check: checkFacts });
+      return facts(run.status, `check: ${run.detail ?? run.status}${buildPart}`, { build: buildFacts, check: { ...runFacts(run), probed: checkFile.probed.length } });
     }
     const messages = parseLeanJsonMessages(run.stdout);
     const output = parseCheckOutput(checkFile, messages);
-    results = output.results;
     if (run.status === 'failed' && messages.length === 0) {
       output.headerErrors.push(lastLines(run.stderr) || `lake env lean exited with ${String(run.exitCode)}`);
     }
+    checkFacts = { ...runFacts(run), probed: checkFile.probed.length };
+    results = output.results;
     if (output.headerErrors.length > 0) {
       const header = `the check file's imports failed: ${listWithMore(output.headerErrors)}`;
       problems.push(header);
@@ -477,9 +510,38 @@ export async function refresh(request: RefreshRequest, defaultReadMemAvailable: 
     if (run.stdoutTruncated) problems.push('the check output was truncated');
     for (const [decl, why] of checkFile.unwritable) problems.push(`${decl} was not checked: ${why}`);
     for (const r of results.values()) problems.push(...r.problems);
+
+    // 8. The isolated probe (2b3a, D2-75): its own Lean job, the memory guard again, then the check's options.
+    if (checkFile.probed.length > 0) {
+      const availableForProbe = readAvailable();
+      if (availableForProbe !== undefined && availableForProbe < options.minAvailableBytes) {
+        return facts(
+          'low-memory',
+          `MemAvailable dropped to ${gib(availableForProbe)} GiB after the check, below the ${gib(options.minAvailableBytes)} GiB threshold, so the probe did not run`,
+          { build: buildFacts, check: checkFacts },
+        );
+      }
+      const probeFile = generateProbeFile(imports, checkFile.probed, library);
+      const probeRun = await leanJob({
+        ...runOptions,
+        argv: [toolchainExe(options.toolchain, 'lake'), 'env', 'lean', '--stdin', '--json'],
+        stdin: probeFile.source,
+        timeoutMs: options.checkTimeoutMs,
+        memoryMax: spawnMemoryMax(options.memoryMax, availableForProbe, options.minAvailableBytes),
+      });
+      const reading = readProbeOutput(probeFile, probeRun);
+      probeFacts = reading.probe;
+      if (isSandboxFailure(probeRun.status)) {
+        return facts(probeRun.status, `probe: ${probeRun.detail ?? probeRun.status}${buildPart}`, { build: buildFacts, check: checkFacts, probe: reading.probe });
+      }
+      // §2.1: a probe that is cut or failed gives no declaration constants, and its cause is a check problem.
+      const failure = probeFailure(facts('ok', undefined, { probe: reading.probe }));
+      if (failure !== undefined) problems.push(failure.replace(/\.$/u, ''));
+      consts = reading.consts;
+    }
   }
 
-  // 8. Re-hash: sources that changed while the refresh ran make their module stale.
+  // 9. Re-hash: sources that changed while the refresh ran make their module stale.
   const changed = new Set<string>();
   for (const s of sources) {
     let now: string | undefined;
@@ -500,7 +562,11 @@ export async function refresh(request: RefreshRequest, defaultReadMemAvailable: 
   }));
   // Declarations of the modules that were fresh when checked (a module that became stale keeps them: core uses
   // a stale file's facts by name only, since its hash no longer matches).
-  const decls = fresh.flatMap((s) => (drafts.get(s.name) ?? []).map((d) => toDeclFacts(s, d, results.get(d.name))));
+  const decls = fresh.flatMap((s) =>
+    (drafts.get(s.name) ?? []).map((d) =>
+      toDeclFacts(s, d, results.get(d.name), consts !== undefined ? { valueConsts: consts.valueConsts.get(d.name), typeConsts: consts.typeConsts.get(d.name) } : undefined),
+    ),
+  );
   for (const d of decls) if (d.error !== undefined) problems.push(`${d.name}: ${d.error.split('\n')[0] ?? ''}`);
 
   const status: FactsStatus = build.status === 'failed' ? 'build-errors' : problems.length > 0 ? 'check-errors' : 'ok';
@@ -510,5 +576,5 @@ export async function refresh(request: RefreshRequest, defaultReadMemAvailable: 
   if (changed.size > 0) {
     parts.push(`changed while the refresh ran (stale): ${sources.filter((s) => changed.has(s.name)).map((s) => s.file).join(', ')}`);
   }
-  return facts(status, parts.length > 0 ? parts.join('. ') : undefined, { build: buildFacts, check: checkFacts, modules, decls });
+  return facts(status, parts.length > 0 ? parts.join('. ') : undefined, { build: buildFacts, check: checkFacts, modules, decls, ...(probeFacts !== undefined ? { probe: probeFacts } : {}) });
 }

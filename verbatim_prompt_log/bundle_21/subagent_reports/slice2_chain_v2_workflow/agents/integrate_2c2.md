@@ -1,0 +1,42 @@
+# integrate:2c2
+
+Agent `a7cede909d91fead8` of workflow `wf_ae5f1188-533`. Verbatim output (JSON alongside).
+
+- **ok:** True
+- **summary:** Slice 2c2 passed every check, and I saved the patch.
+
+Step 1, full check: started at 11:51:19, summary ended with DONE at 12:00:57. All 9 jobs returned rc=0. /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/rcf_2c2/failures.txt is empty (0 bytes), and all five tsc logs are empty. tmp_leftovers=0: the find over /tmp for telelean-* newer than the start marker listed nothing.
+- The runner suite ran 11:52:03 to 12:00:56 (533.03 s) with real Lean.
+- The one skipped test is the opt-in real-Claude test, skipped by design: test/llm/binary.test.ts:100, "finds the user's own Claude Code binary". TELELEAN_ALLOW_REAL_CLAUDE_VERSION is not set.
+- None of the other skip guards fired, including the 16 that skip when RAM is below 12 GB. Exactly one test was skipped, setpriv and docs/m2-plan.md both exist, and MemAvailable stayed at about 14.4 to 14.7 GB.
+- Runner totals are the same as after 2c1 (585 passed, 1 skipped). Changes since 2c1: core went from 75 to 76 test files and from 1072 to 1127 tests; extension went from 204 to 205 tests; webview is unchanged at 314.
+
+Step 2, safety checks: all four passed after the suite finished, and also in a baseline taken before it. Nothing is staged, the last commit is still 187673d, packages/extension/dist and packages/extension/out are both dated 2026-11-19 13:47, and there is no packages/extension/out/.vite.
+
+Step 3, patch: /home/zhengyew/telelean/verbatim_prompt_log/bundle_21/evidence/patches/after_slice_2c2.patch, 4,721,451 bytes, 357 files (the 2c1 patch was 4,471,408 bytes). After saving, git state was the same: nothing staged, HEAD 187673d.
+
+Effects outside the scratch folder: one, the patch file above, which the task allows. Everything else from the check went to /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/rcf_2c2/. The memory-cap wrapper's temporary systemd user scopes have all ended, and none of my processes are left running. I edited no repo files and did not touch the user's own Lean or VS Code processes.
+- **checks:**
+  - grep MemAvailable /proc/meminfo (before start) -> MemAvailable: 14643728 kB
+  - nohup recheck_full.sh 2c2 > /dev/null 2>&1 & -> started 11:51:19 (start.marker); summary ended with DONE at 12:00:57
+  - tsc_core (tsc --noEmit -p tsconfig.test.json) -> tsc_core rc=0 (log 0 bytes)
+  - tsc_runner (tsc --noEmit -p tsconfig.test.json) -> tsc_runner rc=0 (log 0 bytes)
+  - tsc_web (tsc --noEmit -p tsconfig.json) -> tsc_web rc=0 (log 0 bytes)
+  - tsc_webnode (tsc --noEmit -p tsconfig.node.json) -> tsc_webnode rc=0 (log 0 bytes)
+  - tsc_ext (tsc --noEmit -p tsconfig.json) -> tsc_ext rc=0 (log 0 bytes)
+  - vt_core (vitest run --maxWorkers=1 --no-cache) -> vt_core rc=0  Test Files 76 passed (76)  Tests 1127 passed (1127)
+  - vt_web (vitest run --maxWorkers=1 --no-cache) -> vt_web rc=0  Test Files 19 passed (19)  Tests 314 passed (314)
+  - vt_ext (vitest run --maxWorkers=1 --no-cache) -> vt_ext rc=0  Test Files 22 passed (22)  Tests 205 passed (205)
+  - vt_runner (timeout 2400 vitest run --maxWorkers=1 --no-cache, real Lean) -> vt_runner rc=0  Test Files 61 passed (61)  Tests 585 passed | 1 skipped (586); Start at 11:52:03, Duration 533.03s
+  - wc -c rcf_2c2/failures.txt -> 0 (empty)
+  - find /tmp -maxdepth 1 -newer rcf_2c2/start.marker -name 'telelean-*' -> no output; summary line tmp_leftovers=0
+  - grep for (x|FAIL|Unhandled|AssertionError) in each vt_*.log -> 0 matches in vt_core, vt_web, vt_ext, vt_runner
+  - grep skip sites in packages/runner/test -> the skipped test is test/llm/binary.test.ts:100 (opt-in; TELELEAN_ALLOW_REAL_CLAUDE_VERSION unset); setpriv at /usr/bin/setpriv and docs/m2-plan.md exist, so the other skipIf tests ran
+  - git diff --cached --stat -> no output (0 bytes): nothing staged
+  - git log -1 --format=%h -> 187673d
+  - stat -c '%y %n' packages/extension/dist packages/extension/out -> 2026-11-19 13:47:18.682246785 +0800 packages/extension/dist; 2026-11-19 13:47:18.824991124 +0800 packages/extension/out
+  - ls -a packages/extension/out | grep -c '^.vite$' -> 0
+  - savepatch.sh after_slice_2c2 (from /home/zhengyew/telelean) -> verbatim_prompt_log/bundle_21/evidence/patches/after_slice_2c2.patch: 4721451 bytes, 357 files (rc=0)
+  - after saving: no leftover check processes, 0 running run-* systemd user scopes, nothing staged, HEAD 187673d
+- **runner:** vt_runner rc=0  Test Files 61 passed (61)  Tests 585 passed | 1 skipped (586)  (Start at 11:52:03, Duration 533.03s; the 1 skip is the opt-in real-Claude binary test, test/llm/binary.test.ts:100)
+- **patch:** /home/zhengyew/telelean/verbatim_prompt_log/bundle_21/evidence/patches/after_slice_2c2.patch (4721451 bytes, 357 files)

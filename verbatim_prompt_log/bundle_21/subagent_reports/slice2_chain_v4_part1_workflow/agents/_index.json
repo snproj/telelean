@@ -1,0 +1,138 @@
+[
+  {
+    "label": "build:2b3b",
+    "agentId": "adb253c3314a01984",
+    "file": "agents/build_2b3b.json",
+    "toolsUsed": [
+      "Read",
+      "Bash",
+      "Edit",
+      "Write",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "verify:2b3b:fc",
+    "agentId": "acd3ececb5eaf32d8",
+    "file": "agents/verify_2b3b_fc.json",
+    "toolsUsed": [
+      "Bash",
+      "Write",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "verify:2b3b:adv",
+    "agentId": "aa4ef545246bcd6b4",
+    "file": "agents/verify_2b3b_adv.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "fix:2b3b:r1",
+    "agentId": "a44461882432b1982",
+    "file": "agents/fix_2b3b_r1.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Edit",
+      "Write",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "reverify:2b3b:r1",
+    "agentId": "ab0a127d611778c44",
+    "file": "agents/reverify_2b3b_r1.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Write",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "integrate:2b3b",
+    "agentId": "a29ae600bbe11ed0b",
+    "file": "agents/integrate_2b3b.json",
+    "toolsUsed": [
+      "Read",
+      "Bash",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "build:2d",
+    "agentId": "a5a624b563c7661a2",
+    "file": "agents/build_2d.json",
+    "toolsUsed": [
+      "Read",
+      "Bash",
+      "Edit",
+      "Write",
+      "ToolSearch",
+      "Monitor",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "verify:2d:fc",
+    "agentId": "a03a25dc6c2aa8616",
+    "file": "agents/verify_2d_fc.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Write",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "verify:2d:adv",
+    "agentId": "a2d66c9c317783a41",
+    "file": "agents/verify_2d_adv.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Write",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "fix:2d:r1",
+    "agentId": "a3ec81240c4870313",
+    "file": "agents/fix_2d_r1.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Edit",
+      "Write",
+      "ToolSearch",
+      "Monitor",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "reverify:2d:r1",
+    "agentId": "a112943cd71a2dbc0",
+    "file": "agents/reverify_2d_r1.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Write",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "integrate:2d",
+    "agentId": "a15b3bf18eb4ec26d",
+    "file": "agents/integrate_2d.json",
+    "toolsUsed": [
+      "Read",
+      "Bash",
+      "StructuredOutput"
+    ]
+  }
+]

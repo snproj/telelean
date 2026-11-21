@@ -10,9 +10,9 @@ import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import type { FileChange, LeanFacts, RuleInput } from '@telelean/core';
+import { probeFailure, UNSEEN_PROOF, type FileChange, type GateFinding, type LeanFacts, type RuleInput } from '@telelean/core';
 
-import { BASE_FACTS_FILE, createLeanCheckEngine, GHOST_NEEDS_FREEZE, type FreezeRecord, type LeanCheckEngine } from '../../src/gate/index.js';
+import { BASE_FACTS_FILE, BASE_PROBE_FAILED, createLeanCheckEngine, GHOST_NEEDS_FREEZE, PROBE_OUT_OF_MEMORY, type FreezeRecord, type LeanCheckEngine } from '../../src/gate/index.js';
 import { cancelRun } from '../../src/lean/runLean.js';
 import { resolveToolchain, toolchainExe } from '../../src/lean/toolchain.js';
 import { runLean } from '../../src/lean/runLean.js';
@@ -296,6 +296,25 @@ describe('RuleInput: B, A and the round start (AT2.15, fake evaluateRules)', () 
     expect(inputs.at(-1)?.freeze).toEqual(previous.snapshot);
   });
 
+  it('slice 1e fixer: B.2 refusing only because the proof could not be seen is an environment outcome of the gate (not counted); with another finding it is not', async () => {
+    const runId = runIdFor('unseen');
+    const shadow = await newShadow('unseen', undefined, runId);
+    const detail = 'check: the value probe could not run: importing Lean.CoreM and Lean.Util.FoldConsts failed (1:0: x)';
+    const facts = { format: 'telelean-lean-facts', version: 1, toolchain: 'leanprover/lean4:v4.35.0', library: 'Model', startedAt: '', finishedAt: '', status: 'check-errors', detail, build: { status: 'ok', durationMs: 0, messages: [], failedModules: [] }, check: { status: 'ok', durationMs: 0, probed: 0 }, modules: [], decls: [] } satisfies LeanFacts;
+    const sourceOnly: GateFinding = { step: 'G3', code: 'undeclared-premise', message: UNSEEN_PROOF, names: ['Spyro.cynder_not_good.holds'], nodeId: 'cynder-not-good', token: 'source-only' };
+    const gateWith = (findings: GateFinding[]) =>
+      createLeanCheckEngine({ core: fakeCore(permittedAxioms(), { evaluateRules: (i) => ({ ...passingRules(i), findings }) }), refreshFacts: async () => facts }).gate({
+        ...contextFor(shadow, runId, { stage: 'prove' }),
+        status: 'not_proved',
+      });
+    const alone = await gateWith([sourceOnly]);
+    expect(alone).toMatchObject({ passed: false, findings: [], environment: `${UNSEEN_PROOF} (${detail})` });
+    const build: GateFinding = { step: 'G1', code: 'build', message: 'Model/Spyro/Main.lean:3:0: error: x' };
+    const both = await gateWith([build, sourceOnly]);
+    expect(both.environment).toBeUndefined();
+    expect(both.findings.map((f) => f.code)).toEqual(['build', 'undeclared-premise']);
+  });
+
   it('a shadow git failure (an unknown base commit) is an environment outcome, never an exception', async () => {
     const runId = runIdFor('gitfail');
     const shadow = await newShadow('gitfail', undefined, runId);
@@ -310,6 +329,150 @@ describe('RuleInput: B, A and the round start (AT2.15, fake evaluateRules)', () 
     const gated = await engine.gate({ ...contextFor(shadow, runId, { baseCommit: bogus }), status: 'not_proved' });
     expect(gated).toMatchObject({ passed: false, findings: [] });
     expect(gated.environment).toMatch(/git ls-tree failed/u);
+  });
+});
+
+describe('a failed probe never passes (slice 2b3a, docs/slice2-plan.md 2.1; fake refreshFacts, no Lean)', () => {
+  const factsWith = (probe: LeanFacts['probe'], over: Partial<LeanFacts> = {}): LeanFacts => ({
+    format: 'telelean-lean-facts',
+    version: 1,
+    toolchain: 'leanprover/lean4:v4.35.0',
+    library: 'Model',
+    startedAt: '',
+    finishedAt: '',
+    status: probe?.status === 'ok' || probe === undefined ? 'ok' : 'check-errors',
+    build: { status: 'ok', durationMs: 0, messages: [], failedModules: [] },
+    check: { status: 'ok', durationMs: 0, probed: 0 },
+    modules: [],
+    decls: [],
+    ...(probe !== undefined ? { probe } : {}),
+    ...over,
+  });
+  const FAILED = factsWith({ status: 'failed', durationMs: 5, detail: '9:0: unknown constant Lean.Name.mkStr' });
+  const CUT = factsWith({ status: 'cut', durationMs: 5 });
+  const sourceOnly: GateFinding = { step: 'G3', code: 'undeclared-premise', message: UNSEEN_PROOF, names: ['Spyro.cynder_not_good.holds'], nodeId: 'cynder-not-good', token: 'source-only' };
+  const other: GateFinding = { step: 'G3', code: 'existing-changed', message: 'Spyro.cynder_dark_past existed when this step started and was changed', names: ['Spyro.cynder_dark_past'] };
+  const engineWith = (facts: LeanFacts, findings: GateFinding[] = []) =>
+    createLeanCheckEngine({ core: fakeCore(permittedAxioms(), { evaluateRules: (i) => ({ ...passingRules(i), findings }) }), refreshFacts: async () => facts });
+
+  it('check, freeze, gate-proved, gate-not-proved and the ghost check\'s check: probeFailure\'s sentence as an environment outcome when the rules find nothing or only source-only, their findings otherwise; never a pass', async () => {
+    const runId = runIdFor('probefail');
+    const shadow = await newShadow('probefail', undefined, runId);
+    const ctx = contextFor(shadow, runId, { stage: 'prove' });
+    const record = fakeFreezeRecord(await shadow.commit('freeze', 'Statements frozen (round 1)', 1), permittedAxioms());
+    for (const facts of [FAILED, CUT]) {
+      const sentence = probeFailure(facts) as string;
+      expect(sentence).toMatch(/^telelean could not read what the declarations of this state use in Lean: /u);
+      for (const findings of [[], [sourceOnly], [sourceOnly, sourceOnly]]) {
+        const engine = engineWith(facts, findings);
+        const check = await engine.check(ctx);
+        expect(check, `${facts.probe?.status} ${findings.length}`).toMatchObject({ outcome: 'environment', environment: sentence, findings: [], g0: [] });
+        // The report keeps what the check learned (the model and facts), for the run's board.
+        expect(check.facts).toEqual(facts);
+        const frozen = await engine.freeze(ctx);
+        expect(frozen).toMatchObject({ ok: false, environment: sentence, refusals: [sentence] });
+        for (const status of ['proved', 'not_proved'] as const) {
+          const gated = await engine.gate({ ...ctx, freeze: record, status });
+          expect(gated, status).toMatchObject({ passed: false, environment: sentence, findings: [] });
+          expect(gated.comparator).toBeUndefined();
+        }
+        // The ghost check's check of ws/ is the same check.
+        const ghost = await engine.checkGhost({ ...ctx, freeze: record }, { naturalName: 'x', leanStatement: 'True', proof: 'fun _ => sorry' });
+        expect(ghost).toEqual({ ok: false, problems: [sentence], environment: sentence });
+      }
+      // Another finding: the rules decide (counted, Claude's to fix), with no environment; still never a pass.
+      const engine = engineWith(facts, [other, sourceOnly]);
+      const check = await engine.check(ctx);
+      expect(check).toMatchObject({ outcome: 'problems', findings: [other, sourceOnly] });
+      expect(check.environment).toBeUndefined();
+      const frozen = await engine.freeze(ctx);
+      expect(frozen).toMatchObject({ ok: false, refusals: [other.message, UNSEEN_PROOF] });
+      expect(frozen.ok ? undefined : frozen.environment).toBeUndefined();
+      const gated = await engine.gate({ ...ctx, freeze: record, status: 'not_proved' });
+      expect(gated).toMatchObject({ passed: false, findings: [other, sourceOnly] });
+      expect(gated.environment).toBeUndefined();
+    }
+    // A probe that worked, or facts with no marker (from before 2b3a): the rules decide as before.
+    for (const facts of [factsWith({ status: 'ok', durationMs: 5 }), factsWith(undefined)]) {
+      expect((await engineWith(facts).check(ctx)).outcome).toBe('ok');
+      expect((await engineWith(facts).gate({ ...ctx, freeze: record, status: 'not_proved' })).passed).toBe(true);
+    }
+    // The sandbox's statuses keep their own outcomes (facts that carry no declarations): a budget finding, an environment.
+    expect((await engineWith(factsWith({ status: 'timeout', durationMs: 5 }, { status: 'timeout', detail: 'probe: killed' })).check(ctx)).findings.map((f) => f.code)).toEqual(['budget']);
+    expect((await engineWith(factsWith({ status: 'cancelled', durationMs: 5 }, { status: 'cancelled' })).check(ctx)).outcome).toBe('environment');
+  });
+
+  it('checkBase (AP30-2): B built but its probe failed: base-facts.json is written, and the start is refused with the sentence and "Claude\'s work on this model cannot be checked."; with build errors too, the Lean errors', async () => {
+    const runId = runIdFor('probebase');
+    const shadow = await newShadow('probebase', undefined, runId);
+    for (const facts of [FAILED, CUT]) {
+      const report = await engineWith(facts).checkBase(contextFor(shadow, runId));
+      expect(report).toMatchObject({ outcome: 'environment', environment: `${probeFailure(facts) as string} ${BASE_PROBE_FAILED}`, findings: [] });
+      expect(BASE_PROBE_FAILED).toBe("Claude's work on this model cannot be checked.");
+      const stored = JSON.parse(readFileSync(path.join(shadow.paths.runDir, BASE_FACTS_FILE), 'utf8')) as { facts: LeanFacts };
+      expect(stored.facts).toEqual(facts);
+    }
+    // B's probe worked: ok, as before.
+    expect((await engineWith(factsWith({ status: 'ok', durationMs: 5 })).checkBase(contextFor(shadow, runId))).outcome).toBe('ok');
+    // Lean errors in B and a failed probe: the Lean errors (the person can fix those), and no base facts are kept.
+    const other = await newShadow('probebase-errors', undefined, runIdFor('probebaseerr'));
+    const error = { severity: 'error' as const, file: 'Model/Spyro/Main.lean', module: 'Model.Spyro.Main', range: { start: { line: 2, character: 0 }, end: { line: 2, character: 0 } }, text: 'unknown identifier' };
+    const broken = { ...FAILED, status: 'build-errors' as const, build: { status: 'failed' as const, durationMs: 0, messages: [error], failedModules: ['Model.Spyro.Main'] } };
+    const report = await engineWith(broken).checkBase(contextFor(other, runIdFor('probebaseerr')));
+    expect(report.outcome).toBe('problems');
+    expect(report.findings.map((f) => f.code)).toEqual(['build']);
+    expect(existsSync(path.join(other.paths.runDir, BASE_FACTS_FILE))).toBe(false);
+  });
+
+  it('fixer 2b3a r1 (S-V2B3A-S1, AP-33): a probe job that ran out of memory is telelean\'s environment outcome at check, freeze, both gates, the ghost check and checkBase, never a counted budget finding; the build\'s and the check\'s own kills and the probe\'s timeout stay budget', async () => {
+    const detail = 'probe: memory cap 1024M exceeded (memory.events: oom_kill 1)';
+    // What refresh gives when the probe job is killed for memory: that status, no declarations, the marker kept.
+    const OOM = factsWith({ status: 'oom', durationMs: 5 }, { status: 'oom', detail });
+    const sentence = `${PROBE_OUT_OF_MEMORY} (${detail})`;
+    expect(sentence).toBe("telelean's probe ran out of memory, so telelean could not read what the declarations of this state use in Lean (probe: memory cap 1024M exceeded (memory.events: oom_kill 1))");
+    const runId = runIdFor('probeoom');
+    const shadow = await newShadow('probeoom', undefined, runId);
+    const ctx = contextFor(shadow, runId, { stage: 'prove' });
+    const record = fakeFreezeRecord(await shadow.commit('freeze', 'Statements frozen (round 1)', 1), permittedAxioms());
+    for (const findings of [[], [other]]) {
+      // The rules never run on such facts (no declarations), so their findings change nothing.
+      const engine = engineWith(OOM, findings);
+      const check = await engine.check(ctx);
+      expect(check).toMatchObject({ outcome: 'environment', environment: sentence, findings: [], g0: [] });
+      expect(check.facts).toEqual(OOM);
+      expect(await engine.freeze(ctx)).toMatchObject({ ok: false, environment: sentence, refusals: [sentence] });
+      for (const status of ['proved', 'not_proved'] as const) {
+        expect(await engine.gate({ ...ctx, freeze: record, status }), status).toMatchObject({ passed: false, environment: sentence, findings: [] });
+      }
+      expect(await engine.checkGhost({ ...ctx, freeze: record }, { naturalName: 'x', leanStatement: 'True', proof: 'fun _ => sorry' })).toEqual({ ok: false, problems: [sentence], environment: sentence });
+    }
+    // The start: the environment notice (nothing sent to Claude), not the problems that read "your files have Lean
+    // errors"; no base facts are kept (no declarations).
+    const base = await newShadow('probeoom-base', undefined, runIdFor('probeoombase'));
+    const started = await engineWith(OOM).checkBase(contextFor(base, runIdFor('probeoombase')));
+    expect(started).toMatchObject({ outcome: 'environment', environment: sentence, findings: [] });
+    expect(existsSync(path.join(base.paths.runDir, BASE_FACTS_FILE))).toBe(false);
+    // Without a detail, the sentence alone.
+    expect((await engineWith(factsWith({ status: 'oom', durationMs: 5 }, { status: 'oom' })).check(ctx)).environment).toBe(PROBE_OUT_OF_MEMORY);
+    // A build or check job that ran out of memory ends the refresh before the probe (no marker), and a probe that ran out
+    // of time: a counted budget finding, as before; at the start, B's problems.
+    for (const facts of [factsWith(undefined, { status: 'oom', detail: 'check: memory cap 1024M exceeded' }), factsWith({ status: 'timeout', durationMs: 5 }, { status: 'timeout', detail: 'probe: killed after 3000 ms' })]) {
+      const check = await engineWith(facts).check(ctx);
+      expect(check.outcome, facts.detail).toBe('problems');
+      expect(check.findings.map((f) => f.code)).toEqual(['budget']);
+      expect((await engineWith(facts).checkBase(contextFor(base, runIdFor('probeoombase')))).outcome).toBe('problems');
+    }
+  });
+
+  it('fixer 2b3a r1 (C-V2B3A-C2): the reported Lean duration adds the probe job\'s to the build\'s and the check\'s, at check and checkBase', async () => {
+    const runId = runIdFor('probetime');
+    const shadow = await newShadow('probetime', undefined, runId);
+    const timed = factsWith({ status: 'ok', durationMs: 7 }, { build: { status: 'ok', durationMs: 100, messages: [], failedModules: [] }, check: { status: 'ok', durationMs: 20, probed: 0 } });
+    expect((await engineWith(timed).check(contextFor(shadow, runId))).build).toEqual({ status: 'ok', durationMs: 127, errorCount: 0 });
+    expect((await engineWith(timed).checkBase(contextFor(shadow, runId))).build).toEqual({ status: 'ok', durationMs: 127, errorCount: 0 });
+    // Facts from before 2b3a (no marker): the build's and the check's.
+    const { probe: _probe, ...old } = timed;
+    expect((await engineWith(old).check(contextFor(shadow, runId))).build?.durationMs).toBe(120);
   });
 });
 
@@ -507,6 +670,64 @@ describe('the freeze copy drops the target’s .holds and its users (fake rules)
     expect(copyMain).not.toContain('cynder_not_good_again');
     expect(copyMain).not.toContain('the same conclusion, restated');
     expect(statSync(outcome.record.freeze.exportPath).size).toBeGreaterThan(0);
+    expect(await unitsOfRun(runId)).toEqual([]);
+  });
+});
+
+/** A proposition card proved from the three premises of the literal reading, which a run's selection may leave out (S14). */
+const NOT_IN_GAME = [
+  '/-',
+  '@@ telelean v1',
+  'id: not-in-game',
+  'type: PROPOSITION',
+  'natural_name: Cynder is not in the new Spyro game',
+  'premises: cynder-dark-past, new-spyro-pg, pg-no-dark-past',
+  '-/',
+  '/-- Cynder is not in the new Spyro game -/',
+  'abbrev not_in_game : Prop := ¬ InGame cynder newSpyro',
+  'theorem not_in_game.holds : not_in_game := pg_no_dark_past.holds newSpyro cynder new_spyro_pg.holds cynder_dark_past.holds',
+  '',
+].join('\n');
+
+describe('checkGhost runs B.2 (spec v4.1 RV-1 "the check includes B.2", slice 1e; real Lean, fake rules)', () => {
+  const runId = runIdFor('ghostdirect');
+  let shadow: ShadowWorkspace;
+  let record: FreezeRecord;
+  let engine: LeanCheckEngine;
+  const ghost = {
+    naturalName: 'A character who cannot be in a game would not be a good addition to it',
+    leanStatement: '∀ (c : Character) (g : Game), ¬ InGame c g → ¬ GoodAddition c g',
+    proof: 'fun h => h cynder newSpyro not_in_game.holds',
+  };
+
+  beforeAll(async () => {
+    shadow = await newShadow('ghostdirect', undefined, runId);
+    engine = createLeanCheckEngine({ core: fakeCore(LITERAL_PERMITTED) });
+    editWs(shadow, 'formalise-literal');
+    const main = path.join(shadow.paths.ws, 'Model/Spyro/Main.lean');
+    const text = readFileSync(main, 'utf8');
+    expect(text.endsWith('\nend Spyro\n')).toBe(true);
+    writeFileSync(main, `${text.slice(0, -'end Spyro\n'.length)}${NOT_IN_GAME}\nend Spyro\n`);
+    const outcome = await engine.freeze(contextFor(shadow, runId));
+    if (!outcome.ok) throw new Error(`freeze refused: ${outcome.refusals.join('; ')}`);
+    record = outcome.record;
+  });
+
+  it('a proof that uses an unselected proved card whose basis the selection covers is refused, naming the card (S14); selected, it passes', async () => {
+    // The footprint is within the permitted set (not_in_game rests on the three selected axioms) ...
+    const refused = await engine.checkGhost(contextFor(shadow, runId, { stage: 'prove', freeze: record }), ghost);
+    expect(refused.ok).toBe(false);
+    const problems = refused.ok ? [] : refused.problems;
+    // ... but the card itself is not one of the selected premises.
+    expect(problems).toEqual([
+      'The proof that the suggestion closes the gap uses Spyro.not_in_game.holds (the card not-in-game, "Cynder is not in the new Spyro game"), which is not one of the selected premises: it may use only the selected premises\' .holds (and the suggestion itself). If the target needs that card, do not propose a premise: finish with status not_proved and name not-in-game in gap.',
+    ]);
+    const selected = await engine.checkGhost(
+      contextFor(shadow, runId, { stage: 'prove', freeze: record, selection: selection(['cynder-dark-past', 'new-spyro-pg', 'pg-no-dark-past', 'not-in-game']) }),
+      ghost,
+    );
+    if (!selected.ok) throw new Error(selected.problems.join('\n'));
+    expect(sorted(selected.footprint)).toEqual(LITERAL_GHOST_FOOTPRINT);
     expect(await unitsOfRun(runId)).toEqual([]);
   });
 });

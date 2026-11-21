@@ -19,3 +19,5 @@ export * from './samples/large.js';
 export * from './run.js';
 export * from './gate/index.js';
 export * from './proposal/index.js';
+// Slice 2 (docs/slice2-plan.md sections 2 and 4): the review list's item model, views, texts and checks.
+export * from './review/index.js';

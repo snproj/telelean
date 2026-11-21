@@ -12,7 +12,9 @@
  *   .telelean/graph.json               export for scripts (gitignored)
  *   .telelean/subjects/<S>/layout.json column order (committed)
  *   .telelean/subjects/<S>/attic/<id>.lean        archived proofs (committed)
+ *   .telelean/subjects/<S>/endorsements.json      endorsed definitions (slice 2, D2-18)
  */
+import { sha256Hex } from './review/hash.js';
 
 export const TELELEAN_DIR = '.telelean';
 export const CONFIG_PATH = '.telelean/config.json';
@@ -106,6 +108,77 @@ export function attemptsPath(subject: string): string {
  */
 export function decisionsPath(subject: string): string {
   return `${subjectSidecarDir(subject)}/decisions.json`;
+}
+
+/**
+ * Slice 2 (docs/slice2-plan.md 2.6, D2-18, EN-3; 2c1): the definitions and presuppositions the person endorsed at an
+ * Apply (`EndorsementsFile`). Apply writes it inside its history entry, so Undo of the Apply removes the endorsements
+ * (2f); the runner's ModelWorkspace reads it and passes its `endorsed` to `buildProjectModel`, which drops
+ * `definitional-choice` from a definition whose name and text hash it holds.
+ */
+export function endorsementsPath(subject: string): string {
+  return `${subjectSidecarDir(subject)}/endorsements.json`;
+}
+
+/** One endorsed declaration (D2-18): its fully-qualified name and `endorsementHash` of its text, from the run that endorsed it. */
+export interface Endorsement {
+  name: string;
+  textHash: string;
+  /** The session's run id. */
+  run: string;
+  /** ISO date of the Apply. */
+  date: string;
+}
+
+/** `.telelean/subjects/<S>/endorsements.json` (docs/slice2-plan.md 2.6). */
+export interface EndorsementsFile {
+  format: 'telelean-endorsements';
+  version: 1;
+  endorsed: Endorsement[];
+}
+
+/**
+ * The one hash an endorsement records (2f writes it) and the build compares (2c1): SHA-256 (hex) of the declaration's
+ * source text as core's scanner spans it (its docstring and attributes included, no comment line around it: `VocabItem.code`,
+ * the gate's `DeclEntry.text`), with every whitespace run collapsed to one space and the ends trimmed, as content keys
+ * compare texts (§4.3). So a re-indented or re-wrapped definition stays endorsed, and any other edit flags it again.
+ */
+export function endorsementHash(text: string): string {
+  return sha256Hex(text.replace(/\s+/g, ' ').trim());
+}
+
+/**
+ * Reads `endorsements.json` leniently (a hand-edited sidecar must not break the board): another format or version, or
+ * text that is no JSON, gives no endorsement, and an entry without a string `name` and `textHash` is dropped (its `run`
+ * and `date` default to ''). Fails closed: what it cannot read endorses nothing, so the flag stays.
+ */
+export function parseEndorsements(json: string): EndorsementsFile {
+  const empty: EndorsementsFile = { format: 'telelean-endorsements', version: 1, endorsed: [] };
+  let raw: unknown;
+  try {
+    raw = JSON.parse(json);
+  } catch {
+    return empty;
+  }
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return empty;
+  const file = raw as Record<string, unknown>;
+  if (file['format'] !== 'telelean-endorsements' || file['version'] !== 1 || !Array.isArray(file['endorsed'])) return empty;
+  const endorsed: Endorsement[] = [];
+  for (const entry of file['endorsed'] as unknown[]) {
+    if (typeof entry !== 'object' || entry === null) continue;
+    const e = entry as Record<string, unknown>;
+    if (typeof e['name'] !== 'string' || e['name'] === '' || typeof e['textHash'] !== 'string' || e['textHash'] === '') continue;
+    endorsed.push({ name: e['name'], textHash: e['textHash'], run: typeof e['run'] === 'string' ? e['run'] : '', date: typeof e['date'] === 'string' ? e['date'] : '' });
+  }
+  return { ...empty, endorsed };
+}
+
+/** `endorsements.json` as Apply writes it: two-space JSON, the entries sorted by name then hash, a final newline. */
+export function serializeEndorsements(file: EndorsementsFile): string {
+  const endorsed = [...file.endorsed]
+    .map((e) => ({ name: e.name, textHash: e.textHash, run: e.run, date: e.date }))
+    .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : a.textHash < b.textHash ? -1 : a.textHash > b.textHash ? 1 : 0));
+  return `${JSON.stringify({ format: 'telelean-endorsements', version: 1, endorsed }, null, 2)}\n`;
 }
 
 /** `Model/Spyro/Main.lean` -> `Model.Spyro.Main`; undefined for non-Lean paths. */

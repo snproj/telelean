@@ -12,7 +12,6 @@ import type { ProposalCore, ProposalService, RunSidecarStore, SidecarCore } from
 
 export * from './types.js';
 export { MERGE_CONTEXT_LINES } from './files.js';
-export { PROPOSAL_FACTS_FILE, PROVED_GOAL_REASON } from './service.js';
 
 /** `core`: test hook replacing some of the core functions the service calls (reviewer addition). */
 export function createProposalService(options: { now?: () => Date; core?: Partial<ProposalCore> } = {}): ProposalService {

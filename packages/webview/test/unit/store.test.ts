@@ -1,7 +1,10 @@
-import { hostMessage, spyroGraph, spyroProvedGraph, type ActionOutcome, type TlGraph, type WebviewToHostMessage } from '@telelean/core';
+import { AXIOM_TO_PROPOSITION_REFUSAL, hostMessage, spyroGraph, spyroProvedGraph, type ActionOutcome, type TlGraph, type WebviewToHostMessage } from '@telelean/core';
 import { describe, expect, it } from 'vitest';
-import { createBoardStore, FLASH_MS, MAX_TOASTS, moveInOrder, toastCanUndo, trayModel, type PersistedState, type StoreOptions } from '../../src/state/store';
+import { createBoardStore, FLASH_MS, kindChangeRefused, MAX_TOASTS, moveInOrder, toastCanUndo, type PersistedState, type StoreOptions } from '../../src/state/store';
 import { conditionalGraph, historyListing, mapNode, withSemantic, workspaceState } from '../shared/graphs';
+
+/** The Spyro sample with a reason on its proposition, so a change to Axiom asks nothing first (no rationale dialog). */
+const withReason = (graph: TlGraph = spyroGraph()) => mapNode(graph, 'cynder-not-good', (n) => ({ ...n, rationale: 'lore' }));
 
 /** A store on the Spyro sample with recorded posts, a fake clock for its timers, and its persisted state. */
 function setup(graph: TlGraph = spyroGraph(), options: StoreOptions = {}) {
@@ -40,9 +43,8 @@ describe('board store (M0 behaviour, M1 protocol)', () => {
   it('splits the graph into columns', () => {
     const { state } = setup();
     expect(state().order).toEqual({
-      ASSUMPTION: ['pg-no-dark-past', 'cynder-dark-past', 'new-spyro-pg'],
-      DERIVATION: [],
-      GOAL: ['cynder-not-good'],
+      AXIOM: ['pg-no-dark-past', 'cynder-dark-past', 'new-spyro-pg'],
+      PROPOSITION: ['cynder-not-good'],
     });
   });
 
@@ -58,35 +60,24 @@ describe('board store (M0 behaviour, M1 protocol)', () => {
     expect(state().selected).toEqual(['cynder-dark-past']);
   });
 
-  it('the tray puts the single goal in the target slot and "These suffice ▶" posts startRun with premises, target and a request id (M2)', () => {
-    const { state, last } = setup();
-    for (const id of ['cynder-dark-past', 'new-spyro-pg', 'cynder-not-good']) state().clickCard(id, true);
-    // The goal declares three premises; These suffice replaces them (D-13), so the tray names the one it would drop.
-    expect(trayModel(state())).toEqual({ premises: ['cynder-dark-past', 'new-spyro-pg'], target: 'cynder-not-good', blocked: null, dropped: ['pg-no-dark-past'], selfEvident: false });
-    expect(state().startRun()).toBe(true);
+  it('Formalize for dependencies (slice 1e): the selected arrows into one proposition are the question; startRun posts their sources', () => {
+    const { state, last, sent } = setup();
+    state().selectArrow('cynder-dark-past', 'cynder-not-good', false);
+    state().selectArrow('new-spyro-pg', 'cynder-not-good', true);
+    expect(state().formalize()).toBe(true);
     expect(last()).toEqual({ v: 1, type: 'startRun', payload: { target: 'cynder-not-good', premises: ['cynder-dark-past', 'new-spyro-pg'], requestId: 'r1' } });
-  });
-
-  it('"Add to its premises ▶" starts a run from the target\'s declared premises plus the selected ones (M2)', () => {
-    const graph = mapNode(spyroGraph(), 'cynder-not-good', (n) => ({ ...n, premises: ['pg-no-dark-past'] }));
-    const { state, last } = setup(graph);
-    for (const id of ['cynder-dark-past', 'cynder-not-good']) state().clickCard(id, true);
-    expect(trayModel(state()).dropped).toEqual(['pg-no-dark-past']);
-    expect(state().startRun('add')).toBe(true);
-    expect(last()).toEqual({ v: 1, type: 'startRun', payload: { target: 'cynder-not-good', premises: ['pg-no-dark-past', 'cynder-dark-past'], requestId: 'r1' } });
-    // Selecting every declared premise drops nothing.
-    state().clickCard('pg-no-dark-past', true);
-    expect(trayModel(state()).dropped).toEqual([]);
+    // Nothing declares premises any more (the arrows are drawn already, AR-4).
+    expect(sent.some((m) => m.type === 'theseSuffice' || m.type === 'addArrows')).toBe(false);
   });
 
   it('Alt+Up/Down (moveCard) re-orders one place within the column and posts reorder', () => {
     const { state, last } = setup();
-    const column = () => state().order.ASSUMPTION;
+    const column = () => state().order.AXIOM;
     expect(column()).toEqual(['pg-no-dark-past', 'cynder-dark-past', 'new-spyro-pg']);
     expect(state().moveCard('pg-no-dark-past', -1)).toBe(false); // already first
     expect(state().moveCard('pg-no-dark-past', 1)).toBe(true);
     expect(column()).toEqual(['cynder-dark-past', 'pg-no-dark-past', 'new-spyro-pg']);
-    expect(last()).toMatchObject({ type: 'reorder', payload: { id: 'pg-no-dark-past', column: 'ASSUMPTION', beforeId: 'new-spyro-pg' } });
+    expect(last()).toMatchObject({ type: 'reorder', payload: { id: 'pg-no-dark-past', column: 'AXIOM', beforeId: 'new-spyro-pg' } });
     expect(state().moveCard('pg-no-dark-past', 1)).toBe(true);
     expect(column()).toEqual(['cynder-dark-past', 'new-spyro-pg', 'pg-no-dark-past']);
     expect(last()).toMatchObject({ type: 'reorder', payload: { id: 'pg-no-dark-past', beforeId: null } });
@@ -96,56 +87,68 @@ describe('board store (M0 behaviour, M1 protocol)', () => {
     expect(last()).toMatchObject({ type: 'reorder', payload: { id: 'new-spyro-pg', beforeId: 'cynder-dark-past' } });
   });
 
-  it('startRun refuses without a target; with a target and no premises it is "Self-evident?" and posts premises [] (M2)', () => {
-    const { state, sent, last } = setup();
+  it('Formalize refuses a selection of cards only, with the reason; a "follows from nothing" mark asks for a proof from nothing (premises []) (slice 1e)', () => {
+    const graph = mapNode(spyroGraph(), 'cynder-not-good', (n) => ({ ...n, premises: [], fromNothing: true }));
+    const { state, sent, last } = setup(graph);
     state().clickCard('cynder-dark-past', false);
-    expect(trayModel(state()).blocked).toBe('Select the card to prove too: a Goal, or a Derivation (then choose it with ⊢).');
-    expect(state().startRun()).toBe(false);
+    expect(state().formalize()).toBe(false);
+    expect(state().toasts.map((t) => [t.level, t.text])).toEqual([['info', "Select arrows, or a 'follows from nothing' mark."]]);
     expect(sent.some((m) => m.type === 'startRun')).toBe(false);
-    state().clickCard('cynder-not-good', false);
-    expect(trayModel(state())).toMatchObject({ premises: [], target: 'cynder-not-good', blocked: null, selfEvident: true });
-    expect(state().startRun()).toBe(true);
+    state().selectMark('cynder-not-good', false);
+    expect(state().formalize()).toBe(true);
     expect(last()).toEqual({ v: 1, type: 'startRun', payload: { target: 'cynder-not-good', premises: [], requestId: 'r1' } });
-    expect(sent.some((m) => m.type === 'theseSuffice')).toBe(false);
   });
 
   it('a drop across columns moves the card and posts kindChange; within a column it posts reorder (M1: M0 posted nothing)', () => {
-    const { state, last, sent } = setup();
-    state().dropCard('pg-no-dark-past', 'GOAL', 'cynder-not-good');
-    expect(state().order.GOAL).toEqual(['pg-no-dark-past', 'cynder-not-good']);
-    expect(state().nodes['pg-no-dark-past']?.type).toBe('GOAL');
-    expect(last()).toEqual({ v: 1, type: 'kindChange', payload: { id: 'pg-no-dark-past', from: 'ASSUMPTION', to: 'GOAL', beforeId: 'cynder-not-good', requestId: 'r1' } });
-    state().dropCard('new-spyro-pg', 'ASSUMPTION', 'cynder-dark-past');
-    expect(state().order.ASSUMPTION).toEqual(['new-spyro-pg', 'cynder-dark-past']);
-    expect(last()).toEqual({ v: 1, type: 'reorder', payload: { id: 'new-spyro-pg', column: 'ASSUMPTION', beforeId: 'cynder-dark-past', requestId: 'r2' } });
+    const { state, last, sent } = setup(withReason());
+    // Spec v4 AR-6: no drop makes an axiom a proposition; nothing moves, nothing is posted, a toast says how instead.
+    expect(kindChangeRefused(state(), 'pg-no-dark-past', 'PROPOSITION')).toBe(true);
+    state().dropCard('pg-no-dark-past', 'PROPOSITION', 'cynder-not-good');
+    expect(state().order.PROPOSITION).toEqual(['cynder-not-good']);
+    expect(state().nodes['pg-no-dark-past']?.type).toBe('AXIOM');
+    expect(sent.some((m) => m.type === 'kindChange')).toBe(false);
+    expect(state().toasts.map((t) => [t.level, t.text])).toEqual([['info', AXIOM_TO_PROPOSITION_REFUSAL]]);
+    // P->A (AR-7): the proposition moves into the Axioms column.
+    expect(kindChangeRefused(state(), 'cynder-not-good', 'AXIOM')).toBe(false);
+    state().dropCard('cynder-not-good', 'AXIOM', 'cynder-dark-past');
+    expect(state().order).toEqual({ AXIOM: ['pg-no-dark-past', 'cynder-not-good', 'cynder-dark-past', 'new-spyro-pg'], PROPOSITION: [] });
+    expect(state().nodes['cynder-not-good']?.type).toBe('AXIOM');
+    expect(last()).toEqual({ v: 1, type: 'kindChange', payload: { id: 'cynder-not-good', from: 'PROPOSITION', to: 'AXIOM', beforeId: 'cynder-dark-past', requestId: 'r1' } });
+    state().dropCard('new-spyro-pg', 'AXIOM', 'cynder-dark-past');
+    expect(state().order.AXIOM).toEqual(['pg-no-dark-past', 'cynder-not-good', 'new-spyro-pg', 'cynder-dark-past']);
+    expect(last()).toEqual({ v: 1, type: 'reorder', payload: { id: 'new-spyro-pg', column: 'AXIOM', beforeId: 'cynder-dark-past', requestId: 'r2' } });
     // To the end of the column: beforeId null.
-    state().dropCard('new-spyro-pg', 'ASSUMPTION', null);
-    expect(last()).toEqual({ v: 1, type: 'reorder', payload: { id: 'new-spyro-pg', column: 'ASSUMPTION', beforeId: null, requestId: 'r3' } });
-    expect(state().order.ASSUMPTION).toEqual(['cynder-dark-past', 'new-spyro-pg']);
+    state().dropCard('new-spyro-pg', 'AXIOM', null);
+    expect(last()).toEqual({ v: 1, type: 'reorder', payload: { id: 'new-spyro-pg', column: 'AXIOM', beforeId: null, requestId: 'r3' } });
+    expect(state().order.AXIOM).toEqual(['pg-no-dark-past', 'cynder-not-good', 'cynder-dark-past', 'new-spyro-pg']);
     // Dropped where it already is: nothing is posted.
     const count = sent.length;
     state().reorder('new-spyro-pg', null);
-    state().dropCard('cynder-dark-past', 'ASSUMPTION', 'new-spyro-pg');
+    state().dropCard('cynder-dark-past', 'AXIOM', 'new-spyro-pg');
     expect(sent.length).toBe(count);
   });
 
   it('addNode sends the sentence trimmed only (verbatim), with the optional rationale, stance and source', () => {
     const { state, last } = setup();
-    const id = state().addNode('DERIVATION', '  Cynder   cannot appear in a PG game ');
+    const id = state().addNode('PROPOSITION', '  Cynder   cannot appear in a PG game ');
     expect(id).toBe('cynder-cannot-appear-in-a-pg');
-    expect(state().order.DERIVATION).toEqual([id]);
+    expect(state().order.PROPOSITION).toEqual(['cynder-not-good', id]);
     expect(state().nodes[id ?? '']?.status.formal).toBe('informal');
+    expect(state().nodes[id ?? '']?.status.flags).toEqual([]);
     expect(state().provisional[id ?? '']).toBe(true);
-    expect(last()).toEqual({ v: 1, type: 'addNode', payload: { clientId: id, type: 'DERIVATION', naturalName: 'Cynder   cannot appear in a PG game', requestId: 'r1' } });
-    expect(state().addNode('GOAL', '   ')).toBeNull();
+    expect(last()).toEqual({ v: 1, type: 'addNode', payload: { clientId: id, type: 'PROPOSITION', naturalName: 'Cynder   cannot appear in a PG game', requestId: 'r1' } });
+    expect(state().addNode('PROPOSITION', '   ')).toBeNull();
 
     // Pasted line breaks become spaces (the protocol requires one line).
-    state().addNode('ASSUMPTION', 'Spyro is\npurple', { rationale: ' seen it ', stance: 'believe', source: 'observed' });
+    state().addNode('AXIOM', 'Spyro is\npurple', { rationale: ' seen it ', stance: 'believe', source: 'observed' });
     expect(last()).toEqual({
       v: 1,
       type: 'addNode',
-      payload: { clientId: 'spyro-is-purple', type: 'ASSUMPTION', naturalName: 'Spyro is purple', requestId: 'r2', rationale: 'seen it', stance: 'believe', source: 'observed' },
+      payload: { clientId: 'spyro-is-purple', type: 'AXIOM', naturalName: 'Spyro is purple', requestId: 'r2', rationale: 'seen it', stance: 'believe', source: 'observed' },
     });
+    // An axiom without a reason shows "no reason yet" until the host's graph arrives.
+    state().addNode('AXIOM', 'Spyro flies');
+    expect(state().nodes['spyro-flies']?.status.flags).toEqual(['no-rationale']);
     expect(state().nodes['spyro-is-purple']).toMatchObject({ rationale: 'seen it', stance: 'believe', source: 'observed', asserted: '2026-11-01' });
   });
 });
@@ -192,24 +195,33 @@ describe('AT6.1 store: host messages', () => {
   });
 
   it('an optimistic drag rolls back on actionResult ok:false, with an error toast', () => {
-    const { state, result } = setup();
-    state().dropCard('pg-no-dark-past', 'DERIVATION', null);
-    expect(state().order.DERIVATION).toEqual(['pg-no-dark-past']);
+    const { state, result } = setup(withReason());
+    const into = () => state().edges.filter((e) => e.type === 'premise' && e.target === 'cynder-not-good').map((e) => e.source);
+    expect(into()).toEqual(expect.arrayContaining(['cynder-dark-past', 'new-spyro-pg', 'pg-no-dark-past']));
+    const edges = state().edges.length;
+    state().dropCard('cynder-not-good', 'AXIOM', null);
+    expect(state().order.AXIOM).toEqual(['pg-no-dark-past', 'cynder-dark-past', 'new-spyro-pg', 'cynder-not-good']);
+    // P->A (AR-7): its incoming arrows go with it at once (the new axiom shows none while the host writes it).
+    expect(state().nodes['cynder-not-good']?.premises).toEqual([]);
+    expect(into()).toEqual([]);
+    expect(state().edges).toHaveLength(edges - 3);
     result('r1', refused('conflict', 'Model/Spyro/Main.lean changed since; try again.'));
-    expect(state().order).toEqual({ ASSUMPTION: ['pg-no-dark-past', 'cynder-dark-past', 'new-spyro-pg'], DERIVATION: [], GOAL: ['cynder-not-good'] });
-    expect(state().nodes['pg-no-dark-past']?.type).toBe('ASSUMPTION');
+    expect(state().order).toEqual({ AXIOM: ['pg-no-dark-past', 'cynder-dark-past', 'new-spyro-pg'], PROPOSITION: ['cynder-not-good'] });
+    expect(state().nodes['cynder-not-good']?.type).toBe('PROPOSITION');
+    expect(state().nodes['cynder-not-good']?.premises).toEqual(['cynder-dark-past', 'new-spyro-pg', 'pg-no-dark-past']);
+    expect(state().edges).toHaveLength(edges);
     expect(state().toasts.map((t) => [t.level, t.text])).toEqual([['error', 'Model/Spyro/Main.lean changed since; try again.']]);
   });
 
   it('an optimistic reorder rolls back on ok:false; a successful one stays', () => {
     const { state, result } = setup();
     state().reorder('new-spyro-pg', 'pg-no-dark-past');
-    expect(state().order.ASSUMPTION).toEqual(['new-spyro-pg', 'pg-no-dark-past', 'cynder-dark-past']);
+    expect(state().order.AXIOM).toEqual(['new-spyro-pg', 'pg-no-dark-past', 'cynder-dark-past']);
     result('r1', OK);
     state().reorder('pg-no-dark-past', null);
-    expect(state().order.ASSUMPTION).toEqual(['new-spyro-pg', 'cynder-dark-past', 'pg-no-dark-past']);
+    expect(state().order.AXIOM).toEqual(['new-spyro-pg', 'cynder-dark-past', 'pg-no-dark-past']);
     result('r2', refused('internal', 'layout.json could not be written'));
-    expect(state().order.ASSUMPTION).toEqual(['new-spyro-pg', 'pg-no-dark-past', 'cynder-dark-past']);
+    expect(state().order.AXIOM).toEqual(['new-spyro-pg', 'pg-no-dark-past', 'cynder-dark-past']);
     expect(state().toasts.at(-1)?.text).toBe('layout.json could not be written');
   });
 
@@ -218,27 +230,27 @@ describe('AT6.1 store: host messages', () => {
     state().reorder('new-spyro-pg', 'pg-no-dark-past');
     state().applyGraph(spyroGraph(2)); // the host's order
     result('r1', refused('conflict', 'changed'));
-    expect(state().order.ASSUMPTION).toEqual(['pg-no-dark-past', 'cynder-dark-past', 'new-spyro-pg']);
+    expect(state().order.AXIOM).toEqual(['pg-no-dark-past', 'cynder-dark-past', 'new-spyro-pg']);
   });
 
   it('an optimistic add is removed on ok:false, with an error toast', () => {
     const { state, result } = setup();
-    const id = state().addNode('GOAL', 'Cynder gets a spin-off') ?? '';
+    const id = state().addNode('PROPOSITION', 'Cynder gets a spin-off') ?? '';
     state().clickCard(id, false);
     result('r1', refused('invalid', 'The sentence is empty.'));
     expect(state().nodes[id]).toBeUndefined();
-    expect(state().order.GOAL).toEqual(['cynder-not-good']);
+    expect(state().order.PROPOSITION).toEqual(['cynder-not-good']);
     expect(state().selected).toEqual([]);
     expect(state().toasts.at(-1)).toMatchObject({ level: 'error', text: 'The sentence is empty.' });
   });
 
   it("an add's provisional card gives way to the host's id; selection and expansion move to it (result first)", () => {
     const { state, result, sent } = setup(spyroGraph(1));
-    const id = state().addNode('GOAL', 'Cynder gets a spin-off') ?? '';
+    const id = state().addNode('PROPOSITION', 'Cynder gets a spin-off') ?? '';
     state().clickCard(id, false);
     state().toggleExpanded(id);
     // The host derived another id; its graph arrives after the result.
-    result('r1', { ok: true, label: 'Add goal: Cynder gets a spin-off', undoable: true, nodeId: 'cynder-gets-a-spin-off-2' });
+    result('r1', { ok: true, label: 'Add proposition: Cynder gets a spin-off', undoable: true, nodeId: 'cynder-gets-a-spin-off-2' });
     expect(state().nodes[id]).toBeDefined(); // still waiting for the graph
     const host = spyroGraph(2);
     const card = { ...state().nodes[id], id: 'cynder-gets-a-spin-off-2' } as TlGraph['nodes'][number];
@@ -247,18 +259,18 @@ describe('AT6.1 store: host messages', () => {
     expect(state().provisional).toEqual({});
     expect(state().selected).toEqual(['cynder-gets-a-spin-off-2']);
     expect(state().expanded).toEqual({ 'cynder-gets-a-spin-off-2': true });
-    expect(state().order.GOAL).toEqual(['cynder-not-good', 'cynder-gets-a-spin-off-2']);
+    expect(state().order.PROPOSITION).toEqual(['cynder-not-good', 'cynder-gets-a-spin-off-2']);
     expect(sent.at(-1)).toEqual({ v: 1, type: 'select', payload: { ids: ['cynder-gets-a-spin-off-2'] } });
   });
 
   it("an add's provisional card is replaced when the host's graph comes before the result", () => {
     const { state, result } = setup(spyroGraph(1));
-    const id = state().addNode('GOAL', 'Cynder gets a spin-off') ?? '';
+    const id = state().addNode('PROPOSITION', 'Cynder gets a spin-off') ?? '';
     state().clickCard(id, false);
     // An unrelated graph (no new card yet) keeps the provisional card on the board.
     state().applyGraph(spyroGraph(2));
     expect(state().nodes[id]).toBeDefined();
-    expect(state().order.GOAL).toEqual(['cynder-not-good', id]);
+    expect(state().order.PROPOSITION).toEqual(['cynder-not-good', id]);
     expect(state().selected).toEqual([id]);
     // The graph with the host's card (same sentence, new id) replaces it.
     const host = spyroGraph(3);
@@ -266,19 +278,19 @@ describe('AT6.1 store: host messages', () => {
     state().applyGraph({ ...host, nodes: [...host.nodes, card] });
     expect(state().nodes[id]).toBeUndefined();
     expect(state().selected).toEqual(['n-host-1']);
-    result('r1', { ok: true, label: 'Add goal', undoable: true, nodeId: 'n-host-1' });
+    result('r1', { ok: true, label: 'Add proposition', undoable: true, nodeId: 'n-host-1' });
     expect(state().selected).toEqual(['n-host-1']);
   });
 
   it('a needs-confirmation result opens the dependents dialog with the host’s dependents, and the answer is posted', () => {
-    const { state, result, last } = setup(spyroGraph(1));
-    // From the graph alone nothing depends on new-spyro-pg, so the drop is posted at once ...
-    state().dropCard('new-spyro-pg', 'GOAL', null);
-    expect(last()).toMatchObject({ type: 'kindChange', payload: { id: 'new-spyro-pg', to: 'GOAL', requestId: 'r1' } });
-    // ... but the host's facts know better.
-    result('r1', refused('needs-confirmation', '1 proof uses new_spyro_pg.holds', ['cynder-not-good', 'Spyro.helper_lemma']));
-    expect(state().nodes['new-spyro-pg']?.type).toBe('ASSUMPTION'); // rolled back
-    expect(state().dialog).toMatchObject({ kind: 'dependents', id: 'new-spyro-pg', to: 'GOAL', dependents: ['cynder-not-good', 'Spyro.helper_lemma'], rewriteAvailable: true });
+    const { state, result, last } = setup(withReason(spyroGraph(1)));
+    // From the graph alone nothing depends on cynder-not-good, so the drop is posted at once ...
+    state().dropCard('cynder-not-good', 'AXIOM', null);
+    expect(last()).toMatchObject({ type: 'kindChange', payload: { id: 'cynder-not-good', to: 'AXIOM', requestId: 'r1' } });
+    // ... but the host's facts know better (lemmas that pass its proof arguments).
+    result('r1', refused('needs-confirmation', '2 dependents pass cynder_not_good.holds arguments', ['other-card', 'Spyro.helper_lemma']));
+    expect(state().nodes['cynder-not-good']?.type).toBe('PROPOSITION'); // rolled back
+    expect(state().dialog).toMatchObject({ kind: 'dependents', id: 'cynder-not-good', to: 'AXIOM', dependents: ['other-card', 'Spyro.helper_lemma'], rewriteAvailable: true });
     expect(state().toasts).toEqual([]);
     state().confirmDependents('mark-broken');
     expect(state().dialog).toBeNull();
@@ -286,62 +298,64 @@ describe('AT6.1 store: host messages', () => {
     expect(last()).toEqual({
       v: 1,
       type: 'kindChange',
-      payload: { id: 'new-spyro-pg', from: 'ASSUMPTION', to: 'GOAL', beforeId: null, requestId: 'r2', dependents: 'mark-broken', confirmedDependents: ['cynder-not-good', 'Spyro.helper_lemma'] },
+      payload: { id: 'cynder-not-good', from: 'PROPOSITION', to: 'AXIOM', beforeId: null, requestId: 'r2', dependents: 'mark-broken', confirmedDependents: ['other-card', 'Spyro.helper_lemma'] },
     });
   });
 });
 
 describe('kind changes (D-11 through kindChangeImpact)', () => {
-  it('A->G of an assumption a proof uses asks first; rewrite needs fresh facts', () => {
-    const { state, last, sent } = setup(spyroProvedGraph(1));
-    state().dropCard('cynder-dark-past', 'GOAL', null);
+  it('P->A of a proof that takes hypotheses, applied by another proof, asks first; rewrite needs fresh facts', () => {
+    const { state, last, sent } = setup(conditionalGraph(1));
+    state().dropCard('d1', 'AXIOM', null);
     expect(sent.some((m) => m.type === 'kindChange')).toBe(false);
-    expect(state().dialog).toMatchObject({ kind: 'dependents', dependents: ['cynder-not-good'], rewriteAvailable: true, summary: 'Make Goal: 1 dependent needs a hypothesis rewrite' });
+    expect(state().dialog).toMatchObject({ kind: 'dependents', dependents: ['g1'], rewriteAvailable: true, summary: 'Move to axioms: 1 dependent needs a rewrite' });
     state().confirmDependents('rewrite');
     expect(last()).toEqual({
       v: 1,
       type: 'kindChange',
-      payload: { id: 'cynder-dark-past', from: 'ASSUMPTION', to: 'GOAL', beforeId: null, requestId: 'r1', dependents: 'rewrite', confirmedDependents: ['cynder-not-good'] },
+      payload: { id: 'd1', from: 'PROPOSITION', to: 'AXIOM', beforeId: null, requestId: 'r1', dependents: 'rewrite', confirmedDependents: ['g1'] },
     });
 
-    const stale = setup(withSemantic(spyroProvedGraph(1), { state: 'stale', staleFiles: ['Model/Spyro/Main.lean'] }));
-    stale.state().requestKindChange('cynder-dark-past', 'GOAL', null);
+    const stale = setup(withSemantic(conditionalGraph(1), { state: 'stale', staleFiles: ['Model/Spyro/Main.lean'] }));
+    stale.state().requestKindChange('d1', 'AXIOM', null);
     expect(stale.state().dialog).toMatchObject({ kind: 'dependents', rewriteAvailable: false });
     stale.state().confirmDependents('rewrite'); // not offered: ignored
     expect(stale.sent.some((m) => m.type === 'kindChange')).toBe(false);
     stale.state().closeDialog();
     expect(stale.state().dialog).toBeNull();
-    expect(stale.state().nodes['cynder-dark-past']?.type).toBe('ASSUMPTION');
+    expect(stale.state().nodes['d1']?.type).toBe('PROPOSITION');
   });
 
-  it('G->A offers the optional rationale (Skip allowed)', () => {
+  it('P->A offers the optional rationale (Skip allowed)', () => {
     const { state, last } = setup(spyroGraph(1));
-    state().requestKindChange('cynder-not-good', 'ASSUMPTION', null);
-    expect(state().dialog).toMatchObject({ kind: 'rationale', id: 'cynder-not-good', summary: 'Make Assumption: adds axiom cynder_not_good.holds' });
+    state().requestKindChange('cynder-not-good', 'AXIOM', null);
+    expect(state().dialog).toMatchObject({ kind: 'rationale', id: 'cynder-not-good', summary: 'Move to axioms: adds axiom cynder_not_good.holds' });
     state().confirmRationale('  my friend said so ');
-    expect(last()).toEqual({ v: 1, type: 'kindChange', payload: { id: 'cynder-not-good', from: 'GOAL', to: 'ASSUMPTION', beforeId: null, requestId: 'r1', rationale: 'my friend said so' } });
+    expect(last()).toEqual({ v: 1, type: 'kindChange', payload: { id: 'cynder-not-good', from: 'PROPOSITION', to: 'AXIOM', beforeId: null, requestId: 'r1', rationale: 'my friend said so' } });
 
     const skip = setup(spyroGraph(1));
-    skip.state().requestKindChange('cynder-not-good', 'ASSUMPTION', 'pg-no-dark-past');
+    skip.state().requestKindChange('cynder-not-good', 'AXIOM', 'pg-no-dark-past');
     skip.state().confirmRationale(null);
-    expect(skip.last()).toEqual({ v: 1, type: 'kindChange', payload: { id: 'cynder-not-good', from: 'GOAL', to: 'ASSUMPTION', beforeId: 'pg-no-dark-past', requestId: 'r1' } });
-    expect(skip.state().order.ASSUMPTION).toEqual(['cynder-not-good', 'pg-no-dark-past', 'cynder-dark-past', 'new-spyro-pg']);
+    expect(skip.last()).toEqual({ v: 1, type: 'kindChange', payload: { id: 'cynder-not-good', from: 'PROPOSITION', to: 'AXIOM', beforeId: 'pg-no-dark-past', requestId: 'r1' } });
+    expect(skip.state().order.AXIOM).toEqual(['cynder-not-good', 'pg-no-dark-past', 'cynder-dark-past', 'new-spyro-pg']);
   });
 
-  it('A->D needs no dialog: the card moves and kindChange is posted', () => {
-    const { state, last } = setup(spyroGraph(1));
-    state().requestKindChange('cynder-dark-past', 'DERIVATION', null);
+  it('A->P is refused before anything is sent (AR-6: an arrow, or "follows from nothing", makes an axiom a proposition)', () => {
+    const { state, sent } = setup(spyroGraph(1));
+    state().requestKindChange('cynder-dark-past', 'PROPOSITION', null);
     expect(state().dialog).toBeNull();
-    expect(state().order.DERIVATION).toEqual(['cynder-dark-past']);
-    expect(last()).toMatchObject({ type: 'kindChange', payload: { id: 'cynder-dark-past', from: 'ASSUMPTION', to: 'DERIVATION' } });
+    expect(state().order.PROPOSITION).toEqual(['cynder-not-good']);
+    expect(state().nodes['cynder-dark-past']?.type).toBe('AXIOM');
+    expect(sent.some((m) => m.type === 'kindChange')).toBe(false);
+    expect(state().toasts.map((t) => [t.level, t.text])).toEqual([['info', "To make an axiom a proposition, draw an arrow into it, or mark it 'follows from nothing'."]]);
   });
 
   it('moveInOrder places a card above beforeId and reports where it came from', () => {
     const order = spyroGraph().nodes.reduce<Record<string, string[]>>((acc, n) => ((acc[n.type] ??= []).push(n.id), acc), {});
-    const moved = moveInOrder({ ASSUMPTION: order.ASSUMPTION ?? [], DERIVATION: [], GOAL: order.GOAL ?? [] }, 'cynder-dark-past', 'GOAL', 'cynder-not-good');
-    expect(moved.order.GOAL).toEqual(['cynder-dark-past', 'cynder-not-good']);
-    expect(moved.previous).toEqual({ column: 'ASSUMPTION', beforeId: 'new-spyro-pg' });
-    expect(moveInOrder(moved.order, 'cynder-dark-past', 'GOAL', 'missing').beforeId).toBeNull();
+    const moved = moveInOrder({ AXIOM: order.AXIOM ?? [], PROPOSITION: order.PROPOSITION ?? [] }, 'cynder-dark-past', 'PROPOSITION', 'cynder-not-good');
+    expect(moved.order.PROPOSITION).toEqual(['cynder-dark-past', 'cynder-not-good']);
+    expect(moved.previous).toEqual({ column: 'AXIOM', beforeId: 'new-spyro-pg' });
+    expect(moveInOrder(moved.order, 'cynder-dark-past', 'PROPOSITION', 'missing').beforeId).toBeNull();
   });
 });
 
@@ -417,7 +431,7 @@ describe('requests, persistence, highlights, subjects, toasts', () => {
   it('a graph of another subject resets the selection and drops pending adds', () => {
     const { state } = setup(spyroGraph(1));
     state().clickCard('cynder-dark-past', false);
-    state().addNode('GOAL', 'Pending card');
+    state().addNode('PROPOSITION', 'Pending card');
     const other = { ...spyroGraph(2), subject: 'Bayonetta', nodes: [] };
     state().applyGraph(other);
     expect(state().subject).toBe('Bayonetta');
@@ -458,12 +472,12 @@ describe('requests, persistence, highlights, subjects, toasts', () => {
     state().deleteNode('cynder-dark-past', true);
     expect(state().dialog).toBeNull();
     expect(last()).toEqual({ v: 1, type: 'deleteNode', payload: { id: 'cynder-dark-past', keepLean: true, requestId: 'r1' } });
-    const id = state().addNode('GOAL', 'Provisional') ?? '';
+    const id = state().addNode('PROPOSITION', 'Provisional') ?? '';
     const count = sent.length;
     state().openDelete(id);
     state().deleteNode(id, false);
     expect(state().editNode(id, 'naturalName', 'Other')).toBe(false);
-    state().requestKindChange(id, 'ASSUMPTION', null);
+    state().requestKindChange(id, 'AXIOM', null);
     expect(state().dialog).toBeNull();
     expect(sent.length).toBe(count);
   });
@@ -542,12 +556,12 @@ describe('delete with its Lean code when other declarations use it (D-18)', () =
   it('keeps the host’s description of the cards among the dependents (another subject’s card shows by its sentence)', () => {
     const { state, result } = setup(spyroProvedGraph(1));
     state().deleteNode('cynder-dark-past', false);
-    const dependentCards = { 'other-goal': { subject: 'Bayonetta', type: 'GOAL' as const, naturalName: 'Bayonetta would be a good addition' } };
+    const dependentCards = { 'other-goal': { subject: 'Bayonetta', type: 'PROPOSITION' as const, naturalName: 'Bayonetta would be a good addition' } };
     result('r1', { ok: false, code: 'needs-confirmation', error: 'breaks 2', dependents: ['other-goal', 'Spyro.helper_lemma'], dependentCards });
     expect(state().dialog).toEqual({ kind: 'delete', id: 'cynder-dark-past', dependents: ['other-goal', 'Spyro.helper_lemma'], cards: dependentCards });
     // A kind change's question keeps them too (the board's own impact did not ask: it asked only for the reason).
     state().closeDialog();
-    state().requestKindChange('cynder-not-good', 'ASSUMPTION', null);
+    state().requestKindChange('cynder-not-good', 'AXIOM', null);
     expect(state().dialog).toMatchObject({ kind: 'rationale' });
     state().confirmRationale(null);
     result('r2', { ok: false, code: 'needs-confirmation', error: 'others use it', dependents: ['other-goal'], dependentCards });
@@ -585,25 +599,25 @@ describe('delete with its Lean code when other declarations use it (D-18)', () =
   });
 });
 
-describe('the dependents dialog for D->A / G->A of a proof that takes hypotheses', () => {
-  it('uses core’s impact (summary and detail) for a change to Assumption; the answer is posted with the listed dependents', () => {
+describe('the dependents dialog for P->A of a proof that takes hypotheses', () => {
+  it('uses core’s impact (summary and detail) for a change to Axiom; the answer is posted with the listed dependents', () => {
     const { state, last } = setup(conditionalGraph());
-    state().requestKindChange('d1', 'ASSUMPTION', null);
+    state().requestKindChange('d1', 'AXIOM', null);
     const dialog = state().dialog;
-    expect(dialog).toMatchObject({ kind: 'dependents', id: 'd1', to: 'ASSUMPTION', dependents: ['g1'], rewriteAvailable: true, summary: 'Make Assumption: 1 dependent needs a rewrite' });
-    expect(dialog?.kind === 'dependents' && dialog.detail).toMatch(/as an assumption it becomes `axiom d1\.holds : d1`/);
+    expect(dialog).toMatchObject({ kind: 'dependents', id: 'd1', to: 'AXIOM', dependents: ['g1'], rewriteAvailable: true, summary: 'Move to axioms: 1 dependent needs a rewrite' });
+    expect(dialog?.kind === 'dependents' && dialog.detail).toMatch(/as an axiom it becomes `axiom d1\.holds : d1`/);
     state().confirmDependents('rewrite');
     // M2 carry-over 3: the dependents the dialog listed go with the choice.
-    expect(last()).toMatchObject({ type: 'kindChange', payload: { id: 'd1', from: 'DERIVATION', to: 'ASSUMPTION', dependents: 'rewrite', confirmedDependents: ['g1'] } });
+    expect(last()).toMatchObject({ type: 'kindChange', payload: { id: 'd1', from: 'PROPOSITION', to: 'AXIOM', dependents: 'rewrite', confirmedDependents: ['g1'] } });
   });
 
   // M2 carry-over 2: core's singular text for one dependent, exactly as frozen in docs/m2-plan.md section 1.3.
   it('core words one dependent in the singular in the dialog’s explanation', () => {
     const { state } = setup(conditionalGraph());
-    state().requestKindChange('d1', 'ASSUMPTION', null);
+    state().requestKindChange('d1', 'AXIOM', null);
     const dialog = state().dialog;
     expect(dialog?.kind === 'dependents' && dialog.detail).toMatch(
-      /as an assumption it becomes `axiom d1\.holds : d1`.*Either rewrite that proof to use it directly \(mechanical, undoable\), or keep that proof and let it show as broken\.$/,
+      /as an axiom it becomes `axiom d1\.holds : d1`.*Either rewrite that proof to use it directly \(mechanical, undoable\), or keep that proof and let it show as broken\.$/,
     );
   });
 
@@ -611,7 +625,7 @@ describe('the dependents dialog for D->A / G->A of a proof that takes hypotheses
     // The drop was posted while the graph showed no user of d1 (so it asked only for the optional reason) ...
     const withoutEdge = { ...conditionalGraph(1), edges: conditionalGraph(1).edges.filter((e) => e.target !== 'g1') };
     const { state, result } = setup(withoutEdge);
-    state().requestKindChange('d1', 'ASSUMPTION', null);
+    state().requestKindChange('d1', 'AXIOM', null);
     expect(state().dialog).toMatchObject({ kind: 'rationale' });
     state().confirmRationale(null);
     // ... then a graph with the arrow d1 -> g1 arrived, and the host also knows a lemma without a card.
@@ -621,29 +635,29 @@ describe('the dependents dialog for D->A / G->A of a proof that takes hypotheses
       kind: 'dependents',
       id: 'd1',
       dependents: ['g1', 'Spyro.helper_lemma'],
-      summary: 'Make Assumption: 2 dependents need a rewrite',
+      summary: 'Move to axioms: 2 dependents need a rewrite',
       detail: 'd1.holds takes a hypothesis, but … 2 dependents that pass it arguments must change: …',
     });
   });
 
   it('when only the host asks (its facts know more than the graph), the title follows the host’s list and the detail is the host’s message', () => {
     const { state, result } = setup(spyroGraph(1));
-    // From the graph alone G->A of the goal needs no confirmation (it asks only for the optional reason) ...
-    state().requestKindChange('cynder-not-good', 'ASSUMPTION', null);
+    // From the graph alone P->A of the proposition needs no confirmation (it asks only for the optional reason) ...
+    state().requestKindChange('cynder-not-good', 'AXIOM', null);
     expect(state().dialog).toMatchObject({ kind: 'rationale' });
     state().confirmRationale(null);
     // ... but the host's facts say its proof takes a hypothesis and a lemma passes it one.
     // The planner's singular text (docs/m2-plan.md section 1.3, carry-over 2).
-    const message = 'cynder_not_good.holds takes a hypothesis, but as an assumption it becomes `axiom cynder_not_good.holds : cynder_not_good`, so 1 dependent that passes it arguments must change: rewrite that dependent to use it directly, or keep it and let it show as broken.';
+    const message = 'cynder_not_good.holds takes a hypothesis, but as an axiom it becomes `axiom cynder_not_good.holds : cynder_not_good`, so 1 dependent that passes it arguments must change: rewrite that dependent to use it directly, or keep it and let it show as broken.';
     result('r1', refused('needs-confirmation', message, ['Spyro.helper_lemma']));
     expect(state().dialog).toEqual({
       kind: 'dependents',
       id: 'cynder-not-good',
-      to: 'ASSUMPTION',
+      to: 'AXIOM',
       beforeId: null,
       dependents: ['Spyro.helper_lemma'],
       rewriteAvailable: true,
-      summary: 'Make Assumption: 1 dependent needs a rewrite',
+      summary: 'Move to axioms: 1 dependent needs a rewrite',
       detail: message,
     });
     expect(state().toasts).toEqual([]);

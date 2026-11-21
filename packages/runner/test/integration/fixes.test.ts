@@ -2,11 +2,10 @@
  * The M1 fixes, end to end with Lean 4.35 under runLean on a scratch copy of mental_model/ (real core, fs applier,
  * no git):
  *
- *   - a column-0 comment inside a proof or a multi-line statement no longer cuts the declaration: D->A and delete
+ *   - a column-0 comment inside a proof or a multi-line statement no longer cuts the declaration: P->A and delete
  *     take the whole declaration, the attic gets the whole proof, and Lean still builds;
- *   - D-11 on a conditional proof: after "A->G (rewrite)" on an assumption a derivation uses, D->A on that derivation
- *     asks first and "rewrite" drops the arguments, D->G "rewrite" replaces the whole application by the new
- *     hypothesis; Lean builds after each;
+ *   - D-11 on a conditional proof (written by hand: what "A->G (rewrite)" wrote before spec v4's two kinds): P->A on
+ *     that proposition asks first and "rewrite" drops the arguments its users pass; Lean builds;
  *   - delete with its Lean lists what would break (an untracked lemma, another subject's proof) before doing it.
  */
 import path from 'node:path';
@@ -111,18 +110,18 @@ describe('the M1 fixes with real Lean on a copy of mental_model/', () => {
     expect(node('a-multi')?.lean.refs?.map((r) => r.name)).toEqual(expect.arrayContaining(['Spyro.IsPG', 'Spyro.newSpyro']));
   });
 
-  it('D->A on a proof with a column-0 comment replaces the whole proof (attic: all of it); Lean builds', async (ctx) => {
+  it('P->A on a proof with a column-0 comment replaces the whole proof (attic: all of it); Lean builds', async (ctx) => {
     if (!(await waitForMemory())) ctx.skip();
     const before = read(root, MAIN);
-    const outcome = await ws.perform({ kind: 'change-kind', id: 'd-col0', to: 'ASSUMPTION', beforeId: null });
-    expect(outcome, JSON.stringify(outcome)).toMatchObject({ ok: true, label: 'Make Assumption: The game is PG again' });
+    const outcome = await ws.perform({ kind: 'change-kind', id: 'd-col0', to: 'AXIOM', beforeId: null });
+    expect(outcome, JSON.stringify(outcome)).toMatchObject({ ok: true, label: 'Move to axioms: The game is PG again' });
     const main = read(root, MAIN);
     expect(main).toContain('abbrev d_col0 : Prop := IsPG newSpyro\naxiom d_col0.holds : d_col0\n\n');
     expect(main).not.toContain('the key step');
     const attic = read(root, '.telelean/subjects/Spyro/attic/d-col0.lean');
     expect(attic).toContain('theorem d_col0.holds : d_col0 := by\n  unfold d_col0\n-- the key step: use the assumption\n  exact new_spyro_pg.holds\n');
     await fresh();
-    expect(node('d-col0')).toMatchObject({ type: 'ASSUMPTION', status: { proof: { kind: 'assumed' } } });
+    expect(node('d-col0')).toMatchObject({ type: 'AXIOM', status: { proof: { kind: 'assumed' } } });
     expect(await ws.undo('Spyro')).toMatchObject({ ok: true });
     expect(read(root, MAIN)).toBe(before);
   });
@@ -141,43 +140,39 @@ describe('the M1 fixes with real Lean on a copy of mental_model/', () => {
     expect(read(root, MAIN)).toBe(before);
   });
 
-  it('A->G "rewrite" on an assumption d1 uses makes d1 and g1 conditional; D->A on d1 then asks, and "rewrite" drops the arguments', async (ctx) => {
+  it('P->A on a conditional proposition (hand-written) asks first, and "rewrite" drops the arguments its users pass; Lean builds', async (ctx) => {
     if (!(await waitForMemory())) ctx.skip();
-    await fresh();
-    const goal = await ws.perform({ kind: 'change-kind', id: 'cynder-dark-past', to: 'GOAL', beforeId: null, dependents: 'rewrite', confirmedDependents: ['d1', 'g1'] });
-    expect(goal, JSON.stringify(goal)).toMatchObject({ ok: true, label: 'Make Goal: Cynder is a character who has a dark past (dependents rewritten)' });
-    expect(read(root, MAIN)).toContain('theorem g1.holds (h_cynder_dark_past : cynder_dark_past) : g1 := (d1.holds h_cynder_dark_past).2');
+    // The user's hand edit: d1 and g1 take cynder_dark_past as a hypothesis (what "A->G (rewrite)" wrote before spec v4).
+    const conditional = MAIN_TEXT.replace(
+      'theorem d1.holds : d1 := ⟨cynder_dark_past.holds, new_spyro_pg.holds⟩',
+      'theorem d1.holds (h_cynder_dark_past : cynder_dark_past) : d1 := ⟨h_cynder_dark_past, new_spyro_pg.holds⟩',
+    ).replace('theorem g1.holds : g1 := d1.holds.2', 'theorem g1.holds (h_cynder_dark_past : cynder_dark_past) : g1 := (d1.holds h_cynder_dark_past).2');
+    expect(conditional).not.toBe(MAIN_TEXT);
+    write(root, MAIN, conditional);
+    await ws.invalidate([MAIN]);
     await fresh();
     expect(node('d1')?.status.proof).toMatchObject({ kind: 'conditional', on: ['cynder-dark-past'] });
     expect(node('g1')?.status.proof).toMatchObject({ kind: 'conditional', on: ['cynder-dark-past'] });
-    const conditional = read(root, MAIN);
 
-    // D->A on the conditional derivation: the axiom states d1 directly, so g1's `(d1.holds h)` must change.
-    expect(await ws.perform({ kind: 'change-kind', id: 'd1', to: 'ASSUMPTION', beforeId: null })).toMatchObject({ ok: false, code: 'needs-confirmation', dependents: ['g1'] });
+    // P->A on the conditional proposition: the axiom states d1 directly, so g1's `(d1.holds h)` must change.
+    expect(await ws.perform({ kind: 'change-kind', id: 'd1', to: 'AXIOM', beforeId: null })).toMatchObject({ ok: false, code: 'needs-confirmation', dependents: ['g1'] });
     expect(read(root, MAIN)).toBe(conditional);
-    const assumption = await ws.perform({ kind: 'change-kind', id: 'd1', to: 'ASSUMPTION', beforeId: null, dependents: 'rewrite', confirmedDependents: ['g1'] });
-    expect(assumption, JSON.stringify(assumption)).toMatchObject({ ok: true, label: 'Make Assumption: Both hold (dependents rewritten)' });
+    const axiom = await ws.perform({ kind: 'change-kind', id: 'd1', to: 'AXIOM', beforeId: null, dependents: 'rewrite', confirmedDependents: ['g1'] });
+    expect(axiom, JSON.stringify(axiom)).toMatchObject({ ok: true, label: 'Move to axioms: Both hold (dependents rewritten)' });
     const main = read(root, MAIN);
+    expect(main).toContain('id: d1\ntype: AXIOM\n');
     expect(main).toContain('axiom d1.holds : d1\n');
     expect(main).toContain('theorem g1.holds (h_cynder_dark_past : cynder_dark_past) : g1 := d1.holds.2');
     await fresh();
-    expect(node('d1')).toMatchObject({ type: 'ASSUMPTION', status: { proof: { kind: 'assumed' } } });
+    expect(node('d1')).toMatchObject({ type: 'AXIOM', status: { proof: { kind: 'assumed' } } });
     expect(node('g1')?.status.proof).toMatchObject({ kind: 'conditional', on: ['cynder-dark-past'] });
     expect(await ws.undo('Spyro')).toMatchObject({ ok: true });
     expect(read(root, MAIN)).toBe(conditional);
-  });
-
-  it('D->G "rewrite" on the conditional derivation replaces `(d1.holds h)` by the hypothesis h_d1 : d1; Lean builds', async (ctx) => {
-    if (!(await waitForMemory())) ctx.skip();
+    // Back to the setup's text for the next test.
+    write(root, MAIN, MAIN_TEXT);
+    await ws.invalidate([MAIN]);
     await fresh();
-    const outcome = await ws.perform({ kind: 'change-kind', id: 'd1', to: 'GOAL', beforeId: null, dependents: 'rewrite', confirmedDependents: ['g1'] });
-    expect(outcome, JSON.stringify(outcome)).toMatchObject({ ok: true, label: 'Make Goal: Both hold (dependents rewritten)' });
-    expect(read(root, MAIN)).toContain('theorem g1.holds (h_d1 : d1) (h_cynder_dark_past : cynder_dark_past) : g1 := h_d1.2');
-    await fresh();
-    expect(node('g1')?.status.proof).toMatchObject({ kind: 'conditional', on: ['d1', 'cynder-dark-past'] });
-    expect(await ws.undo('Spyro')).toMatchObject({ ok: true });
-    expect(await ws.undo('Spyro')).toMatchObject({ ok: true }); // back before A->G
-    expect(read(root, MAIN)).toBe(MAIN_TEXT);
+    expect(node('d1')?.status.proof.kind).toBe('proved');
   });
 
   it('delete with its Lean lists an untracked lemma and another subject\'s proof first; confirmed, it deletes', async (ctx) => {
@@ -185,7 +180,7 @@ describe('the M1 fixes with real Lean on a copy of mental_model/', () => {
     expect(await ws.perform({ kind: 'create-subject', name: 'Other' })).toMatchObject({ ok: true });
     const otherMain = read(root, 'Model/Other/Main.lean').replace('import Model.Other.Inbox\n', 'import Model.Other.Inbox\nimport Model.Spyro.Main\n');
     const otherGoal = [
-      block('other-goal', 'GOAL', "Cynder's past, seen from another subject", 'Other.other_goal'),
+      block('other-goal', 'PROPOSITION', "Cynder's past, seen from another subject", 'Other.other_goal'),
       "/-- Cynder's past, seen from another subject -/",
       'abbrev other_goal : Prop := Spyro.HasDarkPast Spyro.cynder',
       'theorem other_goal.holds : other_goal := Spyro.cynder_dark_past.holds',

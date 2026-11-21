@@ -4,7 +4,7 @@
  */
 import { expect, test } from '@playwright/test';
 import { SPYRO_LEAN, spyroGraph, spyroProvedGraph } from '@telelean/core';
-import { card, columnPoint, dragCard, inColumnView, list, openBoard, posted, postedOfType, seenAttribute, settle, shotPath, watchAttribute, type OpenedBoard } from './helpers';
+import { card, dragCard, inView, list, openBoard, order, panToShow, posted, postedOfType, seenAttribute, settle, shotPath, watchAttribute, type OpenedBoard } from './helpers';
 
 let board: OpenedBoard | undefined;
 
@@ -17,7 +17,8 @@ test('AT6.16 a mouse drag across the expanded code selects text and never drags 
   board = await openBoard(page, spyroGraph(), 'dark');
   // Something is selected first, to show that nothing in the code changes the selection.
   await card(page, 'new-spyro-pg').click();
-  await expect(page.getByTestId('tray-count')).toHaveText('1 selected');
+  const summary = page.getByTestId('context-summary');
+  await expect(summary).toHaveText('“The new Spyro game is PG”');
   const dark = card(page, 'cynder-dark-past');
   await dark.locator('.tl-card__chevron').click();
   const code = dark.getByTestId('lean-code');
@@ -26,6 +27,7 @@ test('AT6.16 a mouse drag across the expanded code selects text and never drags 
   await watchAttribute(page, '[data-node-id]', 'data-dragging');
   await watchAttribute(page, '.tl-board', 'data-dragging');
   await watchAttribute(page, '.tl-col', 'data-drop');
+  await watchAttribute(page, '.tl-canvas', 'data-drop');
   const before = await posted(page);
 
   // Press near the start of the second line, drag to the end of the code, release.
@@ -46,13 +48,14 @@ test('AT6.16 a mouse drag across the expanded code selects text and never drags 
   expect(await seenAttribute(page, '[data-node-id]', 'data-dragging')).toBe(false);
   expect(await seenAttribute(page, '.tl-board', 'data-dragging')).toBe(false);
   expect(await seenAttribute(page, '.tl-col', 'data-drop')).toBe(false);
+  expect(await seenAttribute(page, '.tl-canvas', 'data-drop')).toBe(false);
   const after = await posted(page);
   expect(after.slice(before.length).filter((m) => m.type !== 'diagnostic')).toEqual([]);
-  // The selection (tray) is unchanged and the card is still where it was, expanded.
-  await expect(page.getByTestId('tray-count')).toHaveText('1 selected');
+  // The selection (the Context Menu section) is unchanged and the card is still where it was, expanded.
+  await expect(summary).toHaveText('“The new Spyro game is PG”');
   await expect(card(page, 'new-spyro-pg')).toHaveAttribute('data-selected', 'true');
   await expect(dark).not.toHaveAttribute('data-selected', /.*/);
-  await expect(list(page, 'ASSUMPTION').locator('[data-node-id="cynder-dark-past"]')).toHaveCount(1);
+  await expect(list(page, 'AXIOM').locator('[data-node-id="cynder-dark-past"]')).toHaveCount(1);
   await expect(dark.locator('.tl-card__chevron')).toHaveAttribute('aria-expanded', 'true');
   await expect(dark).toHaveAttribute('draggable', 'true'); // restored at pointerup
   await page.screenshot({ path: shotPath('m1-code-selection.png') });
@@ -78,17 +81,17 @@ test('AT6.16 a mouse drag across the expanded code selects text and never drags 
   await page.mouse.click(keyword.x, keyword.y);
   await settle(page);
   expect((await posted(page)).slice(count).filter((m) => m.type !== 'diagnostic')).toEqual([]);
-  await expect(page.getByTestId('tray-count')).toHaveText('1 selected');
+  await expect(summary).toHaveText('“The new Spyro game is PG”');
   await expect(dark.locator('.tl-card__chevron')).toHaveAttribute('aria-expanded', 'true');
   await expect(page.locator('[data-highlight]')).toHaveCount(0);
 
-  // Dragging the card by its face still works afterwards (draggable was restored): A -> D posts a kind change.
-  await dragCard(page, 'cynder-dark-past', await columnPoint(page, 'DERIVATION'));
-  await expect(list(page, 'DERIVATION').locator('[data-node-id="cynder-dark-past"]')).toHaveCount(1);
-  expect((await postedOfType(page, 'kindChange')).map((m) => m.payload)).toEqual([
-    { id: 'cynder-dark-past', from: 'ASSUMPTION', to: 'DERIVATION', beforeId: null, requestId: 'r1' },
-  ]);
-  expect(await postedOfType(page, 'reorder')).toEqual([]);
+  // Dragging the card by its face still works afterwards (draggable was restored): a re-order within the column.
+  const first = await card(page, 'pg-no-dark-past').boundingBox();
+  if (!first) throw new Error('no box');
+  await dragCard(page, 'cynder-dark-past', { x: first.x + first.width / 2, y: first.y + 6 });
+  expect(await order(page, 'AXIOM')).toEqual(['cynder-dark-past', 'pg-no-dark-past', 'new-spyro-pg']);
+  expect((await postedOfType(page, 'reorder')).map((m) => m.payload)).toEqual([{ id: 'cynder-dark-past', column: 'AXIOM', beforeId: 'pg-no-dark-past', requestId: 'r1' }]);
+  expect(await postedOfType(page, 'kindChange')).toEqual([]);
 });
 
 test('AT6.18 the Copy button posts exactly lean.code and the "Copied" notice shows (request 3)', async ({ page }) => {
@@ -112,7 +115,7 @@ test('AT6.18 the Copy button posts exactly lean.code and the "Copied" notice sho
   });
 });
 
-test('AT6.19 hovering an identifier shows its gloss; clicking highlights it in the Vocabulary group; Ctrl+click does nothing (request 4)', async ({ page }) => {
+test('AT6.19 hovering an identifier shows its gloss; clicking highlights it in the Vocabulary band; Ctrl+click does nothing (request 4)', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 600 });
   board = await openBoard(page, spyroGraph(), 'dark');
   const dark = card(page, 'cynder-dark-past');
@@ -142,16 +145,12 @@ test('AT6.19 hovering an identifier shows its gloss; clicking highlights it in t
   await expect(page.locator('[data-highlight]')).toHaveCount(0);
   expect((await posted(page)).slice(count).filter((m) => m.type !== 'diagnostic')).toEqual([]);
 
-  // A plain click opens the group, scrolls the item into view in the column and flashes it.
-  await list(page, 'ASSUMPTION').evaluate((el) => {
-    el.scrollTop = el.scrollHeight;
-  });
-  await settle(page);
+  // A plain click opens the band above the board, scrolls the item into view in its column and flashes it.
   await ref.click();
   const item = page.locator('.tl-vocab__item[data-vocab="Spyro.HasDarkPast"]');
   await expect(page.getByTestId('vocabulary')).not.toHaveAttribute('data-collapsed', /.*/);
   await expect(item).toHaveAttribute('data-highlight', 'true');
-  expect(await inColumnView(page, '.tl-vocab__item[data-vocab="Spyro.HasDarkPast"]')).toBe(true);
+  await expect.poll(() => inView(page, '.tl-vocab__item[data-vocab="Spyro.HasDarkPast"]')).toBe(true);
   expect(await postedOfType(page, 'select')).toEqual([]); // the card was not selected
   await expect(dark.locator('.tl-card__chevron')).toHaveAttribute('aria-expanded', 'true');
 });
@@ -164,19 +163,22 @@ test('AT6.19 clicking a node name in a proof reveals and flashes that card (prov
   const ref = goal.locator('.tl-ref[data-ref="Spyro.pg_no_dark_past.holds"]');
   await expect(ref).toHaveText('pg_no_dark_past.holds');
   await expect(ref).toHaveAttribute('data-ref-node', 'pg-no-dark-past');
+  // The expanded card opens over the canvas, which clips it: pan its proof into view first.
+  await panToShow(page, ref);
   await ref.hover();
   await expect(page.getByTestId('ref-tooltip')).toContainText('PG games cannot have characters with dark pasts');
-  // Make the Assumptions column long (open the Vocabulary group, expand its last card) and scroll it away from the
-  // card first: the click must bring the card back into view.
-  await page.getByTestId('vocabulary').locator('.tl-vocab__toggle').click();
+  // Make the AXIOMS column long (expand its other cards) and scroll it away from the card first: the click must bring
+  // the card back into view.
   await card(page, 'new-spyro-pg').locator('.tl-card__chevron').click();
-  await list(page, 'ASSUMPTION').evaluate((el) => {
+  await card(page, 'cynder-dark-past').locator('.tl-card__chevron').click();
+  await list(page, 'AXIOM').evaluate((el) => {
     el.scrollTop = el.scrollHeight;
   });
   await settle(page);
-  expect(await inColumnView(page, '[data-node-id="pg-no-dark-past"]')).toBe(false);
+  expect(await inView(page, '[data-node-id="pg-no-dark-past"]')).toBe(false);
+  await panToShow(page, ref);
   await ref.click();
   await expect(card(page, 'pg-no-dark-past')).toHaveAttribute('data-highlight', 'true');
-  expect(await inColumnView(page, '[data-node-id="pg-no-dark-past"]')).toBe(true);
+  await expect.poll(() => inView(page, '[data-node-id="pg-no-dark-past"]')).toBe(true);
   expect(await postedOfType(page, 'select')).toEqual([]);
 });

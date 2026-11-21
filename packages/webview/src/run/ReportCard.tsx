@@ -1,8 +1,9 @@
 /**
  * The report card of a round (03 section 7; revealed after the statements, D-19): the verdict for the target, what
- * the proof rests on (cards, presuppositions, anything else), unused premises and the self-evident flag (G6, never
- * failures), "consistency unchecked" (D-6, until M3), Claude's summary, gap, conflict and every interpretive choice it
- * made without asking, each with "Ask me instead" (D-20: prefilled Feedback), Claude's suggested premises, the check
+ * the proof rests on (cards, presuppositions, anything else), unused premises and the "proved from nothing" flag (G6,
+ * never failures; slice 1e's words, S18), "consistency unchecked" (D-6, until M3), Claude's summary, gap, conflict and every interpretive choice it
+ * made without asking, each with "Ask me instead" (D-20: prefilled Feedback), Claude's suggested premises, a card the
+ * proof needs but nobody selected (spec v4.1 A10, slice 1e: "Draw (or select) the arrow from ‹card› and run again"), the check
  * attempts (A2's gate, in the user's words), the changed files with their raw diff, usage and durations.
  */
 import { PRESUPPOSITION_PREFIX, type ProposalView, type TlNode } from '@telelean/core';
@@ -11,7 +12,7 @@ import { AgentText, UserText } from '../common/AgentText';
 import { InlineCode } from '../common/InlineCode';
 import { KIND_GLYPH } from '../labels';
 import { footprintEntries, presuppositionLabel, vocabIndex } from '../model/cardData';
-import { CHECK_STEP, formatCost, formatDuration, formatTokens, suggestedGhosts, VERDICT_LABEL } from '../model/run';
+import { CHECK_STEP, formatCost, formatDuration, formatTokens, missingArrowHints, suggestedGhosts, VERDICT_LABEL } from '../model/run';
 import { useBoard, useBoardActions } from '../state/context';
 import { GhostSuggestion } from './GhostSuggestion';
 
@@ -54,6 +55,9 @@ export function ReportCard({ proposal }: { proposal: ProposalView }) {
   const vocab = useMemo(() => vocabIndex(proposal.graph.vocabulary), [proposal.graph.vocabulary]);
   const footprint = useMemo(() => footprintEntries(report.footprint, nodes, subject, vocab), [report.footprint, nodes, subject, vocab]);
   const ghosts = useMemo(() => suggestedGhosts(run, proposal), [run, proposal]);
+  // Spec v4.1 A10 (slice 1e): a card the proof needs but nobody selected, named in Claude's gap.
+  const premises = run?.runId === proposal.runId ? run.premises : [];
+  const hints = useMemo(() => missingArrowHints(report, premises, nodes), [report, premises, nodes]);
   const target = nodes[report.target];
   const proved = report.verdict === 'proved';
 
@@ -78,7 +82,7 @@ export function ReportCard({ proposal }: { proposal: ProposalView }) {
       {proved ? (
         <section className="tl-report__section" data-testid="report-footprint">
           <h4 className="tl-details__heading">Rests on</h4>
-          {footprint.length === 0 ? <p className="tl-details__none">No assumptions at all.</p> : null}
+          {footprint.length === 0 ? <p className="tl-details__none">Nothing at all.</p> : null}
           <ul className="tl-details__list">
             {footprint.map((entry, i) => (
               <li key={i}>
@@ -89,7 +93,7 @@ export function ReportCard({ proposal }: { proposal: ProposalView }) {
                     {presuppositionLabel(entry.name, subject, vocab)}
                   </span>
                 ) : entry.kind === 'axiom' ? (
-                  <span className="tl-chip tl-chip--attention" title="An axiom that is neither one of your assumptions nor vocabulary">
+                  <span className="tl-chip tl-chip--attention" title="A Lean axiom that is neither one of your axiom cards nor vocabulary">
                     axiom <code>{entry.name}</code>
                   </span>
                 ) : (
@@ -102,7 +106,8 @@ export function ReportCard({ proposal }: { proposal: ProposalView }) {
       ) : null}
       {report.selfEvident ? (
         <p className="tl-report__flag" data-testid="report-self-evident">
-          <span className="codicon codicon-info" aria-hidden="true" /> Self-evident: proved without any of your premises.
+          {/* Spec v4.1 S18, RV-1 (slice 1e; was "Self-evident"). */}
+          <span className="codicon codicon-info" aria-hidden="true" /> Proved from nothing: check what the statement says (the proof uses none of your arrows).
         </p>
       ) : null}
       {report.unusedPremises.length > 0 ? (
@@ -133,6 +138,15 @@ export function ReportCard({ proposal }: { proposal: ProposalView }) {
         <section className="tl-report__section">
           <h4 className="tl-details__heading">What is missing, according to Claude</h4>
           <AgentText text={report.gap} marker="prefix" block testId="report-gap" />
+          {hints.length > 0 ? (
+            <ul className="tl-details__list" data-testid="report-missing-arrows">
+              {hints.map((hint) => (
+                <li key={hint.id} data-hint={hint.kind} data-card={hint.id}>
+                  <span className="codicon codicon-arrow-right" aria-hidden="true" /> {hint.text}
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </section>
       ) : null}
       {report.conflict && report.conflict.length > 0 ? (

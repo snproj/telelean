@@ -9,12 +9,16 @@
  * the manifest; the fallbacks are the ids' default values, for the Chrome test harness.)
  */
 :root {
-  --tl-gap: 56px;
-  /* Columns never get narrower than this: a narrower board (a file opened beside it) scrolls sideways instead. */
-  --tl-col-min: 220px;
-  --tl-kind-a: var(--vscode-telelean-kindAssumption, var(--vscode-charts-purple));
-  --tl-kind-d: var(--vscode-telelean-kindDerivation, var(--vscode-charts-green));
-  --tl-kind-g: var(--vscode-telelean-kindGoal, var(--vscode-charts-orange));
+  /* Spec v4 BD-1 (slice 1c): the AXIOMS column's width, and a card's width on the canvas (closed, and expanded). */
+  --tl-col-width: clamp(220px, 26%, 340px);
+  --tl-card-w: 260px;
+  --tl-card-w-open: 420px;
+  /* Spec v4 BD-9: the axiom stripe keeps the old Assumption colour, the proposition stripe takes the old Goal colour,
+     and green is kept for what Lean checked (spec v4 BD-9): the green glow of an established card and the band of a
+     checked inference (slice 1d: --tl-proved). */
+  --tl-kind-a: var(--vscode-telelean-kindAxiom, var(--vscode-charts-purple));
+  --tl-kind-p: var(--vscode-telelean-kindProposition, var(--vscode-charts-orange));
+  --tl-proved: var(--vscode-telelean-proved, var(--vscode-testing-iconPassed, #73c991));
   --tl-aura: var(--vscode-telelean-formalizedAura, var(--vscode-charts-blue));
   /* M1 colours (contributed by the extension; the fallbacks serve the Chrome test harness and older hosts). */
   --tl-vocab: var(--vscode-telelean-vocabulary, var(--vscode-textLink-foreground, #3794ff));
@@ -35,9 +39,8 @@
 [data-diff='changed'] { --tl-diff: var(--tl-diff-changed); }
 [data-diff='removed'] { --tl-diff: var(--tl-diff-removed); }
 
-[data-kind='ASSUMPTION'] { --tl-kind: var(--tl-kind-a); }
-[data-kind='DERIVATION'] { --tl-kind: var(--tl-kind-d); }
-[data-kind='GOAL'] { --tl-kind: var(--tl-kind-g); }
+[data-kind='AXIOM'] { --tl-kind: var(--tl-kind-a); }
+[data-kind='PROPOSITION'] { --tl-kind: var(--tl-kind-p); }
 
 html,
 body,
@@ -116,28 +119,46 @@ body {
   font-size: 12px;
 }
 .tl-banner .codicon { margin-top: 1px; color: var(--tl-info); }
+/* BD-9's eight entries wrap on a narrow board instead of running off the toolbar (fixer 1g). */
 .tl-legend {
   display: inline-flex;
-  gap: 14px;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  min-width: 0;
   color: var(--vscode-descriptionForeground);
   font-size: 11px;
 }
 .tl-legend__item { display: inline-flex; align-items: center; gap: 5px; }
 .tl-legend__line { stroke: var(--tl-edge); stroke-width: 1.5; }
-.tl-legend__line--declared { stroke-dasharray: 5 4; }
+.tl-legend__line--declared { stroke-width: 2.2; stroke-linecap: round; stroke-dasharray: 0 5; }
 .tl-legend__line--mismatch { stroke: var(--tl-warn); }
 .tl-legend__head { fill: var(--tl-edge); }
 .tl-legend__head--mismatch { fill: var(--tl-warn); }
 .tl-legend__head--hollow { fill: var(--vscode-editor-background); stroke: var(--tl-edge); stroke-width: 1.2; }
-.tl-legend__aura {
+.tl-legend__aura,
+.tl-legend__glow,
+.tl-legend__pending {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 14px;
-  height: 10px;
+  height: 11px;
   border-radius: 3px;
   background: var(--vscode-editorWidget-background);
-  box-shadow: 0 0 0 1px var(--tl-aura), 0 0 6px 1px color-mix(in srgb, var(--tl-aura) 55%, transparent);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
 }
+.tl-legend__aura { color: var(--tl-aura); box-shadow: 0 0 0 1px var(--tl-aura), 0 0 6px 1px color-mix(in srgb, var(--tl-aura) 55%, transparent); }
+/* Slice 1d (BD-9): established (the green glow, "✓"), pending proof ("⧗", dashed), the band (a bracket with its seal). */
+.tl-legend__glow { color: var(--tl-proved); box-shadow: 0 0 0 1px var(--tl-proved), 0 0 6px 1px color-mix(in srgb, var(--tl-proved) 55%, transparent); }
+.tl-legend__pending { border: 1px dashed var(--vscode-editorWarning-foreground); color: var(--vscode-editorWarning-foreground); box-sizing: border-box; }
+.tl-legend__band { fill: none; stroke: var(--tl-proved); stroke-width: 2; }
+.tl-legend__seal { fill: var(--tl-proved); }
+.tl-legend__check { fill: var(--vscode-editor-background); font-size: 7px; font-weight: 700; }
 
-/* ---------- board: three columns between two SVG edge layers ---------- */
+/* ---------- board (spec v4 BD-1, slice 1c): the Vocabulary and Definitions band above; below it, the AXIOMS column
+   left of the PROPOSITIONS canvas, with one arrow overlay under both ---------- */
 /* The board area and the run panel beside it (M2; below it on a narrow board). */
 .tl-workspace {
   flex: 1 1 auto;
@@ -154,27 +175,22 @@ body {
   display: flex;
   flex-direction: column;
 }
-/* Below three readable columns, the board scrolls sideways (the columns keep --tl-col-min, words never break). */
-.tl-board-scroll {
+/* The band, its divider and the board, top to bottom. */
+.tl-board-area {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
-  overflow-x: auto;
-  overflow-y: hidden;
+  flex-direction: column;
 }
-.tl-board-scroll::-webkit-scrollbar { height: 10px; }
-.tl-board-scroll::-webkit-scrollbar-thumb { background: var(--vscode-scrollbarSlider-background); }
-.tl-board-scroll::-webkit-scrollbar-thumb:hover { background: var(--vscode-scrollbarSlider-hoverBackground); }
 .tl-board {
-  position: relative;
-  flex: 1 0 0%;
-  min-width: calc(3 * var(--tl-col-min) + 2 * var(--tl-gap) + 28px); /* 28px: the columns' side padding */
+  position: relative; /* the overlay fills it */
+  flex: 1 1 auto;
   min-height: 0;
-  overflow: hidden;
-}
-/* A narrow board keeps its arrows' gutters but makes them narrower before it scrolls. */
-@media (max-width: 860px) {
-  :root { --tl-gap: 40px; }
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  overflow: clip;
+  user-select: none; /* a drag on empty canvas never selects text (the Lean code keeps user-select: text) */
 }
 .tl-board__waiting {
   position: absolute;
@@ -185,22 +201,19 @@ body {
   transform: translate(-50%, -50%);
   color: var(--vscode-descriptionForeground);
 }
-.tl-columns {
-  position: relative;
-  z-index: 1;
-  box-sizing: border-box;
-  height: 100%;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(var(--tl-col-min), 1fr));
-  column-gap: var(--tl-gap);
-  padding: 8px 14px 0;
-}
+/* The AXIOMS column: above the overlay (the arrows run under its cards), scrolling on its own. */
 .tl-col {
   position: relative; /* the drop zone is positioned inside it */
+  z-index: 1;
+  box-sizing: border-box;
+  flex: 0 0 var(--tl-col-width);
+  width: var(--tl-col-width);
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  padding: 8px 6px 0 14px;
+  border-right: 1px solid var(--vscode-panel-border);
 }
 .tl-col__header {
   flex: none;
@@ -241,6 +254,31 @@ body {
   font-weight: 600;
   color: var(--tl-kind);
 }
+/* BD-1: "also assumed: K pending claims, N existence assumptions, M hidden assumptions", each a link. */
+.tl-col__assumed {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 4px;
+  padding: 3px 4px 0;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+.tl-col__assumed-label { flex: none; }
+.tl-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--vscode-textLink-foreground);
+  font: inherit;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.tl-link:hover { color: var(--vscode-textLink-activeForeground, var(--vscode-textLink-foreground)); }
+.tl-link:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: 1px; }
 /* "▲ n linked" (header) and "▼ n linked" (footer): outside the scrolling list, so they never cover a card. */
 .tl-col__badge-slot {
   flex: none;
@@ -249,7 +287,7 @@ body {
 }
 .tl-col__drop-label + .tl-col__badge-slot { margin-left: 6px; }
 .tl-board[data-dragging] .tl-col__badge-slot { display: none; } /* the drop label owns the header during a drag */
-/* The drop zone of a column the dragged card would change kind in (D-17): what the drop does, from D-11. */
+/* The drop zone of a part the dragged card would change kind in (D-17): what the drop does, from D-11. */
 .tl-dropzone {
   position: absolute;
   z-index: 3;
@@ -269,7 +307,11 @@ body {
 .tl-dropzone[data-active] { border-style: solid; border-width: 2px; }
 .tl-dropzone__summary { font-weight: 600; color: var(--vscode-foreground); }
 .tl-dropzone[data-confirm] .tl-dropzone__summary { color: var(--tl-warn); }
+/* Spec v4 AR-6: an axiom dropped on the propositions is refused; the zone says how to make it a proposition. */
+.tl-dropzone[data-refused] { border-color: var(--tl-warn); }
+.tl-dropzone[data-refused] .tl-dropzone__summary { color: var(--tl-warn); }
 .tl-dropzone__detail { font-size: 11.5px; line-height: 1.35; color: var(--vscode-descriptionForeground); }
+.tl-canvas > .tl-dropzone { left: 16px; right: auto; max-width: min(420px, calc(100% - 32px)); bottom: 16px; }
 .tl-col__footer {
   flex: none;
   box-sizing: border-box;
@@ -285,14 +327,13 @@ body {
   overflow-x: hidden;
   overflow-y: auto;
   padding: 4px 2px 36px;
-  background: transparent; /* the under-layer edges show through the gaps */
+  background: transparent; /* the overlay's arrows show through the gaps */
 }
 .tl-col__list[data-empty] {
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
-/* An empty slot, opaque like a card: arrows that skip this column pass underneath instead of through the text. */
 .tl-col__first-step { color: var(--vscode-foreground); }
 .tl-col__empty {
   margin: 6px 4px;
@@ -313,9 +354,183 @@ body {
   outline: 2px solid var(--tl-kind);
   outline-offset: -2px;
 }
+/* Several propositions moved over the column: refused (a kind change is one card's), so no accepting cue. */
+.tl-col[data-drop='refused'] .tl-col__list {
+  outline: 2px dashed var(--tl-warn);
+  outline-offset: -2px;
+}
 .tl-col__list::-webkit-scrollbar { width: 10px; }
 .tl-col__list::-webkit-scrollbar-thumb { background: var(--vscode-scrollbarSlider-background); }
 .tl-col__list::-webkit-scrollbar-thumb:hover { background: var(--vscode-scrollbarSlider-hoverBackground); }
+
+/* ---------- the PROPOSITIONS canvas (BD-3): a clipping viewport holding one transformed layer ---------- */
+/*
+ * The viewport and its layer let the pointer through (to the arrows of the overlay underneath, and to the board, whose
+ * handlers pan, zoom and open the menu); the cards, the toolbar and the badges take it. The view's transform arrives as
+ * --tl-tx, --tl-ty and --tl-s on the viewport (CanvasView sets them through the CSSOM), each card's place as --tl-x and
+ * --tl-y on its slot. No permanent will-change: the layer is promoted only while it pans, zooms or moves a card.
+ */
+.tl-canvas {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: clip;
+  outline: none;
+  pointer-events: none;
+  /* A touch or pen drag on a card moves it (BoardInput), instead of the browser's own panning. */
+  touch-action: none;
+}
+.tl-canvas:focus-visible { box-shadow: inset 0 0 0 1px var(--vscode-focusBorder); }
+/* During a drag of an axiom, the canvas is a drop target (it refuses it: AR-6). */
+.tl-board[data-dragging] .tl-canvas { pointer-events: auto; }
+.tl-canvas[data-drop='active'] { box-shadow: inset 0 0 0 2px var(--tl-warn); }
+.tl-canvas__layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  transform-origin: 0 0;
+  transform: translate(var(--tl-tx, 0px), var(--tl-ty, 0px)) scale(var(--tl-s, 1));
+}
+.tl-board[data-panning] .tl-canvas__layer,
+.tl-board[data-moving] .tl-canvas__layer { will-change: transform; }
+.tl-board[data-panning] { cursor: grabbing; }
+.tl-canvas__slot {
+  position: absolute;
+  left: var(--tl-x, 0px);
+  top: var(--tl-y, 0px);
+  z-index: 1;
+  width: var(--tl-card-w);
+  pointer-events: auto;
+}
+.tl-canvas__slot > .tl-card { margin: 0; }
+/* BD-3: an expanded card opens over the cards below it (and over the arrows, which run under every card). */
+.tl-canvas__slot[data-expanded] { z-index: 2; width: var(--tl-card-w-open); }
+.tl-canvas__slot[data-moving] { z-index: 3; }
+.tl-canvas__slot[data-moving] > .tl-card { cursor: grabbing; box-shadow: 0 4px 14px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.4)); }
+.tl-board[data-moving] .tl-edge:not(.tl-edge--focus) { stroke-opacity: 0.5; }
+.tl-canvas__empty {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  width: min(420px, calc(100% - 48px));
+  margin: 0;
+  padding: 14px 16px;
+  transform: translate(-50%, -50%);
+  border: 1px dashed color-mix(in srgb, var(--tl-kind-p) 55%, transparent);
+  border-radius: 5px;
+  font-size: 12px;
+  text-align: center;
+  color: var(--vscode-descriptionForeground);
+}
+/* The toolbar (top right): zoom, Fit all, Zoom to selection, Tidy layout. */
+.tl-canvas__tools {
+  position: absolute;
+  z-index: 4;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100% - 16px);
+  padding: 3px 4px;
+  border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
+  border-radius: 4px;
+  background: var(--vscode-editorWidget-background);
+  box-shadow: 0 1px 4px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.25));
+  pointer-events: auto;
+}
+.tl-canvas__zoom { min-width: 3.4em; font-size: 11px; font-variant-numeric: tabular-nums; text-align: center; color: var(--vscode-descriptionForeground); }
+/* BD-4: one "n linked" slot per canvas edge ("◀ 2 linked", "▲ 1 linked", "▶ …", "▼ …"). */
+.tl-canvas__badge-slot {
+  position: absolute;
+  z-index: 4;
+  display: flex;
+  pointer-events: auto;
+}
+.tl-canvas__badge-slot[data-side='left'] { left: 6px; top: 50%; transform: translateY(-50%); }
+.tl-canvas__badge-slot[data-side='right'] { right: 6px; top: 50%; transform: translateY(-50%); }
+/* The top edge's badge sits at its left end: the toolbar holds the right end. */
+.tl-canvas__badge-slot[data-side='top'] { top: 8px; left: 12px; }
+.tl-canvas__badge-slot[data-side='bottom'] { bottom: 8px; left: 50%; transform: translateX(-50%); }
+.tl-canvas__badge-slot:empty { display: none; }
+
+/* ---------- the Vocabulary and Definitions band (BD-1), above the board ---------- */
+.tl-top {
+  flex: none;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin: 6px 14px 0;
+}
+.tl-top:not([data-collapsed]) {
+  flex: 0 0 var(--tl-top-size, 28%);
+  min-height: 72px;
+  max-height: calc(100% - 140px);
+}
+.tl-top__columns {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr); /* the columns fill the band and scroll; they never grow it */
+  gap: 10px;
+  margin-top: 4px;
+}
+.tl-top__sep { color: var(--vscode-descriptionForeground); }
+.tl-vcol {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.tl-vcol__header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px 2px;
+  border-bottom: 1px solid color-mix(in srgb, var(--tl-vocab) 45%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.tl-vcol__title { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--tl-vocab); }
+.tl-vcol__list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 2px 4px 6px 2px;
+}
+.tl-vcol__list::-webkit-scrollbar { width: 10px; }
+.tl-vcol__list::-webkit-scrollbar-thumb { background: var(--vscode-scrollbarSlider-background); }
+.tl-vcol__list::-webkit-scrollbar-thumb:hover { background: var(--vscode-scrollbarSlider-hoverBackground); }
+.tl-vcol__empty { margin: 6px 2px; font-size: 12px; color: var(--vscode-descriptionForeground); }
+/* The divider below the band: drag to resize, or focus and use the arrow keys. */
+.tl-top__divider {
+  flex: none;
+  height: 6px;
+  margin: 2px 14px 0;
+  border-radius: 3px;
+  cursor: row-resize;
+  touch-action: none;
+}
+.tl-top__divider::after {
+  content: '';
+  display: block;
+  height: 2px;
+  margin-top: 2px;
+  background: var(--vscode-panel-border);
+}
+.tl-top__divider:hover::after,
+.tl-top__divider:focus-visible::after { background: var(--vscode-focusBorder); }
+.tl-top__divider:focus-visible { outline: none; }
 
 /* ---------- cards ---------- */
 .tl-card {
@@ -346,8 +561,16 @@ body {
   outline-offset: 0;
 }
 /* The blue aura: formalised in Lean (D-15). */
-.tl-card[data-formal='formalized'] {
+.tl-card[data-glow='formalized'] {
   box-shadow: 0 0 0 1px var(--tl-aura), 0 0 10px 2px color-mix(in srgb, var(--tl-aura) 55%, transparent);
+}
+/* Spec v4.1 BD-6 (slice 1d): the green glow of an established card replaces the blue one (with its "✓ established"
+   chip: never colour alone). A card whose facts are out of date keeps its last glow, dimmed (never the green one). */
+.tl-card[data-glow='established'] {
+  box-shadow: 0 0 0 1px var(--tl-proved), 0 0 10px 2px color-mix(in srgb, var(--tl-proved) 55%, transparent);
+}
+.tl-card[data-glow='formalized'][data-glow-dim] {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tl-aura) 45%, transparent), 0 0 8px 1px color-mix(in srgb, var(--tl-aura) 22%, transparent);
 }
 .tl-card[data-dragging] { opacity: 0.45; }
 .tl-card[data-drop-edge]::after {
@@ -428,6 +651,7 @@ body {
   color: var(--vscode-descriptionForeground);
 }
 .tl-chip--lean { border-color: var(--tl-aura); color: var(--tl-aura); }
+.tl-chip--proved { border-color: var(--tl-proved); color: var(--tl-proved); font-weight: 600; }
 .tl-chip--attention {
   border-color: var(--vscode-editorWarning-foreground);
   color: var(--vscode-editorWarning-foreground);
@@ -439,6 +663,8 @@ body {
 button.tl-chip { background: none; font: inherit; font-size: 10.5px; cursor: pointer; }
 button.tl-chip:hover { background: var(--vscode-toolbar-hoverBackground); color: var(--vscode-foreground); }
 button.tl-chip:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: 1px; }
+button.tl-chip:disabled { cursor: default; opacity: 0.6; }
+button.tl-chip:disabled:hover { background: none; color: inherit; }
 
 /* One "needs attention" badge: the node's error and warning diagnostics. */
 .tl-attention {
@@ -460,6 +686,42 @@ button.tl-chip:focus-visible { outline: 1px solid var(--vscode-focusBorder); out
 
 /* An add the host has not confirmed yet. */
 .tl-card[data-provisional] { border-style: dashed; }
+/*
+ * Slice 1c2 (AR-1): the arrow handle at a card's right edge, on its title line (where the arrow will start), shown
+ * while the card is hovered: dragging it to another card draws an arrow. It is not rendered while the board is locked,
+ * in the Proposed view, or on a card the host has not written yet. On the canvas it keeps its size on screen whatever
+ * the zoom (the layer is scaled by --tl-s).
+ */
+.tl-handle {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  right: -6px;
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--tl-edge-focus);
+  border-radius: 50%;
+  background: var(--vscode-editorWidget-background);
+  cursor: crosshair;
+  opacity: 0;
+  transition: opacity 80ms ease-out;
+}
+.tl-canvas .tl-handle { transform: scale(calc(1 / var(--tl-s, 1))); }
+.tl-card:hover > .tl-handle,
+.tl-card[data-draw-source] > .tl-handle { opacity: 1; }
+.tl-handle:hover { background: var(--tl-edge-focus); }
+/* Slice 1d (ES-9): no arrow can be drawn now (the Proposed view, an edit session): the handle is shown disabled, with
+   the reason as its tooltip. */
+.tl-handle[data-handle-disabled] { border-style: dashed; border-color: var(--vscode-disabledForeground, var(--vscode-descriptionForeground)); cursor: not-allowed; }
+.tl-handle[data-handle-disabled]:hover { background: var(--vscode-editorWidget-background); }
+.tl-board[data-moving] .tl-handle,
+.tl-board[data-panning] .tl-handle,
+.tl-board[data-dragging] .tl-handle,
+.tl-board[data-selecting] .tl-handle { opacity: 0; }
+/* While an arrow is drawn: the card under the pointer, where a release draws it (ok) or not (refused, with why). */
+.tl-card[data-draw-target='ok'] { outline: 2px solid var(--tl-edge-focus); outline-offset: 2px; }
+.tl-card[data-draw-target='refused'] { outline: 2px dashed var(--tl-warn); outline-offset: 2px; }
 
 /* A short highlight (from the uses dropdown, an identifier in the code, Depends on / Used by): an outline and a halo
    in the highlight colour over a light tint, so the item's own text stays readable in light and dark themes. */
@@ -607,6 +869,8 @@ button.tl-chip:focus-visible { outline: 1px solid var(--vscode-focusBorder); out
   font-weight: 600;
 }
 .tl-choice:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: 1px; }
+.tl-choice:disabled { opacity: 0.5; cursor: default; }
+.tl-choice:disabled:hover { background: none; }
 
 /* Presupposition chips (D-3b): "assumes characters exist". */
 .tl-presup {
@@ -626,15 +890,15 @@ button.tl-presup { cursor: pointer; }
 button.tl-presup:hover { background-color: var(--vscode-toolbar-hoverBackground); }
 button.tl-presup:focus-visible { outline: 1px solid var(--vscode-focusBorder); }
 
-/* ---------- Vocabulary group (top of the Assumptions column, D-3) ---------- */
+/* ---------- Vocabulary items (D-3), in the Vocabulary and Definitions band above the board (BD-1) ---------- */
 .tl-vocab {
-  margin: 4px 4px 8px;
-  padding: 4px 6px 6px;
+  margin: 6px 14px 0;
+  padding: 3px 8px 6px;
   border: 1px solid color-mix(in srgb, var(--tl-vocab) 45%, transparent);
   border-radius: 5px;
-  background: var(--vscode-editor-background); /* opaque: arrows pass underneath */
+  background: var(--vscode-editor-background);
 }
-.tl-vocab[data-collapsed] { padding-bottom: 4px; }
+.tl-vocab[data-collapsed] { padding-bottom: 3px; }
 .tl-vocab__toggle {
   display: flex;
   align-items: center;
@@ -648,6 +912,7 @@ button.tl-presup:focus-visible { outline: 1px solid var(--vscode-focusBorder); }
   text-align: left;
   cursor: pointer;
 }
+.tl-vocab__toggle { flex: none; flex-wrap: wrap; row-gap: 2px; }
 .tl-vocab__toggle:focus-visible { outline: 1px solid var(--vscode-focusBorder); }
 .tl-vocab__title { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--tl-vocab); }
 .tl-vocab__section { margin-top: 6px; }
@@ -711,39 +976,103 @@ pre.tl-lean *::selection { background: var(--vscode-editor-selectionBackground, 
 .tl-ref[data-ref-node] { border-bottom-color: color-mix(in srgb, var(--tl-aura) 70%, transparent); }
 .tl-ref:hover { background: color-mix(in srgb, var(--tl-vocab) 18%, transparent); }
 
-/* ---------- edge overlay ---------- */
+/* ---------- edge overlay (one SVG under the AXIOMS column and the canvas: arrows run beneath the cards) ---------- */
 svg.tl-edges {
   position: absolute;
   inset: 0;
+  z-index: 0;
   width: 100%;
   height: 100%;
   overflow: hidden;
-  pointer-events: none; /* wheel and clicks reach the columns underneath */
+  pointer-events: none; /* the board's handlers get the pointer; only arrows with a tooltip and the ∅ marks react to it */
 }
-.tl-edges--under { z-index: 0; }
-.tl-edges--over { z-index: 2; }
 .tl-edge {
   fill: none;
   stroke: var(--tl-edge);
   stroke-width: 1.5;
+  stroke-linecap: round;
 }
-/* Line pattern means epistemic status in every mode: dashed = declared, solid = verified (D-13, D-15). */
-.tl-edge--declared { stroke-dasharray: 5 4; }
+/* Line pattern means epistemic status in every mode (D-13, D-15, BD-5): round dots = declared, solid = verified. The
+   dots are zero-length dashes with round caps, so they read as dots at 1x and at 2x. */
+.tl-edge--declared { stroke-width: 2.4; stroke-dasharray: 0 6; }
 .tl-edge--mismatch { stroke: var(--tl-warn); }
 /* A statement mentions another node's statement: thin, and drawn only while one end has focus. */
 .tl-edge--reference { stroke-width: 1; stroke-opacity: 0.7; }
 .tl-edge--focus { stroke: var(--tl-edge-focus); stroke-width: 2.25; }
+.tl-edge--declared.tl-edge--focus { stroke-width: 3; }
 .tl-edge--reference.tl-edge--focus { stroke-width: 1.25; }
-/* Conditional and mismatch arrows carry a tooltip (<title>), so their stroke reacts to the pointer. */
-.tl-edge--conditional,
-.tl-edge--mismatch { pointer-events: visibleStroke; cursor: help; }
+/* Slice 1c2 (CM-2: "the clickable area is wider than the line"): each drawn arrow, and each arrow a proof uses that
+   nobody drew, has a transparent wide hit path right after it, which takes the pointer (the visible line takes none)
+   and carries the arrow's tooltip. A drawn arrow is clicked to select it; an undeclared one (TL107) has its menu only.
+   A mention (lean-ref) has none: it is not selectable. Over the AXIOMS column the list lies above them, so the board
+   finds those arrows by distance instead (and shows the pointer cursor on the list). */
+.tl-edge-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 12;
+  stroke-linecap: round;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+.tl-edge-hit[data-hit='undeclared'] { cursor: help; }
+.tl-board[data-moving] .tl-edge-hit,
+.tl-board[data-panning] .tl-edge-hit,
+.tl-board[data-drawing] .tl-edge-hit,
+.tl-board[data-selecting] .tl-edge-hit { pointer-events: none; }
+.tl-board[data-arrow-hover] .tl-col,
+.tl-board[data-arrow-hover] .tl-col__list { cursor: pointer; }
+/* The arrow under the pointer: thicker, with a soft halo (its colour stays: a warning arrow stays the warning colour). */
+.tl-edge--hover { stroke-width: 2.6; filter: drop-shadow(0 0 2px var(--tl-edge-focus)); }
+.tl-edge--declared.tl-edge--hover { stroke-width: 3.2; }
+/* A selected arrow (CM-2): the focus colour, thicker, with a soft halo (never colour alone: also the width). After the
+   hover rules, so hovering a selected arrow never makes it thinner (slice 1d carry-over). */
+.tl-edge--selected { stroke: var(--tl-edge-focus); stroke-width: 3; filter: drop-shadow(0 0 2px var(--tl-edge-focus)); }
+.tl-edge--declared.tl-edge--selected { stroke-width: 3.6; }
 .tl-board[data-dragging] .tl-edge:not(.tl-edge--focus) { stroke-opacity: 0.35; }
 .tl-marker path { fill: var(--tl-edge); }
 .tl-marker--focus path { fill: var(--tl-edge-focus); }
 .tl-marker--mismatch path { fill: var(--tl-warn); }
+/* A focused or selected TL107 arrow takes the focus colour, and keeps its notched head (never colour alone). */
+.tl-marker--mismatch-focus path { fill: var(--tl-edge-focus); }
 /* Hollow head: the source is taken as a hypothesis (the proof is conditional on it). */
 .tl-marker--conditional path { fill: var(--vscode-editor-background); stroke: var(--tl-edge); stroke-width: 1.3; }
 .tl-marker--conditional-focus path { fill: var(--vscode-editor-background); stroke: var(--tl-edge-focus); stroke-width: 1.5; }
+/* AR-5: "follows from nothing", a short stub arrow labelled ∅ into the card's left edge. The mark is the user's own
+   declaration, so it is dotted like a declared arrow (BD-5): never solid, which would read as "Lean checked it". A
+   proof from nothing gets 1d's band drawn over the stub instead. Its <title> ("Follows from nothing") needs the
+   pointer, so the mark takes it (the rest of the overlay lets it through); a right click on it opens its menu. */
+.tl-mark { pointer-events: visiblePainted; cursor: pointer; }
+/* Slice 1c2: the stub's wide hit line (a click selects the mark, like an arrow: AR-5, CM-2). */
+.tl-mark__hit { fill: none; stroke: transparent; stroke-width: 12; stroke-linecap: round; pointer-events: stroke; }
+.tl-mark--hover .tl-mark__line { stroke-width: 3; filter: drop-shadow(0 0 2px var(--tl-edge-focus)); }
+.tl-board[data-moving] .tl-mark,
+.tl-board[data-moving] .tl-mark__hit,
+.tl-board[data-panning] .tl-mark,
+.tl-board[data-panning] .tl-mark__hit,
+.tl-board[data-drawing] .tl-mark,
+.tl-board[data-drawing] .tl-mark__hit,
+.tl-board[data-selecting] .tl-mark,
+.tl-board[data-selecting] .tl-mark__hit { pointer-events: none; }
+.tl-mark__line { fill: none; stroke: var(--tl-edge); stroke-width: 2.4; stroke-linecap: round; stroke-dasharray: 0 6; }
+.tl-mark__label { fill: var(--vscode-foreground); font-family: var(--vscode-editor-font-family); font-size: 13px; font-weight: 600; }
+.tl-mark--focus .tl-mark__line { stroke: var(--tl-edge-focus); stroke-width: 3; }
+.tl-mark--selected .tl-mark__line { stroke: var(--tl-edge-focus); stroke-width: 3.6; filter: drop-shadow(0 0 2px var(--tl-edge-focus)); }
+.tl-mark--focus .tl-mark__label,
+.tl-mark--selected .tl-mark__label { fill: var(--tl-edge-focus); }
+
+/* Spec v4.1 BD-7 (slice 1d): the band. A bracket in the proved colour across the arrows a checked proof uses, just
+   before they reach the card (or across its ∅ stub); complete: solid, with a ✓ seal ("these suffice together"); open:
+   dashed, without the ✓ (never colour alone). Its <title> needs the pointer, so the band takes it (the rest of the
+   overlay lets it through); a press on it is a press on the canvas. */
+.tl-band { pointer-events: visiblePainted; cursor: help; }
+.tl-band__bar { fill: none; stroke: var(--tl-proved); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.tl-band--open .tl-band__bar { stroke-width: 2; stroke-dasharray: 3 3; }
+.tl-band__seal { fill: var(--tl-proved); stroke: var(--vscode-editor-background); stroke-width: 1; }
+.tl-band__check { fill: var(--vscode-editor-background); font-family: var(--vscode-font-family); font-weight: 700; }
+.tl-board[data-moving] .tl-band,
+.tl-board[data-panning] .tl-band,
+.tl-board[data-drawing] .tl-band,
+.tl-board[data-selecting] .tl-band { pointer-events: none; }
 
 .tl-badge {
   padding: 0 7px;
@@ -759,71 +1088,131 @@ svg.tl-edges {
 }
 .tl-badge[hidden] { display: none; }
 
-/* ---------- selection tray ---------- */
-.tl-tray {
+/* ---------- slice 1c2: what a gesture draws while it lasts (above both parts; never takes the pointer) ---------- */
+svg.tl-draft {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  display: none;
+}
+.tl-board[data-drawing] svg.tl-draft,
+.tl-board[data-selecting] svg.tl-draft { display: block; }
+.tl-board[data-drawing] { cursor: crosshair; }
+/* The rubber-band arrow: dotted like the declared arrow it will be, in the focus colour. */
+.tl-draft__arrow {
+  display: none;
+  fill: none;
+  stroke: var(--tl-edge-focus);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-dasharray: 0 6;
+}
+.tl-board[data-drawing] .tl-draft__arrow { display: inline; }
+/* The selection rectangle (CM-2). */
+.tl-draft__area {
+  display: none;
+  fill: color-mix(in srgb, var(--vscode-focusBorder) 10%, transparent);
+  stroke: var(--vscode-focusBorder);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+.tl-board[data-selecting] .tl-draft__area { display: inline; }
+/* AR-6: next to the pointer while an arrow is drawn, what a release over this card does (the impact, or why not). */
+.tl-draw-hint {
+  position: absolute;
+  z-index: 6;
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 320px;
+  padding: 5px 8px;
+  border: 1px solid var(--tl-edge-focus);
+  border-radius: 4px;
+  background: var(--vscode-editorWidget-background);
+  box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.36));
+  font-size: 11.5px;
+  line-height: 1.35;
+  pointer-events: none;
+}
+.tl-draw-hint[hidden] { display: none; }
+.tl-draw-hint[data-refused] { border-color: var(--tl-warn); }
+.tl-draw-hint__text { font-weight: 600; color: var(--vscode-foreground); }
+.tl-draw-hint[data-refused] .tl-draw-hint__text { color: var(--tl-warn); }
+.tl-draw-hint__line { color: var(--vscode-descriptionForeground); }
+/* AR-7: a proposition moved over the column: the drop label owns the header, as during a drag. */
+.tl-board[data-over-axioms] .tl-col__badge-slot { display: none; }
+
+/* ---------- the Context Menu section (spec v4.1 CM-1–CM-5, slice 1e; it replaces the selection tray) ---------- */
+/* One row of fixed height right below the toolbar: selecting never reflows the toolbar (CM-1). */
+.tl-context {
   flex: none;
   box-sizing: border-box;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 6px 8px;
-  min-height: 42px;
-  padding: 5px 14px;
-  border-top: 1px solid var(--vscode-panel-border);
+  gap: 8px;
+  height: 30px;
+  padding: 0 14px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--vscode-panel-border);
 }
-.tl-tray__hint { color: var(--vscode-descriptionForeground); }
-.tl-tray__hint--start { color: var(--vscode-foreground); }
-.tl-tray__hint--start .codicon { color: var(--tl-kind-a); vertical-align: -3px; }
-/* "These suffice" replaces the target's declared premises (D-13): which ones it would drop. */
-.tl-tray__replace {
-  flex: 1 1 100%;
-  font-size: 11.5px;
+.tl-context > * { flex: none; }
+.tl-context__label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--vscode-descriptionForeground);
 }
-.tl-tray__replace .codicon { color: var(--tl-warn); font-size: 13px; vertical-align: -2px; }
-.tl-tray__count { font-weight: 600; white-space: nowrap; }
-.tl-tray__chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; }
-.tl-tray__turnstile { padding: 0 2px; font-size: 15px; color: var(--vscode-descriptionForeground); }
-.tl-tray__target {
-  display: inline-flex;
-  align-items: center;
-  min-width: 90px;
-  min-height: 22px;
-  padding: 1px;
-  border: 1px dashed var(--vscode-descriptionForeground);
-  border-radius: 3px;
-}
-.tl-tray__target[data-filled] { border-color: transparent; }
-.tl-tray__slot { padding: 0 6px; color: var(--vscode-descriptionForeground); }
-.tl-tray__spacer { flex: 1 1 auto; }
-.tl-tray__blocked { font-size: 11px; color: var(--vscode-descriptionForeground); }
-.tl-tray__note { font-size: 11px; font-style: italic; color: var(--vscode-descriptionForeground); }
-.tl-tray__presup { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-left: 6px; }
-.tl-tray__presup-label { font-size: 11px; color: var(--vscode-descriptionForeground); }
-.tl-chipcard {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  max-width: 280px;
-  padding: 1px 2px 1px 4px;
-  border: 1px solid var(--vscode-widget-border, transparent);
-  border-left: 3px solid var(--tl-kind);
-  border-radius: 3px;
-  background: var(--vscode-editorWidget-background);
-}
-.tl-chipcard__text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* While a run is active (its buttons are disabled anyway): one line, the selection summed up. */
-.tl-tray--folded { flex-wrap: nowrap; min-height: 0; padding-top: 3px; padding-bottom: 3px; }
-.tl-tray--folded > * { flex: none; }
-.tl-tray__summary {
+.tl-context__empty {
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--vscode-descriptionForeground);
 }
-.tl-tray--folded > .tl-tray__summary { flex: 1 1 auto; }
-.tl-tray--folded > .tl-tray__blocked { flex: 0 1 auto; min-width: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tl-context__empty--start { color: var(--vscode-foreground); }
+.tl-context__empty--start .codicon { color: var(--tl-kind-a); vertical-align: -3px; }
+.tl-context__summary {
+  flex: 0 1 auto;
+  min-width: 40px;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.tl-context__formalize { white-space: nowrap; }
+.tl-context__formalize .codicon { margin-right: 4px; vertical-align: -2px; }
+/* CM-3: the reason it cannot be pressed (also on hover). */
+.tl-context__reason {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 35%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+/* The other actions, as icons; those that do not fit go into the "…" menu (CM-3). Slice 1g: at least one icon's width
+   (the "…" button's, ContextSection's MORE_WIDTH), so a long summary and reason never squeeze the "…" out of reach. */
+.tl-context__actions {
+  flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  min-width: 26px;
+  overflow: hidden;
+}
+.tl-context__actions .tl-icon-button { flex: none; }
 
 /* ---------- buttons ---------- */
 .tl-button {
@@ -919,6 +1308,9 @@ svg.tl-edges {
 .tl-menu__form { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 3px 4px; }
 .tl-menu__form .tl-input { flex: 1 1 140px; }
 .tl-menu__error { flex: 1 1 100%; margin: 0; font-size: 11px; color: var(--tl-error); }
+/* The right-click menu (CM-7) hangs from this 1-pixel point, placed at the pointer through the CSSOM. */
+.tl-menu-anchor { position: fixed; z-index: -1; width: 1px; height: 1px; pointer-events: none; }
+.tl-board-menu { min-width: 220px; }
 .tl-history { width: min(560px, calc(100vw - 16px)); }
 .tl-history__storage { padding: 2px 6px 6px; font-size: 11.5px; color: var(--vscode-descriptionForeground); }
 .tl-history__message { margin: 4px 6px; font-size: 12px; }
@@ -1017,7 +1409,7 @@ svg.tl-edges {
   outline-offset: 1px;
 }
 
-/* ---------- A|D|G prompt box ---------- */
+/* ---------- A|P prompt box ---------- */
 .tl-prompt {
   flex: none;
   display: flex;
@@ -1080,7 +1472,16 @@ svg.tl-edges {
   font: inherit;
 }
 .tl-prompt__input::placeholder { color: var(--vscode-input-placeholderForeground); }
+/* "New proposition here" (CM-7): the point on the canvas the next proposition goes to, with a ✕ to forget it. */
+.tl-prompt__place { flex: none; display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
+.tl-prompt__place-clear { display: inline-flex; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; }
+.tl-prompt__place-clear .codicon { font-size: 12px; }
+.tl-prompt__place-clear:focus-visible { outline: 1px solid var(--vscode-focusBorder); }
 .tl-prompt__input:focus { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
+/* Spec v4 ES-9 (slice 1f): nothing is added during an edit session; the placeholder says why. */
+.tl-prompt[data-locked] .tl-prompt__input:disabled,
+.tl-prompt[data-locked] .tl-prompt__why:disabled { opacity: 0.7; cursor: not-allowed; }
+.tl-prompt[data-locked] .tl-seg button:disabled { opacity: 0.6; cursor: default; }
 
 /* =====================================================================================================
    M2: runs, proposals, the review (docs/m2-plan.md section 6.4)
@@ -1121,7 +1522,7 @@ svg.tl-edges {
 /* The user's width (RunSplitter, a share of the workspace); the limits keep the board about two columns wide. */
 .tl-run[data-sized] { width: var(--tl-run-size); min-width: 260px; max-width: calc(100% - 560px); }
 /*
- * A narrow board keeps its three columns: the panel goes below it instead (run/RunPanel.tsx NARROW_QUERY repeats this
+ * A narrow board keeps its columns: the panel goes below it instead (run/RunPanel.tsx NARROW_QUERY repeats this
  * width). By default it takes what its content needs, up to 60% of the height; dragged, the size the user chose, with
  * room left for both.
  */
@@ -1388,7 +1789,6 @@ p.tl-run__hint { margin: 2px 0 6px; }
 .tl-vocab-review { padding: 4px 0; border-bottom: 1px solid color-mix(in srgb, var(--vscode-foreground) 10%, transparent); }
 .tl-check { display: inline-flex; align-items: flex-start; gap: 5px; font-size: 12px; cursor: pointer; }
 .tl-check input { margin: 2px 0 0; }
-.tl-lifecycle { margin: 3px 0; }
 .tl-definition {
   margin: 6px 0;
   padding: 6px 8px;
@@ -1450,8 +1850,8 @@ p.tl-run__hint { margin: 2px 0 6px; }
 .tl-proposal-banner__outcome .codicon { color: var(--tl-warn); vertical-align: -3px; }
 .tl-proposal-banner[data-outcome='gave-up'] .tl-proposal-banner__outcome .codicon { color: var(--tl-error); }
 .tl-seg--small button { padding: 1px 8px; font-size: 12px; }
-/* The proposed view: a quiet frame around the board (the cards carry the diff marks). */
-.tl-board[data-view='proposed'] .tl-col__list { background: color-mix(in srgb, var(--tl-diff-changed) 4%, transparent); }
+/* The proposed view: a quiet tint under the board (the cards carry the diff marks; the arrows show through). */
+.tl-board[data-view='proposed'] { background: color-mix(in srgb, var(--tl-diff-changed) 4%, transparent); }
 
 /* ---------- diff marks: glyph + word + colour + halo ---------- */
 .tl-diff {
@@ -1470,11 +1870,16 @@ p.tl-run__hint { margin: 2px 0 6px; }
 }
 .tl-diff__glyph { font-weight: 700; font-family: var(--vscode-editor-font-family); }
 .tl-card[data-diff] { box-shadow: 0 0 0 2px var(--tl-diff), 0 0 12px 3px color-mix(in srgb, var(--tl-diff) 45%, transparent); }
-.tl-card[data-formal='formalized'][data-diff] {
+.tl-card[data-glow='formalized'][data-diff] {
   box-shadow: 0 0 0 1px var(--tl-aura), 0 0 0 3px var(--tl-diff), 0 0 12px 4px color-mix(in srgb, var(--tl-diff) 45%, transparent);
+}
+.tl-card[data-glow='established'][data-diff] {
+  box-shadow: 0 0 0 1px var(--tl-proved), 0 0 0 3px var(--tl-diff), 0 0 12px 4px color-mix(in srgb, var(--tl-diff) 45%, transparent);
 }
 .tl-card[data-diff='removed'] .tl-card__text { text-decoration: line-through; opacity: 0.75; }
 .tl-card[data-proposed] { cursor: default; }
+/* Spec v4 ES-9 (slice 1f): the Current board is read-only during an edit session (no drag). */
+.tl-card[data-locked] { cursor: default; }
 .tl-vocab__item[data-diff] { box-shadow: 0 0 0 1px var(--tl-diff), 0 0 8px 2px color-mix(in srgb, var(--tl-diff) 40%, transparent); }
 .tl-vocab__presup[data-diff] { border-color: var(--tl-diff); box-shadow: 0 0 6px 1px color-mix(in srgb, var(--tl-diff) 40%, transparent); }
 .tl-vocab__presup .tl-diff__glyph { margin-right: 3px; color: var(--tl-diff); }
@@ -1558,12 +1963,30 @@ p.tl-run__hint { margin: 2px 0 6px; }
 /* ---------- high contrast: outlines instead of glows, borders everywhere ---------- */
 body.vscode-high-contrast .tl-card,
 body.vscode-high-contrast-light .tl-card { border-color: var(--vscode-contrastBorder); }
-body.vscode-high-contrast .tl-card[data-formal='formalized'],
-body.vscode-high-contrast-light .tl-card[data-formal='formalized'] {
+body.vscode-high-contrast .tl-card[data-glow='formalized'],
+body.vscode-high-contrast-light .tl-card[data-glow='formalized'] {
   box-shadow: none;
   outline: 2px solid var(--tl-aura);
   outline-offset: 1px;
 }
+/* Slice 1d (BD-6): the green glow becomes a 2 px outline in the proved colour, with its "✓ established" chip. */
+body.vscode-high-contrast .tl-card[data-glow='established'],
+body.vscode-high-contrast-light .tl-card[data-glow='established'] {
+  box-shadow: none;
+  outline: 2px solid var(--tl-proved);
+  outline-offset: 1px;
+}
+body.vscode-high-contrast .tl-card[data-glow='formalized'][data-glow-dim],
+body.vscode-high-contrast-light .tl-card[data-glow='formalized'][data-glow-dim] { outline-style: dashed; }
+/* The band: an outlined bracket with its ✓ (no fills, no halo). */
+body.vscode-high-contrast .tl-band__bar,
+body.vscode-high-contrast-light .tl-band__bar { stroke-width: 2; }
+body.vscode-high-contrast .tl-band__seal,
+body.vscode-high-contrast-light .tl-band__seal { fill: var(--vscode-editor-background); stroke: var(--tl-proved); stroke-width: 1.5; }
+body.vscode-high-contrast .tl-band__check,
+body.vscode-high-contrast-light .tl-band__check { fill: var(--tl-proved); }
+body.vscode-high-contrast .tl-legend__glow,
+body.vscode-high-contrast-light .tl-legend__glow { box-shadow: none; outline: 2px solid var(--tl-proved); }
 body.vscode-high-contrast .tl-card[data-selected],
 body.vscode-high-contrast-light .tl-card[data-selected] {
   box-shadow: inset 0 0 0 2px var(--vscode-contrastActiveBorder, var(--vscode-focusBorder));
@@ -1598,6 +2021,30 @@ body.vscode-high-contrast-light .tl-vocab__item[data-diff] {
 }
 body.vscode-high-contrast .tl-ghost,
 body.vscode-high-contrast-light .tl-ghost { opacity: 1; border-color: var(--vscode-contrastBorder); }
+/* Slice 1c: the canvas's focus ring, its toolbar and the selected arrows without glows. */
+body.vscode-high-contrast .tl-canvas:focus-visible,
+body.vscode-high-contrast-light .tl-canvas:focus-visible {
+  box-shadow: none;
+  outline: 1px solid var(--vscode-contrastActiveBorder, var(--vscode-focusBorder));
+  outline-offset: -2px;
+}
+body.vscode-high-contrast .tl-canvas__tools,
+body.vscode-high-contrast-light .tl-canvas__tools { box-shadow: none; border-color: var(--vscode-contrastBorder); }
+body.vscode-high-contrast .tl-edge--selected,
+body.vscode-high-contrast-light .tl-edge--selected,
+body.vscode-high-contrast .tl-mark--selected .tl-mark__line,
+body.vscode-high-contrast-light .tl-mark--selected .tl-mark__line { filter: none; stroke: var(--vscode-contrastActiveBorder, var(--vscode-focusBorder)); }
+body.vscode-high-contrast .tl-canvas__slot[data-moving] > .tl-card,
+body.vscode-high-contrast-light .tl-canvas__slot[data-moving] > .tl-card { box-shadow: none; outline: 2px dashed var(--vscode-contrastActiveBorder, var(--vscode-focusBorder)); }
+/* Slice 1c2: the hover look, the handle and the draw hint without glows. */
+body.vscode-high-contrast .tl-edge--hover,
+body.vscode-high-contrast-light .tl-edge--hover,
+body.vscode-high-contrast .tl-mark--hover .tl-mark__line,
+body.vscode-high-contrast-light .tl-mark--hover .tl-mark__line { filter: none; }
+body.vscode-high-contrast .tl-handle,
+body.vscode-high-contrast-light .tl-handle { border-color: var(--vscode-contrastActiveBorder, var(--vscode-focusBorder)); }
+body.vscode-high-contrast .tl-draw-hint,
+body.vscode-high-contrast-light .tl-draw-hint { box-shadow: none; border-color: var(--vscode-contrastBorder); }
 
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; }

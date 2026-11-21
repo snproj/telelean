@@ -53,6 +53,9 @@ describe('gate rules on recorded real Lean facts', () => {
       ['status-mismatch', 'Spyro.cynder_not_good.holds'],
       // Fixer round 1 (fail closed): Lean reports nothing about a `private` declaration, so it cannot be checked.
       ['footprint', 'Spyro.secret_helper'],
+      // Slice 1e (spec v4.1 B.2): the run's proof of the target is judged at gate-other too. Slice 1g: the recordings
+      // now hold the value probe's `valueConsts`, so B.2 sees what the proof uses directly (the three selected
+      // premises' .holds): no `undeclared-premise` finding (it was `source-only` while the recordings predated the probe).
       ['sorry-axiom', 'Spyro.withSorry'],
       // In the vocabulary group's order (functions before constants).
       ['vocabulary-shape', 'Spyro.f'],
@@ -70,6 +73,15 @@ describe('gate rules on recorded real Lean facts', () => {
       ['Spyro.d0.holds', ['Spyro.new_spyro_pg.holds']],
       ['Spyro.g2.holds', ['Spyro.new_spyro_pg.holds']],
     ]);
+  });
+
+  it('B.2 on Lean\'s elaborated values: the target\'s proof uses new-spyro-pg\'s .holds directly, which is not selected (gate-other and gate-proved)', () => {
+    // Slice 1g (fixer): the recordings hold the value probe's `valueConsts`, so B.2 sees what the proof uses directly.
+    for (const purpose of ['gate-other', 'gate-proved'] as const) {
+      const report = evaluateRules({ purpose, stage: 'prove', selection: SEL_NO_PG, base: B, current: S, teleleanBlocks: [] });
+      const b2 = report.findings.filter((f) => f.code === 'undeclared-premise');
+      expect(b2.map((f) => ({ token: f.token, nodeId: f.nodeId, names: f.names })), purpose).toEqual([{ token: 'unselected', nodeId: 'new-spyro-pg', names: ['Spyro.new_spyro_pg.holds'] }]);
+    }
   });
 
   it('carry-over 1 on real references: the untracked lemmas resting on an assumption are its external users', () => {

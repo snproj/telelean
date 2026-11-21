@@ -1,0 +1,133 @@
+# recheck:s45:r2
+
+Agent `ab1bbe115d1249e1c` of workflow `wf_e9e359bd-de3`. Verbatim output (JSON alongside).
+
+- **summary:** I checked the third-recheck fixes against the slice-4 and slice-5 plans and against the built core code in `packages/core/src/review/` (the files `records.ts`, `reducer.ts`, `reconcile.ts`, `submit.ts`, `judge.ts`, `view.ts`, `revert.ts` and `items.ts`).
+
+**The six findings**
+- **recheck3-01:** fixed. The fixer adopted it only in part, and that choice holds up. The `isShaky` callers (F5, Submit's counts, DO-3) and the decline-keeping lines are rules of the Shaky decline, so keeping them Shaky-only is correct. F5 and Submit now leave out every item a queued part lists. A source that a judge's revert takes out loses its decline but stays in its part's `items`, which matches the built `cascadeOut` and `takeOut`.
+- **recheck3-02:** fixed. The ItemWrite now holds only the premise take-outs, which run after `planTransformWrite`'s changes. The built `takeDecl` treats an identical text as a no-op, so a completion that step 9 already restored is left alone.
+- **recheck3-03, recheck3-05 and recheck3-06:** fixed.
+- **recheck3-04:** fixed in substance, and the narrower held set is justified. One 4b test cannot be built, so I re-raise it as minor.
+
+**New problems:** three majors and no blockers.
+1. Undoing a transform decision is refused right after the decision. Its own judge-apply gives a new version to the items it recorded, and the built Undo refuses on any changed version.
+2. After recheck3-01, Drop writes no file, so no judge runs after it. A dropped source with no draft stays in review and shows slice 2's "disappeared" problem.
+3. When the decision takes out an accepted written premise, Claude's arrows out of that premise's card are left behind. The decision is then taken back with a problem no window action can fix, or the working copy is left with an arrow from a card that no longer exists (TR-13).
+
+Nothing that AP-24 or AP-31 removed is needed for any of the fixes.
+- **findings:**
+  - [1]
+    - **id:** recheck4-01
+    - **severity:** major
+    - **plan:** slice4
+    - **where:** slice4 §5.1 ("Undo (D2-73) goes through the reducer's checks"), §2.2 SessionAction `transform` (`changes[].rev`, `after`), §3.8 step 5.6 (step 4 records the action, then enqueues its own `judge-apply`), §2.10 A13, D4-45 ("Undo takes your typed part back until the next Submit"); 4e/4g Undo tests and 4e's stack property. Built core `review/reducer.ts` `undo` (the check `r.rev === c.rev && decisionKey(itemStateOf(r)) === decisionKey(c.after)`, builder 2a2's D2-73 rule) and `review/reconcile.ts` (`changedKey` → `newVersion`).
+    - **problem:** The `transform` action records each changed item's rev and `after` at its write step 4. That is before the `judge-apply` it enqueues, which always runs next. That judge-apply gives a new version to every recorded item whose content the write changed:
+- **A source you typed on.** Example: Decline → Transform of Claude's Change of C, typing C's sentence and leaving its Why to Claude. The decision declines card:C `transform` at rev 1. Reconcile's changed-key rule makes it rev 2, "updated", and A12 declines it again.
+- **A reopened record (sound-L-01's case).** Reject Claude's Change of C, then transform C typing its sentence. The record becomes rev 2, and `newVersion` moves the rejected rev 1 into `versions` with `rejected: true`. So `rejectedRevs`, which is part of `decisionKey`, also differs.
+- **An accepted item in `cascade` whose content the write changes.** Example (S4M-5): an accepted Formalize of T whose sentence you retype.
+
+The built `undo` refuses with `conflict` when a listed recorded item's rev or decision differs from what the action left. So the Undo pressed right after such a decision is always refused.
+
+Slice 2's own decisions never change the content keys of the items they record, so slice 2 never met this. A transform decision always does.
+
+This breaks:
+- UN-4 ("queueing or dropping a transform" is one session step), D4-45 and §5.1;
+- 4e's "Undo puts each back to its decline" (sound-L-01) and its stack property;
+- 4g's "Undo then Redo of a transform that made a card and typed fields".
+    - **fix:** Make the transform Undo compare against what the decision's own judgement left.
+- **The decision's own judge-apply updates the record.** That is the one its step 4 enqueues, next in the queue, with no Lean job. In its step-4 run.json write, it stores as the action's new `changes[].rev` and `after` the rev and state it gave each recorded item (a new version, or A12's decline again).
+- **The Undo then compares with those values.** It restores `before`'s status, decline, Accept and redo onto the record as it is, keeping the versions that judge-apply added.
+- **D2-73 stays for later judges.** A later judge that changes a recorded item still refuses the Undo.
+
+Say this in §5.1, A13 and §3.8 step 5.6 (built in 4e and 4g).
+
+Tests (4e, 4g), each with the mutation "compare with the decision-time rev", which refuses the Undo with `conflict`:
+- The Decline → Transform case above, then its judge-apply, then Undo. The Undo is allowed, and card:C is back in review with Claude's version after the merge.
+- sound-L-01's reopened Reject case: Undo puts card:C back to its Reject.
+- S4M-5's accepted Formalize whose sentence the window retypes.
+  - [2]
+    - **id:** recheck4-02
+    - **severity:** major
+    - **plan:** slice4
+    - **where:** slice4 §3.7 Drop ("one left with no draft is then withdrawn by A4, `changed-back`"), §2.2 ("Drop's write, and its Undo's, are null"), §5.1 (`drop-transform` writes no file), §2.10 A4 ("at every judge-apply") and A12 ("a record declined `transform` with no draft is no problem"); §3.9 step 2 (a part with nothing left is dropped at Submit review) with §2.9's 4e note (`confirm` only when no part is left). Slice 2 §3.6 (a judge runs after every decision commit). Built `review/view.ts` disappeared check (`drafted.has(r.key) || isDeclinedOut(r) || isReverted(r) || withdrawn`).
+    - **problem:** The recheck3-01 fix made Drop a records-only action, since no source's status change moves content any more. Slice 2 runs a judge only after a decision commit, so no `judge-apply` follows a Drop. A4's withdrawal lives in reconcile, which runs only at a judge-apply. So a source with no draft that Drop returns to review is never withdrawn.
+
+**Example.**
+1. Decline → Transform of Claude's Change of C, where Claude changed only C's statement.
+2. "Use this" puts B's statement back, and you leave C's Why to Claude, or add instructions.
+3. After the decision, card:C is declined `transform` with no draft, which is allowed (A12).
+4. Drop. card:C is now in review with no draft.
+
+**What follows.**
+- The view's check shows "“C” disappeared, and no decision removed it" and disables Apply. A12 exempts only records declined `transform`.
+- Submit review is blocked by an item in review that has nothing to review.
+- Accepting it keeps the problem. Only a Reject of it, an Undo of the Drop, or some later decision's judge clears it.
+
+§3.7's "then withdrawn by A4" never happens.
+
+**The same gap at Submit review.** A part dropped there with nothing left returns its sources to review. If no step is left to run, `planSubmit` now gives the end confirmation while those items are in review.
+    - **fix:** Let Drop, and its Redo, withdraw in the same reducer action every source it would return to review that has no draft in the stage judgement (`changed-back`).
+- Record the withdrawal in the action's `changes`, so its Undo restores the `transform` decline.
+- `ReviewState` gains the stage judgement's drafted keys, which the runner already has.
+- At Submit review, a part dropped with nothing left gets the same withdrawal.
+- If no step is left to run and the drop returned any item to review, Submit review ends there, with its notes, and never reaches the end confirmation.
+
+Say this in §3.7, §5.1 and §3.9 step 2.
+
+Tests (4e, 4g):
+- The example above, then Drop. card:C ends withdrawn, with no "disappeared" problem, and Submit review is enabled. Undo of the Drop restores its decline. Mutation: returning card:C to review shows "disappeared" and blocks Submit.
+- A part with nothing left whose source has a draft: Submit review stops with that source in review, never at the end confirmation.
+  - [3]
+    - **id:** recheck4-03
+    - **severity:** major
+    - **plan:** slice4
+    - **where:** slice4 §3.4 "written premises" (an accepted one that relies on what changes has no choice and is in `cascade`; returned to review, it leaves your working copy, D2-71) and the walk's `arrow` bullet (only arrows out of a trashed card); §3.8 step 5.2 (the ItemWrite's premise take-outs, recheck3-02), step 5.5 (the take-back test), and "The typed part builds on its own … So a build error after the write is a real failure of your edit"; §2.10 A25, D4-62. Built `review/revert.ts` (a premise take-out removes only its block, statement, `.holds` and its own arrow, `provides.arrows`) and `review/items.ts` (a later step's arrow from the premise's card is a separate Add arrow item). Slice 2's propose_arrow rule (any card with a `.holds`).
+    - **problem:** An accepted written premise P is an axiom card with a `.holds` in your working copy. A later step can propose an arrow out of P's card: slice 2's rule tells Claude to use any existing card with a `.holds`, so T2's step may propose P→T2 or P→E.
+
+**What happens when a window changes what P relies on** (for example the vocabulary P's statement uses):
+- P is in `cascade` with no choice. The decision takes away its Accept, and the ItemWrite takes P out of ws/: its block, statement, `.holds`, its own arrow P→T, the mark removal and the completion.
+- A Result whose proof uses P.holds is in `redo`, and a statement that uses P is a TR-13 dependent. Nothing handles the arrows out of P's card:
+  - TR-13's walk lists arrows only out of a trashed card;
+  - the take-out removes only P's own arrow;
+  - the cascade only returns accepted dependents to review, with their content kept.
+- So P→T2 (a Result's Add arrow) or P→E survives, and T2's or E's `premises:` names a card that is gone.
+
+**The two possible outcomes.**
+- **Taken back.** The decision's judgement finds a failure the parent did not have, and the decision is taken back. No window action can fix the problem it shows: P can never be in a window or its trash, and the arrow is no dependent. §3.8's claim that a build error after the write is "a real failure of your edit" is false here.
+- **Left broken.** If no take-back reason catches the dangling entry, the decision stands and the working copy keeps an arrow from a card that no longer exists, against TR-13 (nothing is left broken in a session).
+
+In slice 2 a back to review of P leaves such items to the judge's revert. Only slice 4's take-back turns it into a dead end.
+    - **fix:** Give the take-out of a written premise P the Rejects' treatment (D4-62, A25):
+- Claude's arrow items out of P's card, and every other item in ws/ that rests on P by the real dependencies, join `rejectOut` with `with` P. Each is reverted once in step 0 and becomes to be redone. An accepted one goes in `rejectAccepted`, with slice 2's Reject text.
+- Hidden ones are taken out silently (D2-64). While the results are hidden, a listed entry reads "taken out with a suggested premise you accepted", naming no hidden premise.
+- A typed Dependencies source equal to P is a problem, as a source a Reject takes out already is (§3.2).
+
+Log this with D4-62. The alternative, refusing ("set “‹P›” back to review first"), would depend on hidden arrows into session targets while the results are hidden.
+
+Test (4b, 4g):
+- Setup: an accepted written premise P, Claude's arrow P→E from a later step, and a window that retypes the vocabulary P's statement uses.
+- Expected: the decision stands, arrow:P>E is taken out with P and to be redone, and no `premises:` entry names P.
+- Mutation: without the rule, the decision is taken back on E's dangling entry, or the stage keeps an arrow from a missing card.
+  - [4]
+    - **id:** recheck3-04
+    - **severity:** minor
+    - **plan:** slice4
+    - **where:** slice4 §6.1 4b ("… D is in P1's `cards` though no card of W1, and as a dependent of window W2 it offers Keep it only (mutation: `cards` from W1's keys alone offers `claude`, and W2 makes card:D a source of P1 and P2)"); §3.5 step 9 (a `claude` dependent's Lean is emptied); §3.4 (TR-13's walk is over Lean, plus `reference` only from slice 5).
+    - **problem:** The held set itself is fixed. But the 4b test half that shows it on a dependent cannot be built.
+
+The dependent D that W1's decision emptied for P1 has no Lean left:
+- its abbrev, pin and an AXIOM's `.holds` are removed;
+- its own proof must be marked broken in W1, or W1 is taken back;
+- slice 4 has no reference dependents.
+
+So W2 can never make D a TR-13 dependent, and neither the assertion "as a dependent of window W2 it offers Keep it only" nor its mutation can be run. A builder of 4b would stall or invent a different scenario.
+    - **fix:** In 4b, test "Keep it only" on a held card that still has Lean:
+- **Setup:** a window card of W1 whose statement W1 leaves open to Claude, so it is in P1's `cards`, and whose statement uses what W2 changes.
+- **Expected:** it offers Keep it only, with D4-59's texts.
+- **Mutation:** offering `claude` makes its card a source of P1 and P2.
+
+Test the emptied dependent D only where it can occur, keeping the `cards`-from-window-keys mutation on each:
+- `left` (4a);
+- the opening refusal and the window checks (4h);
+- the gate on Transform cards… (4i).

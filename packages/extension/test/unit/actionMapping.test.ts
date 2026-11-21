@@ -21,7 +21,7 @@ describe('protocol message -> BoardAction (AT5.7)', () => {
     expect(
       action('addNode', {
         clientId: 'tmp-1',
-        type: 'ASSUMPTION',
+        type: 'AXIOM',
         naturalName: '  Cynder is a dragon ',
         requestId: 'r1',
         rationale: ' seen it ',
@@ -31,29 +31,38 @@ describe('protocol message -> BoardAction (AT5.7)', () => {
     ).toEqual({
       kind: 'add-node',
       subject: 'Spyro',
-      type: 'ASSUMPTION',
+      type: 'AXIOM',
       naturalName: '  Cynder is a dragon ',
       rationale: 'seen it',
       stance: 'believe',
       source: 'observed',
     });
-    const minimal = action('addNode', { clientId: 'tmp-2', type: 'GOAL', naturalName: 'g' }, 'Other');
-    expect(minimal).toEqual({ kind: 'add-node', subject: 'Other', type: 'GOAL', naturalName: 'g' });
+    const minimal = action('addNode', { clientId: 'tmp-2', type: 'PROPOSITION', naturalName: 'g' }, 'Other');
+    expect(minimal).toEqual({ kind: 'add-node', subject: 'Other', type: 'PROPOSITION', naturalName: 'g' });
     expect(minimal).not.toHaveProperty('preferredId');
+    // Spec v4 slice 1c: a new proposition's place on the canvas goes to the planner (it writes layout.json).
+    expect(action('addNode', { clientId: 'tmp-3', type: 'PROPOSITION', naturalName: 'g', position: { x: 12, y: -3.5 } })).toEqual({
+      kind: 'add-node',
+      subject: 'Spyro',
+      type: 'PROPOSITION',
+      naturalName: 'g',
+      position: { x: 12, y: -3.5 },
+    });
   });
 
   it('kindChange becomes change-kind (with the dependents choice and rationale when given)', () => {
-    expect(action('kindChange', { id: 'cynder-not-good', from: 'GOAL', to: 'ASSUMPTION', beforeId: null, requestId: 'r2', rationale: 'because' })).toEqual({
+    expect(action('kindChange', { id: 'cynder-not-good', from: 'PROPOSITION', to: 'AXIOM', beforeId: null, requestId: 'r2', rationale: 'because' })).toEqual({
       kind: 'change-kind',
       id: 'cynder-not-good',
-      to: 'ASSUMPTION',
+      to: 'AXIOM',
       beforeId: null,
       rationale: 'because',
     });
-    expect(action('kindChange', { id: 'a', from: 'ASSUMPTION', to: 'GOAL', beforeId: 'b', dependents: 'mark-broken' })).toEqual({
+    // The mapping passes A->P on too: refusing it is the planner's job (spec v4 AR-6).
+    expect(action('kindChange', { id: 'a', from: 'AXIOM', to: 'PROPOSITION', beforeId: 'b', dependents: 'mark-broken' })).toEqual({
       kind: 'change-kind',
       id: 'a',
-      to: 'GOAL',
+      to: 'PROPOSITION',
       beforeId: 'b',
       dependents: 'mark-broken',
     });
@@ -62,9 +71,9 @@ describe('protocol message -> BoardAction (AT5.7)', () => {
   it('M2 carry-over 3: kindChange.confirmedDependents (the dependents the dialog listed) reaches change-kind (AT5.7)', () => {
     expect(
       action('kindChange', {
-        id: 'cynder-dark-past',
-        from: 'ASSUMPTION',
-        to: 'GOAL',
+        id: 'cynder-not-good',
+        from: 'PROPOSITION',
+        to: 'AXIOM',
         beforeId: null,
         dependents: 'rewrite',
         confirmedDependents: ['cynder-not-good', 'Spyro.helper_lemma'],
@@ -72,19 +81,19 @@ describe('protocol message -> BoardAction (AT5.7)', () => {
       }),
     ).toEqual({
       kind: 'change-kind',
-      id: 'cynder-dark-past',
-      to: 'GOAL',
+      id: 'cynder-not-good',
+      to: 'AXIOM',
       beforeId: null,
       dependents: 'rewrite',
       confirmedDependents: ['cynder-not-good', 'Spyro.helper_lemma'],
     });
     // An empty list is a statement too ("the dialog listed none"): core then refuses if it finds any.
-    expect(action('kindChange', { id: 'a', from: 'ASSUMPTION', to: 'GOAL', beforeId: null, dependents: 'mark-broken', confirmedDependents: [] })).toMatchObject({
+    expect(action('kindChange', { id: 'a', from: 'PROPOSITION', to: 'AXIOM', beforeId: null, dependents: 'mark-broken', confirmedDependents: [] })).toMatchObject({
       dependents: 'mark-broken',
       confirmedDependents: [],
     });
     // Absent stays absent (core treats a choice without a list as "the dialog listed none").
-    expect(action('kindChange', { id: 'a', from: 'ASSUMPTION', to: 'GOAL', beforeId: null, dependents: 'rewrite' })).not.toHaveProperty('confirmedDependents');
+    expect(action('kindChange', { id: 'a', from: 'PROPOSITION', to: 'AXIOM', beforeId: null, dependents: 'rewrite' })).not.toHaveProperty('confirmedDependents');
   });
 
   it('theseSuffice becomes set-premises; with no premises there is no action (not-yet, M2)', () => {
@@ -98,7 +107,7 @@ describe('protocol message -> BoardAction (AT5.7)', () => {
     expect(action('editNode', { id: 'n', field: 'stance', value: 'rule' })).toEqual({ kind: 'edit-node', id: 'n', field: 'stance', value: 'rule' });
     expect(action('editNode', { id: 'n', field: 'source', value: 'common' })).toEqual({ kind: 'edit-node', id: 'n', field: 'source', value: 'common' });
     expect(action('deleteNode', { id: 'n', keepLean: true })).toEqual({ kind: 'delete-node', id: 'n', keepLean: true });
-    expect(action('reorder', { id: 'n', column: 'DERIVATION', beforeId: 'm' })).toEqual({ kind: 'reorder', id: 'n', column: 'DERIVATION', beforeId: 'm' });
+    expect(action('reorder', { id: 'n', column: 'PROPOSITION', beforeId: 'm' })).toEqual({ kind: 'reorder', id: 'n', column: 'PROPOSITION', beforeId: 'm' });
     expect(action('createSubject', { name: 'Bayonetta' })).toEqual({ kind: 'create-subject', name: 'Bayonetta' });
   });
 
@@ -131,7 +140,61 @@ describe('protocol message -> BoardAction (AT5.7)', () => {
       refresh: {},
     };
     for (const [type, payload] of Object.entries(samples)) expect(isActionMessage(message(type, payload)), type).toBe(false);
-    expect([...ACTION_MESSAGE_TYPES].sort()).toEqual(['addNode', 'createSubject', 'deleteNode', 'editNode', 'kindChange', 'reorder', 'theseSuffice']);
+    expect([...ACTION_MESSAGE_TYPES].sort()).toEqual([
+      'addArrows',
+      'addNode',
+      'claimPending',
+      'createSubject',
+      'deleteNode',
+      'editNode',
+      'kindChange',
+      'moveCards',
+      'removeArrows',
+      'reorder',
+      'setFromNothing',
+      'theseSuffice',
+    ]);
+  });
+
+  it('spec v4 slice 1b: the arrow messages map one to one; `confirmed` only when true', () => {
+    expect(action('addArrows', { target: 'cynder-not-good', sources: ['cynder-dark-past', 'new-spyro-pg'], requestId: 'a1' })).toEqual({
+      kind: 'add-arrows',
+      target: 'cynder-not-good',
+      sources: ['cynder-dark-past', 'new-spyro-pg'],
+    });
+    expect(action('addArrows', { target: 'new-spyro-pg', sources: ['cynder-dark-past'], confirmed: true })).toEqual({
+      kind: 'add-arrows',
+      target: 'new-spyro-pg',
+      sources: ['cynder-dark-past'],
+      confirmed: true,
+    });
+    expect(action('addArrows', { target: 'g', sources: ['a'], confirmed: false })).not.toHaveProperty('confirmed');
+    expect(action('removeArrows', { arrows: [{ source: 'pg-no-dark-past', target: 'cynder-not-good' }], confirmed: true, requestId: 'a2' })).toEqual({
+      kind: 'remove-arrows',
+      arrows: [{ source: 'pg-no-dark-past', target: 'cynder-not-good' }],
+      confirmed: true,
+    });
+    expect(action('removeArrows', { arrows: [{ source: 'a', target: 'g' }] })).toEqual({ kind: 'remove-arrows', arrows: [{ source: 'a', target: 'g' }] });
+    // Slice 1f (carry-over 2): the "follows from nothing" marks of the same Delete travel with it (one plan, one step).
+    expect(action('removeArrows', { arrows: [{ source: 'a', target: 'g' }], marks: ['h'], confirmed: true })).toEqual({
+      kind: 'remove-arrows',
+      arrows: [{ source: 'a', target: 'g' }],
+      marks: ['h'],
+      confirmed: true,
+    });
+    expect(action('removeArrows', { arrows: [], marks: ['h', 'k'] })).toEqual({ kind: 'remove-arrows', arrows: [], marks: ['h', 'k'] });
+    expect(action('removeArrows', { arrows: [{ source: 'a', target: 'g' }], marks: [] })).not.toHaveProperty('marks');
+    expect(action('setFromNothing', { id: 'cynder-not-good', on: true })).toEqual({ kind: 'set-from-nothing', id: 'cynder-not-good', on: true });
+    expect(action('setFromNothing', { id: 'new-spyro-pg', on: true, confirmed: true })).toEqual({ kind: 'set-from-nothing', id: 'new-spyro-pg', on: true, confirmed: true });
+    expect(action('setFromNothing', { id: 'g', on: false })).toEqual({ kind: 'set-from-nothing', id: 'g', on: false });
+    expect(action('claimPending', { id: 'cynder-not-good', requestId: 'a3' })).toEqual({ kind: 'claim-pending', id: 'cynder-not-good' });
+    expect(action('moveCards', { positions: { 'cynder-not-good': { x: 12, y: -4.5 } }, requestId: 'a4' })).toEqual({
+      kind: 'move-cards',
+      positions: { 'cynder-not-good': { x: 12, y: -4.5 } },
+    });
+    // Validation happens in core before the mapping: a malformed message never becomes an action.
+    expect(() => message('addArrows', { target: 'g', sources: ['g'] })).toThrow(/target/);
+    expect(() => message('moveCards', { positions: { g: { x: 1e9, y: 0 } } })).toThrow(/finite number/);
   });
 
   it('reads the request id of any message that has one', () => {

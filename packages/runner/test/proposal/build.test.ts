@@ -2,17 +2,18 @@
  * AT4.1-AT4.3 ProposalService.build from REAL Lean facts: M1's sandboxed refresh of a scratch copy of mental_model/
  * in the base state and in three run states of docs/m2-plan.md section 10 (reading A proved, reading B not proved,
  * the definition cheat). The shadow is an in-memory stand-in (WP2's is built in parallel); WP1's diffGraphs is faked
- * here, and the parts that need WP1's real diffGraphs / lifecycleChanges run with WP1's code (gated while the builders
- * worked in parallel; the integrator removed the gates).
+ * here, and the parts that need WP1's real diffGraphs run with WP1's code (gated while the builders worked in
+ * parallel; the integrator removed the gates). Spec v4: the cards' old `type:` lines read as AXIOM and PROPOSITION,
+ * and there are no lifecycle items (docs/slice1-plan.md 2.6).
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   diffGraphs,
-  lifecycleChanges,
+  leanDurationMs,
   type FlaggedDefinition,
   type GhostView,
   type LeanFacts,
@@ -23,7 +24,7 @@ import {
 } from '@telelean/core';
 
 import type { CheckReport } from '../../src/gate/types.js';
-import { createProposalService, PROPOSAL_FACTS_FILE, type ProposalBuildInput, type ProposalCore } from '../../src/proposal/index.js';
+import { createProposalService, type ProposalBuildInput, type ProposalCore } from '../../src/proposal/index.js';
 import { knownProjectsLines } from '../lean/helpers.js';
 import { unitsOfRun } from '../semantic/helpers.js';
 import { cleanup, copyMentalModel, makeTempDir, waitForMemory, write } from '../workspace/helpers.js';
@@ -31,7 +32,6 @@ import {
   adoptedState,
   boardOf,
   definitionCheatState,
-  edit,
   fakeDiff,
   fakeShadow,
   GHOST_NODE,
@@ -39,7 +39,6 @@ import {
   MAIN,
   normativeState,
   realFacts,
-  realReader,
   SELECTION_ALL,
   shadowFilesOnDisk,
   USAGE,
@@ -154,7 +153,7 @@ describe('AT4.1-AT4.3 build from real Lean facts', () => {
   const statementsOf = (p: ProposalView): StatementReview[] => p.review.filter((r): r is StatementReview => r.kind === 'statement');
   const vocabularyOf = (p: ProposalView): VocabularyReview | undefined => p.review.find((r): r is VocabularyReview => r.kind === 'vocabulary');
 
-  it('AT4.1 reading A proved: target proved, files summary, one statement review, G->D recommended, footprint, report', async (ctx) => {
+  it('AT4.1 reading A proved: target proved, files summary, one statement review, footprint, report', async (ctx) => {
     if (!lean) ctx.skip();
     const diffCalls: Array<[TlGraph, TlGraph]> = [];
     const service = createProposalService({ core: { diffGraphs: (a, b) => (diffCalls.push([a, b]), fakeDiff()) } });
@@ -165,12 +164,19 @@ describe('AT4.1-AT4.3 build from real Lean facts', () => {
     // The proposed board: the files of the shown state with the mirror's facts; the target is proved.
     expect(proposal.graph.version).toBe(4242);
     expect(proposal.graph.nodes.map((n) => [n.id, n.type, n.status.proof.kind])).toEqual([
-      ['pg-no-dark-past', 'ASSUMPTION', 'assumed'],
-      ['cynder-dark-past', 'ASSUMPTION', 'assumed'],
-      ['new-spyro-pg', 'ASSUMPTION', 'assumed'],
-      ['cynder-not-good', 'GOAL', 'proved'],
+      ['pg-no-dark-past', 'AXIOM', 'assumed'],
+      ['cynder-dark-past', 'AXIOM', 'assumed'],
+      ['new-spyro-pg', 'AXIOM', 'assumed'],
+      ['cynder-not-good', 'PROPOSITION', 'proved'],
     ]);
+    // Proved from the three axiom cards: established (spec v4 B.5).
+    expect(proposal.graph.nodes.find((n) => n.id === 'cynder-not-good')?.status.flags).toContain('established');
     expect(proposal.graph.semantic.state).toBe('fresh');
+    // Fixer 2b3a r1 (C-V2B3A-C2): its Lean time adds the isolated probe job's to the build's and the check's.
+    const facts = input.check.facts as LeanFacts;
+    expect(facts.probe?.durationMs).toBeGreaterThan(0);
+    expect(proposal.graph.semantic.durationMs).toBe(leanDurationMs(facts));
+    expect(proposal.graph.semantic.durationMs).toBe(facts.build.durationMs + facts.check.durationMs + (facts.probe?.durationMs ?? 0));
     // The diff is core's (faked here), between the current board and the proposed one.
     expect(proposal.diff).toEqual(fakeDiff());
     expect(diffCalls).toHaveLength(1);
@@ -204,10 +210,8 @@ describe('AT4.1-AT4.3 build from real Lean facts', () => {
     expect(vocabularyOf(proposal)).toBeUndefined(); // no new vocabulary in reading A
     expect(proposal.definitions).toEqual([]);
 
-    // Lifecycle: the proved GOAL -> DERIVATION, recommended.
-    expect(proposal.lifecycle).toEqual([
-      { id: 'l1', kind: 'change-kind', nodeId: 'cynder-not-good', from: 'GOAL', to: 'DERIVATION', recommended: true, reason: 'Lean proved it from the selected premises' },
-    ]);
+    // Spec v4: no lifecycle item (a proved proposition stays a proposition).
+    expect(proposal).not.toHaveProperty('lifecycle');
 
     // Report card: footprint = the three cards + the two presuppositions; consistency unchecked.
     expect(proposal.report).toMatchObject({
@@ -229,10 +233,8 @@ describe('AT4.1-AT4.3 build from real Lean facts', () => {
     expect(proposal.ghosts).toEqual([]);
     // The proposal is JSON (it is persisted in run.json and posted to the webview).
     expect(JSON.parse(JSON.stringify(proposal))).toEqual(proposal);
-    // The facts are kept for Accept (also after a window reload).
-    const kept = JSON.parse(readFileSync(path.join(input.shadow.paths.runDir, PROPOSAL_FACTS_FILE), 'utf8')) as { proposalId: string; facts: LeanFacts };
-    expect(kept.proposalId).toBe('p1');
-    expect(kept.facts).toEqual(states.normative.facts);
+    // Nothing is kept for Accept any more (the facts were for the lifecycle items).
+    expect(existsSync(path.join(input.shadow.paths.runDir, 'proposal-facts.json'))).toBe(false);
   });
 
   it('AT4.1 statements fall back to their source text when Lean could not print them; drift; an unused selected card', async (ctx) => {
@@ -256,7 +258,7 @@ describe('AT4.1-AT4.3 build from real Lean facts', () => {
     expect(unused.report.selfEvident).toBe(false);
   });
 
-  it('AT4.2 reading B not proved: the new vocabulary (InGame), the ghost, verdict not-proved, no lifecycle item', async (ctx) => {
+  it('AT4.2 reading B not proved: the new vocabulary (InGame), the ghost, verdict not-proved', async (ctx) => {
     if (!lean) ctx.skip();
     const service = createProposalService({ core: fakeCore });
     const proposal = await service.build(
@@ -285,7 +287,6 @@ describe('AT4.1-AT4.3 build from real Lean facts', () => {
     expect(vocabulary?.items[0]?.code).toContain('axiom InGame : Character → Game → Prop');
     expect(proposal.review.at(-1)?.kind).toBe('vocabulary'); // statements first, then the vocabulary
     expect(proposal.ghosts).toEqual([GHOST]);
-    expect(proposal.lifecycle).toEqual([]);
     expect(proposal.definitions).toEqual([]);
     expect(proposal.report).toMatchObject({
       verdict: 'not-proved',
@@ -297,7 +298,7 @@ describe('AT4.1-AT4.3 build from real Lean facts', () => {
     });
   });
 
-  it("reading B after adopting the ghost: Claude's card is reviewed as Claude's words, it is in the footprint, G->D offered", async (ctx) => {
+  it("reading B after adopting the ghost: Claude's card is reviewed as Claude's words, it is in the footprint", async (ctx) => {
     if (!lean) ctx.skip();
     const service = createProposalService({ core: fakeCore });
     const proposal = await service.build(
@@ -327,7 +328,8 @@ describe('AT4.1-AT4.3 build from real Lean facts', () => {
     expect(proposal.report.footprint).toContain(GHOST_NODE);
     expect([...proposal.report.footprint].sort()).toEqual([GHOST_NODE, 'cynder-dark-past', 'new-spyro-pg', 'pg-no-dark-past', 'presup:Spyro.Character.exists', 'presup:Spyro.Game.exists'].sort());
     expect(proposal.report.unusedPremises).toEqual([]);
-    expect(proposal.lifecycle.map((l) => [l.id, l.nodeId, l.from, l.to])).toEqual([['l1', 'cynder-not-good', 'GOAL', 'DERIVATION']]);
+    // The adopted card is an axiom (spec v4: written `type: AXIOM`).
+    expect(proposal.graph.nodes.find((n) => n.id === GHOST_NODE)?.type).toBe('AXIOM');
     expect(proposal.ghosts).toEqual([{ ...GHOST, state: 'adopted', nodeId: GHOST_NODE }]);
   });
 
@@ -348,9 +350,8 @@ describe('AT4.1-AT4.3 build from real Lean facts', () => {
     ]);
     // A definition is a question, never auto-approved vocabulary.
     expect(vocabularyOf(proposal)).toBeUndefined();
-    // The gate passed (proved by unfolding the definition): the lifecycle item is still offered; Accept needs the "yes".
+    // The gate passed (proved by unfolding the definition); Accept needs the "yes".
     expect(proposal.graph.nodes.find((n) => n.id === 'cynder-not-good')?.status.proof.kind).toBe('proved');
-    expect(proposal.lifecycle.map((l) => l.id)).toEqual(['l1']);
     // A flagged definition that already carries its code and gloss keeps them; ids follow the input order.
     const given = await service.build(
       buildInput('cheat', {
@@ -366,16 +367,14 @@ describe('AT4.1-AT4.3 build from real Lean facts', () => {
     ]);
   });
 
-  it('a check without facts gives the syntactic board, source-text reviews and no lifecycle item', async (ctx) => {
+  it('a check without facts gives the syntactic board and source-text reviews', async (ctx) => {
     if (!lean) ctx.skip();
     const service = createProposalService({ core: fakeCore });
     const proposal = await service.build(buildInput('normative', { check: check(undefined), rendered: [] }));
     expect(proposal.graph.semantic.state).toBe('unavailable');
     expect(proposal.graph.nodes.find((n) => n.id === 'cynder-not-good')?.status.proof.kind).toBe('none');
-    expect(proposal.lifecycle).toEqual([]);
     expect(statementsOf(proposal).map((s) => s.nodeId)).toEqual(['pg-no-dark-past']);
     expect(statementsOf(proposal)[0]?.closure).toEqual([]);
-    expect(existsSync(path.join(tmp, 'runs', 'normative', PROPOSAL_FACTS_FILE))).toBe(true); // from the earlier build
   });
 
   describe("WP1's diffGraphs", () => {
@@ -384,39 +383,6 @@ describe('AT4.1-AT4.3 build from real Lean facts', () => {
       const proposal = await createProposalService().build(buildInput('normative'));
       expect(proposal.diff.nodes['pg-no-dark-past']).toMatchObject({ change: 'changed', fields: expect.arrayContaining(['statement', 'binding']) });
       expect(proposal.diff.nodes['cynder-not-good']).toMatchObject({ change: 'changed', fields: expect.arrayContaining(['proof', 'status']) });
-    });
-  });
-
-  describe("WP1's lifecycleChanges", () => {
-    it('AT4.5 no drift with l1 ticked: after = the shown files with `type: DERIVATION`, before = the real files', async (ctx) => {
-      if (!lean) ctx.skip();
-      const labelled: Partial<ProposalCore> = { ...fakeCore, proposalLabel: () => 'These suffice → proved (+ Make Derivation)' };
-      const service = createProposalService({ core: labelled });
-      const input = buildInput('normative');
-      const proposal = await service.build(input);
-      const plan = await service.planAccept({
-        proposal,
-        shadow: input.shadow,
-        lifecycle: ['l1'],
-        readReal: realReader(new Map(base)),
-        today: '2026-11-01',
-        realFiles: [...base.keys()],
-      });
-      expect(plan.ok, JSON.stringify(plan)).toBe(true);
-      if (!plan.ok) return;
-      const shown = states.normative.files.get(MAIN) ?? '';
-      expect(plan.changes).toEqual([{ path: MAIN, before: base.get(MAIN), after: edit(shown, 'id: cynder-not-good\ntype: GOAL\n', 'id: cynder-not-good\ntype: DERIVATION\n') }]);
-      expect(plan.shadowState.get(MAIN)).toBe(shown); // without the lifecycle change
-      // After a window reload (a new service): the facts come back from the run directory.
-      const reloaded = await createProposalService({ core: labelled }).planAccept({
-        proposal,
-        shadow: input.shadow,
-        lifecycle: ['l1'],
-        readReal: realReader(new Map(base)),
-        today: '2026-11-01',
-        realFiles: [...base.keys()],
-      });
-      expect(reloaded).toEqual(plan);
     });
   });
 });

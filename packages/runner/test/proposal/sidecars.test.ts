@@ -224,7 +224,7 @@ describe('AT4.8 the run sidecar store', () => {
       await store.recordDecisions(root, 'Spyro', [decision('r1.q1.0')]);
       write(root, 'Model/Spyro/Inbox.lean', `${read(root, 'Model/Spyro/Inbox.lean')}-- a hand edit\n`); // forces a "Manual edits" snapshot
       await ws.invalidate(['Model/Spyro/Inbox.lean']); // what the extension's file watcher does
-      expect((await ws.perform({ kind: 'add-node', subject: 'Spyro', type: 'ASSUMPTION', naturalName: 'Spyro is a dragon' })).ok).toBe(true);
+      expect((await ws.perform({ kind: 'add-node', subject: 'Spyro', type: 'AXIOM', naturalName: 'Spyro is a dragon' })).ok).toBe(true);
       const attempts = readFileSync(attemptsFile(), 'utf8');
       const decisions = readFileSync(decisionsFile(), 'utf8');
       const listing = await ws.listHistory('Spyro');

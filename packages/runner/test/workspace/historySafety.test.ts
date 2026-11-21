@@ -28,7 +28,7 @@ function repoWithModel(tmp: string, name: string): string {
   return root;
 }
 
-const add = (ws: ModelWorkspace, sentence: string) => ws.perform({ kind: 'add-node', subject: 'Spyro', type: 'GOAL', naturalName: sentence });
+const add = (ws: ModelWorkspace, sentence: string) => ws.perform({ kind: 'add-node', subject: 'Spyro', type: 'PROPOSITION', naturalName: sentence });
 
 describe('git error messages', () => {
   it("keep git's first fatal/error line (it names the lock file) and its last line", () => {
@@ -145,7 +145,7 @@ describe('snapshot temp files', () => {
       await ws.load();
       expect((await add(ws, 'Snapshotted without the OS temp dir')).ok).toBe(true);
       expect(await ws.historyStatus()).toEqual({ state: 'ready' });
-      expect((await ws.listHistory('Spyro')).entries.map((e) => e.label)).toEqual(['Add goal: Snapshotted without the OS temp dir', 'Initial state']);
+      expect((await ws.listHistory('Spyro')).entries.map((e) => e.label)).toEqual(['Add proposition: Snapshotted without the OS temp dir', 'Initial state']);
       expect(readdirSync(path.join(root, '.git')).filter((n) => n.startsWith('telelean-tmp-'))).toEqual([]);
     } finally {
       if (savedTmp === undefined) delete process.env['TMPDIR'];
@@ -171,8 +171,8 @@ describe('linked worktrees keep separate history chains', () => {
       await wsFeature.load();
       expect((await add(wsMain, 'Only in the main worktree')).ok).toBe(true);
       expect((await add(wsFeature, 'Only in the feature worktree')).ok).toBe(true);
-      expect((await wsMain.listHistory('Spyro')).entries.map((e) => e.label)).toEqual(['Add goal: Only in the main worktree', 'Initial state']);
-      expect((await wsFeature.listHistory('Spyro')).entries.map((e) => e.label)).toEqual(['Add goal: Only in the feature worktree', 'Initial state']);
+      expect((await wsMain.listHistory('Spyro')).entries.map((e) => e.label)).toEqual(['Add proposition: Only in the main worktree', 'Initial state']);
+      expect((await wsFeature.listHistory('Spyro')).entries.map((e) => e.label)).toEqual(['Add proposition: Only in the feature worktree', 'Initial state']);
       const refs = userGit(main, 'for-each-ref', '--format=%(refname)', 'refs/telelean/').split('\n').filter((r) => r !== '');
       const featureKey = rootKeyOf('', 'worktrees/feature');
       expect(featureKey).toMatch(/^root-wt[0-9a-f]{8}$/);

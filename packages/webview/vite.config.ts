@@ -19,7 +19,8 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: here('../extension/dist/webview'),
+    // TELELEAN_WEBVIEW_OUT redirects a test build away from the extension's dist/ (which a linked install may be running).
+    outDir: process.env['TELELEAN_WEBVIEW_OUT'] ?? here('../extension/dist/webview'),
     emptyOutDir: true,
     // VS Code 1.140 embeds Chromium 150.
     target: 'chrome130',

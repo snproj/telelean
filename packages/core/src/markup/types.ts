@@ -69,6 +69,8 @@ export type KnownFieldKey =
   | 'source'
   | 'asserted'
   | 'premises'
+  /** Spec v4 AR-5 / B.6 (docs/slice1-plan.md 2.2): `follows_from: nothing`, the "follows from nothing" mark. */
+  | 'follows_from'
   | 'lean'
   | 'supersedes'
   | 'refines'
@@ -86,6 +88,7 @@ export const FIELD_ORDER: readonly KnownFieldKey[] = [
   'stance',
   'source',
   'premises',
+  'follows_from',
   'asserted',
   'lean',
   'supersedes',
@@ -98,6 +101,7 @@ export const FIELD_ORDER: readonly KnownFieldKey[] = [
 
 /** The interpreted values of the known fields of one block. */
 export interface BlockFields {
+  /** AXIOM or PROPOSITION; the old kinds are read as aliases (`type: GOAL` gives PROPOSITION), the line is kept as written. */
   type?: NodeType;
   naturalName?: string;
   rationale?: string;
@@ -106,6 +110,11 @@ export interface BlockFields {
   /** ISO date `YYYY-MM-DD`. */
   asserted?: string;
   premises?: string[];
+  /**
+   * `follows_from: nothing` (spec v4 AR-5). Set only for exactly that value (TL022 otherwise) and only when the block
+   * declares no premises (TL023 otherwise: the arrows win and the mark is ignored).
+   */
+  followsFrom?: 'nothing';
   /** Pinned binding: fully-qualified names as written (the first is the statement). */
   lean?: string[];
   supersedes?: string;
@@ -284,11 +293,11 @@ export type InsertWhere =
  * Names are fully qualified; `Span`s refer to the current text of the file the op is applied to.
  */
 export type LeanOp =
-  /** G->A, D->A (unproved): insert `axiom <short>.holds : <short>` on the line after the statement declaration. */
+  /** P->A (unproved): insert `axiom <short>.holds : <short>` on the line after the statement declaration. */
   | { op: 'add-holds-axiom'; statement: string }
-  /** D->A: replace `theorem S.holds ... := proof` by `axiom S.holds : S`, archiving the theorem's text. */
+  /** P->A (proved): replace `theorem S.holds ... := proof` by `axiom S.holds : S`, archiving the theorem's text. */
   | { op: 'holds-theorem-to-axiom'; statement: string }
-  /** A->G, D->G: delete `S.holds` (archived when it is a theorem). */
+  /** Delete `S.holds` (archived when it is a theorem), e.g. on delete. */
   | { op: 'remove-holds'; statement: string; archive: boolean }
   /** Delete any declaration (with its docstring), e.g. the statement abbrev on delete. */
   | { op: 'remove-decl'; name: string; archive: boolean }
@@ -310,7 +319,7 @@ export type LeanOp =
    */
   | { op: 'apply-hypothesis'; decl: string; hypName: string; replace: readonly Span[] }
   /**
-   * D-11 D->A / G->A of a conditional proof: `n.holds` took `args` explicit arguments and becomes `axiom n.holds : n`,
+   * D-11 P->A of a conditional proof: `n.holds` took `args` explicit arguments and becomes `axiom n.holds : n`,
    * so in `decl` each span (an occurrence of `n.holds`, a leading `@` included) must be the head of an application to
    * exactly `args` plain identifiers in parentheses, `(n.holds h₁ … hₖ)`, and the application is replaced by the
    * occurrence alone (`n.holds`). Any other use is a problem (nothing is applied).
@@ -320,7 +329,14 @@ export type LeanOp =
    * D-9 docstring mirror: set the declaration's docstring to `/-- text -/` (inserted when absent). `text` is
    * escaped like a block body (`-/` -> `-\/`, `/-` -> `/\-`): doc comments nest, so a raw `/-` would swallow code.
    */
-  | { op: 'set-docstring'; decl: string; text: string };
+  | { op: 'set-docstring'; decl: string; text: string }
+  /**
+   * Slice 2 (docs/slice2-plan.md 4.11; 2b2): puts back another version's text of a declaration (B's, when an item's
+   * content is taken out): the declaration's span, from its docstring, is replaced by `text`, with the file's line
+   * breaks. `text` is a whole declaration as it was written (docstring and attributes included); it must lex as
+   * complete Lean (no unterminated comment) and hold no telelean block. Nothing is archived.
+   */
+  | { op: 'replace-decl'; name: string; text: string };
 
 /** A declaration's text removed by a LeanOp, for the attic. */
 export interface ArchivedDecl {

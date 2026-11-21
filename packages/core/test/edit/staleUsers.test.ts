@@ -1,6 +1,7 @@
 /**
  * While a file is not freshly checked, the guard "never remove a `.holds` others use" rests on a text scan of the
- * declarations (dependents.ts textUsers). Uses written through `open` must count too.
+ * declarations (dependents.ts textUsers). Uses written through `open` must count too. (Spec v4: no kind change removes
+ * a `.holds` any more, so the guard is exercised by deleting the card with its Lean code, D-18.)
  */
 import { describe, expect, it } from 'vitest';
 import { ActionError } from '../../src/actions.js';
@@ -13,7 +14,7 @@ import { block, mainS, VOCAB_S } from '../project/helpers/build.js';
 const CTX: PlanContext = { today: '2026-11-02', now: '2026-11-02T10:00:00.000Z', layouts: {} };
 const BODY = [block({ id: 'a1', type: 'ASSUMPTION', name: 'A1', rationale: 'r', lean: 'S.a1' }), 'abbrev a1 : Prop := Good t', 'axiom a1.holds : a1'].join('\n');
 
-/** A->G on a1 while `Model/S/Uses.lean` (new, never checked) holds `uses`. */
+/** Delete a1 with its Lean code while `Model/S/Uses.lean` (new, never checked) holds `uses`. */
 function attempt(uses: string): string[] | 'removed' {
   const checked = { 'Model/S/Vocabulary.lean': VOCAB_S, 'Model/S/Main.lean': mainS(BODY) };
   const checkedFiles = Object.entries(checked).map(([path, text]) => parseLeanFile(path, text));
@@ -21,7 +22,7 @@ function attempt(uses: string): string[] | 'removed' {
   const files = [...checkedFiles, parseLeanFile('Model/S/Uses.lean', `import Model.S.Main\n\n${uses}\n`)];
   const model = buildProjectModel({ files, fileHashes: { ...freshHashes(checkedFiles), 'Model/S/Uses.lean': 'sha-new' }, facts, library: 'Model' });
   try {
-    planAction(model, { kind: 'change-kind', id: 'a1', to: 'GOAL', beforeId: null }, CTX);
+    planAction(model, { kind: 'delete-node', id: 'a1', keepLean: false }, CTX);
     return 'removed';
   } catch (error) {
     if (error instanceof ActionError && error.code === 'needs-confirmation') return [...error.dependents];

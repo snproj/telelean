@@ -1,0 +1,81 @@
+# apply:slice4
+
+Agent `a2186036ef36194c0` of workflow `wf_7292b46b-740`. Verbatim output (JSON alongside).
+
+AP-31 is applied to the slice-4 plan. I edited only `/tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/plans/slice4-plan.md` (now about 258 KB). The design before AP-31 is still at `/tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/plans/slice4-plan.after_ultra.md`, which every reversal points to. Slice 2's and slice 3's plans are untouched. Nothing was built, tested or run. The plan has not been through a critic round; the judge's open item 6 asks for one fresh round before 4a starts.
+
+R1–R8 are now the design throughout §1–§9. Everything they replace is gone: typed units and typed items, TransformFreeze with its revalue and follow-on variants, the typed write inside a Claude step and S₀ᵗ, "Claude must define", Edit… of a queued transform and its re-base, the premise step, and detach. The §8 line is "2026-11-20 (AP-31 applied)". §9 keeps all 88 audit rows, with each narrowing tied to its decision. Every decision is numbered D4-1 to D4-60.
+
+## 1. The new sub-slices: 13, down from 14
+Core runs strictly one at a time: 4a → 4b → 4c → 4d → 4e. The runner sub-slices follow 4e one at a time: 4f → 4g → 4h. The webview sub-slices may run beside 4f–4h when files don't overlap: 4i after 4e, 4j after 4i, 4k after 4j and 4h. Then 4l, and 4x is conditional.
+- **4a** (core): contracts, texts, `draftFromModel` and `originalKeyOf`, TR-12 (a), validators, the toolchain's command words.
+- **4b** (core): `analyseTransform`, `claudeMayChange` and `transformScopeOf`. The analysis covers outcome, R4's name problems, dependents and their choices, holders, other-subject locks, targets, may-break proofs, kinds and the confirmation lists.
+- **4c** (core): `planTransformWrite` (session and direct modes), the ledger `transform` entry (`fieldText`), the take-back test `transformTakeBack`, and the direct planner `apply-transform`.
+- **4d** (core): computeItems and the new `whollyYours`, classify, reconcile's withdrawal rule, the backstop, the ledger allowances in G5/B.3/B.4/new-axiom, Claude-part rules (no-proofs, new-definition), normalise, tools, session-start freezes, valuing a decision's own freezes, rows and views.
+- **4e** (core, plus the host's `not-yet`): the reducer's `transform`, `drop-transform` and `edit-premise` actions with their Undo/Redo, `planSubmit` with Claude's parts, the Formalize checks, and the session view.
+- **4f** (runner): the scratch jobs: TR-12 (b) and the premise edit's gap check.
+- **4g** (runner): the judged decision write (its build, take-back, step 4 and recovery), Claude's part as a step, Submit review, Retry and rework parts.
+- **4h** (runner, host): the window lifecycle and TW-1, the provisional session (start-session; claude-step with the typed part as the first write; direct), consent and routing.
+- **4i, 4j, 4k** (webview): the store, the window, and the entry points / review UI / guide.
+- **4l**: Playwright (integrator only).
+- **4x**: conditional, as before.
+
+Fallback splits are listed for the largest ones (4b, 4d, 4g, 4j).
+
+## 2. Decisions (§7.2)
+- **Withdrawn by AP-31, each with what it was:** D4-1, D4-4, D4-5, D4-7, D4-14, D4-22, D4-23, D4-24, D4-29, D4-30, D4-33 (its new-axiom "still bound to its card" rule stays), D4-34 (its cleared-proof rule moved into D4-20), D4-40, D4-42, D4-44.
+- **Revised:** D4-6, D4-8, D4-10, D4-12, D4-13 (reversal only), D4-15 (R2-8 generalised), D4-17 to D4-21, D4-25 (wording), D4-26, D4-28, D4-31, D4-32 (now only Lean using session names), D4-35, D4-37 to D4-39 (D4-39 gains R5's cleared-Dependencies case), D4-43.
+
+New decisions, each with what the user loses and how to reverse it:
+- **D4-45 (R1):** what you type is carried out at once as one judged decision; only Claude's part waits for Submit review. Loses atomicity, and adds a wait for one build at Submit transform. Narrows D4-4's atomicity, the timing of TR-15, RV-9 b2, RV-12 b1 and ES-9 b3, and DO-2's wait.
+- **D4-46 (R1, open item 1):** the take-back reads only failures on visible content. Hidden Results are taken out silently (inside the write's build, slice 2's revert-and-rejudge loop runs). While results are hidden, the confirmation trigger reads only visible data. One leak channel remains, logged under D2-69: a typed name that clashes with a hidden proof-phase declaration.
+- **D4-47 (R1, open item 2):** a crash or reload during the decision write takes it back through `inFlight` and keeps the window, with an "interrupted" notice. The user resubmits.
+- **D4-48 (R1):** session dependents choose Keep it (must still build), Claude re-formalises it (the write empties its Lean), Mark its proof broken, or Delete it too. Targets get Keep only, and their Result is redone. This narrows TR-13's "leave it to Claude".
+- **D4-49 (R2):** your edits belong to each card's ordinary item. The ledger `transform` entry only grants allowances and is dropped on Reject. "Wholly yours" items take a plain Accept; nothing is accepted for you. Narrows RV-7 b5; a mixed card means one Accept or Reject.
+- **D4-50 (R2, open item 3):** the "wholly yours" comparison ignores derived `id:` write-backs and normalise's pins.
+- **D4-51 (R2):** reconcile withdraws an in-review item with no draft ("changed-back" or "replaced-by-transform") instead of slice 2's "disappeared" problem, also after slice 3's whole-model steps.
+- **D4-52 (R3):** typing is an ordinary own freeze; a trashed card's fields are frozen absent; other keys stay frozen only where they had a reason. Replaced reasons are marked `replaced`. Loses the full stack of reasons on a retyped field.
+- **D4-53 (R3):** holders are never revalued; frozen cards that rely on what you change must be unfrozen first. This extends D4-21 and replaces D5-19.
+- **D4-54 (R4):** typed Lean may use only names that already exist; no "Claude must define". Narrows TR-12 (c); dependent edits take two transforms.
+- **D4-55 (R5):** clearing a field means "Claude rewrites this"; "kept empty" is a frozen empty value.
+- **D4-56 (R5):** no docstring mirrors are rewritten inside a session; docstrings may be stale until the next board edit.
+- **D4-57 (R6):** nothing another subject relies on changes in a session (the window locks it). `claudeMayChange` is the one predicate for what Claude may change.
+- **D4-58 (R7):** a suggested premise is edited in place at once, and Claude never overwrites the edit.
+- **D4-59 (R8):** the queue holds only Claude's part; it can be dropped, never edited; one window per card.
+- **D4-60 (R8):** Claude's fills from a transform are reworked by a queued part; Shaky is refused on an item that is wholly yours.
+
+**§2.10, "Amendments to slices 2 and 3" (A1–A20), each with the sub-slice that builds it.** It covers the four amendment items from the judge's open item 4: the judged decision write kind, own freezes valued by a decision, the `replaced` mark and end rows, the withdrawal rule (also in whole-model steps), D4-21 for references, the ledger `transform` entry and its drop on Reject, and `claudeMayChange`. It also covers wholly-yours classes, Claude parts in `planSubmit` and D3-49, edited premises in reconcile and the completion rule, the `transform` decline, the new stack actions, the union members, normalise, the aura rule, and the never-built `transform` reason and revalue hook.
+
+**Cheats:** T1–T14 are kept and adapted to one baseline. New ones: T15 (hidden-result twins), T16 (crash at each point of the write), T17 (the id/pin comparison), T18 (Reject drops ledger values), T19 (edited premise), T20 (holder), T21 (another subject's reliance), T22 (scope).
+
+**Choices I made that go beyond the judge's literal text** (worth checking in the critic round):
+- **Keep it:** I added it as a dependent choice, reading R1's "dependents that it breaks"; the take-back is the safety net if a kept dependent breaks.
+- **Accepted-only fields:** a field frozen only by accepted items may be left to Claude; the decision's confirmation returns those items to review.
+- **Claude's arrows on a trashed card:** declined (DO-0) in the decision, as is an arrow chip you remove.
+- **Sources of a queued part:** reconcile declines `transform` any record it creates on that part's cards.
+- **Records-only decision:** a decision that writes no file skips the build.
+- **Shown Results:** a B.1 failure also triggers the take-back (the judge named B.2).
+- **Cleared proof:** recorded as a `proof-broken` ledger entry.
+- **Provisional claude-step:** a `starting` flag covers the gap between its decision and its queue-start.
+
+## 3. What slice 5 must change to match (not done here)
+- **§2.5:** drop `pendingHolds`, `transformHolds`, `FreezeTable.transforms`, and the `transforms` parameter and walk-stop of `heldFields`. The held maps of a decision's own freezes come from `holdingMap` at the decision's judgement (step 4), through slice 4's `valueOwnFreezes`.
+- **§2.6 (what it needs from slice 4):** rewrite it against slice 4's §3.12.
+  - Keep `newCardId` and `proseProblems`.
+  - Mirrors: only a typed statement's own mirror goes through `mirrorText`.
+  - The `reference` via: a frozen referrer is D4-53's holder problem; an unfrozen referrer of a trashed card is a warning ("will show deleted card"); a changed field gives a warning only.
+  - No detach units, no `planTypedWrite.base`, no Submit staleness.
+  - The allowances are the live `transform` entries' values plus edited premises.
+  - `claudeMayChange` gains `heldFields` and `otherSubjectRefHolds`.
+- **§3.5 (D5-8, D5-21):** the `added` allowance reads the ledger `transform` values, an edited premise's sentence and Why (`editedBy`), and a written premise's rationale. The `revived` exemption applies only to a declaration you typed; the MUST DEFINE clause goes (R4).
+- **§3.6:** withdraw D5-19 (replaced by D4-53). The `heldFields` hook feeds slice 4's holder problem, whose way out is unfreeze, delete too, or edit the reference in the window. S5R3-02, -03 and -05 disappear.
+- **§3.7 (D5-12):** no detach. Unfrozen referrers keep their tokens and show "deleted card", listed like the board's Delete dialog. `refProblems`' `trashed` case refuses a window token to a card in this window's trash, whatever the copy held (S5R3-04). There is no "card Claude made in this session" problem.
+- **D5-10:** drop the exemption for your own typed change; the window locks the field (D4-57).
+- **D5-7:** unchanged in substance; slice 4 now also writes no mirrors in a session.
+- **Cheats 11 and 13:** rewrite them to hold through own freezes valued at the decision, not TransformFreeze maps.
+- **§2.8 texts:** remove the detach, D5-19, MUST DEFINE and Claude-made-card texts; add the reference-holder problem text and the other-subject lock text.
+- **5d** shrinks; 5c2's S4 bullets need rewriting.
+- **S5R2-08** is still open: take → only when the character after the caret is whitespace or the end of the field, and add `pickerReduce` cases for both.
+- **New AP entries with reversals** for D5-12, D5-19 and D5-10's exemption (the judge's open item 5).
+- **One critic round** on slice 5's rewritten sections.
+

@@ -1,0 +1,202 @@
+# fix:2b2:r1
+
+Agent `abf7f81418d143f25` of workflow `wf_ae5f1188-533`. Verbatim output (JSON alongside).
+
+# Fixer 2b2 r1 report (telelean slice 2, sub-slice 2b2)
+
+## Summary
+Every finding is resolved in the working tree:
+- All 4 majors are fixed. Three reviewers found the same moved-T.holds defect (S-V2B2-S1, C-V2B2-C1 and A-V2B2-ADV-2); the other majors are ADV-1 and ADV-3/C2.
+- All minors and nits are fixed. S-V2B2-S2 is fixed by a hand-off in the plan, not by code.
+- I judged no finding wrong.
+- Every fix of a rule has a test that fails without it, checked by mutation and restored with `cmp`.
+- Verification after the last source edit: everything compiles; the unit tests pass (core 991, webview 314, extension 203).
+- My change touches no runner file, so there were no touched runner tests to run. I ran one runner smoke file instead (14 passed).
+- Snapshots:
+  - before: /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/f2b2r1/before.diff (351 files)
+  - after: /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/f2b2r1/after.diff (taken last, 351 files, the same file set)
+- Backups are under /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/f2b2r1/backup/; the list of changed paths is in /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/f2b2r1/changed_files.txt.
+
+## Findings
+- **S-V2B2-S1 / C-V2B2-C1 / A-V2B2-ADV-2 (major): FIXED, in the revert (the fix's option a).**
+  - `planItemRevert` no longer refuses a declaration that B has and that moved since B.
+    - It removes the declaration where it now stands, then puts B's text back in B's place.
+    - The place is computed by the new `baseDeclPlace` (items.ts). It goes right after the nearest unit before it in B that the comparison keeps in place; if there is none, right before the nearest kept unit after it.
+    - B's own whitespace around the declaration replaces the whitespace that stands there now.
+  - A `.holds` that the state lacks also goes back in B's place now. Before, it went right after its statement.
+  - Comments attached to the moved declaration go with it.
+  - The revert's final check now refuses a result where what went back is not in B's place, or where anything else moved.
+  - An anonymous instance that moved is still refused (`unsafe`).
+  - Probes B1 and B3 are now tests, plus:
+    - the moved proof with its lemma and comments;
+    - the moved proof with its text unchanged;
+    - a `.holds` that stood away from its statement;
+    - the "before" side (a declaration first in its file).
+- **C-V2B2-C2 (minor) / A-V2B2-ADV-3 (major): FIXED.**
+  - The mark comes back only when no arrow into the card stays.
+  - The revert's check now refuses a card it edits that ends with both the mark and arrows (TL023).
+    - The check reads the block's lines, because the parser drops such a mark.
+    - My first version read the parsed field and never fired; a mutation run exposed this, and it is fixed.
+  - Plan §3.8 now tells 2f to move the dropped `mark-removed` to the remaining written premise.
+  - Probe C1 is now a test: the first premise out keeps the mark removed with no TL023; both out restores B; the second alone leaves the mark alone.
+- **A-V2B2-ADV-1 (major): FIXED.**
+  - A premise's take-out removes T.holds (back to B's) only while T.holds still rests on the premise:
+    - its `uses` closure reaches a declaration the premise provides;
+    - or, without complete facts, its text names one.
+  - Probe D1 is now a test. It also covers the completion itself, a rework that rests on the premise through a lemma, and the no-facts text fallback both ways.
+- **A-V2B2-ADV-4 (minor): FIXED.**
+  - New rule in `judgeState`: at step purposes, when no other rule spoke (after the `unowned` rule), every S₀ item the scope does not open must keep its content key.
+    - Opened means its `openItems`, plus the target's Result under `openProof`.
+    - A changed key gives the finding `existing-changed`, token `session`, naming the item's declarations, with the new text `CLAUDE_SESSION_TEXTS.frozenItemChanged`.
+  - The rule is skipped:
+    - for an item whose facts are missing in either state;
+    - entirely when S₀'s and the judged state's facts come from different probes (one with the probe marker, one without).
+  - Probes A1, A2 and A3 are now tests, plus a closed-proof Result case, an opened item, a failed probe, and facts from two probes.
+  - The builder's §8 R2-1 line is annotated where it claims too much.
+- **A-V2B2-ADV-5 (minor): FIXED (test).** A rejected Result whose T.holds is B's again, beside accepted items, passes the backstop. The reviewer's mutation now fails it.
+- **A-V2B2-ADV-6 (minor): FIXED (test).** A source the recorded question still lists, with its arrow in neither B nor F, gives a `b2` refusal. The reviewer's mutation now fails it.
+- **A-V2B2-ADV-7 (minor): FIXED.**
+  - `probeFailure(facts, { detail: false })` is new and additive.
+  - The stage's `facts` problem never carries the probe's detail.
+  - `classesBeforeReveal` (the class map in force while results are hidden) carries the sentence without the detail, so the reducer's Accept refusal while hidden shows only the cause.
+  - `classes` (shown) and the backstop keep the detail.
+  - Plan §4.7 gains the residual: whether a probe fails at all can depend on hidden content.
+- **S-V2B2-S2 (minor): FIXED by hand-off; no code change.** `holdAs` stays optional because M2's `adoptGhost` needs the default. The plan's §1.1 2h entry now makes it required once `adoptGhost` is retired, with a test, and says 2f passes the record's `accepted.holdAs`.
+- **S-V2B2-S3 / C-V2B2-C3 (nits): FIXED.** Updated the user guide (l.103 and l.237), the host's `startRun` doc comment and the protocol's `StartRunMessage` doc comment.
+- **S-V2B2-S4 (nit): FIXED.**
+  - `subjectCycle` now counts a proposition that lists itself in `premises:` as the cycle `[x, x]`, in board order.
+  - An old axiom's self-premise is not counted (A19).
+  - Slice 1's `arrowCycleThrough` is unchanged.
+- **C-V2B2-C4 (nit): FIXED.** That test now also asserts `final`.
+
+## Files changed (all under /home/zhengyew/telelean)
+- packages/core/src/review/revert.ts: moved and missing declarations go back in B's place; the mark rule; the completion rule; the check reads marks from the lines and checks B's place.
+- packages/core/src/review/items.ts: `baseDeclPlace` is new; `cardsOf` is hoisted to module level.
+- packages/core/src/review/judge.ts: the frozen-items rule with its probe guard; the `facts` problem without the probe's detail.
+- packages/core/src/review/texts.ts: `CLAUDE_SESSION_TEXTS.frozenItemChanged`.
+- packages/core/src/review/classify.ts: `classesBeforeReveal` gets the sentence without the detail.
+- packages/core/src/facts.ts: `probeFailure`'s `detail` option.
+- packages/core/src/formalize.ts: the self-arrow cycle in `subjectCycle`.
+- packages/core/src/protocol.ts: doc comment only.
+- packages/extension/src/logic/boardSession.ts: doc comment only.
+- packages/core/test/review/revert.test.ts: +4 tests; the old "moved declaration refused" test is replaced by "an instance without a name that moved is refused".
+- packages/core/test/review/judge.test.ts: +4 tests, 1 extended (C4).
+- packages/core/test/review/backstop.test.ts: +2 tests.
+- packages/core/test/formalize.test.ts: +1 test.
+- packages/core/test/review/probe.test.ts: 3 tests updated for the detail rule.
+- docs/user-guide.md: two Formalize lines.
+- docs/slice2-plan.md:
+  - amended §1.1 (2h), §2.1, §3.8, §4.7, §4.9, §4.11 and §4.12;
+  - annotated the builder's R2-1 line in §8;
+  - added a full "fixer 2b2 r1" entry to §8.
+
+Nothing was deleted or skipped, and no test moved to a later sub-slice.
+
+## Mutation checks
+- 34 mutations, all run against the final code.
+- Each file was restored from a byte copy and checked with `cmp`: all identical.
+- 30 caught. 4 are defensive halves that the rules before them make unreachable; they are explained in §8.
+- Harness and results:
+  - /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/f2b2r1/mutate.py
+  - /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/f2b2r1/muts_final.json
+  - /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/f2b2r1/muts_final.out.json
+
+| ID | Where | What was broken | Result | First failing test |
+|---|---|---|---|---|
+| MV1 | revert.ts:135 | moved declaration not handled | 3 failed | "an instance without a name that the step moved" |
+| MV2 | revert.ts:139 | old `unsafe` refusal of a move back | 2 failed | "S-V2B2-S1 … T.holds the step wrote below later content" |
+| MV3 | items.ts:400 | "after" anchors at the kept unit's start | 4 failed | "a Result whose T.holds the step removed" |
+| MV4 | items.ts:404 | no "before" side | 1 failed | "a declaration the step moved goes back in B's place" |
+| MV5 | items.ts:397 | B's leading whitespace dropped | 2 failed | "S-V2B2-S1 …" |
+| MV6 | items.ts:392 | kept units paired by index | 1 failed | "a declaration the step moved …" |
+| MV7 | revert.ts:253 | whitespace not replaced | 4 failed | "a Result whose T.holds the step removed" |
+| MV8 | revert.ts:269 | comment of a moved declaration stays | 1 failed | "S-V2B2-S1 …" |
+| MV9 | revert.ts:377 | the check's "in B's place" dropped | defensive, 22 passed | – |
+| MK1 | revert.ts:315 | mark restored while an arrow stays | 1 failed | "C-V2B2-C2, A-V2B2-ADV-3 …" (fails inside the check: "would both follow from nothing and have arrows") |
+| MK2 | revert.ts:374 | the check's mark+arrows dropped, alone | defensive, 22 passed | – |
+| MK3 | revert.ts:315 | MK1 and MK2 together | 1 failed | (TL023 assertion) |
+| CP1 | revert.ts:216 | completion always taken out | 1 failed | "A-V2B2-ADV-1 …" |
+| CP2 | revert.ts:173 | closure never finds the premise | 2 failed | "a written premise with its completion" |
+| CP3 | revert.ts:172 | direct constants only | 1 failed | "A-V2B2-ADV-1 …" |
+| CP4 | revert.ts:174 | no-facts fallback always "rests" | 1 failed | "A-V2B2-ADV-1 …" |
+| CP5 | revert.ts:174 | no-facts fallback never "rests" | 1 failed | "A-V2B2-ADV-1 …" |
+| FZ1 | judge.ts:490 | frozen-items rule not run | 4 failed | "A1 …" |
+| FZ2 | judge.ts:520 | opened items compared too | 4 failed | "`openItems` opens their declarations" |
+| FZ3 | judge.ts:522 | judged state's facts-missing skip dropped | defensive, 112 passed | – |
+| FZ4 | judge.ts:529 | no `names` on the finding | 4 failed | "A1 …" |
+| FZ5 | judge.ts:516 | active Result compared under `openProof` | 8 failed | "a Submit step whose Result is not open …" |
+| FZ6 | judge.ts:516 | active Result skipped with the proof closed | 1 failed | "the active target's Result is its own rules' only while the scope opens it" |
+| FZ7 | judge.ts:522 | a lost S₀ item not reported | defensive, 112 passed | – |
+| FZ8 | judge.ts:490 | probe guard dropped | 1 failed | "A1 …" |
+| PD1 | facts.ts:228 | `detail: false` ignored | 3 failed | "a sentence for `cut` and `failed` …" |
+| PD2 | classify.ts:123 | before-reveal map keeps the detail | 2 failed | "at a stage: every draft with a declaration lacks its facts …" |
+| PD3 | classify.ts:123 | neither class map has the detail | 2 failed | same |
+| PD4 | judge.ts:459 | problem carries the detail | 2 failed | same |
+| SC1 | formalize.ts:124 | self-arrow is no cycle | 1 failed | "fixer 2b2 r1 (S-V2B2-S4) …" |
+| SC2 | formalize.ts:124 | old axiom's self-premise counts | 1 failed | same |
+| SC3 | formalize.ts:125 | board order ignored | 1 failed | same |
+| BK1 | backstop.ts:135 | `owned = drafts` (ADV-5's mutation) | 1 failed | "fixer 2b2 r1 (A-V2B2-ADV-5) …" |
+| BK2 | backstop.ts:307 | `inference.question.sources` (ADV-6's mutation) | 1 failed | "fixer 2b2 r1 (A-V2B2-ADV-6) …" |
+
+## Verification (after the last source edit)
+Every command ran through `capped.sh`, one at a time, from the package directory, with:
+- the binary /home/zhengyew/telelean/node_modules/.bin/<tool>;
+- TMPDIR and TELELEAN_TEST_TMP in /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/f2b2r1/verify_final;
+- every vitest run with `--maxWorkers=1 --no-cache --fsModuleCachePath=/tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/f2b2r1/verify_final/fsmc`.
+
+The script is /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/f2b2r1/verify.sh, and the logs are in the verify_final folder there.
+
+| Command | Result |
+|---|---|
+| core `tsc --noEmit -p tsconfig.test.json` | rc=0, no output |
+| runner `tsc --noEmit -p tsconfig.test.json` | rc=0, no output |
+| webview `tsc --noEmit -p tsconfig.json` | rc=0, no output |
+| webview `tsc --noEmit -p tsconfig.node.json` | rc=0, no output |
+| extension `tsc --noEmit -p tsconfig.json` | rc=0, no output |
+| core `vitest run …` | "Test Files 72 passed (72) / Tests 991 passed (991)" |
+| webview `vitest run …` | "Test Files 19 passed (19) / Tests 314 passed (314)" |
+| extension `vitest run …` (with `--no-cache`) | "Test Files 22 passed (22) / Tests 203 passed (203)" |
+
+**Runner.** No runner source or test file is touched, and no runner source calls a changed function (only comments mention `formalizeStartProblem`). So the set of touched runner test files is empty, and no real-Lean runner file was run.
+- As a smoke check I ran: `capped.sh 3000 timeout 900 env -u UPDATE_SEMANTIC_RECORDINGS TMPDIR=… TELELEAN_TEST_TMP=… vitest run --maxWorkers=1 --no-cache --fsModuleCachePath=… test/gate/pure.test.ts`
+- Result: "Test Files 1 passed (1) / Tests 14 passed (14)". No /tmp/telelean-* was left.
+
+The webview source is untouched, so there was no scratch build and no Playwright run.
+
+## Decisions for the orchestrator to log
+All of these are also in the plan's §8, under "fixer 2b2 r1".
+1. **Moved T.holds.** The revert handles the move and puts B's text back in B's place.
+   - Why not the reviews' preferred fix: Lean needs a source's `.holds` declared before a proof uses it. A pending target placed above a source declared later can only be proved below that source; slice 1 allows this, the step limits open the `.holds`'s place, and §4.11 asks for "T.holds as in B".
+   - Alternative: the step limits refuse moving the target's `.holds` under `openProof`, which would make such a Formalize fail.
+2. **Two written premises into a marked card.** The mark comes back only when no arrow stays; 2f's take-out write moves the dropped `mark-removed` to the remaining written premise (first in ledger order).
+   - Alternative: computeItems and the backstop count a `follows_from` removal as owned by any written premise of the card.
+3. **The completion's T.holds** goes with the premise only while T.holds rests on it (its uses closure, else its text). The ledger entry's lifetime is unchanged.
+   - Alternatives: record the completion's text on the ledger entry; or drop the `completion` entry when a later step changes T.holds (which would make a completion due again).
+4. **Frozen items.** A general content-key rule rather than a comment rule:
+   - only when no other rule spoke;
+   - token `session`;
+   - skipped for items with missing facts, and when S₀'s and the judged state's probes differ;
+   - the active target's Result is exempt only under `openProof`.
+   - Alternative: compare only S₀ comments' attachments, with token `comment`.
+5. **The probe's detail.** Never in the stage's `facts` problem; absent from `classesBeforeReveal`'s sentence; kept in `classes` and in the backstop. The 1-bit "did it fail" channel is added to §4.7's accepted residuals.
+   - Alternatives: keep the detail in the problem and have 2c2 mask it while hidden; or have 2b3a keep names out of the detail.
+6. **`holdAs`.** It stays optional until 2h retires `adoptGhost`, then becomes required with a test (written into §1.1's 2h entry).
+   - Alternative: a session premise-write entry point that requires it now.
+7. **Self-arrow.** It is a cycle `[x, x]` for check 6, named first in board order. An old axiom's self-premise does not count.
+   - Alternative: leave it to TL015 alone.
+
+**Contract changes (all additive):**
+- `probeFailure(facts, options?)`;
+- `baseDeclPlace` (core items.ts);
+- `CLAUDE_SESSION_TEXTS.frozenItemChanged`.
+
+No §2.9 signature changed.
+
+## Effects outside the repo and my scratch dir
+- **Transient systemd user scopes** came from `capped.sh`, one per job; each was gone when its job ended.
+- **The repo's `.vite-temp` folders** (node_modules/.vite-temp and packages/{core,runner,webview}/node_modules/.vite-temp) already existed. vitest wrote temporary config files there and deleted them; all are empty now.
+- **The repo's .git directory** got an mtime of 05:03:40 from my read-only `git status --porcelain`. No file in .git is newer than my start; .git/index is unchanged since 11-17. `snapdiff.sh` also ran its read-only git diff and ls-files.
+- **/tmp itself** shows a changed mtime, but no entry in /tmp is newer than my start. Every command I ran set TMPDIR to my scratch dir, so I believe this is not mine.
+- **Not mine:** ~/.copilot/session-state (copilot), and the running `lean --server` for ~/webring (the user's editor).
+- **None of these:** Playwright, browser, network, npm/npx, installs, writes to extension/dist or extension/out, git state changes, real Claude (`TELELEAN_NO_REAL_CLAUDE=1` in every test command through capped.sh). No processes of mine are left running.
+

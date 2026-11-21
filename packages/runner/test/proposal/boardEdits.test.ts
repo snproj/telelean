@@ -23,8 +23,8 @@ const SHOWN = BASE.replace('natural_name: All humans are mortal\nasserted: 2026-
   .replace('natural_name: Socrates is a human\nasserted: 2026-11-10\n-/\n', 'natural_name: Socrates is a human\nasserted: 2026-11-10\nlean: Demo.socrates_is_a_human\n-/\n/-- Socrates is a human -/\nabbrev socrates_is_a_human : Prop := Human socrates\naxiom socrates_is_a_human.holds : socrates_is_a_human\n')
   .replace(`${PREMISES}\nasserted: 2026-11-10\n-/\n`, `${PREMISES}\nasserted: 2026-11-10\nlean: Demo.socrates_is_mortal\n-/\n/-- Socrates is mortal -/\nabbrev socrates_is_mortal : Prop := Mortal socrates\ntheorem socrates_is_mortal.holds : socrates_is_mortal :=\n  all_humans_are_mortal.holds socrates socrates_is_a_human.holds\n`);
 
-/** A card the board's A|D|G box adds while Claude works (core `add-node`: end of the Inbox's namespace). */
-const PLATO = block('plato-is-a-human', 'ASSUMPTION', 'Plato is a human');
+/** A card the board's A|P box adds while Claude works (core `add-node`: end of the Inbox's namespace; spec v4 kind names). */
+const PLATO = block('plato-is-a-human', 'AXIOM', 'Plato is a human');
 const withPlato = (text: string): string => text.replace('\nend Demo\n', `\n${PLATO}\n\nend Demo\n`);
 
 function merged(real: string): string | null {

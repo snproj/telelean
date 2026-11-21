@@ -195,8 +195,8 @@ describe('history preview documents', () => {
     expect(previewTitle(at('Delete: x', local(2026, 11, 1, 14, 3)), now)).toBe('History: Delete: x (14:03)');
     expect(previewTitle(at('Delete: x', local(2026, 10, 31, 9, 5), 'current'), now)).toBe('History: Delete: x (Oct 31 09:05) vs now');
     expect(previewTitle(at('Delete: x', local(2025, 12, 31, 23, 59)), now)).toBe('History: Delete: x (2025-12-31 23:59)');
-    const long = previewTitle(at('Undo: Make Goal: Cynder is a character who has a dark past (dependents rewritten)', local(2026, 11, 1, 14, 3)), now);
-    expect(long).toBe('History: Undo: Make Goal: Cynder is a character… (14:03)');
+    const long = previewTitle(at('Undo: Make Axiom: Cynder would not be a good addition to the new Spyro game (dependents rewritten)', local(2026, 11, 1, 14, 3)), now);
+    expect(long).toBe('History: Undo: Make Axiom: Cynder would not be a… (14:03)');
     expect(long.length).toBeLessThan(60);
   });
 

@@ -103,10 +103,11 @@ describe('package.json (AT5.2)', () => {
 
   it('contributes 6 colours with exactly one dot each and explicit hex defaults for every theme kind (no charts.*)', () => {
     const colors = manifest.contributes.colors;
+    // Spec v4 BD-9: the axiom and proposition stripes (the old Assumption and Goal colours) and green for "proved".
     expect(colors.map((c) => c.id)).toEqual([
-      'telelean.kindAssumption',
-      'telelean.kindDerivation',
-      'telelean.kindGoal',
+      'telelean.kindAxiom',
+      'telelean.kindProposition',
+      'telelean.proved',
       'telelean.formalizedAura',
       'telelean.vocabulary',
       'telelean.highlight',

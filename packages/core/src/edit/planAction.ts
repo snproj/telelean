@@ -6,52 +6,28 @@
  */
 import { ActionError, type ArchiveEntry, type BoardAction, type EditableField, type EditPlan } from '../actions.js';
 import { holdsName } from '../facts.js';
-import { emptyLayout, moveInLayout, orderByLayout, withoutIds, type Layout } from '../layout.js';
+import { emptyLayout, moveInLayout, withoutIds } from '../layout.js';
 import type { KnownFieldKey, LeanOp } from '../markup/types.js';
 import { deriveId, escapeBodyText, renderBlock } from '../markup/api.js';
 import { EVIDENTIALS, STANCES, type Evidential, type Stance } from '../model.js';
 import { inboxPath, isSubjectName, libraryRootFile, subjectDir, subjectRootFile } from '../paths.js';
-import type { ModelNode, ProjectModel } from '../project/types.js';
-import { cutText } from '../project/text.js';
+import type { ProjectModel } from '../project/types.js';
 import { planDel } from './planDelete.js';
 import { NOUN, planKind } from './planKind.js';
+import { AXIOM_TO_PROPOSITION_REFUSAL } from '../kindChange.js';
+import { planAddArrows, planClaimPending, planMoveCards, planRemoveArrows, planSetFromNothing } from './planArrows.js';
+import { canvasPosition, currentOrder, entryOf, label, layoutOf, pin, withoutPosition } from './planShared.js';
 import { EditSession } from './session.js';
 import type { PlanContext } from './types.js';
 import { subjectScaffold } from './scaffold.js';
 
 const FIELD_KEY: Readonly<Record<EditableField, KnownFieldKey>> = { naturalName: 'natural_name', rationale: 'rationale', stance: 'stance', source: 'source' };
 
-const label = (text: string) => cutText(text, 60);
-
-function entryOf(model: ProjectModel, id: string): ModelNode {
-  const entry = model.nodes.get(id);
-  if (!entry) throw new ActionError('not-found', `No card "${id}" (it may have been deleted).`);
-  return entry;
-}
-
 function sentence(value: string | null | undefined): string {
   const text = (value ?? '').trim();
   if (!text) throw new ActionError('invalid', 'The sentence is empty.');
   if (/[\r\n]/.test(text)) throw new ActionError('invalid', 'A sentence is one line.');
   return text;
-}
-
-function layoutOf(ctx: PlanContext, subject: string): Layout {
-  return ctx.layouts[subject] ?? emptyLayout();
-}
-
-/** The subject's column order as the board shows it (layout first, then file order). */
-function currentOrder(model: ProjectModel, subject: string, layout: Layout) {
-  const nodes = [...model.nodes.values()].map((e) => e.node).filter((n) => n.subject === subject);
-  return orderByLayout(nodes, layout);
-}
-
-/** D-8: whenever telelean edits the block of a node formalised by adjacency, it pins the binding. */
-function pin(session: EditSession, entry: ModelNode): void {
-  const node = entry.node;
-  if (node.lean.binding === 'adjacent' && node.status.formal === 'formalized' && node.lean.statement) {
-    session.setField(entry.file, entry.block, node.id, 'lean', [node.lean.statement]);
-  }
 }
 
 function archiveEntries(subject: string, nodeId: string, reason: string, archived: ReadonlyArray<{ name: string; text: string }>): ArchiveEntry[] {
@@ -92,13 +68,16 @@ function planAddNode(model: ProjectModel, action: Extract<BoardAction, { kind: '
   );
   session.insertBlock(inbox, blockText, { kind: 'end-of-namespace', namespace: subject });
   const layout = layoutOf(ctx, subject);
+  const ordered = moveInLayout(layout, currentOrder(model, subject, layout), id, action.type, null);
+  // Spec v4 BD-3, BD-8, CM-7 (slice 1c): a proposition's place on the canvas, written with the card (one Undo step).
+  const position = action.position !== undefined && action.type === 'PROPOSITION' ? canvasPosition(action.position) : undefined;
   return {
     action: 'add-node',
     label: `Add ${NOUN[action.type].toLowerCase()}: ${label(text)}`,
     subject,
     nodes: [id],
     changes: session.changes(),
-    layout: { subject, layout: moveInLayout(layout, currentOrder(model, subject, layout), id, action.type, null) },
+    layout: { subject, layout: position ? { ...ordered, positions: { ...(ordered.positions ?? {}), [id]: position } } : ordered },
     nodeId: id,
   };
 }
@@ -222,7 +201,7 @@ function planChangeKind(model: ProjectModel, action: Extract<BoardAction, { kind
   for (const group of plan.leanOps) archive.push(...archiveEntries(node.subject, node.id, reason, session.leanOps(group.file, group.ops)));
   const fields = [...plan.fieldChanges];
   const rationale = action.rationale?.trim();
-  if (action.to === 'ASSUMPTION' && rationale) fields.push({ key: 'rationale', value: rationale });
+  if (action.to === 'AXIOM' && rationale) fields.push({ key: 'rationale', value: rationale });
   for (const change of fields) session.setField(entry.file, entry.block, node.id, change.key, change.value);
   pin(session, entry);
   const layout = layoutOf(ctx, node.subject);
@@ -230,11 +209,12 @@ function planChangeKind(model: ProjectModel, action: Extract<BoardAction, { kind
   const suffix = action.dependents === 'rewrite' && rewrote ? ' (dependents rewritten)' : action.dependents === 'mark-broken' && plan.broken.length > 0 ? ' (dependents marked broken)' : '';
   return {
     action: 'change-kind',
-    label: `Make ${NOUN[action.to]}: ${label(node.naturalName)}${suffix}`,
+    // Slice 1f (carry-over 4): the only kind change left is "Move to axioms" (AR-7), and its Undo and History label say so.
+    label: `${action.to === 'AXIOM' ? 'Move to axioms' : `Make ${NOUN[action.to]}`}: ${label(node.naturalName)}${suffix}`,
     subject: node.subject,
     nodes: [node.id],
     changes: session.changes(),
-    layout: { subject: node.subject, layout: moveInLayout(layout, currentOrder(model, node.subject, layout), node.id, action.to, action.beforeId) },
+    layout: { subject: node.subject, layout: withoutPosition(moveInLayout(layout, currentOrder(model, node.subject, layout), node.id, action.to, action.beforeId), node.id) },
     ...(archive.length > 0 ? { archive } : {}),
   };
 }
@@ -242,7 +222,12 @@ function planChangeKind(model: ProjectModel, action: Extract<BoardAction, { kind
 function planReorder(model: ProjectModel, action: Extract<BoardAction, { kind: 'reorder' }>, ctx: PlanContext): EditPlan {
   const entry = entryOf(model, action.id);
   const node = entry.node;
-  if (action.column !== node.type) throw new ActionError('invalid', `Moving a card to the ${NOUN[action.column]} column changes its kind: drop it on a "Make ${NOUN[action.column]}" zone.`);
+  if (action.column !== node.type) {
+    throw new ActionError(
+      'invalid',
+      action.column === 'AXIOM' ? 'Moving a card to the Axioms column changes its kind: drop it on the "Move to axioms" zone.' : AXIOM_TO_PROPOSITION_REFUSAL,
+    );
+  }
   if (action.beforeId === node.id) throw new ActionError('invalid', 'A card cannot be placed before itself.');
   const layout = layoutOf(ctx, node.subject);
   return {
@@ -280,6 +265,8 @@ function planSetPremises(model: ProjectModel, action: Extract<BoardAction, { kin
   }
   const session = new EditSession(model);
   session.setField(entry.file, entry.block, node.id, 'premises', premises);
+  // Spec v4 AR-5: arrows into the card replace its "follows from nothing" mark (both together would be TL023).
+  if (entry.block.lines.some((line) => line.key === 'follows_from')) session.setField(entry.file, entry.block, node.id, 'follows_from', null);
   pin(session, entry);
   return {
     action: 'set-premises',
@@ -320,6 +307,16 @@ export function plan(model: ProjectModel, action: BoardAction, ctx: PlanContext)
       return planSetPremises(model, action);
     case 'create-subject':
       return planCreateSubject(model, action);
+    case 'add-arrows':
+      return planAddArrows(model, action, ctx);
+    case 'remove-arrows':
+      return planRemoveArrows(model, action);
+    case 'set-from-nothing':
+      return planSetFromNothing(model, action, ctx);
+    case 'claim-pending':
+      return planClaimPending(model, action);
+    case 'move-cards':
+      return planMoveCards(model, action, ctx);
     default: {
       const never: never = action;
       throw new ActionError('invalid', `Unknown action ${(never as { kind: string }).kind}.`);

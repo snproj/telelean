@@ -1,6 +1,6 @@
 /**
  * Claude's suggested premises on the board (D-6, 03 section 7): translucent "Claude suggests" cards at the top of the
- * Assumptions column (they wait for a decision), in the proposed view only (they are part of the proposal, not of the
+ * Axioms column (they wait for a decision), in the proposed view only (they are part of the proposal, not of the
  * user's files). They carry no `data-node-id`: they are not cards of the model, and arrows never attach to them.
  */
 import { useMemo } from 'react';

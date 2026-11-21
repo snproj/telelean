@@ -2,7 +2,7 @@
 // telelean demo driver (docs/DEMO.md): your own simple example, end to end in a real VS Code window, driven like a
 // user. It starts an isolated VS Code (the downloaded 1.140.0 test build, or the user's snap with --vscode snap) with
 // the extension under development on a FRESH empty folder, runs "telelean: Initialize Model Here", types the example
-// into the board's A|D|G box as cards (assumptions and a goal), selects them, presses "These suffice ▶", gives the
+// into the board's A|P box as cards (axioms and a proposition), selects them, presses "These suffice ▶", gives the
 // consent, answers Claude's questions on the board (your --answer specs, else the first option), steps through the
 // review, adopts Claude's suggested premise when a round ends not proved (unless --no-adopt), Accepts, waits for Lean's
 // check of the accepted files, and prints a JSON summary (verdict per round, questions and answers, ghosts, the Lean
@@ -335,7 +335,6 @@ function roundSummary(entry) {
     statements: (p?.review ?? []).filter((r) => r.kind === 'statement').map((r) => ({ card: r.nodeId, sentence: r.sentence, wordedBy: r.wordedBy, lean: r.pretty, change: r.change })),
     newVocabulary: (p?.review ?? []).filter((r) => r.kind === 'vocabulary').flatMap((r) => r.items.map((i) => ({ name: i.name, kind: i.vocabKind, type: i.type, gloss: i.gloss }))),
     definitions: (p?.definitions ?? []).map((d) => ({ name: d.name, kind: d.kind, code: d.code })),
-    lifecycle: (p?.lifecycle ?? []).map((l) => ({ card: l.nodeId, from: l.from, to: l.to, recommended: l.recommended, reason: l.reason })),
     files: p?.files ?? [],
     ghosts: (p?.ghosts ?? view.ghosts ?? []).filter((g) => g.round === view.round).map((g) => ({ id: g.id, sentence: g.naturalName, lean: g.leanStatement, closesGap: g.closesGap, aloneEntails: g.aloneEntails, state: g.state })),
     notices: view.notices.map((n) => `${n.kind}: ${n.text}`),
@@ -519,8 +518,8 @@ async function main() {
   await wb.shot('board-empty');
 
   // ---- The cards
-  for (const text of assumptions) summary.cards.push({ kind: 'ASSUMPTION', text, id: await board.addCard('ASSUMPTION', text) });
-  summary.cards.push({ kind: 'GOAL', text: goal, id: await board.addCard('GOAL', goal) });
+  for (const text of assumptions) summary.cards.push({ kind: 'AXIOM', text, id: await board.addCard('AXIOM', text) });
+  summary.cards.push({ kind: 'PROPOSITION', text: goal, id: await board.addCard('PROPOSITION', goal) });
   mark('cards typed');
   await board.waitLean(['fresh', 'failed', 'unsupported-toolchain', 'disabled'], 300_000, "Lean's check of the new cards").catch((error) => summary.problems.push(error.message));
   await wb.shot('cards');

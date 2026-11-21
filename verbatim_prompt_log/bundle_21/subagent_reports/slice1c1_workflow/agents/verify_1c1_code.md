@@ -1,0 +1,137 @@
+# verify:1c1:code
+
+Agent `a1cef4633e02126a2` of workflow `wf_13b8eae2-0c7`. Verbatim output (JSON alongside).
+
+- **summary:** I found no blockers and no majors in 1c1. Every typecheck and unit-test result the builder reported matched when I re-ran them one at a time under capped.sh. I isolated what 1c1 changed by rebuilding the post-1f tree in scratch from evidence/patches/after_slice_1f.patch on HEAD 187673d and diffing it against the working tree. 45 files changed, which matches the report's file list.
+
+What I checked by reading the code:
+- Core: add-node.position is validated in the protocol and stored in the same plan for a proposition only. The coordinate check moved to planShared.
+- Extension: the action mapping passes the position on.
+- Runner: currentLayoutOf carries TlGraph.positions into the proposed graph.
+- Webview:
+  - CM-7 selection rules, including both exceptions.
+  - Right-click versus right-drag, using a 4 px slop that latches.
+  - Contextmenu suppression.
+  - Zoom about the cursor, Ctrl+wheel and keyboard zoom.
+  - Moves commit as one moveCards; Escape cancels.
+  - Placement layering and Tidy layout.
+  - Overlay routing, clipping, edge cuts and badges.
+  - The band, its divider and its summary line.
+  - The "also assumed" line.
+  - No inline style props (CSP).
+- No remaining uses of removed names in src or the unit tests. Old selectors survive only in the e2e specs the builder already listed.
+
+Your relayed request asks that the Current tab be uneditable during an edit session and that undo never mix the two tabs. 1c1 adds no way around this:
+- Moves, Tidy layout, "New proposition here" and adds from the A|P box are refused by the store's lock, and by the host (1f).
+- The Proposed view never posts a move, a tidy or a selection, so nothing from it reaches the Current Undo stack.
+- Pan, zoom and the band's height are view state only.
+
+The findings are minor gaps and polish:
+- The Proposed canvas keeps only stored positions. Cards with no stored position can still shift when you switch between Current and Proposed.
+- Keyboard focus can be lost when the canvas re-sorts its cards for any reason other than a move.
+- The A|P box ignores a selected axiom when it places a new proposition.
+- Two right-click menu labels would be wrong for a selection that mixes arrows and marks. This becomes possible in 1c2.
+- The geometry tests no longer cover arrows within the AXIOMS column.
+- A press can be aborted by a lostpointercapture event that bubbles up from a card (touch and pen input).
+- Three nits.
+
+Not run:
+- The scratch vite build. builder_rules forbid `vite build` outside the builder's brief.
+- Playwright and the VS Code suites.
+- runner build.test.ts: every case calls ctx.skip() unless 12 GB of RAM is free (about 2.2 GB was available).
+
+Effects outside the repo and my scratch dir:
+- The modification time of node_modules/.vite-temp changed (the extension's vitest config load).
+- packages/{core,runner,webview}/node_modules/.vite/vitest/da39a3ee5e6b4b0d3255bfef95601890afd80709/results.json were updated.
+- The modification time of /tmp changed; no new entries remain there.
+- No writes to packages/extension/out or dist, which I checked against timestamps.
+- No git changes; git status still shows 197 entries.
+- No processes of mine are left running.
+
+My scratch files are in /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/v1c1_corr (the post-1f tree, 1c1.diff and runner-tmp).
+- **findings:**
+  - [1]
+    - **id:** F1
+    - **severity:** minor
+    - **where:** packages/webview/src/board/PropositionCanvas.tsx:60-84 (stored = boardView(s).positions; sizeOf from re-measured sizes)
+    - **problem:** The carry-over requirement (brief E: the Proposed canvas places existing cards where Current does) is met only for cards with a STORED position. Most cards have none: placement is never written until a move or Tidy layout. For those cards the Proposed view re-runs the layered placement using heights measured in the Proposed view. There a changed card is taller: NodeCard adds the diff line (NodeCard.tsx:234-238) and the result-hidden chip. So every unstored card below a changed card in the same layer shifts down when you switch Current and Proposed.
+    - **fix:** In the Proposed view, pass the Current canvas's last shown positions (stored plus placed) as `stored` for every id present in both views. For example, CanvasView keeps the last Current layout and PropositionCanvas merges it when proposedOverlay(s) !== null. Only the proposal's new cards then go to the layered placement. Add a unit test where a changed card above another unstored card keeps both in place.
+    - **evidence:** runner currentLayoutOf only copies graph.positions, which are stored positions; buildOverlay adds only stored positions of removed cards. placeCards stacks unstored cards by measured height (placement.ts:121-135).
+  - [2]
+    - **id:** F2
+    - **severity:** minor
+    - **where:** packages/webview/src/board/PropositionCanvas.tsx:86,203; BoardInput.ts:193-200
+    - **problem:** Canvas slots are rendered in reading order, so any placement change can reorder keyed children. React then moves DOM nodes, and moving the focused card's node drops focus to <body>. The builder restores focus only after a pointer move (finishMove). Other re-sorts lose keyboard focus: for example, after F2 commits an edit on a canvas card, the focus returns to the card, then the new graph changes heights and cross-layer interleaving reorders the cards.
+    - **fix:** Generalise the refocus. Record the focused canvas card's id on focusin. After each placement change, in a layout effect in PropositionCanvas, refocus that card with preventScroll if document.activeElement became body or is disconnected. Alternatively render in a stable order and manage the reading order separately.
+    - **evidence:** BoardInput.ts:193 comment: "React may move the card's element (the canvas keeps its cards in reading order): give the focus back" — handled only on the move path.
+  - [3]
+    - **id:** F3
+    - **severity:** minor
+    - **where:** packages/webview/src/prompt/PromptBox.tsx:49-53,81; board/canvas/CanvasView.ts:220-224
+    - **problem:** BD-8 says a proposition from the A|P box is "placed in view, next to the selected card if any". selectedOnCanvas looks only at selected PROPOSITIONs, so a selected axiom is ignored and the new card goes to the middle of the view. Selecting an axiom and then typing a proposition that follows from it is a common flow.
+    - **fix:** When the last selected card is an axiom in the column, place the new card at the canvas's left side, in view, level with the axiom. Take the axiom card's client rect, convert it with canvas.clientToCanvas(viewportLeft + margin, axiomTop), then call newCardPosition to avoid overlaps. Keep the current logic for a selected proposition.
+    - **evidence:** selectedOnCanvas: `[...state.selected].reverse().find((id) => nodes[id]?.type === 'PROPOSITION')`.
+  - [4]
+    - **id:** F4
+    - **severity:** minor
+    - **where:** packages/webview/src/board/ContextMenu.tsx:107-126; board/menu.ts:169-171,178-179
+    - **problem:** When the right-clicked arrow or mark is already selected, "Remove arrow" / "Remove N arrows" and "Remove 'follows from nothing'" call deleteSelectedArrows(). That sends every selected arrow AND every selected mark (store.ts:2160). The labels count only arrows, or name only the one mark. This is unreachable in 1c1 because no UI makes a mixed arrow+mark selection, but it becomes reachable with 1c2's Ctrl-click selection.
+    - **fix:** Build the label from the whole selection (e.g. "Remove 2 arrows and 1 'follows from nothing' mark"), or send only the clicked kind with requestArrows({ kind: 'remove-arrows', arrows, marks: [] }) / set-from-nothing off. Add a menu unit test with a mixed selection.
+    - **evidence:** deleteSelectedArrows: `requestArrows({ kind: 'remove-arrows', arrows: s.selectedArrows, marks: s.selectedMarks })`.
+  - [5]
+    - **id:** F5
+    - **severity:** minor
+    - **where:** packages/webview/test/unit/geometry.test.ts (rewritten)
+    - **problem:** The rewrite dropped coverage of behaviour 1c1 keeps on purpose:
+- an arrow between two AXIOMS cards that are both visible (loop on the right);
+- the same arrow with one end scrolled away (hook plus a ▲/▼ badge);
+- the old case "clamps the anchor into the visible part of a partly scrolled card".
+No edge in the new file joins two column cards, and `anchor` is not exercised with a band. These paths are still reachable: verified and reference edges between axioms are drawn.
+    - **fix:** Add computeFrame cases with a column→column edge (both visible: loopPath at x = right edge; one end scrolled: data stub, cut 'up'/'down' and a column badge), plus a partly scrolled column card whose anchor is clamped into [viewTop+inset, viewBottom-inset].
+    - **evidence:** Old file cases: 'routes same-column edges through the gutter…', 'turns an edge with one end scrolled away into a short stub…', 'clamps the anchor into the visible part…'; the new edges are all column→canvas or canvas→canvas.
+  - [6]
+    - **id:** F6
+    - **severity:** minor
+    - **where:** packages/webview/src/board/BoardInput.ts:260-262,373; styles/board.css .tl-canvas
+    - **problem:** `lostpointercapture` bubbles, and the board's handler only compares pointerId. When a descendant loses an implicit capture (touch, some pens), which happens as `board.setPointerCapture` starts a move, the event reaches `cancel`, which aborts the press at drag start. The canvas also has no `touch-action: none`, so touch gestures go to the browser. Touch and pen therefore cannot move cards or pan.
+    - **fix:** In the lostpointercapture listener, return unless event.target === board. If touch matters, set `touch-action: none` on .tl-board's canvas region.
+    - **evidence:** `board.addEventListener('lostpointercapture', cancel)`; `const cancel = (event) => { if (press && event.pointerId === press.pointerId) abort(); }`.
+  - [7]
+    - **id:** F7
+    - **severity:** nit
+    - **where:** packages/webview/test/unit/store-canvas.test.ts:90
+    - **problem:** The test titled 'does nothing during an edit session (ES-9, with the reason) nor in the Proposed view' exercises only the locked case. The Proposed-view branch, which returns false with no toast (`proposedOverlay(s) !== null`), is never run.
+    - **fix:** Add a case with a proposal on screen (receive run + proposal) that asserts newPropositionAt returns false, newCardAt stays null and no toast is added, or narrow the title.
+    - **evidence:** The body sets up only `runView({ state: 'working' })` and checks the EDIT_SESSION_ACTIVE toast.
+  - [8]
+    - **id:** F8
+    - **severity:** nit
+    - **where:** packages/webview/src/board/EdgeEngine.ts:442-443; styles/board.css:917,938-939; docs/slice1-plan.md:369
+    - **problem:** Which overlay elements take the pointer does not match what the docs say:
+- The ∅ stub gets a <title> 'Follows from nothing', but the overlay is pointer-events:none and .tl-mark has no override, so that tooltip can never show.
+- Conditional and mismatch strokes are pointer-events:visibleStroke, so a right-click on a declared conditional or TL109 arrow already selects it and opens the arrow menu in 1c1. The plan says arrows are reachable only once 1c2 makes them hit-testable.
+    - **fix:** Give `.tl-mark` `pointer-events: visiblePainted` (or drop the <title> until 1c2 makes marks selectable), and correct the plan's 1c1 note about which arrows the menu can already reach.
+    - **evidence:** thingAt maps `path[data-edge-id]` whose target lists the source in premises; CSS: `.tl-edge--conditional, .tl-edge--mismatch { pointer-events: visibleStroke; }`.
+  - [9]
+    - **id:** F9
+    - **severity:** nit
+    - **where:** packages/webview/test/unit/geometry.test.ts:179
+    - **problem:** The comment says 'At 50 % the stub is shorter' but the case uses s = 0.25 (the 14 px minimum applies).
+    - **fix:** Change the comment to 'At 25 %'.
+    - **evidence:** `canvas({ x: 0, y: 0, s: 0.25 })` on the next line.
+- **checks_run:**
+  - Isolated 1c1: git archive 187673d packages docs + git apply evidence/patches/after_slice_1f.patch into scratch, then diff -ruN against the working tree → 45 changed files, the same as the report's list
+  - webview: capped.sh 1400 tsc --noEmit -p tsconfig.json → exit 0 (clean)
+  - webview: capped.sh 1400 tsc --noEmit -p tsconfig.node.json → exit 2, 6 errors, all in test/e2e: m1-edits.spec.ts (222, 252, 259), m2-layout.spec.ts (277), m2-review.spec.ts (234 ×2), the known 1a errors
+  - webview: vitest run --pool=forks --poolOptions.forks.singleFork=true → rejected by vitest 5.0.5 ('CACError: Unknown option `--poolOptions`'), so --maxWorkers=1 was used as builder_rules allow
+  - webview: capped.sh 1600 vitest run --maxWorkers=1 → 'Test Files  13 passed (13) / Tests  206 passed (206)'
+  - core: capped.sh 1400 tsc --noEmit -p tsconfig.test.json → exit 0 (clean)
+  - core: capped.sh 1600 vitest run --maxWorkers=1 → 'Test Files  52 passed (52) / Tests  566 passed (566)'
+  - extension: capped.sh 1400 tsc --noEmit -p tsconfig.json → 9 errors, all in test/suite (e2e-runs ×2, e2e ×1, model ×1, runs ×5)
+  - extension: capped.sh 1600 vitest run --no-cache --maxWorkers=1 → 'Test Files  22 passed (22) / Tests  197 passed (197)'; find out dist -newer stamp → nothing (out/ mtime unchanged)
+  - runner: capped.sh 1400 tsc --noEmit -p tsconfig.test.json → exit 0 (clean)
+  - runner: TELELEAN_TEST_TMP=<scratch>/v1c1_corr/runner-tmp capped.sh 1800 timeout 900 vitest run --maxWorkers=1 test/proposal/positions.test.ts → 'Test Files  1 passed (1) / Tests  2 passed (2)'
+  - runner build.test.ts not run: every case calls ctx.skip() without Lean (it needs 12 GB free; MemAvailable was about 2.2 GB)
+  - grep across packages/*/src and test for removed names and APIs (Column, VocabularyGroup, ColumnRefs, BadgeDir, sidesFor, old EdgeEngine options, layoutOf, tl-board-scroll, tl-edges--over/under, --tl-gap/--tl-col-min) → only the e2e specs the builder listed
+  - Not run: the vite scratch build (builder_rules forbid vite build), Playwright, VS Code suites
+  - git status --porcelain | wc -l → 197 before and after; no processes of mine left

@@ -6,26 +6,24 @@
  *               the current board; files summary (base -> shown, line counts); one StatementReview per statement
  *               abbrev that is new or changed against the run's base B (adopted ghosts included, `wordedBy` from the
  *               block); one VocabularyReview of the new pure-signature items (sorts, predicates, functions,
- *               constants); the flagged definitions as questions d1, d2, …; the lifecycle item l1 (GOAL ->
- *               DERIVATION) when the verdict is `proved` and Lean shows the GOAL target proved; ghosts; the report
- *               card; baseChanged; empty. The facts are kept for Accept (in memory and in the run directory).
+ *               constants); the flagged definitions as questions d1, d2, …; ghosts; the report card; baseChanged;
+ *               empty. (Spec v4 removed the lifecycle item l1, GOAL -> DERIVATION of a proved target, and with it the
+ *               facts kept for Accept: docs/slice1-plan.md 2.6.)
  *   baseDrift   real model files (open buffers first) that differ from B, plus files the user added or deleted
  *   planAccept  every model file: Claude's base -> shown patch rebased onto the real text (./files.ts mergeFile), or,
- *               after a passing re-gate, exactly `shownState`; then the ticked lifecycle items (core
- *               lifecycleChanges on the merged files with the shown state's facts); changes against the real files
+ *               after a passing re-gate, exactly `shownState`; changes against the real files
+ *   planApply   (slice 2b3b) an edit session's Apply: the real files must equal B (drift refuses it); then exactly B -> F
  *   apply       ModelWorkspace.applyChanges with history kind `accept-proposal`
  *   diffFiles   base -> shown, for the raw diff
  */
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
-import path from 'node:path';
 
 import {
   ACCEPT_PROPOSAL_ACTION,
-  ActionError,
+  REVIEW_TEXTS,
   buildProjectModel,
   diffGraphs,
-  lifecycleChanges,
+  leanDurationMs,
   parseLeanFile,
   proposalLabel,
   subjectGraph,
@@ -34,7 +32,6 @@ import {
   type FileChange,
   type LeanFacts,
   type Layout,
-  type LifecycleItem,
   type ModelNode,
   type ProjectModel,
   type ProposalView,
@@ -53,19 +50,10 @@ import { isModelFile, isModelOrProjectFile, listModelFiles, PROJECT_FILES } from
 import { summarize } from '../workspace/semanticSummary.js';
 import type { ModelWorkspace } from '../workspace/types.js';
 import { conflictMessage, diffFileMaps, listing, mergeFile, proposalFileOf, shadowFilesOf } from './files.js';
-import type { AcceptPlan, AcceptRequest, ProposalBuildInput, ProposalCore, ProposalService, ReadRealText } from './types.js';
+import type { AcceptPlan, AcceptRequest, ApplyRequest, ProposalBuildInput, ProposalCore, ProposalService, ReadRealText } from './types.js';
 
 /** Vocabulary kinds D-3 auto-approves (revocable): the VocabularyReview lists new items of these kinds only. */
 const PURE_SIGNATURE: ReadonlySet<VocabKind> = new Set<VocabKind>(['sort', 'predicate', 'function', 'constant']);
-
-/** The lifecycle item a proved GOAL target gets (docs/m2-plan.md section 4.5). */
-export const PROVED_GOAL_REASON = 'Lean proved it from the selected premises';
-
-/** The file in the run directory that keeps the facts of the newest proposal (so Accept works after a reload). */
-export const PROPOSAL_FACTS_FILE = 'proposal-facts.json';
-const PROPOSAL_FACTS_FORMAT = 'telelean-proposal-facts';
-
-let tempCounter = 0;
 
 function sha256(text: string): string {
   return createHash('sha256').update(text, 'utf8').digest('hex');
@@ -106,37 +94,30 @@ function findDecl(model: ProjectModel, name: string): { file: string; decl: NonN
   return undefined;
 }
 
-/** The column order of the current board as a layout, so cards keep their places in the proposed board. */
-function layoutOf(graph: TlGraph): Layout {
-  const columns: Layout['columns'] = { ASSUMPTION: [], DERIVATION: [], GOAL: [] };
+/**
+ * The current board as a layout, so cards keep their places in the proposed board: its column order, and (spec v4
+ * BD-3, slice 1c) the canvas positions it stores (`TlGraph.positions`), so the Proposed canvas shows the existing
+ * cards where the Current one does; the proposal's new cards have none, and the board places them. Positions are
+ * layout only (BD-3): never part of a review or of what the session diffs.
+ */
+export function currentLayoutOf(graph: TlGraph): Layout {
+  const columns: Layout['columns'] = { AXIOM: [], PROPOSITION: [] };
   for (const node of graph.nodes) columns[node.type].push(node.id);
-  return { format: 'telelean-layout', version: 1, columns };
+  const positions = Object.entries(graph.positions ?? {}).map(([id, p]) => [id, { x: p.x, y: p.y }] as const);
+  return { format: 'telelean-layout', version: 1, columns, ...(positions.length > 0 ? { positions: Object.fromEntries(positions) } : {}) };
 }
 
 function stripUndefined<T extends object>(value: T): T {
   return Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined)) as T;
 }
 
-/** ActionError codes that an AcceptPlan refusal can carry. */
-function planRefusal(error: ActionError): Extract<AcceptPlan, { ok: false }> {
-  const code = error.code === 'not-found' || error.code === 'conflict' || error.code === 'invalid' ? error.code : 'unsafe';
-  return { ok: false, code, error: error.message };
-}
-
-interface KeptFacts {
-  proposalId: string;
-  facts: LeanFacts;
-}
-
 export class ProposalServiceImpl implements ProposalService {
   private readonly core: ProposalCore;
   private readonly now: () => Date;
-  /** Per run: the facts of its newest proposal (also persisted in the run directory, PROPOSAL_FACTS_FILE). */
-  private readonly kept = new Map<string, KeptFacts>();
 
   constructor(options: { now?: () => Date; core?: Partial<ProposalCore> } = {}) {
     this.now = options.now ?? (() => new Date());
-    this.core = withDefaults<ProposalCore>({ diffGraphs, proposalLabel, lifecycleChanges, parseLeanFile, buildProjectModel, subjectGraph }, options.core);
+    this.core = withDefaults<ProposalCore>({ diffGraphs, proposalLabel, parseLeanFile, buildProjectModel, subjectGraph }, options.core);
   }
 
   // ------------------------------------------------------------------------------------------- build
@@ -155,7 +136,7 @@ export class ProposalServiceImpl implements ProposalService {
     const proposed = this.core.subjectGraph(model, subject, {
       version: input.graphVersion,
       semantic: this.semanticOf(model, shown, facts),
-      layout: layoutOf(input.currentGraph),
+      layout: currentLayoutOf(input.currentGraph),
     });
     const graph: TlGraph = {
       ...proposed,
@@ -182,10 +163,6 @@ export class ProposalServiceImpl implements ProposalService {
     });
 
     const target = graph.nodes.find((n) => n.id === selection.target);
-    const lifecycle: LifecycleItem[] = [];
-    if (input.verdict === 'proved' && target?.type === 'GOAL' && target.status.proof.kind === 'proved') {
-      lifecycle.push({ id: 'l1', kind: 'change-kind', nodeId: target.id, from: 'GOAL', to: 'DERIVATION', recommended: true, reason: PROVED_GOAL_REASON });
-    }
 
     const proposal: ProposalView = {
       runId: input.runId,
@@ -197,13 +174,11 @@ export class ProposalServiceImpl implements ProposalService {
       files: changes.map(proposalFileOf),
       review,
       definitions,
-      lifecycle,
       ghosts: input.ghosts.map((g) => ({ ...g })),
       report: this.reportCard(input, graph, target),
       baseChanged: input.drift.length > 0,
       empty: changes.length === 0,
     };
-    if (facts) await this.keepFacts(shadow, input.proposalId, facts);
     return proposal;
   }
 
@@ -269,7 +244,8 @@ export class ProposalServiceImpl implements ProposalService {
     const footprint = proved && proof?.kind === 'proved' ? [...proof.footprint] : [];
     // A selected proved derivation shows in the footprint through its own assumptions: its verified edge into the
     // target says that the proof uses it.
-    const used = new Set([...footprint, ...graph.edges.filter((e) => e.type === 'verified' && e.target === selection.target).map((e) => e.source)]);
+    const usedArrows = graph.edges.filter((e) => e.type === 'verified' && e.target === selection.target).map((e) => e.source);
+    const used = new Set([...footprint, ...usedArrows]);
     const selected = unique([...selection.premises, ...selection.adoptedGhosts]);
     return {
       verdict: input.verdict,
@@ -277,7 +253,11 @@ export class ProposalServiceImpl implements ProposalService {
       footprint,
       unusedPremises: proved ? selected.filter((p) => !used.has(p)) : [],
       consistency: 'unchecked',
-      selfEvident: proved && proof?.kind === 'proved' && selected.length === 0 && footprint.every((x) => x.startsWith('presup:')),
+      // Spec v4.1 S18 and A9 (slice 1e fixer): any result proved without using a single arrow, "whether or not you marked
+      // it": no card in the footprint (only presuppositions, no hidden `axiom:`), and no verified edge into the target
+      // (a selected card that is itself proved from nothing is still an arrow the proof uses). Selected premises the
+      // proof ignores do not matter (they are listed as unused besides).
+      selfEvident: proved && proof?.kind === 'proved' && footprint.every((x) => x.startsWith('presup:')) && usedArrows.length === 0,
       ...(finish?.summary !== undefined ? { claudeSummary: finish.summary } : {}),
       ...(finish?.gap !== undefined ? { gap: finish.gap } : {}),
       ...(finish?.conflict !== undefined ? { conflict: [...finish.conflict] } : {}),
@@ -303,12 +283,6 @@ export class ProposalServiceImpl implements ProposalService {
   async planAccept(request: AcceptRequest): Promise<AcceptPlan> {
     const { proposal, shadow } = request;
     const library = shadow.library;
-    const known = new Set(proposal.lifecycle.map((item) => item.id));
-    const unknown = request.lifecycle.filter((id) => !known.has(id));
-    if (unknown.length > 0) {
-      return { ok: false, code: 'not-found', error: `${listing(unknown)} ${unknown.length === 1 ? 'is not a lifecycle item' : 'are not lifecycle items'} of this proposal.` };
-    }
-    const ticked = proposal.lifecycle.filter((item) => request.lifecycle.includes(item.id));
 
     const base = shadowFilesOf(await shadow.baseFiles(), library);
     const shown = shadowFilesOf(request.shownState ?? (await shadow.currentFiles()), library);
@@ -317,7 +291,7 @@ export class ProposalServiceImpl implements ProposalService {
     for (const rel of [...realPaths].sort()) real.set(rel, await request.readReal(rel));
     const drift = [...realPaths].filter((rel) => (real.get(rel) ?? null) !== (base.get(rel) ?? null)).sort();
 
-    // The merged files (every file present after Accept, lifecycle items not yet applied).
+    // The merged files (every file present after Accept).
     const merged = new Map<string, string>();
     for (const [rel, text] of real) if (text !== null) merged.set(rel, text);
     if (request.shownState) {
@@ -355,36 +329,16 @@ export class ProposalServiceImpl implements ProposalService {
       if (conflicts.length > 0) return { ok: false, code: 'conflict', error: conflictMessage(conflicts), files: conflicts };
     }
 
-    const final = new Map(merged);
-    if (ticked.length > 0) {
-      const facts = request.facts ?? (await this.factsFor(proposal, shadow));
-      let lifecycle: FileChange[];
-      try {
-        lifecycle = this.core.lifecycleChanges(this.modelOf(merged, library, facts), ticked);
-      } catch (error) {
-        if (error instanceof ActionError) return planRefusal(error);
-        throw error;
-      }
-      for (const change of lifecycle) {
-        if (!isModelFile(change.path, library) || (merged.get(change.path) ?? null) !== change.before) {
-          return { ok: false, code: 'unsafe', error: `The lifecycle change to ${change.path} does not fit the merged files; nothing was applied.` };
-        }
-        if (change.after === null) final.delete(change.path);
-        else final.set(change.path, change.after);
-      }
-    }
-
     const changes: FileChange[] = [];
-    for (const rel of [...new Set([...real.keys(), ...final.keys()])].sort()) {
+    for (const rel of [...new Set([...real.keys(), ...merged.keys()])].sort()) {
       const before = real.get(rel) ?? null;
-      const after = final.get(rel) ?? null;
+      const after = merged.get(rel) ?? null;
       if (before !== after) changes.push({ path: rel, before, after });
     }
     const target = proposal.report.target;
     const sentence = proposal.graph.nodes.find((n) => n.id === target)?.naturalName ?? target;
     const adopted = proposal.ghosts.filter((g) => g.state === 'adopted');
     const label = this.core.proposalLabel(proposal.report.verdict, sentence, {
-      lifecycle: ticked.length,
       adoptedGhosts: adopted.length,
       ...(request.premises !== undefined ? { premises: request.premises } : {}),
     });
@@ -392,9 +346,31 @@ export class ProposalServiceImpl implements ProposalService {
       target,
       ...proposal.review.flatMap((item) => (item.kind === 'statement' ? [item.nodeId] : [])),
       ...adopted.flatMap((g) => (g.nodeId !== undefined ? [g.nodeId] : [])),
-      ...ticked.map((item) => item.nodeId),
     ]);
     return { ok: true, changes, label, nodes, drift, shadowState: merged };
+  }
+
+  async planApply(request: ApplyRequest): Promise<AcceptPlan> {
+    const { shadow } = request;
+    // Fixer 2b3b r1 (A-V2B3B-ADV-6): F is the state the final check passed, which the caller names; never ws/ by default.
+    if (!(request.finalState instanceof Map)) throw new TypeError('planApply needs finalState: the files of the state the final check passed');
+    const library = shadow.library;
+    const base = shadowFilesOf(await shadow.baseFiles(), library);
+    const final = shadowFilesOf(request.finalState, library);
+    const realPaths = new Set([...base.keys(), ...final.keys(), ...(await this.realFileList(request, shadow))]);
+    // One read of the real files: the drift below and the changes are computed from it (slice 1e's rule, ES-7).
+    const real = new Map<string, string | null>();
+    for (const rel of [...realPaths].sort()) real.set(rel, await request.readReal(rel));
+    const drift = [...realPaths].filter((rel) => (real.get(rel) ?? null) !== (base.get(rel) ?? null)).sort();
+    if (drift.length > 0) return { ok: false, code: 'conflict', error: REVIEW_TEXTS.drift(drift), files: drift };
+    // No merge: the real files are B, so the plan is exactly B -> F.
+    const changes: FileChange[] = [];
+    for (const rel of [...realPaths].sort()) {
+      const before = real.get(rel) ?? null;
+      const after = final.get(rel) ?? null;
+      if (before !== after) changes.push({ path: rel, before, after });
+    }
+    return { ok: true, changes, label: REVIEW_TEXTS.applyLabel(request.targets), nodes: unique(request.nodes), drift: [], shadowState: new Map(final) };
   }
 
   async apply(plan: Extract<AcceptPlan, { ok: true }>, workspace: ModelWorkspace, subject: string): Promise<ActionOutcome> {
@@ -440,44 +416,15 @@ export class ProposalServiceImpl implements ProposalService {
       ...(facts
         ? {
             facts,
-            last: stripUndefined({ status: facts.status, detail: facts.detail, toolchain: facts.toolchain, durationMs: facts.build.durationMs + facts.check.durationMs }),
+            last: stripUndefined({ status: facts.status, detail: facts.detail, toolchain: facts.toolchain, durationMs: leanDurationMs(facts) }),
           }
         : {}),
     });
   }
 
   /** The real model and project files to consider: the caller's list, else the model root's files on disk. */
-  private async realFileList(request: AcceptRequest, shadow: ShadowWorkspace): Promise<string[]> {
+  private async realFileList(request: Pick<AcceptRequest, 'realFiles'>, shadow: ShadowWorkspace): Promise<string[]> {
     if (request.realFiles) return request.realFiles.filter((rel) => isModelOrProjectFile(rel, shadow.library));
     return [...(await listModelFiles(shadow.root, shadow.library)), ...PROJECT_FILES];
-  }
-
-  private async keepFacts(shadow: ShadowWorkspace, proposalId: string, facts: LeanFacts): Promise<void> {
-    this.kept.set(shadow.runId, { proposalId, facts });
-    const file = path.join(shadow.paths.runDir, PROPOSAL_FACTS_FILE);
-    const temp = `${file}.${process.pid}-${++tempCounter}.tmp`;
-    try {
-      await mkdir(shadow.paths.runDir, { recursive: true });
-      await writeFile(temp, `${JSON.stringify({ format: PROPOSAL_FACTS_FORMAT, version: 1, proposalId, savedAt: this.now().toISOString(), facts })}\n`, 'utf8');
-      await rename(temp, file);
-    } catch {
-      await rm(temp, { force: true }).catch(() => undefined);
-      // Best effort: without the file, Accept after a window reload plans lifecycle items without facts.
-    }
-  }
-
-  /** The facts `build` kept for this proposal (memory first, then the run directory), if any. */
-  private async factsFor(proposal: ProposalView, shadow: ShadowWorkspace): Promise<LeanFacts | undefined> {
-    const kept = this.kept.get(proposal.runId);
-    if (kept?.proposalId === proposal.proposalId) return kept.facts;
-    try {
-      const raw = JSON.parse(await readFile(path.join(shadow.paths.runDir, PROPOSAL_FACTS_FILE), 'utf8')) as { format?: unknown; proposalId?: unknown; facts?: unknown };
-      if (raw.format === PROPOSAL_FACTS_FORMAT && raw.proposalId === proposal.proposalId && typeof raw.facts === 'object' && raw.facts !== null) {
-        return raw.facts as LeanFacts;
-      }
-    } catch {
-      // missing or unreadable: no facts
-    }
-    return undefined;
   }
 }

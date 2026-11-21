@@ -43,11 +43,12 @@ describe('AT2.11 proofs through derivations and untracked lemmas', () => {
     expect(model.diagnostics.filter((d) => d.code === 'TL107' || d.code === 'TL109')).toEqual([]);
   });
 
-  it('proofDependents(d0) = [g2], so D -> G on d0 needs a confirmation', () => {
+  it('proofDependents(d0) = [g2]: P->A on d0 says that g2\'s proof stays valid (an axiom of the same type)', () => {
     const graph = graphOf(derived(['d0']).model);
     expect(proofDependents(graph, 'd0')).toEqual(['g2']);
     expect(proofDependents(graph, 'a1')).toEqual(['d0', 'g2']);
-    expect(kindChangeImpact(graph, 'd0', 'GOAL')).toMatchObject({ needsConfirmation: true, dependents: ['g2'], leanChange: 'remove-holds' });
+    expect(kindChangeImpact(graph, 'd0', 'AXIOM')).toMatchObject({ needsConfirmation: false, dependents: ['g2'], leanChange: 'theorem-to-axiom' });
+    expect(kindChangeImpact(graph, 'a1', 'PROPOSITION')).toMatchObject({ leanChange: 'pending', dependents: ['d0', 'g2'] });
   });
 
   it('a proof through an untracked lemma gives the edge from the node the lemma uses', () => {
@@ -72,9 +73,11 @@ describe('AT2.11 proofs through derivations and untracked lemmas', () => {
     const viaD0 = graphOf(derived(['d0']).model);
     expect(viaD0.edges.filter((e) => e.target === 'g2' && e.mismatch)).toEqual([]);
 
-    // Through the derivation of the declared premises: d0 stands for {a1, a2}; declaring a1 and a2 covers it.
-    const viaAssumptions = graphOf(derived(['a1', 'a2']).model);
-    expect(viaAssumptions.edges.filter((e) => e.target === 'g2' && e.mismatch)).toEqual([]);
+    // Through the derivation of the declared premises: d0 stands for {a1, a2}. Spec v4.1 B.5 (slice 1d) removed the
+    // coverage exemption: declaring a1 and a2 no longer excuses the use of d0, which needs its own arrow (TL107).
+    const viaAssumptions = derived(['a1', 'a2']).model;
+    expect(graphOf(viaAssumptions).edges.filter((e) => e.target === 'g2' && e.mismatch).map((e) => [e.id, e.mismatch])).toEqual([['verified:d0->g2', 'used-undeclared']]);
+    expect(viaAssumptions.diagnostics.filter((d) => d.nodeId === 'g2').map((d) => d.code)).toEqual(['TL107']);
 
     const extra = [
       '',
@@ -87,7 +90,6 @@ describe('AT2.11 proofs through derivations and untracked lemmas', () => {
     expect(graph.edges.find((e) => e.id === 'verified:a2->g3')?.mismatch).toBe('used-undeclared');
     expect(graph.edges.find((e) => e.id === 'premise:a1->g3')?.mismatch).toBe('declared-unused');
     expect(model.diagnostics.filter((d) => d.nodeId === 'g3').map((d) => [d.code, d.severity])).toEqual([
-      ['TL105', 'info'],
       ['TL107', 'warning'],
       ['TL109', 'hint'],
     ]);

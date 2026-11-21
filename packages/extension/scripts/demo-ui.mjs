@@ -4,7 +4,7 @@
 // runs outside VS Code, so the workbench is driven like a user does it too: the command palette, quick picks, input
 // boxes, and VS Code's own dialogs (the instance's settings draw them in the page: window.dialogStyle = custom).
 //
-// VS Code's notification toasts sit over the board's bottom-right corner (the A|D|G box and the tray's buttons) and
+// VS Code's notification toasts sit over the board's bottom-right corner (the A|P box and the tray's buttons) and
 // would take clicks meant for the board (a click in the webview lands on whatever is on top in the page), so they
 // are recorded and closed before every board gesture.
 //
@@ -53,7 +53,7 @@ export async function connectWorkbench(port, timeoutMs = 90_000) {
 }
 
 const TOASTS = '.notifications-toasts .notification-toast';
-const KIND_NOUN = { ASSUMPTION: 'Assumption', DERIVATION: 'Derivation', GOAL: 'Goal' };
+const KIND_NOUN = { AXIOM: 'Axiom', PROPOSITION: 'Proposition' };
 
 /**
  * The text of the first element `locator` matches, '' when there is none. (Playwright's own textContent() waits up to
@@ -283,7 +283,7 @@ export class Board {
     );
   }
 
-  /** Types a card into the A|D|G box and adds it; resolves with its id once the extension wrote it. */
+  /** Types a card into the A|P box and adds it; resolves with its id once the extension wrote it. */
   async addCard(kind, text, timeoutMs = 60_000) {
     await this.wb.clearToasts();
     const f = await this.frame();
@@ -398,8 +398,8 @@ export class Board {
   }
 
   /**
-   * Steps through the review like a reader: every step in order (statements, vocabulary, definitions, result,
-   * card changes), "Show result" when the result is still hidden, a yes for each definition question when
+   * Steps through the review like a reader: every step in order (statements, vocabulary, definitions, result; spec
+   * v4 removed the card changes), "Show result" when the result is still hidden, a yes for each definition question when
    * `approveDefinitions`. Calls `onStep(kind, index)` on each step (screenshots). Returns each step's text.
    */
   async readReview({ approveDefinitions, onStep }) {

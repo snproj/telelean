@@ -7,7 +7,7 @@ import { FIELD_ORDER, parseLeanFile, renderBlock, type NewBlock } from '../../sr
 
 const FULL: NewBlock = {
   id: 'cynder-not-good',
-  type: 'GOAL',
+  type: 'PROPOSITION',
   naturalName: 'Cynder would not be a good addition to the new Spyro game',
   rationale: 'why I care: -/ and /- inside',
   stance: 'believe',
@@ -31,7 +31,7 @@ describe('AT1.5 renderBlock', () => {
         '/-',
         '@@ telelean v1',
         'id: cynder-not-good',
-        'type: GOAL',
+        'type: PROPOSITION',
         'natural_name: Cynder would not be a good addition to the new Spyro game',
         'rationale: "why I care: -\\/ and \\u002f- inside"',
         'stance: believe',
@@ -64,8 +64,8 @@ describe('AT1.5 renderBlock', () => {
   });
 
   it('writes only what is given: minimal block, empty lists omitted, no body without text', () => {
-    expect(renderBlock({ id: 'a', type: 'ASSUMPTION', naturalName: 'x', premises: [], lean: [], body: '  \n ' })).toBe(
-      '/-\n@@ telelean v1\nid: a\ntype: ASSUMPTION\nnatural_name: x\n-/',
+    expect(renderBlock({ id: 'a', type: 'AXIOM', naturalName: 'x', premises: [], lean: [], body: '  \n ' })).toBe(
+      '/-\n@@ telelean v1\nid: a\ntype: AXIOM\nnatural_name: x\n-/',
     );
   });
 
@@ -74,8 +74,8 @@ describe('AT1.5 renderBlock', () => {
     expect(text.endsWith('-/')).toBe(true);
     expect(text.split('\r\n')).toEqual(renderBlock(FULL).split('\n'));
     expect(text.replaceAll('\r\n', '')).not.toMatch(/[\r\n]/);
-    const body = renderBlock({ id: 'a', type: 'GOAL', naturalName: 'x', body: 'one\r\ntwo\nthree' }, '\r\n');
-    expect(body).toBe('/-\r\n@@ telelean v1\r\nid: a\r\ntype: GOAL\r\nnatural_name: x\r\n---\r\none\r\ntwo\r\nthree\r\n-/');
+    const body = renderBlock({ id: 'a', type: 'PROPOSITION', naturalName: 'x', body: 'one\r\ntwo\nthree' }, '\r\n');
+    expect(body).toBe('/-\r\n@@ telelean v1\r\nid: a\r\ntype: PROPOSITION\r\nnatural_name: x\r\n---\r\none\r\ntwo\r\nthree\r\n-/');
   });
 
   it('parses back to the same fields (LF and CRLF)', () => {
@@ -84,7 +84,7 @@ describe('AT1.5 renderBlock', () => {
       expect(file.eol).toBe(eol);
       const block = file.blocks[0];
       expect(block?.fields).toEqual({
-        type: 'GOAL',
+        type: 'PROPOSITION',
         naturalName: FULL.naturalName,
         rationale: FULL.rationale,
         stance: 'believe',
@@ -104,8 +104,17 @@ describe('AT1.5 renderBlock', () => {
   });
 
   it('a NewBlock field wins over the same key in extra; `kind` in extra is dropped; a bad key throws', () => {
-    const text = renderBlock({ id: 'a', type: 'GOAL', naturalName: 'x', extra: [['type', 'ASSUMPTION'], ['kind', 'ASSUMPTION'], ['natural_name', 'y']] });
-    expect(text).toBe('/-\n@@ telelean v1\nid: a\ntype: GOAL\nnatural_name: x\n-/');
-    expect(() => renderBlock({ id: 'a', type: 'GOAL', naturalName: 'x', extra: [['Bad Key', 'v']] })).toThrow(/invalid field key/);
+    const text = renderBlock({ id: 'a', type: 'PROPOSITION', naturalName: 'x', extra: [['type', 'AXIOM'], ['kind', 'AXIOM'], ['natural_name', 'y']] });
+    expect(text).toBe('/-\n@@ telelean v1\nid: a\ntype: PROPOSITION\nnatural_name: x\n-/');
+    expect(() => renderBlock({ id: 'a', type: 'PROPOSITION', naturalName: 'x', extra: [['Bad Key', 'v']] })).toThrow(/invalid field key/);
+  });
+
+  it('spec v4 AR-5: `follows_from: nothing` (a known key given in extra) goes right after `premises`, and parses back as the mark', () => {
+    const text = renderBlock({ id: 'a', type: 'PROPOSITION', naturalName: 'x', asserted: '2026-11-19', extra: [['follows_from', 'nothing']] });
+    expect(text).toBe('/-\n@@ telelean v1\nid: a\ntype: PROPOSITION\nnatural_name: x\nfollows_from: nothing\nasserted: 2026-11-19\n-/');
+    const file = parseLeanFile('X.lean', `${text}\n`);
+    expect(file.blocks[0]?.fields).toEqual({ type: 'PROPOSITION', naturalName: 'x', followsFrom: 'nothing', asserted: '2026-11-19' });
+    expect(file.diagnostics).toEqual([]);
+    expect(FIELD_ORDER.indexOf('follows_from')).toBe(FIELD_ORDER.indexOf('premises') + 1);
   });
 });

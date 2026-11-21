@@ -1,5 +1,6 @@
 /**
- * M2 end to end in VS Code (integration, docs/m2-plan.md section 11): "These suffice" through the REAL board UI over
+ * M2 end to end in VS Code (integration, docs/m2-plan.md section 11): "Formalize for dependencies" (spec v4.1 ES-2; M2's
+ * "These suffice") through the REAL board UI over
  * the DevTools protocol (trusted clicks and typing, cdp.ts), the real extension host, runner workspace, RunManager,
  * Lean check engine (sandboxed Lean), proposal service, sidecar store and git history, on a fresh COPY of
  * mental_model/ that scripts/smoke.mjs placed at $TELELEAN_RUNS_E2E_ROOT (outside the window's workspace folder).
@@ -7,19 +8,20 @@
  * 10.3), installed through the testing API: Test mode never builds the real backend, and TELELEAN_NO_REAL_CLAUDE=1 is
  * set for the instance (quota tripwires 1 and 2 of section 10.4).
  *
- *   normative  select the cards, "These suffice ▶", the question answered on the board (no guess shown before),
- *              the proposal overlay (diff marks, the result hidden until the review), the review's explicit toggle,
- *              the raw Lean diff, the G->D item proposed and pre-ticked, Accept: Main.lean changes on disk, one
+ *   normative  select the arrows into the goal ("Select incoming arrows"), "Formalize for dependencies" in the
+ *              Context Menu section, the question answered on the board (no guess shown before), the proposal
+ *              overlay (diff marks, the result hidden until the review), the review's explicit toggle, the raw Lean
+ *              diff, Accept: Main.lean changes on disk (the goal keeps its kind: spec v4 has no G->D step), one
  *              history entry ("accept"), Undo restores the file byte-exactly
  *   literal    not proved, the translucent "Claude suggests" ghost card, "I hold this" with a reason, the re-freeze
- *              with the ghost selected, proved; Accept writes the card worded by Claude and declares it on the
- *              derivation (after Lean's check: no TL107, no mismatch arrow, no attention badge); Undo byte-exact
+ *              with the ghost selected, proved; Accept writes the card worded by Claude and draws its arrow into the
+ *              goal (after Lean's check: no TL107, no mismatch arrow, no attention badge); Undo byte-exact
  *   cheating   the smuggled axiom: a gate-failed notice on the board and Claude's retry, proved; Feedback then
  *              continues the same session (round 2, a new freeze, proved); Discard leaves the files untouched
  *   give-up    the axiom three times: gave-up and reverted notices, the proposal is the frozen formalisation (no
  *              smuggled axiom), "gave up"; Discard
  *   cancel     Cancel while Claude works: cancelled, nothing written
- *   race       "These suffice" pressed while the board's Lean refresh rebuilds .lake/build (forced, no wait for idle
+ *   race       Formalize pressed while the board's Lean refresh rebuilds .lake/build (forced, no wait for idle
  *              Lean): the run starts, its Lean jobs wait for the refresh, it proves; Discard
  *   reload     the window "reloads" while a question waits: the restored board shows the question again; answering
  *              it on the board resumes the session (--resume) and the run finishes
@@ -52,6 +54,8 @@ const TARGET = 'cynder-not-good';
 const PREMISES = ['cynder-dark-past', 'new-spyro-pg', 'pg-no-dark-past'];
 /** The card the literal reading's suggestion becomes when the user adopts it ("I hold this"). */
 const ADOPTED = 'a-character-who-cannot-be-in';
+/** The first line of a run's context bundle (runner prompts.ts), which the FakeBackend scripts match. */
+const RUN_TURN = 'Run: "Formalize for dependencies"';
 
 /** The walkthrough fixtures of the repository (the extension under test runs from packages/extension). */
 function fixture(name: string): FakeScriptFile {
@@ -59,6 +63,11 @@ function fixture(name: string): FakeScriptFile {
   assert.ok(extension, `${EXTENSION_ID} is not loaded`);
   const file = path.resolve(extension.extensionPath, '..', '..', 'test-fixtures', 'walkthrough', `${name}.json`);
   return validateFakeScriptFile(JSON.parse(readFileSync(file, 'utf8')));
+}
+
+/** The `type:` line of card `id`'s markup block in `text` (or '' when there is none). */
+function typeLineOf(text: string, id: string): string {
+  return new RegExp(`\\nid: ${id}\\n(type: [^\\n]*)\\n`).exec(text)?.[1] ?? '';
 }
 
 /** Feedback's round 2 (docs/m2-plan.md section 4.8): statements may change, so check, freeze again, then finish. */
@@ -76,7 +85,7 @@ const FEEDBACK_TURN: FakeScriptTurn = {
 /** Claude reads, then works for a long time (a sleep the interrupt ends): the run stays `working` until Cancel. */
 const CANCEL_TURNS: FakeScriptTurn[] = [
   {
-    match: 'Run: "These suffice"',
+    match: RUN_TURN,
     steps: [
       { kind: 'text', text: 'Reading the subject first.' },
       { kind: 'read', path: MAIN },
@@ -96,7 +105,7 @@ function reloadTurns(): FakeScriptTurn[] {
   const ask = steps.findIndex((s) => s.kind === 'callTool' && s.tool === 'ask_user');
   assert.ok(ask > 0, 'the normative script asks a question');
   return [
-    { match: 'Run: "These suffice"', steps: steps.slice(0, ask + 1) },
+    { match: RUN_TURN, steps: steps.slice(0, ask + 1) },
     { match: 'Here are the answers to it', steps: steps.slice(ask + 1) },
   ];
 }
@@ -127,7 +136,7 @@ class ScriptedClaude implements LlmBackend {
   }
 }
 
-suite('M2 end to end: "These suffice" through the board UI (FakeBackend, real Lean, CDP)', () => {
+suite('M2 end to end: "Formalize for dependencies" through the board UI (FakeBackend, real Lean, CDP)', () => {
   let api: TeleleanApi;
   let root: string;
   let wb: Workbench | undefined;
@@ -157,30 +166,38 @@ suite('M2 end to end: "These suffice" through the board UI (FakeBackend, real Le
   /** The model files as they are now (Main.lean and Vocabulary.lean are what runs may change). */
   const files = (): Record<string, string> => ({ [MAIN]: read(MAIN), [VOCABULARY]: read(VOCABULARY) });
 
-  /** Selects exactly `ids` on the current board (a plain click replaces the selection, Ctrl+click adds). */
-  async function select(ids: readonly string[]): Promise<void> {
+  /**
+   * Spec v4.1 ES-2 (slice 1e): the question is the arrows drawn into the goal. Selects them on the current board with
+   * "Select incoming arrows" from the goal's right-click menu (a right click without movement, CM-7; the canvas clips an
+   * expanded card, so its details' button may be out of reach) and waits for the Context Menu section to name them.
+   */
+  async function selectQuestion(): Promise<void> {
     const f = await frame();
     await waitFor(async () => (await f.locator('.tl-board[data-view="proposed"]').count()) === 0, UI_TIMEOUT_MS, 'the board to show the current files');
-    for (const [i, id] of ids.entries()) {
-      const c = f.locator(`[data-node-id="${id}"]`);
-      await c.waitFor({ timeout: UI_TIMEOUT_MS });
-      await c.click(i === 0 ? {} : { modifiers: ['ControlOrMeta'] });
-    }
-    await waitFor(async () => ((await f.getByTestId('tray-count').textContent()) ?? '').startsWith(`${ids.length} selected`), UI_TIMEOUT_MS, `${ids.length} cards selected`);
+    const goal = f.locator(`[data-node-id="${TARGET}"]`);
+    await goal.waitFor({ timeout: UI_TIMEOUT_MS });
+    await goal.locator('.tl-card__text').click({ button: 'right' });
+    const menu = f.getByTestId('board-menu');
+    await menu.waitFor({ timeout: UI_TIMEOUT_MS });
+    await menu.locator('[data-action="select-incoming"]').click();
+    await waitFor(
+      async () => ((await f.getByTestId('context-summary').textContent()) ?? '').startsWith(`${PREMISES.length} arrows into “Cynder would not be a good addition`),
+      UI_TIMEOUT_MS,
+      `the ${PREMISES.length} arrows into the goal selected`,
+    );
   }
 
-  /** Selects the three premises and the goal and presses "These suffice ▶"; resolves with the new run's id. */
-  async function startFromTray(): Promise<string> {
+  /** Selects the arrows into the goal and presses "Formalize for dependencies"; resolves with the new run's id. */
+  async function startFormalize(): Promise<string> {
     const before = run()?.runId;
     // Lean has checked the files as they are and is idle (an earlier test's Undo starts a refresh), so the assertions
     // of these tests see fresh facts. A start while Lean refreshes works as well (the run's working copy builds from
     // scratch and its Lean jobs wait for the refresh): the race test below presses the button during a refresh.
     await waitFor(fresh, LEAN_TIMEOUT_MS, `Lean idle on fresh facts before the run (now ${latestGraph?.semantic.state})`, 250);
-    await select([...PREMISES, TARGET]);
+    await selectQuestion();
     const f = await frame();
-    assert.equal(((await f.getByTestId('tray-target').textContent()) ?? '').includes('Cynder would not be a good addition'), true, 'the goal is the tray target');
-    const button = f.getByTestId('tray-these-suffice');
-    assert.equal(await button.isEnabled(), true, `These suffice is disabled: ${(await f.getByTestId('tray-blocked').allTextContents()).join(' ')}`);
+    const button = f.getByTestId('formalize');
+    assert.equal(await button.isEnabled(), true, `Formalize for dependencies is disabled: ${(await f.getByTestId('formalize-reason').allTextContents()).join(' ')}`);
     await button.click();
     await waitFor(() => run() != null && run()?.runId !== before, LEAN_TIMEOUT_MS, `a new run (now ${runText()})`, 200);
     return run()?.runId ?? '';
@@ -212,7 +229,7 @@ suite('M2 end to end: "These suffice" through the board UI (FakeBackend, real Le
     return shown;
   }
 
-  /** Steps the review until `kind` (statement, vocabulary, definitions, result, lifecycle) is shown. */
+  /** Steps the review until `kind` (statement, vocabulary, definitions, result) is shown. */
   async function reviewStep(kind: string): Promise<Locator> {
     const review = (await frame()).getByTestId('review');
     const step = review.getByTestId('review-step');
@@ -322,20 +339,21 @@ suite('M2 end to end: "These suffice" through the board UI (FakeBackend, real Le
     assert.deepEqual(
       latestGraph?.nodes.map((n) => [n.id, n.type, n.status.proof.kind]),
       [
-        ['pg-no-dark-past', 'ASSUMPTION', 'none'],
-        ['cynder-dark-past', 'ASSUMPTION', 'assumed'],
-        ['new-spyro-pg', 'ASSUMPTION', 'assumed'],
-        ['cynder-not-good', 'GOAL', 'none'],
+        ['pg-no-dark-past', 'AXIOM', 'none'],
+        ['cynder-dark-past', 'AXIOM', 'assumed'],
+        ['new-spyro-pg', 'AXIOM', 'assumed'],
+        // The files say GOAL (spec v4 reads ASSUMPTION, DERIVATION and GOAL as aliases of the two kinds).
+        ['cynder-not-good', 'PROPOSITION', 'none'],
       ],
     );
     assert.ok(api.runsFor(root), 'the root has a RunManager');
   });
 
-  test('normative: the question answered on the board, the overlay, the explicit toggle, the raw diff, G->D; Accept writes Main.lean, one history entry, Undo restores it byte-exactly', async function () {
+  test('normative: the question answered on the board, the overlay, the explicit toggle, the raw diff; Accept writes Main.lean, one history entry, Undo restores it byte-exactly', async function () {
     this.timeout(LEAN_TIMEOUT_MS * 3);
     const player = claude.use(fixture('normative').turns);
     const before = files();
-    const runId = await startFromTray();
+    const runId = await startFormalize();
     await answerOnBoard(0);
     const shown = await waitForReview(1);
     assert.equal(shown.report.verdict, 'proved', runText());
@@ -364,12 +382,9 @@ suite('M2 end to end: "These suffice" through the board UI (FakeBackend, real Le
     await waitFor(() => vscode.window.tabGroups.all.flatMap((g) => g.tabs).some((t) => t.label.startsWith('Raw Lean diff')), UI_TIMEOUT_MS, 'the raw Lean diff editor');
     await closeTextEditors();
 
-    // G->D is proposed (recommended, pre-ticked).
-    const lifecycle = await reviewStep('lifecycle');
-    const item = lifecycle.locator('[data-lifecycle-id="l1"]');
-    assert.equal(await item.locator('input').isChecked(), true, 'the recommended G->D item starts ticked');
-    assert.match((await item.textContent()) ?? '', /a Derivation/);
-    assert.deepEqual(shown.lifecycle.map((l) => [l.nodeId, l.from, l.to, l.recommended]), [[TARGET, 'GOAL', 'DERIVATION', true]]);
+    // Spec v4 (slice 1a): no G->D step any more; the review ends with the result.
+    await reviewStep('result');
+    assert.equal(await f.getByTestId('review').locator('[data-step-kind="lifecycle"]').count(), 0, 'no "Card changes" step');
 
     // Accept: the real Main.lean changes; one history entry; Undo restores it byte-exactly.
     await f.getByTestId('review').getByTestId('accept').click();
@@ -378,7 +393,10 @@ suite('M2 end to end: "These suffice" through the board UI (FakeBackend, real Le
     assert.match(main, /lean: Spyro\.pg_no_dark_past/);
     assert.match(main, /\/-- PG games cannot have characters with dark pasts -\/\nabbrev pg_no_dark_past : Prop :=/);
     assert.match(main, /theorem cynder_not_good\.holds : cynder_not_good :=/);
-    assert.match(main, /id: cynder-not-good\ntype: DERIVATION\n/);
+    // The goal keeps its kind: a run changes no type: line (spec v4: no lifecycle item; CF-4: only you change a kind).
+    // The fixture's `type: GOAL` (an alias, never rewritten) is there before and after, so the check cannot pass empty.
+    assert.equal(typeLineOf(before[MAIN] ?? '', TARGET), 'type: GOAL');
+    assert.equal(typeLineOf(main, TARGET), 'type: GOAL');
     assert.deepEqual(attemptsOf(runId).map((a) => a['resolution'] ?? a['verdict']), ['proved', 'accepted']);
     assert.equal(player.remaining(), 0);
 
@@ -386,7 +404,7 @@ suite('M2 end to end: "These suffice" through the board UI (FakeBackend, real Le
     const entries = f.getByTestId('history-entry');
     await waitFor(async () => (await entries.count()) >= 2, UI_TIMEOUT_MS, 'the history entries');
     const newest = (await entries.first().locator('.tl-history__line').textContent()) ?? '';
-    assert.match(newest, / · accept · These suffice → proved: Cynder would not be a good addition/);
+    assert.match(newest, / · accept · Formalize → proved: Cynder would not be a good addition/);
     await wb?.page.keyboard.press('Escape');
 
     await (await undoButton()).click();
@@ -399,12 +417,12 @@ suite('M2 end to end: "These suffice" through the board UI (FakeBackend, real Le
     this.timeout(LEAN_TIMEOUT_MS * 4);
     const player = claude.use(fixture('literal').turns);
     const before = files();
-    await startFromTray();
+    await startFormalize();
     await answerOnBoard(1);
     const round1 = await waitForReview(1);
     assert.equal(round1.report.verdict, 'not-proved', runText());
     const f = await frame();
-    const ghost = f.locator('.tl-col__list[data-kind="ASSUMPTION"] [data-ghost-id="ghost-1"]');
+    const ghost = f.locator('.tl-col__list[data-kind="AXIOM"] [data-ghost-id="ghost-1"]');
     await ghost.waitFor({ timeout: UI_TIMEOUT_MS });
     assert.equal((await ghost.locator('.tl-ghost__marker').textContent())?.trim(), 'Claude suggests');
     assert.equal(await ghost.getByTestId('ghost-lean').textContent(), '∀ (c : Character) (g : Game), ¬ InGame c g → ¬ GoodAddition c g');
@@ -434,10 +452,10 @@ suite('M2 end to end: "These suffice" through the board UI (FakeBackend, real Le
     assert.match(main, /rationale: it seems obvious to me\n/);
     assert.match(main, /not_in_game_not_good\.holds cynder newSpyro/);
     assert.match(read(VOCABULARY), /axiom InGame : Character → Game → Prop/);
-    // The adopted card is declared on the derivation (the user adopted it for this target), so once Lean has checked
-    // the accepted files the board shows no TL107 ("uses … which the declared premises do not cover") and no mismatch
+    // The adopted card's arrow into the goal is drawn ("I hold this": the user adopted it for this target), so once Lean
+    // has checked the accepted files the board shows no TL107 ("uses … but no arrow is drawn from it") and no mismatch
     // arrow: the UX verification's finding in exactly this flow (also asserted by runner walkthrough.e2e and m2flow).
-    assert.match(main, /id: cynder-not-good\ntype: DERIVATION\nnatural_name: [^\n]*\npremises: cynder-dark-past, new-spyro-pg, pg-no-dark-past, a-character-who-cannot-be-in\n/);
+    assert.match(main, /id: cynder-not-good\ntype: GOAL\nnatural_name: [^\n]*\npremises: cynder-dark-past, new-spyro-pg, pg-no-dark-past, a-character-who-cannot-be-in\n/);
     await waitFor(
       () => fresh() && latestGraph?.nodes.some((n) => n.id === ADOPTED) === true && latestGraph.nodes.find((n) => n.id === TARGET)?.status.proof.kind === 'proved',
       LEAN_TIMEOUT_MS,
@@ -449,13 +467,13 @@ suite('M2 end to end: "These suffice" through the board UI (FakeBackend, real Le
     assert.deepEqual(checked?.diagnostics.filter((d) => d.code === 'TL107'), [], 'no TL107 after Accept');
     assert.deepEqual(checked?.edges.filter((e) => e.mismatch), [], 'no declared-vs-verified mismatch after Accept');
     // And on the board (once it draws these facts: the verified arrow from the adopted card), no arrow is drawn as a
-    // mismatch and the derivation needs no attention.
+    // mismatch and the goal needs no attention.
     const verified = f.locator(`path.tl-edge[data-source="${ADOPTED}"][data-target="${TARGET}"][data-pattern="verified"]`);
     await waitFor(async () => (await verified.count()) > 0, UI_TIMEOUT_MS, 'the verified arrow from the adopted card');
     assert.equal(await f.locator('path.tl-edge[data-mismatch]').count(), 0, 'no mismatch arrow on the board');
     const attention = (await card(TARGET)).getByTestId('attention');
     const badges = await attention.count();
-    assert.equal(badges, 0, `the derivation needs no attention (${badges > 0 ? await attention.first().getAttribute('title') : ''})`);
+    assert.equal(badges, 0, `the goal needs no attention (${badges > 0 ? await attention.first().getAttribute('title') : ''})`);
     await (await undoButton()).click();
     await waitFor(() => read(MAIN) === before[MAIN] && read(VOCABULARY) === before[VOCABULARY], UI_TIMEOUT_MS, 'Undo of the Accept: both files byte for byte as before', 100);
     await dismissEnded('accepted');
@@ -466,7 +484,7 @@ suite('M2 end to end: "These suffice" through the board UI (FakeBackend, real Le
     const script = fixture('cheat-added-axiom');
     const player = claude.use([...script.turns, FEEDBACK_TURN]);
     const before = files();
-    const runId = await startFromTray();
+    const runId = await startFormalize();
     await answerOnBoard(0);
     const round1 = await waitForReview(1);
     assert.equal(round1.report.verdict, 'proved', runText());
@@ -510,7 +528,7 @@ suite('M2 end to end: "These suffice" through the board UI (FakeBackend, real Le
     this.timeout(LEAN_TIMEOUT_MS * 4);
     claude.use(fixture('cheat-give-up').turns);
     const before = files();
-    const runId = await startFromTray();
+    const runId = await startFormalize();
     await answerOnBoard(0);
     const shown = await waitForReview(1);
     assert.equal(shown.report.verdict, 'gave-up', runText());
@@ -539,7 +557,7 @@ suite('M2 end to end: "These suffice" through the board UI (FakeBackend, real Le
     this.timeout(LEAN_TIMEOUT_MS * 2);
     claude.use(CANCEL_TURNS);
     const before = files();
-    const runId = await startFromTray();
+    const runId = await startFormalize();
     await waitFor(() => run()?.state === 'working' && claude.sessions.length === 1, LEAN_TIMEOUT_MS, `the working run (now ${runText()})`, 250);
     const f = await frame();
     await f.getByTestId('run-panel').getByTestId('cancel-run').click();
@@ -549,27 +567,27 @@ suite('M2 end to end: "These suffice" through the board UI (FakeBackend, real Le
     await dismissEnded('cancelled');
   });
 
-  test('race: "These suffice" pressed while the board\'s Lean refresh rebuilds .lake/build (no wait for idle Lean): the run starts, waits for the refresh, proves; Discard', async function () {
+  test('race: Formalize pressed while the board\'s Lean refresh rebuilds .lake/build (no wait for idle Lean): the run starts, waits for the refresh, proves; Discard', async function () {
     this.timeout(LEAN_TIMEOUT_MS * 3);
     const player = claude.use(fixture('normative').turns);
     const before = files();
     const prior = run()?.runId;
-    // The cards are selected on the current board first (selecting takes a while; the refresh below must still run when
-    // the button is pressed).
+    // The arrows are selected on the current board first (selecting takes a while; the refresh below must still run
+    // when the button is pressed).
     await waitFor(fresh, LEAN_TIMEOUT_MS, `Lean idle on fresh facts before the race (now ${latestGraph?.semantic.state})`, 250);
-    await select([...PREMISES, TARGET]);
+    await selectQuestion();
     const f = await frame();
-    const button = f.getByTestId('tray-these-suffice');
-    assert.equal(await button.isEnabled(), true, `These suffice is disabled: ${(await f.getByTestId('tray-blocked').allTextContents()).join(' ')}`);
+    const button = f.getByTestId('formalize');
+    assert.equal(await button.isEnabled(), true, `Formalize for dependencies is disabled: ${(await f.getByTestId('formalize-reason').allTextContents()).join(' ')}`);
     // Force the race: without their Lake traces Lake rebuilds both modules in place, so the board's refresh rewrites
-    // .lake/build for a second or two; "These suffice" is pressed as soon as the board shows Lean checking.
+    // .lake/build for a second or two; Formalize is pressed as soon as the board shows Lean checking.
     for (const module of ['Vocabulary', 'Main']) rmSync(path.join(root, '.lake', 'build', 'lib', 'lean', 'Model', 'Spyro', `${module}.trace`), { force: true });
     const refreshed = Promise.resolve(vscode.commands.executeCommand('telelean.refresh')).catch((e: unknown) => console.log(`[race] the refresh command failed: ${String(e)}`));
     await waitFor(() => latestGraph?.semantic.state === 'checking', UI_TIMEOUT_MS, `the board to show Lean checking (now ${latestGraph?.semantic.state})`, 10);
     const atPress = latestGraph?.semantic.state;
     await button.click();
     const afterPress = latestGraph?.semantic.state;
-    console.log(`[race] Lean was "${atPress}" when "These suffice" was pressed ("${afterPress}" right after)`);
+    console.log(`[race] Lean was "${atPress}" when Formalize was pressed ("${afterPress}" right after)`);
     assert.equal(atPress, 'checking', 'the button was pressed while Lean was refreshing');
     await waitFor(() => run() != null && run()?.runId !== prior, LEAN_TIMEOUT_MS, `a new run (now ${runText()})`, 200);
     const runId = run()?.runId ?? '';
@@ -595,7 +613,7 @@ suite('M2 end to end: "These suffice" through the board UI (FakeBackend, real Le
     this.timeout(LEAN_TIMEOUT_MS * 3);
     claude.use(reloadTurns());
     const before = files();
-    const runId = await startFromTray();
+    const runId = await startFormalize();
     await waitFor(() => run()?.pendingQuestions !== undefined, LEAN_TIMEOUT_MS, `the question (now ${runText()})`, 250);
     const setId = run()?.pendingQuestions?.id;
     await (await frame()).getByTestId('question-set').waitFor({ timeout: UI_TIMEOUT_MS });

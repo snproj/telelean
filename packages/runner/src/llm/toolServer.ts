@@ -26,6 +26,7 @@ import {
   TOOL_SERVER_NAME,
   TOOL_TITLES,
   renderAdoption,
+  renderArrowProposal,
   renderAnswers,
   renderCheckResult,
   renderFreezeResult,
@@ -203,6 +204,9 @@ export async function startToolServer(opts: ToolServerOptions): Promise<ToolServ
       { ...config('propose_assumption'), inputSchema: toolInputShapes.propose_assumption },
       (args, extra) =>
         runTool('propose_assumption', extra as Extra, (ctx) => host.propose_assumption(args, ctx), renderAdoption),
+    );
+    server.registerTool('propose_arrow', { ...config('propose_arrow'), inputSchema: toolInputShapes.propose_arrow }, (args, extra) =>
+      runTool('propose_arrow', extra as Extra, (ctx) => host.propose_arrow(args, ctx), renderArrowProposal),
     );
     server.registerTool('finish', { ...config('finish'), inputSchema: toolInputShapes.finish }, (args, extra) =>
       runTool('finish', extra as Extra, (ctx) => host.finish(args, ctx), renderGateVerdict, (v) =>

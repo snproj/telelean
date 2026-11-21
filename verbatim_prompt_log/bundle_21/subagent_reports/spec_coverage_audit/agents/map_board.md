@@ -1,0 +1,1136 @@
+# map:board
+
+Agent `a30dece96d537b4e0` of workflow `wf_169472df-2f5`. Verbatim output (JSON alongside).
+
+- **summary:** Coverage audit of spec v4.1 Part 1 §1 Terms, §2 CF-1–CF-7, §3 BD-1–BD-9, §4 AR-1–AR-8 and the Appendix A cases about cards, the board and arrows (A7–A22, A24–A26, A29; A1–A6, A23, A27, A28 left out as review/frozen/undo/session cases). 209 rows: 150 built, 23 planned-slice2, 21 planned-slice3, 5 for-slice4, 2 for-slice5, 2 narrowed-by-decision, 4 contradicted, 2 unassigned.
+
+Abbreviations in 'where': core/, webview/ and runner/ mean packages/<pkg>/src/. S1 is docs/slice1-plan.md, S2 is docs/slice2-plan.md, and S3 is /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/plans/slice3-plan.md (under review and may change). Slice-2 rows count as planned even where 2a1/2a2 already wrote their core texts and types (S2 §8): no review UI, judgeState B.3/B.4 or propose_arrow is built yet.
+
+UNASSIGNED (2):
+1. CF-6, second half: when you edit a sentence Claude wrote, it should become yours. core/edit/planAction.ts:85-125 (edit-node) never clears `worded_by: agent`, and no plan commits to it. S3's D3-44 only freezes the edited field.
+2. AR-7: the drop zone should name the frozen arrows that a move to AXIOMS would remove. Today kindChangeImpact gives only a count. No S3 section mentions the drop zone or kind-change impact.
+
+CONTRADICTED (4):
+1. AR-6: an axiom made a proposition should land next to its new source. Instead it gets the generic layered placement (planArrows.ts:126-130 drops its stored position; placement.ts:103 places it).
+2. BD-7: definitions and presuppositions should be named on a chip on the band. They appear only as tooltip lines (band.ts:99-104), and the definitions come from the statement closure rather than from what the proof relies on. S1 §4 chose this; no AP or D decision records it.
+3. A19: an old axiom's `premises:` arrows should be shown as "declared before v4". They are not drawn at all (subjectGraph.ts:64-66); only a card chip says so.
+4. BD-3/B.7/AP-12 say positions are written only by moves and Tidy layout. In fact a card from the A|P box (and from "New proposition here") has its computed position written at creation (S1 §2.4, §8 1c1). It is needed to keep BD-8's placement, but no decision logs it.
+
+NARROWED (2):
+1. D2-15: Claude never splits a Shaky card (CF-3). S3 says D2-15 also stays in slice 4.
+2. D2-65: AR-8's "result not shown yet" dialog is replaced by Formalize being disabled until the stage's results are shown.
+
+Further caveats:
+- AR-3 "blocks Apply": only implied, through the S2 §4.10 backstop's `cycle` (B.3 restated on F). §4.9 judgeState explicitly ignores a cycle already in B.
+- AR-3 "blocks Formalize": slice 1 blocks only when the target or a source lies on the cycle.
+- S3 D3-38: with the whole model open, propose_arrow accepts "any unfrozen proposition". The plan does not say whether cards marked "follows from nothing" are excluded (AR-5, B.3, TL023).
+- D3-43: A25 and "Claude may add cards" may move to slice 4.
+- D3-6 narrows when marks and Dependencies can be frozen.
+- D2-35 shows Add-premise drafts at the top of the AXIOMS column, as slice 1's ghost cards already did.
+- **rows:**
+  - [1]
+    - **clause:** §1 Terms: Card
+    - **requirement:** Anything on the board is a card: an axiom card, a proposition card, or a vocabulary card.
+    - **status:** built
+    - **where:** core/model.ts:25 (NodeType AXIOM|PROPOSITION); webview/board/AxiomsColumn.tsx, PropositionCanvas.tsx, Vocabulary.tsx; S1 §8 (1a, 1c1)
+  - [2]
+    - **clause:** §1 Terms: Axiom
+    - **requirement:** An axiom card is something you hold, sits in the AXIOMS column, has a Lean axiom .holds, and replaces ASSUMPTION.
+    - **status:** built
+    - **where:** core/model.ts:25, :35-44 (ASSUMPTION alias); webview/board/AxiomsColumn.tsx; S1 §2.1-2.3, §8 1a
+  - [3]
+    - **clause:** §1 Terms: Proposition
+    - **requirement:** A proposition card sits on the canvas; its .holds is a theorem (proved), a Lean axiom (pending proof) or missing (unproved); it replaces DERIVATION and GOAL.
+    - **status:** built
+    - **where:** S1 §2.1 (ProofStatus pending), §8 1a; webview/board/PropositionCanvas.tsx
+  - [4]
+    - **clause:** §1 Terms: Arrow
+    - **requirement:** X → Y claims Y follows at least in part from X; dotted while only declared, solid once a checked proof of Y uses X.
+    - **status:** built
+    - **where:** webview/board/edges.ts:93 (arrowLook); S1 §8 1c1, 1d
+  - [5]
+    - **clause:** §1 Terms: Dependencies
+    - **requirement:** A proposition's incoming arrows form one field, and 'follows from nothing' is the explicitly empty set.
+    - **status:** built
+    - **where:** core/markup/types.ts:90-91 (premises, follows_from); S1 §2.1-2.2, §8 1a-1b
+    - **note:** As a selectable/freezable field: S3 §2.2 CardField 'dependencies'.
+  - [6]
+    - **clause:** §1 Terms: Band
+    - **requirement:** The green band binds the arrows a checked proof uses, which together suffice.
+    - **status:** built
+    - **where:** webview/board/band.ts:73; S1 §8 1d
+  - [7]
+    - **clause:** §1 Terms: Established
+    - **requirement:** Established = proved, resting only on axiom cards, presuppositions and definitions, never on a pending claim, with current facts; shown as the green glow.
+    - **status:** built
+    - **where:** core/project/build.ts:927 (markEstablished); webview/model/cardData.ts:147; S1 §8 1a, 1d, fixer 1d
+  - [8]
+    - **clause:** §1 Terms: Axiom vs Lean axiom
+    - **requirement:** 'Axiom' alone names the card; 'Lean axiom' names an axiom declaration (an axiom card's .holds, a pending claim, a presupposition or a hidden assumption).
+    - **status:** built
+    - **where:** webview/board/AlsoAssumed.tsx:2-47 (pending claims, existence assumptions, hidden assumptions); S1 §8 1a (card texts)
+    - **note:** A wording convention, followed in the UI texts.
+  - [9]
+    - **clause:** §1 Terms: direct(v)
+    - **requirement:** direct(v) is the set of cards whose .holds v's checked proof uses directly, computed from Lean's elaborated proof.
+    - **status:** built
+    - **where:** core/project/edges.ts:160 (directWalk over valueConsts); S1 §8 1d
+  - [10]
+    - **clause:** §1 Terms: Field
+    - **requirement:** A field is an editable part of a card (§2), selectable on its own.
+    - **status:** planned-slice3
+    - **where:** S3 §2.2 (CardField, VocabField), §4.2 (field selection)
+  - [11]
+    - **clause:** §1 Terms: Frozen
+    - **requirement:** A frozen field, card or arrow is one that Claude may not change.
+    - **status:** planned-slice3
+    - **where:** S3 §2.2-§3.6, §4
+  - [12]
+    - **clause:** §1 Terms: Held
+    - **requirement:** Held content is not frozen itself, but frozen content relies on it, so Claude may not change it either.
+    - **status:** planned-slice3
+    - **where:** S3 §3.2 (heldValue), §3.4 step 3, §4.5 ('held by' mark)
+    - **note:** Holding through # references is left to slice 5 (heldFields returns []).
+  - [13]
+    - **clause:** §1 Terms: Fuzzy
+    - **requirement:** A fuzzy field is an empty field that Claude is asked to fill in (TR-4).
+    - **status:** for-slice4
+    - **where:** S1 header and S2 'Not in slice 2' (transform window = slice 4)
+    - **note:** Claude already fills ES-2's empty Lean statements at the selected arrows (slice 1; S2 §2.7 StepScope.fuzzyStatements). S3 §4.5 shows 'Claude fills this' chips while a narrow step runs.
+  - [14]
+    - **clause:** §1 Terms: Edit session
+    - **requirement:** An edit session is a sequence of Claude steps and review stages worked on a private copy of the model.
+    - **status:** planned-slice2
+    - **where:** S2 §3.1-§3.13 (2d-2f)
+    - **note:** In slice 1 the run is the session (S1 §8 1f, runLocksBoard).
+  - [15]
+    - **clause:** §1 Terms: Claude step
+    - **requirement:** A Claude step is one stretch of Claude's work inside a session, by whichever LLM telelean is set up with.
+    - **status:** planned-slice2
+    - **where:** S2 §3.3-§3.4 (StepRunner, 2d)
+  - [16]
+    - **clause:** §1 Terms: Formalize for dependencies
+    - **requirement:** Formalize for dependencies replaces 'These suffice': select arrows, and Claude formalises and proves what they claim.
+    - **status:** built
+    - **where:** webview/header/ContextSection.tsx; webview/board/contextActions.ts:78; core/formalize.ts:125; S1 §8 1e
+    - **note:** One target at a time (AP-9). Several targets come in S2 §3.2, §4.12.
+  - [17]
+    - **clause:** §1 Terms: Inference
+    - **requirement:** An inference is one target of Formalize together with its question, the selected arrows into it.
+    - **status:** built
+    - **where:** S1 §8 1e (startRun target and premises = selected arrow sources)
+    - **note:** Several inferences per session: S2 §2.2 SessionInference, §4.12.
+  - [18]
+    - **clause:** §1 Terms: Review stage
+    - **requirement:** A review stage is your pass over the proposed changes, one review item per change.
+    - **status:** planned-slice2
+    - **where:** S2 §3.5, §5.3-§5.6 (2c2, 2g)
+  - [19]
+    - **clause:** §1 Terms: Belief item / proof-changing item
+    - **requirement:** Belief items and proof-changing items need their own Accept (RV-7).
+    - **status:** planned-slice2
+    - **where:** S2 §4.4 (classify, built in 2a2 per §8), §5.5 badges (2g)
+  - [20]
+    - **clause:** §1 Terms: Arrow item
+    - **requirement:** An arrow item is a review item for an arrow Claude adds or removes.
+    - **status:** planned-slice2
+    - **where:** S2 §2.8 (propose_arrow, D2-1), §4.2, §5.6
+    - **note:** Remove arrow items come only in S3 §3.10 (3c1), with the whole model open.
+  - [21]
+    - **clause:** §1 Terms: Transform
+    - **requirement:** The Transform window is where you propose turning a set of cards into another set.
+    - **status:** for-slice4
+    - **where:** S1 header; S2 'Not in slice 2'; S3 'Not in slice 3'
+  - [22]
+    - **clause:** §1 Terms: Context Menu
+    - **requirement:** The toolbar's Context Menu section shows the actions for the selection, and a right click opens the same actions at the cursor.
+    - **status:** built
+    - **where:** webview/header/ContextSection.tsx; webview/board/menu.ts; webview/board/BoardInput.ts:462; S1 §8 1c1, 1e
+  - [23]
+    - **clause:** §1 Terms: Session bar
+    - **requirement:** The session bar above the board holds the controls of the active session.
+    - **status:** planned-slice2
+    - **where:** S2 §5.8 (2g)
+  - [24]
+    - **clause:** §1 Terms: Undo stacks
+    - **requirement:** There are two Undo stacks, the board stack (files and standing freezes) and the session stack, which never share a step.
+    - **status:** planned-slice2
+    - **where:** S2 §4.6 (session stack; reducer built in 2a2), §5.12 (2h); S1 §8 1f (board stack locked during a run)
+    - **note:** Standing freezes go on the board stack in S3 §5.1 (D3-21).
+  - [25]
+    - **clause:** §1 Terms: Reference
+    - **requirement:** A reference is a link to a card or field, typed with #.
+    - **status:** for-slice5
+    - **where:** S1, S2 and S3 'Not in slice' lists (references = slice 5)
+  - [26]
+    - **clause:** §1 Terms: Apply
+    - **requirement:** Apply writes a finished session's changes to your files and replaces today's Accept button.
+    - **status:** planned-slice2
+    - **where:** S2 §3.10 (2f), §5.9, §5.14 (2h retires Accept)
+  - [27]
+    - **clause:** CF-1 (select a card)
+    - **requirement:** Every axiom and proposition card can be selected.
+    - **status:** built
+    - **where:** webview/state/store.ts (clickCard, selectArea); webview/board/gestures.ts:218; S1 §8 1b, 1c2
+  - [28]
+    - **clause:** CF-1 (select a vocabulary card)
+    - **requirement:** Vocabulary cards can be selected like any card.
+    - **status:** planned-slice3
+    - **where:** S3 §4.2 (selectedVocab; a vocabulary item's header selects it)
+  - [29]
+    - **clause:** CF-1 (select any field)
+    - **requirement:** Any single field of any card can be selected.
+    - **status:** planned-slice3
+    - **where:** S3 §4.2 (selectedFields, lock slot or Alt-click), §4.5 lock slots
+  - [30]
+    - **clause:** CF-1 (freeze/unfreeze any card)
+    - **requirement:** Every card, vocabulary included, can be frozen and unfrozen.
+    - **status:** planned-slice3
+    - **where:** S3 §3.6, §4.3, §2.2 FreezeTarget
+    - **note:** D3-6, D3-45 and D3-46 narrow when this is possible.
+  - [31]
+    - **clause:** CF-1 (reference with #)
+    - **requirement:** Every card can be referenced with #.
+    - **status:** for-slice5
+    - **where:** S1/S2/S3 'Not in slice' (references slice 5)
+  - [32]
+    - **clause:** CF-1 (transform)
+    - **requirement:** Every card can be transformed.
+    - **status:** for-slice4
+    - **where:** S1/S2/S3 'Not in slice' (transform window slice 4)
+  - [33]
+    - **clause:** CF-1 exception (TR-10)
+    - **requirement:** Vocabulary from other subjects cannot be transformed.
+    - **status:** for-slice4
+    - **where:** S1/S2/S3 'Not in slice' (slice 4)
+    - **note:** S3 D3-41 already keeps other subjects' vocabulary unchangeable by Claude; it can still be frozen (S3 §2.2, vocab of any subject).
+  - [34]
+    - **clause:** CF-2 table (Axiom)
+    - **requirement:** An axiom's fields are Sentence, Kind, Why, Stance, Source and Lean statement.
+    - **status:** planned-slice3
+    - **where:** S3 §2.2 CARD_FIELDS (AXIOM: 6), D3-20
+    - **note:** S3 makes these the units of selection and freezing. On the board today: Sentence/Why/Stance/Source edits (core/edit/planAction.ts:85) and Kind (drag, Move to axioms). Lean statement only in the editor. Editing every field in the transform (TR-6) is slice 4.
+  - [35]
+    - **clause:** CF-2 table (Proposition)
+    - **requirement:** A proposition has the axiom's fields plus Dependencies and Proof.
+    - **status:** planned-slice3
+    - **where:** S3 §2.2 CARD_FIELDS (PROPOSITION: 8), D3-20
+    - **note:** Dependencies is edited by drawing arrows (built). Proof has no board editor. Transform editing is slice 4.
+  - [36]
+    - **clause:** CF-2 table (Vocabulary)
+    - **requirement:** A vocabulary card's fields are the whole Lean declaration and its Gloss.
+    - **status:** planned-slice3
+    - **where:** S3 §2.2 VocabField (declaration, gloss), §4.5 lock slots
+    - **note:** No board edit of vocabulary exists. Transform editing is slice 4.
+  - [37]
+    - **clause:** CF-2 bullet (Proof states)
+    - **requirement:** A Proof is empty, pending (an axiom .holds, which counts as no proof) or proved (a theorem).
+    - **status:** built
+    - **where:** S1 §2.1, §8 1a (ProofStatus pending)
+    - **note:** S2 §4.4 c1 also treats pending as no proof.
+  - [38]
+    - **clause:** CF-2 bullet (axiom .holds)
+    - **requirement:** An axiom's .holds is not a field of its own and must state exactly the axiom's Lean statement.
+    - **status:** built
+    - **where:** TL114 holds-mismatch (core/project/build.ts; webview/board/band.ts:92-93)
+    - **note:** S3 §3.2's 'statement' value includes an AXIOM's .holds.
+  - [39]
+    - **clause:** CF-2 bullet (Dependencies storage)
+    - **requirement:** Dependencies holds the incoming arrows, stored as declared premises, or the 'follows from nothing' mark.
+    - **status:** built
+    - **where:** core/markup/types.ts:90-91; core/edit/planArrows.ts:132, :258; S1 §2.2, §8 1b
+  - [40]
+    - **clause:** CF-3 (never changed by Claude; every check verifies)
+    - **requirement:** Data telelean keeps is never changed by Claude, frozen or not, and every check verifies this.
+    - **status:** built
+    - **where:** core/gate/rules.ts:76 (COMPARED_FIELDS), :1151-1270 (G5 markupFindings); S1 §2.2
+    - **note:** Every judged state: S2 §4.9 (G5 against S₀) and §4.10 backstop. S3 §3.9: request_unfreeze refuses CF-3 data.
+  - [41]
+    - **clause:** CF-3 bullets (covered data)
+    - **requirement:** The kept data covers id, dates, provenance (who worded, where from, which session), Kind, lineage, tags, notes, extension data, and Lean pin and binding.
+    - **status:** built
+    - **where:** core/gate/rules.ts:76 (type, asserted, origin, session, worded_by, supersedes, refines, tags), :1255-1262 (version, extensions, notes body, id), :1263ff (lean: pins, bindings)
+  - [42]
+    - **clause:** CF-3 bullet (position on the board)
+    - **requirement:** A card's board position is data telelean keeps, never changed by Claude.
+    - **status:** built
+    - **where:** runner/shadow/types.ts:7 (no .telelean in Claude's copy); runner/proposal/service.ts:100 currentLayoutOf; S2 §2.6 PersistedSession.positions, D2-33
+  - [43]
+    - **clause:** CF-3 bullet (declared premises)
+    - **requirement:** Declared premises are the Dependencies field, which Claude may change, when not frozen, only through review items.
+    - **status:** planned-slice2
+    - **where:** S2 §2.8 (propose_arrow; telelean writes ledger arrows, D2-1), §4.9 B.3
+    - **note:** Removals only in S3 §3.10 remove_arrow, with the whole model open (AP-14 b, D3-14).
+  - [44]
+    - **clause:** CF-3 bullet (when Claude adds cards)
+    - **requirement:** Claude adds a new card only for a proposed missing premise, with 'Claude may add cards', for a Shaky split, or as new vocabulary.
+    - **status:** built
+    - **where:** core/gate/rules.ts:1151 (G5: no new blocks but telelean's own); core/gate/adoption.ts:133; S2 §4.9 (G5: new blocks only for ledger premises)
+  - [45]
+    - **clause:** CF-3 bullet (case 'Claude may add cards')
+    - **requirement:** With 'Claude may add cards' on, Claude may add cards.
+    - **status:** planned-slice3
+    - **where:** S3 §3.10 (3c2, 3e3), D3-13; D2-12
+    - **note:** Under D3-43's fallback this may move to slice 4.
+  - [46]
+    - **clause:** CF-3 bullet (case Shaky split)
+    - **requirement:** Claude may add cards when it splits a Shaky card.
+    - **status:** narrowed-by-decision
+    - **where:** D2-15 (S2 §3.7: no new cards, splits or merges in Shaky steps); S3 §3.10/§3.12 ('D2-15 stays' in slice 4)
+  - [47]
+    - **clause:** CF-3 bullet (Lean statement = 3 things)
+    - **requirement:** A card's Lean statement means its binding, the full text of the bound declaration, and what that declaration means in Lean.
+    - **status:** planned-slice3
+    - **where:** S3 §2.1 meaningKey (D3-2), §3.2 statement value
+    - **note:** S2's D2-41 compares meaning only approximately (printed type and value plus constant sets).
+  - [48]
+    - **clause:** CF-4 (Kind only you change)
+    - **requirement:** Kind is a field, and only you change it.
+    - **status:** built
+    - **where:** core/gate/rules.ts:76 (G5 type); S1 §2.4 change-kind; S3 §2.2 field 'kind'
+  - [49]
+    - **clause:** CF-4 bullet 1 (drag into AXIOMS)
+    - **requirement:** You change Kind by dragging a proposition into the AXIOMS column.
+    - **status:** built
+    - **where:** webview/board/gestures.ts:393; S1 §8 1c2
+  - [50]
+    - **clause:** CF-4 bullet 1 (arrow or mark into an axiom)
+    - **requirement:** You change Kind by drawing an arrow into an axiom or marking it 'follows from nothing'.
+    - **status:** built
+    - **where:** core/edit/planArrows.ts:132-175, :258; S1 §8 1b
+  - [51]
+    - **clause:** CF-4 bullet 1 (in a transform)
+    - **requirement:** You change Kind in a transform (TR-11).
+    - **status:** for-slice4
+    - **where:** S1/S2/S3 'Not in slice' (transform slice 4)
+  - [52]
+    - **clause:** CF-4 bullet 2 (D-11, impact first)
+    - **requirement:** telelean carries a kind change out by D-11 and shows its impact first.
+    - **status:** built
+    - **where:** core/kindChange.ts:146 (kindChangeImpact); core/edit/planAction.ts:189; S1 §8 1a, 1b, 1c2
+  - [53]
+    - **clause:** CF-4 bullet 3 (never changes Kind)
+    - **requirement:** Claude never changes the Kind of an existing card.
+    - **status:** built
+    - **where:** core/gate/rules.ts:76 (G5 type)
+    - **note:** Also in S2 §4.9 (B.4 type-changed; G5 type never changes) and S3 §3.10 (whole model: type: edits refused).
+  - [54]
+    - **clause:** CF-4 bullet 3 (no arrow into an axiom)
+    - **requirement:** Claude never adds an arrow into an axiom.
+    - **status:** planned-slice2
+    - **where:** S2 §4.9 proposeArrowProblems ('is an axiom…'), §4.10 backstop arrow
+    - **note:** In slice 1 Claude adds no arrows at all.
+  - [55]
+    - **clause:** CF-4 bullet 3 (no column/canvas moves)
+    - **requirement:** Claude never moves a card between the column and the canvas.
+    - **status:** built
+    - **where:** Follows from G5 type (core/gate/rules.ts:76) and layout being out of Claude's reach (runner/shadow/types.ts:7)
+  - [56]
+    - **clause:** CF-4 bullet 3 (no proof→axiom)
+    - **requirement:** Claude never turns a proof into an axiom.
+    - **status:** built
+    - **where:** core/gate/rules.ts:476-551 (new-axiom), status-mismatch (S1 §8 fixer 1e)
+    - **note:** Made explicit in S2 §4.9 B.4 holds-kind theorem-to-axiom.
+  - [57]
+    - **clause:** CF-4 bullet 3 (can ask)
+    - **requirement:** Claude can ask you to change a kind.
+    - **status:** built
+    - **where:** runner/llm/toolSchemas.ts:141 (ask_user)
+    - **note:** Generic question tool only; no kind-change request mechanism.
+  - [58]
+    - **clause:** CF-5 (computed from Lean)
+    - **requirement:** Vocabulary stays computed from Lean (D-3).
+    - **status:** built
+    - **where:** core/project/vocabulary.ts (existing)
+  - [59]
+    - **clause:** CF-5 (identified by Lean name)
+    - **requirement:** A vocabulary card is identified by its Lean name.
+    - **status:** built
+    - **where:** VocabItem.name (core/model.ts)
+    - **note:** S3 also keys vocabulary freezes by Lean name (§2.2).
+  - [60]
+    - **clause:** CF-5 (box look)
+    - **requirement:** A vocabulary card keeps its box look in the Vocabulary or Definitions column, so it does not read as a belief.
+    - **status:** built
+    - **where:** webview/board/Vocabulary.tsx:176; S1 §8 1c1
+  - [61]
+    - **clause:** CF-6 (Claude's wording)
+    - **requirement:** telelean marks every sentence Claude writes as Claude's wording (italic).
+    - **status:** built
+    - **where:** webview/board/NodeCard.tsx:168, :273; core/gate/adoption.ts:133
+    - **note:** S3 §3.10 writes worded_by: agent on whole-model sentence changes and on add_card.
+  - [62]
+    - **clause:** CF-6 (your edit makes it yours)
+    - **requirement:** When you edit a sentence Claude wrote, it becomes yours, fixing today's surviving mark.
+    - **status:** unassigned
+    - **where:** core/edit/planAction.ts:85-125 (edit-node never touches worded_by); no plan
+    - **note:** S3 D3-44 only freezes the edited field.
+  - [63]
+    - **clause:** CF-7 (never edited)
+    - **requirement:** Derived information (status, glows, bands, used-by-proof, Used by, Uses, Rests on, attempts) can never be edited.
+    - **status:** built
+    - **where:** Computed in core/project/build.ts and webview/model/cardData.ts; no edit path exists
+  - [64]
+    - **clause:** CF-7 (never frozen)
+    - **requirement:** Derived information can never be frozen.
+    - **status:** planned-slice3
+    - **where:** S3 §3.6 ('Derived data … is never a subject'; not freezable: derived data)
+  - [65]
+    - **clause:** CF-7 bullet 2 (solid declared arrow)
+    - **requirement:** A declared arrow a proof uses stays in Dependencies: drawn solid, it can still be selected, deleted and formalized.
+    - **status:** built
+    - **where:** webview/board/gestures.ts:33 (hitRole 'drawn', dotted or solid); S1 §8 1c2, 1e
+  - [66]
+    - **clause:** CF-7 bullet 2 (solid declared arrow frozen)
+    - **requirement:** A declared arrow a proof uses can still be frozen.
+    - **status:** planned-slice3
+    - **where:** S3 §2.2 FreezeTarget arrow
+    - **note:** D3-6 narrows freezing a target's Dependencies while results are hidden.
+  - [67]
+    - **clause:** CF-7 bullet 3 (TL107 arrows)
+    - **requirement:** Only an arrow a proof uses without a declaration (TL107, warning colour) is purely derived.
+    - **status:** built
+    - **where:** webview/board/gestures.ts:33 (hitRole 'undeclared': not selectable); S1 §8 1c2
+    - **note:** S3 §3.6 excludes warning arrows from freezing.
+  - [68]
+    - **clause:** BD-1 bullet 1 (layout)
+    - **requirement:** Vocabulary and Definitions columns sit side by side on top, each scrolling, with the AXIOMS column on the left below and the PROPOSITIONS canvas filling the rest.
+    - **status:** built
+    - **where:** webview/board/Board.tsx, Vocabulary.tsx, AxiomsColumn.tsx, PropositionCanvas.tsx; S1 §8 1c1
+  - [69]
+    - **clause:** BD-1 bullet 2 (divider)
+    - **requirement:** The divider between top and bottom can be dragged.
+    - **status:** built
+    - **where:** S1 §8 1c1 (topSplit)
+  - [70]
+    - **clause:** BD-1 bullet 3 (collapse)
+    - **requirement:** The top collapses to one line that still shows its counts and flags.
+    - **status:** built
+    - **where:** webview/board/vocabularyBand.ts:35 (bandSummary); S1 §8 1c1
+  - [71]
+    - **clause:** BD-1 bullet 4 (Definitions column)
+    - **requirement:** The Definitions column holds def, abbrev, structure, inductive, class and instance.
+    - **status:** built
+    - **where:** webview/board/vocabularyBand.ts:1-17
+  - [72]
+    - **clause:** BD-1 bullet 5 (Vocabulary column)
+    - **requirement:** The Vocabulary column holds Types, Predicates & relations, Functions, Constants, Presuppositions, Lemmas, Unmarked axioms and Other.
+    - **status:** built
+    - **where:** webview/board/vocabularyBand.ts:4-12
+  - [73]
+    - **clause:** BD-1 bullet 6 (other subjects)
+    - **requirement:** Other subjects' items that this subject uses are shown read-only.
+    - **status:** built
+    - **where:** core/project/subjectGraph.ts:44-47
+  - [74]
+    - **clause:** BD-1 bullet 7 (AXIOMS header)
+    - **requirement:** The AXIOMS header counts 'also assumed: K pending claims, N existence assumptions, M hidden assumptions', each linking to its card or item.
+    - **status:** built
+    - **where:** webview/board/AlsoAssumed.tsx:2-47, assumed.ts; S1 §8 1c1, fixer 1d
+  - [75]
+    - **clause:** BD-1 bullet 7 (endorsement flag)
+    - **requirement:** Definitions that need your endorsement are flagged in the Definitions column.
+    - **status:** built
+    - **where:** webview/board/Vocabulary.tsx:40 (flag texts); S1 §8 1c1 ('needs your endorsement')
+    - **note:** Recording an endorsement at Apply comes in S2 §2.6 (D2-18, EN-3).
+  - [76]
+    - **clause:** BD-2
+    - **requirement:** The AXIOMS column holds axiom cards only, in your order (drag or Alt+↑/↓), and scrolls vertically.
+    - **status:** built
+    - **where:** webview/board/NodeCard.tsx:193 (Alt+↑/↓); webview/board/AxiomsColumn.tsx; S1 §8 1a, 1c1
+    - **note:** Claude-suggests ghosts (slice 1) and Add-premise drafts (D2-35) show at the top of the column as translucent non-cards.
+  - [77]
+    - **clause:** BD-3 (canvas)
+    - **requirement:** The canvas holds proposition cards, placed freely.
+    - **status:** built
+    - **where:** webview/board/PropositionCanvas.tsx; S1 §3, §8 1c1
+  - [78]
+    - **clause:** BD-3 Zoom (wheel)
+    - **requirement:** The mouse wheel zooms about the cursor.
+    - **status:** built
+    - **where:** webview/board/canvas/view.ts:40-71 (wheelFactor); CanvasView.ts:149
+  - [79]
+    - **clause:** BD-3 Zoom (Ctrl+wheel/pinch)
+    - **requirement:** Ctrl+wheel (a trackpad pinch) zooms the same way.
+    - **status:** built
+    - **where:** webview/board/canvas/view.ts:44 (pinchK)
+  - [80]
+    - **clause:** BD-3 Zoom (range)
+    - **requirement:** The zoom range is fixed at about 10 %–400 %.
+    - **status:** built
+    - **where:** webview/board/canvas/view.ts:34-35, :54
+  - [81]
+    - **clause:** BD-3 Pan
+    - **requirement:** Right-button drag pans; a trackpad's two-finger scroll zooms; on a trackpad you pan with right-drag or the keyboard.
+    - **status:** built
+    - **where:** webview/board/BoardInput.ts:462; S1 §8 1c1
+  - [82]
+    - **clause:** BD-3 Left button (move)
+    - **requirement:** Dragging a card moves it.
+    - **status:** built
+    - **where:** S1 §8 1c1 (moveCards)
+  - [83]
+    - **clause:** BD-3 Left button (rectangle)
+    - **requirement:** Dragging on empty canvas draws a selection rectangle that selects the cards and arrows inside.
+    - **status:** built
+    - **where:** webview/board/gestures.ts:218 (areaSelection); S1 §8 1c2, fixer 1g
+  - [84]
+    - **clause:** BD-3 Left button (handle)
+    - **requirement:** Dragging from a card's arrow handle draws an arrow.
+    - **status:** built
+    - **where:** webview/board/gestures.ts:301; BoardInput.ts:343
+  - [85]
+    - **clause:** BD-3 Keyboard (Tab)
+    - **requirement:** Tab moves between cards, and the canvas follows the focused card.
+    - **status:** built
+    - **where:** S1 §8 1c1, fixer 1c1
+  - [86]
+    - **clause:** BD-3 Keyboard (+/− and arrow keys)
+    - **requirement:** + and − zoom, and the arrow keys pan while the canvas has focus.
+    - **status:** built
+    - **where:** webview/board/BoardInput.ts:33, :705-709
+  - [87]
+    - **clause:** BD-3 Keyboard (toolbar)
+    - **requirement:** Fit all and Zoom to selection are in the toolbar.
+    - **status:** built
+    - **where:** webview/board/CanvasToolbar.tsx:52-62
+  - [88]
+    - **clause:** BD-3 Placement (automatic)
+    - **requirement:** telelean places every card with no stored position (first opening, A|P box, proposal), sources left of targets, without overlap, from measured collapsed sizes, unstored, so opening a board writes nothing.
+    - **status:** built
+    - **where:** webview/board/canvas/placement.ts:1-16, :103; S1 §8 1c1, fixer 1c1; AP-12
+    - **note:** Fixer 1c1 accepted a trade-off: in the Proposed view a changed card that grows may touch the next card.
+  - [89]
+    - **clause:** BD-3 Placement (A|P box card not stored) / B.7
+    - **requirement:** A new card from the A|P box is placed by telelean without storing its position; positions are written only by moves and Tidy layout.
+    - **status:** contradicted
+    - **where:** S1 §2.4 (add-node position), §8 1c1 (the planner writes it to layout.json with the card)
+    - **note:** Needed so the card stays where BD-8 put it. No AP or D decision records it; AP-12 and B.7 say positions are written only by moves and Tidy layout.
+  - [90]
+    - **clause:** BD-3 Placement (move stored)
+    - **requirement:** Moving a card stores its position, as one Undo step.
+    - **status:** built
+    - **where:** core/edit/planArrows.ts:316 (planMoveCards); S1 §8 1b, 1c1
+  - [91]
+    - **clause:** BD-3 Placement (Tidy layout)
+    - **requirement:** Tidy layout re-places the selected cards (all, if none is selected) and stores them, as one Undo step.
+    - **status:** built
+    - **where:** webview/board/canvas/placement.ts:145; CanvasToolbar.tsx:77
+  - [92]
+    - **clause:** BD-3 Placement (layout only)
+    - **requirement:** Positions are layout only: they never appear in a review and are never part of what a session diffs.
+    - **status:** planned-slice2
+    - **where:** S2 §4.3 ('Positions never count'), §3.10 step 4, D2-33
+    - **note:** The slice-1 part (moves are layout-only edits) is built.
+  - [93]
+    - **clause:** BD-3 Expanding a card
+    - **requirement:** Expanding a card on the canvas opens its details over the cards below, raised above them and the arrows, without moving anything.
+    - **status:** built
+    - **where:** S1 §8 1c1 (slot raised, 420 px, nothing moves; overlay under the cards)
+  - [94]
+    - **clause:** BD-3 Reveal
+    - **requirement:** 'Show on board' and every other reveal pan and zoom the canvas to the card.
+    - **status:** built
+    - **where:** S1 §8 1c1 (reveal centres the card)
+  - [95]
+    - **clause:** BD-4
+    - **requirement:** Arrows across the two parts follow the column's scrolling and the canvas's pan and zoom.
+    - **status:** built
+    - **where:** webview/board/EdgeEngine.ts, geometry.ts; S1 §8 1c1
+  - [96]
+    - **clause:** BD-4 bullet 1 (column ends)
+    - **requirement:** In the AXIOMS column, an arrow whose end is scrolled out stops at the column's top or bottom, with '▲/▼ n linked' badges.
+    - **status:** built
+    - **where:** S1 §8 1c1 (badges)
+  - [97]
+    - **clause:** BD-4 bullet 2 (canvas edges)
+    - **requirement:** On the canvas, a cut-off arrow stops at the edge it leaves through, and each edge has a badge that pans to the nearest hidden card.
+    - **status:** built
+    - **where:** S1 §8 1c1 (canvas badges)
+  - [98]
+    - **clause:** BD-5 (never colour alone)
+    - **requirement:** Arrow looks never rely on colour alone.
+    - **status:** built
+    - **where:** webview/board/edges.ts:113-141 (line pattern, hollow and notched heads)
+  - [99]
+    - **clause:** BD-5 row 1 (dotted)
+    - **requirement:** A dotted arrow (round dots) is declared by you.
+    - **status:** built
+    - **where:** S1 §8 1c1 (dasharray 0 6, round caps), 1d
+  - [100]
+    - **clause:** BD-5 row 2 (solid)
+    - **requirement:** A solid arrow is used by a checked proof of its target.
+    - **status:** built
+    - **where:** webview/board/edges.ts:93
+  - [101]
+    - **clause:** BD-5 row 3 (hollow head)
+    - **requirement:** A hollow head means the proof takes the source as a hypothesis.
+    - **status:** built
+    - **where:** webview/board/edges.ts:96, :137
+  - [102]
+    - **clause:** BD-5 row 4 (translucent +/−)
+    - **requirement:** An arrow proposed by Claude is translucent with a '+' or '−' mark, in the Proposed view and review only.
+    - **status:** planned-slice2
+    - **where:** S2 §5.10 (2h), D2-34
+    - **note:** Drawn only while results are shown (§4.7). '−' items are produced from S3 §3.10 (3c1).
+  - [103]
+    - **clause:** BD-5 row 5 (lock badge)
+    - **requirement:** A frozen arrow has a lock badge.
+    - **status:** planned-slice3
+    - **where:** S3 §4.5 (3f, EdgeEngine setBadges)
+  - [104]
+    - **clause:** BD-5 row 6 (warning colour)
+    - **requirement:** A proof's use of a card with no drawn arrow is solid in the warning colour (TL107).
+    - **status:** built
+    - **where:** webview/board/edges.ts:10, :52, :97 (notched head); S1 §8 1d
+  - [105]
+    - **clause:** BD-5 row 7 (mentions)
+    - **requirement:** Thin mention arrows show only while an end is hovered or selected, and cannot be selected.
+    - **status:** built
+    - **where:** webview/board/edges.ts:31-32, :64-70; EdgeEngine.ts:113 (no hit path)
+  - [106]
+    - **clause:** BD-5 tail (unused declared arrow)
+    - **requirement:** A dotted arrow into a proved card whose source is not in direct(v) stays dotted, with the tooltip 'not used by the current proof', is never removed and is not a warning.
+    - **status:** built
+    - **where:** webview/board/edges.ts:12, :61; S1 §8 1d
+  - [107]
+    - **clause:** BD-6 (blue glow)
+    - **requirement:** A card with a Lean statement has the blue glow.
+    - **status:** built
+    - **where:** webview/model/cardData.ts:147
+  - [108]
+    - **clause:** BD-6 (green glow conditions)
+    - **requirement:** The green glow and '✓ established' appear only on established cards: proof checked with no hypotheses, sorry or hidden assumption; resting only on axiom cards, presuppositions and definitions, none pending and none TL114; facts current.
+    - **status:** built
+    - **where:** core/project/build.ts:927; webview/model/cardData.ts:245-249; S1 §8 1a, 1d, fixer 1d
+  - [109]
+    - **clause:** BD-6 (green replaces blue)
+    - **requirement:** The green glow replaces the blue one.
+    - **status:** built
+    - **where:** webview/model/cardData.ts:150
+  - [110]
+    - **clause:** BD-6 (proved, not established)
+    - **requirement:** A proved but not established proposition keeps the blue glow, with a chip saying why.
+    - **status:** built
+    - **where:** webview/model/cardData.ts:258-277
+    - **note:** Also a TL102 warning (AP-16).
+  - [111]
+    - **clause:** BD-6 (pending)
+    - **requirement:** A pending proposition shows 'pending proof'.
+    - **status:** built
+    - **where:** webview/model/cardData.ts; S1 §8 1a
+  - [112]
+    - **clause:** BD-6 (out of date)
+    - **requirement:** A card whose facts are out of date shows its last status dimmed and never the green glow.
+    - **status:** built
+    - **where:** webview/model/cardData.ts:131, :143-150
+  - [113]
+    - **clause:** BD-6 (axioms)
+    - **requirement:** Axioms never glow green; an axiom whose .holds is a theorem shows 'has a proof'.
+    - **status:** built
+    - **where:** webview/model/cardData.ts:181
+  - [114]
+    - **clause:** BD-7 bullet 1
+    - **requirement:** When v's proof is checked, a green band binds the drawn arrows into v whose sources are in direct(v), at v's end.
+    - **status:** built
+    - **where:** webview/board/band.ts:73-83; S1 §8 1d, fixer 1d
+  - [115]
+    - **clause:** BD-7 bullet 2
+    - **requirement:** direct(v) comes from Lean's elaborated proof (simp lemmas and instances count), is computed after every check, and never comes from Claude.
+    - **status:** built
+    - **where:** core/project/edges.ts:160; S1 §8 1d (value probe)
+  - [116]
+    - **clause:** BD-7 bullet 3 (complete band)
+    - **requirement:** The ✓ and 'Together these suffice … consistency unchecked' appear only when every card in direct(v) has an arrow, there is no hypothesis and no hidden assumption.
+    - **status:** built
+    - **where:** webview/board/band.ts:46, :86-98
+    - **note:** Stricter than the spec: also requires an elaborated direct(v), nothing unseen, no TL114, and the whole band drawn.
+  - [117]
+    - **clause:** BD-7 bullet 4 (open band)
+    - **requirement:** Otherwise the band is drawn without the ✓, naming what lies outside it, with a conditional proof's hollow-head arrows inside.
+    - **status:** built
+    - **where:** webview/board/band.ts:86-98 (dashed bracket, named in the tooltip)
+  - [118]
+    - **clause:** BD-7 bullet 5 (sufficiency only)
+    - **requirement:** The band says the arrows suffice together, not that each is needed nor that the axioms are consistent.
+    - **status:** built
+    - **where:** webview/board/band.ts:13-14, :46, :98
+  - [119]
+    - **clause:** BD-7 bullet 6 (definitions chip)
+    - **requirement:** When the proof also relies on definitions or presuppositions, the band carries a chip naming them.
+    - **status:** contradicted
+    - **where:** webview/board/band.ts:99-104; S1 §4
+    - **note:** Built as tooltip lines, not a chip. Definitions come from the statement closure (lean.uses), not from what the proof relies on. No AP or D decision records this.
+  - [120]
+    - **clause:** BD-7 bullet 7
+    - **requirement:** The band is drawn even when v is proved but not established.
+    - **status:** built
+    - **where:** webview/board/band.ts:74
+  - [121]
+    - **clause:** BD-7 bullet 8 (proved from nothing)
+    - **requirement:** For a proof from nothing the band sits on the ∅ mark; with no mark there is no band and the chip 'proved from nothing'.
+    - **status:** built
+    - **where:** webview/board/band.ts:83-84; webview/model/cardData.ts:187
+  - [122]
+    - **clause:** BD-7 bullet 9
+    - **requirement:** No band is drawn from out-of-date facts, and a proposition has at most one band.
+    - **status:** built
+    - **where:** webview/board/band.ts:75-79
+  - [123]
+    - **clause:** BD-8 (A|P box stays)
+    - **requirement:** The A|P box replaces the A|D|G box and stays.
+    - **status:** built
+    - **where:** S1 §8 1a
+  - [124]
+    - **clause:** BD-8 bullet 1 (where new cards go)
+    - **requirement:** It adds an axiom to the column, or a proposition to the canvas placed in view, next to the selected card if any.
+    - **status:** built
+    - **where:** webview/board/canvas/placement.ts:13-14, :166-183; S1 §8 1c1, fixer 1c1
+  - [125]
+    - **clause:** BD-8 bullet 1 (disabled in a session)
+    - **requirement:** The A|P box is disabled during a session.
+    - **status:** built
+    - **where:** S1 §8 1f
+    - **note:** The lock carries over to sessions (S2 §3.1).
+  - [126]
+    - **clause:** BD-8 bullet 2
+    - **requirement:** Your words are kept verbatim; no Claude and no Lean are involved.
+    - **status:** built
+    - **where:** core/edit/planAction.ts (add-node, existing)
+  - [127]
+    - **clause:** BD-9 bullet 1 (stripes)
+    - **requirement:** The axiom stripe keeps the Assumption colour and the proposition stripe takes the Goal colour.
+    - **status:** built
+    - **where:** S1 §2.8, §8 1a (telelean.kindAxiom, kindProposition)
+  - [128]
+    - **clause:** BD-9 bullet 2 (green reserved)
+    - **requirement:** Green is kept for what Lean checked (glow and band), and the green Derivation stripe goes.
+    - **status:** built
+    - **where:** S1 §2.8 (telelean.proved), §8 1d
+  - [129]
+    - **clause:** BD-9 bullet 3 (legend)
+    - **requirement:** The legend lists declared, verified by Lean, conditional, mismatch, formalised, established, band and pending proof.
+    - **status:** built
+    - **where:** webview/header/legend.ts:7-41; S1 §8 1d, fixer 1g
+  - [130]
+    - **clause:** BD-9 bullet 3 (legend 'frozen')
+    - **requirement:** The legend also lists 'frozen'.
+    - **status:** planned-slice3
+    - **where:** S3 §4.5 (Legend frozen, 3f)
+  - [131]
+    - **clause:** AR-1 (handle)
+    - **requirement:** You draw an arrow by dragging from a card's arrow handle, shown on hover at its right edge, to another card.
+    - **status:** built
+    - **where:** webview/board/BoardInput.ts:343; gestures.ts:301; S1 §8 1c2
+  - [132]
+    - **clause:** AR-1 (Draw arrows from the selection)
+    - **requirement:** Alternatively, select cards, right-click the target and choose Draw arrows from the selection.
+    - **status:** built
+    - **where:** webview/board/menu.ts:171-181; S1 §8 1c1, 1c2
+  - [133]
+    - **clause:** AR-1 bullet 2 (Delete)
+    - **requirement:** Delete removes the selected arrows and marks, with A16's confirmation when a proof uses one.
+    - **status:** built
+    - **where:** webview/board/gestures.ts:434; core/edit/planArrows.ts:191-229; core/kindChange.ts:83
+  - [134]
+    - **clause:** AR-1 bullet 2 (cards never with arrows)
+    - **requirement:** Cards are never deleted together with arrows; a card's delete dialog opens only when no arrow or mark is selected.
+    - **status:** built
+    - **where:** webview/board/gestures.ts:434 (deleteOutcome); S1 §8 1b, 1c2
+  - [135]
+    - **clause:** AR-1 bullet 3 (Undo and History)
+    - **requirement:** Each such change is one Undo step and one History entry.
+    - **status:** built
+    - **where:** S1 §8 1b, 1f carry-over 2 (one Delete = one plan)
+  - [136]
+    - **clause:** AR-1 bullet 3 (not in a session)
+    - **requirement:** None of these is possible during a session.
+    - **status:** built
+    - **where:** webview/board/gestures.ts:458 (gestureGate); S1 §8 1f, 1c2, 1d
+    - **note:** S2 §3.1 keeps the lock; §5.10 keeps drawing off in the Proposed view.
+  - [137]
+    - **clause:** AR-2 (target is a proposition)
+    - **requirement:** Y must be a proposition; drawing into an axiom makes it one.
+    - **status:** built
+    - **where:** core/edit/planArrows.ts:139-160
+  - [138]
+    - **clause:** AR-2 (one per pair)
+    - **requirement:** There is one arrow per pair.
+    - **status:** built
+    - **where:** core/edit/planArrows.ts:144
+  - [139]
+    - **clause:** AR-2 (one subject)
+    - **requirement:** Arrows stay within one subject.
+    - **status:** built
+    - **where:** core/edit/planArrows.ts:107; core/project/build.ts:681 (TL121)
+    - **note:** Same refusal texts for Claude in S2 §4.9; S3 D3-41.
+  - [140]
+    - **clause:** AR-2 (no vocabulary ends)
+    - **requirement:** Both ends are axiom or proposition cards, never vocabulary.
+    - **status:** built
+    - **where:** core/edit/planArrows.ts:102
+  - [141]
+    - **clause:** AR-3 (refused, cycle named)
+    - **requirement:** An arrow that would close a cycle is refused, and the message names the cycle.
+    - **status:** built
+    - **where:** core/edit/planArrows.ts:85-92
+  - [142]
+    - **clause:** AR-3 bullet 1 (drawn + solid)
+    - **requirement:** Cycles are checked over your drawn arrows and the solid arrows of checked proofs together.
+    - **status:** built
+    - **where:** core/edit/planArrows.ts:43 (arrowGraph); AP-13
+  - [143]
+    - **clause:** AR-3 bullet 2 (follow-on edits, Claude, every judged state)
+    - **requirement:** The cycle rule holds for telelean's follow-on edits and Claude's proposals, on every state telelean judges.
+    - **status:** planned-slice2
+    - **where:** S2 §4.9 B.3 (cycle), §2.7 propose_arrow token cycle, §4.10 backstop
+    - **note:** Slice 1 already checks an old axiom's pre-v4 premises (planArrows.ts:141).
+  - [144]
+    - **clause:** AR-3 bullet 3 (TL015 shown)
+    - **requirement:** A cycle already in your files (TL015) is shown.
+    - **status:** built
+    - **where:** core/project/build.ts:681
+  - [145]
+    - **clause:** AR-3 bullet 3 (blocks Formalize)
+    - **requirement:** A hand-written cycle blocks Formalize, with the cycle named, until you remove one of its arrows.
+    - **status:** built
+    - **where:** core/formalize.ts:30, :108; webview/board/contextActions.ts; S1 §8 1e
+    - **note:** Blocks only when the target or a source lies on the cycle.
+  - [146]
+    - **clause:** AR-3 bullet 3 (blocks Apply)
+    - **requirement:** A hand-written cycle blocks Apply, with the cycle named.
+    - **status:** planned-slice2
+    - **where:** S2 §4.10 (backstop cycle: B.3 restated on F)
+    - **note:** Only implied. S2 §4.9 judgeState never counts a cycle already in B.
+  - [147]
+    - **clause:** AR-3 bullet 3 (not a failed attempt)
+    - **requirement:** A hand-written cycle never counts as a failed Claude attempt.
+    - **status:** built
+    - **where:** S1 §8 1e (Formalize refused before the run starts)
+    - **note:** Sessions: S2 §4.9 ('a cycle already in B is never counted').
+  - [148]
+    - **clause:** AR-4
+    - **requirement:** The arrows into a proposition are its Dependencies field, stored as premises:.
+    - **status:** built
+    - **where:** core/markup/types.ts:90; core/edit/planArrows.ts:132
+  - [149]
+    - **clause:** AR-4 bullet 2 (you write by drawing)
+    - **requirement:** You write Dependencies by drawing; a run no longer writes premises:.
+    - **status:** built
+    - **where:** S1 §2.6, §8 1e (RunManager.start no longer calls set-premises)
+  - [150]
+    - **clause:** AR-4 bullet 2 (Claude proposes items)
+    - **requirement:** Claude proposes changes to Dependencies as review items.
+    - **status:** planned-slice2
+    - **where:** S2 §2.8, §5.6 (Add arrow)
+    - **note:** Removals only in S3 §3.10 remove_arrow, with the whole model open (AP-14 b, D3-14).
+  - [151]
+    - **clause:** AR-5 bullet 1 (mark from Context Menu)
+    - **requirement:** A proposition with no incoming arrows can be marked 'follows from nothing' from the Context Menu.
+    - **status:** built
+    - **where:** webview/board/contextActions.ts, menu.ts; core/edit/planArrows.ts:258; S1 §8 1b, 1e
+  - [152]
+    - **clause:** AR-5 bullet 1 (storage)
+    - **requirement:** The mark is stored as its own field, follows_from: nothing, as data telelean keeps.
+    - **status:** built
+    - **where:** core/markup/types.ts:91; core/gate/rules.ts:76; S1 §2.2, §8 1a (TL022, TL023), AP-15
+  - [153]
+    - **clause:** AR-5 bullet 2 (∅ stub)
+    - **requirement:** The mark shows as a short '∅' stub arrow into the card.
+    - **status:** built
+    - **where:** S1 §8 1c1, fixer 1c1 (dotted stub)
+  - [154]
+    - **clause:** AR-5 bullet 2 (select, formalize)
+    - **requirement:** You can select the mark like an arrow and formalize it.
+    - **status:** built
+    - **where:** S1 §8 1c2 (selectMark), 1e (Formalize from the mark, empty question)
+  - [155]
+    - **clause:** AR-5 bullet 2 (freeze the mark)
+    - **requirement:** You can freeze the mark.
+    - **status:** planned-slice3
+    - **where:** S3 §2.2 FreezeTarget mark, §4.5 lock-mark badge
+    - **note:** D3-6: a target's mark cannot be frozen while results are hidden.
+  - [156]
+    - **clause:** AR-5 bullet 3
+    - **requirement:** Drawing an arrow into the card removes the mark, and Undo restores it.
+    - **status:** built
+    - **where:** core/edit/planArrows.ts:156-157 (same plan)
+  - [157]
+    - **clause:** AR-5 bullet 4
+    - **requirement:** With neither arrows nor the mark, nothing can be formalized for a proposition.
+    - **status:** built
+    - **where:** core/formalize.ts:22; webview/board/contextActions.ts:78
+  - [158]
+    - **clause:** AR-5 bullet 5
+    - **requirement:** Only you set or remove the mark; Claude can ask.
+    - **status:** built
+    - **where:** core/gate/rules.ts:76, :1207-1211 (G5 follows_from); runner ask_user
+    - **note:** S2 §4.9 G5: follows_from changes only through mark-removed.
+  - [159]
+    - **clause:** AR-5 bullet 6 (no Claude arrows into mark targets)
+    - **requirement:** For a target whose question is its mark, Claude adds no arrows of its own and can only propose premises.
+    - **status:** planned-slice2
+    - **where:** S2 §2.7 (openArrows false), §4.9 (mark refusal), §2.8 (system prompt)
+    - **note:** S3 §2.8 / D3-38 (whole model: arrows into 'any unfrozen proposition') does not say whether marked cards are excluded.
+  - [160]
+    - **clause:** AR-5 bullet 6 (accept removes mark)
+    - **requirement:** Accepting such a premise also removes the mark, as part of your Accept.
+    - **status:** built
+    - **where:** core/gate/adoption.ts:146 (slice-1 ghost adoption); S1 §8 fixer 1a
+    - **note:** Sessions: S2 §3.8 (planGhostAdoption with holdAs; ledger mark-removed).
+  - [161]
+    - **clause:** AR-5 bullet 6 (item text)
+    - **requirement:** The premise item says 'replaces follows from nothing'.
+    - **status:** planned-slice2
+    - **where:** S2 §5.6; core/review/texts.ts:265 (2a1)
+  - [162]
+    - **clause:** AR-5 bullet 6 (frozen mark)
+    - **requirement:** A frozen mark blocks premise items, and Claude makes an unfreeze request instead.
+    - **status:** planned-slice3
+    - **where:** S3 §2.8 (propose_assumption refusal), §3.7, D3-36
+  - [163]
+    - **clause:** AR-6 (no drag onto canvas)
+    - **requirement:** You cannot drag an axiom onto the canvas.
+    - **status:** built
+    - **where:** webview/board/PropositionCanvas.tsx:216; DropZone.tsx; S1 §8 1a, 1c1
+  - [164]
+    - **clause:** AR-6 bullet 1 (becomes a proposition)
+    - **requirement:** Drawing an arrow from another card, or marking it 'follows from nothing', makes the axiom a proposition on the canvas.
+    - **status:** built
+    - **where:** core/edit/planArrows.ts:132-175, :258
+  - [165]
+    - **clause:** AR-6 bullet 1 (next to its source)
+    - **requirement:** The new proposition moves next to its new source.
+    - **status:** contradicted
+    - **where:** core/edit/planArrows.ts:126-130; webview/board/canvas/placement.ts:103; S1 §8 1b
+    - **note:** Its stored position is dropped and the generic layered placement puts it in the layer right of its sources, at the first free slot from the top in file order. No AP or D decision records this.
+  - [166]
+    - **clause:** AR-6 bullet 2 (by .holds)
+    - **requirement:** An axiom .holds stays, marked pending proof; no .holds gives an unproved proposition; a theorem gives a proved one.
+    - **status:** built
+    - **where:** core/kindChange.ts:223-246; S1 §8 1b
+  - [167]
+    - **clause:** AR-6 bullet 3 (impact first)
+    - **requirement:** Before you let go, the gesture states the impact.
+    - **status:** built
+    - **where:** webview/board/gestures.ts:337 (drawHint), dialogs for buttons; S1 §8 1b, 1c2
+  - [168]
+    - **clause:** AR-7 (how)
+    - **requirement:** Drag a proposition into the AXIOMS column, or choose Move to axioms.
+    - **status:** built
+    - **where:** webview/board/gestures.ts:393; menu.ts; S1 §8 1b, 1c2
+  - [169]
+    - **clause:** AR-7 bullet 1
+    - **requirement:** It loses all its incoming arrows and any 'follows from nothing' mark, and becomes an axiom.
+    - **status:** built
+    - **where:** core/edit/planAction.ts:189-219, :269; S1 §8 1a
+  - [170]
+    - **clause:** AR-7 bullet 2
+    - **requirement:** Its proof is replaced by axiom n.holds, kept in History, and Undo restores it.
+    - **status:** built
+    - **where:** core/kindChange.ts:204-210 (theorem-to-axiom); core/edit/planAction.ts:201 (archive)
+  - [171]
+    - **clause:** AR-7 bullet 3
+    - **requirement:** Its outgoing arrows stay.
+    - **status:** built
+    - **where:** core/edit/planAction.ts:189 (only the card's own block changes)
+  - [172]
+    - **clause:** AR-7 bullet 4 (drop-zone impact)
+    - **requirement:** The drop zone first states the arrows that will be removed, that the proof will be dropped, and how many cards will rest on it.
+    - **status:** built
+    - **where:** core/kindChange.ts:139-143, :171-210; webview/board/DropZone.tsx; S1 §8 1c2
+    - **note:** The arrows are given as a count only.
+  - [173]
+    - **clause:** AR-7 bullet 4 (naming frozen arrows)
+    - **requirement:** The drop zone names the frozen arrows that will be removed.
+    - **status:** unassigned
+    - **where:** No plan: S3 never mentions the drop zone or kind-change impact
+  - [174]
+    - **clause:** AR-8 (unproved source allowed)
+    - **requirement:** A proposition with neither a proof nor a pending claim can be the source of an arrow.
+    - **status:** built
+    - **where:** core/edit/planArrows.ts:97-108 (no .holds check)
+  - [175]
+    - **clause:** AR-8 (asks first)
+    - **requirement:** Formalizing an arrow out of such a source first asks you (★D7 b).
+    - **status:** built
+    - **where:** S1 §8 1e (AR-8 dialog); AP-1
+  - [176]
+    - **clause:** AR-8 bullet 1 (mark pending)
+    - **requirement:** With a Lean statement, the dialog offers 'Mark it pending, or cancel?'; marking is your direct edit, one Undo step, made before the step.
+    - **status:** built
+    - **where:** core/edit/planArrows.ts:297 (claim-pending); S1 §8 1e
+  - [177]
+    - **clause:** AR-8 bullet 1 (in a session)
+    - **requirement:** During a session the choices are 'Select the arrows into ‹source› too' and Cancel; there is no marking.
+    - **status:** planned-slice2
+    - **where:** S2 §5.11 (2h), §4.12 check 4
+  - [178]
+    - **clause:** AR-8 bullet 2 (no Lean statement)
+    - **requirement:** A source without a Lean statement must be formalized and proved first; the dialog offers 'Select the arrows into ‹source› too' (when it has arrows or the mark) and Cancel.
+    - **status:** planned-slice2
+    - **where:** S2 §5.11 item 3
+    - **note:** Slice 1 offers Cancel only (AP-10).
+  - [179]
+    - **clause:** AR-8 bullet 3 (hidden result)
+    - **requirement:** If the source's Result is still hidden, the dialog says only '‹source›'s result is not shown yet', with Show result or Cancel.
+    - **status:** narrowed-by-decision
+    - **where:** D2-65 (S2 §4.12 check 2, §5.11)
+    - **note:** Formalize is disabled until the stage's results are shown, with Show results.
+  - [180]
+    - **clause:** AR-8 bullet 4
+    - **requirement:** Pending claims are written only by telelean at your choice; Claude never writes a Lean axiom .holds for a proposition.
+    - **status:** built
+    - **where:** core/gate/rules.ts:520-527 (new-axiom refuses a non-selected card's .holds)
+    - **note:** Made explicit in S2 §4.9 B.4 holds-kind axiom-for-proposition.
+  - [181]
+    - **clause:** A7
+    - **requirement:** Only the selected arrows into a target form its question; the others stay dotted, whatever the result.
+    - **status:** built
+    - **where:** core/formalize.ts:125; core/gate/rules.ts:886 (undeclared-premise); S1 §8 1e
+    - **note:** Sessions: S2 §4.9 B.2 allowed set and propose_arrow's 'drawn' refusal.
+  - [182]
+    - **clause:** A8
+    - **requirement:** If the proof uses fewer arrows than selected, the band binds the ones it uses and the others are listed as 'not needed' and stay dotted.
+    - **status:** built
+    - **where:** webview/board/band.ts:82; webview/run/ReportCard.tsx:113-121 ('Not used by the proof')
+    - **note:** S2 §5.4 and §5.6 use the wording 'Not needed'.
+  - [183]
+    - **clause:** A9
+    - **requirement:** A proof that uses none of the selected arrows is 'proved from nothing', flagged.
+    - **status:** built
+    - **where:** webview/run/ReportCard.tsx:108-111; S1 §8 fixer 1e
+  - [184]
+    - **clause:** A10 (arrow item from slice 2)
+    - **requirement:** From slice 2, when Claude needs a card with no drawn arrow, it proposes an arrow item.
+    - **status:** planned-slice2
+    - **where:** S2 §2.8, §4.9 (propose_arrow, D2-1)
+    - **note:** D2-21: only from a card with a .holds.
+  - [185]
+    - **clause:** A10 (frozen Dependencies)
+    - **requirement:** If the target's Dependencies are frozen, Claude makes an unfreeze request instead.
+    - **status:** planned-slice3
+    - **where:** S3 §2.8 (propose_arrow refusal 'ask with request_unfreeze'), D3-36
+  - [186]
+    - **clause:** A10 (slice 1 behaviour)
+    - **requirement:** In slice 1 Claude finishes not proved naming that card, the report offers 'Draw (or select) the arrow…', and Claude never proposes an existing card as a premise.
+    - **status:** built
+    - **where:** webview/model/run.ts:555 (missingArrowHints); S1 §8 1e (prompts, B.2 for Claude suggests)
+  - [187]
+    - **clause:** A10 (drawn but not selected)
+    - **requirement:** An arrow you drew but did not select is listed as 'select ‹card› → ‹target› too'.
+    - **status:** built
+    - **where:** webview/model/run.ts:555
+    - **note:** S2 §5.4 adds a 'Select these arrows' button.
+  - [188]
+    - **clause:** A11 (replacement)
+    - **requirement:** Asking again about an already-proved proposition: a passing new proof replaces the old one and the band moves.
+    - **status:** built
+    - **where:** S1 §8 fixer 1e (a new proof replaces; a not-proved finish keeps the old one)
+  - [189]
+    - **clause:** A11 (replaces your proof, basis list)
+    - **requirement:** The Result says 'replaces your proof' and lists the cards whose basis changes.
+    - **status:** planned-slice2
+    - **where:** S2 §2.3 (basisChanged), §5.6; core/review/texts.ts:70
+  - [190]
+    - **clause:** A12
+    - **requirement:** In a chain X → L → A, L is proved first; if L fails, A's step reports 'L was not proved', and ★D7 applies when A is retried alone.
+    - **status:** planned-slice2
+    - **where:** S2 §3.3 item 3, §4.12 (formalizeOrder), §5.11; D2-4 (statements-only step)
+  - [191]
+    - **clause:** A13
+    - **requirement:** A pending proposition dragged into AXIOMS becomes an axiom again, keeping its axiom n.holds; only kind and arrows change.
+    - **status:** built
+    - **where:** core/kindChange.ts:212-213; core/edit/planAction.ts:189
+  - [192]
+    - **clause:** A14
+    - **requirement:** A proved proposition that others use, moved to AXIOMS, keeps their proofs building, and established cards stay established.
+    - **status:** built
+    - **where:** core/kindChange.ts:204-210 ('proofs that use it stay valid'); B.5 in build.ts:927
+  - [193]
+    - **clause:** A15
+    - **requirement:** An arrow into an axiom that proofs use makes it pending; the cards resting on it lose the green glow, and the gesture says how many first.
+    - **status:** built
+    - **where:** core/edit/planArrows.ts:113-122; core/kindChange.ts:227-237; S1 §8 1b, fixer 1a
+  - [194]
+    - **clause:** A16
+    - **requirement:** Deleting an arrow a proof uses leaves a TL107 warning arrow and a band without ✓, and the delete confirmation says so.
+    - **status:** built
+    - **where:** core/edit/planArrows.ts:225-229; core/kindChange.ts:83-97; S1 §8 1b, 1d
+  - [195]
+    - **clause:** A17
+    - **requirement:** If a proposal removes A → Z and adds Z → A, the addition depends on the removal, and declining the removal declines the addition.
+    - **status:** planned-slice3
+    - **where:** S2 §4.5 rule 4 (dependency rule built in 2a2); S3 §3.10 and §6.1 (3c1: Remove arrow items, A17 test)
+  - [196]
+    - **clause:** A18
+    - **requirement:** Arrows between subjects are not allowed (TL121).
+    - **status:** built
+    - **where:** core/edit/planArrows.ts:107; core/project/build.ts:681
+  - [197]
+    - **clause:** A19 (aliases)
+    - **requirement:** In old files, ASSUMPTION reads as an axiom, and DERIVATION and GOAL read as propositions.
+    - **status:** built
+    - **where:** core/model.ts:35-44; S1 §2.2, §8 1a
+  - [198]
+    - **clause:** A19 (old pending)
+    - **requirement:** An old DERIVATION or GOAL whose .holds is a Lean axiom reads as pending.
+    - **status:** built
+    - **where:** S1 §8 1a (statuses), fixer 1a (upgradeLegacyProposal)
+  - [199]
+    - **clause:** A19 (no rewrite)
+    - **requirement:** Nothing in an old file is rewritten until you change that card's kind.
+    - **status:** built
+    - **where:** S1 §2.2 (aliases never rewritten; type: written only on add-node or kind change)
+  - [200]
+    - **clause:** A19 (old axiom premises shown)
+    - **requirement:** An old axiom block with premises: stays an axiom, and its arrows are shown as 'declared before v4' and cannot be selected.
+    - **status:** contradicted
+    - **where:** core/project/subjectGraph.ts:64-66; core/project/build.ts:56 (TL122); S1 §8 1b, fixer 1g
+    - **note:** The arrows are not drawn at all; only a card chip says 'declared before v4'. No AP or D decision records this.
+  - [201]
+    - **clause:** A19 (chip offers)
+    - **requirement:** A chip on such an axiom offers 'Make it a proposition (pending)' or 'Drop these arrows'.
+    - **status:** built
+    - **where:** S1 §8 1b (chip and details), 1c1 (menu entries)
+  - [202]
+    - **clause:** A20
+    - **requirement:** A hand-written proof that uses a card with no arrow shows that use solid in the warning colour, never inside a band, and the band has no ✓.
+    - **status:** built
+    - **where:** webview/board/edges.ts:52; webview/board/band.ts:87
+  - [203]
+    - **clause:** A21
+    - **requirement:** A right-drag that ends on a card only pans, with no selection change and no menu.
+    - **status:** built
+    - **where:** webview/board/BoardInput.ts:462; S1 §8 1c1
+  - [204]
+    - **clause:** A22 (mark goes)
+    - **requirement:** When you draw an arrow into a card marked 'follows from nothing', the mark goes, and Undo restores it.
+    - **status:** built
+    - **where:** core/edit/planArrows.ts:156-157
+  - [205]
+    - **clause:** A22 (even if frozen)
+    - **requirement:** The mark goes even if it is frozen, because freezes bind only Claude.
+    - **status:** planned-slice3
+    - **where:** S3 §3.1 ('the person's arrow into a card replaces its mark, even a frozen one')
+  - [206]
+    - **clause:** A24
+    - **requirement:** telelean places only cards with no stored position, and Tidy layout moves only the selected cards.
+    - **status:** built
+    - **where:** webview/board/canvas/placement.ts:5, :145
+  - [207]
+    - **clause:** A25
+    - **requirement:** With 'Claude may add cards' on, an unproved intermediate's Result says so, and any target that needed it reports '‹card› was not proved'.
+    - **status:** planned-slice3
+    - **where:** S3 §3.10 (intermediate cards), D3-13
+    - **note:** The dependent target's '‹card› was not proved' report is not spelled out. Under D3-43's fallback this may move to slice 4.
+  - [208]
+    - **clause:** A26
+    - **requirement:** A missing premise accepted as a pending proposition leaves the target proved but without the green glow until the premise is proved.
+    - **status:** planned-slice2
+    - **where:** S2 §3.8 (holdAs pending), §5.6 (hold-as dialog)
+  - [209]
+    - **clause:** A29
+    - **requirement:** A card used only through a @[simp] lemma or an instance is still found by direct(v).
+    - **status:** built
+    - **where:** core/project/edges.ts:160; S1 §8 1d (value probe, valueProbe.test.ts)

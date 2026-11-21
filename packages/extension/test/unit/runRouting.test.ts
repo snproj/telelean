@@ -3,7 +3,7 @@
  * core RUN_MESSAGE_TYPES to the root's RunManager (a recording fake here), reports outcomes as `actionResult`, and
  * posts `run` / `proposal` on `ready` and on every RunManager change, including a run of another subject.
  */
-import { parseWebviewToHost, RUN_MESSAGE_TYPES, type WebviewToHostMessage } from '@telelean/core';
+import { EDIT_SESSION_ACTIVE, FORMALIZE_START_TEXTS, parseWebviewToHost, REVIEW_TEXTS, RUN_MESSAGE_TYPES, SESSION_MESSAGE_TYPES, spyroGraph, type TlGraph, type TlNode, type WebviewToHostMessage } from '@telelean/core';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { BoardSession } from '../../src/logic/boardSession';
@@ -44,13 +44,17 @@ describe('routing run messages (AT5.1)', () => {
       ['answerQuestions', { runId: 'r1', setId: 'q1', answers, requestId: 'q-answer' }],
       ['cancelRun', { runId: 'r1', requestId: 'q-cancel' }],
       ['resumeRun', { runId: 'r1', requestId: 'q-resume' }],
-      ['acceptProposal', { runId: 'r1', proposalId: 'p1', lifecycle: ['l1'], definitions: ['d1'], requestId: 'q-accept' }],
+      ['acceptProposal', { runId: 'r1', proposalId: 'p1', definitions: ['d1'], requestId: 'q-accept' }],
       ['feedback', { runId: 'r1', text: 'Read "cannot" as a rule.\nThanks.', requestId: 'q-feedback' }],
       ['discardProposal', { runId: 'r1', requestId: 'q-discard' }],
       ['adoptGhost', { runId: 'r1', ghostId: 'ghost-1', rationale: 'it seems obvious to me', requestId: 'q-adopt' }],
       ['adoptGhost', { runId: 'r1', ghostId: 'ghost-2', requestId: 'q-adopt2' }],
       ['rejectGhost', { runId: 'r1', ghostId: 'ghost-3', requestId: 'q-reject' }],
       ['dismissRun', { runId: 'r1' }],
+      // Slice 2d: Formalize (a start, and mid-stage) and Retry step.
+      ['formalize', { inferences: [START], requestId: 'q-formalize' }],
+      ['formalize', { inferences: [{ target: 'cynder-not-good', premises: ['cynder-dark-past'] }], runId: 'r1', stage: 2, requestId: 'q-formalize2' }],
+      ['retryStep', { runId: 'r1', requestId: 'q-retry' }],
     ];
     for (const [type, payload] of sent) await session.handle(message(type, payload));
     expect(runs.calls.map((c) => [c.method, c.args])).toEqual([
@@ -58,23 +62,61 @@ describe('routing run messages (AT5.1)', () => {
       ['answer', ['r1', 'q1', answers]],
       ['cancel', ['r1']],
       ['resume', ['r1']],
-      ['accept', ['r1', 'p1', ['l1'], ['d1']]],
+      ['accept', ['r1', 'p1', ['d1']]],
       ['feedback', ['r1', 'Read "cannot" as a rule.\nThanks.']],
       ['discard', ['r1']],
       ['adoptGhost', ['r1', 'ghost-1', 'it seems obvious to me']],
       ['adoptGhost', ['r1', 'ghost-2']],
       ['rejectGhost', ['r1', 'ghost-3']],
       ['dismiss', ['r1']],
+      ['formalize', [{ subject: 'Spyro', inferences: [START] }]],
+      ['formalize', [{ subject: 'Spyro', inferences: [{ target: 'cynder-not-good', premises: ['cynder-dark-past'] }], runId: 'r1', stage: 2 }]],
+      ['retry', ['r1']],
     ]);
-    // Every routed type is one of core's run messages, and each of them is covered here or by openProposalDiff below.
-    expect(new Set([...sent.map(([type]) => type), 'openProposalDiff'])).toEqual(new Set(RUN_MESSAGE_TYPES));
+    // Every routed type is one of core's run messages, and each of them is covered here, by openProposalDiff below, or
+    // (slice 2, 2c1) is an edit session's message answered `not-yet` until its routing (2e, 2f), below.
+    expect(new Set([...sent.map(([type]) => type), 'openProposalDiff', ...SESSION_MESSAGE_TYPES])).toEqual(new Set(RUN_MESSAGE_TYPES));
     expect(ws.performed).toEqual([]); // the board never declares premises itself (the RunManager does, after preflight)
+  });
+
+  it('slice 2 (2c1): a valid session message not routed yet is answered `not-yet`, "Not built yet (slice 2)", and reaches no RunManager method (2d routes formalize and retryStep)', async () => {
+    const valid: Array<[string, Record<string, unknown>]> = [
+      ['decideItems', { runId: 'r1', stage: 1, own: true, decisions: [{ item: 'it0123456789abcdef', rev: 1, to: 'accepted' }] }],
+      ['revealResult', { runId: 'r1', stage: 1, via: 'show-result' }],
+      ['sessionUndo', { runId: 'r1', step: 3 }],
+      ['sessionRedo', { runId: 'r1', step: 4 }],
+      ['submitReview', { runId: 'r1', stage: 1 }],
+      ['endSession', { runId: 'r1', decision: 'exit' }],
+      ['openSessionDiff', { runId: 'r1', stage: 1, confirmed: true }],
+      ['moveProposed', { runId: 'r1', positions: { 'cynder-not-good': { x: 10, y: 20 } } }],
+    ];
+    expect(valid.map(([type]) => type)).toEqual(SESSION_MESSAGE_TYPES.filter((t) => t !== 'formalize' && t !== 'retryStep'));
+    for (const [type, payload] of valid) await session.handle(message(type, { ...payload, requestId: `q-${type}` }));
+    expect(runs.calls).toEqual([]);
+    expect(ports.of('actionResult').map((m) => m.payload)).toEqual(valid.map(([type]) => ({ requestId: `q-${type}`, outcome: { ok: false, code: 'not-yet', error: REVIEW_TEXTS.notBuiltYet } })));
+    expect(REVIEW_TEXTS.notBuiltYet).toBe('Not built yet (slice 2)');
+    expect(ws.performed).toEqual([]);
+  });
+
+  it('slice 2 (2c2): while a run is active the answer is still `not-yet` (never the lock or busy refusal); without a request id it is a warning toast', async () => {
+    runs.run = sampleRun({ state: 'working' }); // a step of the root's run is working: the board is locked (ES-9)
+    await session.handle(message('decideItems', { runId: 'r1', stage: 1, own: false, decisions: [{ item: 'it0123456789abcdef', rev: 1, to: 'declined', option: 'shaky', note: 'ask me' }], requestId: 'q1' }));
+    await session.handle(message('endSession', { runId: 'r1', decision: 'exit', requestId: 'q2' }));
+    expect(ports.of('actionResult').map((m) => m.payload)).toEqual([
+      { requestId: 'q1', outcome: { ok: false, code: 'not-yet', error: REVIEW_TEXTS.notBuiltYet } },
+      { requestId: 'q2', outcome: { ok: false, code: 'not-yet', error: REVIEW_TEXTS.notBuiltYet } },
+    ]);
+    expect(ports.of('notice')).toEqual([]);
+    await session.handle(message('submitReview', { runId: 'r1', stage: 1 }));
+    expect(ports.of('notice').map((m) => m.payload)).toEqual([expect.objectContaining({ level: 'warning', text: REVIEW_TEXTS.notBuiltYet, undoable: false })]);
+    expect(runs.calls).toEqual([]);
+    expect(ws.performed).toEqual([]);
   });
 
   it('outcomes become actionResult; successes that change the board also get a toast (Undo only after an Accept)', async () => {
     runs.outcome = (method) => ({ ok: true, label: `label of ${method}`, undoable: method === 'accept' || method === 'start' });
     await session.handle(message('startRun', { ...START, requestId: 's1' }));
-    await session.handle(message('acceptProposal', { runId: 'r1', proposalId: 'p1', lifecycle: [], definitions: [], requestId: 'a1' }));
+    await session.handle(message('acceptProposal', { runId: 'r1', proposalId: 'p1', definitions: [], requestId: 'a1' }));
     await session.handle(message('answerQuestions', { runId: 'r1', setId: 'q1', answers: [{ question: 0, choice: { kind: 'leave-open' }, scope: 'run' }], requestId: 'n1' }));
     expect(ports.of('actionResult').map((m) => m.payload)).toEqual([
       { requestId: 's1', outcome: { ok: true, label: 'label of start', undoable: true } },
@@ -104,7 +146,7 @@ describe('routing run messages (AT5.1)', () => {
     expect(ports.of('actionResult')[0]?.payload.outcome).toEqual({ ok: false, code: 'internal', error: 'boom' });
   });
 
-  it('run messages are handled one at a time in arrival order, and never hold back board edits', async () => {
+  it('run messages are handled one at a time in arrival order, and never hold back board messages', async () => {
     let release!: () => void;
     const held = new Promise<void>((resolve) => (release = resolve));
     runs.outcome = async (method) => {
@@ -116,8 +158,12 @@ describe('routing run messages (AT5.1)', () => {
     const dismiss = session.handle(message('dismissRun', { runId: 'r0' }));
     await sleep(10);
     expect(runs.calls.map((c) => c.method)).toEqual(['start']); // the others wait for the start, in order
-    await session.handle(message('addNode', { clientId: 'tmp', type: 'ASSUMPTION', naturalName: 'Cynder can fly', requestId: 'e1' }));
-    expect(ws.performed.map((a) => a.kind)).toEqual(['add-node']); // a board edit does not wait for the run start
+    // A board message does not wait for the run start: it is answered at once. Slice 1f (ES-9): an edit sent while
+    // the start is on its way is refused (before 1f it was applied); selecting a subject still works.
+    await session.handle(message('addNode', { clientId: 'tmp', type: 'AXIOM', naturalName: 'Cynder can fly', requestId: 'e1' }));
+    expect(ws.performed).toEqual([]);
+    expect(ports.of('actionResult')[0]?.payload).toEqual({ requestId: 'e1', outcome: { ok: false, code: 'conflict', error: EDIT_SESSION_ACTIVE } });
+    await session.handle(message('selectSubject', { subject: 'Spyro' }));
     release();
     await Promise.all([start, feedback, dismiss]);
     expect(runs.calls.map((c) => c.method)).toEqual(['start', 'feedback', 'dismiss']);
@@ -171,11 +217,12 @@ describe('routing run messages (AT5.1)', () => {
 });
 
 describe('posting run and proposal (AT5.1)', () => {
-  it('"ready" posts the workspace and graph, then the run and the proposal', async () => {
+  it('"ready" posts the workspace and graph, then the run, the proposal and (slice 2d) the session', async () => {
     runs.run = sampleRun({ state: 'review', proposalId: 'p1' });
     runs.currentProposal = sampleProposal();
     await session.handle(message('ready', { lastVersion: null }));
-    expect(ports.posts.map((p) => p.type)).toEqual(['workspace', 'graph', 'run', 'proposal']);
+    expect(ports.posts.map((p) => p.type)).toEqual(['workspace', 'graph', 'run', 'proposal', 'session']);
+    expect(ports.of('session')[0]?.payload.session).toBeNull(); // not an edit session
     expect(ports.of('run')[0]?.payload.run).toEqual(runs.run);
     expect(ports.of('proposal')[0]?.payload.proposal).toEqual(runs.currentProposal);
   });
@@ -188,7 +235,7 @@ describe('posting run and proposal (AT5.1)', () => {
 
   it('posts what changed on every RunManager change, also for another subject\'s run', async () => {
     runs.run = sampleRun({ subject: 'Bayonetta', target: 'bayonetta-goal', state: 'working' });
-    runs.fire({ run: true, proposal: false });
+    runs.fire({ run: true, proposal: false , session: false });
     await sleep(0);
     expect(ports.posts.map((p) => p.type)).toEqual(['run']);
     expect(ports.of('run')[0]?.payload.run?.subject).toBe('Bayonetta'); // the Spyro board still gets it (compact line)
@@ -196,27 +243,30 @@ describe('posting run and proposal (AT5.1)', () => {
     ports.clear();
     runs.run = sampleRun({ state: 'review', proposalId: 'p2' });
     runs.currentProposal = sampleProposal({ proposalId: 'p2' });
-    runs.fire({ run: true, proposal: true });
+    runs.fire({ run: true, proposal: true , session: false });
     await sleep(0);
     expect(ports.posts.map((p) => p.type)).toEqual(['run', 'proposal']);
     expect(ports.of('proposal')[0]?.payload.proposal?.proposalId).toBe('p2');
 
     ports.clear();
     runs.currentProposal = null;
-    runs.fire({ run: false, proposal: true });
+    runs.fire({ run: false, proposal: true , session: false });
     await sleep(0);
     expect(ports.posts.map((p) => [p.type, p.type === 'proposal' ? p.payload.proposal : undefined])).toEqual([['proposal', null]]);
   });
 
-  it('after a run message the run is posted again (the panel follows even before the change event)', async () => {
+  it('after a run message the run and (slice 2d) the session are posted again (the panel follows even before the change event)', async () => {
     runs.run = sampleRun({ state: 'cancelled' });
     await session.handle(message('cancelRun', { runId: 'r1', requestId: 'c1' }));
-    expect(ports.posts.map((p) => p.type)).toEqual(['actionResult', 'notice', 'run']);
+    expect(ports.posts.map((p) => p.type)).toEqual(['actionResult', 'notice', 'run', 'session']);
   });
 
-  it('a start (premises declared) and an Accept (files changed) also republish the workspace and graph', async () => {
+  it('a start (premises declared), a Formalize start (slice 2d) and an Accept (files changed) also republish the workspace and graph', async () => {
     await session.handle(message('startRun', { ...START, requestId: 's1' }));
-    expect(ports.posts.map((p) => p.type)).toEqual(['actionResult', 'notice', 'run', 'workspace', 'graph']);
+    expect(ports.posts.map((p) => p.type)).toEqual(['actionResult', 'notice', 'run', 'session', 'workspace', 'graph']);
+    ports.clear();
+    await session.handle(message('formalize', { inferences: [START], requestId: 'f1' })); // slice 2d: a Formalize start too
+    expect(ports.posts.map((p) => p.type)).toEqual(['actionResult', 'notice', 'run', 'session', 'workspace', 'graph']);
   });
 
   it('a closed board stops listening (the run itself goes on, D-25)', async () => {
@@ -233,9 +283,79 @@ describe('posting run and proposal (AT5.1)', () => {
     runs.current = () => {
       throw new Error('broken state');
     };
-    await session.publishRuns({ run: true, proposal: false });
+    await session.publishRuns({ run: true, proposal: false , session: false });
     expect(ports.of('run')[0]?.payload.run).toBeNull();
     expect(ports.logs.some((l) => l.level === 'error' && /broken state/.test(l.message))).toBe(true);
+  });
+});
+
+/** The board's graph with some cards changed (and others added), as the host reads it at a start. */
+function withGraph(changes: Record<string, Partial<TlNode>>, extra: TlNode[] = []): void {
+  ws.graph = (subject: string): TlGraph => {
+    const graph = spyroGraph();
+    return { ...graph, subject, version: ws.version, nodes: [...graph.nodes.map((n) => ({ ...n, ...(changes[n.id] ?? {}) }) as TlNode), ...extra] };
+  };
+}
+
+describe('startRun: the start\'s check (spec v4.1 Formalize for dependencies, docs/slice1-plan.md 2.5; slice 1e)', () => {
+  const refusal = () => ports.of('actionResult')[0]?.payload.outcome;
+
+  it('a premise without an arrow drawn into the target: "Draw the arrows first.", before the consent question', async () => {
+    withGraph({ 'cynder-not-good': { premises: ['cynder-dark-past'] } });
+    await session.handle(message('startRun', { target: 'cynder-not-good', premises: ['cynder-dark-past', 'new-spyro-pg'], requestId: 's1' }));
+    expect(refusal()).toEqual({ ok: false, code: 'invalid', error: FORMALIZE_START_TEXTS.drawFirst });
+    expect(ports.consentAsked).toBe(0);
+    expect(runs.callsOf('start')).toEqual([]);
+    expect(ws.performed).toEqual([]);
+  });
+
+  it('no premises for a target without the "follows from nothing" mark: "Select arrows into one card."', async () => {
+    await session.handle(message('startRun', { target: 'cynder-not-good', premises: [], requestId: 's1' }));
+    expect(refusal()).toEqual({ ok: false, code: 'invalid', error: 'Select arrows into one card.' });
+    expect(runs.callsOf('start')).toEqual([]);
+  });
+
+  it('AR-8: a proposition premise with neither a proof nor a pending claim must be marked pending first', async () => {
+    const target = spyroGraph().nodes.find((n) => n.id === 'cynder-not-good') as TlNode;
+    const { justification: _j, justificationKind: _k, ...lean } = target.lean;
+    void _j;
+    void _k;
+    const lemma: TlNode = { ...target, id: 'l-card', naturalName: 'L is unproved', premises: [], lean: { ...lean, statement: 'Spyro.l_card' } };
+    withGraph({ 'cynder-not-good': { premises: ['cynder-dark-past', 'l-card'] } }, [lemma]);
+    await session.handle(message('startRun', { target: 'cynder-not-good', premises: ['l-card'], requestId: 's1' }));
+    expect(refusal()).toEqual({ ok: false, code: 'invalid', error: '“L is unproved” is not proved: mark it pending first.' });
+    expect(runs.callsOf('start')).toEqual([]);
+  });
+
+  it('a target on a cycle of arrows is refused, naming the cycle (AP-13)', async () => {
+    withGraph({ 'cynder-dark-past': { type: 'PROPOSITION', premises: ['cynder-not-good'] } });
+    await session.handle(message('startRun', { ...START, requestId: 's1' }));
+    const outcome = refusal();
+    expect(outcome).toMatchObject({ ok: false, code: 'invalid' });
+    expect(outcome?.ok === false ? outcome.error : '').toMatch(/^This card is on a cycle of arrows \(Cynder would not be a good addition to … → Cynder is a character who has a dark pa… → Cynder would not be a good addition to …\): remove one arrow first\.$/);
+    expect(runs.callsOf('start')).toEqual([]);
+  });
+
+  it('the check sees the edits sent before the start: an arrow drawn just before is in the files when it runs', async () => {
+    withGraph({ 'cynder-not-good': { premises: ['cynder-dark-past'] } });
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    const perform = ws.perform.bind(ws);
+    ws.perform = async (action) => {
+      await held;
+      withGraph({ 'cynder-not-good': { premises: ['cynder-dark-past', 'new-spyro-pg'] } }); // what the arrow wrote
+      return perform(action);
+    };
+    const drawing = session.handle(message('addArrows', { target: 'cynder-not-good', sources: ['new-spyro-pg'], requestId: 'a1' }));
+    const starting = session.handle(message('startRun', { target: 'cynder-not-good', premises: ['cynder-dark-past', 'new-spyro-pg'], requestId: 's1' }));
+    await sleep(5);
+    release();
+    await Promise.all([drawing, starting]);
+    expect(ports.of('actionResult').map((m) => [m.payload.requestId, m.payload.outcome.ok])).toEqual([
+      ['a1', true],
+      ['s1', true],
+    ]);
+    expect(runs.callsOf('start')).toEqual([[{ subject: 'Spyro', target: 'cynder-not-good', premises: ['cynder-dark-past', 'new-spyro-pg'] }]]);
   });
 });
 
@@ -247,7 +367,8 @@ describe('startRun: busy check and egress consent (AT5.2)', () => {
     expect(ws.performed).toEqual([]);
   });
 
-  it('"Self-evident?" (no premises) starts a run with an empty selection', async () => {
+  it('a "follows from nothing" mark as the question (no premises) starts a run with an empty selection (slice 1e)', async () => {
+    withGraph({ 'cynder-not-good': { premises: [], fromNothing: true } });
     await session.handle(message('startRun', { target: 'cynder-not-good', premises: [], requestId: 's0' }));
     expect(runs.callsOf('start')).toEqual([[{ subject: 'Spyro', target: 'cynder-not-good', premises: [] }]]);
   });
@@ -352,11 +473,120 @@ describe('openProposalDiff (AT5.6, fake ports)', () => {
       await new Promise<void>((resolve) => (release = resolve));
       return { ok: true, label: 'x', undoable: false };
     };
-    const accepting = session.handle(message('acceptProposal', { runId: 'r1', proposalId: 'p1', lifecycle: [], definitions: [], requestId: 'a1' }));
+    const accepting = session.handle(message('acceptProposal', { runId: 'r1', proposalId: 'p1', definitions: [], requestId: 'a1' }));
     await sleep(5);
     await session.handle(message('openProposalDiff', { runId: 'r1', proposalId: 'p1' }));
     expect(ports.proposalDiffs).toHaveLength(1);
     release();
     await accepting;
+  });
+});
+
+describe('slice 2d: Formalize, Retry step, Cancel step and the session message (docs/slice2-plan.md 1.1, 2.4, 3.2)', () => {
+  const mid = { inferences: [{ target: 'cynder-not-good', premises: ['cynder-dark-past'] }], runId: 'r1', stage: 1 };
+
+  it('a start runs the check before the consent question, then formalize with the board\'s subject; an invalid request never asks', async () => {
+    await session.handle(message('formalize', { inferences: [{ target: 'cynder-not-good', premises: ['no-arrow-from-here'] }], requestId: 'bad' }));
+    expect(ports.consentAsked).toBe(0);
+    expect(ports.of('actionResult')[0]?.payload.outcome).toMatchObject({ ok: false, code: 'invalid' });
+    expect(runs.calls).toEqual([]);
+    await session.handle(message('formalize', { inferences: [START], requestId: 'good' }));
+    expect(ports.consentAsked).toBe(1);
+    expect(runs.callsOf('formalize')).toEqual([[{ subject: 'Spyro', inferences: [START] }]]);
+    // Declined consent: nothing is started.
+    ports.consentAnswer = false;
+    await session.handle(message('formalize', { inferences: [START], requestId: 'no' }));
+    expect(ports.of('actionResult').at(-1)?.payload.outcome).toEqual({ ok: false, code: 'not-yet', error: CONSENT_DECLINED });
+    expect(runs.callsOf('formalize')).toHaveLength(1);
+  });
+
+  it('a start is refused by the busy check while a run is active; a mid-stage Formalize is not, and asks no consent', async () => {
+    runs.run = sampleRun({ state: 'review' });
+    await session.handle(message('formalize', { inferences: [START], requestId: 'start' }));
+    expect(ports.of('actionResult')[0]?.payload.outcome).toMatchObject({ ok: false, code: 'conflict' });
+    expect(runs.callsOf('formalize')).toEqual([]);
+    await session.handle(message('formalize', { ...mid, requestId: 'mid' }));
+    expect(ports.consentAsked).toBe(0);
+    expect(runs.callsOf('formalize')).toEqual([[{ subject: 'Spyro', ...mid }]]);
+    expect(ports.of('actionResult')[1]?.payload).toEqual({ requestId: 'mid', outcome: { ok: true, label: 'did formalize', undoable: false } });
+  });
+
+  it('a Formalize start locks the board for the edits sent after it (ES-9), as startRun does', async () => {
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    runs.outcome = async (method) => {
+      if (method === 'formalize') await held;
+      return { ok: true, label: method, undoable: false };
+    };
+    const start = session.handle(message('formalize', { inferences: [START], requestId: 'f1' }));
+    await sleep(5);
+    await session.handle(message('addNode', { clientId: 'tmp', type: 'AXIOM', naturalName: 'Cynder can fly', requestId: 'e1' }));
+    expect(ws.performed).toEqual([]);
+    expect(ports.of('actionResult')[0]?.payload).toEqual({ requestId: 'e1', outcome: { ok: false, code: 'conflict', error: EDIT_SESSION_ACTIVE } });
+    release();
+    await start;
+    expect(runs.calls.map((c) => c.method)).toEqual(['formalize']);
+  });
+
+  it('the ES-9 lock refuses board edits during a session and lets its messages through (mid-stage formalize, retryStep, cancelRun)', async () => {
+    runs.run = sampleRun({ state: 'review' });
+    await session.handle(message('addNode', { clientId: 'tmp', type: 'AXIOM', naturalName: 'A new axiom', requestId: 'edit' }));
+    expect(ports.of('actionResult')[0]?.payload.outcome).toEqual({ ok: false, code: 'conflict', error: EDIT_SESSION_ACTIVE });
+    await session.handle(message('formalize', { ...mid, requestId: 'mid' }));
+    await session.handle(message('retryStep', { runId: 'r1', requestId: 'retry' }));
+    await session.handle(message('cancelRun', { runId: 'r1', requestId: 'cancel' }));
+    expect(runs.calls.map((c) => c.method)).toEqual(['formalize', 'retry', 'cancel']);
+    expect(ws.performed).toEqual([]);
+  });
+
+  it('cancelRun (Cancel step) is not queued: it reaches the RunManager while a retryStep waits for its queue\'s first step', async () => {
+    let release: () => void = () => undefined;
+    runs.outcome = (method) =>
+      method === 'retry' ? new Promise((resolve) => (release = () => resolve({ ok: true, label: 'retried', undoable: false }))) : { ok: true, label: `did ${method}`, undoable: false };
+    const retrying = session.handle(message('retryStep', { runId: 'r1', requestId: 'retry' }));
+    await sleep(5);
+    await session.handle(message('cancelRun', { runId: 'r1', requestId: 'cancel' }));
+    expect(runs.calls.map((c) => c.method)).toEqual(['retry', 'cancel']);
+    release();
+    await retrying;
+  });
+
+  for (const [what, first] of [
+    ['a retryStep', ['retryStep', { runId: 'r1', requestId: 'first' }]],
+    ['a mid-stage formalize', ['formalize', { ...mid, requestId: 'first' }]],
+  ] as const) {
+    it(`AF14: an answerQuestions sent while ${what} waits in the host\'s run queue reaches the RunManager once that call resolves`, async () => {
+      let release: () => void = () => undefined;
+      runs.outcome = (method) =>
+        method === 'retry' || method === 'formalize'
+          ? new Promise((resolve) => (release = () => resolve({ ok: true, label: 'the first step works', undoable: false })))
+          : { ok: true, label: `did ${method}`, undoable: false };
+      const firstCall = session.handle(message(first[0], first[1]));
+      await sleep(5);
+      const answering = session.handle(message('answerQuestions', { runId: 'r1', setId: 'q1', answers: [{ question: 0, choice: { kind: 'leave-open' }, scope: 'run' }], requestId: 'answer' }));
+      await sleep(5);
+      expect(runs.calls.map((c) => c.method)).toEqual([first[0] === 'retryStep' ? 'retry' : 'formalize']);
+      release();
+      await firstCall;
+      await answering;
+      expect(runs.calls.map((c) => c.method)).toEqual([first[0] === 'retryStep' ? 'retry' : 'formalize', 'answer']);
+    });
+  }
+
+  it('`session` is posted on ready and whenever the session changed (RunChange.session), the RunManager\'s view as it is', async () => {
+    const view = { runId: 'r1', subject: 'Spyro', stage: 1, phase: 'stage', items: [], inferences: [], steps: [], board: { graph: { nodes: [], edges: [] } } } as unknown as NonNullable<FakeRunManager['currentSession']>;
+    runs.currentSession = view;
+    await session.handle(message('ready', { lastVersion: null }));
+    expect(ports.of('session').map((m) => m.payload.session)).toEqual([view]);
+    runs.fire({ run: false, proposal: false, session: true });
+    await sleep(5);
+    expect(ports.of('session')).toHaveLength(2);
+    runs.fire({ run: true, proposal: false, session: false });
+    await sleep(5);
+    expect(ports.of('session')).toHaveLength(2);
+    runs.currentSession = null;
+    runs.fire({ run: false, proposal: false, session: true });
+    await sleep(5);
+    expect(ports.of('session').at(-1)?.payload.session).toBeNull();
   });
 });

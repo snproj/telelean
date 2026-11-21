@@ -1,0 +1,40 @@
+{
+  "verdicts": [
+    {
+      "id": "IMP-1",
+      "real": true,
+      "severity": "blocker",
+      "reason": "The facts hold. The built code derives the subject from the first target in two places: packages/core/src/review/judge.ts:247-248 and review/backstop.ts:268-269 (`targets[0] ?? ''`). Neither the built JudgeInput/BackstopInput (review/types.ts) nor slice 2's §2.7/§2.9 has a subject. Slice 3's frozenFindings has no subject either, and its hook is heldFields(model, entries). Slice 4 gives transform steps target `transform:<id>`, gives transform-started sessions no inferences, and nowhere changes the derivation. Slice 5 makes `subject` an input of referenceFindings, heldFields (now inside frozenFindings), holdingMap (freezeAtAccept) and otherSubjectRefHolds, but never names its source. A builder will naturally pass judgeState's local `subject`. With '' all four return nothing (resolverOfModel resolves no card), so they fail open silently. My refutations only partly hold. (a) In a Formalize-started session the queue-end stage judge has an inference target, so the change resurfaces as a stage problem. A transform-started session has no inference, so nothing catches it at stage, at final or in Apply's backstop. (b) The plan's tests would not expose it. The 5c2/5d fixtures and cheats 1-8 are Formalize-based. 5d's S4 test 'Claude's later change of it is refused' passes anyway, through the key's own TransformFreeze. (c) The person still sees an item. But §14.3 promises a mechanical refusal, and the held marks (also from heldFields) would be missing too. Result: the slice's central S12/D5-8 rules are off in the most natural S12 setting (Transform cards on a referenced card). The fix is right: a required run subject on JudgeInput, BackstopInput, SessionCheckContext and frozenFindings. It also repairs slice 3's other-subject rule in transform contexts."
+    },
+    {
+      "id": "IMP-2",
+      "real": true,
+      "severity": "major",
+      "reason": "Confirmed against the slice-4 plan. §3.11 revalues only a frozen key that has a TransformFreeze, and says the holders of a changed declaration 'must be unfrozen or deleted, so no held value needs revaluing'. §3.12 says 'Slice 4 revalues no held value (D4-21) … a frozen card whose reference holds a field a transform changes is simply one more dependent'. §3.4 makes a dependent frozen for another reason a problem. Slice 5 §3.7 instead lists a changed-field referrer as 'a warning only', and §3.6/§2.5/§2.6 rely on a `revalued.held` that slice 4 does not define. Under slice 3 §3.4 step 3, plus the two-value rule (S₀ before the typed write, slice 4 §3.9), the frozen holder's heldFields expectation at B refuses the person's typed value. So a no-Claude transform step fails ('could not be carried out'), or a stage problem blocks Apply, after the analysis said only 'warning'. It fails closed, so there is no safety hole, and the person can unfreeze A and Retry. But 5d's 'passes and revalues' test cannot pass on slice 4's contracts, and the builder would have to invent the held-key revalue (which holders, accepted excluded) in safety-critical code. The plan must choose (a) or (b) itself."
+    },
+    {
+      "id": "IMP-3",
+      "real": true,
+      "severity": "minor",
+      "reason": "The facts are right. Dialogs.tsx:182 builds its lists from the graph (`deleteDependents(dialog.id, { nodes, edges, order })`). DeletePlan stays on the host, and referencedBy/refProblems take a ProjectModel, so §3.7's 'DeletePlan.referencedBy … the dialog names them' describes a data flow that does not exist. The claimed consequence is overstated, though. The webview already imports pure core functions (e.g. formalizeCycleProblem from '@telelean/core'). TlNode carries naturalName and rationale, and 5a exports refsIn and resolverOfGraph. So the Delete dialog's line and CardDetails' 'Referred to by' row are a short filter over the view's graph with core's own tokenizer. That is not a second scanner, and it uses the masked graph in sessions, as I5 wants. The slice-4 preview point belongs to slice 4: its AnalyseInput already requires a `model: ProjectModel` that the webview lacks, refProblems adds no new dependency, and the host recomputes problems at Submit. The impact is display only. Fix it by naming the graph helper and dropping or repurposing DeletePlan.referencedBy."
+    },
+    {
+      "id": "IMP-4",
+      "real": true,
+      "severity": "minor",
+      "reason": "The harness facts are right. webview/vitest.config.ts runs `test/unit/**/*.test.ts` in node ('DOM-free parts'), and there is no jsdom, happy-dom or testing-library in package.json. So the listed RefInput behaviours (paste/IME, Esc-Esc, Backspace, mousedown-before-blur, execCommand undo) and 'pointerdown starts no drag' cannot be node unit tests, and the plan does not say where they go. The severity is overstated. Much of 5f1's list is DOM-free: searchRefs, Copy reference's tokens, reveal through store actions, and RefText's labels and cut once factored. Slice 2's 2g list was likewise UI behaviour, tested at the store level. The 5f2 'DOM scan' can use react-dom/server's renderToString (react-dom is installed, so nothing new is needed). Only the browser-event behaviours need the integrator's Playwright spec. The risk is UI-only, with no safety impact. The plan should name a pure input-model module and move the event checks into s5-refs.spec.ts."
+    },
+    {
+      "id": "IMP-5",
+      "real": true,
+      "severity": "minor",
+      "reason": "The inconsistency is real. §0 says 5a stubs every §2 module with throwing NotImplementedError, and freeze/refs.ts is listed. But §2.5 calls heldFields 'the filled hook (3a's stub)', which slice 3's frozenFindings already calls on every judged state. The failure the finding describes cannot persist, though. It is loud: either a duplicate export (a compile error), or every judge suite throwing in 5a. §1 requires every sub-slice to end compiling with its tests passing, and §0 says slices 2-4 stay green, so the 5a builder must fix it in the same sub-slice. If slice 3's hook is internal to its module, a new unused stub in refs.ts breaks nothing until 5d rewires the call. A one-sentence clarification is enough: 5a keeps the hook returning empty, and only uncalled functions throw."
+    },
+    {
+      "id": "IMP-6",
+      "real": true,
+      "severity": "minor",
+      "reason": "Confirmed. runner/src/run/manager.ts:2261-2272 copies f.message into GateAttemptView.failures[].detail and into the notice detail. ReportCard.tsx and RunPanel.tsx:206-209 show them in a `<pre>`, and slice 2 shows a step's attempts once the results are shown. With 5c2, GateFinding.message carries U+E000/U+E001 raw spans and raw tokens, and only 5e's Claude wrappers render or strip them. core/src/run.ts:236 even documents `detail` as 'the exact failure as Claude received it', which after 5e is the rendered text, not f.message. The impact is cosmetic. It appears only in a folded Details block, after Show results (D2-10), so nothing hidden leaks (RV-6). The main line uses describeFinding, which 5c2 renders by name. The person already sees stored tokens in editors (D5-5). Fix: store what Claude received (renderForClaude's output) as the detail, or strip the markers at that copy, and test for it in 5e."
+    }
+  ]
+}

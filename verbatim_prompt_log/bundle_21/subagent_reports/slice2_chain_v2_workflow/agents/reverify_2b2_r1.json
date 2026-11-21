@@ -1,0 +1,99 @@
+{
+  "summary": "Re-verification of fixer 2b2 r1. All 15 findings of the round are resolved.\n- For every code fix I traced the code and re-ran the key mutation in a scratch copy of packages/core; each new test fails without its fix.\n- The earlier reviewers' bug probes A1, A2, B1, B3 and D1 now fail the assertions they made about the old bugs, so those bugs are gone.\n- C1 now leaves no TL023 (its remaining unowned follows_from line comes from the probe dropping P1's mark-removed entry, which the plan now hands to 2f). A3 is refused as intended.\n\nTypecheck and unit tests (my own runs, capped.sh, one at a time):\n- tsc is clean in core, runner, webview (both configs) and extension.\n- core: \"Test Files 72 passed (72) / Tests 991 passed (991)\"\n- webview: \"Test Files 19 passed (19) / Tests 314 passed (314)\"\n- extension: \"Test Files 22 passed (22) / Tests 203 passed (203)\"\n\nNo runner code uses any changed function, so no runner test applies.\n\nTwo new problems in the fixer's changes:\n- **R1-1 (major).** The new frozen-items rule also compares unwritten premise drafts. A later step that proposes a premise again under the same key with new wording is a newer proposal by design (spec S13, §3.5, fixer 2a's D2-17 decision). It is now refused at check, gate-proved and gate-other, with a message about comments that Claude cannot act on.\n- **R1-2 (minor, fail closed).** Two declarations going back to B's place next to each other share an anchor, and the second is refused (`unsafe`). This blocks a cascade take-out of two chained Results whose pending `.holds` lines were adjacent in B.\n\nBoth fixes were validated in the scratch copy: the related core suites stay green, and the new checks fail on the current code.\n\nEffects outside my scratch dir:\n- The existing repo .vite-temp folders (root, core, webview) got new mtimes. They are empty: vitest wrote temporary config files there and deleted them.\n- The .git directory's mtime changed from a read-only `git status`. The index is unchanged, and the porcelain count stayed at 321.\n- Nothing was written in packages, docs or test-fixtures, nothing in /tmp, and no process is left running.\n\nAll probes, mutation harnesses, logs and the scratch copy are under /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/rv2b2r1.",
+  "resolved": [
+    {
+      "id": "S-V2B2-S1",
+      "how": "Fixed in the revert (the finding's option a). planItemRevert removes a moved declaration that B has and puts B's text back in B's place (`baseDeclPlace`). verify() refuses a result that is not in B's place or in which anything else moved. Checks:\n- the new revert tests cover B1, B3, the moved proof with its lemma and comments, an unchanged move, and the before/after sides;\n- my mutation that restores the old `unsafe` refusal fails 2 of them;\n- the old probes B1 and B3 no longer throw;\n- my probes R3 (CRLF) and R4 (pending axiom proved at the end with a lemma) give B byte for byte;\n- moving T.holds up, or into a new module, is refused at the step by the existing rules (R1, R2), so neither reaches a revert."
+    },
+    {
+      "id": "C-V2B2-C1",
+      "how": "The same fix as S-V2B2-S1. Taking out a Result whose T.holds moved now restores B: verified by the tests, my mutation and probes R3 and R4."
+    },
+    {
+      "id": "A-V2B2-ADV-2",
+      "how": "Resolved by the finding's alternative fix (handled in the revert), with a sound rationale in §8. Lean needs a source's .holds declared before a proof that uses it, so a pending target above a later source can only be proved below that source. Probes B1 and B3 are now tests; the old probes fail their old-bug assertions. (A narrower residual remains; see R1-2.)"
+    },
+    {
+      "id": "S-V2B2-S2",
+      "how": "Handed off as the finding's own fix offered: §1.1's 2h entry makes `GhostAdoptionRequest.holdAs` required once `adoptGhost` is retired, with tests, and says 2f passes the record's `accepted.holdAs`."
+    },
+    {
+      "id": "S-V2B2-S3",
+      "how": "Updated: user-guide.md lines 103 and 237, boardSession.ts's startRun doc comment and protocol.ts's StartRunMessage doc comment now describe the subject-wide cycle check and its text."
+    },
+    {
+      "id": "S-V2B2-S4",
+      "how": "`subjectCycle` counts a proposition listing itself in `premises:` as the cycle [x, x], first in board order. An old axiom's self-premise does not count, consistent with arrowsOf/A19. The new formalize test fails when I disable the selfArrow predicate."
+    },
+    {
+      "id": "C-V2B2-C2",
+      "how": "The mark comes back only when `kept.length === 0`. verify() refuses an edited card whose lines hold both the mark and arrows (TL023). My mutation that drops the `kept.length === 0` condition fails the two-premise test. In the old probe C1, the target block now has `premises:` without `follows_from: nothing` and no TL023. The ledger move of mark-removed to P2 is handed to 2f in §3.8."
+    },
+    {
+      "id": "C-V2B2-C3",
+      "how": "Same doc updates as S-V2B2-S3 (user guide l.103 and l.237)."
+    },
+    {
+      "id": "C-V2B2-C4",
+      "how": "The test 'at the stage and the end nothing changes' now also asserts `judge(..., { purpose: 'final' }).global` is []."
+    },
+    {
+      "id": "A-V2B2-ADV-1",
+      "how": "`restsOnPremise`: the completion's T.holds goes with the premise only while its `uses` closure (or, without complete facts, its text) reaches a declaration the premise provides. My mutation back to the unconditional take-out fails the new test. The old probe D1 now keeps the reworked proof."
+    },
+    {
+      "id": "A-V2B2-ADV-3",
+      "how": "Same fix as C-V2B2-C2: the mark is restored only when no arrow stays, and verify() refuses mark plus arrows read from the block lines. Tested, and the mutation is caught."
+    },
+    {
+      "id": "A-V2B2-ADV-4",
+      "how": "The new frozen-items rule (judge.ts:489-490, 515-532) refuses the comment re-attachments: A1, A2, A3 and the closed-proof Result are now step findings; the old probes A1, A2 and A3 now see `existing-changed/session`; disabling the rule fails 4 judge tests. Its generality introduces a regression for re-proposed premise drafts (see R1-1)."
+    },
+    {
+      "id": "A-V2B2-ADV-5",
+      "how": "New backstop test: a rejected Result whose T.holds is B's, beside accepted items, passes. The reviewer's mutation (`owned = drafts`) now fails it (re-run by me)."
+    },
+    {
+      "id": "A-V2B2-ADV-6",
+      "how": "New backstop test: a question source whose arrow is in neither B nor F gives a `b2` refusal. The reviewer's mutation (`inference.question.sources`) now fails it (re-run by me)."
+    },
+    {
+      "id": "A-V2B2-ADV-7",
+      "how": "`probeFailure(facts, { detail: false })`:\n- the stage's `facts` problem never carries Lean's error;\n- `classesBeforeReveal` (the map the reducer uses while results are hidden) carries the sentence without it, while `classes` (shown) and the backstop keep it;\n- the one-bit 'did it fail' channel is added to §4.7's accepted residuals.\nMy mutations restoring the detail in either place fail probe.test.ts."
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1-1",
+      "severity": "major",
+      "where": "packages/core/src/review/judge.ts:515-532 (frozenItemFindings; the skip at :520), called at :489-490; docs/slice2-plan.md:1927 (§4.9's new fixer 2b2 r1 bullet)",
+      "problem": "The frozen-items rule compares every item of S₀, unwritten premise drafts included (`premise:<T>:<leanName>`, whose content key is the draft's sentence, statement and target, §4.3).\n\nA later step that proposes a premise again under the same item key with different wording is a newer proposal by design:\n- spec S13: \"A reworded repeat passes both checks. That is not a safety issue\";\n- §3.5: \"a premise a later step proposed again\";\n- fixer 2a's D2-17 decision: \"a premise the new step proposed again stays in review … computeItems reads the newest\";\n- the status table: \"withdrawn → in review: A later proposal of the same key\".\n\nThe two item computations differ: `atStart()` leaves out the active step's drafts, while computeItems on the judged state reads the newest draft. So the item's content key differs, and the step is now refused at check, gate-proved and gate-other. The finding is `existing-changed`/`session`, and its message, `frozenItemChanged`, talks about comments (\"a comment next to it now goes with another declaration … keep comments where they were\"). Claude cannot act on it, since it edited nothing in ws/. Each refusal counts a gate attempt.\n\nTypical triggers:\n- after the person rejects a premise, the Submit re-ask proposes a refined version under the same leanName;\n- a not-proved finish (gate-other) proposes the missing premise again.\n\nBefore this round these steps passed, and reconcile versioned the item (\"updated\").",
+      "fix": "In frozenItemFindings, skip S₀ drafts made from an unwritten premise draft: their content is outside ws/, and a same-key draft from the step is a newer proposal that reconcile versions at the queue's end. For example, after line 520:\n`if (d.kind === 'add-premise' && d.provides.cards.length === 0 && d.provides.decls.length === 0 && d.provides.arrows.length === 0) continue;`\n\nAdd judge tests:\n- a reworded repeat of a rejected premise at a Submit step (gate-proved) and at gate-other gives no finding;\n- the exact repeat stays `rejected-repeat/premise` only.\n\nAmend §4.9's new bullet and the §8 entry to say that unwritten premise drafts are excluded.",
+      "evidence": "Probes in /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/rv2b2r1/vt/tests/frozen.test.ts:\n- P1a: Submit step s2, openItems [proof:T], the record rejected, premises [old s0 draft, reworded s2 draft of `cynder_is_evil`]. At check and gate-proved, stepFindings are [existing-changed/session], message \"premise:cynder-not-good:cynder_is_evil was proposed earlier in this session, and the perso…\", from frozenItemChanged.\n- P1c: an in-review premise at a re-ask with openItems [] gives the same.\n- P1e: gate-other on FORMALISED gives [] without the re-proposal and [\"existing-changed/session\"] with it.\n- P1b: an exact repeat gives only rejected-repeat/premise.\n- P1d (control) gives [].\n\nI validated the fix in a scratch copy of packages/core. The check (mut/packages/core/test/rv_p1.test.ts) fails on the current code, and passes with the one-line skip. With the skip, judge, probe, revert and backstop tests plus the check give \"Test Files 5 passed (5) / Tests 170 passed (170)\"."
+    },
+    {
+      "id": "R1-2",
+      "severity": "minor",
+      "where": "packages/core/src/review/revert.ts:242-260 (step 2's loop; `session.mapOffset(place.path, place.offset)` at :247; the comment at :243 says \"so two that go back next to each other keep it\")",
+      "problem": "Two declarations can go back to B's place with the same nearest kept unit before them: they are adjacent in B, with only whitespace between. The first insertion (side 'after') replaces the whitespace that starts at that unit's end. For the second, `mapOffset` of the same anchor then falls inside that edit, returns undefined, and the revert refuses `unsafe`: \"… cannot be put back where it was when the session started: edit it by hand.\".\n\nThis is reachable. Two pending claims, or the person's proofs, are written next to each other in B, and each is proved below later content by its own step of one queue, which openProof allows. The second target's proof uses the first's `.holds` (RV-5), so a Reject of the first Result, a DO-0 cascade, or Submit's take-out takes both out at once. That take-out is then blocked, the failure the original S1/C1/ADV-2 findings described, in a narrower layout. It fails closed: nothing is written.",
+      "fix": "In step 2, keep per anchor (path, side, offset) the end of the last inserted declaration's own text (`start + newText.trimEnd().length`). Start a later place with the same 'after' anchor there, instead of mapping the anchor. Its B lead then replaces the previous one's trailing whitespace, which is the same stretch of B's whitespace. Alternatively, insert a run of adjacent `back` declarations as one slice of B.\n\nAdd a revert test: two adjacent pending axioms, each proved at the end by its own step, both Results taken out at once, which must give B byte for byte.",
+      "evidence": "/tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/rv2b2r1/vt/tests/adjacent.test.ts:\n- B = withChain(BASE) + `axiom t1.holds : t1\\naxiom t2.holds : t2` + three abbrevs.\n- s1 and s2 each replace their axiom by a theorem appended at the end.\n- compareTexts: t1.holds moved in s1, t2.holds moved in s2. Both steps' gate-proved stepFindings are [].\n- The stage items are proof:t1 and proof:t2, with 0 problems.\n- Taking out proof:t1 and proof:t2 together gives \"REFUSED unsafe: Spyro.t2.holds cannot be put back where it was when the session started: edit it by hand.\"\n\nI patched step 2 the suggested way in a scratch copy (scratchpad/rv2b2r1/vt/patch_adj.py):\n- the both-out revert gives B exactly;\n- revert and backstop suites stay green (\"Tests 44 passed (44)\");\n- unpatched, the same check fails.\n\nThe scratch copy was restored identical to the repo."
+    }
+  ],
+  "checks_run": [
+    "capped.sh 1800, packages/core: tsc --noEmit -p tsconfig.test.json -> rc=0, no output",
+    "capped.sh 1800, packages/runner: tsc --noEmit -p tsconfig.test.json -> rc=0, no output",
+    "capped.sh 1800, packages/webview: tsc --noEmit -p tsconfig.json -> rc=0, no output",
+    "capped.sh 1800, packages/webview: tsc --noEmit -p tsconfig.node.json -> rc=0, no output",
+    "capped.sh 1800, packages/extension: tsc --noEmit -p tsconfig.json -> rc=0, no output",
+    "capped.sh 1800, packages/core: vitest run --maxWorkers=1 --no-cache --fsModuleCachePath=<scratch>/fsmc (TMPDIR and TELELEAN_TEST_TMP in scratch) -> \"Test Files  72 passed (72)\" / \"Tests  991 passed (991)\"",
+    "capped.sh 1800, packages/webview: same flags -> \"Test Files  19 passed (19)\" / \"Tests  314 passed (314)\"",
+    "capped.sh 1800, packages/extension: same flags (--no-cache) -> \"Test Files  22 passed (22)\" / \"Tests  203 passed (203)\"",
+    "Runner: no runner source or test uses a changed function (grep for judgeState, planItemRevert, probeFailure, subjectCycle, formalizeCycleProblem, baseDeclPlace, formalizeStartProblem; the runner only mentions them in comments), so no runner test file applies",
+    "Mutations in a scratch copy of packages/core, each restored and checked byte for byte (filecmp, `restored True`):\n- the old `unsafe` refusal for a moved declaration: 2 revert tests fail;\n- the mark without `kept.length === 0`: 1 fails;\n- the completion taken out unconditionally: 1 fails;\n- the frozen rule off: 4 judge tests fail;\n- the probe detail kept in classesBeforeReveal: 2 probe tests fail;\n- the detail kept in the stage problem: 2 fail;\n- selfArrow off: 1 formalize test fails;\n- backstop `owned = drafts`: 1 fails;\n- backstop `inference.question.sources`: 1 fails",
+    "The earlier reviewers' probes, re-run on the fixed code:\n- A1, A2, B1, B3 and D1 now fail their old-bug assertions (the bugs are gone);\n- C1's target block has no `follows_from` beside `premises:`, and no TL023;\n- A3 is `existing-changed/session`",
+    "Probes R1-R4 (scratchpad/rv2b2r1/vt/tests/revert.test.ts):\n- T.holds moved up: the step limits refuse other_fact's move (pre-existing);\n- T.holds in a new module: refused at the step (stray-command, build);\n- CRLF move: B exactly;\n- pending axiom proved at the end with a lemma: gate [], and the revert gives B exactly",
+    "Probes P1a-P1e (frozen rule versus a same-key premise re-proposal) and ADJ1 (two adjacent moved .holds taken out together): see R1-1 and R1-2. Both fixes were validated in the scratch copy.",
+    "Side effects:\n- git status --porcelain count unchanged (321);\n- no file newer than my start in packages, docs or test-fixtures (outside node_modules);\n- the existing .vite-temp folders (root, core, webview) are empty, with only their mtimes changed;\n- the .git directory's mtime changed from read-only git status, and .git/index is unchanged;\n- no /tmp entry is newer than my start, and no /tmp/telelean-* exists;\n- no process of mine is left running."
+  ]
+}

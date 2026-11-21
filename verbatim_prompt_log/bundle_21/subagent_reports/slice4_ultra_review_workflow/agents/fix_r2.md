@@ -1,0 +1,90 @@
+# fix:r2
+
+Agent `ab9aa61e839b22231` of workflow `wf_67531371-ae0`. Verbatim output (JSON alongside).
+
+- **summary:** Round-2 fixes applied to /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/plans/slice4-plan.md (the only file edited; repo and git untouched). Each change is carried through every section that uses it: §0's list of intentional changes to slices 2–3, the scopes of 4a–4l, the contracts in §2.2/§2.3/§2.6/§2.7/§2.8/§2.9, the design in §3.2/§3.3/§3.5–§3.11, the UI in §4.2/§4.5, persistence in §5.3, the 4a–4l tests, and the coverage rows in §9.
+
+Decisions: one new decision, D4-44 (from R2-1). Six decisions revised in place, each in AUTOPILOT DECISION form with its alternative and how to reverse it: D4-14 (R2-10), D4-15 (R2-8), D4-29 (R2-5), D4-33 (R2-2, R2-4, R2-5, R2-1), D4-34 (R2-1, R2-5), D4-37 (R2-11). The decision ranges in the guide, the AP entry and §7.3 now run to D4-44. One dated change-log line was added to §8 ("2026-11-20 ultra review round 2: …").
+
+I verified R2-2 and R2-3 against the built core code before fixing them: review/judge.ts runs `frozenItemFindings`, and review/items.ts's `ownerOf` and `stepTarget` map only inference steps.
+
+Beyond the findings:
+- I closed a gap in R2-11: a typed proof that the scratch cannot elaborate (it uses a session name) would still have got through, so the `no-proofs` exemption for typed units now never covers a declaration that `isProof` finds.
+- §3.8 step 5 already cited slice 3's own "R2-4"; it now reads "slice 3's R2-4", so it cannot be confused with this round's labels.
+- **dispositions:**
+  - [1]
+    - **id:** R2-1
+    - **action:** partly
+    - **note:** Adopted three of the four suggested parts, and the problem is fully fixed.
+(3) An accepted item's covered targets that its content does not own now expect their value at Accept time (FZ-3: "the content you accepted"), not B's. This amends slice 3 §3.3. The data path mirrors heldAtJudge: StateJudgement.coverAtAccept, then ItemRecord.coverAtJudge (reconcile), then frozen.covers (copied by the Accept or by the queue end's "accepted as yours"), then table entries { from: 'cover' }. A record without covers keeps B's value.
+(1) narrowed: a typed draft's acceptCovers is the keys of the fields you typed only. TypedUnit gains a `follow` flag for follow-on, trash and new-block bookkeeping units: they must hold, are never released by an Unfreeze, and are never covered. The fix as worded ("units that must hold") would also cover follow-on keys, which D4-34 forbids: it would block Claude's arrows into a card whose source you trashed.
+(4) adopted: a Formalize or Change of c's statement depends on typed:c while typed:c owns c's sentence. Adds are excluded, which avoids a cycle with S4M-4.
+(2), leaving typed keys out of other items' covers, was not adopted. With (3) it is unneeded, and it would let an Unfreeze of such a key leave Claude's accepted item accepted while that item still refuses Claude's change. It is recorded as D4-44's alternative.
+Supporting edits: §3.8 step 3's cascade; typed items an earlier transform touched are re-accepted at the queue end; frozenChangesOf rows for covers.
+Tests: flows (a) and (b) reach Apply in 4h; 4d/4e/4f unit tests. New decision D4-44; D4-34 revised.
+  - [2]
+    - **id:** R2-2
+    - **action:** fixed
+    - **note:** New JudgeInput.typedStart carries the typed commit, with the typed judgement's facts. In the typed judgement itself it is the judged model; it is absent only in a rework step.
+In a step that made a typed write, slice 2's frozen-items rule now reads the typed commit's items. Its open set is openItems plus every item of that commit that owns content under TransformScope.open, under an arrowsInto card's Dependencies, or under dependents.
+Updated: §3.9 steps 4 and 6, the StepScope comment, §2.9, the 4e/4h scopes, D4-33's S₀ᵗ list, and 4e/4h tests (the three flows pass; a change outside the open set still fails).
+  - [3]
+    - **id:** R2-3
+    - **action:** fixed
+    - **note:** ComputeItemsInput.active gains `transform: true`. Its new declarations become statement-phase vocab:/decl: items, never proof material; it makes no Result draft; a theorem is unowned.
+New ComputeItemsInput.transformSteps lets `stepTarget` resolve a transform step's created and changed entries after the step. It is passed through JudgeInput and BackstopInput and filled by the runner (4h); judgeState passes active with transform.
+"Never active" is corrected in §2.9 and §3.9 step 6. Step 8 and §3.10 updated; 4d test added.
+  - [4]
+    - **id:** R2-4
+    - **action:** fixed
+    - **note:** Primary fix adopted: a block's absence supersedes every earlier unit on that card (lines, own premises entries, bound declarations and their docstrings), and a declaration's absence supersedes its earlier docstring units.
+Stated in the TypedUnit contract, §3.5 step 8, §3.10 computeItems, the hold rule and D4-33.
+Tests: 4d, and 4h's T1-types-then-T2-trashes flow passes.
+  - [5]
+    - **id:** R2-5
+    - **action:** fixed
+    - **note:** (a) The D-9 mirror is now a soft docstring unit: it never has to hold. It keeps a follow-on keys entry so it still revalues the statement's existing reasons.
+(b) New TypedUnit kind `docstring`. A vocabulary decl unit excludes the docstring; a typed gloss is its own unit; a typed card statement's decl unit includes its docstring.
+computeItems owns a declaration's docstring and body separately. A Claude step's created entries name a person's new declaration on which Claude wrote a docstring, so that part has an owner.
+Also updated: D4-29's whole-line/body/docstring rule, D4-33, D4-34, §3.11, planItemRevert, and the 4c/4d/4e/4h tests.
+  - [6]
+    - **id:** R2-6
+    - **action:** fixed
+    - **note:** `originalKey` is now `originalKeyOf(original)`, exported from core transform/draft.ts and used by both the runner and the planner. It hashes copied values only: the key set and, per key, Kind, Lean name, field values, Dependencies entries plus the mark, and whether Proof is offered. It never hashes kept, trashed, provenance, locks or masks.
+§2.6, §3.6 and the 4a scope updated; tests in 4a, 4c and 4i (a card with a standing-frozen field applies directly).
+  - [7]
+    - **id:** R2-7
+    - **action:** fixed
+    - **note:** New 'Deleted names' rule in §3.3 (b): a typed piece whose scratch consts include a name the draft deletes is a problem, with the given text.
+analyseTransform checks it at every analysis (4b), so a card trashed after the scratch ran is caught too.
+The direct-path claim in that section is corrected. Problems list in §3.2 and §9 updated; tests in 4b and 4g.
+  - [8]
+    - **id:** R2-8
+    - **action:** fixed
+    - **note:** Added the vocabulary counterpart of D4-15 to §3.2's problems, with the suggested text.
+D4-15 revised: its alternative now includes quoting the gloss to Claude.
+4b test added.
+  - [9]
+    - **id:** R2-9
+    - **action:** fixed
+    - **note:** Primary fix adopted: the records-only write of a freeze action, or of its Undo or Redo, made while a window is open also updates the window record's items[].rev for every source whose status it changed.
+Updated in TW-1 (§2.7), §3.7 and the 4i scope; 4i test added.
+  - [10]
+    - **id:** R2-10
+    - **action:** fixed
+    - **note:** A premise unit's owner is the Add premise item. It makes no typed item, no keys entry and no TransformFreeze.
+The hold rule and the queue end skip premise units.
+In a premise window, an unknown name the session does not show is a problem, with the given text.
+Updated: §2.2, §3.3 (c), §3.5, §3.7, §3.9, §3.10 and D4-14; tests in 4b and 4h.
+  - [11]
+    - **id:** R2-11
+    - **action:** fixed
+    - **note:** New 'Proofs' rule in §3.3 (b): the scratch's probe flags a typed declaration whose elaborated type is a proposition (`isProof`'s rule), and it is refused with D4-37-style text.
+Also closed a remaining gap: the `no-proofs` exemption for typed units (§2.8) no longer covers such a declaration, so one the scratch could not elaborate fails its step.
+§2.1, D4-37 and §9 updated; tests in 4g and 4e.
+  - [12]
+    - **id:** R2-12
+    - **action:** fixed
+    - **note:** The dialog now carries data-undo-scope="transform".
+`undoScope` gains a `transform` result while a window is open, routed to the window's timeline and never to the session stack.
+§4.2, §4.5, the 4l scope and test, §0 and §9 updated.

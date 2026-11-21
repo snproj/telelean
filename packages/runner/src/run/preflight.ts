@@ -1,8 +1,10 @@
 /**
- * Preflight of "These suffice" (docs/m2-plan.md section 4.1): the checks that run before anything is created,
+ * Preflight of a run, Formalize for dependencies (docs/m2-plan.md section 4.1; spec v4.1 ES-2, renamed from "These
+ * suffice" in slice 1e; the extension host checks the arrows first, core `formalizeStartProblem`): the checks that run
+ * before anything is created,
  * declared, spawned or sent, in this order, each refusal one plain sentence:
  *   1 busy       another non-terminal run of the root
- *   2 selection  the target is a GOAL or DERIVATION card of the subject, every premise is a card of the subject,
+ *   2 selection  the target is a PROPOSITION card of the subject (spec v4), every premise is a card of the subject,
  *                the target is not among the premises
  *   3 workspace  the ModelWorkspace implements the M2 members and the subject loads
  *   4 toolchain  lean-toolchain pins leanprover/lean4:v4.35.0 (D-7), a lakefile exists, the manifest lists no packages
@@ -12,7 +14,7 @@
  * The CLI's own checks (guard self-test, subscription login, hooks listing) come at session start, also before the
  * first prompt.
  */
-import { PINNED_TOOLCHAIN_NAME, type TlGraph } from '@telelean/core';
+import { FORMALIZE_START_TEXTS, PINNED_TOOLCHAIN_NAME, type TlGraph } from '@telelean/core';
 
 import { checkSandboxSupport, checkUserNamespaces } from '../lean/runLean.js';
 import { readMemAvailableBytes } from '../semantic/index.js';
@@ -20,6 +22,9 @@ import type { ModelWorkspace } from '../workspace/types.js';
 import type { PreflightInput, PreflightOutcome, PreflightProblem } from './types.js';
 
 const M2_MEMBERS = ['applyChanges', 'readText', 'modelFiles', 'library', 'projectModel', 'reloadAttempts'] as const;
+
+/** The selection refusal for an axiom as the target (docs/slice1-plan.md 1a, spec v4 AR-6; core's text since slice 1e). */
+export const AXIOM_TARGET_REFUSAL: string = FORMALIZE_START_TEXTS.axiomTarget;
 
 const refuse = (problem: PreflightProblem, message: string): PreflightOutcome => ({ ok: false, problem, message });
 
@@ -47,9 +52,7 @@ function selectionProblem(input: PreflightInput, graph: TlGraph): string | undef
   const byId = new Map(graph.nodes.map((n) => [n.id, n]));
   const t = byId.get(target);
   if (t === undefined) return `The target "${target}" is not a card of ${subject}.`;
-  if (t.type === 'ASSUMPTION') {
-    return `"${t.naturalName}" is an Assumption, something you hold: make it a Derivation first (D-11), then prove it.`;
-  }
+  if (t.type !== 'PROPOSITION') return AXIOM_TARGET_REFUSAL;
   for (const p of premises) {
     if (p === target) return `The target "${t.naturalName}" cannot also be one of its own premises.`;
     if (!byId.has(p)) return `The premise "${p}" is not a card of ${subject}.`;

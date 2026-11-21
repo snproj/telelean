@@ -88,24 +88,24 @@ describe('AT4.4 undo and redo in a workspace', () => {
 
   it('reverses exactly (every file, sidecars included) and redoes exactly', async () => {
     const original = snapshotTree(root);
-    expect(await ws.perform({ kind: 'add-node', subject: 'Spyro', type: 'GOAL', naturalName: 'Spyro saves the day' })).toMatchObject({ ok: true });
+    expect(await ws.perform({ kind: 'add-node', subject: 'Spyro', type: 'PROPOSITION', naturalName: 'Spyro saves the day' })).toMatchObject({ ok: true });
     const added = snapshotTree(root);
     expect(added).not.toEqual(original);
-    expect(await ws.workspaceState('Spyro')).toMatchObject({ undo: 'Add goal: Spyro saves the day', redo: null });
+    expect(await ws.workspaceState('Spyro')).toMatchObject({ undo: 'Add proposition: Spyro saves the day', redo: null });
 
-    expect(await ws.undo('Spyro')).toEqual({ ok: true, label: 'Undo: Add goal: Spyro saves the day', undoable: false });
+    expect(await ws.undo('Spyro')).toEqual({ ok: true, label: 'Undo: Add proposition: Spyro saves the day', undoable: false });
     const { ['.telelean/graph.json']: _g1, ...afterUndo } = snapshotTree(root);
     const { ['.telelean/graph.json']: _g0, ...originalModel } = original;
     expect(afterUndo).toEqual(originalModel);
     expect(ws.graph('Spyro').nodes.map((n) => n.id)).not.toContain('spyro-saves-the-day');
-    expect(await ws.workspaceState('Spyro')).toMatchObject({ undo: null, redo: 'Add goal: Spyro saves the day' });
+    expect(await ws.workspaceState('Spyro')).toMatchObject({ undo: null, redo: 'Add proposition: Spyro saves the day' });
 
-    expect(await ws.redo('Spyro')).toEqual({ ok: true, label: 'Redo: Add goal: Spyro saves the day', undoable: true });
+    expect(await ws.redo('Spyro')).toEqual({ ok: true, label: 'Redo: Add proposition: Spyro saves the day', undoable: true });
     const { ['.telelean/graph.json']: _g2, ...afterRedo } = snapshotTree(root);
     const { ['.telelean/graph.json']: _g3, ...addedModel } = added;
     expect(afterRedo).toEqual(addedModel);
     expect(ws.graph('Spyro').nodes.map((n) => n.id)).toContain('spyro-saves-the-day');
-    expect(applier.calls.map((c) => c.label)).toEqual(['Add goal: Spyro saves the day', 'Undo: Add goal: Spyro saves the day', 'Redo: Add goal: Spyro saves the day']);
+    expect(applier.calls.map((c) => c.label)).toEqual(['Add proposition: Spyro saves the day', 'Undo: Add proposition: Spyro saves the day', 'Redo: Add proposition: Spyro saves the day']);
   });
 
   it('reverse-patches past an unrelated hand edit elsewhere in the same file, keeping the hand edit', async () => {
@@ -125,7 +125,7 @@ describe('AT4.4 undo and redo in a workspace', () => {
 
   it('refuses with conflict when the change no longer fits, leaving every file untouched', async () => {
     const main = 'Model/Spyro/Main.lean';
-    await ws.perform({ kind: 'add-node', subject: 'Spyro', type: 'ASSUMPTION', naturalName: 'Cynder can change' });
+    await ws.perform({ kind: 'add-node', subject: 'Spyro', type: 'AXIOM', naturalName: 'Cynder can change' });
     await edit('cynder-dark-past', 'Cynder had a dark past');
     write(root, main, read(root, main).replace('natural_name: Cynder had a dark past', 'natural_name: Cynder had a very dark past'));
     await ws.invalidate([main]);

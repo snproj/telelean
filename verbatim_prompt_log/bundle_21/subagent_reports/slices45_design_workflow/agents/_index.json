@@ -1,0 +1,56 @@
+[
+  {
+    "label": "design:slice4-ui",
+    "agentId": "a30dd23a88b82d650",
+    "file": "agents/design_slice4-ui.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "design:slice5-refs",
+    "agentId": "a2abba9048ea76a8b",
+    "file": "agents/design_slice5-refs.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "design:slice4-engine",
+    "agentId": "a22400b8d68e1d329",
+    "file": "agents/design_slice4-engine.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "synthesize:slice5",
+    "agentId": "a331d24e7b8e41774",
+    "file": "agents/synthesize_slice5.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Write",
+      "Edit",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "synthesize:slice4",
+    "agentId": "aa06aaf68c24377ab",
+    "file": "agents/synthesize_slice4.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Write",
+      "Edit",
+      "SubagentHandback"
+    ]
+  }
+]

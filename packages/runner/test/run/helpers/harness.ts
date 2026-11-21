@@ -12,7 +12,7 @@ import { FakeBackend, type FakeScript, type FakeStep } from '../../../src/llm/fa
 import { playFakeScript, validateFakeScriptFile, type FakeScriptFile, type FakeScriptPlayer, type FakeScriptTurn } from '../../../src/llm/fakeScripts.js';
 import type { AskUserArgs, LlmBackend, LlmSession, SessionConfig } from '../../../src/llm/types.js';
 import { createRunManager, DEFAULT_RUN_SETTINGS, runPreflight } from '../../../src/run/index.js';
-import type { PreflightInput, PreflightOutcome, RunCore, RunManager, RunServices, RunSettings } from '../../../src/run/types.js';
+import type { PersistedRun, PersistedStep, PreflightInput, PreflightOutcome, RunCore, RunManager, RunServices, RunSettings } from '../../../src/run/types.js';
 import type { CreateShadowOptions } from '../../../src/shadow/types.js';
 import { cleanup, makeTempDir, realClearTimeout, realSetTimeout, WALKTHROUGH_FIXTURES } from './env.js';
 import { FakeEngine } from './fakeEngine.js';
@@ -82,6 +82,10 @@ export interface HarnessOptions {
   reuse?: { dir: string; root: string; runsDir: string; workspace?: FakeWorkspace };
   log?: string[];
   cancelLean?: (runId: string) => Promise<unknown>;
+  /** Slice 2d: the model folder the workspace reads (default the Spyro fixture). */
+  source?: string;
+  /** Slice 2d: the run ids (item ids hash the run id: twin runs compare with the same one). */
+  newRunId?: () => string;
 }
 
 export interface Harness {
@@ -113,7 +117,7 @@ export function makeHarness(options: HarnessOptions = {}): Harness {
   const runsDir = options.reuse?.runsDir ?? path.join(dir, 'runs');
   mkdirSync(root, { recursive: true });
   const log = options.log ?? [];
-  const workspace = options.reuse?.workspace ?? new FakeWorkspace(root, { withFacts: options.withFacts ?? true, log });
+  const workspace = options.reuse?.workspace ?? new FakeWorkspace(root, { withFacts: options.withFacts ?? true, log, ...(options.source !== undefined ? { source: options.source } : {}) });
   const engine = new FakeEngine();
   const proposals = new FakeProposals(log);
   const sidecars = new FakeSidecars();
@@ -165,6 +169,7 @@ export function makeHarness(options: HarnessOptions = {}): Harness {
       }),
     log: () => undefined,
     ...(options.now !== undefined ? { now: options.now } : {}),
+    ...(options.newRunId !== undefined ? { newRunId: options.newRunId } : {}),
   };
   const manager = createRunManager({ root, runsDir, workspace, services, settings });
   const views: RunView[] = [];
@@ -233,6 +238,34 @@ export const state =
   (v: RunView): boolean =>
     states.includes(v.state);
 
+/** Slice 2d: the session's phase (`RunView.session.phase`). */
+export const phase =
+  (...phases: NonNullable<RunView['session']>['phase'][]) =>
+  (v: RunView): boolean =>
+    v.session !== undefined && phases.includes(v.session.phase);
+
+/** Slice 2d: the stage is open, and no judge or write is pending (the session view says it is not judging). */
+export function waitForStage(manager: RunManager, stage?: number, timeoutMs = 15_000): Promise<RunView> {
+  return waitForRun(
+    manager,
+    (v) => v.session?.phase === 'stage' && (stage === undefined || v.session.stage === stage) && manager.session()?.judging === false,
+    timeoutMs,
+    `stage ${stage ?? 'any'}`,
+  );
+}
+
+/** Slice 2d: run.json as written now (the raw view keeps the activity and notices a session's RunView withholds). */
+export function rawRun(harness: Pick<Harness, 'shadow'>): PersistedRun {
+  return readJson<PersistedRun>(harness.shadow().paths.stateFile);
+}
+
+/** Slice 2d: one step of the session as run.json holds it. */
+export function rawStep(harness: Pick<Harness, 'shadow'>, id: string): PersistedStep {
+  const s = rawRun(harness).session?.steps.find((x) => x.id === id);
+  if (s === undefined) throw new Error(`no step ${id}`);
+  return s;
+}
+
 /** The reading-A question of docs/m2-plan.md section 10.2. */
 export const ASK_MODALITY: AskUserArgs = {
   questions: [
@@ -274,7 +307,7 @@ export const step = {
 
 /** One turn matched to the round-1 context bundle. */
 export function round1(...steps: FakeStep[]): FakeScriptTurn {
-  return { match: 'Run: "These suffice"', steps };
+  return { match: 'Run: "Formalize for dependencies"', steps };
 }
 
 export function loadWalkthrough(name: string): FakeScriptFile & Record<string, unknown> {

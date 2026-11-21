@@ -1,0 +1,10 @@
+
+ RUN  v5.0.5 /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/snap1c2/packages/runner
+
+
+ Test Files  60 passed (60)
+      Tests  571 passed | 1 skipped (572)
+   Start at  07:52:00
+   Duration  495.38s (tests 99%, import 1%)
+
+495.60 s, 178232 KB max

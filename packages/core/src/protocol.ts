@@ -23,20 +23,41 @@
  *   run            the root's current run (RunView) or null
  *   proposal       the current run's proposal (ProposalView) or null
  * webview -> host
- *   startRun                                                    tray "These suffice ▶" / "Self-evident?"
+ *   startRun                                                    Formalize for dependencies (spec v4.1 ES-2; the
+ *                                                               Context Menu section and the right-click menu)
  *   answerQuestions, cancelRun, resumeRun, dismissRun           the run panel
  *   acceptProposal, feedback, discardProposal, openProposalDiff the review
  *   adoptGhost, rejectGhost                                     "Claude suggests" cards
  *   kindChange gains `confirmedDependents` (carry-over 3)
  *
+ * Spec v4, slice 1b (docs/slice1-plan.md 2.5), arrows as board edits (answered with `actionResult`, like the others):
+ * webview -> host
+ *   addArrows, removeArrows, setFromNothing, claimPending, moveCards
+ * Slice 1f: `removeArrows` gains `marks` (one Delete of arrows and "follows from nothing" marks is one Undo step). While
+ * a run of the model folder is active, the host refuses every board edit, Undo, Redo and History revert (core
+ * `EDIT_SESSION_ACTIVE`, ES-9), before planning.
+ *
+ * Slice 2, the review list (docs/slice2-plan.md 2.4; types and validators in 2c1, routing in 2d-2f): an edit session.
+ * host -> webview
+ *   session        the root's current session view (SessionView, built by core `buildSessionView`) or null
+ * webview -> host (each in RUN_MESSAGE_TYPES, so the ES-9 lock never refuses it; answered with `actionResult`)
+ *   formalize                                                   a start, or a mid-stage Formalize (`runId` and `stage`)
+ *   decideItems, revealResult, sessionUndo, sessionRedo         decisions, Show results, the session stack
+ *   submitReview, endSession, retryStep                         Submit review, Apply / Exit / Back to review, Retry step
+ *   openSessionDiff, moveProposed                               the raw Lean diff, moves on the Proposed view
+ * While a step runs the runner refuses every one of them but `endSession` with `exit` (D2-62).
+ *
  * `diagnostic` is the webview's own log channel (CSP violations, the "rendered" summary the smoke test asserts on).
  * Inbound messages are validated by hand-written guards (no dependencies, so the module stays usable in the webview
  * bundle under a strict CSP). The host treats everything from the webview as untrusted.
  */
-import type { ActionOutcome, EditableField, HistoryListing, WorkspaceState } from './actions.js';
+import type { ActionOutcome, ArrowEnds, EditableField, HistoryListing, WorkspaceState } from './actions.js';
+import type { CanvasPosition } from './layout.js';
 import type { Evidential, NodeType, Range, Stance, TlGraph } from './model.js';
 import { EVIDENTIALS, isNodeType, STANCES } from './model.js';
 import { isSubjectName } from './paths.js';
+import type { DeclineOption, ItemDecision } from './review/types.js';
+import type { SessionView } from './review/view.js';
 import type { AnswerChoiceView, DecisionScope, ProposalView, QuestionAnswer, RunView } from './run.js';
 import { DECISION_SCOPES } from './run.js';
 
@@ -65,6 +86,12 @@ export type NoticeMessage = Envelope<'notice', { id: string; level: NoticeLevel;
 export type RunMessage = Envelope<'run', { run: RunView | null }>;
 /** M2: the current run's proposal (state `review`), or null when there is none. Posted when it is built or cleared. */
 export type ProposalMessage = Envelope<'proposal', { proposal: ProposalView | null }>;
+/**
+ * Slice 2 (docs/slice2-plan.md 2.4): the root's current edit session (SessionView, masked while the results are
+ * hidden), or null. Posted on `ready` and whenever the session itself changes (items, statuses, phase, step states, the
+ * reveal, the stack, drift, the heading, judging, the confirmation); a step's progress reaches the webview only by `run`.
+ */
+export type SessionMessage = Envelope<'session', { session: SessionView | null }>;
 
 export type HostToWebviewMessage =
   | GraphMessage
@@ -73,7 +100,8 @@ export type HostToWebviewMessage =
   | ActionResultMessage
   | NoticeMessage
   | RunMessage
-  | ProposalMessage;
+  | ProposalMessage
+  | SessionMessage;
 
 // ---------- webview -> host ----------
 
@@ -81,7 +109,7 @@ export type ReadyMessage = Envelope<'ready', { lastVersion: number | null }>;
 /**
  * The user dropped a card on another column (D-11). `beforeId` is the card it was dropped above (null = end).
  * `dependents` answers the confirm dialog when the change removes a `.holds` that others use; `rationale` is the
- * optional "why do you hold it?" of a change to Assumption.
+ * optional "why do you hold it?" of a change to Axiom.
  */
 export type KindChangeMessage = Envelope<
   'kindChange',
@@ -111,6 +139,11 @@ export type AddNodeMessage = Envelope<
     rationale?: string;
     stance?: Stance;
     source?: Evidential;
+    /**
+     * Spec v4 BD-3, BD-8, CM-7 (slice 1c): a new proposition's place on the canvas (finite numbers within
+     * ±LIMITS.coordinate), stored with the card; ignored for an axiom.
+     */
+    position?: CanvasPosition;
   }
 >;
 export type SelectMessage = Envelope<'select', { ids: string[] }>;
@@ -147,14 +180,38 @@ export type CopyTextMessage = Envelope<'copyText', { text: string }>;
 export type OpenInEditorMessage = Envelope<'openInEditor', { file: string; range?: Range }>;
 export type RefreshMessage = Envelope<'refresh', Record<string, never>>;
 
+// ---------- webview -> host, spec v4 slice 1b: arrows (docs/slice1-plan.md 2.4 and 2.5) ----------
+
+/**
+ * Draws arrows from `sources` into `target` (AR-1). Into an axiom it becomes a proposition (AR-6): when established
+ * cards rest on it the host answers `needs-confirmation` with the impact, unless `confirmed` (the user saw it).
+ */
+export type AddArrowsMessage = Envelope<'addArrows', { target: string; sources: string[]; confirmed?: boolean; requestId?: string }>;
+/**
+ * Removes arrows (AR-1). A proof that uses one: `needs-confirmation` (A16) unless `confirmed`. Slice 1f (carry-over 2):
+ * `marks` names the cards whose "follows from nothing" mark goes with them, so one Delete is one Undo step; `arrows`
+ * may then be empty (one of the two lists is not).
+ */
+export type RemoveArrowsMessage = Envelope<'removeArrows', { arrows: ArrowEnds[]; marks?: string[]; confirmed?: boolean; requestId?: string }>;
+/** Marks a card "follows from nothing" (AR-5) or removes the mark; `on` an axiom makes it a proposition (AR-6), as `addArrows` does. */
+export type SetFromNothingMessage = Envelope<'setFromNothing', { id: string; on: boolean; confirmed?: boolean; requestId?: string }>;
+/** "Mark pending" (AR-8): `axiom n.holds : n` for a proposition with a Lean statement and no `.holds`. */
+export type ClaimPendingMessage = Envelope<'claimPending', { id: string; requestId?: string }>;
+/** Stores canvas positions of propositions (BD-3; layout only, one Undo step). */
+export type MoveCardsMessage = Envelope<'moveCards', { positions: Record<string, CanvasPosition>; requestId?: string }>;
+
 // ---------- webview -> host, M2: runs (docs/m2-plan.md section 6.3) ----------
 
 /**
- * "These suffice ▶" (premises not empty) or "Self-evident?" (premises empty): after egress consent the host's
- * RunManager runs preflight, then declares the premises as the target's support (M1 `set-premises`, undoable; skipped
- * for an empty list or an unchanged one; never when preflight refused), then starts a Claude run proving `target` from
- * exactly `premises` (D-5). Refused (`conflict`) while another run of this root is active. Answered with
- * `actionResult` (ok once the run started; failures name the preflight problem).
+ * Formalize for dependencies (spec v4.1 ES-2, one target in slice 1, AP-9): `premises` are the sources of the arrows the
+ * user selected into `target` (empty: the target's "follows from nothing" mark was selected). Slice 1e: the host first
+ * applies the board edits that reached it before this message, then checks the request against the files (core
+ * `formalizeStartProblem`: every premise the source of an arrow drawn into the target, or no premises for a target
+ * marked "follows from nothing"; every proposition premise with a `.holds`; no cycle of arrows anywhere in the subject,
+ * named (since 2b2: AP-29, G2); refused `invalid`), then asks for egress consent; the RunManager runs preflight and starts a Claude run
+ * proving `target` from exactly `premises` (D-5). Nothing declares premises any more (M2's `set-premises` at start is
+ * gone: the arrows are in the files). Refused (`conflict`) while another run of this root is active. Answered with
+ * `actionResult` (ok once the run started; failures name the problem).
  */
 export type StartRunMessage = Envelope<'startRun', { target: string; premises: string[]; requestId?: string }>;
 /** Answers a pending ask_user batch (every question of the batch exactly once). */
@@ -165,23 +222,53 @@ export type CancelRunMessage = Envelope<'cancelRun', { runId: string; requestId?
 export type ResumeRunMessage = Envelope<'resumeRun', { runId: string; requestId?: string }>;
 /**
  * Accept (D-21, all-or-nothing): applies the reviewed proposal to the real files through the M1 history/undo path.
- * `lifecycle` = ids of the lifecycle items the user ticked; `definitions` = ids of the definition questions answered
- * "yes" (all of them are required: a "no" is Feedback, not Accept).
+ * `definitions` = ids of the definition questions answered "yes" (all of them are required: a "no" is Feedback, not
+ * Accept). (Spec v4 removed the lifecycle items and their `lifecycle` ids: docs/slice1-plan.md 2.6.) Spec v4 ES-7
+ * (slice 1f): refused (`conflict`, naming the files) while the user's files differ from the run's base.
  */
-export type AcceptProposalMessage = Envelope<
-  'acceptProposal',
-  { runId: string; proposalId: string; lifecycle: string[]; definitions: string[]; requestId?: string }
->;
+export type AcceptProposalMessage = Envelope<'acceptProposal', { runId: string; proposalId: string; definitions: string[]; requestId?: string }>;
 /** Feedback (D-21): continues the same Claude session with the user's text (a new round; statements may change). */
 export type FeedbackMessage = Envelope<'feedback', { runId: string; text: string; requestId?: string }>;
 export type DiscardProposalMessage = Envelope<'discardProposal', { runId: string; requestId?: string }>;
-/** "I hold this" (D-6): the ghost becomes an ASSUMPTION card in the shadow; telelean re-freezes and Claude re-proves. */
+/** "I hold this" (D-6): the ghost becomes an AXIOM card in the shadow; telelean re-freezes and Claude re-proves. */
 export type AdoptGhostMessage = Envelope<'adoptGhost', { runId: string; ghostId: string; rationale?: string; requestId?: string }>;
 export type RejectGhostMessage = Envelope<'rejectGhost', { runId: string; ghostId: string; requestId?: string }>;
 /** "Raw Lean diff…": VS Code's multi-file diff (`vscode.changes`) of the proposal, optionally focused on one file. */
 export type OpenProposalDiffMessage = Envelope<'openProposalDiff', { runId: string; proposalId: string; file?: string }>;
 /** Removes an ended run (terminal state) from the board. */
 export type DismissRunMessage = Envelope<'dismissRun', { runId: string }>;
+
+// ---------- webview -> host, slice 2: an edit session (docs/slice2-plan.md 2.4; routing in 2d-2f) ----------
+
+/**
+ * Formalize for dependencies with one or more targets (ES-1, RV-9): each target with the sources of the arrows selected
+ * into it (empty: its "follows from nothing" mark). Without `runId` and `stage` it starts a session; with both, it is
+ * a mid-stage Formalize of that session's current stage. `startRun` stays, as a one-inference `formalize`, until 2h.
+ */
+export type FormalizeMessage = Envelope<'formalize', { inferences: Array<{ target: string; premises: string[] }>; runId?: string; stage?: number; requestId?: string }>;
+/**
+ * Decisions on review items (RV-3, RV-8, DO-0/1/3). `own`: the item's own Accept (the detail's Accept, never a group,
+ * D2-32), so only with exactly one decision. `confirmed`: the user saw the cascade that `needs-confirmation` listed.
+ */
+export type DecideItemsMessage = Envelope<'decideItems', { runId: string; stage: number; own: boolean; decisions: ItemDecision[]; confirmed?: boolean; requestId?: string }>;
+/** Show results (RV-6, D2-61): every Result of the stage, from the dialog (`show-result`) or "Show Claude's activity". */
+export type RevealResultMessage = Envelope<'revealResult', { runId: string; stage: number; via: 'show-result' | 'activity'; requestId?: string }>;
+/** Undo and Redo on the session stack (UN-4): `step` is the SessionAction id the user saw (`SessionView.undo.step`). */
+export type SessionUndoMessage = Envelope<'sessionUndo', { runId: string; step: number; confirmed?: boolean; requestId?: string }>;
+export type SessionRedoMessage = Envelope<'sessionRedo', { runId: string; step: number; confirmed?: boolean; requestId?: string }>;
+/** Submit review (RV-12). */
+export type SubmitReviewMessage = Envelope<'submitReview', { runId: string; stage: number; requestId?: string }>;
+/** The end (EN-1-EN-4): `apply` with the stage and the final check's id it shows; `back` to review with the stage; `exit`. */
+export type EndSessionMessage = Envelope<'endSession', { runId: string; decision: 'apply' | 'exit' | 'back'; stage?: number; check?: string; requestId?: string }>;
+/** Retry step (ES-4): runs the cancelled or failed step and the steps its queue dropped. */
+export type RetryStepMessage = Envelope<'retryStep', { runId: string; requestId?: string }>;
+/**
+ * "Raw Lean diff…" of the session, optionally focused on one file. While the results are hidden the host opens it only
+ * with `confirmed` (it shows every proof, so it counts as Show results); otherwise `needs-confirmation` with `reveal`.
+ */
+export type OpenSessionDiffMessage = Envelope<'openSessionDiff', { runId: string; stage: number; confirmed?: boolean; file?: string; requestId?: string }>;
+/** Moves on the Proposed view (UN-4, D2-33): one session-stack step; Apply writes them, Exit drops them. */
+export type MoveProposedMessage = Envelope<'moveProposed', { runId: string; positions: Record<string, CanvasPosition>; requestId?: string }>;
 
 export type WebviewToHostMessage =
   | ReadyMessage
@@ -205,6 +292,11 @@ export type WebviewToHostMessage =
   | CopyTextMessage
   | OpenInEditorMessage
   | RefreshMessage
+  | AddArrowsMessage
+  | RemoveArrowsMessage
+  | SetFromNothingMessage
+  | ClaimPendingMessage
+  | MoveCardsMessage
   | StartRunMessage
   | AnswerQuestionsMessage
   | CancelRunMessage
@@ -215,9 +307,36 @@ export type WebviewToHostMessage =
   | AdoptGhostMessage
   | RejectGhostMessage
   | OpenProposalDiffMessage
-  | DismissRunMessage;
+  | DismissRunMessage
+  | FormalizeMessage
+  | DecideItemsMessage
+  | RevealResultMessage
+  | SessionUndoMessage
+  | SessionRedoMessage
+  | SubmitReviewMessage
+  | EndSessionMessage
+  | RetryStepMessage
+  | OpenSessionDiffMessage
+  | MoveProposedMessage;
 
-/** M2: the webview messages that act on a run (the extension routes them to the root's RunManager). */
+/**
+ * Slice 2 (docs/slice2-plan.md 2.4): the webview messages of an edit session. Each is a run message (below), so the
+ * ES-9 lock never refuses it; the runner refuses all of them but `endSession` with `exit` while a step runs (D2-62).
+ */
+export const SESSION_MESSAGE_TYPES = [
+  'formalize',
+  'decideItems',
+  'revealResult',
+  'sessionUndo',
+  'sessionRedo',
+  'submitReview',
+  'endSession',
+  'retryStep',
+  'openSessionDiff',
+  'moveProposed',
+] as const;
+
+/** M2: the webview messages that act on a run (the extension routes them to the root's RunManager); slice 2's too. */
 export const RUN_MESSAGE_TYPES = [
   'startRun',
   'answerQuestions',
@@ -230,6 +349,7 @@ export const RUN_MESSAGE_TYPES = [
   'rejectGhost',
   'openProposalDiff',
   'dismissRun',
+  ...SESSION_MESSAGE_TYPES,
 ] as const;
 
 export type WebviewToHostType = WebviewToHostMessage['type'];
@@ -267,13 +387,23 @@ export const LIMITS = {
   keepLastMax: 100_000,
   /** M2: ask_user batches hold 1-3 questions (D-20). */
   answersPerBatch: 3,
-  /** M2: ticked lifecycle items / approved definitions per Accept. */
+  /** M2: approved definitions per Accept. */
   reviewItems: 200,
+  /** Spec v4 slice 1b: a canvas coordinate (`moveCards`) lies within ± this. */
+  coordinate: 1_000_000,
+  /** Slice 2 (docs/slice2-plan.md 2.4): the targets of one `formalize`. */
+  inferences: 50,
+  /** Slice 2: the decisions of one `decideItems`. */
+  decisions: 500,
+  /** Slice 2: the highest review stage a message may name (`stage` is 0 to this). */
+  stages: 10_000,
+  /** Slice 2: the highest item rev a decision, and SessionAction id an Undo or Redo, may name (each 0 to this). */
+  revision: 1_000_000,
 } as const;
 
 /** M2: run ids double as runLean scope groups (`telelean-<runId>-<n>`). */
 export const RUN_ID_PATTERN = /^[A-Za-z0-9_]{1,64}$/;
-/** M2: host-generated ids of question sets, proposals, ghosts, lifecycle items and definition questions. */
+/** M2: host-generated ids of question sets, proposals, ghosts and definition questions. */
 export const RUN_TOKEN_PATTERN = /^[A-Za-z0-9_.-]{1,64}$/;
 
 const DIAGNOSTIC_LEVELS: readonly DiagnosticLevel[] = ['info', 'warn', 'error'];
@@ -324,7 +454,7 @@ function dataKey(key: string): string {
 }
 
 function nodeType(value: unknown, what: string): NodeType {
-  if (!isNodeType(value)) fail(`${what} must be ASSUMPTION, DERIVATION or GOAL`);
+  if (!isNodeType(value)) fail(`${what} must be AXIOM or PROPOSITION`);
   return value;
 }
 
@@ -394,6 +524,59 @@ function range(value: unknown, what: string): Range {
   return { start: position(r.start, `${what}.start`), end: position(r.end, `${what}.end`) };
 }
 
+// ---------- spec v4 slice 1b: arrows ----------
+
+/** `{ confirmed }` when present (`{}` otherwise, so spreading it adds no property). */
+function confirmedFlag(value: unknown): { confirmed?: boolean } {
+  return value === undefined ? {} : { confirmed: bool(value, 'payload.confirmed') };
+}
+
+/** Up to LIMITS.listLength distinct arrows, each between two different cards (the caller decides whether none is fine). */
+function arrowList(value: unknown, what: string): ArrowEnds[] {
+  if (!Array.isArray(value)) fail(`${what} must be an array`);
+  if (value.length > LIMITS.listLength) fail(`${what} has more than ${LIMITS.listLength} entries`);
+  const seen = new Set<string>();
+  return value.map((entry, i) => {
+    const a = record(entry, `${what}[${i}]`);
+    const source = id(a.source, `${what}[${i}].source`);
+    const target = id(a.target, `${what}[${i}].target`);
+    if (source === target) fail(`${what}[${i}] must join two different cards`);
+    const key = JSON.stringify([source, target]);
+    if (seen.has(key)) fail(`${what} lists the arrow "${source}" -> "${target}" more than once`);
+    seen.add(key);
+    return { source, target };
+  });
+}
+
+/** A canvas coordinate: a finite number within ±LIMITS.coordinate. */
+function coordinate(value: unknown, what: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || Math.abs(value) > LIMITS.coordinate) {
+    fail(`${what} must be a finite number from -${LIMITS.coordinate} to ${LIMITS.coordinate}`);
+  }
+  return value;
+}
+
+/** One position on the canvas: `{ x, y }`, two coordinates within ±LIMITS.coordinate. */
+function canvasPoint(value: unknown, what: string): CanvasPosition {
+  const p = record(value, what);
+  return { x: coordinate(p.x, `${what}.x`), y: coordinate(p.y, `${what}.y`) };
+}
+
+/** 1 to LIMITS.listLength card positions, by card id (never a "__proto__" key: plain-object assignment treats it specially). */
+function positionMap(value: unknown, what: string): Record<string, CanvasPosition> {
+  const raw = record(value, what);
+  const entries = Object.entries(raw);
+  if (entries.length === 0) fail(`${what} must not be empty`);
+  if (entries.length > LIMITS.listLength) fail(`${what} has more than ${LIMITS.listLength} entries`);
+  const out: Record<string, CanvasPosition> = {};
+  for (const [key, entry] of entries) {
+    const node = id(key, `${what} keys`);
+    if (node === '__proto__') fail(`${what} must not have a "__proto__" key`);
+    out[node] = canvasPoint(entry, `${what}.${node}`);
+  }
+  return out;
+}
+
 // ---------- M2 run helpers ----------
 
 function runId(value: unknown, what: string): string {
@@ -450,6 +633,89 @@ function answerList(value: unknown, what: string): QuestionAnswer[] {
     seen.add(question);
     if (!DECISION_SCOPES.includes(a.scope as DecisionScope)) fail(`${what}[${i}].scope must be one of ${DECISION_SCOPES.join(', ')}`);
     return { question, choice: answerChoice(a.choice, `${what}[${i}].choice`), scope: a.scope as DecisionScope };
+  });
+}
+
+// ---------- slice 2: an edit session (docs/slice2-plan.md 2.4) ----------
+
+/** A review stage: an integer from 0 to LIMITS.stages (the host refuses one that is not the current stage). */
+function stageOf(value: unknown, what: string): number {
+  return int(value, what, 0, LIMITS.stages);
+}
+
+const DECISION_TARGETS: ReadonlyArray<ItemDecision['to']> = ['accepted', 'declined', 'in-review'];
+const DECLINE_OPTIONS: readonly DeclineOption[] = ['plain', 'reject', 'shaky', 'transform'];
+
+/**
+ * A Formalize's targets: 1 to LIMITS.inferences, distinct, each with its distinct premises (the sources of the selected
+ * arrows; none for its "follows from nothing" mark), a target never among its own premises, LIMITS.listLength premises
+ * in all. Another target may be a premise (a chain, sources first).
+ */
+function inferenceList(value: unknown, what: string): Array<{ target: string; premises: string[] }> {
+  if (!Array.isArray(value)) fail(`${what} must be an array`);
+  if (value.length === 0 || value.length > LIMITS.inferences) fail(`${what} must hold 1 to ${LIMITS.inferences} targets`);
+  const seen = new Set<string>();
+  let total = 0;
+  return value.map((entry, i) => {
+    const e = record(entry, `${what}[${i}]`);
+    const target = id(e.target, `${what}[${i}].target`);
+    if (seen.has(target)) fail(`${what} names the target "${target}" more than once`);
+    seen.add(target);
+    const premises = ids(e.premises, `${what}[${i}].premises`);
+    if (premises.includes(target)) fail(`${what}[${i}].target must not also be one of its premises`);
+    total += premises.length;
+    if (total > LIMITS.listLength) fail(`${what} has more than ${LIMITS.listLength} premises in all`);
+    return { target, premises };
+  });
+}
+
+/**
+ * One decision (ItemDecision, §2.4): `option` required with `declined`, and only there; `note` only with `shaky` (may span
+ * lines, dropped when blank); `holdAs` only with `accepted`; `rationale` only with `holdAs` (one line, dropped when blank).
+ */
+function decision(value: unknown, what: string): ItemDecision {
+  const d = record(value, what);
+  const item = token(d.item, `${what}.item`);
+  const rev = int(d.rev, `${what}.rev`, 0, LIMITS.revision);
+  const to = d.to as ItemDecision['to'];
+  if (!DECISION_TARGETS.includes(to)) fail(`${what}.to must be accepted, declined or in-review`);
+  let option: DeclineOption | undefined;
+  if (to === 'declined') {
+    if (!DECLINE_OPTIONS.includes(d.option as DeclineOption)) fail(`${what}.option must be one of ${DECLINE_OPTIONS.join(', ')} (a decline needs one)`);
+    option = d.option as DeclineOption;
+  } else if (d.option !== undefined) fail(`${what}.option is only for a decline`);
+  let note: string | undefined;
+  if (d.note !== undefined) {
+    if (option !== 'shaky') fail(`${what}.note is only for a Shaky decline`);
+    const text = str(d.note, `${what}.note`, LIMITS.textLength, true);
+    if (text.trim() !== '') note = text;
+  }
+  let holdAs: 'axiom' | 'pending' | undefined;
+  if (d.holdAs !== undefined) {
+    if (to !== 'accepted') fail(`${what}.holdAs is only for an Accept`);
+    if (d.holdAs !== 'axiom' && d.holdAs !== 'pending') fail(`${what}.holdAs must be "axiom" or "pending"`);
+    holdAs = d.holdAs;
+  }
+  let rationale: string | undefined;
+  if (d.rationale !== undefined) {
+    if (holdAs === undefined) fail(`${what}.rationale is only for an Accept with holdAs`);
+    const text = str(d.rationale, `${what}.rationale`, LIMITS.textLength, true).trim();
+    if (/[\r\n]/.test(text)) fail(`${what}.rationale must be a single line`);
+    if (text !== '') rationale = text;
+  }
+  return { item, rev, to, ...(option !== undefined ? { option } : {}), ...(note !== undefined ? { note } : {}), ...(holdAs !== undefined ? { holdAs } : {}), ...(rationale !== undefined ? { rationale } : {}) };
+}
+
+/** 1 to LIMITS.decisions decisions, no item twice. */
+function decisionList(value: unknown, what: string): ItemDecision[] {
+  if (!Array.isArray(value)) fail(`${what} must be an array`);
+  if (value.length === 0 || value.length > LIMITS.decisions) fail(`${what} must hold 1 to ${LIMITS.decisions} decisions`);
+  const seen = new Set<string>();
+  return value.map((entry, i) => {
+    const one = decision(entry, `${what}[${i}]`);
+    if (seen.has(one.item)) fail(`${what} decides "${one.item}" more than once`);
+    seen.add(one.item);
+    return one;
   });
 }
 
@@ -516,6 +782,7 @@ export function parseWebviewToHost(raw: unknown): ParseResult<WebviewToHostMessa
           ...(rationale ? { rationale } : {}),
           ...(p.stance !== undefined ? { stance: stance(p.stance, 'payload.stance') } : {}),
           ...(p.source !== undefined ? { source: evidential(p.source, 'payload.source') } : {}),
+          ...(p.position !== undefined ? { position: canvasPoint(p.position, 'payload.position') } : {}),
         });
       }
       case 'select':
@@ -628,6 +895,26 @@ export function parseWebviewToHost(raw: unknown): ParseResult<WebviewToHostMessa
         });
       case 'refresh':
         return webviewMessage('refresh', {});
+      // ---- spec v4 slice 1b: arrows ----
+      case 'addArrows': {
+        const target = id(p.target, 'payload.target');
+        const sources = ids(p.sources, 'payload.sources');
+        if (sources.length === 0) fail('payload.sources must not be empty');
+        if (sources.includes(target)) fail('payload.sources must not include the target');
+        return webviewMessage('addArrows', { target, sources, ...confirmedFlag(p.confirmed), ...requestId(p.requestId) });
+      }
+      case 'removeArrows': {
+        const arrows = arrowList(p.arrows, 'payload.arrows');
+        const marks = p.marks === undefined ? undefined : ids(p.marks, 'payload.marks');
+        if (arrows.length === 0 && (marks?.length ?? 0) === 0) fail('payload.arrows must not be empty (or payload.marks must name a card)');
+        return webviewMessage('removeArrows', { arrows, ...(marks ? { marks } : {}), ...confirmedFlag(p.confirmed), ...requestId(p.requestId) });
+      }
+      case 'setFromNothing':
+        return webviewMessage('setFromNothing', { id: id(p.id, 'payload.id'), on: bool(p.on, 'payload.on'), ...confirmedFlag(p.confirmed), ...requestId(p.requestId) });
+      case 'claimPending':
+        return webviewMessage('claimPending', { id: id(p.id, 'payload.id'), ...requestId(p.requestId) });
+      case 'moveCards':
+        return webviewMessage('moveCards', { positions: positionMap(p.positions, 'payload.positions'), ...requestId(p.requestId) });
       // ---- M2 runs ----
       case 'startRun': {
         const premises = ids(p.premises, 'payload.premises');
@@ -650,7 +937,6 @@ export function parseWebviewToHost(raw: unknown): ParseResult<WebviewToHostMessa
         return webviewMessage('acceptProposal', {
           runId: runId(p.runId, 'payload.runId'),
           proposalId: token(p.proposalId, 'payload.proposalId'),
-          lifecycle: tokens(p.lifecycle, 'payload.lifecycle', LIMITS.reviewItems),
           definitions: tokens(p.definitions, 'payload.definitions', LIMITS.reviewItems),
           ...requestId(p.requestId),
         });
@@ -678,6 +964,64 @@ export function parseWebviewToHost(raw: unknown): ParseResult<WebviewToHostMessa
         });
       case 'dismissRun':
         return webviewMessage('dismissRun', { runId: runId(p.runId, 'payload.runId') });
+      // ---- slice 2: an edit session (docs/slice2-plan.md 2.4) ----
+      case 'formalize': {
+        const inferences = inferenceList(p.inferences, 'payload.inferences');
+        if ((p.runId === undefined) !== (p.stage === undefined)) fail('payload.runId and payload.stage go together (a mid-stage Formalize) or not at all (a start)');
+        return webviewMessage('formalize', {
+          inferences,
+          ...(p.runId !== undefined ? { runId: runId(p.runId, 'payload.runId'), stage: stageOf(p.stage, 'payload.stage') } : {}),
+          ...requestId(p.requestId),
+        });
+      }
+      case 'decideItems': {
+        const decisions = decisionList(p.decisions, 'payload.decisions');
+        const own = bool(p.own, 'payload.own');
+        if (own && decisions.length !== 1) fail("payload.own may be true only with exactly one decision (an item's own Accept)");
+        return webviewMessage('decideItems', {
+          runId: runId(p.runId, 'payload.runId'),
+          stage: stageOf(p.stage, 'payload.stage'),
+          own,
+          decisions,
+          ...confirmedFlag(p.confirmed),
+          ...requestId(p.requestId),
+        });
+      }
+      case 'revealResult': {
+        if (p.via !== 'show-result' && p.via !== 'activity') fail('payload.via must be "show-result" or "activity"');
+        return webviewMessage('revealResult', { runId: runId(p.runId, 'payload.runId'), stage: stageOf(p.stage, 'payload.stage'), via: p.via, ...requestId(p.requestId) });
+      }
+      case 'sessionUndo':
+        return webviewMessage('sessionUndo', { runId: runId(p.runId, 'payload.runId'), step: int(p.step, 'payload.step', 0, LIMITS.revision), ...confirmedFlag(p.confirmed), ...requestId(p.requestId) });
+      case 'sessionRedo':
+        return webviewMessage('sessionRedo', { runId: runId(p.runId, 'payload.runId'), step: int(p.step, 'payload.step', 0, LIMITS.revision), ...confirmedFlag(p.confirmed), ...requestId(p.requestId) });
+      case 'submitReview':
+        return webviewMessage('submitReview', { runId: runId(p.runId, 'payload.runId'), stage: stageOf(p.stage, 'payload.stage'), ...requestId(p.requestId) });
+      case 'endSession': {
+        const decision = p.decision;
+        if (decision !== 'apply' && decision !== 'exit' && decision !== 'back') fail('payload.decision must be "apply", "exit" or "back"');
+        if (decision === 'exit' && (p.stage !== undefined || p.check !== undefined)) fail('payload.stage and payload.check are not for an exit');
+        if (decision === 'back' && p.check !== undefined) fail('payload.check is only for apply');
+        return webviewMessage('endSession', {
+          runId: runId(p.runId, 'payload.runId'),
+          decision,
+          ...(decision !== 'exit' ? { stage: stageOf(p.stage, 'payload.stage') } : {}),
+          ...(decision === 'apply' ? { check: token(p.check, 'payload.check') } : {}),
+          ...requestId(p.requestId),
+        });
+      }
+      case 'retryStep':
+        return webviewMessage('retryStep', { runId: runId(p.runId, 'payload.runId'), ...requestId(p.requestId) });
+      case 'openSessionDiff':
+        return webviewMessage('openSessionDiff', {
+          runId: runId(p.runId, 'payload.runId'),
+          stage: stageOf(p.stage, 'payload.stage'),
+          ...confirmedFlag(p.confirmed),
+          ...(p.file !== undefined ? { file: relativePath(p.file, 'payload.file') } : {}),
+          ...requestId(p.requestId),
+        });
+      case 'moveProposed':
+        return webviewMessage('moveProposed', { runId: runId(p.runId, 'payload.runId'), positions: positionMap(p.positions, 'payload.positions'), ...requestId(p.requestId) });
       default:
         return fail(`unknown message type "${type}"`);
     }
@@ -746,6 +1090,16 @@ export function parseHostToWebview(raw: unknown): ParseResult<HostToWebviewMessa
         const graph = record(proposal.graph, 'payload.proposal.graph');
         if (!Array.isArray(graph.nodes) || !Array.isArray(graph.edges)) fail('payload.proposal.graph needs nodes and edges arrays');
         return hostMessage('proposal', { proposal: proposal as unknown as ProposalView });
+      }
+      case 'session': {
+        if (payload.session === null) return hostMessage('session', { session: null });
+        const session = record(payload.session, 'payload.session');
+        if (typeof session.runId !== 'string' || typeof session.stage !== 'number' || typeof session.phase !== 'string') fail('payload.session needs runId, stage and phase');
+        if (!Array.isArray(session.items) || !Array.isArray(session.inferences) || !Array.isArray(session.steps)) fail('payload.session needs items, inferences and steps arrays');
+        const board = record(session.board, 'payload.session.board');
+        const graph = record(board.graph, 'payload.session.board.graph');
+        if (!Array.isArray(graph.nodes) || !Array.isArray(graph.edges)) fail('payload.session.board.graph needs nodes and edges arrays');
+        return hostMessage('session', { session: session as unknown as SessionView });
       }
       default:
         return fail(`unknown message type "${type}"`);

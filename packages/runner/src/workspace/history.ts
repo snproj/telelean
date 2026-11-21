@@ -89,6 +89,12 @@ const HISTORY_ACTIONS: ReadonlySet<string> = new Set<HistoryActionKind>([
   'reorder',
   'set-premises',
   'create-subject',
+  // Spec v4 slice 1b: arrows as board edits.
+  'add-arrows',
+  'remove-arrows',
+  'set-from-nothing',
+  'claim-pending',
+  'move-cards',
   'initial',
   'manual',
   'undo',

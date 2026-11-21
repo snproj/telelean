@@ -1,7 +1,7 @@
 {
   "name": "telelean",
   "displayName": "telelean",
-  "description": "Your mental model as a board of ASSUMPTION / DERIVATION / GOAL cards, backed by Lean 4 (personal prototype)",
+  "description": "Your mental model as a board of AXIOM and PROPOSITION cards, backed by Lean 4 (personal prototype)",
   "version": "0.0.1",
   "publisher": "telelean",
   "private": true,
@@ -102,7 +102,7 @@
           "type": "string",
           "default": "claude-opus-5-5",
           "scope": "resource",
-          "markdownDescription": "The Claude model a \"These suffice\" run uses (passed to your Claude Code as `--model`, e.g. `claude-opus-5-5` or an alias such as `opus`). Takes effect after a window reload (Developer: Reload Window)."
+          "markdownDescription": "The Claude model a \"Formalize for dependencies\" run uses (passed to your Claude Code as `--model`, e.g. `claude-opus-5-5` or an alias such as `opus`). Takes effect after a window reload (Developer: Reload Window)."
         },
         "telelean.effort": {
           "type": "string",
@@ -186,19 +186,19 @@
     },
     "colors": [
       {
-        "id": "telelean.kindAssumption",
-        "description": "Colour of ASSUMPTION cards and of the Assumptions column on the telelean board.",
+        "id": "telelean.kindAxiom",
+        "description": "Colour of axiom cards and of the Axioms column on the telelean board.",
         "defaults": { "dark": "#B180D7", "light": "#652D90", "highContrast": "#D2A8FF", "highContrastLight": "#5A1E8C" }
       },
       {
-        "id": "telelean.kindDerivation",
-        "description": "Colour of DERIVATION cards and of the Derivations column on the telelean board.",
-        "defaults": { "dark": "#89D185", "light": "#388A34", "highContrast": "#8FE38A", "highContrastLight": "#1F6B1C" }
+        "id": "telelean.kindProposition",
+        "description": "Colour of proposition cards and of the Propositions column on the telelean board.",
+        "defaults": { "dark": "#D18616", "light": "#A85F00", "highContrast": "#FFA94D", "highContrastLight": "#8F4A00" }
       },
       {
-        "id": "telelean.kindGoal",
-        "description": "Colour of GOAL cards and of the Goals column on the telelean board.",
-        "defaults": { "dark": "#D18616", "light": "#A85F00", "highContrast": "#FFA94D", "highContrastLight": "#8F4A00" }
+        "id": "telelean.proved",
+        "description": "Colour of what Lean proved on the telelean board (the glow of an established card, the band of a checked proof).",
+        "defaults": { "dark": "#73C991", "light": "#388A34", "highContrast": "#89D185", "highContrastLight": "#388A34" }
       },
       {
         "id": "telelean.formalizedAura",

@@ -14,6 +14,9 @@
  *      `set_option pp.fullNames true` and `pp.proofs false`, and per declaration `#check @N`, `#print N`,
  *      `#print axioms N` and `#check type_of% @N` (the sort of the type; an error there counts only for axioms and
  *      opaques); messages are attributed by line;
+ *   5b. slice 2b3a (docs/slice2-plan.md 2.1, D2-75): the isolated probe, its own Lean job right after the check
+ *      (./probeFile.ts): each declaration's `valueConsts` and `typeConsts`, read from the built modules as data, and the
+ *      job as the facts' marker (`LeanFacts.probe`); a probe that fails gives no constants and a check problem;
  *   6. re-hash the sources: modules whose source changed meanwhile are `stale`.
  *
  * FROZEN CONTRACT (M1). WP-semantic owns this file; additive optional fields only.

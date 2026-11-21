@@ -1,0 +1,110 @@
+{
+  "summary": "I fixed all 21 findings (1 blocker, 9 major, 11 minor) in /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/plans/slice3-plan.md, which is the only file I changed. I rejected none. Where a contract changed, every section that uses it was updated: the header, §0, the §1 order and §1.1 scopes, §2.1–§2.9 contracts, §3.1–§3.10, §4.2–§4.9, §5.2–§5.4, the §6.1 tests, the §6.2 cheats (now 1–22) and the §7.1 table. There are 8 new decisions, D3-41 to D3-48, each marked AUTOPILOT DECISION with its alternative and how to reverse it. 12 existing decisions were revised: D3-1, D3-4, D3-5, D3-8, D3-9, D3-10, D3-13, D3-19, D3-23, D3-36, D3-37 and D3-38. D3-40 also gained one line pointing to the new 3c1/3c2 split. §7.3 now lists D3-1 to D3-48. §8 has a dated \"review round 1\" entry that maps each finding to the sections and decisions it changed.\n\nThe main design changes:\n- **One subject per session:** steps change only the session's subject, the whole model open included. Other subjects' files keep their text and meaning (D3-41).\n- **Two-value rule:** at step purposes, a frozen value counts as broken only if it differs both from its frozen value and from its value at the step's start. This replaces the `inherited` bookkeeping (D3-5).\n- **madeAt:** a new per-key `madeAt` time decides which failures are fresh and when a step rolls back to its start, so a freeze restored by Undo during a step counts too.\n- **Accepted items:** an accepted item is recorded and checked exactly like your own freeze: its content key plus a held map.\n- **Ids:** one `ids` commit at session start writes every derived-id card's id. F then holds every id, and Apply's backstop runs on exactly F (D3-37).\n- **Decisions over frozen content:** one text-only check before every decision's write. A decline asks first; un-reject and the Undo or Redo of a decision are refused; an Add premise's Accept waits while its target's proof is frozen; the judge's own reverts become stage problems (D3-48).\n- **Whole-model fixes:**\n  - Content declined Shaky stays fixed.\n  - A step's own delete and proof-broken removals are exempt from \"other proofs stay fixed\".\n  - Every empty, unfrozen Lean statement of the subject may be filled.\n  - A new ledger `changed` entry records where a whole-model Change came from, so Submit knows which step reworks it.\n  - The new ledger kinds count only while their item's content is in the working copy.\n- **New build order:** 3a → 3p (the meaning probe, moved up) → 3b → 3d (3f beside it) → 3e1 (3g beside it) → FROZEN verified on its own → 3c1 → 3e2 → 3c2 → 3e3. \"Claude may add cards\" comes last, with a fallback to slice 4 logged in advance (D3-43).\n\nF7(b) is fixed using the critic's own alternative rather than its main suggestion. Submit and Retry steps keep their inference's switches, and before a queue with a whole-model step every kept Shaky or to-be-redone item is taken out. Under the main suggestion's narrow limits, a Shaky Change, Delete or new card from a whole-model step could not be reworked at all, so Shaky would act as a Reject (DO-3).\n\nF21 is fixed with a refusal that is wider than the critic's: a card with a Proof broken item cannot be re-proved in that session, whatever the item's status (D3-47). While fixing it I found and fixed a related gap: a `card:` item can turn from Formalize into Change or Delete within a session, so reconcile now takes the draft's kind for those items.",
+  "dispositions": [
+    {
+      "id": "F1",
+      "action": "fixed",
+      "note": "Added to §3.10's whole-model fixed list: every block, declaration and line of a file whose subjectOfPath is not the session's subject keeps its text and meaning, as under the preset. A change here that alters another subject's meaning is refused with the new token existing-changed/other-subject. G5's exception, the ids, delete_card, remove_arrow, mark_proof_broken and propose_arrow (D3-38) are limited to the session's subject, with a refusal text in §2.8 and ToolInput.subject. Also new: invariant 'One subject' in §3.1, D3-41 (alternative: snapshot every subject's freezes.json), cheat 17, and tests in 3c1 and 3e2."
+    },
+    {
+      "id": "F2",
+      "action": "fixed",
+      "note": "Applied the critic's fix. §3.4 step 4 is now the whole-state two-value rule at step purposes (only the expected value counts at stage, final and backstop). The S0 value comes from the same functions on stepStart, and for accepted items from computeItems on S0, memoised. For engine.complete's gate, S0 is the adopt commit. Deleted OwnFreeze.queue/step, JudgeInput.freezes.queue and FrozenCheck.inherited. The stage problem now names the owning item's origin. Updated §3.5, §3.8 and D3-5. Added the two requested tests (3a and 3d) and cheat 18."
+    },
+    {
+      "id": "F3",
+      "action": "fixed",
+      "note": "Took the critic's main fix rather than refusing Undo. SessionFreezes.madeAt is set by every freeze action, Undo or Redo that gives a key a standing or own reason, and is cleared when its last such reason goes. fresh is now 'madeAt later than since', and the S0 rollback triggers when any madeAt is later than the step's start. Updated §2.2, §2.3, §2.9 (FreezeTableEntry.madeAt), §3.4, §3.8, §5.3 and D3-19. Added cheat 10(d) and tests in 3a, 3b and 3d."
+    },
+    {
+      "id": "F4",
+      "action": "fixed",
+      "note": "ItemRecord.frozen is now { fingerprint, held, at }, with held = heldValue over the item's own declarations' meaning closure, its own names included. freezeAtAccept now maps item key to held map, and the premise write also sets held. Removed meaning, heldItems, step 3's accepted-items sub-bullet and the tokens new and item. Accepted items are checked exactly like own freezes. Updated D3-4 and added tests in 3a for the reconcile-return case and the same-SCC change."
+    },
+    {
+      "id": "F5",
+      "action": "fixed",
+      "note": "Applied the critic's fix. One 'ids' commit after base and before the first step-start (3e1; an older session gets it in its next queue-start write) writes every derived-id card's id: of the subject via a new core planIdWrites (3b). F then holds every id. Apply writes no id: line of its own and adds only freezes.json lines, and the backstop runs on exactly F. An empty Apply (D2-39) or Exit with ticks makes one board step 'Keep n freezes from the session', with freezes.json and the kept cards' ids. D3-37 revised, with the critic's alternative logged."
+    },
+    {
+      "id": "F6",
+      "action": "fixed",
+      "note": "One whole-state, text-only check before every decision's write: new AddressValue.text, HeldValue.text and core frozenChangesOf, run by the runner on the planned files with the table as the action would leave it. A decline or cascade answers needs-confirmation with freeze.frozenChanges and three choices: Unfreeze them and decline / Keep them frozen at your version (only when the write restores B's version) / Cancel. The choice is a message-level freeze; ItemDecision.freeze is gone. Un-reject and the Undo or Redo of a decision are refused while the list is non-empty. D3-36 now also gates a premise Accept, and propose_assumption, when the target's proof is frozen and the target is unproved. A due write that would still change frozen content fails closed. §3.5 states that the judge's reverts become stage problems. New D3-48; paths 19–22 in §6.2; tests in 3b and 3d."
+    },
+    {
+      "id": "F7",
+      "action": "fixed",
+      "note": "(a) and (c) as proposed: the whole-model fixed list now includes the content of items declined Shaky (and Transform from slice 4, RV-9), and exempts the step's own ledger delete and proof-broken removals. (b) is fixed with the critic's own alternative, not its main suggestion. Submit and Retry steps take their inference's switches, and planSubmit takes out every kept Shaky or to-be-redone item when any step of the queue is whole-model. Reason: under slice 2's narrow limits a Shaky Change, Delete or intermediate from a whole-model step cannot be reworked at all, because G5 and the tools are whole-model only, so Shaky would act as a Reject, against DO-3 and the user's 'time throughout the model' use. To keep this coherent I also added a ledger 'changed' entry, the origin of whole-model Change and vocabulary-change items, which Submit's affected inferences need. And the new ledger kinds count only while their item's content belongs in ws/, so the next normalise never redoes a take-out. Logged as D3-42, with the critic's main suggestion as the alternative."
+    },
+    {
+      "id": "F8",
+      "action": "fixed",
+      "note": "Applied the critic's main fix rather than narrowing. A whole-model step's fuzzyStatements are every card of the subject whose Lean statement is empty at S0 and not frozen (keep-empty wins), and normalise pins them. 'Filling now' now covers every empty statement, Why, stance or source that a running whole-model step may fill. Updated the ▾ text in §4.8 and the system prompt. No narrowing remains, so no decision was needed. Tests in 3c1 and 3e2."
+    },
+    {
+      "id": "F9",
+      "action": "fixed",
+      "note": "3c is split into 3c1 (the whole model open, including the three tool validators other than add_card) and 3c2 (Claude may add cards). 3e is split into 3e1 (the end and the ids commit), 3e2 (the whole model in the runner, plus the ▾'s Open the whole model) and 3e3 (add cards and its ▾ item). The order is 3a → 3p → 3b → 3d (3f beside it) → 3e1 (3g beside it) → FROZEN verified on its own (§6.3) → 3c1 → 3e2 → 3c2 → 3e3. The unfreezeRequestProblems stub moved into 3b. Pre-logged D3-43: if 3c2 or 3e3 still has a blocker or major after its fix rounds, 'Claude may add cards' moves to slice 4 with TR-7. Updated §0, §1, §1.1, §2.8, §2.9, §3.10, §4.8, §6, §7.1, D3-13 and D3-40."
+    },
+    {
+      "id": "F10",
+      "action": "fixed",
+      "note": "Logged D3-44 with the critic's recommended reading: board edits outside a session do not freeze. The reason given is that FROZEN 1 was written when fields could be edited only in the transform window (INITIATING 3), and D1 re-allowed board edits later; also, FROZEN 3 means such freezes would pile up as standing ones. Alternative logged: an edit-node plan adds a standing freeze in the same plan and Undo step. Referenced in the header, §3.1 and §1.1 3g; the user guide states it."
+    },
+    {
+      "id": "F11",
+      "action": "fixed",
+      "note": "All seven points. (1) §2.4: during a step, undo/redo name the top freeze action above the newest seal; session is posted after every freeze action; freeze-only changes never raise viewVersion. (2) SessionViewInput.running added. (3) The new fields that slice-2 code builds are optional (absent = no freezes) so everything compiles after 3a, and a 3d spy test checks every call site passes them. (4) 3a adds the set-freezes NotImplemented case in planAction, the webview HISTORY_ACTION_LABEL entry, the runner HISTORY_ACTIONS entry, and stub cases for any exhaustive switch on ledger kinds. (5) The re-ask behaviour change is listed in §0. (6) Freezes are plumbed into writePremise and complete (3d). (7) §3.6: during a step, a copy of the session with the new freezes goes through writeStateChecked inside the run's write chain, and only on success is the in-memory freezes set; a failed write refuses the action and changes nothing."
+    },
+    {
+      "id": "F12",
+      "action": "fixed",
+      "note": "J is defined as the base commit with the base facts during the session's first queue (§3.6, §3.8). Every judge-apply write re-runs frozenFindings (pure, no Lean) with the store as it is when the write is planned (§3.5). Separately, F17 now refuses freezing while judging. Tests in 3d."
+    },
+    {
+      "id": "F13",
+      "action": "fixed",
+      "note": "(a) Logged as D3-45: premise drafts cannot be frozen; alternative: freeze the draft's content on the draft and apply it at its write. (b) Logged as D3-46: no freezing while applying; alternative: queue the action until Apply ends. (c) Fixed rather than logged: the review item detail's field rows (Change, Add, Formalize) and a declaration's code and gloss get lock slots selecting {card, field} or {vocab, field} (§4.2, 3g). §3.9 and D3-9 now state the cost: unfreezing a holder lets Claude rewrite the holder too, so 'keep A's words but let X change' cannot be expressed."
+    },
+    {
+      "id": "F14",
+      "action": "fixed",
+      "note": "Rows are now whole-state, comparing the end state with the start snapshot: frozen at the end and not standing at the start → keep frozen; standing at the start and with no reason at the end → keep unfrozen; otherwise no row (§2.4 FreezeChangeRow, §5.4). Test in 3b."
+    },
+    {
+      "id": "F15",
+      "action": "fixed",
+      "note": "Added endSession.keepAll (every offered row, checked by the host) and a separate limit LIMITS.keepKeys = 20000 for keep. The webview sends keepAll when every row is ticked (§2.5, §2.7, §4.7). Tests in 3b, 3e1 and 3g."
+    },
+    {
+      "id": "F16",
+      "action": "fixed",
+      "note": "New SessionFreezesView.mode: the mode of the running queue, or else of the last one (whole model when any of its steps' StepScope has it). The banner reads mode; start feeds only EN-2's summary (§2.2, §2.4, §4.5, D3-1). Tests in 3b and 3g."
+    },
+    {
+      "id": "F17",
+      "action": "fixed",
+      "note": "While session.judging, in any phase, RunManager.freeze and the Undo or Redo of a freeze action answer refused ('Re-checking the working copy: freeze again in a moment.'), and the webview disables the four actions. In confirming, freezing is also refused while the final check builds F's facts afresh. Updated §2.5, §2.7, §3.6, §4.3, §4.9, D3-8 and D3-23. Tests in 3d and 3g."
+    },
+    {
+      "id": "F18",
+      "action": "fixed",
+      "note": "New SessionFreezes.end records the ticked changes, the planned freezes.json text and the card ids before any write. recover() of an ended run whose board step is not written makes it once, merging the recorded changes with freezes.json as it is then. Apply's recovery also compares freezes.json with its planned text (§2.2, §5.4). Tests in 3e1."
+    },
+    {
+      "id": "F19",
+      "action": "fixed",
+      "note": "dropArrows is now only the ledger arrows whose item is part of a Result (into a target, or an intermediate from 3c2). A whole-model arrow into a non-target proposition stays on the board while the results are hidden. review/mask.ts is in 3c1's files, with a twin test (§3.10)."
+    },
+    {
+      "id": "F20",
+      "action": "fixed",
+      "note": "The meaning probe moved into a new runner-only sub-slice 3p right after 3a, with the recordings regenerated, before 3b makes Accept freeze. §0, §1, §1.1, §2.1 and §6 updated."
+    },
+    {
+      "id": "F21",
+      "action": "fixed",
+      "note": "Refused rather than specifying a kind change (D3-47). A mid-stage Formalize may not target a card that has a Proof broken item in the session, whatever its status: a new formalizeStartProblems check with FormalizeSession.proofBroken. This is wider than the critic's 'while undecided' alternative, because a rejected Proof broken record and a later Result would share the key proof:<c> too. The critic's record-transition design is logged as the alternative, and D3-10 now says re-proving happens after the session. Found while fixing: a card: record can turn from Formalize into Change or Delete within a session, so reconcile's new version takes the draft's kind for card: items (§3.10, 3c1)."
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+# verify:1c2:code
+
+Agent `a75633a3c85f919c2` of workflow `wf_2d1ec6a9-856`. Verbatim output (JSON alongside).
+
+- **summary:** I found no blockers or majors in 1c2. The change set matches the report: only the webview and docs/slice1-plan.md changed after 06:58. No core, extension or runner file changed, and packages/extension/dist still has its 2026-11-17 timestamps.
+
+I re-ran the checks one at a time under capped.sh, without writing any cache to the repo:
+- webview tsc (main config) is clean;
+- webview tsc (node config) shows exactly the 6 known e2e-only errors;
+- vitest: 15 files and 244 tests passed.
+
+The builder's scratch build (07:15:03) is newer than the last source edit (07:14:20) and contains the new code.
+
+The code is correct on the points the brief stresses:
+- Hit paths carry data-hit-edge and no data-edge-id, so the "rendered" diagnostic and the e2e locators are unaffected. They follow their visible path in the same clip group, and the pool reconciles and disposes them.
+- `hitRole` reads the `declared` flag, which reaches the engine through toDisplayEdges.
+- Delete is one removeArrows that includes marks. A card's delete dialog opens only when no arrow or mark is selected.
+- The draw release calls `addArrows(target, [source])`. Into an axiom it goes through 1b's impact dialog.
+- A drop on the AXIOMS column puts the cards back without a moveCards, so there is no stray Undo step, and then runs moveToAxioms.
+- The webview's cycle check matches core's: same graph, same breadth-first search, and core's cutText gives the same names.
+- No import cycle was introduced.
+
+On the relayed user request: every editing gesture is gated by editLock or the Proposed view, both in BoardInput and again in the store. The store subscription cancels a move, draw or rectangle under way when a session begins or the Proposed view opens. Selecting stays allowed and posts only `select`. 1c2 does not touch undo/redo, and each gesture maps to an existing single-Undo-step action that 1f already blocks during a session.
+
+The problems found are minor or nits, listed below. One limit remains: the pointer wiring in BoardInput.ts and the EdgeEngine has not run in a browser; Playwright is the integrator's to run.
+- **findings:**
+  - [1]
+    - **id:** F1
+    - **severity:** minor
+    - **where:** packages/webview/src/board/NodeCard.tsx:212,327
+    - **problem:** Spec ES-9 says that in the Proposed view the arrow handle is "disabled too, with the reason on hover" (arrows change only through items and transforms). The handle is simply not rendered when `proposed` is true, so hovering a card in the Proposed view gives no handle and no reason. The brief's F allows hidden handles only for the run lock; for the Proposed view it asks for the actions to be disabled with the reason.
+    - **fix:** In the Proposed view, render the handle inert: e.g. `data-disabled`, `cursor: not-allowed`, a muted look on hover, and `title={MENU_PROPOSED_ARROWS}`. A press on it is already refused by `startDraw` (`gate().draw !== null`), so no other change is needed. During a session it can stay hidden, as the brief allows.
+    - **evidence:** `const drawable = !proposed && lock === null && !provisional;` and then `{drawable ? <span className="tl-handle" … /> : null}`. Spec v4 ES-9, 4th bullet: "In the Proposed view, the arrow handle, Draw arrows, Delete (arrows)… are disabled too, with the reason on hover".
+  - [2]
+    - **id:** F2
+    - **severity:** minor
+    - **where:** packages/webview/src/board/BoardInput.ts:490 (column press), 533, 734-738 (Escape)
+    - **problem:** The click press on an arrow in the AXIOMS column (`rectangle: false`) never takes pointer capture. If the user presses on the column background near an arrow, drags 4 px or more, and releases outside the board, `pointerup` never reaches the board and `press` stays set. Until the next press on the board: (a) hovering does nothing, because `onPointerMove` sees a press and returns at `!p.rectangle`; (b) the next Escape is swallowed by `onAnyKey`. That handler is a window-capture listener that calls `abort()`, `preventDefault` and `stopPropagation`, so the Escape never reaches a popover, the A|P box or the global clear-selection.
+    - **fix:** Choose one: call `board.setPointerCapture(event.pointerId)` when the column press is created; or abort a `rectangle: false` press as soon as it becomes a drag, since a drag there does nothing. Also consider swallowing Escape only for presses that hold pointer capture.
+    - **evidence:** Only the canvas rectangle, move and draw presses call setPointerCapture, and only once dragging starts. The column press at line 490 has no capture, and mouse pointers get no implicit capture.
+  - [3]
+    - **id:** F3
+    - **severity:** minor
+    - **where:** packages/webview/test/unit/store-gestures.test.ts:212
+    - **problem:** The test titled "a draw released on a card adds one arrow, source → target" calls the store's `addArrows(PG, [DARK])` directly. It never exercises the release decision in BoardInput (`if (target.kind === 'ok') s.addArrows(target.id, [p.source])`). If BoardInput swapped source and target, every unit test would still pass. It is also filed under the gate describe block.
+    - **fix:** Move the release decision into gestures.ts as a pure function, e.g. `drawRelease(source, target: DrawTarget) → { kind: 'add', target, sources: [source] } | { kind: 'toast', reason } | { kind: 'cancel' }`, call it from BoardInput, and unit-test it. Rename or move the store test to say what it checks (the store's addArrows into an axiom asks first).
+    - **evidence:** The test body is `t.state().addArrows(PG, [DARK])`, then assertions on the dialog. No unit test covers BoardInput.ts (no DOM library in node_modules).
+  - [4]
+    - **id:** F4
+    - **severity:** nit
+    - **where:** packages/webview/src/styles/board.css:969-970 vs 992-993
+    - **problem:** Hovering a selected arrow makes it thinner. `.tl-edge--hover` and `.tl-edge--declared.tl-edge--hover` come after the equally specific `--selected` rules and win, so stroke-width goes 3 → 2.6 (verified) and 3.6 → 3.2 (declared). Hover should never make a selected arrow lighter.
+    - **fix:** Add `.tl-edge--selected.tl-edge--hover { stroke-width: 3.4 }` and `.tl-edge--declared.tl-edge--selected.tl-edge--hover { stroke-width: 4 }`, or move the hover rules above the selected ones.
+  - [5]
+    - **id:** F5
+    - **severity:** nit
+    - **where:** packages/webview/src/board/AxiomsColumn.tsx:70
+    - **problem:** With several propositions moved over the column (`overAxioms.count > 1`), the column still gets `data-drop='active'`. That gives the list the accepting kind-colour outline and tint while the DropZone and the header say the drop is refused, so the cues contradict each other.
+    - **fix:** Use a separate state when `several` is true, e.g. `data-drop='refused'` styled with `--tl-warn`, as the canvas does for an axiom.
+  - [6]
+    - **id:** F6
+    - **severity:** nit
+    - **where:** builder report, section "Effects outside the repo and my scratch dir"
+    - **problem:** The report lists the vitest results cache but leaves out two other writes inside the repo:
+- vitest's fsModuleCache wrote 11 new files under /home/zhengyew/telelean/node_modules/.vitest-cache/ (07:12:14–07:14:49);
+- the vite build touched packages/webview/node_modules/.vite-temp (07:15:03).
+Both are in node_modules and untracked, but the user keeps an exhaustive ledger of writes.
+    - **fix:** Add both to the report. In future runs, `vitest run --no-cache --no-fsModuleCache --configLoader runner` leaves no trace; I verified that with this verification's run.
+- **checks_run:**
+  - git status --porcelain plus find -newermt '2026-11-19 06:58' over packages, docs and test-fixtures (excluding node_modules, dist, out): only packages/webview/{src,test/unit} files and docs/slice1-plan.md changed, matching the report. Comparing the builder's before/ snapshot with the current files gives the same set.
+  - ls packages/extension/dist/webview: every timestamp is 2026-11-17 13:50 (untouched).
+  - capped.sh 1400 node_modules/.bin/tsc --noEmit -p packages/webview/tsconfig.json: exit=0, no output.
+  - capped.sh 1400 node_modules/.bin/tsc --noEmit -p packages/webview/tsconfig.node.json: exit=2 with the same 6 known e2e-only errors: test/e2e/m1-edits.spec.ts(222,252,259) TS2345; test/e2e/m2-layout.spec.ts(277) TS2353; test/e2e/m2-review.spec.ts(234) TS2353 and TS2339.
+  - capped.sh 1600 node_modules/.bin/vitest run --maxWorkers=1 --pool=forks --no-cache --no-fsModuleCache --configLoader runner (packages/webview): "Test Files  15 passed (15)" / "Tests  244 passed (244)".
+  - Unit test count from the before/ snapshot: 206 to 238 `it(` lines (+17 gestures, +13 store-gestures, +2 menu). No test deleted.
+  - Builder's scratch build: artifacts dated 07:15:03, after the last source edit (BoardInput.ts 07:14:20). webview.js and webview.css contain tl-edge-hit. "Draw arrow from the selection" appears only in the source map (a comment).
+  - find /tmp/node-compile-cache, the repo and node_modules -newermt 07:20: no files written by my verification runs.

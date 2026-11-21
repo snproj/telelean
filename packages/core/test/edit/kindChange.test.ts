@@ -1,18 +1,17 @@
 /**
- * AT2.8: planKindChange covers every cell of the D-11 table (docs/m1-plan.md section 6.2), its refusals
- * (needs-confirmation, facts-stale, unsafe) and the rewrite's spans; its impact matches kindChangeImpact.
- * Plans only (no text): independent of WP-markup.
+ * AT2.8: planKindChange covers every cell of the D-11 table (docs/m1-plan.md section 6.2; spec v4: two kinds,
+ * docs/slice1-plan.md 2.4): P->A by the `.holds` it has, with the card's arrows dropped (AR-7), and A->P refused
+ * (AR-6); its impact matches kindChangeImpact. The cards still say ASSUMPTION, DERIVATION and GOAL: the aliases.
+ * Plans only (no text): independent of WP-markup. (Conditional proofs and their dependents: conditional.test.ts.)
  */
 import { describe, expect, it } from 'vitest';
 import { ActionError } from '../../src/actions.js';
 import { planKindChange } from '../../src/edit/index.js';
 import { modelSemantic } from '../../src/edit/planKind.js';
-import { kindChangeImpact } from '../../src/kindChange.js';
-import type { LeanOp } from '../../src/markup/types.js';
+import { AXIOM_TO_PROPOSITION_REFUSAL, kindChangeImpact } from '../../src/kindChange.js';
 import type { NodeType } from '../../src/model.js';
 import { subjectGraph, type ProjectModel } from '../../src/project/index.js';
 import { block, build, mainS, VOCAB_S, type BuildOptions } from '../project/helpers/build.js';
-import { confirmed } from './helpers/confirm.js';
 
 const BODY = [
   block({ id: 'a1', type: 'ASSUMPTION', name: 'A1', rationale: 'r', lean: 'S.a1' }),
@@ -77,147 +76,85 @@ function refusal(fn: () => unknown): ActionError {
 
 describe('AT2.8 planKindChange: the D-11 table', () => {
   const m = model();
-  const cell = (id: string, to: NodeType) => {
-    const plan = planKindChange(m, { id, to });
-    expect(plan.fieldChanges).toEqual([{ key: 'type', value: to }]);
-    return plan;
-  };
+  const cell = (id: string, to: NodeType) => planKindChange(m, { id, to });
 
-  it('code-less: only type: changes, whatever the target', () => {
-    for (const to of ['ASSUMPTION', 'DERIVATION'] as const) expect(kinds(cell('cl', to))).toEqual([]);
+  it('code-less: only type: changes', () => {
+    const plan = cell('cl', 'AXIOM');
+    expect(plan.fieldChanges).toEqual([{ key: 'type', value: 'AXIOM' }]);
+    expect(kinds(plan)).toEqual([]);
   });
 
-  it('G->D: type only (absent, axiom, theorem)', () => {
-    expect(kinds(cell('g0', 'DERIVATION'))).toEqual([]);
-    expect(kinds(cell('ga', 'DERIVATION'))).toEqual([]);
-    expect(kinds(cell('gt', 'DERIVATION'))).toEqual([]);
+  it('P->A of an unproved proposition (DERIVATION and GOAL aliases): add-holds-axiom', () => {
+    expect(opsOf(cell('g0', 'AXIOM'))).toEqual([{ file: 'Model/S/Main.lean', op: 'add-holds-axiom', statement: 'S.g0' }]);
+    expect(kinds(cell('d0', 'AXIOM'))).toEqual(['add-holds-axiom']);
   });
 
-  it('G->A: add-holds-axiom when absent, nothing for an axiom, holds-theorem-to-axiom for a theorem', () => {
-    expect(opsOf(cell('g0', 'ASSUMPTION'))).toEqual([{ file: 'Model/S/Main.lean', op: 'add-holds-axiom', statement: 'S.g0' }]);
-    expect(kinds(cell('ga', 'ASSUMPTION'))).toEqual([]);
-    expect(opsOf(cell('gt', 'ASSUMPTION'))).toEqual([{ file: 'Model/S/Main.lean', op: 'holds-theorem-to-axiom', statement: 'S.gt' }]);
+  it('P->A of a pending proposition keeps its axiom: type only (A13)', () => {
+    expect(m.nodes.get('dp')?.node.status.proof.kind).toBe('pending');
+    expect(m.nodes.get('ga')?.node.status.proof.kind).toBe('pending');
+    expect(kinds(cell('dp', 'AXIOM'))).toEqual([]);
+    expect(kinds(cell('ga', 'AXIOM'))).toEqual([]);
   });
 
-  it('D->A: add-holds-axiom when absent, nothing for a pending axiom, holds-theorem-to-axiom for a theorem', () => {
-    expect(kinds(cell('d0', 'ASSUMPTION'))).toEqual(['add-holds-axiom']);
-    expect(kinds(cell('dp', 'ASSUMPTION'))).toEqual([]);
-    expect(kinds(cell('dt', 'ASSUMPTION'))).toEqual(['holds-theorem-to-axiom']);
+  it('P->A of a proved proposition: holds-theorem-to-axiom', () => {
+    expect(opsOf(cell('gt', 'AXIOM'))).toEqual([{ file: 'Model/S/Main.lean', op: 'holds-theorem-to-axiom', statement: 'S.gt' }]);
+    expect(kinds(cell('dt', 'AXIOM'))).toEqual(['holds-theorem-to-axiom']);
   });
 
-  it('A->D: type only; an axiom stays and the promotion is pending', () => {
-    expect(kinds(cell('a0', 'DERIVATION'))).toEqual([]);
-    const pending = cell('a1', 'DERIVATION');
-    expect(kinds(pending)).toEqual([]);
-    expect(pending.impact).toMatchObject({ leanChange: 'pending-promotion', summary: 'Make Derivation: promotion pending until proved' });
-    expect(kinds(cell('at', 'DERIVATION'))).toEqual([]);
-  });
-
-  it('A->G, D->G without dependents: remove-holds (a theorem is archived); absent .holds: type only', () => {
-    expect(kinds(cell('a0', 'GOAL'))).toEqual([]);
-    expect(kinds(cell('d0', 'GOAL'))).toEqual([]);
-    expect(opsOf(cell('a2', 'GOAL'))).toEqual([{ file: 'Model/S/Main.lean', op: 'remove-holds', statement: 'S.a2', archive: false }]);
-    expect(opsOf(cell('at', 'GOAL'))).toEqual([{ file: 'Model/S/Main.lean', op: 'remove-holds', statement: 'S.at', archive: true }]);
-    expect(opsOf(cell('dp', 'GOAL'))).toEqual([{ file: 'Model/S/Main.lean', op: 'remove-holds', statement: 'S.dp', archive: false }]);
-  });
-
-  it('A->G, D->G with dependents and no choice: needs-confirmation listing them', () => {
-    const a1 = refusal(() => planKindChange(m, { id: 'a1', to: 'GOAL' }));
-    expect(a1.code).toBe('needs-confirmation');
-    expect(a1.dependents).toEqual(['at', 'dt', 'gt']);
-    expect(a1.message).toMatch(/removes a1\.holds/);
-    const dt = refusal(() => planKindChange(m, { id: 'dt', to: 'GOAL' }));
-    expect(dt.dependents).toEqual(['gt']);
-  });
-
-  it('untracked users are dependents too (by their Lean name)', () => {
-    const withHelper = model('\ntheorem helper : Good t := a2.holds');
-    const error = refusal(() => planKindChange(withHelper, { id: 'a2', to: 'GOAL' }));
-    expect(error.dependents).toEqual(['S.helper']);
-    const plan = planKindChange(withHelper, confirmed(withHelper, { id: 'a2', to: 'GOAL', dependents: 'mark-broken' }));
-    expect(plan.impact).toMatchObject({ needsConfirmation: true, dependents: ['S.helper'] });
-  });
-
-  it('mark-broken: remove-holds, and the users are listed as broken', () => {
-    const plan = planKindChange(m, confirmed(m, { id: 'a1', to: 'GOAL', dependents: 'mark-broken' }));
-    expect(opsOf(plan)).toEqual([{ file: 'Model/S/Main.lean', op: 'remove-holds', statement: 'S.a1', archive: false }]);
-    expect(plan.broken).toEqual(['S.at.holds', 'S.dt.holds', 'S.gt.holds']);
-  });
-
-  it('rewrite: binder first on every user, apply-hypothesis for the closure members, then remove-holds; spans from the facts', () => {
-    const plan = planKindChange(m, confirmed(m, { id: 'a1', to: 'GOAL', dependents: 'rewrite' }));
-    expect(plan.broken).toEqual([]);
-    const ops = opsOf(plan);
-    expect(ops.map((op) => [op.op, 'decl' in op ? op.decl : 'statement' in op ? op.statement : op.name])).toEqual([
-      ['add-hypothesis', 'S.at.holds'],
-      ['add-hypothesis', 'S.dt.holds'],
-      ['add-hypothesis', 'S.gt.holds'],
-      ['apply-hypothesis', 'S.gt.holds'],
-      ['remove-holds', 'S.a1'],
+  it('P->A removes the incoming arrows (`premises:`) and the "follows from nothing" mark in the same plan (AR-7)', () => {
+    expect(cell('g0', 'AXIOM').fieldChanges).toEqual([
+      { key: 'type', value: 'AXIOM' },
+      { key: 'premises', value: null },
     ]);
-    const text = m.files.get('Model/S/Main.lean')?.text ?? '';
-    const covered = (op: LeanOp) => ('replace' in op ? op.replace.map((s) => text.slice(s.start, s.end)) : []);
-    expect(ops[0]).toMatchObject({ hypName: 'h_a1', hypType: 'a1' });
-    expect(covered(ops[0] as LeanOp)).toEqual(['a1.holds']);
-    expect(covered(ops[1] as LeanOp)).toEqual(['a1.holds']);
-    expect(covered(ops[2] as LeanOp)).toEqual([]);
-    expect(covered(ops[3] as LeanOp)).toEqual(['dt.holds']);
-    expect(ops[4]).toMatchObject({ archive: false });
+    expect(cell('dp', 'AXIOM').fieldChanges).toEqual([{ key: 'type', value: 'AXIOM' }]);
+    const marked = model([block({ id: 'fn', type: 'PROPOSITION', name: 'FN from nothing', followsFrom: 'nothing', lean: 'S.fn' }), 'abbrev fn : Prop := Good t', ''].join('\n'));
+    expect(marked.nodes.get('fn')?.node.fromNothing).toBe(true);
+    const plan = planKindChange(marked, { id: 'fn', to: 'AXIOM' });
+    expect(plan.fieldChanges).toEqual([
+      { key: 'type', value: 'AXIOM' },
+      { key: 'follows_from', value: null },
+    ]);
+    expect(kinds(plan)).toEqual(['add-holds-axiom']);
   });
 
-  it('rewrite picks a hypothesis name no user mentions yet', () => {
-    const taken = model('\ntheorem uses_name (h_a2 : True) : Good t := a2.holds');
-    const plan = planKindChange(taken, confirmed(taken, { id: 'a2', to: 'GOAL', dependents: 'rewrite' }));
-    expect(opsOf(plan)[0]).toMatchObject({ op: 'add-hypothesis', decl: 'S.uses_name', hypName: 'h_a2_2' });
-  });
-
-  it('rewrite refuses with facts-stale unless every touched file is fresh', () => {
-    const original = mainS(`${BODY}\n`);
-    const stale = build({ 'Model/S/Vocabulary.lean': VOCAB_S, 'Model/S/Main.lean': `${original}\n-- typed since\n` }, { factsFrom: { 'Model/S/Main.lean': original } }).model;
-    expect(stale.freshFiles.has('Model/S/Main.lean')).toBe(false);
-    expect(refusal(() => planKindChange(stale, confirmed(stale, { id: 'a1', to: 'GOAL', dependents: 'rewrite' }))).code).toBe('facts-stale');
-    // mark-broken needs no exact spans.
-    expect(kinds(planKindChange(stale, confirmed(stale, { id: 'a1', to: 'GOAL', dependents: 'mark-broken' })))).toEqual(['remove-holds']);
-  });
-
-  it('rewrite refuses with unsafe when a user is not a theorem', () => {
-    const withDef = model('\ndef witness : Good t := a2.holds');
-    const error = refusal(() => planKindChange(withDef, confirmed(withDef, { id: 'a2', to: 'GOAL', dependents: 'rewrite' })));
-    expect(error.code).toBe('unsafe');
-    expect(error.dependents).toEqual(['S.witness']);
-  });
-
-  it('rewrite refuses with unsafe when an axiom .holds is used where the references do not show it', () => {
-    const hidden = model('\ntheorem sneaky : True := trivial', { facts: { overrides: { 'S.sneaky': { axioms: ['S.a2.holds'] } } } });
-    const error = refusal(() => planKindChange(hidden, confirmed(hidden, { id: 'a2', to: 'GOAL', dependents: 'rewrite' })));
-    expect(error.code).toBe('unsafe');
-    expect(error.dependents).toEqual(['S.sneaky']);
-  });
-
-  it('without fresh facts, uses found in the text still count as dependents (nothing is removed silently)', () => {
-    const unchecked = model('', { facts: false });
-    const error = refusal(() => planKindChange(unchecked, { id: 'a1', to: 'GOAL' }));
-    expect(error.code).toBe('needs-confirmation');
-    expect(error.dependents).toEqual(['at', 'dt', 'gt']);
-    expect(refusal(() => planKindChange(unchecked, confirmed(unchecked, { id: 'a1', to: 'GOAL', dependents: 'rewrite' }))).code).toBe('facts-stale');
+  it('A->P is refused with invalid, whatever the axiom holds (AR-6: an arrow or "follows from nothing" does it)', () => {
+    const withCodeLess = model([block({ id: 'cl-a', type: 'AXIOM', name: 'A code-less axiom', rationale: 'r' }), ''].join('\n'));
+    for (const id of ['a1', 'a0', 'at', 'cl-a']) {
+      const error = refusal(() => planKindChange(withCodeLess, { id, to: 'PROPOSITION' }));
+      expect(error.code, id).toBe('invalid');
+      expect(error.message, id).toBe(AXIOM_TO_PROPOSITION_REFUSAL);
+    }
   });
 
   it('its impact matches kindChangeImpact on the same graph', () => {
     const graph = subjectGraph(m, 'S', { version: 0, semantic: modelSemantic(m) });
-    const cases: Array<[string, NodeType, 'rewrite' | 'mark-broken' | undefined]> = [
-      ['g0', 'ASSUMPTION', undefined],
-      ['gt', 'ASSUMPTION', undefined],
-      ['a1', 'DERIVATION', undefined],
-      ['a2', 'GOAL', undefined],
-      ['a1', 'GOAL', 'mark-broken'],
-      ['dt', 'GOAL', 'rewrite'],
-      ['cl', 'ASSUMPTION', undefined],
+    const cases: Array<[string, NodeType]> = [
+      ['g0', 'AXIOM'],
+      ['gt', 'AXIOM'],
+      ['dt', 'AXIOM'],
+      ['dp', 'AXIOM'],
+      ['cl', 'AXIOM'],
     ];
-    for (const [id, to, dependents] of cases) {
-      const plan = planKindChange(m, dependents ? confirmed(m, { id, to, dependents }) : { id, to });
+    for (const [id, to] of cases) {
+      const plan = planKindChange(m, { id, to });
       expect(plan.impact, `${id} -> ${to}`).toEqual(kindChangeImpact(graph, id, to));
     }
-    expect(refusal(() => planKindChange(m, { id: 'a1', to: 'ASSUMPTION' })).code).toBe('invalid');
-    expect(refusal(() => planKindChange(m, { id: 'nope', to: 'GOAL' })).code).toBe('not-found');
+    expect(refusal(() => planKindChange(m, { id: 'a1', to: 'AXIOM' })).code).toBe('invalid');
+    expect(refusal(() => planKindChange(m, { id: 'nope', to: 'AXIOM' })).code).toBe('not-found');
+  });
+
+  it('kindChangeImpact still describes A->P for the arrow gestures (AR-6): the axiom stays, pending proof', () => {
+    const graph = subjectGraph(m, 'S', { version: 0, semantic: modelSemantic(m) });
+    expect(kindChangeImpact(graph, 'a1', 'PROPOSITION')).toMatchObject({
+      leanChange: 'pending',
+      summary: 'Becomes a proposition: pending proof until proved',
+      // Of its three dependents, `at` is an axiom card (TL106: it never glows); dt and gt are established (BD-6).
+      detail: '`axiom a1.holds` stays, marked pending proof, until a run proves it (`theorem a1.holds : … := …`). 2 cards that rest on it will lose their green glow until it is proved.',
+      dependents: ['at', 'dt', 'gt'],
+      needsConfirmation: false,
+      asksRationale: false,
+    });
+    expect(kindChangeImpact(graph, 'at', 'PROPOSITION')).toMatchObject({ leanChange: 'none', summary: 'Becomes a proposition: already proved' });
+    expect(kindChangeImpact(graph, 'a0', 'PROPOSITION')).toMatchObject({ leanChange: 'none', summary: 'Becomes a proposition: unproved until a run proves it' });
   });
 });

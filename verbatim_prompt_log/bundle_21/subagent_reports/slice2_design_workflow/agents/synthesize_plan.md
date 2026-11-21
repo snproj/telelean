@@ -1,0 +1,78 @@
+# synthesize:plan
+
+Agent `a6b6b39ecd77294a9` of workflow `wf_bd9a405e-4c7`. Verbatim output (JSON alongside).
+
+I wrote the slice-2 plan as /home/zhengyew/telelean/docs/slice2-plan.md (new file, about 1,770 lines; nothing else was changed and no build or test was run). It follows slice 1's structure: §0 rules, §1 order of sub-slices, §2 contracts, §3 the session engine, §4 items, statuses and checks, §5 the review UI, §6 tests (including the FakeBackend cheat scenarios S1, S4, S5, S6, S14, S15, S17, S18, S22), §7 how the three designs' conflicts were resolved, the decisions, the slice-1 carry-ins and the patches, §8 change log, §9 baseline.
+
+For the user's question, the slices of ★D8 (a) are:
+1. the new board, with Formalize for dependencies on today's review (nearly done);
+2. the review list (this plan);
+3. FROZEN, including arrows;
+4. the transform window;
+5. references.
+
+SUB-SLICES (8; 2d and 2g each have a stated split point in case a builder runs out of room):
+- 2a: core, pure: review contracts (`core/src/review/`), the `typeConsts` field, closures, item ownership and content keys, RV-7 classes, RV-5 dependencies with cycle handling, the status reducer with cascades and the session Undo stack, the reveal rules.
+- 2b: the checks: the type-constant probe, step limits measured from each step's start, B.1–B.4 per inference, `judgeState`, the backstop, the revert planner, several-target start check and order; the engine's judge, final check, premise completion and re-exported challenge.
+- 2c: core: the masked model for RV-6, `buildSessionView`, the build's mask and endorsements input, and the protocol messages with their validators. May run beside 2b.
+- 2d: runner: StepRunner extracted from manager.ts, run.json v2, the formalize queue with sources first, step outcomes and rollback, Cancel/Retry/Resume, the `propose_arrow` tool and prompts, reconcile, the session's RunView, reload and conversion of old runs; plus host routing for these.
+- 2e: runner: Reject, Shaky and plain decline as decision commits, re-judging with cascades, decisions made during a step, un-reject, Submit review with its Claude steps (DO-1/DO-3 checks), session Undo, Show result and raw diff; plus host routing.
+- 2f: runner: Add premise items (hold as axiom or pending, completion, meaning check in place), end confirmation, final check and backstop, Apply, Exit, the live drift watcher, endorsements, attempt records written at the end, deleting the D-21 rebase.
+- 2g: webview: store slice, review list and detail, decline menu, stage report, dialogs, session bar, end confirmation, Exit. Needs only 2c, so may run beside 2d–2f.
+- 2h: webview: the Proposed view in a session (Claude's arrows, premise cards, item marks), Formalize for several targets and mid-stage, session Undo routing and moves, retiring the old review, the user guide.
+
+AUTOPILOT DECISIONS (§7.2, each with its alternative):
+- D2-1: Claude adds arrows with a new `propose_arrow` tool; telelean writes them at normalise. Claude never edits `premises:`.
+- D2-2: Submit review runs one Claude step per affected inference, sources first. The DO-3 "not identical" check is per inference.
+- D2-3: during a step, Accept, back to review and Show result apply at once; declines are recorded at once and carried out when the step ends. Items of the running step cannot be decided.
+- D2-4 (A12): a step whose source, an earlier target, ended unproved is skipped without contacting Claude, with Retry offered.
+- D2-5: RV-6 is enforced on the host; the webview only ever receives a masked view.
+- D2-6: the masked view shows each hidden target's `.holds` as at its step start (masked facts plus a rebuild), with a fallback to step-start facts.
+- D2-7: what a hidden Result waits for is computed without knowing its outcome; a hidden Result shows no classes and no "depends on N".
+- D2-8: a hidden Result can be neither accepted nor declined.
+- D2-9: Show result also reveals the hidden Results it waits for, after a dialog naming them.
+- D2-10: a step's activity, gate attempts and notices are withheld while its Result is hidden; opening them counts as Show result.
+- D2-11: attempts.jsonl gets a session's records only when the session ends (fixes a leak that has existed since M2).
+- D2-12: "Open the whole model" and "Claude may add cards" wait for slice 3.
+- D2-13: Shaky takes an optional note for Claude; "Ask me instead" becomes a Shaky decline with "Ask me about: …" prefilled.
+- D2-14: Transform is shown in the decline menu, disabled, with the reason, until slice 4.
+- D2-15: a Shaky step re-proposes content only: no new cards, splits or merges.
+- D2-16: a v1 run left in review is converted into a one-step session; if that fails, only Exit is offered.
+- D2-17: new status "withdrawn", for content Claude removed in a Shaky step.
+- D2-18: endorsements go in `.telelean/subjects/<S>/endorsements.json`, inside Apply's history entry.
+- D2-19: an arrow Claude adds after the statements are fixed makes the gate re-export the challenge before the comparator.
+- D2-20: a mid-stage Formalize may use the user's arrows and Claude's accepted ones, never arrows still in review.
+- D2-21: `propose_arrow` needs a source that has a `.holds`; the sources of Claude's own arrows are not fuzzy.
+- D2-22: one Claude conversation per session; caps apply per step.
+- D2-23: an accepted item returns to review whenever its badges grow.
+- D2-24: every change in F must belong to an accepted item. This is stricter than Appendix B.
+- D2-25: facts without `typeConsts` mean conservative classification, and Apply is refused.
+- D2-26: items that depend on each other in a cycle are accepted one by one; Apply requires the whole cycle accepted.
+- D2-27: decisions stay allowed while telelean re-checks; Submit, Apply, Formalize and Retry wait.
+- D2-28: Reject also takes out the in-review items that depend on it, transitively; Shaky takes nothing out.
+- D2-29: Cancel step, a cap or an environment failure drops the whole step; the rest of the queue is kept for Retry.
+- D2-30: new facts field `typeConsts`, from the existing value probe.
+- D2-31: each item has an opaque id, a key and a revision; every vocabulary term is its own item, grouped.
+- D2-32: a one-item `decideItems` is that item's own Accept; several items are a group Accept.
+- D2-33: moves on the Proposed view are session-stack steps, written by Apply.
+- D2-34: Claude's arrows: translucent with "+" while in review; dotted with "+" once accepted, until Apply.
+- D2-35: Add premise drafts appear as translucent cards at the top of the AXIOMS column.
+- D2-36: the Exit confirmation is a dialog in the board; the Apply confirmation is a persisted phase.
+- D2-37: keys: ↑/↓, A, Shift+A, D (with R and S in the menu), Space; no key for Show result.
+- D2-38: Undo acts on the session stack in the Proposed view, and when the focus is in the review panel or a session dialog.
+- D2-39: Apply with nothing accepted only records the outcome.
+- D2-40: Claude may not add a Prop axiom bound to no card.
+- D2-41: the step limits reuse the `existing-changed` finding (new token `session`); meaning is compared including the value and type constant sets.
+- D2-42: the statement closure includes the statements of Add premise items still in review.
+- D2-43: a new definition is its own item if a statement reaches it or it was created before the statements were fixed; otherwise it belongs to that step's Result.
+- D2-44: an inference whose step never ended has no Result item; Submit drops it and lists it as "not run".
+- D2-45: Add arrow and Add premise items of a Result that is hidden again are hidden with it and keep their status.
+
+NOT RESOLVED (for the integrator):
+- Slice 1 leaks: the designs found that the 1d Proposed view shows proof outcomes before the reveal, through downstream "changed" badges and chips, the hidden target's `lean.code`, "+N new" lemmas, and a raw diff that does not count as Show result. attempts.jsonl has also leaked verdicts since M2. Slice 2 removes all of them, but someone must decide whether 1g fixes the four webview ones before the slice-1 `dist` build. A webview-only fix is described in §7.3 and recommended.
+- The Lean 4.35 API for constructor types in the probe, and its RAM/time cost, are unverified. 2b measures them, and the integrator decides above 1.5 times 1d's cost.
+- Some side channels for RV-6 remain and are accepted: step duration and progress (a skipped step ends at once), and Claude's questions during a step.
+- Re-judging after every decline costs one Lean build per decision; on this machine's tight RAM, decisions may queue. Untested in practice.
+- 2d (the manager.ts refactor) and 2g (UI volume) may be too big for one builder; split points are given in §1.
+- The recorded facts need regenerating, including the regeneration still pending from 1d; that is integrator work and RAM-gated.
+- The FakeBackend fixtures' first line `Run: "These suffice"` is kept; renaming it is left for later.

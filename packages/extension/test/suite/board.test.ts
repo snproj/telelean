@@ -54,7 +54,7 @@ suite('telelean board webview (sample board)', () => {
     // The Spyro sample: 4 cards and 3 declared arrows, drawn by the edge engine inside the real webview.
     assert.equal(done.payload.data?.cards, 4, done.payload.message);
     assert.equal(done.payload.data?.edges, 3, done.payload.message);
-    // webview.css applied: the columns scroll on their own and are equally tall.
+    // webview.css applied: the AXIOMS list scrolls on its own, the canvas clips and its layer is positioned (spec v4 slice 1c).
     assert.equal(done.payload.data?.styled, true, done.payload.message);
 
     await sleep(1000); // late violations (e.g. the codicon font) would arrive by now
@@ -98,24 +98,25 @@ suite('telelean board webview (sample board)', () => {
     // One distinctive colour per contributed id. VS Code exposes each to webviews as --vscode-<id, first dot -> "-">.
     const custom: Record<string, string> = {
       'telelean.formalizedAura': '#ff00ff',
-      'telelean.kindAssumption': '#00ff00',
-      'telelean.kindDerivation': '#00ffff',
-      'telelean.kindGoal': '#ffff00',
+      'telelean.kindAxiom': '#00ff00',
+      'telelean.kindProposition': '#ffff00',
+      'telelean.proved': '#00ffff',
       'telelean.vocabulary': '#123456',
       'telelean.highlight': '#654321',
     };
-    // The board reports every contributed colour as it resolved (M0's four plus M1's vocabulary and highlight).
+    // The board reports every contributed colour as it resolved (the aura, spec v4's two kinds and its proved green,
+    // M1's vocabulary and highlight).
     const expected = {
       aura: 'rgb(255, 0, 255)',
       kindA: 'rgb(0, 255, 0)',
-      kindD: 'rgb(0, 255, 255)',
-      kindG: 'rgb(255, 255, 0)',
+      kindP: 'rgb(255, 255, 0)',
+      proved: 'rgb(0, 255, 255)',
       vocabulary: 'rgb(18, 52, 86)',
       highlight: 'rgb(101, 67, 33)',
     };
     const resolved = (m: WebviewToHostMessage) => {
       const data = m.type === 'diagnostic' ? m.payload.data : undefined;
-      return { aura: data?.aura, kindA: data?.kindA, kindD: data?.kindD, kindG: data?.kindG, vocabulary: data?.vocabulary, highlight: data?.highlight };
+      return { aura: data?.aura, kindA: data?.kindA, kindP: data?.kindP, proved: data?.proved, vocabulary: data?.vocabulary, highlight: data?.highlight };
     };
     const contributed = (vscode.extensions.getExtension(EXTENSION_ID)?.packageJSON as { contributes: { colors: { id: string }[] } }).contributes.colors
       .map((c) => c.id)

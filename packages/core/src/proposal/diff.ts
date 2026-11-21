@@ -8,7 +8,7 @@
  *   proof      the proof status, when either side is a proof (proved, conditional, pending promotion), or the text of
  *              a `.holds` theorem (adding `axiom n.holds` to a newly formalised assumption is not a proof change)
  *   premises   the declared premises
- *   status     the status flags (e.g. `proved-goal` appearing) and certificates
+ *   status     the status flags (e.g. `established` appearing) and certificates
  *   binding    how the card is bound (code-less, adjacent, pinned)
  *   fields     anything else of the card (rationale, notes, stance, source, dates, provenance, extensions)
  */
@@ -39,7 +39,7 @@ function codeParts(node: TlNode): { statement?: string; holds?: string } {
   return { ...(statementText !== undefined ? { statement: statementText } : {}), ...(holdsText !== undefined ? { holds: holdsText } : {}) };
 }
 
-const isProofKind = (proof: ProofStatus) => proof.kind === 'proved' || proof.kind === 'conditional' || proof.kind === 'pending-promotion';
+const isProofKind = (proof: ProofStatus) => proof.kind === 'proved' || proof.kind === 'conditional' || proof.kind === 'pending';
 
 function nodeFields(before: TlNode, after: TlNode): NodeChangeField[] {
   const fields = new Set<NodeChangeField>();

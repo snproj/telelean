@@ -1,0 +1,160 @@
+# reverify:2a:r1
+
+Agent `a107c156ce23f0af5` of workflow `wf_ae5f1188-533`. Verbatim output (JSON alongside).
+
+- **summary:** Re-verification of fixer 2a, round 1. The working tree matches the fixer's after.diff byte for byte, and only the 16 listed files differ from before.diff. All typechecks and unit suites pass. 24 of the 25 findings are resolved. I traced each fix in the code and spot-checked the key fixes on a scratch copy of core: removing the fix makes a test fail. One finding is still open: V2A-S2. Its decide path and its Undo conflict path are fixed, but the Undo check of restored Accepts uses the visibility after the Undo. So an Undo asked while the results are hidden, which would show them, can be refused with a text that names hidden Results or parts, and the answer then depends on a judge's change to them (probes P1 and P1b). The fixer's §8 claim that "an Undo's answer depends on listed items only" is therefore false. New problems, all minor except one nit: (R1-1) un-reject ignores written Add premises that the declining decision commit took out; the inverse merge brings the card back with no ledger entry, an unowned card disables Apply, and the "For 2e" claim about it is false (P2). (R1-2) Show results' write can take out a written premise, but the reveal action records no commits or takenOut; its Undo leaves accepted.fingerprint different from fingerprint and writes the premise again (P5). (R1-3) Eight mutations of new fix code survive every test, among them Undo's removal of telelean's `decided` force: if it regresses, the results stay shown after the Undo (P3). (R1-4) The "For 2e" rule for ReviewState.deps contradicts the contract and §2.6. (R1-5, nit) A text is unused, and a plan line was not updated. I never wrote to the repository. Scratch: /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/rv2ar1.
+- **checks_run:**
+  - Snapshot: snapdiff.sh gives rv2ar1/now.diff, identical (cmp) to f2ar1/after.diff, 335 files. Only the 16 files in changed_files.txt differ from before.diff. Re-checked at the end (now2.diff identical): the repository is unchanged by me.
+  - tsc --noEmit (capped.sh 1800, node_modules/.bin/tsc), each exit 0 with no output: core tsconfig.test.json; runner tsconfig.test.json; webview tsconfig.json and tsconfig.node.json; extension tsconfig.json.
+  - vitest core (TMPDIR and TELELEAN_TEST_TMP=rv2ar1/tmp, --maxWorkers=1 --no-cache --fsModuleCachePath=rv2ar1/fsmc): 'Test Files  64 passed (64)', 'Tests  753 passed (753)'.
+  - vitest webview, same flags: 'Test Files  19 passed (19)', 'Tests  313 passed (313)'.
+  - vitest extension, same flags: 'Test Files  22 passed (22)', 'Tests  203 passed (203)'.
+  - Scratch copy of core in rv2ar1/mut. Baseline of the review tests: 'Test Files  9 passed (9)', 'Tests  155 passed (155)'.
+  - Spot checks of the fixer's mutations on my copy (rv2ar1/mutation_results_x.txt). Each made at least one test fail: C2-reconcile-flips-at-judge, ADV4-undo-own-unchecked, ADV8-redo-own, ADV9-sorry-basis, S2-decide-rev-checked, C2-unreject-no-keep-out, ADV3-reconcile-reads-draft, S1-rv11-accepted-only. After each, the file was restored and cmp with the repo reported identical.
+  - My own mutations (rv2ar1/mutation_results.txt). Caught: S1-inreview-verdict-only, ADV3-rv11-partial, S2-hidden-rv5-ignored, S3-reapply-dropped, S4-returns-all, C2-keptout-no-event, S5-accept-no-result. Survived, all 155 tests passing: C1-F5-no-refresh, C2-again-no-refresh, C2-back-ignored, S3-inverts-ignored, S3-premisesOut-dropped, ADV3-noteJudged-partial, S2-decided-skip-ignored, ADV1-undo-startedForce. Survived but harmless, the guard is redundant: ADV1-reconcile-shownNow, ADV1-reducer-force-guard, C1-filter-all-drafts.
+  - Probes in rv2ar1/mut/packages/core/test/review/: probe1 (P1, P1b), probe2 (P2), probe3 (P3, plus a run with the startedForce mutation: fails), probe4 (random sequences checked for refusals that name hidden items, 600+ seeds: 0 found), probe5 (P5). Logs are in rv2ar1/logs/.
+  - Effects outside the repo and my scratch dir: capped.sh made one transient systemd user scope per heavy command, each ended with it. vitest wrote and deleted its bundled config in node_modules/.vite-temp (repo root, from the extension run), packages/core/node_modules/.vite-temp and packages/webview/node_modules/.vite-temp. All three are empty again; only their mtimes changed, and the root one is outside the allowed write locations. Nothing in node_modules/.vitest-cache, the .vite results caches, packages/extension/out or dist, or /tmp. No git state change, no npm/npx, no network, no Claude CLI, and no processes of mine left.
+- **resolved:**
+  - [1]
+    - **id:** S-V2A-S1
+    - **how:** Fixed. `ItemRecord.judged` is set by reconcile. RV-11 now compares every Result in review or accepted on verdict, Rests on and RV-5 dependencies (reconcile.ts:310-323), applies changedKey and ends the force through `rechecked` (l.437). D2-48 statuses only record the new values. Tests: reconcile.test.ts:293-344. Mutations S1-rv11-accepted-only, S1-inreview-verdict-only, S1-rv11-no-deps and S1-rv11-force-stays each fail a test.
+  - [2]
+    - **id:** S-V2A-S3
+    - **how:** Fixed. Undo puts `card` and the written `fingerprint` back from `takenOut` (reducer.ts:1107-1115), so no premise write is scheduled, and the write is non-null and lists the premise in `reapply`. The AF2 test (reducer.test.ts:421-455) checks the card, the key and the whole write. S3-undo-card-not-restored and S3-reapply-dropped are caught. The reveal action has the same gap: see R1-2.
+  - [3]
+    - **id:** S-V2A-S4
+    - **how:** Fixed. The reveal SessionAction records `changes` (D2-23's returns, reducer.ts:916-918), and Undo restores them through the same checks. Tests: reducer.test.ts:771-787, and the undo-everything property now runs with Show results. S4-reveal-records-nothing and S4-returns-all are caught. The written-premise take-out of a reveal is R1-2.
+  - [4]
+    - **id:** S-V2A-S5
+    - **how:** Fixed, failing closed. `ReviewState.results` is removed. An Accept of a Result without `judged` is refused, own or by a group (blockedBy, reducer.ts:289-294). Reconcile treats an accepted Result with no accepted.result, no judged or no inference as changed. Tests: reducer.test.ts:120-138 and reconcile.test.ts:330-334. Mutations caught.
+  - [5]
+    - **id:** S-V2A-S6
+    - **how:** Fixed. review/index.ts exports acceptGate, isMeaningItem, isResultOrPart, depsById and fallbackLabel; the contracts test checks them. §8 has 'For 2e' and 'For 2c2' bullets; two of their statements are wrong (R1-1, R1-4).
+  - [6]
+    - **id:** S-V2A-N1
+    - **how:** Fixed. CLAUDE_SESSION_TEXTS.strayComment equals §4.9's quoted text, and contracts.test.ts asserts it.
+  - [7]
+    - **id:** S-V2A-N2
+    - **how:** Fixed. conflictLabel is used for known items, historyChanged for a stale Undo or Redo, `needs-option` for a plain group decline, and acceptGate checks in the own and the group order. Tests and mutations exist. One text is unused: R1-5.
+  - [8]
+    - **id:** C-V2A-C1
+    - **how:** Fixed. A same-key record refreshes its content. D2-17 reads the step from the current draft (reconcile.ts:349), and only other steps' drafts of a withdrawn key leave `premises`. Test: reconcile.test.ts:362-391. C1-no-refresh and C1-both-old are caught. The second refresh, on F5's path, is untested (R1-3).
+  - [9]
+    - **id:** C-V2A-C2
+    - **how:** Fixed for non-premise dependents. Un-reject reads what the declining action took out (mergedBackBy); items brought back that must stay out go to `revert`. Reconcile keeps a declined or reverted record whose content is back without a step, takes the content out and reports it. Tests: reducer.test.ts:818-881 and reconcile.test.ts:394-426. Mutations caught. Written premises are not covered: R1-1.
+  - [10]
+    - **id:** C-V2A-C3
+    - **how:** Fixed. listedAcceptRefusal and hiddenAcceptStands check the recorded badges against the class in force for own and group Accepts. Test: reducer.test.ts:685-711. ADV4-undo-own-unchecked is caught.
+  - [11]
+    - **id:** C-V2A-C4
+    - **how:** Fixed, same change as S-V2A-S3: no `premises.write` after the Undo, and the card and key are back (checked by the AF2 test).
+  - [12]
+    - **id:** C-V2A-C5
+    - **how:** Fixed. basis(u) is {u} when u's `.holds` uses sorry or lists sorryAx (classify.ts:136). Covered by classify.test.ts; ADV9-sorry-basis is caught.
+  - [13]
+    - **id:** C-V2A-C6
+    - **how:** Fixed. The §2.2 and §2.9 code blocks now show judged?, factsMissing? (ItemClass and ItemDraft), created.draft?, changes[].rev, startedForce?, the reveal's changes, labels?, needs-option and 'decided'. I checked each against types.ts. The fail-open is closed by the S5 change.
+  - [14]
+    - **id:** C-V2A-C7
+    - **how:** Fixed. acceptGate uses ownAcceptRefusal's order when `own` and planGroupAccept's order otherwise (reducer.ts:1194-1203). Test: reducer.test.ts:572-589. N2-acceptGate-order is caught.
+  - [15]
+    - **id:** A-V2A-ADV-1
+    - **how:** Fixed by a decision logged in §8: telelean's `decided` force, set by the reducer (showResults) and by reconcile when only D2-23's returns would hide the results again, and recorded as `startedForce` so its Undo removes it. The loop and the leak are gone (reducer.test.ts:789-815, reconcile.test.ts:488-531, mutations caught). Undo's removal of the force is untested (R1-3, P3).
+  - [16]
+    - **id:** A-V2A-ADV-2
+    - **how:** Fixed, as C-V2A-C2: same mechanism and tests. Two takers in both orders and a group decline are covered. Written premises: R1-1.
+  - [17]
+    - **id:** A-V2A-ADV-3
+    - **how:** Fixed. computeItems marks drafts `factsMissing` and classify marks their classes. Reconcile keeps such records and, on a partial judgement, applies only the no-longer-builds reverts. The reducer refuses their Accepts and skips D2-23 while any class lacks facts. There is an end-to-end test through computeItems, classify and itemDeps (reconcile.test.ts:428-486). ADV3-* mutations caught, except noteJudged on a partial judgement (R1-3).
+  - [18]
+    - **id:** A-V2A-ADV-4
+    - **how:** Fixed, as C-V2A-C3. The forced and unforced cases, and both maps, are tested.
+  - [19]
+    - **id:** A-V2A-ADV-5
+    - **how:** Fixed, as S-V2A-S5. The Accept is refused without `judged`, and reconcile fails closed.
+  - [20]
+    - **id:** A-V2A-ADV-6
+    - **how:** Fixed. There are now tests for M1–M4, M38, M42 and M44. The random property test has a judge step, asserts RV-5 and badge coverage after every step, and sets `named` for Undo too. The fixer's mutation table and my spot checks confirm the tests catch them. New untested paths are R1-3.
+  - [21]
+    - **id:** A-V2A-ADV-7
+    - **how:** Fixed. There are tests for M5, M7–M12, M21, M28 and M41; the RV-3 chain test was strengthened so that M12 is caught (fixer's re-run).
+  - [22]
+    - **id:** A-V2A-ADV-8
+    - **how:** Fixed. Redo keeps `own` only when the recorded request named a single item (reducer.ts:1154). Test: reducer.test.ts:744-767. ADV8-redo-own is caught.
+  - [23]
+    - **id:** A-V2A-ADV-9
+    - **how:** Fixed, as C-V2A-C5.
+- **findings:**
+  - [1]
+    - **id:** S-V2A-S2
+    - **severity:** minor
+    - **where:** packages/core/src/review/reducer.ts:1073-1091 (undo: shownAfter, the hidden-Accepts loop, listedAcceptRefusal) and 987-1010; plan §8 l.2875
+    - **problem:** The decide path (no rev compare for hidden items) and the Undo conflict path are fixed. The check of restored Accepts in Undo is not. It decides 'hidden' by the visibility after the Undo (`hiddenAfter`). An Undo asked while the results are hidden, which would show them, therefore runs listedAcceptRefusal on items that are hidden now. Its refusal names hidden Results or Result's parts, as the refused item or as the missing dependency, and whether it is refused depends on a judge's change to a hidden item. The results stay hidden after the refusal. This breaks D2-64 and §4.7's byte-identical Undo outcomes, and contradicts §8's claim that 'an Undo's answer depends on listed items only'. A by-hand Accept made now would instead get 'waits for the results' (D2-73: the same as by hand).
+    - **fix:** Check each restored Accept against the visibility at request time.
+- An item hidden now or after the Undo (`hidden(r) || hiddenAfter(r)`) takes the silent path: it is kept as it was if its Accept no longer stands.
+- A listed item gets the refusal a by-hand Accept would get now: compute its dependency gate with `shown && shownAfter`, so a missing dependency hidden now reads 'waits for the results' and is never named. Keep the RV-7 badge check on the class in force after the Undo.
+- Add a reducer test pairing copies that differ only in a judge's change to a hidden Result (P1) or to a hidden written premise (P1b), and assert byte-identical Undo answers.
+- Correct §8 l.2875.
+    - **evidence:** Probe file rv2ar1/mut/packages/core/test/review/probe1.test.ts; log rv2ar1/logs/probe1b.log.
+- P1: card:a, proof:t (depends on card:a) and proof:u (depends on proof:t) are accepted, results shown. Back to review of card:a, confirmed: results hidden. Copy A, no judge: Undo ok, cascade restores t and u. Copy B, a judge re-versioned hidden proof:t (rev 2): Undo gives {"ok":false,"code":"refused","error":"Result “u” depends on Result “t”: accept it first.","item":<proof:u>}.
+- P1b: card:s rests on written premise p, accepted, and is sent back to review. Copy B, a judge took p out: Undo gives "Formalize “s” depends on Add premise “p”: accept it first.". Copy A: ok.
+  - [2]
+    - **id:** R1-1
+    - **severity:** minor
+    - **where:** packages/core/src/review/reducer.ts:406-431 (takenOutIn skips add-premise; mergedBackBy never reads the action's `takenOut`) and 532-556; types.ts ItemWrite comment; plan §8 'For 2e' l.2887-2889; items.ts:694-699
+    - **problem:** When a Reject (or plain decline) cascade takes out a written Add premise, the take-out is part of the same decision commit (§3.8: 'in its own write'). Under the new contract, un-reject merges that commit's whole inverse patch first, so the premise's card comes back into ws/. The reducer neither restores the premise (card, written key; its ledger entries are not put back) nor lists it in `revert` or `premises.takeOut`. The record stays to be redone, reverted, with no card. At the next judge, reconcile sees the premise's unwritten draft as unchanged, so it makes no revert. computeItems finds a card with no ledger `premise` entry and reports it unowned, which disables Apply with no item to act on. This is the premise variant of V2A-C2/ADV-2. The For-2e line 'after any inverse merge, an item whose status keeps it out is in revert; reconcile also takes such content out again' is false for it.
+    - **fix:** In un-reject, also read the declining action's `takenOut`.
+- A premise that comes back (to be redone without revert, nothing else keeping it out): restore `card` and the written `fingerprint` from the entry, as Undo does, and list it in `reapply`. The runner puts its ledger entries back.
+- Otherwise: set `card` from the entry, so the runner can plan the take-out, and list it in `premises.takeOut`, run after the merge.
+- Alternative: keep a written premise's take-out out of the decision commit that un-reject inverts.
+
+Fix the For-2e bullet and ItemWrite's comment, and add a reducer test with probe P2's shape.
+    - **evidence:** Probe file rv2ar1/mut/packages/core/test/review/probe2.test.ts; log rv2ar1/logs/probe2.log. Scene: V in review; written premise P (accepted, card pc) rests on V; results shown.
+- Reject V write: {revert:[V], premises:{takeOut:[P]}}.
+- After the runner's step 4 (takenOut [{P, pc, fp:written}], commits ['c1']), un-reject V write: {"revert":[],"reapply":[V],"premises":{"write":[],"takeOut":[]}}.
+- P stays {status:'to-be-redone', redo:{because:[V], reverted:true}, fingerprint:'fp:draft'}, card undefined.
+- Next reconcile: reverts [], events [], P to-be-redone.
+  - [3]
+    - **id:** R1-2
+    - **severity:** minor
+    - **where:** packages/core/src/review/types.ts:255 (reveal SessionAction); reducer.ts:900-934 (reveal) and 1107 (`top.kind === 'decide' ? top.takenOut : []`)
+    - **problem:** Show results' D2-23 returns can take a written premise out: a premise resting on a returned definition is returned to review with it, and the reveal's write lists it in `premises.takeOut`. The reveal SessionAction has no `commits` or `takenOut`, although ItemWrite.action's contract says its commit joins the action's commits so that Undo inverts it. Undo of Show results therefore restores the premise's Accept, with `accepted.fingerprint` = the written key, onto a record that holds the draft key and no card. This is the inconsistency V2A-S3 fixed for decide actions. The Undo then schedules a fresh premise write instead of inverting the take-out and putting the ledger entries back.
+    - **fix:** Give the reveal SessionAction `takenOut` and `commits`, shaped like decide's. Let undo's takenOut loop, and the non-null write, handle both kinds. Record this in §2.2 and §8, and extend the V2A-S4 test with a written premise returned at Show results.
+    - **evidence:** Probe file rv2ar1/mut/packages/core/test/review/probe5.test.ts; log rv2ar1/logs/probe5.log. Scene: D accepted while hidden, a belief in `classes` only; written premise P rests on D; card:z keeps the results hidden.
+- Show results write: {"premises":{"write":[],"takeOut":[P]}}; action keys [id, kind, label, force, changes].
+- After step 4 (card cleared, fp:draft), Undo write: {"premises":{"write":[P],"takeOut":[]}}.
+- P after Undo: {status:'accepted', fingerprint:'fp:draft', accepted.fingerprint:'fp:written'}, card undefined.
+  - [4]
+    - **id:** R1-3
+    - **severity:** minor
+    - **where:** packages/core/test/review/reducer.test.ts and reconcile.test.ts; code at reducer.ts:1065, 268/291 of reconcile.ts, reducer.ts:538-541, 1119-1123, 1114, 1092, reconcile.ts:181
+    - **problem:** Several paths the fixer added are untested: each of these mutations leaves all 155 review tests passing.
+- Undo no longer removes the decided force it started (ADV1-undo-startedForce). The test 'Undo goes back step by step… telelean's force included' only passes because a later Undo ends the force first. Probe P3 shows that with this mutation, an Undo right after the Accept that set the force leaves the results shown while E is in review: a leak.
+- F5's content refresh (C1-F5-no-refresh).
+- The proposed-again content refresh (C2-again-no-refresh).
+- Un-reject's `back` guard (C2-back-ignored).
+- Undo's write when only commits are inverted (S3-inverts-ignored).
+- Undo's `premisesOut` (S3-premisesOut-dropped).
+- noteJudged skipping a partial judgement (ADV3-noteJudged-partial).
+- `taken` leaving out silently skipped items (S2-decided-skip-ignored).
+    - **fix:** Add tests:
+- An Undo right after the decided-force Accept: forced null, results hidden (P3's shape).
+- F5 and proposed-again records carry their current draft content.
+- Un-reject of an item that stays reverted brings back no dependent.
+- An Undo whose action had commits but changes no ws/ status still returns a write naming the action.
+- An Undo whose takenOut premise stays out lists it in premises.takeOut.
+- A new Result created by a partial judgement has no `judged`.
+- An Undo whose decided item is silently skipped does not list it in `taken`.
+    - **evidence:** rv2ar1/mutation_results.txt: each of the 8 mutations gives 'Test Files  9 passed (9) | Tests  155 passed (155)', restored and identical to the repo (cmp). probe3.test.ts passes on the current code; with the startedForce removal deleted it fails (rv2ar1/logs/probe3_mut.log).
+  - [5]
+    - **id:** R1-4
+    - **severity:** minor
+    - **where:** docs/slice2-plan.md §8 l.2886 ('For 2e': ReviewState.deps 'from the last converged stage judgement: never one whose drafts lack facts'); types.ts:474; plan §2.6 (one persisted `judged`, recomputed on load)
+    - **problem:** The guidance contradicts ReviewState.deps' contract, which says 'from the stage judgement' (the same one as `classes`). It also contradicts §2.6, which persists only the current stage judgement, recomputed from judged-facts.json, so an older map is not available after a reload. A runner that follows it would pair the records and classes of one judgement with an older dependency map. Records created or re-linked by the partial judgement would then lack edges, or carry stale ones, and RV-5's gate and cascades fail open for them. Meanwhile the partial map's only gap is the missing outgoing edges of facts-missing items, whose Accepts are refused anyway; the next judge's reverts correct a cascade it misses.
+    - **fix:** State one source: depsById from the stage judgement the records were reconciled with, partial included. If missing outgoing edges matter, persist each record's last full-judgement edges (as `judged.deps` does for Results) and union them in for records whose class has factsMissing. Never use a whole older map. Update §8 l.2886.
+  - [6]
+    - **id:** R1-5
+    - **severity:** nit
+    - **where:** packages/core/src/review/texts.ts:424 (leftNeedsOption) vs reducer.ts:332-333; docs/slice2-plan.md §3.5 l.1388
+    - **problem:** `REVIEW_TEXTS.leftNeedsOption` is listed in §8's new texts but never used: leftText returns plainOnlyArrows for 'needs-option', so 2c2 has two candidate texts for one reason. Separately, §3.5 still says 'the same key and content key: unchanged', but V2A-C1 now refreshes the record's content from its draft there; only §8 says so.
+    - **fix:** Use leftNeedsOption in leftText's 'needs-option' case, or delete it and drop it from §8. Add a pointer to the content refresh in §3.5's bullet.

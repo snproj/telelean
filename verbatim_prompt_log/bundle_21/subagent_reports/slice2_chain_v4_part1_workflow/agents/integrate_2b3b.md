@@ -1,0 +1,50 @@
+# integrate:2b3b
+
+Agent `a29ae600bbe11ed0b` of workflow `wf_4dd05c42-199`. Verbatim output (JSON alongside).
+
+- **ok:** True
+- **summary:** Slice 2b3b passed the integrator check and the patch is saved at /home/zhengyew/telelean/verbatim_prompt_log/bundle_21/evidence/patches/after_slice_2b3b.patch (5,174,925 bytes, 378 files; 2b3a's was 4,885,577 bytes, 370 files).
+
+Step 1: all 9 lines of /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/rcf_2b3b/summary.txt say rc=0. failures.txt is empty (0 bytes) and tmp_leftovers=0.
+
+Warning, now resolved: the full runner suite showed 11 skipped tests. Every earlier full check (2a through 2b3a) showed exactly 1.
+- Cause: the test RAM guard in packages/runner/test/workspace/helpers.ts. It requires MemAvailable of at least 12 GiB (12,582,912 kB), waits 120 s, and otherwise calls ctx.skip. In build.test.ts it does this through `lean` being unset.
+- Evidence: MemAvailable was 12,283,588 kB at 18:08 and 12,236,496 kB at 18:18, both below the threshold. It was 21,316,960 kB at 18:27. Runner duration rose from 726 s to 1347 s, which fits several 120-s waits.
+- Not a code cause: waitForMemory and readMemAvailableBytes are unchanged since HEAD, 2b3b added no skip sites (per-file counts match the 2b3a patch), and no `.only` exists in any test.
+- Resolution, a decision I made outside the brief: I re-ran the 7 guarded files once RAM was back (about 21.9 GB free). I used the same flags and environment as recheck_full.sh, but with the builder 1800 MB cap, timeout 900 and the verbose reporter. Result: 56 passed, 0 skipped, 0 failed, including the real-Lean integration tests.
+- I also ran the 3 skipIf files verbosely. The only skip is the by-design opt-in test in binary.test.ts; the setpriv and plan tests ran and passed. So the 11 skips were 1 by design plus 10 RAM-guard skips, and every one of those 10 has now run and passed.
+- The source tree did not change during or after the checks (newest source edit 17:32:01, check started 18:08:52).
+
+Step 2: all four checks pass, both before and after the runs.
+
+Effects: nothing outside the repo and scratch dir. Inside the repo the only effects are the sanctioned patch file and new mtimes on four pre-existing, empty node_modules/.vite-temp folders (Vite writes and deletes a temporary config file there, as in every earlier check). No processes of mine are left.
+
+Suggestion: rc=0 can hide Lean tests that were skipped for lack of RAM. recheck_full.sh could flag any run whose skipped count is not 1.
+- **checks:**
+  - nohup /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/recheck_full.sh 2b3b & (started 18:08:52, DONE about 18:32; MemAvailable 12,283,588 kB at start)
+  - tsc_core rc=0 (tsc --noEmit -p packages/core/tsconfig.test.json)
+  - tsc_runner rc=0 (packages/runner/tsconfig.test.json)
+  - tsc_web rc=0 (packages/webview/tsconfig.json)
+  - tsc_webnode rc=0 (packages/webview/tsconfig.node.json)
+  - tsc_ext rc=0 (packages/extension/tsconfig.json)
+  - vt_core rc=0  Test Files 76 passed (76)  Tests 1133 passed (1133)
+  - vt_web rc=0  Test Files 19 passed (19)  Tests 314 passed (314)
+  - vt_ext rc=0  Test Files 22 passed (22)  Tests 205 passed (205)
+  - vt_runner rc=0  Test Files 65 passed (65)  Tests 647 passed | 11 skipped (658)  Duration 1347.30s  [WARNING: baseline is 1 skipped; see the re-run checks below]
+  - tmp_leftovers=0; DONE
+  - cat /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/rcf_2b3b/failures.txt -> empty (0 bytes)
+  - find /tmp -maxdepth 1 -newer .../rcf_2b3b/start.marker -name 'telelean-*' -> no output (0 leftovers)
+  - Skip investigation (read-only): earlier full checks rcf_2a, 2b1a, 2b1b, 2b2, 2c1 and 2c2 all show 585 passed | 1 skipped, and rcf_2b3a shows 606 passed | 1 skipped. The waitForMemory threshold is 12 GiB with a 120 s wait. Guard and readMemAvailableBytes are unchanged since HEAD, and 2b3b added no skip sites. grep for .only in all tests -> none
+  - Re-run A (packages/runner, capped.sh 1800 timeout 900 vitest run --maxWorkers=1 --no-cache --fsModuleCachePath=<scratch>/rerun_2b3b/fsmc --reporter=verbose, with TMPDIR and TELELEAN_TEST_TMP in scratch and UPDATE_SEMANTIC_RECORDINGS unset) test/integration/session.test.ts: rc=0  Test Files 1 passed (1)  Tests 8 passed (8)
+  - Re-run B test/integration/fixes.test.ts test/integration/escapes.test.ts: rc=0  Test Files 2 passed (2)  Tests 6 passed (6)
+  - Re-run C test/proposal/build.test.ts: rc=0  Test Files 1 passed (1)  Tests 7 passed (7)
+  - Re-run D test/workspace/initialize.test.ts refresh.test.ts sample.test.ts: rc=0  Test Files 3 passed (3)  Tests 35 passed (35); re-run tmp_leftovers=0
+  - Re-run E test/llm/binary.test.ts test/run/backend.test.ts test/run/prompts.test.ts: rc=0  Test Files 3 passed (3)  Tests 28 passed | 1 skipped (29). The only skip is the by-design opt-in Claude binary test; the setpriv and plan skipIf tests passed
+  - git diff --cached --stat -> (no output)
+  - git log -1 --format=%h -> 187673d
+  - stat -c '%y %n' packages/extension/dist packages/extension/out -> 2026-11-19 13:47:18.682246785 +0800 packages/extension/dist / 2026-11-19 13:47:18.824991124 +0800 packages/extension/out
+  - ls -a packages/extension/out | grep -c '^.vite$' -> 0
+  - find repo (pruning node_modules and .git) -newer start.marker -> no output (no repo file changed during or after the checks)
+  - savepatch.sh after_slice_2b3b -> verbatim_prompt_log/bundle_21/evidence/patches/after_slice_2b3b.patch: 5174925 bytes, 378 files (rc=0). It contains gate/session.test.ts, gate/sessionPure.test.ts, shadow.test.ts and src/gate/engine.ts, and excludes package-lock.json. Afterwards: staged lines 0, HEAD 187673d
+- **runner:** Full runner suite (rcf_2b3b, real Lean, one worker): vt_runner rc=0 | Test Files  65 passed (65) | Tests  647 passed | 11 skipped (658) | Start at 18:09:38 | Duration 1347.30s. Of the 11 skips, 1 is the by-design opt-in Claude binary test and 10 were RAM-guard skips (MemAvailable under 12 GiB during the run). Re-running the 7 guarded files with enough RAM gave 56 passed, 0 skipped, 0 failed (session 8, fixes+escapes 6, build 7, initialize+refresh+sample 35). So every runner test except the by-design opt-in one has now run and passed on the unchanged tree.
+- **patch:** /home/zhengyew/telelean/verbatim_prompt_log/bundle_21/evidence/patches/after_slice_2b3b.patch

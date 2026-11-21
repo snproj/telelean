@@ -7,7 +7,6 @@ import { ProposalBanner } from './run/ProposalBanner';
 import { RunElsewhere } from './run/RunBadge';
 import { RunPanel } from './run/RunPanel';
 import { Toasts } from './toasts/Toasts';
-import { SelectionTray } from './tray/SelectionTray';
 
 export function App() {
   return (
@@ -17,7 +16,8 @@ export function App() {
       <RunElsewhere />
       <ProposalBanner />
       {/* The board and its toasts, with the run panel beside them (below them on a narrow board). Toasts sit at the
-          bottom of the board area, never over the panel, the tray or the A|D|G box. */}
+          bottom of the board area, never over the panel or the A|P box. Spec v4.1 CM-5 (slice 1e): the tray at the
+          bottom is gone; the selection and its actions are in the header's Context Menu section. */}
       <div className="tl-workspace">
         <div className="tl-main">
           <Board />
@@ -25,7 +25,6 @@ export function App() {
         </div>
         <RunPanel />
       </div>
-      <SelectionTray />
       <PromptBox />
       <Dialogs />
     </div>

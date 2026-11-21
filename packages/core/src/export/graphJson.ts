@@ -27,7 +27,8 @@ export interface GraphJsonRange {
 export interface GraphJsonNode {
   id: string;
   subject: string;
-  type: 'ASSUMPTION' | 'DERIVATION' | 'GOAL';
+  /** Spec v4: AXIOM or PROPOSITION (blocks that still say ASSUMPTION, DERIVATION or GOAL are exported under the new kind). */
+  type: 'AXIOM' | 'PROPOSITION';
   natural_name: string;
   rationale: string | null;
   stance: string | null;
@@ -48,7 +49,8 @@ export interface GraphJsonNode {
   };
   status: {
     formal: 'informal' | 'formalized' | 'ill-formed';
-    proof: 'none' | 'assumed' | 'pending-promotion' | 'conditional' | 'proved';
+    /** `pending`: a proposition whose `.holds` is still an axiom (spec v4; was `pending-promotion`). */
+    proof: 'none' | 'assumed' | 'pending' | 'conditional' | 'proved';
     /**
      * Proved or conditional: what the proof rests on, from `#print axioms`: node ids, `presup:<Lean name>` and
      * `axiom:<Lean name>` entries (format 1.0 listed a conditional node's hypotheses here instead).

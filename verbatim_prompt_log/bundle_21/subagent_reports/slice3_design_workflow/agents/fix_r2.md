@@ -1,0 +1,87 @@
+# fix:r2
+
+Agent `affe7eaa5d6e60563` of workflow `wf_d355dac3-0d9`. Verbatim output (JSON alongside).
+
+- **summary:** I fixed all 7 major and 10 minor findings in /tmp/claude-1000/-home-zhengyew-telelean/20626c17-0334-4498-ad86-9dc24b7010ed/scratchpad/plans/slice3-plan.md. R2-13 is fixed only in part, because one of its claims is wrong. Nothing else was written, and nothing was run or built.
+
+Before editing I checked four claims against slice 2's built code, and all four hold:
+- **R2-6:** `packages/core/src/review/items.ts` attaches the derived `id:` write-back to the card's item.
+- **R2-10:** `packages/runner/src/run/persist.ts` writes run.json text captured when the write is queued.
+- **R2-11:** `review/records.ts`'s `decisionKey` picks its fields by name.
+- **R2-15:** `run/manager.ts`'s `recover()` reads only runs that have not ended, and `shadow/index.ts`'s `pruneRunDirs` deletes ended ones.
+
+Decisions:
+- **New:** D3-49 (Submit's take-out keeps frozen content; the Shaky dialog is dropped), D3-50 (a freeze the running step cannot meet ends that step at once, uncounted), D3-51 (no input the runner may forget turns FROZEN off).
+- **Revised:** D3-4, D3-22, D3-30, D3-37, D3-41, D3-48.
+- **Reversed:** D3-44. Editing a card's sentence, Why, stance or source on the board now freezes that field, per the user's FROZEN 1.
+
+I also added a fallback split for 3b, path 23 and cheat 10(e) to §6.2, test lines for every finding, and the dated "review round 2:" entry in §8. One small correction: slice 2's backstop types are in core `review/types.ts`, not `gate/types.ts`.
+- **dispositions:**
+  - [1]
+    - **id:** R2-1
+    - **action:** fixed
+    - **note:** §3.6: a value is stored as `{ from: 'base' }` only when its held map also equals heldMap(B, decls); otherwise as `{ from: 'state' }`. The OwnValue doc (§2.2) is updated. As a consequence, Exit keeps only `{ from: 'base' }` freezes (§5.4). 3b test added: a card that uses a definition a step changed is frozen with no stage problem, and a later Reject of the definition lists it 'held by' the card.
+  - [2]
+    - **id:** R2-2
+    - **action:** fixed
+    - **note:** FreezeDelta is now per key: each changed key's cleared flag and own freezes (§2.3). Undo and Redo touch only those keys, and an Undo whose keys changed since is refused as `conflict` (§5.3). Back to review keeps the freeze actions made in confirming on the stack. Updated D3-22 and §7.1. Tests in 3b (per-key Undo) and 3d (Back to review, then Undo of each key alone).
+  - [3]
+    - **id:** R2-3
+    - **action:** fixed
+    - **note:** planSubmit gains an optional `freezes` input. In every Submit queue it leaves in ws/ each take-out item that owns frozen content (by §3.7's item rule), plus the items it depends on, so its unfrozen parts still build (an addition to the critic's fix). The feedback turn says 'kept: the person froze it'. Because Shaky with a freeze now works in either order, round 1's '[Shaky and unfreeze it]' dialog is dropped. New D3-49, D3-42 updated, path 23 added. Tests in 3b, 3c1, 3d and 3e2.
+  - [4]
+    - **id:** R2-4
+    - **action:** fixed
+    - **note:** RV-5's confirmation now lists every item with `frozen` whose status a cascade changes, whatever its status ('frozen: you accepted it'), and confirming clears `frozen`. An item holder outside the cascade appears in §3.7's list; 'Unfreeze them and decline' clears it, and an accepted one returns to review. Unfreeze also clears `frozen` on an item in review or to be redone. Updated §2.3, §3.6, §3.7, §4.4 and D3-4; 3b test added.
+  - [5]
+    - **id:** R2-5
+    - **action:** fixed
+    - **note:** All four guards are in. One is adapted: the Accept's fail-closed check follows slice 2's own V2A-S5 rule. Reconcile sets a new `ItemRecord.heldAtJudge`, and an Accept without it is refused; ReviewState.freezeAtAccept is removed. Reason: a ReviewState field passed by the runner would refuse every Accept in the runner's slice-2 suites from 3b until 3d. judgeState('final') and applyBackstop refuse without the session's freezes. A runner stopgap, `NO_FREEZES_YET`, keeps the final check and Apply working from 3a to 3d; 3d deletes it and makes the runner's types require the freezes. New D3-51; tests in 3a, 3b and 3d.
+  - [6]
+    - **id:** R2-6
+    - **action:** fixed
+    - **note:** Every revert (`planItemRevert`) restores B's block with its derived `id:` written, and removes an `id:` line only together with its card (§3.10). Apply refuses a kept freeze whose card has no written id in F (§5.4, 3e1). D3-37 and the user guide now say that Apply writes `id:` lines into every file of the subject. The byte-text change to slice-2 revert tests is listed in §0. Tests in 3b and 3e1.
+  - [7]
+    - **id:** R2-7
+    - **action:** fixed
+    - **note:** Adopted the early end with a simpler trigger: any finding the step cannot meet, on a key frozen during the step, ends the step at once. The critic required all blocking findings to be such; but the step can never pass with even one. A new core function `unmeetable` (3b) decides it, and GateFinding gains `freezeKey` and `holders`. 'Filling now' gets its warning text. propose_arrow refuses an arrow whose Remove arrow item is accepted, and mark_proof_broken refuses a held `.holds`. New D3-50, with the withdraw tool as its alternative. Tests in 3b, 3c1, 3d and 3e2.
+  - [8]
+    - **id:** R2-8
+    - **action:** fixed
+    - **note:** The whole-model limits now exempt the step's own `openItems` from the Shaky-content rule (§3.10). 3c1 test: a whole-model Submit step re-proposes its own Shaky Change.
+  - [9]
+    - **id:** R2-9
+    - **action:** fixed
+    - **note:** §3.4 step 3 reworded as proposed: only names an entry compares through its own value are left out, and an accepted item's `frozen.held` names are always compared. 3a test: an instance placed before an accepted statement is refused.
+  - [10]
+    - **id:** R2-10
+    - **action:** fixed
+    - **note:** Every run.json write now builds its text when the write runs (`RunFiles` takes `() => string`). `dispose()`'s second write does the same, and a checked write queued after `close()` rejects (§3.6, in 3d). 3d test: a step write queued while a freeze's write is pending.
+  - [11]
+    - **id:** R2-11
+    - **action:** fixed
+    - **note:** (1) The decide action's request gains `freeze` and `freezeSubjects`, and Redo re-sends them. (2) `decisionKey` ignores `frozen`. (3) One needs-confirmation carries every list, and resending with `confirmed` freezes Claude's proposal for every listed target. 'Your version' is offered only when one item is involved; a Delete or Remove arrow among several items is left out with a reason. D3-30 extended; tests in 3b.
+  - [12]
+    - **id:** R2-12
+    - **action:** fixed
+    - **note:** Took the critic's first option: D3-44 is reversed. An edit of a card's sentence, Why, stance or source on the board adds a standing freeze in the same plan and the same Undo step (§2.6, §3.1, §5.1, the header). New cards, arrows, marks, kind changes and moves are left out, each with its reason in D3-44. The user guide says how to lift these freezes. Tests in 3b and 3d.
+  - [13]
+    - **id:** R2-13
+    - **action:** partly
+    - **note:** Its claim that preset steps can add declarations in another subject's module is wrong. G0's `outside-subject` file rule (core gate/g0.ts, from M2) already refuses any change to another subject's files, and slice 2 runs it at every session purpose. The meaning part is right and is fixed. The `other-subject` rule moves to 3a and runs at every judged state, in every step including narrow ones. It compares other subjects' meaningKeys, and the held values of this subject's declarations they reach in B. existing-changed now compares meaningKey everywhere. Updated §3.1, §3.5, §3.10, D3-41 and cheat 17; tests in 3a.
+  - [14]
+    - **id:** R2-14
+    - **action:** fixed
+    - **note:** §5.3: an Undo that would give a reason that planFreeze would refuse now is refused with that target's text. `violates` is computed on the state the view shows, masked while the results are hidden. D3-22 updated; 3b test with a hidden twin pair.
+  - [15]
+    - **id:** R2-15
+    - **action:** fixed
+    - **note:** recover() also reads the ended session run whose board step is not written and makes it once; if that board step fails, a notice is shown and it is marked written. pruneRunDirs keeps that run until then. recover()'s upgrade sets `frozen` on accepted records, from freezeAtAccept, which now also covers accepted items (§2.3, §5.2, §5.4). Tests in 3d and 3e1.
+  - [16]
+    - **id:** R2-16
+    - **action:** fixed
+    - **note:** Added the fallback split to §1 as 3b1/3b2, with this round's additions placed in it.
+  - [17]
+    - **id:** R2-17
+    - **action:** fixed
+    - **note:** Adopted the item-based rule: frozenChangesOf now works from the items a write takes out (compared with B) and brings back. AddressValue.text, HeldValue.text, the planned model and the dialog's `shaky` flag are removed. Two additions found while fixing it: a premise item owns its target's Proof while its completion is written, and the Undo of 'Unfreeze them and decline' does not list the keys it restores itself. Due premise writes now fail on their own judgement's frozen findings. Updated §2.2, §2.4, §2.9, §3.2, §3.7, §4.4, §7.1 and D3-48; 3b tests rewritten.

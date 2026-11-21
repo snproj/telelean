@@ -177,7 +177,6 @@ export function normativeProposal(patch: Partial<ProposalView> = {}): ProposalVi
       },
     ],
     definitions: [],
-    lifecycle: [{ id: 'l1', kind: 'change-kind', nodeId: TARGET, from: 'GOAL', to: 'DERIVATION', recommended: true, reason: 'Lean proved it from the selected premises' }],
     ghosts: [],
     report: {
       verdict: 'proved',
@@ -288,7 +287,6 @@ export function literalProposal(patch: Partial<ProposalView> = {}): ProposalView
       { kind: 'vocabulary', items: [{ name: 'Spyro.InGame', vocabKind: 'predicate', type: 'Spyro.Character → Spyro.Game → Prop', gloss: 'is in', code: IN_GAME.code ?? '' }] },
     ],
     definitions: [],
-    lifecycle: [],
     ghosts: [literalGhost()],
     report: {
       verdict: 'not-proved',
@@ -317,7 +315,7 @@ export const ADOPTED_ID = 'a-character-who-cannot-be-in';
 function adoptedNode(): TlNode {
   return {
     id: ADOPTED_ID,
-    type: 'ASSUMPTION',
+    type: 'AXIOM',
     role: 'node',
     subject: 'Spyro',
     naturalName: 'A character who cannot be in a game would not be a good addition to it',
@@ -342,13 +340,13 @@ function adoptedNode(): TlNode {
   };
 }
 
-/** Literal reading, round 2 after "I hold this": proved with the adopted premise; G->D proposed. */
+/** Literal reading, round 2 after "I hold this": proved with the adopted premise. */
 export function adoptedProposal(patch: Partial<ProposalView> = {}): ProposalView {
   const literal = literalGraph(50);
   const proved = spyroProvedGraph(50).nodes.find((n) => n.id === TARGET) as TlNode;
   const footprint = [...ALL_PREMISES, ADOPTED_ID, `${PRESUPPOSITION_PREFIX}Spyro.Character.exists`, `${PRESUPPOSITION_PREFIX}Spyro.Game.exists`];
   const target: TlNode = { ...proved, status: { ...proved.status, proof: { kind: 'proved', footprint } } };
-  const nodes = [...literal.nodes.filter((n) => n.type === 'ASSUMPTION'), adoptedNode(), target];
+  const nodes = [...literal.nodes.filter((n) => n.type === 'AXIOM'), adoptedNode(), target];
   const graph: TlGraph = {
     ...literal,
     nodes,
@@ -393,7 +391,6 @@ export function adoptedProposal(patch: Partial<ProposalView> = {}): ProposalView
       },
       literalReview[1] as ProposalView['review'][number],
     ],
-    lifecycle: [{ id: 'l1', kind: 'change-kind', nodeId: TARGET, from: 'GOAL', to: 'DERIVATION', recommended: true, reason: 'Lean proved it from the selected premises' }],
     ghosts: [literalGhost({ state: 'adopted', nodeId: ADOPTED_ID })],
     report: {
       ...literalReport,
@@ -434,17 +431,14 @@ export function definitionProposal(patch: Partial<ProposalView> = {}): ProposalV
         gloss: 'there is at least one rating',
       },
     ],
-    lifecycle: [
-      { id: 'l1', kind: 'change-kind', nodeId: TARGET, from: 'GOAL', to: 'DERIVATION', recommended: true, reason: 'Lean proved it from the selected premises' },
-      { id: 'l2', kind: 'change-kind', nodeId: 'new-spyro-pg', from: 'ASSUMPTION', to: 'DERIVATION', recommended: false, reason: 'its .holds became a theorem' },
-    ],
     ...patch,
   };
 }
 
 /**
- * "Self-evident?" (no premises) that Claude could not prove, in a round that changed no file: the proposal is empty,
- * so Accept only records the outcome (no Undo step, no history entry). Its run: `reviewRun(p, { premises: [] })`.
+ * "Follows from nothing?" (no premises; M2's "Self-evident?") that Claude could not prove, in a round that changed no
+ * file: the proposal is empty, so Accept only records the outcome (no Undo step, no history entry). Its run:
+ * `reviewRun(p, { premises: [] })`.
  */
 export function emptyProposal(patch: Partial<ProposalView> = {}): ProposalView {
   return {
@@ -457,7 +451,6 @@ export function emptyProposal(patch: Partial<ProposalView> = {}): ProposalView {
     files: [],
     review: [],
     definitions: [],
-    lifecycle: [],
     ghosts: [],
     report: {
       verdict: 'not-proved',
@@ -480,9 +473,12 @@ export function emptyProposal(patch: Partial<ProposalView> = {}): ProposalView {
   };
 }
 
-/** The runner's notices for an Accept: one that changed files, and one that applied nothing (fixer round 1 wording). */
-export const ACCEPTED_NOTICE = 'Accepted: These suffice → proved: Cynder would not be a good addition to the new Spyro game. Undo reverts it.';
-export const RECORDED_NOTICE = 'Recorded: Self-evident? → not proved: Cynder would not be a good addition to the new Spyro game (no file changed).';
+/**
+ * The runner's notices for an Accept: one that changed files, and one that applied nothing (fixer round 1 wording; the
+ * action's name as core's proposalLabel words it since slice 1e: "Formalize", or "Follows from nothing?").
+ */
+export const ACCEPTED_NOTICE = 'Accepted: Formalize → proved: Cynder would not be a good addition to the new Spyro game. Undo reverts it.';
+export const RECORDED_NOTICE = 'Recorded: Follows from nothing? → not proved: Cynder would not be a good addition to the new Spyro game (no file changed).';
 
 /** The run in review with a proposal (state, verdict and proposal id agree). */
 export function reviewRun(proposal: ProposalView, patch: Partial<RunView> = {}): RunView {
