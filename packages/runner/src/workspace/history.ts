@@ -22,7 +22,7 @@ import { createHash } from 'node:crypto';
 import { lstat, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import type { HistoryActionKind, HistoryAvailability, HistoryEntry, StorageUsage } from '@telelean/core';
+import type { ArrowProvenance, HistoryActionKind, HistoryAvailability, HistoryEntry, StorageUsage } from '@telelean/core';
 
 import { discoverRepository, GitError, gitText, isValidRefName, runGit, type RepoInfo } from './git.js';
 
@@ -42,6 +42,11 @@ export interface SnapshotMeta {
   /** Written as the `Telelean-Subject` trailer ('' for project-level changes). */
   subject: string;
   nodes: readonly string[];
+  /**
+   * (slice 2f, coverage audit G1; additive) An Apply's provenance: one `Telelean-Arrow` trailer per arrow
+   * (`<kind> <step> <source> <target>`), read back as `HistoryEntry.arrows`.
+   */
+  arrows?: readonly ArrowProvenance[];
 }
 
 export interface HistoryStoreOptions {
@@ -471,12 +476,16 @@ export class HistoryStore {
 export function snapshotMessage(meta: SnapshotMeta): string {
   const oneLine = (s: string): string => s.replace(/[\r\n]+/g, ' ').trim();
   const nodes = meta.nodes.map(oneLine).filter((n) => n !== '');
+  // Slice 2f (G1): one trailer per arrow; a part that is no single token (never so for card and step ids) is skipped.
+  const token = (s: string): boolean => /^[^\s]+$/u.test(s);
+  const arrows = (meta.arrows ?? []).filter((a) => token(a.kind) && token(a.step) && token(a.source) && token(a.target));
   return [
     oneLine(meta.label) || 'Snapshot',
     '',
     `Telelean-Action: ${meta.action}`,
     `Telelean-Subject:${meta.subject ? ` ${oneLine(meta.subject)}` : ''}`,
     `Telelean-Nodes:${nodes.length > 0 ? ` ${nodes.join(', ')}` : ''}`,
+    ...arrows.map((a) => `Telelean-Arrow: ${a.kind} ${a.step} ${a.source} ${a.target}`),
     `Telelean-Format: ${HISTORY_FORMAT}`,
     '',
   ].join('\n');
@@ -498,6 +507,12 @@ export function entryFromMessage(id: string, time: string, message: string, fall
     .split(',')
     .map((n) => n.trim())
     .filter((n) => n !== '');
+  // Slice 2f (G1): an Apply's arrows, read leniently (a malformed trailer is skipped; none: no field).
+  const arrows: ArrowProvenance[] = [];
+  for (const line of lines) {
+    const match = /^Telelean-Arrow:[ \t]*(arrow|premise)[ \t]+(\S+)[ \t]+(\S+)[ \t]+(\S+)[ \t]*$/u.exec(line);
+    if (match) arrows.push({ kind: match[1] as ArrowProvenance['kind'], step: match[2] ?? '', source: match[3] ?? '', target: match[4] ?? '' });
+  }
   return {
     id,
     time,
@@ -505,6 +520,7 @@ export function entryFromMessage(id: string, time: string, message: string, fall
     label,
     subject: trailer('Subject') || fallbackSubject,
     nodes,
+    ...(arrows.length > 0 ? { arrows } : {}),
   };
 }
 

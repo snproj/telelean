@@ -5,7 +5,7 @@
  * would land on and what it says before you let go, a moved proposition dropped on the AXIOMS column, the Delete key,
  * and what an edit session and the Proposed view allow.
  */
-import { EDIT_SESSION_ACTIVE, edgeId, kindChangeImpact, spyroGraph, spyroProvedGraph, type TlEdge, type TlGraph, type TlNode } from '@telelean/core';
+import { EDIT_SESSION_ACTIVE, edgeId, REVIEW_TEXTS, kindChangeImpact, spyroGraph, spyroProvedGraph, type TlEdge, type TlGraph, type TlNode } from '@telelean/core';
 import { describe, expect, it } from 'vitest';
 import { toDisplayEdges } from '../../src/board/edges';
 import { cubicPath, curvePath, loopPath, type Rect } from '../../src/board/geometry';
@@ -81,6 +81,22 @@ describe('what a click on an arrow can do (A, CM-2)', () => {
     expect(clickOutcome({ kind: 'mark', id: GOAL }, true)).toEqual({ kind: 'select-mark', id: GOAL, additive: true });
     expect(clickOutcome(null, false)).toEqual({ kind: 'clear' });
     expect(clickOutcome(null, true)).toEqual({ kind: 'none' });
+  });
+
+  it('slice 2h (§5.10, D2-20): Claude\'s arrow not accepted takes the pointer as `proposed` whatever its line; a click focuses its item, never selects it; its menu is its own', () => {
+    for (const pattern of ['declared', 'verified', 'reference'] as const) {
+      expect(hitRole({ pattern, declared: true, proposed: { change: 'add', status: 'in-review' } }), pattern).toBe('proposed');
+      expect(hitRole({ pattern, proposed: { change: 'remove', status: 'in-review' } }), pattern).toBe('proposed');
+    }
+    expect(hitRole({ pattern: 'declared', declared: true, proposed: { change: 'add', status: 'to-be-redone' } })).toBe('proposed');
+    // Accepted, Claude's Add is drawn as any arrow: it can be selected (and so asked about).
+    expect(hitRole({ pattern: 'declared', declared: true, proposed: { change: 'add', status: 'accepted' } })).toBe('drawn');
+    const claude = { kind: 'arrow' as const, id: `${PG}->${GOAL}`, source: PG, target: GOAL, role: 'proposed' as const, item: 'it5' };
+    expect(clickOutcome(claude, false)).toEqual({ kind: 'focus-item', item: 'it5' });
+    expect(clickOutcome(claude, true)).toEqual({ kind: 'focus-item', item: 'it5' });
+    const { item: _none, ...withoutItem } = claude;
+    expect(clickOutcome(withoutItem, false)).toEqual({ kind: 'none' });
+    expect(hitThing(claude)).toEqual({ kind: 'proposed', item: 'it5', source: PG, target: GOAL });
   });
 
   it('the right-click menu\'s thing: a drawn arrow, an undeclared one (its own menu), or a mark (the ∅ stub)', () => {
@@ -290,6 +306,20 @@ describe('what an edit session and the Proposed view allow (F, ES-9)', () => {
     expect(gestureGate({ lock: EDIT_SESSION_ACTIVE, proposed: true })).toEqual(proposed);
     expect(gestureGate({ lock: null, proposed: true })).toEqual(proposed);
     expect(MENU_PROPOSED_ARROWS).toBe('Arrows change only through review items and transforms.');
+  });
+
+  it('slice 2h (§5.10, D2-33, D2-62): a session’s Proposed view selects and moves (a session step); drawing stays off; no move while a step runs, confirming or applying', () => {
+    const during = (session: { stage: boolean; stepRunning: boolean; applying?: boolean }, lock: string | null = EDIT_SESSION_ACTIVE) => gestureGate({ lock, proposed: true, session });
+    expect(during({ stage: true, stepRunning: false })).toEqual({ draw: MENU_PROPOSED_ARROWS, move: null, select: true });
+    // The Current board's lock does not reach the session's own view.
+    expect(during({ stage: true, stepRunning: false }, null)).toEqual({ draw: MENU_PROPOSED_ARROWS, move: null, select: true });
+    expect(during({ stage: false, stepRunning: true })).toEqual({ draw: MENU_PROPOSED_ARROWS, move: REVIEW_TEXTS.stepRunning, select: true });
+    // A step running wins over any other phase reason.
+    expect(during({ stage: false, stepRunning: true, applying: true }).move).toBe(REVIEW_TEXTS.stepRunning);
+    expect(during({ stage: false, stepRunning: false })).toEqual({ draw: MENU_PROPOSED_ARROWS, move: REVIEW_TEXTS.formalizeConfirming, select: true });
+    expect(during({ stage: false, stepRunning: false, applying: true }).move).toBe(REVIEW_TEXTS.applyingNow);
+    // The Current view during a session: the session's lock, selecting stays.
+    expect(gestureGate({ lock: EDIT_SESSION_ACTIVE, proposed: false, session: { stage: true, stepRunning: false } })).toEqual({ draw: EDIT_SESSION_ACTIVE, move: EDIT_SESSION_ACTIVE, select: true });
   });
 });
 

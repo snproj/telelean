@@ -3,21 +3,22 @@
  * before it ends), or this board's start is on its way, the Current board is read-only. Every edit action of the store
  * posts nothing and changes nothing (an info toast says why), Undo and Redo post nothing at all (the disabled buttons
  * say why), an edit under way ends when the lock begins, and viewing keeps working. The Proposed view never posts a
- * board Undo either.
+ * board Undo either. Slice 2h (§5.12): the Proposed view is an edit session's (M2's proposal is retired); the board
+ * stack stays locked during a session with its own text, and a move there is a session step (`moveProposed`).
  */
-import { EDIT_SESSION_ACTIVE, hostMessage, spyroGraph, type ActionOutcome, type ProposalView, type RunState, type RunView, type TlGraph, type WebviewToHostMessage } from '@telelean/core';
+import { EDIT_SESSION_ACTIVE, hostMessage, REVIEW_TEXTS, spyroGraph, type ActionOutcome, type RunState, type RunView, type SessionView, type TlGraph, type WebviewToHostMessage } from '@telelean/core';
 import { describe, expect, it } from 'vitest';
 import {
   arrowLock,
   createBoardStore,
   editLock,
   PROPOSED_ARROWS_LOCKED,
-  PROPOSED_NO_UNDO,
   undoLock,
   undoRedoButtons,
 } from '../../src/state/store';
 import { historyListing, workspaceState } from '../shared/graphs';
-import { normativeProposal, reviewRun, runView, TARGET } from '../shared/runs';
+import { runView, TARGET } from '../shared/runs';
+import { sessionRun, shownStage } from '../shared/sessions';
 
 const DARK = 'cynder-dark-past';
 const ACTIVE: readonly RunState[] = ['starting', 'working', 'waiting-for-answer', 'gate', 'review', 'interrupted'];
@@ -29,10 +30,10 @@ function setup(graph: TlGraph = spyroGraph()) {
   store.getState().applyGraph(graph);
   const state = () => store.getState();
   const run = (value: RunView | null) => state().receive(hostMessage('run', { run: value }));
-  const proposal = (value: ProposalView | null) => state().receive(hostMessage('proposal', { proposal: value }));
+  const session = (value: SessionView | null) => state().receive(hostMessage('session', { session: value }));
   const result = (requestId: string, outcome: ActionOutcome) => state().receive(hostMessage('actionResult', { requestId, outcome }));
   state().receive(hostMessage('workspace', { state: workspaceState() }));
-  return { store, sent, state, run, proposal, result };
+  return { store, sent, state, run, session, result };
 }
 
 /** Every edit gesture the store offers, each tried once on the board on screen. */
@@ -45,7 +46,7 @@ function tryEveryEdit(t: ReturnType<typeof setup>): Record<string, unknown> {
   out.editing = s().editing;
   s().openDelete(DARK);
   out.deleteDialog = s().dialog;
-  s().deleteNode(DARK, false);
+  s().deleteNode(DARK);
   s().requestKindChange(TARGET, 'AXIOM', null);
   s().moveToAxioms(TARGET);
   s().dropCard(TARGET, 'AXIOM', null);
@@ -105,8 +106,8 @@ describe('editLock (ES-9): when the Current board is read-only', () => {
     for (const state of ENDED) expect(editLock({ run: runView({ state }), runBusy: null }), state).toBeNull();
     // This board's start is on its way to the host: locked already (the host refuses edits then too).
     expect(editLock({ run: null, runBusy: { action: 'start', requestId: 'r1' } })).toBe(EDIT_SESSION_ACTIVE);
-    expect(editLock({ run: null, runBusy: { action: 'accept', requestId: 'r1' } })).toBeNull();
-    expect(EDIT_SESSION_ACTIVE).toBe("An edit session is active: the board can't be edited until you accept or discard it.");
+    expect(editLock({ run: null, runBusy: { action: 'cancel', requestId: 'r1' } })).toBeNull();
+    expect(EDIT_SESSION_ACTIVE).toBe("An edit session is active: the board can't be edited until you apply or exit it.");
   });
 });
 
@@ -204,7 +205,7 @@ describe('the store while the board is locked', () => {
     // Slice 1e: Formalize for dependencies on a selected arrow (the tray's "These suffice" is gone).
     t.state().selectArrow(DARK, TARGET, false);
     expect(t.state().formalize()).toBe(true);
-    expect(t.sent.at(-1)?.type).toBe('startRun');
+    expect(t.sent.at(-1)?.type).toBe('formalize');
     expect(t.state().addNode('AXIOM', 'Critics notice ratings')).toBeNull();
     t.result('r1', { ok: false, code: 'not-yet', error: 'Claude could not be started: no binary' });
     expect(editLock(t.state())).toBeNull();
@@ -219,15 +220,16 @@ describe('the store while the board is locked', () => {
   });
 });
 
-describe('the Proposed view never posts a board edit or a board Undo (UN-1)', () => {
-  it('during a review: nothing posts; the arrow actions have their own reason', () => {
+describe('the Proposed view never posts a board edit or a board Undo (UN-1; slice 2h: an edit session’s)', () => {
+  it('during a session: no board edit posts; a move is a session step (moveProposed); the arrow actions have their own reason', () => {
     const t = setup();
-    const p = normativeProposal();
-    t.run(reviewRun(p));
-    t.proposal(p);
+    const view = shownStage();
+    t.run(sessionRun(view));
+    t.session(view);
     expect(t.state().proposedView).toBe(true);
     tryEveryEdit(t);
     expect(edits(t.sent)).toEqual([]);
+    expect(t.sent.filter((m) => m.type === 'moveProposed').map((m) => m.payload)).toEqual([{ runId: view.runId, positions: { [TARGET]: { x: 10, y: 20 } }, requestId: 'r1' }]);
     expect(arrowLock(t.state())).toBe(PROPOSED_ARROWS_LOCKED);
     expect(PROPOSED_ARROWS_LOCKED).toBe('Arrows change only through review items and transforms.');
     // Current | Proposed still switches; on Current the session's own reason applies.
@@ -235,15 +237,23 @@ describe('the Proposed view never posts a board edit or a board Undo (UN-1)', ()
     expect(arrowLock(t.state())).toBe(EDIT_SESSION_ACTIVE);
   });
 
-  it('a proposal on screen without an active run (should one ever be): Undo still posts nothing', () => {
+  it('a session on screen without a run known (should one ever be): the board Undo posts nothing; Ctrl+Z there is the session’s', () => {
     const t = setup();
-    t.proposal(normativeProposal());
+    t.session(shownStage());
     expect(t.state().proposedView).toBe(true);
     expect(editLock(t.state())).toBeNull();
-    expect(undoLock(t.state())).toBe(PROPOSED_NO_UNDO);
+    expect(undoLock(t.state())).toBe(REVIEW_TEXTS.boardUndoLocked);
     t.state().undo();
     t.state().redo();
     expect(t.sent.filter((m) => m.type === 'undo' || m.type === 'redo')).toEqual([]);
+    // A move there is the session's step even with no run lock: moveProposed, never the board's moveCards.
+    t.state().moveCards({ [TARGET]: { x: 3, y: 4 } });
+    expect(t.sent.filter((m) => m.type === 'moveProposed')).toHaveLength(1);
+    expect(t.sent.filter((m) => m.type === 'moveCards')).toEqual([]);
+    const moved = t.sent.at(-1);
+    t.result(moved !== undefined && 'requestId' in moved.payload ? (moved.payload.requestId as string) : '', { ok: true, label: 'Move', undoable: false });
+    t.state().undoInScope();
+    expect(t.sent.filter((m) => m.type === 'sessionUndo')).toHaveLength(1);
   });
 });
 
@@ -262,15 +272,24 @@ describe('the header\'s Undo and Redo buttons (UN-3, A27)', () => {
     });
   });
 
-  it('undoLock: the session\'s reason on the Current view and in the Proposed view; none without a run', () => {
+  it('undoLock: a run\'s lock; during a session (slice 2h, §5.12) the board stack\'s own text on either view; none without a run', () => {
     const t = setup();
     expect(undoLock(t.state())).toBeNull();
-    const p = normativeProposal();
-    t.run(reviewRun(p));
+    t.run(runView({ state: 'working' }));
     expect(undoLock(t.state())).toBe(EDIT_SESSION_ACTIVE);
-    t.proposal(p);
+    const view = shownStage();
+    t.run(sessionRun(view));
+    expect(undoLock(t.state())).toBe(REVIEW_TEXTS.boardUndoLocked);
+    expect(REVIEW_TEXTS.boardUndoLocked).toBe("Your files can't change during an edit session; Undo in the Proposed view undoes your review steps.");
+    t.session(view);
     expect(t.state().proposedView).toBe(true);
-    expect(undoLock(t.state())).toBe(EDIT_SESSION_ACTIVE);
-    expect(undoRedoButtons(t.state().workspace, undoLock(t.state())).undo).toEqual({ disabled: true, title: EDIT_SESSION_ACTIVE });
+    expect(undoLock(t.state())).toBe(REVIEW_TEXTS.boardUndoLocked);
+    t.state().setProposedView(false);
+    expect(undoLock(t.state())).toBe(REVIEW_TEXTS.boardUndoLocked);
+    expect(undoRedoButtons(t.state().workspace, undoLock(t.state())).undo).toEqual({ disabled: true, title: REVIEW_TEXTS.boardUndoLocked });
+    // The session ended (the run with it): the board stack is the person's again.
+    t.session(null);
+    t.run(runView({ state: 'cancelled' }));
+    expect(undoLock(t.state())).toBeNull();
   });
 });

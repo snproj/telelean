@@ -4,12 +4,13 @@
  * from the selection included), Delete, moving cards, Undo and Redo, History's "Revert to this" and "New subject…" are
  * disabled (each with the reason on hover, or an info toast when a key asks), while selecting, expanding, panning,
  * zooming and the History list still work. In the Proposed view the arrow handles and actions are disabled with their
- * own reason. When the run ends, the board is editable again.
+ * own reason (slice 2h: an edit session's Proposed view, which selects). When the run ends, the board is editable again.
  */
 import { expect, test } from '@playwright/test';
 import { EDIT_SESSION_ACTIVE, hostMessage, spyroGraph, type TlGraph } from '@telelean/core';
 import { historyListing, makeNode, workspaceState } from '../shared/graphs';
-import { normativeProposal, reviewRun, runView, TARGET, UPDATED } from '../shared/runs';
+import { runView, TARGET, UPDATED } from '../shared/runs';
+import { sessionRun, shownStage } from '../shared/sessions';
 import {
   boardMenu,
   canvasView,
@@ -167,26 +168,51 @@ test('during a run the Current board is read-only: the A|P box, handles, edit ac
   await page.keyboard.press('Escape');
 });
 
-test('in the Proposed view the handles and the arrow actions are disabled with "Arrows change only through review items and transforms."', async ({ page }) => {
+test('in the Proposed view the handles and the arrow actions are disabled with "Arrows change only through review items and transforms." (slice 2h: a session’s, which selects)', async ({ page }) => {
   board = await openBoard(page, sessionGraph(), 'dark', { workspace: workspaceState(), clock: UPDATED });
-  const proposal = normativeProposal();
-  await send(page, hostMessage('run', { run: reviewRun(proposal) }));
-  await send(page, hostMessage('proposal', { proposal }));
+  const session = shownStage();
+  await send(page, hostMessage('run', { run: sessionRun(session) }));
+  await send(page, hostMessage('session', { session }));
   await expect(page.locator('.tl-board')).toHaveAttribute('data-view', 'proposed');
   await expect(page.locator('.tl-handle[data-handle]')).toHaveCount(0);
   await expect(card(page, TARGET).locator(':scope > .tl-handle')).toHaveAttribute('title', PROPOSED_ARROWS);
-  // The right-click menu keeps the selection as it is (read-only) and offers the arrow actions disabled.
+  // The right-click selects the card (slice 2h: the session's view selects, §5.10) and offers the arrow actions disabled.
   await rightClick(page, await cardPoint(page, TARGET));
   await expect(menuItem(page, 'move-to-axioms')).toBeDisabled();
   await expect(menuItem(page, 'move-to-axioms')).toHaveAttribute('title', PROPOSED_ARROWS);
   await expect(menuItem(page, 'show')).toBeEnabled();
   await page.keyboard.press('Escape');
-  await expect(card(page, TARGET)).not.toHaveAttribute('data-selected', /.*/);
+  await expect(card(page, TARGET)).toHaveAttribute('data-selected', /.*/);
+  expect((await postedOfType(page, 'select')).map((m) => m.payload)).toEqual([{ ids: [TARGET] }]);
   // Its expanded card shows the same, disabled.
   await card(page, TARGET).locator('.tl-card__chevron').click();
-  await expect(card(page, TARGET).getByTestId('proposal-readonly')).toContainText('This is Claude’s proposal (read-only).');
+  await expect(card(page, TARGET).getByTestId('proposal-readonly')).toContainText("This is the edit session's Proposed view");
   await expect(card(page, TARGET).getByTestId('arrow-actions').getByTestId('make-axiom')).toBeDisabled();
   await expect(card(page, TARGET).getByTestId('arrow-actions').getByTestId('make-axiom')).toHaveAttribute('title', PROPOSED_ARROWS);
   await settle(page);
-  expect(await postedOfType(page, 'select')).toEqual([]);
+  // Nothing that changes the board was posted (the selection is viewing).
+  expect((await edits(page)).filter((t) => t !== 'moveProposed')).toEqual([]);
+});
+
+test('in the Proposed view an old axiom is named only in its chip tooltip: its details have no "declared before v4" line (slice 2i round 1, F-F3)', async ({ page }) => {
+  // pg-no-dark-past (an axiom) was written before v4 with `premises: [cynder-dark-past]`, in the board and in the session's board.
+  const OLD = 'pg-no-dark-past';
+  const base = spyroGraph(11);
+  const withOld = (g: TlGraph): TlGraph => ({ ...g, nodes: g.nodes.map((n) => (n.id === OLD ? { ...n, premises: ['cynder-dark-past'] } : n)) });
+  board = await openBoard(page, withOld(base), 'dark', { workspace: workspaceState(), clock: UPDATED });
+  const chip = card(page, OLD).locator('[data-chip="declared-before-v4"]');
+  // The Current view: the line (and the two choices) are in the details.
+  await card(page, OLD).locator('.tl-card__chevron').click();
+  await expect(card(page, OLD).getByTestId('declared-before-v4')).toHaveText('Declared before v4 (not drawn): arrows from “Cynder is a character who has a dark past”.');
+  await card(page, OLD).locator('.tl-card__chevron').click();
+  const shown = shownStage();
+  const session = { ...shown, board: { ...shown.board, graph: withOld(shown.board.graph) } };
+  await send(page, hostMessage('run', { run: sessionRun(session) }));
+  await send(page, hostMessage('session', { session }));
+  await expect(page.locator('.tl-board')).toHaveAttribute('data-view', 'proposed');
+  await expect(chip).toHaveAttribute('title', /from “Cynder is a character who has a dark past”/);
+  await card(page, OLD).locator('.tl-card__chevron').click();
+  await expect(card(page, OLD).getByTestId('proposal-readonly')).toBeVisible();
+  await expect(card(page, OLD).getByTestId('declared-before-v4')).toHaveCount(0);
+  await expect(card(page, OLD).getByTestId('legacy-drop-arrows')).toHaveCount(0);
 });

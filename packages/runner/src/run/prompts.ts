@@ -271,34 +271,8 @@ export function renderContextBundle(input: ContextBundleInput): string {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Later user turns (section 5.3)
-
-export function feedbackTurn(text: string, caps: RunCaps): string {
-  return (
-    `Feedback from the person on your previous result:\n"${text}"\n` +
-    'This starts a new round. Your earlier changes are still in the files. If statements need to change, revise them, ' +
-    'then call check_lean and freeze_statements again before proving: finish with status proved needs a freeze in this ' +
-    `round. Budget for this round: ${budgetText(caps)}`
-  );
-}
-
-export interface AdoptedGhostTurnInput {
-  nodeId: string;
-  sentence: string;
-  /** Fully-qualified statement name, e.g. `Spyro.not_in_game_not_good`. */
-  leanName: string;
-  statement: string;
-  caps: RunCaps;
-}
-
-export function adoptionTurn(g: AdoptedGhostTurnInput): string {
-  return (
-    `The person adopted your suggestion as an axiom:\n- ${g.nodeId} (AXIOM, worded by you): ${quoted(g.sentence)}\n` +
-    `  Lean: ${g.leanName} := ${g.statement}; axiom ${g.leanName}.holds (telelean wrote it right before the target's block).\n` +
-    `The statements are frozen again with it selected, so you may use ${g.leanName}.holds. Prove the target now and call finish. ` +
-    `Budget for this round: ${budgetText(g.caps)}`
-  );
-}
+// Later user turns (section 5.3). Slice 2h retired M2's Feedback and ghost-adoption turns with their actions (a
+// session's Submit review sends `submitFeedbackTurn`, and an accepted Add premise is written by telelean, §3.8).
 
 export function resumeTurn(frozen: boolean): string {
   return (
@@ -360,7 +334,8 @@ export interface FeedbackItem {
   lean: string;
   /** SHAKY: the person's note for Claude (D2-13). */
   note?: string;
-  /** TO BE REDONE: what it relied on (the items that took it down), or why telelean took it out. */
+  /** TO BE REDONE: what it relied on (the items that took it down), or why telelean took it out; SHAKY: the items whose
+   *  rework Submit's take-out made it wait for (D2-57). */
   reliedOn?: readonly string[];
 }
 
@@ -392,12 +367,13 @@ export function submitFeedbackTurn(i: SubmitFeedbackInput): string {
   };
   section('ACCEPTED: keep them exactly as they are.', i.accepted);
   section('REJECTED: they were removed; never propose these exact versions again.', i.rejected);
+  const relied = (x: FeedbackItem) => (x.reliedOn !== undefined && x.reliedOn.length > 0 ? [`  It relied on: ${x.reliedOn.join('; ')}`] : []);
   section(
     'SHAKY: propose a different arrangement for these together. Any single one may come back unchanged, but not the whole set; if there is none, finish with no_alternative: true.',
     i.shaky,
-    (x) => (x.note !== undefined ? [`  The person's note: ${quoted(x.note)}`] : []),
+    (x) => [...(x.note !== undefined ? [`  The person's note: ${quoted(x.note)}`] : []), ...relied(x)],
   );
-  section('TO BE REDONE: propose them again; what each relied on:', i.redo, (x) => (x.reliedOn !== undefined && x.reliedOn.length > 0 ? [`  It relied on: ${x.reliedOn.join('; ')}`] : []));
+  section('TO BE REDONE: propose them again; what each relied on:', i.redo, relied);
   lines.push('STEPS PLANNED (one step per target, in this order):');
   i.steps.forEach((s, k) => lines.push(`${k + 1}. ${s.id}: ${quoted(s.sentence)}`));
   return `${lines.join('\n')}\n`;

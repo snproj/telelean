@@ -1,7 +1,8 @@
 /**
  * Small pure formatters and input helpers (unit-tested): history times, storage sizes, the one-line sentence rule,
- * and the board's undo/redo shortcuts.
+ * and the board's undo/redo shortcuts; (slice 2f) an Apply's provenance lines in History.
  */
+import { REVIEW_TEXTS, type HistoryEntry } from '@telelean/core';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
 
@@ -114,4 +115,13 @@ export function isTextEntry(target: EventTarget | null): boolean {
   if (typeof Element === 'undefined' || !(target instanceof Element)) return false;
   if (target.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"]')) return true;
   return target instanceof HTMLElement && target.isContentEditable;
+}
+
+/**
+ * Slice 2f (docs/slice2-plan.md 3.10 step 4, coverage audit G1): History's lines for an Apply's entry, under "Arrows from
+ * Claude": "‹source› → ‹target› (step ‹n›)" for each arrow Claude proposed that the Apply wrote. An entry without
+ * `arrows` (any other entry, an older Apply) has none.
+ */
+export function historyArrowLines(entry: Pick<HistoryEntry, 'arrows'>): string[] {
+  return (entry.arrows ?? []).map((a) => REVIEW_TEXTS.arrowFromClaude(a.source, a.target, a.step));
 }

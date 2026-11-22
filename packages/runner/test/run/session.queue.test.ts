@@ -239,6 +239,18 @@ describe('how a step ends (§3.4)', () => {
     expect(await premise.shadow().filesAt(rawStep(premise, 's1').startCommit ?? '')).toEqual(await premise.shadow().currentFiles());
     expect(premise.manager.session()?.results.shown).toBe(true);
     expect(premise.manager.session()?.report.steps.map((x) => x.proposedNothing)).toEqual([undefined]);
+    // (2d's review, R1-2) An ordinary passed step, one that wrote its proof (no arrow, no premise), proposed something:
+    // its end files differ from S₀'s, so it has no `proposedNothing`, and its report line none once the results show.
+    const proof = 'theorem cynder_not_good.holds : cynder_not_good := fun _ => cynder_dark_past.holds.elim\n';
+    const proved = makeHarness({ script: [round1(step.freeze(), step.edit(GOAL_LINE, GOAL_LINE + proof), step.finish('proved', 'Proved.'), step.result())] });
+    toDispose.push(() => proved.dispose());
+    await proved.manager.start(START);
+    await waitForStage(proved.manager, 1);
+    expect(rawStep(proved, 's1')).toMatchObject({ state: 'passed', lastFinish: { status: 'proved' } });
+    expect(rawStep(proved, 's1').proposedNothing).toBeUndefined();
+    expect((await proved.shadow().currentFiles()).get(MAIN)).toContain(proof);
+    expect(proved.manager.session()?.results.shown).toBe(true);
+    expect(proved.manager.session()?.report.steps.map((x) => x.proposedNothing)).toEqual([undefined]);
   });
 
   it('the caps apply per step: two steps of 3 turns each pass under a cap of 4 turns', async () => {
@@ -424,15 +436,15 @@ describe('while a step runs, the session takes no action (D2-62, §2.5)', () => 
     expect(await m.formalize({ subject: 'Spyro', inferences: [{ target: 'cynder-not-good', premises: ['new-spyro-pg'] }], runId, stage: 0 })).toEqual(refused);
     expect(await m.end(runId, 'apply', 0, 'c')).toEqual(refused);
     expect(await m.end(runId, 'back', 0)).toEqual(refused);
-    // Exit is never refused for a running step (2f builds it: until then `not-yet`).
-    expect(await m.end(runId, 'exit')).not.toMatchObject({ code: 'refused' });
+    // Exit is never refused for a running step: it ends the session (2f; session.end.test.ts "Exit stops a running step").
     // Answering Claude's question goes through, and so does Cancel step.
     expect(await m.answer(runId, 'q1', [{ question: 0, choice: { kind: 'option', option: 0 }, scope: 'run' }])).toMatchObject({ ok: true });
     await waitForStage(h.manager, 1);
     // In the stage the actions are no longer refused for a running step (2e builds them: an unknown item is `conflict`;
-    // 2f builds the end and moves: `not-yet` until then).
+    // 2f the end and the moves: Back to review with no end confirmation is `conflict`, a card no view has `not-found`).
     expect(await m.decide(runId, 1, true, [{ item: 'x', rev: 1, to: 'accepted' }], false)).toEqual({ ok: false, code: 'conflict', error: REVIEW_TEXTS.conflict('x') });
-    expect(await m.end(runId, 'back', 1)).toMatchObject({ ok: false, code: 'not-yet' });
+    expect(await m.end(runId, 'back', 1)).toEqual({ ok: false, code: 'conflict', error: REVIEW_TEXTS.historyChanged });
+    expect(await m.moveProposed(runId, { 'no-such-card': { x: 1, y: 2 } })).toMatchObject({ ok: false, code: 'not-found' });
   });
 
   it('a mid-stage Formalize is refused while the results are hidden (D2-65) and for a stale stage', async () => {

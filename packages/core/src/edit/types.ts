@@ -44,20 +44,21 @@ export interface KindChangeRequest {
   confirmedDependents?: readonly string[];
 }
 
-/** What deleting a node does (D-18), computed before asking the user. */
+/**
+ * What deleting a node does (D-18), computed before asking the user. Slice 2i (spec v4 S9, ES-9): a delete always
+ * removes the card's Lean with it; the card-only delete, which left `axiom ….holds` behind as an unmarked axiom (a
+ * hidden belief), is gone.
+ */
 export interface DeletePlan {
   id: string;
-  /** Declarations removed with the block (none when `keepLean`). */
+  /** Declarations removed with the block: its statement and its `.holds`, when they exist. */
   removeDecls: string[];
   /** Nodes that list `id` in `premises:` and lose that entry. */
   premiseRemovals: string[];
   /** Fully-qualified declarations (other nodes' or untracked) that use the removed declarations and will break. */
   brokenDependents: string[];
-  /** With `keepLean`, an `axiom n.holds` left behind becomes an unmarked assumption (TL104). */
-  leavesUnmarkedAxiom: boolean;
 }
 
 export interface DeleteRequest {
   id: string;
-  keepLean: boolean;
 }

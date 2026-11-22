@@ -1,21 +1,16 @@
 /**
- * Pure helpers for the M2 run UI (no DOM, no React; unit-tested): what the status line, the header badge, the
- * question cards, the review stepper and the proposal overlay show, from core's RunView and ProposalView
- * (docs/m2-plan.md section 6). The board never computes verdicts: it only words what the host sent.
+ * Pure helpers for the M2 run UI (no DOM, no React; unit-tested): what the status line, the header badge and the
+ * question cards show, from core's RunView (docs/m2-plan.md section 6). The board never computes verdicts: it only
+ * words what the host sent. Slice 2h retired M2's review stepper and proposal overlay (an edit session's Proposed view
+ * is model/sessionBoard.ts's); `missingArrowHints` and `statementBody` stay for the session's review.
  */
 import {
-  columnOrder,
   isTerminalRunState,
   LIMITS,
   type AnswerChoiceView,
-  type CanvasPosition,
   type DecisionScope,
   type GateStepId,
-  type GhostView,
-  type GraphDiff,
-  type NodeChangeField,
-  type NodeDiff,
-  type NodeType,
+  type NodeChangeKind,
   type ProposalView,
   type QuestionAnswer,
   type QuestionView,
@@ -23,11 +18,7 @@ import {
   type RunUsage,
   type RunVerdict,
   type RunView,
-  type StatementReview,
-  type TlEdge,
   type TlNode,
-  type VocabItem,
-  type VocabularyReview,
 } from '@telelean/core';
 import { formatTime } from './format';
 
@@ -49,7 +40,8 @@ export function trayRunBlock(run: RunView | null | undefined, subject: string): 
   const where = run.subject !== subject ? ` on ${run.subject}` : '';
   switch (run.state) {
     case 'review':
-      return `Claude's proposal${where} is waiting for your review: accept, give feedback or discard it first.`;
+      // Slice 2h: a run in review is an edit session (M2's Accept, Feedback and Discard are retired).
+      return `An edit session${where} is waiting for your review: apply or exit it first.`;
     case 'waiting-for-answer':
       return `Claude${where} is waiting for your answer: answer it or cancel that run first.`;
     case 'interrupted':
@@ -206,20 +198,6 @@ const OUTCOME_SHORT: Readonly<Record<'gave-up' | 'cap-reached' | 'no-finish', st
 };
 
 /**
- * The proposal banner's line for a round that ended without a proof result: what happened and what the proposal holds
- * (the last state that passed the checks, when telelean reverted to one).
- */
-export function runOutcomeText(verdict: 'gave-up' | 'cap-reached' | 'no-finish', maxAttempts: number, revertedTo: string | undefined): string {
-  const what =
-    verdict === 'gave-up'
-      ? `Claude gave up: its result didn’t pass the checks ${maxAttempts} times.`
-      : verdict === 'cap-reached'
-        ? 'Claude was stopped at a limit before it finished.'
-        : 'Claude ended without finishing.';
-  return revertedTo ? `${what} This proposal holds only what last passed the checks (“${revertedTo}”).` : `${what} This proposal holds only what last passed the checks.`;
-}
-
-/**
  * The run panel's state line ("Working · formalising"). A proof result shows only once the result is revealed
  * (D-19); how the run ended (gave up, a limit, no finish) shows at once.
  */
@@ -262,7 +240,10 @@ export function runBadgeText(run: RunView): string {
     case 'gate':
       return `Claude: checking the result · ${run.subject}`;
     case 'review':
-      return isRunOutcomeVerdict(run.verdict) ? `Claude: ${OUTCOME_SHORT[run.verdict].replace(/^Claude /, '')} · ${run.subject}` : `Claude: proposal ready · ${run.subject}`;
+      // Slice 2h: a run in review has an edit session (the badge then words the session's phase); with none, an error
+      // says why (a v1 run that could not be converted offers only Stop), else the session is still being opened.
+      if (isRunOutcomeVerdict(run.verdict)) return `Claude: ${OUTCOME_SHORT[run.verdict].replace(/^Claude /, '')} · ${run.subject}`;
+      return run.error !== undefined ? `Claude: could not open the review · ${run.subject}` : `Claude: opening the review · ${run.subject}`;
     case 'interrupted':
       return `Claude: interrupted · ${run.subject}`;
     default:
@@ -313,23 +294,6 @@ export function endedOutcome(run: Pick<RunView, 'runId' | 'state' | 'accepted'>,
     default:
       return null;
   }
-}
-
-/**
- * Whether Accept will change the user's files: the round changed some. Otherwise Accept only records the outcome.
- * (Spec v4 removed the ticked card changes, a proved Goal made a Derivation: docs/slice1-plan.md 2.6.)
- */
-export function acceptChangesFiles(proposal: Pick<ProposalView, 'empty'>): boolean {
-  return !proposal.empty;
-}
-
-/**
- * The Accept button's tooltip (review and proposal banner): what Accept does to the user's files (D-21). An Accept
- * that changes no file only records the outcome (no Undo step, no history entry).
- */
-export function acceptTitle(proposal: Pick<ProposalView, 'empty' | 'report'>): string {
-  if (!acceptChangesFiles(proposal)) return 'Record the outcome: this round changed no file, so there is no Undo step and no history entry';
-  return isRunOutcomeVerdict(proposal.report.verdict) ? 'Apply what last passed the checks to your files (one Undo step; a history entry)' : 'Apply the proposal to your files (one Undo step; a history entry)';
 }
 
 /** Where the run panel puts each notice (A2): above the questions and the review, or folded below the review. */
@@ -461,63 +425,8 @@ export const SCOPE_LABEL: Readonly<Record<DecisionScope, string>> = {
   subject: 'the whole subject',
 };
 
-// ---------------------------------------------------------------------------------------------------------------
-// Review (D-19 M2: statements first, then vocabulary, definitions, the report card)
-
-export type ReviewStep =
-  | { kind: 'statement'; index: number; count: number; item: StatementReview }
-  | { kind: 'vocabulary'; item: VocabularyReview }
-  | { kind: 'definitions' }
-  | { kind: 'result' };
-
-/** The stepper's steps, in order: one per new or changed statement, then the others that have something to show. */
-export function reviewSteps(proposal: ProposalView): ReviewStep[] {
-  const statements = proposal.review.filter((item): item is StatementReview => item.kind === 'statement');
-  const steps: ReviewStep[] = statements.map((item, index) => ({ kind: 'statement', index, count: statements.length, item }));
-  const vocabulary = proposal.review.filter((item): item is VocabularyReview => item.kind === 'vocabulary' && item.items.length > 0);
-  for (const item of vocabulary) steps.push({ kind: 'vocabulary', item });
-  if (proposal.definitions.length > 0) steps.push({ kind: 'definitions' });
-  steps.push({ kind: 'result' });
-  return steps;
-}
-
-/** Whether reaching step `step` means the user has gone through every statement (the result is then revealed). */
-export function pastStatements(steps: readonly ReviewStep[], step: number): boolean {
-  const lastStatement = steps.reduce((last, s, i) => (s.kind === 'statement' ? i : last), -1);
-  return step > lastStatement;
-}
-
-export const STEP_TITLE: Readonly<Record<ReviewStep['kind'], string>> = {
-  statement: 'Statements',
-  vocabulary: 'New vocabulary',
-  definitions: 'Definitions',
-  result: 'Result',
-};
-
-/** Accept needs a "yes" for every definition question (A2, decision 17). */
-export function definitionsApproved(proposal: Pick<ProposalView, 'definitions'>, answers: Readonly<Record<string, 'yes' | 'no'>>): boolean {
-  return proposal.definitions.every((d) => answers[d.id] === 'yes');
-}
-
-/** What Accept sends: the approved definitions, in the proposal's order. */
-export function acceptSelection(proposal: Pick<ProposalView, 'definitions'>, review: { definitions: Readonly<Record<string, 'yes' | 'no'>> }): { definitions: string[] } {
-  return { definitions: proposal.definitions.filter((d) => review.definitions[d.id] === 'yes').map((d) => d.id).slice(0, LIMITS.reviewItems) };
-}
-
-/** "1 new · 2 changed · +1 vocabulary" (the proposal banner). */
-export function diffCountsText(proposal: Pick<ProposalView, 'diff' | 'empty'>): string {
-  const { added, changed, removed, vocabularyAdded } = proposal.diff.counts;
-  const parts: string[] = [];
-  if (added > 0) parts.push(`${added} new`);
-  if (changed > 0) parts.push(`${changed} changed`);
-  if (removed > 0) parts.push(`${removed} removed`);
-  if (vocabularyAdded > 0) parts.push(`+${vocabularyAdded} vocabulary`);
-  if (parts.length > 0) return parts.join(' · ');
-  return proposal.empty ? 'no file changes' : 'no card changes';
-}
-
-/** Vocabulary items the proposal adds ("+N new" in the proposed view). */
-export function newVocabularyCount(diff: Pick<GraphDiff, 'vocabulary'>): number {
+/** Vocabulary items a Proposed view adds ("+N new"; slice 2h: an edit session's, model/sessionBoard.ts `sessionOverlay`). */
+export function newVocabularyCount(diff: { vocabulary: Readonly<Record<string, NodeChangeKind>> }): number {
   return Object.values(diff.vocabulary).filter((change) => change === 'added').length;
 }
 
@@ -579,167 +488,10 @@ export function missingArrowHints(
   );
 }
 
-/** The suggestions waiting for a decision ("Claude suggests"): the run's live list, else the proposal's. */
-export function suggestedGhosts(run: RunView | null, proposal: ProposalView | null): GhostView[] {
-  const list = run && proposal && run.runId === proposal.runId ? run.ghosts : (proposal?.ghosts ?? run?.ghosts ?? []);
-  return list.filter((ghost) => ghost.state === 'suggested');
-}
-
 // ---------------------------------------------------------------------------------------------------------------
-// The proposal overlay on the board (03 section 7: diff marks are colour + glyph + halo, never colour alone)
+// Diff marks (03 section 7: colour + glyph + halo, never colour alone): the Vocabulary band's new items in a session's
+// Proposed view. Slice 2h retired M2's proposal overlay (`buildOverlay`, `resultSignature`): the Proposed view is an edit
+// session's (model/sessionBoard.ts), built from the host's board, and its cards carry review-item marks instead.
 
 export const DIFF_GLYPH = { added: '+', changed: '~', removed: '−' } as const;
 export const DIFF_WORD = { added: 'new', changed: 'changed', removed: 'removed' } as const;
-
-const FIELD_WORD: Readonly<Record<NodeChangeField, string>> = {
-  sentence: 'sentence',
-  type: 'kind',
-  statement: 'Lean statement',
-  proof: 'proof',
-  premises: 'premises',
-  status: 'status',
-  binding: 'Lean binding',
-  fields: 'other fields',
-};
-
-/** Fields that tell the proof result: hidden until the result is revealed (D-19, "meaning before proof status"). */
-const RESULT_FIELDS: readonly NodeChangeField[] = ['proof', 'status'];
-
-/** The diff badge's tooltip. While the result is hidden, the fields that would tell it are left out. */
-export function diffTitle(diff: NodeDiff, hideResult: boolean): string {
-  if (diff.change === 'added') return 'New in the proposal';
-  if (diff.change === 'removed') return 'Removed by the proposal';
-  const fields = diff.fields.filter((f) => !hideResult || !RESULT_FIELDS.includes(f)).map((f) => FIELD_WORD[f]);
-  return fields.length > 0 ? `Changed in the proposal: ${fields.join(', ')}` : 'Changed in the proposal';
-}
-
-/** What the board's columns read: the current graph's data, or the proposal's (BoardState and Overlay both have it). */
-export interface BoardViewData {
-  nodes: Readonly<Record<string, TlNode>>;
-  order: Readonly<Record<NodeType, readonly string[]>>;
-  edges: readonly TlEdge[];
-  vocabulary: readonly VocabItem[];
-  vocab: ReadonlyMap<string, VocabItem>;
-  /** Spec v4 BD-3: the stored canvas positions of propositions (the canvas places the others, slice 1c). */
-  positions: Readonly<Record<string, CanvasPosition>>;
-}
-
-export interface Overlay extends BoardViewData {
-  proposalId: string;
-  subject: string;
-  diff: GraphDiff;
-  /**
-   * Cards whose proof result is hidden until the user has gone through the statements or pressed "Show result"
-   * (D-19): their proof chips and footprint are not shown, and Lean-verified arrows into them are not drawn; nor are
-   * their green glow and band, and their drawn arrows lose TL109's "not used" tooltip (spec v4.1 RV-6, slice 1d).
-   */
-  hidden: ReadonlySet<string>;
-}
-
-/**
- * The board as the proposal would leave it: the proposal's graph, plus the current cards and vocabulary it removes
- * (shown with "−"). With `hideResult`, the target and every card whose proof changed keep their result hidden, and so
- * does every card whose proof status the proposal changes downstream (`resultSignature`; RV-6, slice 1d).
- * Spec v4 BD-3 (slice 1c): the canvas positions are the proposal's (the runner carries the current board's over, so
- * existing cards stay where they are; its new cards are placed by the canvas), plus the current positions of the
- * cards it removes.
- */
-export function buildOverlay(
-  proposal: ProposalView,
-  current: { nodes: Readonly<Record<string, TlNode>>; vocabulary: readonly VocabItem[]; positions?: Readonly<Record<string, CanvasPosition>> },
-  hideResult: boolean,
-): Overlay {
-  const nodes: Record<string, TlNode> = {};
-  for (const node of proposal.graph.nodes) nodes[node.id] = node;
-  const removed: TlNode[] = [];
-  for (const [id, diff] of Object.entries(proposal.diff.nodes)) {
-    const node = current.nodes[id];
-    if (diff.change === 'removed' && !nodes[id] && node) {
-      nodes[id] = node;
-      removed.push(node);
-    }
-  }
-  const order = columnOrder([...proposal.graph.nodes, ...removed]);
-  const vocabulary = [...proposal.graph.vocabulary];
-  const names = new Set(vocabulary.map((item) => item.name));
-  for (const item of current.vocabulary) if (proposal.diff.vocabulary[item.name] === 'removed' && !names.has(item.name)) vocabulary.push(item);
-  const hidden = new Set<string>();
-  if (hideResult) {
-    if (nodes[proposal.report.target]) hidden.add(proposal.report.target);
-    for (const [id, diff] of Object.entries(proposal.diff.nodes)) if (nodes[id] && (diff.change === 'added' || diff.fields.includes('proof'))) hidden.add(id);
-    // Spec v4.1 RV-6 (slice 1d): every card whose proof status the proposal changes, downstream ones included (a card
-    // that becomes established because the target is now proved): its glow, band and status chips would tell the result.
-    for (const node of proposal.graph.nodes) {
-      const before = current.nodes[node.id];
-      if (before && resultSignature(before) !== resultSignature(node)) hidden.add(node.id);
-    }
-  }
-  // While a result is hidden, its card draws no Lean-verified arrow, and its drawn arrows say nothing about the proof
-  // (TL109's "not used by the current proof" would tell that there is one).
-  const edges =
-    hidden.size > 0
-      ? proposal.graph.edges
-          .filter((edge) => !(edge.type === 'verified' && hidden.has(edge.target)))
-          .map((edge) => {
-            if (!hidden.has(edge.target) || edge.mismatch === undefined) return edge;
-            const { mismatch: _told, ...rest } = edge;
-            return rest;
-          })
-      : proposal.graph.edges;
-  const positions: Record<string, CanvasPosition> = { ...(proposal.graph.positions ?? {}) };
-  for (const node of removed) {
-    const at = current.positions?.[node.id];
-    if (at && node.type === 'PROPOSITION' && !positions[node.id]) positions[node.id] = at;
-  }
-  return {
-    proposalId: proposal.proposalId,
-    subject: proposal.subject,
-    diff: proposal.diff,
-    nodes,
-    order,
-    edges,
-    vocabulary,
-    vocab: new Map(vocabulary.map((item) => [item.name, item])),
-    positions,
-    hidden,
-  };
-}
-
-/** Chip keys of a card face that tell its proof result (hidden while the overlay hides the result). */
-export const RESULT_CHIP_KEYS: ReadonlySet<string> = new Set([
-  'proof',
-  'established',
-  'conditional',
-  'pending',
-  'uses-sorry',
-  'holds-mismatch',
-  'self-evident',
-  'rests-on-pending',
-  'hidden-assumption',
-  'uses-unseen',
-  'existence-commitment',
-  'provable-assumption',
-]);
-
-/** Status flags that tell a proof result (RV-6, slice 1d): a card whose set of them changes has its result hidden. */
-const RESULT_FLAGS: ReadonlySet<string> = new Set([
-  'established',
-  'rests-on-pending',
-  'self-evident',
-  'uses-unseen',
-  'uses-sorry',
-  'holds-mismatch',
-  'provable-assumption',
-  'existence-commitment',
-]);
-
-/**
- * What of a card tells its proof result (slice 1d): its proof status, the flags that word it, and what its proof uses
- * directly (its band). Two cards with the same signature show the same glow, band and status chips.
- */
-export function resultSignature(node: TlNode): string {
-  const proof = node.status.proof;
-  // `none` and `assumed` tell no proof result (an axiom card that gets its `.holds` is not a result).
-  const result = proof.kind === 'proved' || proof.kind === 'conditional' || proof.kind === 'pending' ? proof : null;
-  return JSON.stringify([result, node.status.flags.filter((f) => RESULT_FLAGS.has(f)), node.status.direct ?? null]);
-}

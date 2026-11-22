@@ -7,10 +7,20 @@
  * **Formalize for dependencies** button (CM-3; disabled with the reason on hover), and the other actions that fit the
  * selection as icons with their labels on hover. On a narrow window the actions that do not fit go into a "…" menu.
  * The model is board/contextActions.ts; the actions run through board/runAction.ts, shared with the right-click menu.
+ *
+ * Slice 2h (§5.10, §5.11, CM-2, RV-8): during an edit session, Formalize is a mid-stage Formalize of the Proposed view
+ * (while the results are hidden its reason comes with Show results, D2-65), and the selection's review items (the items
+ * selected in the list or on the board, and the marks of the selected cards) are listed as "N review items" with Accept
+ * ("Accept k of N", core `planGroupAccept`'s preview) and Decline… (one option for all, the plain decline for arrow
+ * items): one `decideItems`, `own: false` (D2-32).
  */
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { contextActions, CONTEXT_ICONS, fittingActions, FORMALIZE_LABEL, FORMALIZE_TEXTS, selectionCards, summaryTitle as titleWithPresuppositions, type ContextAction, type ContextEntry } from '../board/contextActions';
-import type { MenuThing } from '../board/menu';
+import { REVIEW_TEXTS } from '@telelean/core';
+import { contextActions, CONTEXT_ICONS, fittingActions, FORMALIZE_LABEL, FORMALIZE_TEXTS, reviewItemsModel, selectionCards, summaryTitle as titleWithPresuppositions, type ContextAction, type ContextEntry } from '../board/contextActions';
+import type { MenuReview, MenuThing } from '../board/menu';
+import { groupDeclineEntries } from '../model/review';
+import { contextItems } from '../model/sessionBoard';
+import { DeclineMenu } from '../run/review/DeclineMenu';
 import { runBoardAction } from '../board/runAction';
 import { useFormalize } from '../board/useFormalize';
 import { Popover } from '../common/Popover';
@@ -48,10 +58,25 @@ export function ContextSection() {
   const formalize = useFormalize();
   const actions = useBoardActions();
   const store = useBoardStore();
-  const model = useMemo(
-    () => contextActions({ nodes, selected, selectedArrows, selectedMarks, expanded, provisional, lock, proposed }, formalize),
-    [nodes, selected, selectedArrows, selectedMarks, expanded, provisional, lock, proposed, formalize],
+  // Slice 2h: the session's review, while its Proposed view is on screen; the selection's review items.
+  const overlay = useBoard((s) => proposedOverlay(s));
+  const session = useBoard((s) => s.session);
+  const busy = useBoard((s) => s.sessionBusy !== null);
+  const selectedItems = useBoard((s) => s.selectedItems);
+  const declineMenu = useBoard((s) => (s.declineMenu?.origin === 'context' ? s.declineMenu : null));
+  const review = useMemo<MenuReview | undefined>(
+    () => (overlay !== null && session !== null ? { items: session.items, phase: session.phase, busy, marks: overlay.marks, locations: overlay.locations } : undefined),
+    [overlay, session, busy],
   );
+  const items = useMemo(
+    () => (session !== null && overlay !== null ? reviewItemsModel(session, contextItems(session, selectedItems, selected), busy) : null),
+    [session, overlay, selectedItems, selected, busy],
+  );
+  const model = useMemo(
+    () => contextActions({ nodes, selected, selectedArrows, selectedMarks, expanded, provisional, lock, proposed, ...(review !== undefined ? { review } : {}) }, formalize),
+    [nodes, selected, selectedArrows, selectedMarks, expanded, provisional, lock, proposed, review, formalize],
+  );
+  const [declineAnchor, setDeclineAnchor] = useState<HTMLElement | null>(null);
 
   // D-3b (the tray's "+ presupposes" chips before 1e): what the selection's statements presuppose, on the summary's
   // hover: the question's cards (the selected arrows' ends, the marked cards) and the selected cards (fixer 1e).
@@ -86,7 +111,7 @@ export function ContextSection() {
     runBoardAction(action, thing, { actions, store, nodes });
   };
 
-  if (model.summary === null) {
+  if (model.summary === null && items === null) {
     return (
       <section className="tl-context" aria-label="Context Menu" data-testid="context-menu" data-empty="true">
         <span className="tl-context__label">Context Menu</span>
@@ -124,11 +149,12 @@ export function ContextSection() {
       </button>
     );
 
+  const summaryText = [model.summary?.text, items?.text].filter((t): t is string => t !== undefined).join(' · ');
   return (
     <section className="tl-context" aria-label="Context Menu" data-testid="context-menu">
       <span className="tl-context__label">Context Menu</span>
       <span className="tl-context__summary" data-testid="context-summary" title={summaryTitle}>
-        {model.summary.text}
+        {summaryText}
       </span>
       <button
         type="button"
@@ -145,6 +171,61 @@ export function ContextSection() {
         <span className="tl-context__reason" data-testid="formalize-reason" title={model.formalize.disabled}>
           {model.formalize.disabled}
         </span>
+      ) : null}
+      {/* D2-65: while the results are hidden, Formalize waits for them: Show results is offered beside the reason. */}
+      {model.formalize.showResults === true ? (
+        <button type="button" className="tl-button tl-button--small tl-button--secondary" data-testid="formalize-show-results" disabled={busy} onClick={() => actions.openReveal('show-result')}>
+          {REVIEW_TEXTS.showResults}
+        </button>
+      ) : null}
+      {/* Slice 2h (CM-2, RV-8): the selection's review items, decided as a group (own: false). */}
+      {items !== null ? (
+        <>
+          <button
+            type="button"
+            className="tl-button tl-button--small"
+            data-testid="context-accept"
+            disabled={!items.accept.enabled}
+            title={items.accept.title}
+            onClick={() => actions.acceptGroup(items.items)}
+          >
+            {items.accept.label}
+          </button>
+          <button
+            type="button"
+            className="tl-button tl-button--small tl-button--secondary"
+            data-testid="context-decline"
+            disabled={!items.decline.enabled}
+            title={items.decline.title}
+            aria-expanded={declineMenu !== null}
+            onClick={(event) => {
+              if (declineMenu !== null) {
+                actions.closeDeclineMenu();
+                setDeclineAnchor(null);
+              } else {
+                actions.openDeclineMenu(items.items, 'context');
+                setDeclineAnchor(event.currentTarget);
+              }
+            }}
+          >
+            {REVIEW_TEXTS.declineEllipsis}
+          </button>
+          <Popover
+            anchor={declineAnchor}
+            open={declineMenu !== null && declineAnchor !== null}
+            onClose={() => {
+              actions.closeDeclineMenu();
+              setDeclineAnchor(null);
+            }}
+            role="dialog"
+            label={REVIEW_TEXTS.declineEllipsis}
+            testId="context-decline-menu"
+            className="tl-menu"
+            align="end"
+          >
+            {declineMenu !== null && session !== null ? <DeclineMenu entries={groupDeclineEntries(session.items, declineMenu.items)} testId="decline-menu-context" /> : null}
+          </Popover>
+        </>
       ) : null}
       <span className="tl-context__actions" ref={actionsRef} data-testid="context-actions">
         {visible.map((entry) => icon(entry, false))}

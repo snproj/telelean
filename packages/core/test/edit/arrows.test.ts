@@ -11,7 +11,7 @@ import { planAction, type PlanContext } from '../../src/edit/index.js';
 import { kindChangeImpact } from '../../src/kindChange.js';
 import { emptyLayout, type Layout } from '../../src/layout.js';
 import type { ProjectModel } from '../../src/project/index.js';
-import { AXIOM_PREMISES_MESSAGE } from '../../src/project/build.js';
+import { axiomPremisesMessage } from '../../src/project/build.js';
 import { block, build, codes, graphOf, mainS, nodeOf, VOCAB_S } from '../project/helpers/build.js';
 
 const MAIN = 'Model/S/Main.lean';
@@ -473,11 +473,60 @@ describe("add-node's position (BD-3, BD-8, CM-7; slice 1c)", () => {
   });
 });
 
+describe('slice 2i (A19, audit G11): TL122 names the cards an old axiom declares as premises', () => {
+  /** An old axiom `old` declaring `premises` (before v4), beside the two axioms of BODY it can name. */
+  const withOld = (premises: string[] | undefined, extra = '') =>
+    model({
+      ...TEXTS,
+      [MAIN]: mainS(
+        [
+          BODY,
+          '',
+          block({ id: 'old', type: 'AXIOM', name: 'Old axiom', rationale: 'r', ...(premises ? { premises } : {}), lean: 'S.old' }),
+          'abbrev old : Prop := Good t',
+          'axiom old.holds : old',
+          extra,
+        ].join('\n'),
+      ),
+    });
+  const tl122 = (m: ProjectModel) => m.diagnostics.filter((d) => d.code === 'TL122' && d.nodeId === 'old').map((d) => d.message);
+
+  it('none: an axiom without `premises:` gets no TL122', () => {
+    expect(tl122(withOld(undefined))).toEqual([]);
+  });
+
+  it('one premise is named in the singular; several are named in their order, each by its sentence', () => {
+    expect(tl122(withOld(['a1']))).toEqual([axiomPremisesMessage(['“A1 holds”'])]);
+    expect(axiomPremisesMessage(['“A1 holds”'])).toBe(
+      'This axiom declares the premise “A1 holds” (`premises:`), written before v4, when axioms could have arrows: the board does not draw it. Make it a proposition (pending), or drop these arrows.',
+    );
+    expect(tl122(withOld(['a2', 'a1', 'p3']))).toEqual([
+      'This axiom declares the premises “A2 holds”, “A1 holds”, “P3 unproved” (`premises:`), written before v4, when axioms could have arrows: the board does not draw them. Make it a proposition (pending), or drop these arrows.',
+    ]);
+  });
+
+  it('a premise listed twice is named once; a missing card by its id (TL007 too); another subject\'s card by its sentence (TL121 too); itself', () => {
+    expect(tl122(withOld(['a1', 'a1']))).toEqual([axiomPremisesMessage(['“A1 holds”'])]);
+    const m = withOld(['gone', 'z1', 'old']);
+    expect(tl122(m)).toEqual([axiomPremisesMessage(['"gone"', '“Z1 elsewhere”', '“Old axiom”'])]);
+    expect(codes(m, 'old')).toEqual(expect.arrayContaining(['TL007', 'TL121', 'TL122']));
+  });
+
+  it('a long sentence is cut near 40 characters, as the planner names cards', () => {
+    const long = 'A card whose sentence goes on and on well past forty characters';
+    const m = withOld(['lc'], ['', block({ id: 'lc', type: 'AXIOM', name: long, rationale: 'r' })].join('\n'));
+    expect(tl122(m)).toEqual([axiomPremisesMessage(['“A card whose sentence goes on and on we…”'])]);
+  });
+});
+
 describe('the board (A19, BD-3)', () => {
   it('an old axiom\'s premises: are not drawn and get TL122; positions reach the graph for propositions only', () => {
     const m = model();
     expect(codes(m, 'legacy')).toEqual(['TL122']);
-    expect(m.diagnostics.find((d) => d.code === 'TL122')).toMatchObject({ severity: 'info', message: AXIOM_PREMISES_MESSAGE });
+    expect(m.diagnostics.find((d) => d.code === 'TL122')).toMatchObject({
+      severity: 'info',
+      message: 'This axiom declares the premise “A2 holds” (`premises:`), written before v4, when axioms could have arrows: the board does not draw it. Make it a proposition (pending), or drop these arrows.',
+    });
     expect(nodeOf(m, 'legacy').premises).toEqual(['a2']);
     const layout: Layout = { ...emptyLayout(), positions: { p3: { x: 1, y: 2 }, a1: { x: 3, y: 4 }, gone: { x: 5, y: 6 } } };
     const graph = graphOf(m, 'S', layout);

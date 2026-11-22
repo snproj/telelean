@@ -13,6 +13,7 @@
  */
 import type {
   ActionOutcome,
+  applyBackstop,
   ArrowEnds,
   AttemptRecord,
   attemptNotice,
@@ -98,6 +99,8 @@ export interface RunCore {
   planGhostAdoption: typeof planGhostAdoption;
   proposalLabel: typeof proposalLabel;
   decisionsInForce: typeof decisionsInForce;
+  /** Slice 2f (§3.10 step 4; additive): the backstop Apply runs again, pure and never reused (tests spy on it). */
+  applyBackstop: typeof applyBackstop;
 }
 
 /** What the RunManager needs besides the workspace. Everything is injectable (tests use fakes for B/C/D's parts). */
@@ -159,6 +162,10 @@ export interface RunStartRequest {
 
 export interface RunChange {
   run: boolean;
+  /**
+   * M2: the proposal changed. Since 2h nothing posts a proposal (core's `proposal` message is retired, and so is
+   * `RunManager.proposal()`): the flag is kept so the emitters stay as they are, and no host reads it.
+   */
   proposal: boolean;
   /** Slice 2 (docs/slice2-plan.md 2.5): the edit session's view changed (the host posts `session`). */
   session: boolean;
@@ -174,15 +181,17 @@ export interface FormalizeRequest {
 
 /**
  * One root's runs. Every method resolves (never rejects) with an ActionOutcome for the board's `actionResult`;
- * refusals: `not-found` (unknown or stale run/proposal/ghost/question ids), `conflict` (another active run, wrong
- * state, a proposal that no longer applies), `invalid` (bad answers, missing definition approvals), `not-yet`
- * (preflight problems the user can fix), `internal`.
+ * refusals: `not-found` (unknown or stale run/question ids), `conflict` (another active run, wrong state), `invalid`
+ * (bad answers), `not-yet` (preflight problems the user can fix), `internal`.
+ *
+ * Slice 2h (docs/slice2-plan.md 1.1): M2's review is retired: `proposal()`, `accept`, `feedback`, `discard`,
+ * `adoptGhost`, `rejectGhost` and `proposalDiff` are gone. Every start is an edit session, reviewed by its items
+ * (`session()`, `decide`, …, `end`); a run of version 1 is converted into one when it is recovered in review, or when a
+ * round it resumed ends (§3.11, D2-16).
  */
 export interface RunManager extends Disposable {
   /** The root's current run (the newest non-dismissed one), or null. */
   current(): RunView | null;
-  /** The current run's proposal (state `review`), or null. */
-  proposal(): ProposalView | null;
   onDidChange(listener: (change: RunChange) => void): Disposable;
   /**
    * Preflight, the backend (factory, first time; `claude --version` only), the premises declaration (see
@@ -196,23 +205,9 @@ export interface RunManager extends Disposable {
   cancel(runId: string): Promise<ActionOutcome>;
   /** An `interrupted` run: a new CLI process with `--resume <sessionId>` and a resume turn. */
   resume(runId: string): Promise<ActionOutcome>;
-  /**
-   * D-21: all-or-nothing; every definition question must be approved. Spec v4 ES-7 (slice 1f): refused (`conflict`,
-   * naming up to 5 files) while the real files differ from the run's base; nothing is settled and the run stays in
-   * review (the D-21 rebase and re-gate are no longer reached).
-   */
-  accept(runId: string, proposalId: string, definitions: readonly string[]): Promise<ActionOutcome>;
-  /** A new round in the same session (statements may change: stage `formalise`, a new freeze is required). */
-  feedback(runId: string, text: string): Promise<ActionOutcome>;
-  discard(runId: string): Promise<ActionOutcome>;
-  /** D-6 "I hold this": telelean writes the card into the shadow, re-freezes, and starts a proving round. */
-  adoptGhost(runId: string, ghostId: string, rationale?: string): Promise<ActionOutcome>;
-  rejectGhost(runId: string, ghostId: string): Promise<ActionOutcome>;
   /** Forgets an ended run (terminal state) on the board; its directory stays until pruned. */
   dismiss(runId: string): Promise<ActionOutcome>;
-  /** The proposal's whole-file changes (base -> shown state) for the raw diff. */
-  proposalDiff(runId: string, proposalId: string): Promise<FileChange[]>;
-  /** After activation: loads the root's non-terminal runs from run.json (questions and proposals come back). */
+  /** After activation: loads the root's non-terminal runs from run.json (questions and sessions come back). */
   recover(): Promise<void>;
 
   // ---- Slice 2 (docs/slice2-plan.md 2.5): an edit session. `start(request)` is a one-inference `formalize`. While a
@@ -240,13 +235,18 @@ export interface RunManager extends Disposable {
    * take-out and one queue of Submit steps; resolves once that queue's first step works, or once `confirming`.
    */
   submit(runId: string, stage: number): Promise<ActionOutcome>;
-  /** EN-1-EN-4 (2f): Apply, Exit or Back to review. */
+  /**
+   * EN-1-EN-4 (2f, §3.10): Apply (the check id of a passed final check; drift and the backstop again, then exactly F with
+   * the endorsements and the moved cards' positions, one history entry; the attempt records; the run ends `accepted`),
+   * Exit (stops a running step; the attempt records, discarded; the run ends `discarded`; the files untouched), or Back
+   * to review (the submitted stage, unsubmitted, the stack as it was). Exit is the one not refused while a step runs.
+   */
   end(runId: string, decision: 'apply' | 'exit' | 'back', stage?: number, check?: string): Promise<ActionOutcome>;
   /** ES-4: runs the cancelled or failed step and the steps its queue dropped, as a new queue (D2-44, D2-55). */
   retry(runId: string): Promise<ActionOutcome>;
   /** The session's raw Lean diff; `needs-confirmation` while the results are hidden, unless `confirmed` (2e). */
   sessionDiff(runId: string, stage: number, confirmed: boolean): Promise<{ ok: true; kind: 'diff'; files: FileChange[] } | ActionOutcome>;
-  /** Moves on the Proposed view (2f). */
+  /** Moves on the Proposed view (2f, D2-33): one session-stack step; Apply writes the positions into layout.json. */
   moveProposed(runId: string, positions: Readonly<Record<string, CanvasPosition>>): Promise<ActionOutcome>;
   /**
    * Window closing: an active run is persisted as `interrupted` (a waiting question or a proposal as it is) and its
@@ -498,6 +498,12 @@ export interface PersistedSession {
    */
   queueEndReconciled?: number;
   heading?: SessionView['heading'];
+  /**
+   * (fixer 2e r1, A-F2; additive) Present while `heading` is the "did not pass" heading a decision's judge made (§3.6):
+   * `under` is the heading it replaced (a cancelled or failed Submit step's, with its Retry), or null. A later decision's
+   * judge that passes puts it back. Cleared by a queue's start and its end, which set their own headings.
+   */
+  decidedHeading?: { under: SessionView['heading'] };
   confirmation?: {
     checkId: string;
     filesKey: string;

@@ -2,15 +2,8 @@ import { DEFAULT_RUN_CAPS, spyroGraph, type QuestionView, type RunNotice, type T
 import { describe, expect, it } from 'vitest';
 import {
   acceptChangedFiles,
-  acceptChangesFiles,
-  acceptSelection,
-  acceptTitle,
   agentMsNow,
   answerChoiceText,
-  buildOverlay,
-  definitionsApproved,
-  diffCountsText,
-  diffTitle,
   draftAnswers,
   emptyDraft,
   ENDED_TEXT,
@@ -21,40 +14,17 @@ import {
   isActiveRun,
   isRunOutcomeVerdict,
   newVocabularyCount,
-  pastStatements,
   placeNotices,
   rateLimitView,
-  RESULT_CHIP_KEYS,
-  resultSignature,
-  reviewSteps,
   runBadgeText,
-  runOutcomeText,
   runStateLabel,
   runStatusParts,
   statementBody,
-  suggestedGhosts,
   trayRunBlock,
   missingArrowHints,
 } from '../../src/model/run';
-import {
-  ACCEPTED_NOTICE,
-  ADOPTED_ID,
-  adoptedProposal,
-  definitionProposal,
-  emptyProposal,
-  GENERIC_QUESTION,
-  literalGhost,
-  literalProposal,
-  MODALITY_QUESTION,
-  normativeProposal,
-  RECORDED_NOTICE,
-  reviewRun,
-  RUN_ID,
-  runView,
-  TARGET,
-  UPDATED,
-} from '../shared/runs';
-import { makeNode } from '../shared/graphs';
+import { RESULT_CHIP_KEYS } from '../../src/model/sessionBoard';
+import { ACCEPTED_NOTICE, GENERIC_QUESTION, MODALITY_QUESTION, RECORDED_NOTICE, RUN_ID, runView, UPDATED } from '../shared/runs';
 
 const NOW = Date.parse(UPDATED);
 
@@ -110,7 +80,10 @@ describe('the status line', () => {
     expect(runBadgeText(runView())).toBe('Claude: working on Spyro · 3/25 checks');
     expect(runBadgeText(runView({ state: 'waiting-for-answer' }))).toBe('Claude: a question for you · Spyro');
     expect(runBadgeText(runView({ state: 'cancelled' }))).toBe('Claude: cancelled · Spyro');
-    expect(runBadgeText(runView({ state: 'review', verdict: 'proved' }))).toBe('Claude: proposal ready · Spyro');
+    // Slice 2h (fixer 2h r1, F-F-V2H-FC-4): no "proposal ready" (M2's review is retired): a run in review with no session
+    // view yet is being opened, or (a failed conversion of an old run) could not be, and says so.
+    expect(runBadgeText(runView({ state: 'review', verdict: 'proved' }))).toBe('Claude: opening the review · Spyro');
+    expect(runBadgeText(runView({ state: 'review', error: 'This run was started by an older telelean and could not be converted (x): Stop it.' }))).toBe('Claude: could not open the review · Spyro');
   });
 
   it('how a round ended without a proof result (gave up, a limit, no finish) is said at once, before the review; proof results wait (D-19)', () => {
@@ -121,10 +94,6 @@ describe('the status line', () => {
     expect(runStateLabel(runView({ state: 'review', verdict: 'no-finish' }), false)).toBe('Ready for review · ended without finishing');
     expect(runBadgeText(runView({ state: 'review', verdict: 'gave-up' }))).toBe('Claude: gave up · Spyro');
     expect(runBadgeText(runView({ state: 'review', verdict: 'cap-reached' }))).toBe('Claude: stopped at a limit · Spyro');
-    expect(runOutcomeText('gave-up', 3, 'Statements frozen (round 1)')).toBe(
-      'Claude gave up: its result didn’t pass the checks 3 times. This proposal holds only what last passed the checks (“Statements frozen (round 1)”).',
-    );
-    expect(runOutcomeText('no-finish', 3, undefined)).toBe('Claude ended without finishing. This proposal holds only what last passed the checks.');
   });
 
   it('notices: all of them while Claude works; once the round ended, only how it ended comes before the review', () => {
@@ -189,7 +158,8 @@ describe('the status line', () => {
     expect(trayRunBlock(runView({ state: 'accepted' }), 'Spyro')).toBeNull();
     expect(trayRunBlock(runView(), 'Spyro')).toBe('Claude is already working: wait for it to finish, or cancel it.');
     expect(trayRunBlock(runView({ subject: 'Bayonetta' }), 'Spyro')).toBe('Claude is already working on Bayonetta: wait for it to finish, or cancel it.');
-    expect(trayRunBlock(runView({ state: 'review' }), 'Spyro')).toMatch(/waiting for your review/);
+    // Slice 2h: a run in review is an edit session (M2's Accept, Feedback and Discard are retired).
+    expect(trayRunBlock(runView({ state: 'review' }), 'Spyro')).toBe('An edit session is waiting for your review: apply or exit it first.');
     expect(trayRunBlock(runView({ state: 'interrupted' }), 'Spyro')).toMatch(/interrupted: resume or stop it first/);
   });
 });
@@ -223,116 +193,14 @@ describe('answers (D-20)', () => {
   });
 });
 
-describe('the review (D-19)', () => {
-  it('steps: statements first, then vocabulary, definitions, the result; empty ones are left out (no lifecycle step since spec v4)', () => {
-    expect(reviewSteps(definitionProposal()).map((s) => s.kind)).toEqual(['statement', 'statement', 'vocabulary', 'definitions', 'result']);
-    expect(reviewSteps(normativeProposal()).map((s) => s.kind)).toEqual(['statement', 'result']);
-    expect(reviewSteps(literalProposal()).map((s) => s.kind)).toEqual(['statement', 'vocabulary', 'result']);
-    expect(reviewSteps(normativeProposal({ review: [] })).map((s) => s.kind)).toEqual(['result']);
-    const steps = reviewSteps(definitionProposal());
-    expect([0, 1, 2, 4].map((i) => pastStatements(steps, i))).toEqual([false, false, true, true]);
-    expect(pastStatements(reviewSteps(normativeProposal({ review: [] })), 0)).toBe(true);
-  });
-
-  it('Accept needs every definition approved; it sends the approved definitions in order', () => {
-    const proposal = definitionProposal();
-    expect(definitionsApproved(proposal, {})).toBe(false);
-    expect(definitionsApproved(proposal, { d1: 'yes', d2: 'no' })).toBe(false);
-    expect(definitionsApproved(proposal, { d2: 'yes', d1: 'yes' })).toBe(true);
-    expect(definitionsApproved(normativeProposal(), {})).toBe(true);
-    expect(acceptSelection(proposal, { definitions: { d2: 'yes', d1: 'yes' } })).toEqual({ definitions: ['d1', 'd2'] });
-    expect(acceptSelection(proposal, { definitions: { d2: 'yes', d1: 'no' } })).toEqual({ definitions: ['d2'] });
-  });
-
-  it('Accept’s tooltip says what it does to the files: one Undo step, or only a record when it changes no file', () => {
-    expect(acceptTitle(normativeProposal())).toBe('Apply the proposal to your files (one Undo step; a history entry)');
-    expect(acceptTitle(normativeProposal({ report: { ...normativeProposal().report, verdict: 'gave-up' } }))).toBe('Apply what last passed the checks to your files (one Undo step; a history entry)');
-    expect(acceptTitle(emptyProposal())).toBe('Record the outcome: this round changed no file, so there is no Undo step and no history entry');
-    expect(acceptChangesFiles(emptyProposal())).toBe(false);
-    expect(acceptChangesFiles(normativeProposal())).toBe(true);
-    // A round that changed no file only records, even when it proved the target (no card change to tick since spec v4).
-    const proved = emptyProposal({ report: normativeProposal().report });
-    expect(acceptChangesFiles(proved)).toBe(false);
-    expect(acceptTitle(proved)).toBe('Record the outcome: this round changed no file, so there is no Undo step and no history entry');
-  });
-
-  it('the banner counts; "+N new" vocabulary', () => {
-    expect(diffCountsText(adoptedProposal())).toBe('1 new · 2 changed · +1 vocabulary');
-    expect(diffCountsText(normativeProposal())).toBe('2 changed');
-    expect(diffCountsText(normativeProposal({ diff: { ...normativeProposal().diff, counts: { added: 0, changed: 0, removed: 0, vocabularyAdded: 0 } }, empty: true }))).toBe('no file changes');
-    expect(newVocabularyCount(literalProposal().diff)).toBe(1);
-    expect(newVocabularyCount(normativeProposal().diff)).toBe(0);
-  });
-
-  it('suggestions waiting for a decision come from the live run, else from the proposal', () => {
-    const proposal = literalProposal();
-    expect(suggestedGhosts(null, proposal).map((g) => g.id)).toEqual(['ghost-1']);
-    expect(suggestedGhosts(reviewRun(proposal, { ghosts: [literalGhost({ state: 'rejected' })] }), proposal)).toEqual([]);
-    expect(suggestedGhosts(reviewRun(proposal, { runId: 'other' }), proposal).map((g) => g.id)).toEqual(['ghost-1']);
-  });
-});
-
-describe('the proposal overlay', () => {
-  it('shows the proposal’s graph; with the result hidden, the target and every card whose proof changed hide it, and verified arrows into them go', () => {
-    const proposal = adoptedProposal();
-    const current = spyroGraph();
-    const hidden = buildOverlay(proposal, { nodes: Object.fromEntries(current.nodes.map((n) => [n.id, n])), vocabulary: current.vocabulary }, true);
-    expect(Object.keys(hidden.nodes).sort()).toEqual([...current.nodes.map((n) => n.id), ADOPTED_ID].sort());
-    expect(hidden.order.AXIOM).toContain(ADOPTED_ID);
-    expect([...hidden.hidden].sort()).toEqual([ADOPTED_ID, TARGET].sort());
-    expect(hidden.edges.some((e) => e.type === 'verified' && e.target === TARGET)).toBe(false);
-    expect(hidden.edges.some((e) => e.type === 'premise' && e.target === TARGET)).toBe(true);
-    expect(hidden.vocab.get('Spyro.InGame')?.glossBy).toBe('agent');
-    const shown = buildOverlay(proposal, { nodes: {}, vocabulary: [] }, false);
-    expect(shown.hidden.size).toBe(0);
-    expect(shown.edges).toBe(proposal.graph.edges);
-  });
-
-  it('cards and vocabulary the proposal removes are shown from the current board', () => {
-    const current = spyroGraph();
-    const nodes = Object.fromEntries(current.nodes.map((n) => [n.id, n]));
-    const proposal = normativeProposal({
-      graph: { ...normativeProposal().graph, nodes: normativeProposal().graph.nodes.filter((n) => n.id !== 'new-spyro-pg'), vocabulary: normativeProposal().graph.vocabulary.filter((v) => v.name !== 'Spyro.IsPG') },
-      diff: { ...normativeProposal().diff, nodes: { ...normativeProposal().diff.nodes, 'new-spyro-pg': { change: 'removed', fields: [] } }, vocabulary: { 'Spyro.IsPG': 'removed' } },
-    });
-    const overlay = buildOverlay(proposal, { nodes, vocabulary: current.vocabulary }, false);
-    expect(overlay.nodes['new-spyro-pg']).toBe(nodes['new-spyro-pg']);
-    expect(overlay.order.AXIOM.at(-1)).toBe('new-spyro-pg');
-    expect(overlay.vocab.has('Spyro.IsPG')).toBe(true);
-  });
-
-  it('spec v4.1 RV-6 (slice 1d): a card downstream whose proof status the proposal changes hides its result too; drawn arrows into a hidden card say nothing of its proof', () => {
-    const current = spyroGraph();
-    const base = normativeProposal();
-    const downstream = (flags: TlNode['status']['flags'], footprint: string[]) =>
-      makeNode('downstream', 'PROPOSITION', 'Cynder stays out', { proof: { kind: 'proved', footprint }, flags, direct: { ids: [TARGET], from: 'proof' } }, { premises: [TARGET] });
-    const same = makeNode('same', 'PROPOSITION', 'Unchanged', { proof: { kind: 'proved', footprint: ['cynder-dark-past'] }, flags: ['established'], direct: { ids: ['cynder-dark-past'], from: 'proof' } });
-    const nodes = Object.fromEntries([...current.nodes, downstream(['rests-on-pending'], [TARGET]), same].map((n) => [n.id, n]));
-    const unused = { id: `premise:new-spyro-pg->${TARGET}`, type: 'premise' as const, source: 'new-spyro-pg', target: TARGET, origin: 'declared' as const, mismatch: 'declared-unused' as const };
-    const proposal = normativeProposal({
-      graph: {
-        ...base.graph,
-        nodes: [...base.graph.nodes, downstream(['established'], ['cynder-dark-past', 'new-spyro-pg', 'pg-no-dark-past']), same],
-        edges: base.graph.edges.map((e) => (e.id === unused.id ? unused : e)),
-      },
-    });
-    const hidden = buildOverlay(proposal, { nodes, vocabulary: current.vocabulary }, true);
-    expect([...hidden.hidden].sort()).toEqual(['downstream', TARGET].sort());
-    expect(hidden.edges.find((e) => e.id === unused.id)?.mismatch).toBeUndefined();
-    const shown = buildOverlay(proposal, { nodes, vocabulary: current.vocabulary }, false);
-    expect(shown.hidden.size).toBe(0);
-    expect(shown.edges.find((e) => e.id === unused.id)?.mismatch).toBe('declared-unused');
-    // What the card face hides meanwhile: the established, reason and band-telling chips too.
+describe('what the Proposed view shares with the run UI', () => {
+  // Slice 2h deleted the M2 review's tests (its steps, Accept's definitions and tooltip, the banner's counts, the
+  // suggestions, the proposal overlay and `resultSignature`): the review is the session's (review.test.ts) and the
+  // Proposed view is built from the host's board (sessionBoard.test.ts).
+  it('"+N new" vocabulary counts the added names; the result chips a hidden target leaves out', () => {
+    expect(newVocabularyCount({ vocabulary: { 'Spyro.InGame': 'added', 'Spyro.Old': 'removed' } })).toBe(1);
+    expect(newVocabularyCount({ vocabulary: {} })).toBe(0);
     for (const key of ['established', 'rests-on-pending', 'hidden-assumption', 'uses-unseen', 'conditional', 'pending', 'self-evident']) expect(RESULT_CHIP_KEYS.has(key), key).toBe(true);
-    // An axiom card that only gets its `.holds` tells no result.
-    expect(resultSignature(makeNode('a', 'AXIOM', 'a', { proof: { kind: 'none' } }))).toBe(resultSignature(makeNode('a', 'AXIOM', 'a', { proof: { kind: 'assumed' } })));
-  });
-
-  it('a diff mark’s tooltip leaves out the fields that would tell the result while it is hidden', () => {
-    expect(diffTitle({ change: 'changed', fields: ['proof', 'status'] }, true)).toBe('Changed in the proposal');
-    expect(diffTitle({ change: 'changed', fields: ['proof', 'status'] }, false)).toBe('Changed in the proposal: proof, status');
-    expect(diffTitle({ change: 'changed', fields: ['statement', 'binding', 'status'] }, true)).toBe('Changed in the proposal: Lean statement, Lean binding');
-    expect(diffTitle({ change: 'added', fields: [] }, true)).toBe('New in the proposal');
   });
 });
 

@@ -3,8 +3,12 @@
  * which swatch it shows. Every swatch differs by a pattern or a glyph as well as by its colour: dots for declared, a
  * solid line for verified, a hollow head for conditional, a notched head for a mismatch, "λ" on the blue glow, "✓" on the
  * green one and on the band's seal, "⧗" for a pending proof. (BD-9 also lists "frozen", which comes with FROZEN.)
+ * Slice 2h (§5.10): during an edit session, `proposed` ("proposed by Claude: + adds, − removes"): a translucent line
+ * with the "+" badge (`legendEntries`).
  */
-export type LegendSwatch = 'declared' | 'verified' | 'conditional' | 'mismatch' | 'formalised' | 'established' | 'band' | 'pending';
+import { REVIEW_TEXTS } from '@telelean/core';
+
+export type LegendSwatch = 'declared' | 'verified' | 'conditional' | 'mismatch' | 'formalised' | 'established' | 'band' | 'pending' | 'proposed';
 
 export interface LegendEntry {
   /** Stable key, rendered as `data-legend`. */
@@ -40,3 +44,16 @@ export const LEGEND_ENTRIES: readonly LegendEntry[] = [
   },
   { key: 'pending', label: 'pending proof', title: 'A proposition whose .holds is still an axiom: assumed until a run proves it (the "pending proof" chip)', glyph: '⧗' },
 ];
+
+/** Slice 2h (§5.10, BD-5): Claude's arrows, listed only during an edit session. */
+export const PROPOSED_LEGEND_ENTRY: LegendEntry = {
+  key: 'proposed',
+  label: REVIEW_TEXTS.legendProposed,
+  title: "Claude's arrows in the Proposed view: translucent with a \"+\" (or \"−\") while in review, dotted with the \"+\" once accepted (written to your files at Apply)",
+  glyph: '+',
+};
+
+/** The legend's entries: BD-9's, plus `proposed` during an edit session (§5.10). */
+export function legendEntries(session: boolean): readonly LegendEntry[] {
+  return session ? [...LEGEND_ENTRIES, PROPOSED_LEGEND_ENTRY] : LEGEND_ENTRIES;
+}

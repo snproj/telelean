@@ -23,6 +23,7 @@
 import type {
   ActionOutcome,
   addDecisions,
+  ArrowProvenance,
   AttemptRecord,
   AttemptResolution,
   AttemptSummary,
@@ -151,6 +152,11 @@ export type AcceptPlan =
        * empty, the RunManager writes this into ws/, re-freezes and re-runs the gate before applying (D-21).
        */
       shadowState: Map<string, string>;
+      /**
+       * (slice 2f, coverage audit G1; additive) An edit session's Apply: Claude's arrows it writes, which `apply` passes on
+       * to the history entry (`ExternalChangeSet.arrows`).
+       */
+      arrows?: readonly ArrowProvenance[];
     }
   | { ok: false; code: 'conflict' | 'unsafe' | 'not-found' | 'invalid'; error: string; files?: string[] };
 

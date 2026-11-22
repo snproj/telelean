@@ -63,7 +63,7 @@ describe('AT4.3 perform', () => {
     const layoutBefore = read(root, '.telelean/subjects/Spyro/layout.json');
     expect(layoutBefore).toContain('new-spyro-pg');
     const mainBefore = read(root, 'Model/Spyro/Main.lean');
-    const outcome = await w.perform({ kind: 'delete-node', id: 'new-spyro-pg', keepLean: false });
+    const outcome = await w.perform({ kind: 'delete-node', id: 'new-spyro-pg' });
     expect(outcome).toMatchObject({ ok: true, label: 'Delete: The new Spyro game is PG', undoable: true });
     const changes = applier.calls[1]?.changes ?? [];
     expect(changes.map((c) => c.path)).toEqual(['Model/Spyro/Main.lean', '.telelean/subjects/Spyro/layout.json', '.telelean/subjects/Spyro/attic/new-spyro-pg.lean']);
@@ -118,7 +118,7 @@ describe('AT4.3 perform', () => {
       dependents: ['cynder-not-good', 'Spyro.helper_lemma'],
     });
     expect(await w.perform({ kind: 'set-premises', target: 'cynder-not-good', premises: [] })).toEqual({ ok: false, code: 'not-yet', error: 'Proving from no premises is available from M2.' });
-    expect(await w.perform({ kind: 'delete-node', id: 'no-such-card', keepLean: true })).toMatchObject({ ok: false, code: 'not-found' });
+    expect(await w.perform({ kind: 'delete-node', id: 'no-such-card' })).toMatchObject({ ok: false, code: 'not-found' });
     expect(applier.calls).toHaveLength(0);
     expect((await w.workspaceState('Spyro')).undo).toBeNull();
 

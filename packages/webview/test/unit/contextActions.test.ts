@@ -2,9 +2,9 @@
  * Spec v4.1 CM-1–CM-5, ES-2 (one target, AP-9), AP-13 (slice 1e): the Context Menu section's model (pure): what
  * Formalize for dependencies asks and why it is disabled (CM-3), the selection's summary (CM-5), the other actions for
  * the selection (the right-click menu's card actions, Delete), the narrow window's "…" overflow, and the right-click
- * menu's Formalize entry, which shares the same state.
+ * menu's Formalize entry, which shares the same state. Slice 2h (§5.11, RV-9): several targets at once, sources first.
  */
-import { EDIT_SESSION_ACTIVE, type TlEdge, type TlNode } from '@telelean/core';
+import { EDIT_SESSION_ACTIVE, REVIEW_TEXTS, type TlEdge, type TlNode } from '@telelean/core';
 import { describe, expect, it } from 'vitest';
 import {
   contextActions,
@@ -13,6 +13,7 @@ import {
   FORMALIZE_TEXTS,
   formalizeRunBlock,
   formalizeState,
+  reviewItemsModel,
   selectionCards,
   selectionSummary,
   summaryTitle,
@@ -21,6 +22,7 @@ import {
 import { MENU_PROPOSED_ARROWS, MENU_PROVISIONAL, menuEntries, type MenuContext } from '../../src/board/menu';
 import { makeNode } from '../shared/graphs';
 import { runView } from '../shared/runs';
+import { hiddenStage, IDS, shownStage, stepSession } from '../shared/sessions';
 
 const A = makeNode('a', 'AXIOM', 'Cynder has a dark past', { proof: { kind: 'assumed' } });
 const B = makeNode('b', 'AXIOM', 'The new game is PG', { proof: { kind: 'assumed' } });
@@ -39,13 +41,13 @@ function ctx(patch: Partial<FormalizeContext> = {}): FormalizeContext {
 describe('Formalize for dependencies: the question and why it cannot be pressed (CM-3)', () => {
   it('the selected arrows into one proposition: their sources, in selection order', () => {
     const state = formalizeState(ctx({ selectedArrows: [{ source: 'b', target: 't' }, { source: 'a', target: 't' }] }));
-    expect(state).toMatchObject({ disabled: null, target: 't', sources: ['b', 'a'] });
+    expect(state).toMatchObject({ disabled: null, inferences: [{ target: 't', premises: ['b', 'a'] }], mode: 'start' });
     expect(state.title).toBe('Ask Claude to formalise the 2 selected arrows and prove “Cynder would not be a good addition to …” from exactly their sources');
   });
 
   it('a "follows from nothing" mark alone: no premises', () => {
     const state = formalizeState(ctx({ selectedMarks: ['m'] }));
-    expect(state).toMatchObject({ disabled: null, target: 'm', sources: [] });
+    expect(state).toMatchObject({ disabled: null, inferences: [{ target: 'm', premises: [] }], mode: 'start' });
     expect(state.title).toBe('Ask Claude to prove “Spyro is purple” from no premises at all (you marked it "follows from nothing")');
   });
 
@@ -54,21 +56,48 @@ describe('Formalize for dependencies: the question and why it cannot be pressed 
     expect(FORMALIZE_TEXTS.none).toBe("Select arrows, or a 'follows from nothing' mark.");
   });
 
-  it('several targets wait for the review list (AP-9): arrows into two cards, or an arrow and another card\'s mark', () => {
-    const reason = 'Select arrows into one card: several targets come with the review list.';
-    expect(formalizeState(ctx({ selectedArrows: [{ source: 'a', target: 't' }, { source: 'a', target: 'u' }] })).disabled).toBe(reason);
-    expect(formalizeState(ctx({ selectedArrows: [{ source: 'a', target: 't' }], selectedMarks: ['m'] })).disabled).toBe(reason);
-    expect(FORMALIZE_TEXTS.several).toBe(reason);
+  it('slice 2h (§5.11, RV-9): several targets at once, one inference each: arrows into two cards, or an arrow and another card\'s mark', () => {
+    const two = formalizeState(ctx({ selectedArrows: [{ source: 'a', target: 't' }, { source: 'a', target: 'u' }] }));
+    expect(two).toMatchObject({ disabled: null, mode: 'start' });
+    expect(two.inferences).toEqual([
+      { target: 't', premises: ['a'] },
+      { target: 'u', premises: ['a'] },
+    ]);
+    expect(two.title).toBe('Ask Claude to formalise the selected arrows and prove 2 targets, one step each, sources first');
+    const mixed = formalizeState(ctx({ selectedArrows: [{ source: 'a', target: 't' }], selectedMarks: ['m'] }));
+    expect(mixed).toMatchObject({ disabled: null, inferences: [{ target: 't', premises: ['a'] }, { target: 'm', premises: [] }] });
+    // The retired reason is gone.
+    expect(Object.values(FORMALIZE_TEXTS)).not.toContain('Select arrows into one card: several targets come with the review list.');
+  });
+
+  it('slice 2h (§5.11): several targets are ordered sources first (core formalizeOrder), whatever the selection order', () => {
+    // t is drawn from u (u a premise of t): the step proving u comes before the one proving t.
+    const chained = { ...nodes, t: { ...T, premises: ['a', 'b', 'u'] } };
+    const state = formalizeState(ctx({ nodes: chained, selectedArrows: [{ source: 'u', target: 't' }, { source: 'a', target: 'u' }] }));
+    expect(state.disabled).toBeNull();
+    expect(state.inferences.map((i) => i.target)).toEqual(['u', 't']);
+    expect(state.inferences).toEqual([
+      { target: 'u', premises: ['a'] },
+      { target: 't', premises: ['u'] },
+    ]);
+    // Many: three targets (two arrows into t count once; a mark adds its card), each once.
+    const many = formalizeState(ctx({ nodes: chained, selectedArrows: [{ source: 'u', target: 't' }, { source: 'b', target: 't' }, { source: 'a', target: 'u' }], selectedMarks: ['m'] }));
+    expect(many.disabled).toBeNull();
+    expect(many.inferences.map((i) => i.target).sort()).toEqual(['m', 't', 'u']);
+    expect(many.inferences.findIndex((i) => i.target === 'u')).toBeLessThan(many.inferences.findIndex((i) => i.target === 't'));
+    expect(many.inferences.find((i) => i.target === 't')?.premises).toEqual(['u', 'b']);
+    // A selected arrow or mark whose card is not on the board shown does not count (empty: the "nothing" reason).
+    expect(formalizeState(ctx({ selectedArrows: [{ source: 'a', target: 'gone' }], selectedMarks: ['gone'] })).disabled).toBe(FORMALIZE_TEXTS.none);
   });
 
   it('a run of the model folder that is active, or a start on its way, comes first ("A run is active.")', () => {
     expect(formalizeRunBlock(null, 'Spyro', false)).toBeNull();
     expect(formalizeRunBlock(runView({ state: 'accepted' }), 'Spyro', false)).toBeNull();
     expect(formalizeRunBlock(runView({ subject: 'Bayonetta' }), 'Spyro', false)).toBe('A run is active. Claude is already working on Bayonetta: wait for it to finish, or cancel it.');
-    expect(formalizeRunBlock(runView({ state: 'review' }), 'Spyro', false)).toMatch(/^A run is active\. Claude's proposal is waiting for your review/);
+    expect(formalizeRunBlock(runView({ state: 'review' }), 'Spyro', false)).toBe('A run is active. An edit session is waiting for your review: apply or exit it first.');
     expect(formalizeRunBlock(null, 'Spyro', true)).toBe('A run is active. It is starting.');
     const blocked = formalizeState(ctx({ selectedArrows: [{ source: 'a', target: 't' }], runBlock: 'A run is active. It is starting.' }));
-    expect(blocked).toMatchObject({ disabled: 'A run is active. It is starting.', target: null, sources: [] });
+    expect(blocked).toMatchObject({ disabled: 'A run is active. It is starting.', inferences: [] });
   });
 
   it('a card the host has not written yet cannot be asked about', () => {
@@ -89,7 +118,7 @@ describe('Formalize for dependencies: the question and why it cannot be pressed 
     const p = makeNode('p', 'PROPOSITION', 'P comes from Q', {}, { premises: ['q'] });
     const q = makeNode('q', 'PROPOSITION', 'Q comes from P', {}, { premises: ['p'] });
     const state = formalizeState(ctx({ nodes: { ...nodes, p, q }, selectedArrows: [{ source: 'a', target: 't' }] }));
-    expect(state).toMatchObject({ target: 't', sources: ['a'] });
+    expect(state).toMatchObject({ inferences: [{ target: 't', premises: ['a'] }] });
     expect(state.disabled).toBe('The arrows of this subject form a cycle (P comes from Q → Q comes from P → P comes from Q): remove one arrow first.');
     expect(state.title).toBe(state.disabled);
     // One arrow of the cycle removed: Formalize is enabled again.
@@ -187,13 +216,40 @@ describe('the other actions for the selection (shared with the right-click menu)
   });
 
   it('the right-click menu of a drawn arrow or a mark starts with Formalize for dependencies, as the section shows it', () => {
-    const blocked = formalizeState(ctx({ selectedArrows: [{ source: 'a', target: 't' }, { source: 'a', target: 'u' }] }));
+    const blocked = formalizeState(ctx({ selectedMarks: ['m'], provisional: { m: true } }));
     const first = (thing: Parameters<typeof menuEntries>[0], f = ready, patch: Partial<MenuContext> = {}) => menuEntries(thing, menu({ formalize: f, ...patch }))[0];
     expect(first({ kind: 'arrow', source: 'a', target: 't' })).toEqual({ action: 'formalize', label: FORMALIZE_LABEL, disabled: null });
-    expect(first({ kind: 'mark', id: 'm' }, blocked)).toEqual({ action: 'formalize', label: 'Formalize for dependencies', disabled: FORMALIZE_TEXTS.several });
+    expect(first({ kind: 'mark', id: 'm' }, blocked)).toEqual({ action: 'formalize', label: 'Formalize for dependencies', disabled: MENU_PROVISIONAL });
     expect(first({ kind: 'arrow', source: 'a', target: 't' }, ready, { proposed: true })?.disabled).toBe(MENU_PROPOSED_ARROWS);
     // A card's menu and an undeclared (warning) arrow's do not offer it: only drawn arrows and marks are a question.
     expect(menuEntries({ kind: 'card', id: 't' }, menu({ formalize: ready })).some((e) => e.action === 'formalize')).toBe(false);
     expect(menuEntries({ kind: 'undeclared', source: 'b', target: 'u' }, menu({ formalize: ready })).some((e) => e.action === 'formalize')).toBe(false);
+  });
+});
+
+describe('slice 2h (CM-2, RV-8): the selection’s review items in the section, decided as a group', () => {
+  const view = shownStage();
+  it('none: no review items part; one: "1 review item", Accept 1; several: "Accept k of N" naming what it leaves and why', () => {
+    expect(reviewItemsModel(view, [], false)).toBeNull();
+    const one = reviewItemsModel(view, [IDS.vocab], false);
+    expect(one).toMatchObject({ items: [IDS.vocab], text: '1 review item', accept: { enabled: true, label: REVIEW_TEXTS.acceptN(1), title: REVIEW_TEXTS.acceptN(1) }, decline: { enabled: true } });
+    // The Formalize is a belief (its own Accept, RV-7): left, with core's reason on hover.
+    const two = reviewItemsModel(view, [IDS.vocab, IDS.formalize], false);
+    expect(two?.text).toBe('2 review items');
+    expect(two?.accept).toMatchObject({ enabled: true, label: REVIEW_TEXTS.acceptKOfN(1, 2) });
+    expect(two?.accept.title).toBe(`${REVIEW_TEXTS.acceptKOfN(1, 2)}\n${REVIEW_TEXTS.leftNote([REVIEW_TEXTS.leftOwnAccept('Formalize “PG games cannot have characters with dark pasts”')])}`);
+    // Nothing it could take: disabled, the reasons as its tooltip.
+    const none = reviewItemsModel(view, [IDS.formalize], false);
+    expect(none?.accept).toMatchObject({ enabled: false, label: REVIEW_TEXTS.acceptKOfN(0, 1) });
+    expect(none?.accept.title).toBe(REVIEW_TEXTS.leftNote([REVIEW_TEXTS.leftOwnAccept('Formalize “PG games cannot have characters with dark pasts”')]));
+  });
+
+  it('one request at a time (busy), and D2-62 while Claude’s step runs: disabled with the reason', () => {
+    expect(reviewItemsModel(view, [IDS.vocab], true)?.accept.enabled).toBe(false);
+    const step = reviewItemsModel(stepSession(), [IDS.vocab], false);
+    expect(step?.accept).toMatchObject({ enabled: false, title: REVIEW_TEXTS.stepRunning });
+    expect(step?.decline).toMatchObject({ enabled: false, title: REVIEW_TEXTS.stepRunning });
+    // A hidden Result is left (hidden-result) even if named: its card shows no mark for it, and the list never selects it.
+    expect(reviewItemsModel(hiddenStage(), [IDS.result], false)?.accept.enabled).toBe(false);
   });
 });

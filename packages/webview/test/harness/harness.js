@@ -15,7 +15,7 @@
  *   vars        optional extra CSS variables, by full name, applied after the theme's
  *   autoReply   false: no automatic actionResults (the test sends them)
  *   run         optional RunView sent after the graph (M2 `run` message)
- *   proposal    optional ProposalView sent after the run (M2 `proposal` message)
+ *   session     optional SessionView sent after the run (slice 2g `session` message; 2h retired M2's `proposal`)
  * window.__tlHarness (for the test):
  *   posted                 every message the board posted (JSON copies)
  *   sendToWebview(msg)     delivers a host message
@@ -94,9 +94,12 @@
     createSubject: true, historyRevert: true, historyPrune: true, initGit: true,
     // Spec v4 slice 1b: the arrow edits and canvas moves (slice 1e: Formalize's AR-8 marks are claimPending).
     addArrows: true, removeArrows: true, setFromNothing: true, claimPending: true, moveCards: true,
-    // M2 run messages that carry a requestId (openProposalDiff and dismissRun get no actionResult).
-    startRun: true, answerQuestions: true, cancelRun: true, resumeRun: true, acceptProposal: true, feedback: true,
-    discardProposal: true, adoptGhost: true, rejectGhost: true,
+    // M2 run messages that carry a requestId (dismissRun gets no actionResult). Slice 2h: a start is a `formalize`
+    // (M2's startRun, acceptProposal, feedback, discardProposal, adoptGhost and rejectGhost are retired).
+    formalize: true, answerQuestions: true, cancelRun: true, resumeRun: true,
+    // Slice 2g: the edit session's messages the review panel and the session bar post (2h: moveProposed too).
+    decideItems: true, revealResult: true, sessionUndo: true, sessionRedo: true, submitReview: true, endSession: true, retryStep: true,
+    openSessionDiff: true, moveProposed: true,
   };
   var STATE_KEY = 'tl-harness-webview-state';
 
@@ -140,7 +143,7 @@
       if (config.workspace) send({ v: 1, type: 'workspace', payload: { state: config.workspace } });
       if (config.graph) send({ v: 1, type: 'graph', payload: { graph: config.graph } });
       if (config.run) send({ v: 1, type: 'run', payload: { run: config.run } });
-      if (config.proposal) send({ v: 1, type: 'proposal', payload: { proposal: config.proposal } });
+      if (config.session) send({ v: 1, type: 'session', payload: { session: config.session } });
       return;
     }
     if (type === 'historyList') {

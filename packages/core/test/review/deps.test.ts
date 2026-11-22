@@ -139,6 +139,7 @@ describe('hidden items (§4.5)', () => {
       leanName: premise.leanName,
       session: 'run1',
       today: '2026-11-19',
+      holdAs: 'axiom',
     });
     const written = { ...base, [MAIN]: plan.changes[0]?.after as string };
     const current = edit(

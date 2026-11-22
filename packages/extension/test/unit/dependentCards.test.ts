@@ -69,7 +69,7 @@ describe('needs-confirmation across subjects (real workspace and core)', () => {
     const ports = new RecordingPorts();
     const session = new BoardSession({ root, rootName: 'model', workspace: ws, subject: 'Spyro', ports });
     const before = readFileSync(path.join(root, 'Model', 'Spyro', 'Main.lean'), 'utf8');
-    await session.handle(message('deleteNode', { id: 'cynder-dark-past', keepLean: false, requestId: 'r1' }));
+    await session.handle(message('deleteNode', { id: 'cynder-dark-past', requestId: 'r1' }));
     const outcome = ports.of('actionResult')[0]?.payload.outcome;
     expect(outcome).toMatchObject({ ok: false, code: 'needs-confirmation' });
     if (!outcome || outcome.ok) throw new Error('expected a refusal');

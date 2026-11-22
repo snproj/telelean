@@ -8,8 +8,9 @@
  * statement, the target declares it, and every other card's binding is unchanged.
  *
  * Slice 2 (docs/slice2-plan.md 3.8; 2b2): an accepted Add premise is written the same way, held as the person chose
- * (`holdAs`): as an axiom, an AXIOM card (the default, M2's adoption); as a proposition pending proof, a PROPOSITION
- * card with the same `axiom P.holds`, never green (A26). Any other choice is refused.
+ * (`holdAs`): as an axiom, an AXIOM card; as a proposition pending proof, a PROPOSITION card with the same
+ * `axiom P.holds`, never green (A26). Since 2h the choice is required (M2's adoption, which defaulted it to an axiom, is
+ * retired): a missing or any other choice is refused.
  */
 import { ActionError, type FileChange } from '../actions.js';
 import { holdsName } from '../facts.js';
@@ -82,9 +83,10 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const SESSION = /^[A-Za-z0-9][A-Za-z0-9_.:+-]*$/;
 
 export function adoptionPlan(model: ProjectModel, request: GhostAdoptionRequest): GhostAdoptionPlan {
-  const holdAs: unknown = request.holdAs ?? 'axiom';
+  // Slice 2h (fixer 2b2 r1, S-V2B2-S2): never a default. `undefined` (a caller past the type) is refused like any other value.
+  const holdAs: unknown = request.holdAs;
   if (holdAs !== 'axiom' && holdAs !== 'pending') {
-    throw new ActionError('invalid', `A premise is held as an axiom or as a proposition pending proof, not ${JSON.stringify(holdAs)}.`);
+    throw new ActionError('invalid', `A premise is held as an axiom or as a proposition pending proof, not ${holdAs === undefined ? 'left unchosen' : JSON.stringify(holdAs)}.`);
   }
   const type = holdAs === 'pending' ? 'PROPOSITION' : 'AXIOM';
   const target = model.nodes.get(request.target);

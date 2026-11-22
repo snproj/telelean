@@ -37,6 +37,7 @@ describe('AT1.9 diffGraphs', () => {
       leanStatement: '∀ (c : Character) (g : Game), ¬ InGame c g → ¬ GoodAddition c g',
       session: 'r1',
       today: '2026-11-02',
+      holdAs: 'axiom',
     });
     const adopted = diffGraphs(current, graph({ ...literalTexts, [MAIN]: plan.changes[0]?.after as string }));
     expect(adopted.nodes[plan.nodeId]).toEqual({ change: 'added', fields: [] });

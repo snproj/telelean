@@ -4,12 +4,14 @@ import {
   cardChips,
   cardGlow,
   codeSegments,
+  declaredBeforeV4,
   deleteDependents,
   dependsOn,
   displayName,
   footprintEntries,
   presuppositionLabel,
   presuppositionsOf,
+  quotedNames,
   usedBy,
   usesInline,
   vocabIndex,
@@ -124,6 +126,49 @@ describe('card chips (AT6.3 data)', () => {
     // Spec v4 A19 (slice 1b): an axiom's premises: from before v4 is not drawn; the chip offers the two ways out.
     expect(chips('a-premised')).toContainEqual(expect.objectContaining({ key: 'declared-before-v4', label: 'declared before v4: make it a proposition, or drop these arrows', tone: 'info' }));
     expect(labels('cynder-dark-past')).not.toContain('declared before v4: make it a proposition, or drop these arrows');
+    // Slice 2i (audit G11): its tooltip names the card the arrow comes from, by its sentence.
+    expect(chips('a-premised').find((c) => c.key === 'declared-before-v4')?.title).toBe(
+      'Its premises: line (1 arrow into it, from “Cynder is a character who has a dark past”) was written before v4, when axioms could have arrows; the board does not draw them. Its details offer "Make it a proposition (pending)" and "Drop these arrows".',
+    );
+  });
+
+  describe('slice 2i (A19, audit G11): an old axiom\'s declared premises are named', () => {
+    const a = makeNode('pa', 'AXIOM', 'Ratings are public', { proof: { kind: 'assumed' } });
+    const b = makeNode('pb', 'PROPOSITION', 'Critics read ratings', {});
+    const old = (premises: string[]) => makeNode('old', 'AXIOM', 'Ratings follow content', { proof: { kind: 'assumed' } }, { premises });
+    const board = (o: TlNode) => ({ pa: a, pb: b, old: o });
+    const chipOf = (o: TlNode) => cardChips(o, board(o)).find((c) => c.key === 'declared-before-v4');
+
+    it('none: an axiom without premises, or a proposition with arrows, has no such chip and nothing to name', () => {
+      expect(declaredBeforeV4(old([]), board(old([])))).toEqual([]);
+      expect(chipOf(old([]))).toBeUndefined();
+      const proposition = makeNode('pp', 'PROPOSITION', 'Follows from both', {}, { premises: ['pa', 'pb'] });
+      expect(declaredBeforeV4(proposition, { ...board(old([])), pp: proposition })).toEqual([]);
+      expect(cardChips(proposition, { ...board(old([])), pp: proposition }).some((c) => c.key === 'declared-before-v4')).toBe(false);
+    });
+
+    it('one and several: each premise\'s card by its sentence, in order, in the chip\'s tooltip', () => {
+      expect(declaredBeforeV4(old(['pa']), board(old(['pa'])))).toEqual(['Ratings are public']);
+      expect(chipOf(old(['pa']))?.title).toContain('(1 arrow into it, from “Ratings are public”)');
+      const both = old(['pb', 'pa']);
+      expect(declaredBeforeV4(both, board(both))).toEqual(['Critics read ratings', 'Ratings are public']);
+      expect(chipOf(both)?.title).toContain('(2 arrows into it, from “Critics read ratings”, “Ratings are public”)');
+      expect(chipOf(both)?.label).toBe('declared before v4: make it a proposition, or drop these arrows');
+    });
+
+    it('a premise listed twice is named once and counted once; a card not on this board by its id; the axiom itself by its sentence', () => {
+      const twice = old(['pa', 'pa', 'pb']);
+      expect(declaredBeforeV4(twice, board(twice))).toEqual(['Ratings are public', 'Critics read ratings']);
+      expect(chipOf(twice)?.title).toContain('(2 arrows into it, from “Ratings are public”, “Critics read ratings”)');
+      const odd = old(['gone', 'old']);
+      expect(declaredBeforeV4(odd, board(odd))).toEqual(['gone', 'Ratings follow content']);
+    });
+
+    it('quotedNames quotes and joins; nothing gives nothing', () => {
+      expect(quotedNames([])).toBe('');
+      expect(quotedNames(['A'])).toBe('“A”');
+      expect(quotedNames(['A', 'B', 'C'])).toBe('“A”, “B”, “C”');
+    });
   });
 
   it('spec v4 AR-5 (slice 1b): a card marked "follows from nothing" shows the mark as a chip', () => {

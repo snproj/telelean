@@ -30,11 +30,11 @@ function runDirs(harness: Harness): string[] {
   return readdirSync(harness.runsDir).flatMap((key) => readdirSync(`${harness.runsDir}/${key}`));
 }
 
-/** Slice 2d: Cancel step, then the session ends (Discard), so the root has no active run any more. */
+/** Slice 2d: Cancel step, then the session ends (2h: Exit; Discard is retired), so the root has no active run any more. */
 async function endSession(harness: Harness, runId: string): Promise<void> {
   await harness.manager.cancel(runId);
   await waitForStage(harness.manager);
-  expect(await harness.manager.discard(runId)).toMatchObject({ ok: true });
+  expect(await harness.manager.end(runId, 'exit')).toMatchObject({ ok: true });
 }
 
 function withFactory(overrides: Parameters<typeof makeHarness>[0] = {}) {

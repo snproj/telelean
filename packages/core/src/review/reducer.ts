@@ -1332,10 +1332,14 @@ export function acceptGate(state: ReviewState, id: string, own: boolean): Accept
  *    option's own refusals (Transform until slice 4; the plain decline, the arrow items' only one) are the decline menu's;
  *  - `review`: back to review, un-reject included: a hidden Result or part; withdrawn; to be redone with its content
  *    taken out (D2-60); the un-reject of an item a mixed request declined (fixer 2b1b r1, S-F5). An item in review has
- *    nothing to go back to (the reducer leaves it as it is), so its gate is closed too.
+ *    nothing to go back to (the reducer leaves it as it is), so its gate is closed too;
+ *  - `blocked` (builder 2h, carry-over F-V2G-FC-9): the item's GroupItem `blocked`, which a group Accept reads: its
+ *    Accept is refused for a reason other than its listed dependencies ("did not pass", facts missing, a Result not
+ *    judged, or a dependency on a hidden item). The own Accept's gate names the missing dependencies first, so the view
+ *    cannot rebuild it from `accept` when an item both waits for the results and has dependencies in review.
  * A conflict with what the user saw (a stale rev) or a merge that conflicts is known only when the decision comes.
  */
-export function itemGates(state: ReviewState): Map<string, { accept: AcceptGateResult; decline: ActionGateResult; review: ActionGateResult }> {
+export function itemGates(state: ReviewState): Map<string, { accept: AcceptGateResult; decline: ActionGateResult; review: ActionGateResult; blocked: boolean }> {
   const w = new Work(state);
   const shown = w.reveal().shown;
   const hidden = hiddenIn(shown);
@@ -1363,7 +1367,10 @@ export function itemGates(state: ReviewState): Map<string, { accept: AcceptGateR
         return mergedBackBy(w, r)?.mixed === true ? REVIEW_TEXTS.unrejectMixed(w.label(r.id)) : undefined;
     }
   };
-  const out = new Map<string, { accept: AcceptGateResult; decline: ActionGateResult; review: ActionGateResult }>();
-  for (const r of w.items) out.set(r.id, { accept: acceptGateIn(w, r, true, shown), decline: refuse(declineRefusal(r)), review: refuse(reviewRefusal(r)) });
+  const out = new Map<string, { accept: AcceptGateResult; decline: ActionGateResult; review: ActionGateResult; blocked: boolean }>();
+  for (const r of w.items) {
+    // Builder 2h (carry-over F-V2G-FC-9): the GroupItem's `blocked` that `reduceReview` plans a group Accept with.
+    out.set(r.id, { accept: acceptGateIn(w, r, true, shown), decline: refuse(declineRefusal(r)), review: refuse(reviewRefusal(r)), blocked: groupItemOf(w, r, shown).blocked });
+  }
   return out;
 }

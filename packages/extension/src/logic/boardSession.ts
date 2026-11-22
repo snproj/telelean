@@ -14,22 +14,31 @@
  *   copyText / openInEditor / refresh     -> clipboard / editor (path re-checked inside the root) / ws.refreshNow
  *
  * M2 (docs/m2-plan.md section 8.1), the root's Claude runs (its RunManager, which outlives the board, D-25):
- *   startRun                              -> busy check, the board edits sent before it, the start's check (spec
- *                                            v4.1 Formalize for dependencies, core formalizeStartProblem: drawn arrows,
- *                                            proposition premises with a `.holds`, no cycle; slice 1e), egress consent
- *                                            (host, once per root) -> runs.start with the board's subject (the
- *                                            RunManager runs preflight; it declares nothing since slice 1e)
- *   answerQuestions, cancelRun, resumeRun, acceptProposal, feedback, discardProposal, adoptGhost, rejectGhost,
- *   dismissRun                            -> the RunManager method of the same meaning -> actionResult (+ a toast)
+ *   answerQuestions, cancelRun, resumeRun, dismissRun
+ *                                         -> the RunManager method of the same meaning -> actionResult (+ a toast)
  *   formalize, retryStep                  -> slice 2d (docs/slice2-plan.md 1.1, 2.4): a start (busy check, the board
- *                                            edits sent before it, core formalizeStartProblems, egress consent) or a
- *                                            mid-stage Formalize (`runId` and `stage`: no busy check, no consent; the
- *                                            runner checks it on its own records) -> runs.formalize; Retry step ->
- *                                            runs.retry. In a session cancelRun is Cancel step (not queued, as before)
- *   openProposalDiff                      -> runs.proposalDiff -> the read-only multi-file diff beside the board
- *   ready, RunManager.onDidChange         -> `run` (the root's current run, any subject) and `proposal`; slice 2d: and
- *                                            `session` (the root's SessionView, masked by the runner) on ready and
- *                                            whenever the session changed (`RunChange.session`)
+ *                                            edits sent before it, core formalizeStartProblems: drawn arrows,
+ *                                            proposition premises with a `.holds`, no cycle; egress consent, host,
+ *                                            once per root; the RunManager runs preflight) or a mid-stage Formalize
+ *                                            (`runId` and `stage`: no busy check, no consent; the runner checks it on
+ *                                            its own records) -> runs.formalize; Retry step -> runs.retry. In a
+ *                                            session cancelRun is Cancel step (not queued, as before). Slice 2h
+ *                                            retired M2's review (startRun, acceptProposal, feedback, discardProposal,
+ *                                            adoptGhost, rejectGhost, openProposalDiff, the host's `proposal`): the
+ *                                            validator refuses those types before they get here
+ *   decideItems, revealResult, sessionUndo, sessionRedo, submitReview
+ *                                         -> slice 2e (docs/slice2-plan.md 1.1, 2.4): the RunManager's decide, reveal,
+ *                                            undoSession, redoSession and submit, in the run queue (`confirmed`, when
+ *                                            absent, is false); their `needs-confirmation` answers go back as they are
+ *   openSessionDiff                       -> slice 2e: runs.sessionDiff (in the run queue: with `confirmed` while the
+ *                                            results are hidden it counts as Show results), then the read-only diff
+ *                                            beside the board; `needs-confirmation` with `reveal` while hidden otherwise
+ *   endSession, moveProposed              -> slice 2f: runs.end (Apply with the check id, Back to review: in the run queue;
+ *                                            Exit: not queued, as cancelRun, so it stops a running step at once, AF14) and
+ *                                            runs.moveProposed (in the run queue); Apply's toast carries Undo
+ *   ready, RunManager.onDidChange         -> `run` (the root's current run, any subject); slice 2d: and `session`
+ *                                            (the root's SessionView, masked by the runner) on ready and whenever the
+ *                                            session changed (`RunChange.session`)
  *
  * Mutating messages run one at a time in arrival order (board edits in one queue, run messages in another, so a run
  * start or an Accept that waits for Lean never blocks the board); read-only ones (history listing and preview, copy,
@@ -50,22 +59,19 @@
 import {
   ActionError,
   EDIT_SESSION_ACTIVE,
-  formalizeStartProblem,
   formalizeStartProblems,
   hostMessage,
   LIMITS,
-  REVIEW_TEXTS,
   runLocksBoard,
   type ActionOutcome,
   type DependentCard,
-  type FileChange,
   type FormalizeMessage,
   type HistoryAvailability,
   type HistoryDiff,
   type HistoryListing,
   type HostToWebviewMessage,
   type NoticeLevel,
-  type OpenProposalDiffMessage,
+  type OpenSessionDiffMessage,
   type Range,
   type SubjectInfo,
   type TlGraph,
@@ -239,17 +245,21 @@ export class BoardSession {
           return await this.listHistory(message.payload.subject, message.payload.limit);
         case 'historyPreview':
           return await this.preview(message.payload.subject, message.payload.entryId, message.payload.compare);
-        case 'openProposalDiff':
-          return await this.openProposalDiff(message.payload);
         case 'cancelRun':
           // Not queued: Cancel must reach the RunManager while a start or an Accept still waits for Lean (any
           // non-terminal state can be cancelled, docs/m2-plan.md section 2); it names a run the board already shows.
           return await this.handleRun(message);
+        case 'endSession':
+          // Slice 2f (docs/slice2-plan.md 2.5, AF14): Exit is not queued, as Cancel is not, so it can stop a running step
+          // at once, while another run message waits in the run queue; Apply and Back to review run in the queue.
+          if (message.payload.decision === 'exit') return await this.handleRun(message);
+          return await this.enqueueRun(() => this.handleRun(message));
         default:
           if (isRunRequest(message)) {
-            // Slice 2d: a `formalize` without `runId` is a start (it locks the board from its request on, as startRun);
-            // a mid-stage one (with `runId` and `stage`) runs in an active session, which locks the board already.
-            const isStart = message.type === 'startRun' || (message.type === 'formalize' && message.payload.runId === undefined);
+            // Slice 2d: a `formalize` without `runId` is a start (it locks the board from its request on, as M2's
+            // startRun did); a mid-stage one (with `runId` and `stage`) runs in an active session, which locks the
+            // board already.
+            const isStart = message.type === 'formalize' && message.payload.runId === undefined;
             if (!isStart) return await this.enqueueRun(() => this.handleRun(message));
             // The lock begins now, for the edits that arrive after this start (not for those already queued).
             this.startsOnTheirWay.add(arrival);
@@ -268,9 +278,10 @@ export class BoardSession {
   }
 
   /**
-   * Posts the root's current run (any subject: the board shows another subject's run as a compact line) and its
-   * proposal, once the runs are recovered. Called on `ready`, when the session is attached and on every RunManager
-   * change (`change` says which of the two changed).
+   * Posts the root's current run (any subject: the board shows another subject's run as a compact line) and its edit
+   * session, once the runs are recovered. Called on `ready`, when the session is attached and on every RunManager
+   * change (`change` says which changed). Slice 2h: no proposal is posted any more (M2's review is retired), so
+   * `RunChange.proposal` is not read.
    */
   async publishRuns(change: RunChange = ALL_RUN_CHANGES): Promise<void> {
     const runs = this.options.runs;
@@ -279,7 +290,6 @@ export class BoardSession {
     if (this.disposed) return;
     const { manager } = runs;
     if (change.run) await this.post(hostMessage('run', { run: this.safely(() => manager.current(), null, 'current()') }));
-    if (change.proposal) await this.post(hostMessage('proposal', { proposal: this.safely(() => manager.proposal(), null, 'proposal()') }));
     if (change.session) await this.post(hostMessage('session', { session: this.safely(() => manager.session(), null, 'session()') }));
   }
 
@@ -353,8 +363,6 @@ export class BoardSession {
 
   private dispatchRun(manager: RunManager, message: RunRequestMessage): Promise<ActionOutcome> {
     switch (message.type) {
-      case 'startRun':
-        return this.startRun(manager, message.payload.target, message.payload.premises);
       case 'answerQuestions': {
         const { runId, setId, answers } = message.payload;
         return manager.answer(runId, setId, answers);
@@ -363,74 +371,50 @@ export class BoardSession {
         return manager.cancel(message.payload.runId);
       case 'resumeRun':
         return manager.resume(message.payload.runId);
-      case 'acceptProposal': {
-        const { runId, proposalId, definitions } = message.payload;
-        return manager.accept(runId, proposalId, definitions);
-      }
-      case 'feedback':
-        return manager.feedback(message.payload.runId, message.payload.text);
-      case 'discardProposal':
-        return manager.discard(message.payload.runId);
-      case 'adoptGhost': {
-        const { runId, ghostId, rationale } = message.payload;
-        return rationale === undefined ? manager.adoptGhost(runId, ghostId) : manager.adoptGhost(runId, ghostId, rationale);
-      }
-      case 'rejectGhost':
-        return manager.rejectGhost(message.payload.runId, message.payload.ghostId);
       case 'dismissRun':
         return manager.dismiss(message.payload.runId);
-      case 'openProposalDiff':
-        // Read-only: handled outside the queue (handle()); never reaches here.
-        return Promise.resolve({ ok: false, code: 'internal', error: 'openProposalDiff is not a queued run message' });
       // Slice 2d (docs/slice2-plan.md 1.1): Formalize (a start, or mid-stage) and Retry step.
       case 'formalize':
         return this.formalize(manager, message.payload);
       case 'retryStep':
         return manager.retry(message.payload.runId);
-      // Slice 2 (docs/slice2-plan.md 1.1, 2.4): an edit session's messages (core SESSION_MESSAGE_TYPES) are valid run
-      // messages before their routing exists (2e, 2f): answered `not-yet` until then. Named one by one (fixer 2c1 r1,
-      // C-V2C1-C6), so the switch stays exhaustive: a run message nobody routes fails to compile; 2e and 2f each take
-      // their own label out as they route it.
-      case 'decideItems':
+      // Slice 2e (docs/slice2-plan.md 1.1, 2.4, 2.5): the review actions, each the RunManager method of the same meaning,
+      // which refuses them while a step runs (D2-62) and answers `needs-confirmation` for what the user confirms first.
+      case 'decideItems': {
+        const { runId, stage, own, decisions, confirmed } = message.payload;
+        return manager.decide(runId, stage, own, decisions, confirmed === true);
+      }
       case 'revealResult':
+        return manager.reveal(message.payload.runId, message.payload.stage, message.payload.via);
       case 'sessionUndo':
+        return manager.undoSession(message.payload.runId, message.payload.step, message.payload.confirmed === true);
       case 'sessionRedo':
+        return manager.redoSession(message.payload.runId, message.payload.step, message.payload.confirmed === true);
       case 'submitReview':
-      case 'endSession':
+        return manager.submit(message.payload.runId, message.payload.stage);
       case 'openSessionDiff':
+        return this.openSessionDiff(manager, message.payload);
+      // Slice 2f (docs/slice2-plan.md 1.1, 2.4, 2.5): the end of a session (Apply with the check id, Exit, Back to review)
+      // and a move on the Proposed view, each the RunManager method of the same meaning.
+      case 'endSession': {
+        const { runId, decision, stage, check } = message.payload;
+        return manager.end(runId, decision, stage, check);
+      }
       case 'moveProposed':
-        return Promise.resolve({ ok: false, code: 'not-yet', error: REVIEW_TEXTS.notBuiltYet });
+        return manager.moveProposed(message.payload.runId, message.payload.positions);
     }
   }
 
   /**
-   * Formalize for dependencies (spec v4.1 ES-2; the board's Context Menu): refused at once while a run of this root is
-   * active. Slice 1f (ES-7, ES-9): from the request on the board is locked for the edits that arrive after it, and the
-   * board edits that reached the host before it are applied first (the queue), so the shadow the RunManager makes from
-   * the user's files (the run's base) includes them and nothing changes those files afterwards. Slice 1e: then the
-   * start's check on the files as they are now (core `formalizeStartProblem`, docs/slice1-plan.md 2.5: every premise
-   * the source of an arrow drawn into the target, or none for a target marked "follows from nothing"; every
-   * proposition premise with a `.holds`; no cycle of arrows anywhere in the subject, named, since 2b2: AP-29, G2), before the egress
-   * consent (asked once per root); then the RunManager, which runs preflight. Nobody declares premises any more (the
-   * arrows are in the files). The subject is the one the board showed when the button was pressed.
-   */
-  private async startRun(manager: RunManager, target: string, premises: readonly string[]): Promise<ActionOutcome> {
-    const subject = this.current;
-    if (!subject) return { ok: false, code: 'invalid', error: 'This model has no subject yet: create one first ("New subject…").' };
-    const busy = busyRefusal(this.safely(() => manager.current(), null, 'current()'));
-    if (busy) return { ok: false, code: 'conflict', error: busy };
-    await this.queue;
-    const problem = this.formalizeProblem(subject, target, premises);
-    if (problem !== undefined) return { ok: false, code: 'invalid', error: problem };
-    if (!(await this.options.ports.claudeConsent())) return { ok: false, code: 'not-yet', error: CONSENT_DECLINED };
-    await this.queue;
-    return await manager.start({ subject, target, premises: [...premises] });
-  }
-
-  /**
-   * Slice 2d (docs/slice2-plan.md 3.2, 2.4): Formalize for dependencies with one or more targets. A start (no `runId`):
-   * as `startRun` (busy, the edits sent before it, the check, consent), the check being core `formalizeStartProblems`
-   * on the board, then `runs.formalize`. A mid-stage Formalize (`runId` and `stage`): straight to the RunManager, which
+   * Slice 2d (docs/slice2-plan.md 3.2, 2.4): Formalize for dependencies with one or more targets (spec v4.1 ES-2; the
+   * board's Context Menu). A start (no `runId`): refused at once while a run of this root is active. Slice 1f (ES-7,
+   * ES-9): from the request on the board is locked for the edits that arrive after it, and the board edits that reached
+   * the host before it are applied first (the queue), so the shadow the RunManager makes from the user's files (the
+   * run's base) includes them and nothing changes those files afterwards; then the check on the board as the files are
+   * now (core `formalizeStartProblems`: every premise the source of an arrow drawn into its target, or none for a target
+   * marked "follows from nothing"; every proposition premise with a `.holds`; no cycle of arrows anywhere in the
+   * subject, named), before the egress consent (asked once per root), then `runs.formalize` (preflight). The subject is
+   * the one the board showed when the button was pressed. A mid-stage Formalize (`runId` and `stage`): straight to the RunManager, which
    * checks it on the session's own records and refuses it while a step runs (D2-62); no busy refusal (the session is
    * the active run) and no consent question (it continues the consented session).
    */
@@ -455,17 +439,6 @@ export class BoardSession {
     if (!(await this.options.ports.claudeConsent())) return { ok: false, code: 'not-yet', error: CONSENT_DECLINED };
     await this.queue;
     return await manager.formalize({ subject, inferences });
-  }
-
-  /** Slice 1e: the start's check on the subject's board as the files are now (undefined: it may start). */
-  private formalizeProblem(subject: string, target: string, premises: readonly string[]): string | undefined {
-    let graph: TlGraph;
-    try {
-      graph = this.options.workspace.graph(subject);
-    } catch (error) {
-      return `The subject ${subject} could not be loaded: ${errorMessage(error)}`;
-    }
-    return formalizeStartProblem({ nodes: graph.nodes, edges: graph.edges, subject }, target, premises);
   }
 
   /**
@@ -494,46 +467,38 @@ export class BoardSession {
   private async finishRun(outcome: ActionOutcome, requestId: string | undefined, type: RunRequestType): Promise<void> {
     if (requestId) await this.post(hostMessage('actionResult', { requestId, outcome }));
     if (outcome.ok) {
-      if (RUN_SUCCESS_NOTICES.has(type)) await this.notice('info', outcome.label, type === 'acceptProposal' && outcome.undoable);
+      if (RUN_SUCCESS_NOTICES.has(type)) await this.notice('info', outcome.label, type === 'endSession' && outcome.undoable);
     } else if (!requestId) {
       await this.notice(outcome.code === 'internal' ? 'error' : 'warning', outcome.error, false);
     } else {
       this.options.ports.log(outcome.code === 'internal' ? 'error' : 'info', `${type} refused (${outcome.code}): ${outcome.error}`);
     }
     await this.publishRuns({ run: true, proposal: false, session: true });
-    // An Accept changed the files (a start declares nothing since slice 1e): the undo label and graph follow.
-    if (outcome.ok && (type === 'startRun' || type === 'formalize' || type === 'acceptProposal')) await this.requestPublish();
+    // A session's Apply (2f) changed the files (a start declares nothing since slice 1e): the undo label and graph follow.
+    if (outcome.ok && (type === 'formalize' || type === 'endSession')) await this.requestPublish();
   }
 
-  /** "Raw Lean diff…": the proposal's files (the run's base left, the proposal right), optionally one of them. */
-  private async openProposalDiff({ runId, proposalId, file }: OpenProposalDiffMessage['payload']): Promise<void> {
-    const manager = await this.runManager();
-    if (typeof manager === 'string') {
-      await this.notice('warning', manager, false);
-      return;
-    }
-    let files: FileChange[];
-    try {
-      files = await manager.proposalDiff(runId, proposalId);
-    } catch (error) {
-      await this.notice('warning', `Could not open the raw Lean diff: ${errorMessage(error)}`, false);
-      return;
-    }
-    const shown = file === undefined ? files : files.filter((f) => f.path === file);
+  /**
+   * Slice 2e (docs/slice2-plan.md 2.4): "Raw Lean diff…" of an edit session, the session's base left and its working copy
+   * right, optionally one file. The RunManager answers `needs-confirmation` with `reveal` while the results are hidden,
+   * unless `confirmed`; with it, opening the diff counts as Show results (RV-6), so it runs in the run queue.
+   */
+  private async openSessionDiff(manager: RunManager, { runId, stage, confirmed, file }: OpenSessionDiffMessage['payload']): Promise<ActionOutcome> {
+    const diff = await manager.sessionDiff(runId, stage, confirmed === true);
+    if (!('kind' in diff)) return diff;
+    const shown = file === undefined ? diff.files : diff.files.filter((f) => f.path === file);
     if (shown.length === 0) {
-      await this.notice('info', file === undefined ? 'This proposal changes no files.' : `This proposal does not change ${file}.`, false);
-      return;
+      const text = file === undefined ? 'This session changes no files.' : `This session does not change ${file}.`;
+      await this.notice('info', text, false);
+      return { ok: true, label: text, undoable: false };
     }
-    const proposal = this.safely(() => manager.proposal(), null, 'proposal()');
-    const title = proposalDiffTitle({
-      ...(proposal?.proposalId === proposalId ? { subject: proposal.subject, round: proposal.round } : {}),
-      ...(file !== undefined ? { file } : {}),
-    });
+    const title = proposalDiffTitle({ subject: this.current, ...(file !== undefined ? { file } : {}) });
     try {
-      await this.options.ports.showProposalDiff({ runId, proposalId, title, files: shown });
+      await this.options.ports.showProposalDiff({ runId, proposalId: `stage-${stage}`, title, files: shown });
     } catch (error) {
-      await this.notice('warning', `Could not open the raw Lean diff: ${errorMessage(error)}`, false);
+      return { ok: false, code: 'internal', error: `Could not open the raw Lean diff: ${errorMessage(error)}` };
     }
+    return { ok: true, label: title, undoable: false };
   }
 
   /** A RunManager read that must not break the board (a bug there is logged, the board shows `fallback`). */

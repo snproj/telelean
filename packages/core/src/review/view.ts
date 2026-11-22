@@ -170,6 +170,14 @@ export interface ItemView {
   /** Accepted listed items that depend on it; [] on a hidden Result. */
   dependents: string[];
   accept: Gate;
+  /**
+   * (builder 2h, carry-over F-V2G-FC-9; additive) A group Accept leaves it as `blocked`: the host's GroupItem `blocked`
+   * (`itemGates`), so the webview previews a group Accept (`planGroupAccept`, "Accept k of N") on what the host plans
+   * with. Set on listed items in a stage only (never on a hidden Result, never while a step runs). It adds nothing the
+   * view does not show already: "did not pass" (the heading), facts missing (the Accept's own reason, checked first),
+   * and a dependency on a hidden item, which never depends on a hidden outcome (§4.5).
+   */
+  blocked?: true;
   decline: Gate & { options: Array<{ option: DeclineOption; disabled?: string }> };
   /** Back to "in review", un-reject included. */
   review: Gate;
@@ -1237,6 +1245,7 @@ export function buildSessionView(input: SessionViewInput): SessionView {
       dependsOn: dependsOn(r),
       dependents: [...(dependents.get(r.id) ?? [])].sort(byListOrder),
       accept,
+      ...(closure === undefined && gate?.blocked === true ? { blocked: true as const } : {}),
       decline: { ...decline, options: declineOptions(r) },
       review,
       detail: detailOf(r),

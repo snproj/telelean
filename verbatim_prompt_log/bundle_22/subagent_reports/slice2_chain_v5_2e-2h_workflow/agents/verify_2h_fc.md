@@ -1,0 +1,59 @@
+# verify:2h:fc
+
+Agent `a653f99891c455656` of workflow `wf_bee8fde1-76d`. Verbatim output (JSON alongside).
+
+- **summary:** Sub-slice 2h passes on fidelity and correctness. I found no blocker and no major issue. I traced the safety lens through the code and every candidate failed to hold. The carry-over F-V2G-FC-9 is fixed as the builder describes, and the plan's §6.1 tests exist for every item in the scope.
+
+**Verification (I ran all of it).** Typecheck, core, webview and extension tests all pass. The runner ran only the 22 files this change touches, without real-Lean m2flow and walkthrough.e2e; I read the builder's claim for those two and did not rerun them. I did not run Playwright, the VS Code suites or the demo scripts.
+
+**Safety hunt, traced and not reproduced:**
+- **(a) Nothing accepted without the user's Accept.**
+  - Group Accept (`acceptGroup`) sends `own: false` and leaves out hidden Results. The host's `planGroupAccept` leaves RV-7 items.
+  - The menu's Accept on a Claude arrow names exactly one item with its own Accept, and is disabled unless the item is in review.
+  - A converted v1 run puts every item in review, and the failed-conversion path offers only Stop.
+- **(b) No result before the meaning check.**
+  - `sessionOverlay` drops Claude's arrows and premise drafts, strips Result marks and chips every target while `results.shown` is false, whatever the view carries (`sessionBoard.ts` `sessionOverlay`).
+  - `contextItems` excludes null-status items, and `formalize()` opens the results-hidden dialog before any proof read.
+  - The new `ItemView.blocked` is set on listed items only and never during a step. It depends on the reveal state, not on a hidden outcome.
+- **(c) No unjudged state applied.** After a v1 resumed round, `settleLegacy` reverts the working copy to the gate-pass commit, or to the last passing commit for a give-up. Then `convertLegacy` runs `judgeHead`.
+- **(d) Proofs rest only on allowed premises.** `holdAs` is now required: the type forbids omitting it, and `undefined` is refused as `invalid` (`adoption.ts`).
+- **(e) User decisions survive.**
+  - Undo scope routes to the session stack only in the Proposed view or with focus in the session.
+  - A refused move rolls back, and a pending move survives a new Current graph (`withMovesShown`).
+- **(f) Claude cannot change kinds or files.** Moves go through `moveProposed`, never `moveCards`. `claimPending` is not sent once a session has begun. Claude's undecided arrows are never selectable for Formalize.
+- **(g) No misleading green.**
+  - `runStateLabel` passes `false` for the reveal flag, so the run panel never shows a verdict.
+  - After Apply, the panel reads the runner's `run.accepted` record, which `sessionEnd.ts:497` sets.
+
+Everything else the plan lists is present: the retired messages and the 14-entry `RUN_MESSAGE_TYPES`, the retired runner methods (with `upgradeLegacyProposal` kept), the deleted UI files, the Formalize and Undo behaviour of §5.11–5.12, and a §8 entry that records the builder's decisions.
+
+The four findings below are minor or nit. None blocks.
+- **findings:**
+  - [1]
+    - **id:** F-V2H-FC-1
+    - **severity:** minor
+    - **where:** packages/core/src/run.ts:141 (EDIT_SESSION_ACTIVE); shown by packages/extension/src/logic/boardSession.ts:454-459 and packages/webview/src/state/store.ts editLock
+    - **problem:** The board-lock text still says "the board can't be edited until you accept or discard it". Slice 2h retired Accept and Discard (the buttons are now Apply, Exit and Submit review). The builder flagged this (decision 11) but left it, so the user sees an instruction to press buttons that no longer exist every time they try to edit the board during a session.
+    - **evidence:** core/src/run.ts:141 is unchanged. The new busy texts in extension/src/logic/runs.ts:176 and webview/src/model/run.ts:43 use "Apply or Exit it first".
+    - **fix:** Reword the text to "…until you apply or exit it." and update the tests that quote it: grep core, webview and extension tests for "accept or discard".
+  - [2]
+    - **id:** F-V2H-FC-2
+    - **severity:** minor
+    - **where:** packages/webview/src/main.tsx (focusin/focusout) with packages/webview/src/header/Header.tsx UndoRedo and store.ts undoScopeOf
+    - **problem:** On the Current view with focus inside the review panel, the toolbar Undo/Redo button shows the session stack (scope 'session'). Pressing it moves focus to the toolbar button, which is outside `data-undo-scope="session"`, so `focusInSession` becomes false before the click. The click then runs the locked board `undo()`, which posts nothing, while the button had advertised "Undo: ‹step›". Ctrl+Z from inside the panel works. Only the Current view is affected, since in the Proposed view the scope stays 'session' regardless of focus.
+    - **evidence:** `undoScope` needs `proposedOnScreen || focusInSession`. The toolbar group has no `data-undo-scope`. The click handler calls `undoInScope()` after the `focusin` has already cleared the flag.
+    - **fix:** Put `data-undo-scope="session"` on the session-undo toolbar buttons when a session exists, or compute the scope on `pointerdown` and pass it to the click, or add a unit test pinning the intended behaviour.
+  - [3]
+    - **id:** F-V2H-FC-3
+    - **severity:** minor
+    - **where:** packages/runner/src/run/manager.ts settleLegacy (the `reverted` branch) and convertLegacy's catch branch
+    - **problem:** Two new runner paths have no test: (1) a resumed v1 round that gives up, hits a cap or never finishes, which is reverted to the last passing commit and converted; (2) a failed conversion, which leaves state 'review' with no session and an error. The builder states (1) is untested. (2) is covered only on the webview side, with a fabricated error string in store-run.test.ts:166. Also, a converted give-up round becomes a session step 's1' with state 'passed' that carries only a 'reverted' notice, so the gave-up verdict is no longer a banner.
+    - **evidence:** session.reload.test.ts adds three v1 tests, all for the finished-and-gate-passed round or an in-review upgrade. No test reaches `settleLegacy(run, reason)` or the `convertLegacy` catch (grep "could not be converted" finds only manager.ts and the webview test).
+    - **fix:** Add a session.reload test for a v1 resumed round that gives up (expect the reverted notice, a version 2 session, files untouched) and one where `legacySession` throws, using a shadow with no base commit (expect no session, the error text, and `cancel` ending the run as 'cancelled' with the workspace unchanged).
+  - [4]
+    - **id:** F-V2H-FC-4
+    - **severity:** nit
+    - **where:** packages/webview/src/model/run.ts runBadgeText case 'review' (and the 'Preparing…' gap in RunPanel)
+    - **problem:** For a run in review with no session view (a failed v1 conversion, or the moment before the view arrives), the badge reads "Claude: proposal ready · ‹subject›", wording from the retired M2 review. For a failed conversion it also implies there is a proposal to review, while the panel offers only Stop.
+    - **evidence:** runBadgeText 'review' returns `Claude: proposal ready · ${run.subject}` when the verdict is not an outcome verdict. RunBadge's session wording applies only when a session view exists.
+    - **fix:** For a 'review' run with no `run.session`, word the badge by its error ("Claude: could not open the review · ‹subject›"), or drop the 'proposal ready' branch.

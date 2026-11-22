@@ -11,7 +11,8 @@
  *              ledger's `created` entries (D2-43), a re-ask's outcome (D2-46), the rollbacks' ledger and drafts (AF10)
  *   the write queue (§2.6): every write of the session in one queue, each in four writes (run.json `inFlight`, the files,
  *              the shadow commit, run.json with the records, `head`, `inFlight` cleared), the in-memory session
- *              changing only at steps 1 and 4 (AF11); 2d's writes are `queue-start` and `judge-apply`
+ *              changing only at steps 1 and 4 (AF11); 2d's writes are `queue-start` and `judge-apply` (2e adds
+ *              `decide` and `submit-take-out`, review.ts); a queue of Claude steps starts as its last write (`asLastWrite`)
  *   the judge  when a queue ends: `engine.judge` on the head, then its whole outcome as one `judge-apply` write
  *              (reconcile, its reverts, `judged`, `judged-facts.json`), dropped and run again when the head moved, run
  *              again after its reverts until it converges; then the stage opens (§3.5)
@@ -20,13 +21,16 @@
  *   views      the SessionView (core `buildSessionView`, masked while the results are hidden) and the session's RunView
  *              (§3.12), published when the session changes (`RunChange.session`)
  *
- * While a step runs, every review action is refused with D2-62's text (the methods 2e and 2f fill in answer only that
- * refusal, or `not-yet`, until then).
+ * While a step runs, every review action is refused with D2-62's text. 2e's review actions are review.ts's (the
+ * ReviewRunner on top of this layer); 2f's answer that refusal, or `not-yet`, until then. Only a queue's end judges
+ * while the phase is `step`, and only a converged judgement is published, its view version raised only when what the
+ * person sees changed (F17).
  */
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
+  anonymousInstanceName,
   arrowKey,
   ATTEMPT_FORMAT,
   ATTEMPT_RESOLUTION_FORMAT,
@@ -49,6 +53,7 @@ import {
   REVIEW_TEXTS,
   subjectGraph,
   type ActionOutcome,
+  type ArrowProvenance,
   type AttemptRecord,
   type AttemptResolution,
   type FileChange,
@@ -185,10 +190,20 @@ function lakefileOf(files: ReadonlyMap<string, string>): { path: string; text: s
   return p !== undefined ? { path: p, text: files.get(p) ?? '' } : undefined;
 }
 
-/** Every declaration name of a model's files (what D2-43's `created` entries are about). */
+/**
+ * Every declaration name of a model's files (what D2-43's `created` entries are about), an anonymous instance by the
+ * name Lean gives it (core `anonymousInstanceName`, as computeItems names its unit): builder 2f found, with real Lean on
+ * a fresh model, that a step's new helper instance of a presupposition (`instance : Nonempty Being := Being.exists`)
+ * got no `created` entry, so computeItems found no owner and the stage and the final check refused it as unowned.
+ */
 export function declarationNames(model: ProjectModel): Set<string> {
   const out = new Set<string>();
-  for (const file of model.files.values()) for (const d of file.decls) if (d.fullName !== undefined) out.add(d.fullName);
+  for (const file of model.files.values()) {
+    for (const d of file.decls) {
+      const name = d.fullName ?? (d.keyword === 'instance' ? anonymousInstanceName(file, d) : undefined);
+      if (name !== undefined) out.add(name);
+    }
+  }
   return out;
 }
 
@@ -246,8 +261,13 @@ function newRuntime(): SessionRuntime {
   };
 }
 
-/** ES-4's reason when a decision's judge leaves a working copy that does not pass (§3.6: B plus the accepted items fail; builder 2e). */
-export const DECISIONS_DID_NOT_PASS = 'the working copy with your decisions does not pass its checks';
+/**
+ * The heading's text when a decision's judge leaves a working copy that does not pass (§3.6: B plus the accepted items
+ * fail; builder 2e). Its own runner text (2e's review, R1-1; builder 2f): no step ran, so not core's "Claude's step did
+ * not pass: …", which stays a step's heading (ES-4). The Accept refusal under it (review.ts `DECIDED_DID_NOT_PASS`)
+ * starts with this text, so the two agree.
+ */
+export const DECISIONS_DID_NOT_PASS = 'Your decisions leave a working copy that does not pass its checks';
 
 /** Shown, in place of Claude's work, while the SessionView cannot be built (fixer 2d r1, A-F4). */
 export const SESSION_VIEW_FAILED = 'telelean could not build the review list. Nothing of it is shown until it can: reload the window to try again, or Exit the session.';
@@ -356,13 +376,16 @@ export abstract class SessionRunner extends StepRunner {
     this.emit(change);
   }
 
-  /** §2.6 step 4: tried once more when it fails; a second failure stops the queue (a reload's recover() finishes it). */
-  protected async persistStep4(run: ActiveRun): Promise<void> {
+  /**
+   * §2.6 step 4: tried once more when it fails; a second failure stops the queue (a reload's recover() finishes it).
+   * `change`: what it publishes (a judge-apply round that its reverts make run again publishes nothing, F17).
+   */
+  protected async persistStep4(run: ActiveRun, change: RunChange = SESSION_CHANGE): Promise<void> {
     try {
-      await this.persistChecked(run);
+      await this.persistChecked(run, change);
     } catch {
       try {
-        await this.persistChecked(run);
+        await this.persistChecked(run, change);
       } catch (e) {
         this.notice(run, 'environment', 'error', REVIEW_TEXTS.saveFailed(errorText(e)));
         throw e;
@@ -441,29 +464,72 @@ export abstract class SessionRunner extends StepRunner {
     return out;
   }
 
+  /** The SessionView of `s` with the runtime's stage judgement (it throws when buildSessionView does). No side effect. */
+  protected viewOf(run: ActiveRun, s: PersistedSession, rt: SessionRuntime & { baseModel: ProjectModel }): SessionView {
+    const judged = rt.judgement !== null ? rt.judgedModel : undefined;
+    const view = buildSessionView({
+      runId: run.runId,
+      subject: run.p.view.subject,
+      records: toSessionRecords(s),
+      judgement: judged !== undefined ? rt.judgement : null,
+      base: rt.baseModel,
+      current: judged?.model ?? rt.baseModel,
+      renderings: rt.renderings,
+      words: this.wordsOf(s),
+      judging: this.isJudging(run),
+      viewVersion: s.viewVersion,
+      ...(judged?.lakefile !== undefined ? { lakefile: judged.lakefile } : {}),
+      // 2f: the runner's own problems of the stage (a premise write that could not be made, §3.8), and the working
+      // copy's endorsements (its board's build input, §2.9's note).
+      problems: this.stageProblems(run, s),
+      ...this.viewEndorsements(run),
+    });
+    // F17: while a judge-apply's reverts make the judge run again, the previous board stays.
+    if (rt.converging && rt.board !== undefined) view.board = rt.board;
+    return view;
+  }
+
+  /** (2f, §3.8) The runner's own problems of the stage, for the view (SessionViewInput.problems): none here. */
+  protected stageProblems(_run: ActiveRun, _s: PersistedSession): Array<{ text: string; items: string[] }> {
+    return [];
+  }
+
+  /**
+   * (2f; §2.9's note on `maskedModel`) The working copy's endorsements, its board's build input, which a ProjectModel
+   * does not keep: the person's files' (the session's working copy starts from them and Apply alone writes the file).
+   */
+  protected viewEndorsements(_run: ActiveRun): { endorsements?: NonNullable<Parameters<typeof buildSessionView>[0]['endorsements']> } {
+    return {};
+  }
+
+  /**
+   * F17, §3.5 step 4 (builder 2e): the view version a judge-apply's write of `next` publishes, raised only when the view
+   * it gives differs in what the user can see from the one last published (`judging` and the version itself aside).
+   * So a change only hidden content had (a hidden Result a judge took out, a revert round while converging) raises
+   * nothing, and the masked graph's `version` never counts hidden changes.
+   */
+  protected visibleViewVersion(run: ActiveRun, next: PersistedSession): number {
+    const rt = this.runtimeOf(run);
+    const last = rt.view;
+    if (last === null || rt.baseModel === undefined || rt.viewError !== undefined) return next.viewVersion + 1;
+    let candidate: SessionView;
+    try {
+      candidate = this.viewOf(run, { ...next, viewVersion: last.board.graph.version }, rt as SessionRuntime & { baseModel: ProjectModel });
+    } catch {
+      return next.viewVersion + 1;
+    }
+    const visible = (v: SessionView) => JSON.stringify({ ...v, judging: false });
+    return visible(candidate) === visible(last) ? next.viewVersion : next.viewVersion + 1;
+  }
+
   /** The SessionView of the session as run.json holds it (null when it cannot be built yet). */
   protected buildView(run: ActiveRun): SessionView | null {
     const s = run.p.session;
     const rt = run.live;
     if (s === undefined || rt === undefined || rt.baseModel === undefined) return rt?.view ?? null;
-    const judged = rt.judgement !== null ? rt.judgedModel : undefined;
     try {
-      const view = buildSessionView({
-        runId: run.runId,
-        subject: run.p.view.subject,
-        records: toSessionRecords(s),
-        judgement: judged !== undefined ? rt.judgement : null,
-        base: rt.baseModel,
-        current: judged?.model ?? rt.baseModel,
-        renderings: rt.renderings,
-        words: this.wordsOf(s),
-        judging: this.isJudging(run),
-        viewVersion: s.viewVersion,
-        ...(judged?.lakefile !== undefined ? { lakefile: judged.lakefile } : {}),
-      });
-      // F17: while a judge-apply's reverts make the judge run again, the previous board stays.
-      if (rt.converging && rt.board !== undefined) view.board = rt.board;
-      else rt.board = view.board;
+      const view = this.viewOf(run, s, rt as SessionRuntime & { baseModel: ProjectModel });
+      if (!(rt.converging && rt.board !== undefined)) rt.board = view.board;
       delete rt.viewError;
       return view;
     } catch (e) {
@@ -841,6 +907,12 @@ export abstract class SessionRunner extends StepRunner {
   protected submitFeedback(_run: ActiveRun, _s: PersistedSession, _steps: readonly PersistedStep[]): string | undefined {
     return undefined;
   }
+
+  /**
+   * §3.8, §3.11 (2f, D2-71): at recovery, in a stage, the premise writes and completions still due are enqueued, before
+   * anything else and completions first (premises.ts); none here.
+   */
+  protected enqueueDueWrites(_run: ActiveRun): void {}
 
   /**
    * §2.6, §3.11: a write of a later sub-slice found in flight (2e's `decide` and `submit-take-out`), run again once the
@@ -1367,8 +1439,10 @@ export abstract class SessionRunner extends StepRunner {
     const first = steps[0];
     if (first === undefined) return refused('conflict', REVIEW_TEXTS.nothingToRetry);
     const write: SessionWrite = { kind: 'queue-start', by, steps: steps.map((x) => x.id), ...(inferences.length > 0 ? { inferences } : {}) };
-    const done = await this.enqueueWrite(run, async () => {
+    const done = await this.asLastWrite(run, async () => {
       const s = this.sessionOf(run);
+      // The checks were made on the session as it was before the queue (builder 2e): still a stage with no step.
+      if (this.stepRunning(s) || s.phase !== 'stage') return refused('conflict', REVIEW_TEXTS.historyChanged);
       // Step 1: the write in flight.
       s.inFlight = { action: write, parent: s.head };
       try {
@@ -1422,6 +1496,7 @@ export abstract class SessionRunner extends StepRunner {
     next.retry = [];
     next.phase = 'step';
     delete next.heading;
+    delete next.decidedHeading;
     next.head = commit.id;
     delete next.inFlight;
     next.viewVersion += 1;
@@ -1531,6 +1606,28 @@ export abstract class SessionRunner extends StepRunner {
   // ---------------------------------------------------------------------------------------------
   // The write queue (§2.6)
 
+  /**
+   * §2.6, AF3 (builder 2e): `job` as the write queue's last write: once no judge runs or is due and the queue is empty,
+   * checked again inside the queue (a judge due or a write queued by then makes it wait again). So a queue of Claude
+   * steps starts only on a judged head, with no session write left behind it (D2-62).
+   */
+  protected async asLastWrite(run: ActiveRun, job: () => Promise<ActionOutcome>): Promise<ActionOutcome> {
+    const rt = this.runtimeOf(run);
+    for (let k = 0; k < 1000; k++) {
+      await this.idle(run);
+      let busy = false;
+      const out = await this.enqueueWrite(run, async () => {
+        if (rt.judging || rt.queuedJudges > 0 || rt.pendingWrites > 1) {
+          busy = true;
+          return refused('conflict', REVIEW_TEXTS.judging);
+        }
+        return job();
+      });
+      if (!busy) return out;
+    }
+    return refused('conflict', REVIEW_TEXTS.judging);
+  }
+
   protected enqueueWrite<T>(run: ActiveRun, job: () => Promise<T>): Promise<T> {
     const rt = this.runtimeOf(run);
     rt.pendingWrites += 1;
@@ -1576,9 +1673,12 @@ export abstract class SessionRunner extends StepRunner {
     rt.judging = true;
     await this.save(run, SESSION_CHANGE);
     let queueSteps = options.queueSteps;
+    // D2-62 (builder 2e): only a queue's end judges while the phase is `step`; any other judge found then (one a
+    // decision made before the queue started) stops, since the queue's end judges the head and reconciles it all.
+    const outrun = () => options.endsQueue !== true && this.stepRunning(this.sessionOf(run));
     try {
       for (let round = 0; round < MAX_JUDGE_ROUNDS; round++) {
-        if (this.disposed || run !== this.run || run.ended) return;
+        if (this.disposed || run !== this.run || run.ended || outrun()) return;
         let judged: { judgement: StateJudgement; report: CheckReport };
         try {
           judged = await this.o.services.engine.judge(this.stageContext(run));
@@ -1587,6 +1687,7 @@ export abstract class SessionRunner extends StepRunner {
           this.log('error', `the judge failed: ${errorText(e)}`);
           this.notice(run, 'environment', 'error', `telelean could not check the working copy (${errorText(e)}).`);
           if (options.endsQueue === true) await this.openStageWithoutJudgement(run);
+          else await this.dropJudgement(run);
           return;
         }
         if (this.disposed || run !== this.run || run.ended) return;
@@ -1597,6 +1698,7 @@ export abstract class SessionRunner extends StepRunner {
           // §2.6: a write that could not be made stops here; after a reload, recover() finishes what it recorded.
           this.log('error', `the judge's outcome could not be written: ${errorText(e)}`);
           if (!this.disposed && run === this.run) this.notice(run, 'environment', 'error', REVIEW_TEXTS.saveFailed(errorText(e)));
+          if (options.endsQueue !== true) await this.dropJudgement(run);
           return;
         }
         if (outcome === 'dropped') continue;
@@ -1617,6 +1719,27 @@ export abstract class SessionRunner extends StepRunner {
   }
 
   /**
+   * A judge a decision started (not a queue's end) that could not run or whose outcome could not be written (fixer 2e r1,
+   * A-F1): the head it was to judge is past the stage judgement, which describes an older state and must not stand in for
+   * it (§3.1: the head of ws/ is a state telelean judged, or `judging` is true). As a queue's end whose judge could not
+   * run (A-F4), the judgement is cleared in memory and on disk (`judged`): every review action answers NO_JUDGEMENT, and
+   * a reload runs the judge again. Inside the write queue, on the records as they are then.
+   */
+  protected async dropJudgement(run: ActiveRun): Promise<void> {
+    if (this.disposed || run !== this.run || run.ended) return;
+    await this.enqueueWrite(run, async () => {
+      const s = this.sessionOf(run);
+      const rt = this.runtimeOf(run);
+      if (s.phase !== 'stage' || rt.judgement === null || rt.judgement.commit === s.head) return;
+      rt.judgement = null;
+      rt.judgedModel = undefined;
+      delete s.judged;
+      s.viewVersion += 1;
+      await this.save(run, SESSION_CHANGE);
+    });
+  }
+
+  /**
    * The stage opens after a judge that could not run (§3.5's fail-closed path): no judgement, nothing acceptable. The
    * previous stage's judgement does not stand in for it (fixer 2d r1, A-F4): it is cleared in memory and on disk
    * (`judged`), so the view has none and a reload runs the judge.
@@ -1633,15 +1756,20 @@ export abstract class SessionRunner extends StepRunner {
     await this.save(run, SESSION_CHANGE);
   }
 
-  /** §3.5 step 4: the phase becomes `stage`; the stage rises after the start's queue and a Submit's. */
+  /**
+   * §3.5 step 4: the phase becomes `stage`; the stage rises after the start's queue and a Submit's. A Submit queue in
+   * which a step was cancelled or failed returns to the stage it submitted (ES-4: "returns you to the previous stage",
+   * with Retry step, which keeps the stage too; builder 2e).
+   */
   protected openStage(run: ActiveRun, s: PersistedSession, judgedOk: boolean): void {
     const q = currentQueue(s);
     const seal = [...s.stack.done].reverse().find((a) => a.kind === 'seal');
     const from: SealBy | 'start' = q <= 1 || seal === undefined || seal.kind !== 'seal' ? 'start' : seal.by;
-    if (from === 'start' || from === 'submit') s.stage += 1;
-    for (const step of s.steps) if ((step.queue ?? 1) === q) step.stage = s.stage;
-    s.phase = 'stage';
     const failed = s.steps.find((x) => (x.queue ?? 1) === q && (x.state === 'cancelled' || x.state === 'failed'));
+    if (from === 'start' || (from === 'submit' && failed === undefined)) s.stage += 1;
+    for (const step of s.steps) if ((step.queue ?? 1) === q) step.stage = s.stage;
+    delete s.decidedHeading;
+    s.phase = 'stage';
     if (failed === undefined) delete s.heading;
     else if (!judgedOk && s.heading !== undefined && s.heading !== null) {
       // ES-4: S₀ itself did not pass its judgement.
@@ -1659,13 +1787,26 @@ export abstract class SessionRunner extends StepRunner {
   protected async judgeApply(run: ActiveRun, judgement: StateJudgement, report: CheckReport, options: JudgeOptions): Promise<'dropped' | 'applied' | 'reverted'> {
     const s = this.sessionOf(run);
     if (s.head !== judgement.commit) return 'dropped';
+    // D2-62 (builder 2e): never reconciled while a step runs, but at its queue's end (the loop then stops).
+    if (options.endsQueue !== true && this.stepRunning(s)) return 'dropped';
     const at = this.iso();
     const recon = reconcile({ runId: run.runId, records: toSessionRecords(s), judgement, ...(options.queueSteps !== undefined ? { queueSteps: options.queueSteps } : {}), at });
     let next = withRecords(structuredClone(s), recon.records);
     // §3.6, ES-4 (builder 2e): a judge a decision started that converged (no revert left) on a state that does not pass:
-    // B plus the accepted items fail, so the stage is headed "did not pass"; only a later step lifts it (openStage).
-    if (options.decided === true && next.phase === 'stage' && recon.reverts.length === 0 && !judgement.ok && next.heading?.kind !== 'did-not-pass') {
-      next.heading = { kind: 'did-not-pass', text: REVIEW_TEXTS.didNotPass(DECISIONS_DID_NOT_PASS), firstStep: next.heading?.firstStep ?? false, retry: next.heading?.retry ?? { ok: true } };
+    // B plus the accepted items fail, so the stage is headed "did not pass" (no Accept), keeping a cancelled or failed
+    // queue's Retry. As ES-4's heading, it stands until a later step passes (openStage).
+    // A later decision's judge that passes lifts it again (fixer 2e r1, A-F2, F-FC-1): `decidedHeading` remembers that
+    // the heading is a decision's, and the heading it replaced (a cancelled or failed Submit step's, with its Retry).
+    if (options.decided === true && next.phase === 'stage' && recon.reverts.length === 0) {
+      if (!judgement.ok && next.heading?.kind !== 'did-not-pass') {
+        next.decidedHeading = { under: next.heading ?? null };
+        next.heading = { kind: 'did-not-pass', text: DECISIONS_DID_NOT_PASS, firstStep: next.heading?.firstStep ?? false, retry: next.heading?.retry ?? { ok: true } };
+      } else if (judgement.ok && next.decidedHeading !== undefined) {
+        const under = next.decidedHeading.under;
+        if (under !== null) next.heading = under;
+        else delete next.heading;
+        delete next.decidedHeading;
+      }
     }
     // §3.11: a written Add premise's record holds its card (a converted run's adopted ghosts: written items in review).
     cardsFromLedger(next);
@@ -1713,13 +1854,16 @@ export abstract class SessionRunner extends StepRunner {
     next.judged = { commit: judgement.commit, filesKey: judgement.filesKey, ok: judgement.ok, problems, at };
     // F-V2D-FC-6, A-F8: the queue-end rules ran (in this write's step 4); recovery never runs them again for this queue.
     if (options.queueSteps !== undefined) next.queueEndReconciled = currentQueue(next);
-    next.viewVersion += 1;
     if (changes.length === 0) {
       if (options.endsQueue === true) this.openStage(run, next, judgement.ok);
       await this.writeJudgedFacts(run, judgement.commit, judgement.filesKey, report.facts);
       const files = await run.shadow.filesAt(judgement.commit);
       rt.judgement = judgement;
       rt.judgedModel = { commit: judgement.commit, model: model ?? filesModel(files, run.p.library, report.facts), ...(lakefileOf(files) !== undefined ? { lakefile: lakefileOf(files) } : {}) };
+      // F17 (builder 2e): no revert left, so the judgement converged: the view this write publishes has its board, and
+      // its version rises when anything the person sees changed since the last published view.
+      rt.converging = false;
+      next.viewVersion = this.visibleViewVersion(run, next);
       run.p.session = next;
       await this.persistStep4(run);
       return 'applied';
@@ -1741,8 +1885,11 @@ export abstract class SessionRunner extends StepRunner {
     const files = await run.shadow.filesAt(judgement.commit);
     rt.judgement = judgement;
     rt.judgedModel = { commit: judgement.commit, model: model ?? filesModel(files, run.p.library, report.facts), ...(lakefileOf(files) !== undefined ? { lakefile: lakefileOf(files) } : {}) };
+    // F17 (builder 2e): a round whose reverts make the judge run again is recorded but not published: the view stays the
+    // one last published, and only the converged judgement's write publishes (and raises the version once if anything
+    // the user can see changed), so how many rounds a judge took, which hidden content can decide, never shows.
     run.p.session = next;
-    await this.persistStep4(run);
+    await this.persistStep4(run, { run: false, proposal: false, session: false });
     return 'reverted';
   }
 
@@ -1831,8 +1978,8 @@ export abstract class SessionRunner extends StepRunner {
         judgeOptions = {};
       } else if (inFlight !== undefined) {
         // 2e's review writes (`decide`, `submit-take-out`) run again below, once the stage judgement is computed again
-        // (they read it); a write of a later sub-slice (2f) with no replay here yet: nothing of it was recorded; a
-        // judge follows.
+        // (they read it). 2f's `premise` and `completion` writes are due writes: nothing of them was recorded (ws/ is
+        // back at `head`), so they are due still, and `enqueueDueWrites` runs them again below; a judge follows.
         delete s.inFlight;
         if (inFlight.action.kind === 'decide' || inFlight.action.kind === 'submit-take-out') replay = inFlight.action;
         else judgeOptions = {};
@@ -1843,6 +1990,8 @@ export abstract class SessionRunner extends StepRunner {
     const recomputed = await this.recomputeJudgement(run);
     // §2.6 (2e): the review write in flight, again: fully made (its judge follows, the head moved), or not made.
     if (replay !== undefined && now.phase === 'stage' && (await this.replayWrite(run, replay))) judgeOptions ??= { decided: true };
+    // §3.8, §3.11 (2f, D2-71): every premise write and completion still due, before anything else, completions first.
+    if (this.sessionOf(run).phase === 'stage') this.enqueueDueWrites(run);
     if (this.activeStep(now) === undefined && (now.phase === 'step' || now.phase === 'interrupted')) {
       if (now.queue.length > 0) {
         p.view.state = 'interrupted';
@@ -1867,7 +2016,12 @@ export abstract class SessionRunner extends StepRunner {
       const q = currentQueue(now);
       if (now.judged === undefined && now.queueEndReconciled !== q && !decidedSinceSeal(now)) {
         judgeOptions = { queueSteps: now.steps.filter((x) => (x.queue ?? 1) === q).map((x) => x.id) };
-      } else judgeOptions ??= {};
+      } else {
+        // A decision whose judge had not ended when the window closed (the head is past the judged commit, a decision
+        // stacked since the seal): its judge, as the decision's own (F-FC-1: it heads the stage "did not pass" too).
+        const decided = (now.judged === undefined || now.head !== now.judged.commit) && decidedSinceSeal(now);
+        judgeOptions ??= decided ? { decided: true } : {};
+      }
     }
     this.transcript(run, { kind: 'recovered', state: p.view.state });
     // A judge due shows as judging from the first view on.
@@ -1985,8 +2139,11 @@ export abstract class SessionRunner extends StepRunner {
   // ---------------------------------------------------------------------------------------------
   // The end of a session's records (D2-11), until 2f's Apply and Exit
 
-  /** D2-11: every step's attempt record, written with its resolution when the session ends. */
-  protected async writeSessionAttempts(run: ActiveRun, resolution: AttemptResolution['resolution']): Promise<void> {
+  /**
+   * D2-11: every step's attempt record, written with its resolution when the session ends. (2f, G1) `arrows`: an Apply's
+   * provenance; each step's resolution carries the arrows that step proposed, none when it proposed none.
+   */
+  protected async writeSessionAttempts(run: ActiveRun, resolution: AttemptResolution['resolution'], arrows: readonly ArrowProvenance[] = []): Promise<void> {
     const s = run.p.session;
     if (s === undefined) return;
     const sidecars = this.o.services.sidecars;
@@ -1995,7 +2152,16 @@ export abstract class SessionRunner extends StepRunner {
       for (const step of s.steps) {
         if (step.attempt === undefined) continue;
         await sidecars.appendAttempt(this.o.root, step.attempt);
-        await sidecars.resolveAttempt(this.o.root, subject, { format: ATTEMPT_RESOLUTION_FORMAT, version: 1, run: run.runId, round: step.attempt.round, date: this.iso(), resolution });
+        const own = arrows.filter((a) => a.step === step.id).map((a) => ({ ...a }));
+        await sidecars.resolveAttempt(this.o.root, subject, {
+          format: ATTEMPT_RESOLUTION_FORMAT,
+          version: 1,
+          run: run.runId,
+          round: step.attempt.round,
+          date: this.iso(),
+          resolution,
+          ...(own.length > 0 ? { arrows: own } : {}),
+        });
       }
       await this.o.workspace.reloadAttempts?.(subject);
     } catch (e) {

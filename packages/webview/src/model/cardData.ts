@@ -207,16 +207,35 @@ export function cardChips(node: TlNode, nodes: Readonly<Record<string, TlNode>>,
     const label = node.stance === 'rule' ? 'no source yet' : 'no reason yet';
     chips.push({ key: 'no-rationale', label, title: 'Add a reason ("because: …")', tone: 'attention', action: 'edit-rationale' });
   }
-  if (node.type === 'AXIOM' && node.premises.length > 0) {
+  const declared = declaredBeforeV4(node, nodes);
+  if (declared.length > 0) {
     // Spec v4 A19 (slice 1b): an axiom's `premises:` written before v4 is not drawn (TL122); its details offer both.
+    // Slice 2i (audit G11): the tooltip names the cards they come from, so neither choice is made blind.
     chips.push({
       key: 'declared-before-v4',
       label: 'declared before v4: make it a proposition, or drop these arrows',
-      title: `Its premises: line (${node.premises.length} arrow${node.premises.length === 1 ? '' : 's'} into it) was written before v4, when axioms could have arrows; the board does not draw them. Its details offer "Make it a proposition (pending)" and "Drop these arrows".`,
+      title: `Its premises: line (${declared.length} arrow${declared.length === 1 ? '' : 's'} into it, from ${quotedNames(declared)}) was written before v4, when axioms could have arrows; the board does not draw them. Its details offer "Make it a proposition (pending)" and "Drop these arrows".`,
       tone: 'info',
     });
   }
   return chips;
+}
+
+/**
+ * Spec v4 A19 (slice 2i; audit G11): the sentences of the cards an old axiom's `premises:` names (written before v4,
+ * when axioms could have arrows; not drawn), each once, in order; a card that is not on this board (a missing one, or
+ * another subject's) by its id. The card chip's tooltip and the details row name them, so "Make it a proposition
+ * (pending)" and "Drop these arrows" are not chosen blind. Empty for a proposition (its premises are drawn arrows) and
+ * for an axiom without `premises:`.
+ */
+export function declaredBeforeV4(node: TlNode, nodes: Readonly<Record<string, TlNode>>): string[] {
+  if (node.type !== 'AXIOM') return [];
+  return [...new Set(node.premises)].map((id) => nodes[id]?.naturalName ?? id);
+}
+
+/** Sentences in curly quotes, joined with commas (“A”, “B”). */
+export function quotedNames(names: readonly string[]): string {
+  return names.map((name) => `“${name}”`).join(', ');
 }
 
 /** Up to two cards' sentences, shortened, then ", …" (chip labels). */

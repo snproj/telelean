@@ -5,7 +5,7 @@
  * step; usage summed from usage events; the cost estimate is the latest result's value (0.01, then 0.03 -> 0.03).
  * Slice 2d: the start is an edit session with one step; the step ends at the gate pass, the queue's judge runs, and the
  * stage opens with the step's items (no proposal; the step's outcome and attempt record on its own record, D2-11).
- * Feedback's second round is Submit review's queue now (manager.rounds.test.ts: moves to 2e).
+ * Feedback's second round is Submit review's queue now (manager.rounds.test.ts, slice 2e).
  */
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -123,7 +123,6 @@ describe('RunManager happy path (AT3.1)', () => {
     expect(s1.freezes[0]?.snapshot.permitted.selected).toEqual(['Spyro.cynder_dark_past.holds', 'Spyro.new_spyro_pg.holds', 'Spyro.pg_no_dark_past.holds']);
     expect(review.counters).toMatchObject({ checks: 3, gateAttempts: 1, turns: 2 });
     expect(review.proposalId).toBeUndefined();
-    expect(manager.proposal()).toBeNull();
     // Claude's words and telelean's checks are in run.json; the RunView withholds them while the results are hidden.
     expect(review.activity).toEqual([]);
     const raw = rawRun(h);

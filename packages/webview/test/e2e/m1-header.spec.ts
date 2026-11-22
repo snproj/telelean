@@ -112,6 +112,38 @@ test('AT6.13 the history dropdown lists "time · action · label" with the stora
   expect((await postedOfType(page, 'historyPrune')).map((m) => m.payload)).toEqual([{ subject: 'Spyro', keepLast: 2, requestId: 'r2' }]);
 });
 
+test('slice 2f (G1, spec §14 item 2): an Apply\'s entry lists "Arrows from Claude", one line per arrow with its step; other entries list none', async ({ page }) => {
+  const listing = historyListing();
+  const apply = {
+    id: 'd0ffee0',
+    time: '2026-11-01T10:00:00.000Z',
+    action: 'accept-proposal' as const,
+    label: 'Apply: Cynder would not be a good addition…',
+    subject: 'Spyro',
+    nodes: ['cynder-not-good'],
+    arrows: [
+      { source: 'new-spyro-pg', target: 'cynder-not-good', step: 's1', kind: 'arrow' as const },
+      { source: 'not-in-game-not-good', target: 'cynder-not-good', step: 's12', kind: 'premise' as const },
+    ],
+  };
+  board = await openBoard(page, spyroGraph(), 'dark', { workspace: workspaceState(), history: { ...listing, entries: [apply, ...listing.entries] } });
+  await page.getByTestId('history-button').click();
+  const menu = page.getByTestId('history-menu');
+  const entries = menu.getByTestId('history-entry');
+  await expect(entries).toHaveCount(4);
+  await expect(entries.nth(0).locator('.tl-history__line')).toHaveText(/ · accept · Apply: Cynder would not be a good addition…$/);
+  const arrows = entries.nth(0).getByTestId('history-arrows');
+  await expect(arrows.locator('.tl-history__arrows-title')).toHaveText('Arrows from Claude');
+  await expect(arrows.locator('.tl-history__arrow')).toHaveText(['new-spyro-pg → cynder-not-good (step 1)', 'not-in-game-not-good → cynder-not-good (step 12)']);
+  await expect(menu.getByTestId('history-arrows')).toHaveCount(1);
+  // The arrows sit under the entry's own line, inside the menu (nothing pushed out of it).
+  const line = await entries.nth(0).locator('.tl-history__line').boundingBox();
+  const block = await arrows.boundingBox();
+  const box = await menu.boundingBox();
+  expect(line !== null && block !== null && box !== null && block.y >= line.y + line.height - 1 && block.x + block.width <= box.x + box.width + 1).toBe(true);
+  await page.screenshot({ path: shotPath('s2f-history-arrows.png') });
+});
+
 test('AT6.13 without a repository the dropdown offers "Initialize git"; other states explain themselves', async ({ page }) => {
   board = await openBoard(page, spyroGraph(), 'light', { workspace: workspaceState({ history: { state: 'no-repo' } }) });
   await page.getByTestId('history-button').click();

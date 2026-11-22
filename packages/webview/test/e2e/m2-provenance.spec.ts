@@ -4,12 +4,15 @@
  * consequences, Claude's guess, its suggested premises, its summary, gap, conflict and unasked choices, the glosses
  * of the vocabulary it added, the definitions it introduced, an adopted card's sentence and the attempts' summaries.
  * On every screen of a run, each text node with the token must sit inside `data-provenance="agent"`, render italic and
- * have Claude's marker (its own, or its card's), and no element in the user's style may contain it.
+ * have Claude's marker (its own, or its card's), and no element in the user's style may contain it. Slice 2h retired
+ * M2's proposal (its review, report card and ghosts): an edit session's board is checked instead (its review panel in
+ * s2-review).
  */
 import { expect, test, type Page } from '@playwright/test';
-import { hostMessage, spyroGraph, type AttemptSummary, type GhostView, type ProposalView, type QuestionView, type StatementReview, type TlGraph } from '@telelean/core';
+import { hostMessage, spyroGraph, type AttemptSummary, type QuestionView, type SessionView, type TlGraph } from '@telelean/core';
 import { workspaceState } from '../shared/graphs';
-import { ADOPTED_ID, answeredModality, attemptsGraph, definitionProposal, GENERIC_QUESTION, literalGhost, MODALITY_QUESTION, reviewRun, runView, TARGET, UPDATED, waitingRun } from '../shared/runs';
+import { answeredModality, attemptsGraph, GENERIC_QUESTION, MODALITY_QUESTION, runView, TARGET, UPDATED, waitingRun } from '../shared/runs';
+import { IDS, sessionRun, shownStage } from '../shared/sessions';
 import { card, openBoard, send, type OpenedBoard } from './helpers';
 
 let board: OpenedBoard | undefined;
@@ -27,42 +30,16 @@ function markedQuestion(question: QuestionView): QuestionView {
   return { ...question, question: mark(question.question), options: question.options.map((o) => ({ ...o, label: mark(o.label), consequence: mark(o.consequence) })) };
 }
 
-function markedGhost(ghost: GhostView): GhostView {
-  return { ...ghost, naturalName: mark(ghost.naturalName), whyNeeded: mark(ghost.whyNeeded) };
-}
-
-/** The proposal with every Claude string marked (the user's own sentences and glosses unchanged). */
-function markedProposal(): ProposalView {
-  const base = definitionProposal();
-  const graph: TlGraph = {
-    ...base.graph,
-    nodes: base.graph.nodes.map((n) => (n.provenance.wordedBy === 'agent' ? { ...n, naturalName: mark(n.naturalName) } : n)),
-    vocabulary: base.graph.vocabulary.map((v) => (v.glossBy === 'agent' && v.gloss ? { ...v, gloss: mark(v.gloss) } : v)),
+/** Slice 2h: an edit session's stage with Claude's strings on the board marked: a card it worded, its glosses, its premise suggestion. */
+function markedSession(): SessionView {
+  const base = shownStage();
+  const graph = base.board.graph;
+  const marked: TlGraph = {
+    ...graph,
+    nodes: graph.nodes.map((n) => (n.id === 'new-spyro-pg' ? { ...n, naturalName: mark(n.naturalName), provenance: { ...n.provenance, wordedBy: 'agent' as const } } : n)),
+    vocabulary: graph.vocabulary.map((v) => (v.glossBy === 'agent' && v.gloss ? { ...v, gloss: mark(v.gloss) } : v)),
   };
-  const review = base.review.map((item) => {
-    if (item.kind === 'vocabulary') return { ...item, items: item.items.map((i) => ({ ...i, ...(i.gloss ? { gloss: mark(i.gloss) } : {}) })) };
-    const statement: StatementReview = {
-      ...item,
-      sentence: item.wordedBy === 'agent' ? mark(item.sentence) : item.sentence,
-      closure: item.closure.map((c) => (c.glossBy === 'agent' && c.gloss ? { ...c, gloss: mark(c.gloss) } : c)),
-    };
-    return statement;
-  });
-  return {
-    ...base,
-    graph,
-    review,
-    definitions: base.definitions.map((d) => ({ ...d, ...(d.gloss ? { gloss: mark(d.gloss) } : {}) })),
-    ghosts: [markedGhost(literalGhost())],
-    report: {
-      ...base.report,
-      claudeSummary: mark('Proved with the premise you adopted.'),
-      gap: mark('Nothing else was missing.'),
-      conflict: [mark('These two premises pull in different directions.')],
-      assumedWithoutAsking: base.report.assumedWithoutAsking.map(mark),
-      unusedPremises: [ADOPTED_ID],
-    },
-  };
+  return { ...base, board: { ...base.board, graph: marked, premises: base.board.premises.map((p) => ({ ...p, sentence: mark(p.sentence) })) } };
 }
 
 /** Every text node with Claude's token: inside agent provenance, italic, with a marker; never in the user's style. */
@@ -129,33 +106,15 @@ test('AT6.10 a run’s questions, answers, guesses and activity: Claude’s word
   await expect(page.getByTestId('answered-question').nth(1).getByTestId('your-answer').locator('[data-provenance="user"]')).toHaveText('every one, in my own words');
 });
 
-test('AT6.10 the proposal: board, statements, vocabulary, definitions, report card and suggestions keep Claude’s words in Claude’s style', async ({ page }) => {
-  const proposal = markedProposal();
+test('AT6.10 an edit session’s board (slice 2h): a card Claude worded and its "Claude suggests" card keep Claude’s words in Claude’s style', async ({ page }) => {
+  const session = markedSession();
   board = await openBoard(page, spyroGraph(), 'dark', { workspace: workspaceState(), clock: UPDATED });
-  await send(page, hostMessage('run', { run: reviewRun(proposal) }));
-  await send(page, hostMessage('proposal', { proposal }));
-  const review = page.getByTestId('review');
-  // The board (proposed view): the adopted card's sentence, InGame's gloss, the "Claude suggests" card.
-  await expect(card(page, ADOPTED_ID)).toBeVisible();
-  await expect(page.locator('[data-ghost-id="ghost-1"]')).toBeVisible();
-  await expectClean(page, 4);
-  // Spec v4 (slice 1a): the review ends with the result (no "Card changes" step any more).
-  const steps = ['statement', 'statement', 'vocabulary', 'definitions', 'result'];
-  for (let i = 1; i < steps.length; i++) {
-    await review.getByTestId('review-next').click();
-    await expect(review.getByTestId('review-step')).toHaveAttribute('data-step', steps[i] as string);
-    await expectClean(page, 4);
-  }
-  // On the result step every Claude string of the report card was on screen: go back and count them.
-  await review.locator('.tl-review__step[data-step-kind="result"]').click();
-  const report = await provenance(page);
-  expect(report.problems).toEqual([]);
-  // board (3) + summary, gap, conflict, 2 unasked choices, the unused adopted card, the suggestion (2) at least.
-  expect(report.checked).toBeGreaterThanOrEqual(11);
-  // The user's own sentence is plain in the statement step.
-  await review.locator('.tl-review__step[data-step-kind="statement"]').first().click();
-  await expect(review.getByTestId('statement-sentence').locator('[data-provenance="user"]')).toHaveText('PG games cannot have characters with dark pasts');
-  expect(await review.getByTestId('statement-sentence').locator('[data-provenance="user"]').evaluate((el) => getComputedStyle(el).fontStyle)).toBe('normal');
+  await send(page, hostMessage('run', { run: sessionRun(session) }));
+  await send(page, hostMessage('session', { session }));
+  // The board (Proposed view): the card's sentence and the suggestion's.
+  await expect(page.locator(`[data-ghost-id="${IDS.premise}"]`)).toBeVisible();
+  await expectClean(page, 2);
+  // The user's own sentences stay in the user's style.
   await expect(card(page, TARGET).locator('.tl-card__text')).toHaveAttribute('data-provenance', 'user');
 });
 

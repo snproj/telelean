@@ -8,11 +8,11 @@
  * after "Initialize git"), and when the subject or its undo/redo state changes. Spec v4 ES-9 (slice 1f): while an edit
  * session (a run) is active, "Revert to this" is disabled with the reason; the list and Preview stay.
  */
-import type { HistoryAvailability } from '@telelean/core';
+import { REVIEW_TEXTS, type HistoryAvailability } from '@telelean/core';
 import { useEffect, useRef, useState } from 'react';
 import { Popover } from '../common/Popover';
 import { HISTORY_ACTION_LABEL } from '../labels';
-import { formatBytes, formatTime } from '../model/format';
+import { formatBytes, formatTime, historyArrowLines } from '../model/format';
 import { useBoard, useBoardActions, useBoardStore } from '../state/context';
 import { editLock } from '../state/store';
 
@@ -131,8 +131,21 @@ export function HistoryMenu() {
               <ol className="tl-history__entries">
                 {shown.entries.map((entry) => (
                   <li key={entry.id} className="tl-history__entry" data-testid="history-entry" data-entry-id={entry.id}>
-                    <span className="tl-history__line" title={`${entry.time} · ${entry.label}`}>
-                      {`${formatTime(entry.time)} · ${HISTORY_ACTION_LABEL[entry.action] ?? entry.action} · ${entry.label}`}
+                    <span className="tl-history__text">
+                      <span className="tl-history__line" title={`${entry.time} · ${entry.label}`}>
+                        {`${formatTime(entry.time)} · ${HISTORY_ACTION_LABEL[entry.action] ?? entry.action} · ${entry.label}`}
+                      </span>
+                      {historyArrowLines(entry).length > 0 ? (
+                        // Slice 2f (G1): where the arrows an Apply wrote came from (spec §14 item 2).
+                        <span className="tl-history__arrows" data-testid="history-arrows">
+                          <span className="tl-history__arrows-title">{REVIEW_TEXTS.arrowsFromClaude}</span>
+                          {historyArrowLines(entry).map((line) => (
+                            <span key={line} className="tl-history__arrow">
+                              {line}
+                            </span>
+                          ))}
+                        </span>
+                      ) : null}
                     </span>
                     <span className="tl-history__buttons">
                       <button type="button" className="tl-icon-button" title="Show what this change did (read-only diff)" onClick={() => actions.previewHistory(entry.id, 'parent')}>

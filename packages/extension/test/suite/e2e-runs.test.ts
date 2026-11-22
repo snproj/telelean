@@ -27,6 +27,12 @@
  *              it on the board resumes the session (--resume) and the run finishes
  *
  * The cards stay where they are between tests: every run either ends without Accept or is undone byte-exactly.
+ *
+ * Slice 2h retired M2's review (the stepper, the proposal banner, Accept, Feedback, Discard, the ghosts' "I hold this"):
+ * a start is a `formalize`, a run in review is an edit session, and its Cancel is Cancel step. Every scenario above but
+ * the setup drives that review, so they are skipped for later (builder 2h), to be rewritten for the session's panel,
+ * session bar and Apply; their scenarios stay here for that rewrite. The session's flows are covered meanwhile by the
+ * runner's session suites (session.*.test.ts) and the board's s2-review and s2-board specs.
  */
 import * as assert from 'node:assert/strict';
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -279,7 +285,6 @@ suite('M2 end to end: "Formalize for dependencies" through the board UI (FakeBac
         if (m.type === 'graph') latestGraph = m.payload.graph;
         if (m.type === 'workspace') latestState = m.payload.state;
         if (m.type === 'run') latestRun = m.payload.run;
-        if (m.type === 'proposal') latestProposal = m.payload.proposal;
       }),
     );
     wb = await connectWorkbench(CDP_PORT);
@@ -298,8 +303,11 @@ suite('M2 end to end: "Formalize for dependencies" through the board UI (FakeBac
     this.timeout(120_000);
     const left = run();
     if (left && !['accepted', 'discarded', 'cancelled', 'failed'].includes(left.state)) {
-      const type = left.state === 'review' || left.state === 'interrupted' ? 'discardProposal' : 'cancelRun';
-      await api.simulateBoardMessage(root, { v: 1, type, payload: { runId: left.runId, requestId: `teardown-${left.runId}` } });
+      // Slice 2h: M2's Discard is retired; a run in review or interrupted is an edit session, which Exit ends.
+      const exit = left.state === 'review' || left.state === 'interrupted';
+      await api.simulateBoardMessage(root, exit
+        ? { v: 1, type: 'endSession', payload: { runId: left.runId, decision: 'exit', requestId: `teardown-${left.runId}` } }
+        : { v: 1, type: 'cancelRun', payload: { runId: left.runId, requestId: `teardown-${left.runId}` } });
       await waitFor(() => ['discarded', 'cancelled', 'failed'].includes(run()?.state ?? ''), 60_000, 'the leftover run to end').catch(() => undefined);
     }
     const ended = run();
@@ -349,7 +357,7 @@ suite('M2 end to end: "Formalize for dependencies" through the board UI (FakeBac
     assert.ok(api.runsFor(root), 'the root has a RunManager');
   });
 
-  test('normative: the question answered on the board, the overlay, the explicit toggle, the raw diff; Accept writes Main.lean, one history entry, Undo restores it byte-exactly', async function () {
+  test.skip('normative: the question answered on the board, the overlay, the explicit toggle, the raw diff; Accept writes Main.lean, one history entry, Undo restores it byte-exactly', async function () {
     this.timeout(LEAN_TIMEOUT_MS * 3);
     const player = claude.use(fixture('normative').turns);
     const before = files();
@@ -413,7 +421,7 @@ suite('M2 end to end: "Formalize for dependencies" through the board UI (FakeBac
     await dismissEnded('accepted');
   });
 
-  test('literal: not proved, the "Claude suggests" card, "I hold this", re-frozen with it, proved; Accept writes the card worded by Claude; Undo restores', async function () {
+  test.skip('literal: not proved, the "Claude suggests" card, "I hold this", re-frozen with it, proved; Accept writes the card worded by Claude; Undo restores', async function () {
     this.timeout(LEAN_TIMEOUT_MS * 4);
     const player = claude.use(fixture('literal').turns);
     const before = files();
@@ -479,7 +487,7 @@ suite('M2 end to end: "Formalize for dependencies" through the board UI (FakeBac
     await dismissEnded('accepted');
   });
 
-  test('cheating: the smuggled axiom is refused with a notice and Claude retries; Feedback continues the same session; Discard leaves the files untouched', async function () {
+  test.skip('cheating: the smuggled axiom is refused with a notice and Claude retries; Feedback continues the same session; Discard leaves the files untouched', async function () {
     this.timeout(LEAN_TIMEOUT_MS * 4);
     const script = fixture('cheat-added-axiom');
     const player = claude.use([...script.turns, FEEDBACK_TURN]);
@@ -524,7 +532,7 @@ suite('M2 end to end: "Formalize for dependencies" through the board UI (FakeBac
     await dismissEnded('discarded');
   });
 
-  test('give-up: three refused attempts; telelean reverts to the frozen formalisation and says so; Discard', async function () {
+  test.skip('give-up: three refused attempts; telelean reverts to the frozen formalisation and says so; Discard', async function () {
     this.timeout(LEAN_TIMEOUT_MS * 4);
     claude.use(fixture('cheat-give-up').turns);
     const before = files();
@@ -541,7 +549,8 @@ suite('M2 end to end: "Formalize for dependencies" through the board UI (FakeBac
     assert.match((await gaveUp.textContent()) ?? '', /3 times/);
     assert.match((await gaveUp.textContent()) ?? '', /reverted its working copy to “Statements frozen/);
     // What the proposal shows is the judged, reverted state: the formalisation without the smuggled axiom.
-    const diff = (await api.runsFor(root)?.proposalDiff(runId, shown.proposalId)) ?? [];
+    const answer = await api.runsFor(root)?.sessionDiff(runId, 1, true);
+    const diff = answer !== undefined && 'kind' in answer ? answer.files : [];
     const shownText = diff.map((c) => c.after ?? '').join('\n');
     assert.ok(shownText.includes('abbrev pg_no_dark_past : Prop :='), shownText);
     assert.ok(!shownText.includes('axiom shortcut'), shownText);
@@ -553,7 +562,7 @@ suite('M2 end to end: "Formalize for dependencies" through the board UI (FakeBac
     await dismissEnded('discarded');
   });
 
-  test('cancel: Cancel on the run panel stops Claude while it works; nothing is written', async function () {
+  test.skip('cancel: Cancel on the run panel stops Claude while it works; nothing is written', async function () {
     this.timeout(LEAN_TIMEOUT_MS * 2);
     claude.use(CANCEL_TURNS);
     const before = files();
@@ -567,7 +576,7 @@ suite('M2 end to end: "Formalize for dependencies" through the board UI (FakeBac
     await dismissEnded('cancelled');
   });
 
-  test('race: Formalize pressed while the board\'s Lean refresh rebuilds .lake/build (no wait for idle Lean): the run starts, waits for the refresh, proves; Discard', async function () {
+  test.skip('race: Formalize pressed while the board\'s Lean refresh rebuilds .lake/build (no wait for idle Lean): the run starts, waits for the refresh, proves; Discard', async function () {
     this.timeout(LEAN_TIMEOUT_MS * 3);
     const player = claude.use(fixture('normative').turns);
     const before = files();
@@ -609,7 +618,7 @@ suite('M2 end to end: "Formalize for dependencies" through the board UI (FakeBac
     await dismissEnded('discarded');
   });
 
-  test('reload while a question waits: the restored board shows it again; answering it there resumes the session and the run finishes', async function () {
+  test.skip('reload while a question waits: the restored board shows it again; answering it there resumes the session and the run finishes', async function () {
     this.timeout(LEAN_TIMEOUT_MS * 3);
     claude.use(reloadTurns());
     const before = files();

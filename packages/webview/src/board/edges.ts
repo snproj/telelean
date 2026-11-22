@@ -1,4 +1,5 @@
 import type { TlEdge, TlNode } from '@telelean/core';
+import { proposedLook, type ProposedArrow } from '../model/sessionBoard';
 import type { EdgeSpec } from './geometry';
 
 export interface DisplayEdge extends EdgeSpec {
@@ -16,6 +17,8 @@ export interface DisplayContext {
   nodes: Readonly<Record<string, TlNode>>;
   /** Cards whose result the Proposed view hides: their arrows say nothing about a proof. */
   hidden?: ReadonlySet<string>;
+  /** Slice 2h (BD-5): Claude's arrows in a session's Proposed view, by edge id (model/sessionBoard.ts `sessionOverlay`). */
+  proposed?: ReadonlyMap<string, ProposedArrow>;
 }
 
 /**
@@ -55,6 +58,18 @@ export function toDisplayEdges(edges: readonly TlEdge[], focus: ReadonlySet<stri
     byPair.set(id, entry);
   }
   for (const entry of byPair.values()) {
+    // Slice 2h (BD-5, D2-34): one of Claude's arrows looks like none of the person's (its own line, translucency and
+    // badge), whatever the working copy's premise and proof edges say; its tooltip says what it is.
+    const arrow = ctx?.proposed?.get(entry.id);
+    if (arrow !== undefined) {
+      const look = proposedLook(arrow);
+      entry.proposed = { item: arrow.item, change: arrow.change, status: arrow.status, used: arrow.used };
+      entry.pattern = look.line === 'solid' ? 'verified' : look.line === 'thin' ? 'reference' : 'declared';
+      delete entry.conditional;
+      delete entry.mismatch;
+      entry.title = look.title;
+      continue;
+    }
     const titles: string[] = [];
     if (entry.conditional) titles.push('Taken as a hypothesis: the proof is conditional on it');
     if (entry.mismatch) titles.push(USED_UNDECLARED_TITLE);
@@ -88,13 +103,23 @@ export interface ArrowLook {
   line: 'dotted' | 'solid' | 'thin';
   head: 'filled' | 'hollow';
   warning: boolean;
+  /** Slice 2h (BD-5): Claude's arrow still undecided: translucent (in high contrast, a dashed outline instead). */
+  translucent: boolean;
+  /** Slice 2h: Claude's arrow's badge at its middle ("+" adds, "−" removes), or none. */
+  badge: '+' | '−' | null;
 }
 
-export function arrowLook(edge: Pick<EdgeSpec, 'pattern' | 'conditional' | 'mismatch'>): ArrowLook {
+export function arrowLook(edge: Pick<EdgeSpec, 'pattern' | 'conditional' | 'mismatch' | 'proposed'>): ArrowLook {
+  if (edge.proposed !== undefined) {
+    const look = proposedLook(edge.proposed);
+    return { line: look.line, head: 'filled', warning: false, translucent: look.translucent, badge: look.badge };
+  }
   return {
     line: edge.pattern === 'declared' ? 'dotted' : edge.pattern === 'verified' ? 'solid' : 'thin',
     head: edge.conditional ? 'hollow' : 'filled',
     warning: edge.mismatch === 'used-undeclared',
+    translucent: false,
+    badge: null,
   };
 }
 
@@ -115,13 +140,15 @@ const LINE_CLASS: Readonly<Record<ArrowLook['line'], string>> = { dotted: 'tl-ed
 /**
  * The class of a drawn arrow (EdgeEngine.writePaths), from its look (`arrowLook`, BD-5) and its state: the line
  * (`tl-edge--declared` round dots, `--verified` solid, `--reference` thin), `--conditional` for the hollow head's arrow,
- * `--mismatch` for the warning colour (TL107 only, slice 1d), then `--stub`, `--focus`, `--selected` and `--hover`.
+ * `--mismatch` for the warning colour (TL107 only, slice 1d), slice 2h's `--proposed` for Claude's arrow (with
+ * `--translucent` while it is undecided), then `--stub`, `--focus`, `--selected` and `--hover`.
  */
-export function edgeClass(edge: Pick<EdgeSpec, 'pattern' | 'conditional' | 'mismatch'>, state: ArrowState): string {
+export function edgeClass(edge: Pick<EdgeSpec, 'pattern' | 'conditional' | 'mismatch' | 'proposed'>, state: ArrowState): string {
   const look = arrowLook(edge);
   return (
     `tl-edge ${LINE_CLASS[look.line]}` +
     `${look.head === 'hollow' ? ' tl-edge--conditional' : ''}${look.warning ? ' tl-edge--mismatch' : ''}` +
+    `${edge.proposed !== undefined ? ' tl-edge--proposed' : ''}${look.translucent ? ' tl-edge--translucent' : ''}` +
     `${state.stub ? ' tl-edge--stub' : ''}${state.focused ? ' tl-edge--focus' : ''}${state.selected ? ' tl-edge--selected' : ''}` +
     `${state.hovered ? ' tl-edge--hover' : ''}`
   );
@@ -132,12 +159,23 @@ export function edgeClass(edge: Pick<EdgeSpec, 'pattern' | 'conditional' | 'mism
  * the notched head of TL107 keep their shape when the arrow is focused or selected (never colour alone: slice 1d, and
  * the 1d fixer for TL107); otherwise the focus head, or the line's own.
  */
-export function markerVariant(edge: Pick<EdgeSpec, 'pattern' | 'conditional' | 'mismatch'>, focused: boolean): MarkerVariant {
+export function markerVariant(edge: Pick<EdgeSpec, 'pattern' | 'conditional' | 'mismatch' | 'proposed'>, focused: boolean): MarkerVariant {
   const look = arrowLook(edge);
   if (look.head === 'hollow') return focused ? 'conditional-focus' : 'conditional';
   if (look.warning) return focused ? 'mismatch-focus' : 'mismatch';
   if (focused) return 'focus';
   return edge.pattern;
+}
+
+/**
+ * Slice 2h (BD-5, D2-34): the badges of Claude's arrows among the arrows to draw: one at the middle of each ("+" adds,
+ * "−" removes), with the arrow's tooltip. The EdgeEngine draws them (`setBadges`, shared later by FZ-13's lock badges).
+ */
+export function proposedBadges(edges: readonly DisplayEdge[]): Array<{ edge: string; text: string; title: string }> {
+  return edges.flatMap((e) => {
+    const badge = arrowLook(e).badge;
+    return badge === null ? [] : [{ edge: e.id, text: badge, title: e.title ?? '' }];
+  });
 }
 
 /** Every marker variant the board defines (Board.tsx renders one <marker> per variant). */

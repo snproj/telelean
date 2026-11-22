@@ -261,6 +261,42 @@ describe('while the results are hidden (§4.7, §6.1)', () => {
     expect(view.board.hiddenTargets).toEqual([T]);
   });
 
+  it('builder 2h (carry-over F-V2G-FC-9): a listed item carries the host\'s GroupItem `blocked` (`ItemView.blocked`), also when its own Accept names a dependency first', () => {
+    const items = [
+      formalize(),
+      result(),
+      record('decl:Spyro.Helper', 'declaration', { declKind: 'definition', partOf: T }),
+      record('vocab:Spyro.InReview', 'vocabulary-term'),
+      // Waits for the results (a hidden part) and depends on an item in review: its own Accept says "depends".
+      record('vocab:Spyro.Both', 'vocabulary-term'),
+      // Waits only: its own Accept says "waits for the results".
+      record('vocab:Spyro.Waits', 'vocabulary-term'),
+      // Depends only on an item in review: no `blocked`.
+      record('vocab:Spyro.Depends', 'vocabulary-term'),
+    ];
+    const [, , D, V, B, W, P] = items as [ItemRecord, ItemRecord, ItemRecord, ItemRecord, ItemRecord, ItemRecord, ItemRecord];
+    const input = synth({ items, deps: { [B.key]: [D.key, V.key], [W.key]: [D.key], [P.key]: [V.key] } });
+    const view = buildSessionView(input);
+    const of = (r: ItemRecord) => view.items.find((i) => i.id === r.id) as ItemView;
+    expect(of(B).accept).toEqual({ ok: false, reason: REVIEW_TEXTS.acceptNeedsDependencies('Vocabulary term Spyro.Both', ['Vocabulary term Spyro.InReview']), missing: [V.id] });
+    expect(of(B).blocked).toBe(true);
+    expect(of(W).accept).toEqual({ ok: false, reason: REVIEW_TEXTS.acceptWaitsForResults('Vocabulary term Spyro.Waits') });
+    expect(of(W).blocked).toBe(true);
+    expect(of(P).blocked).toBeUndefined();
+    expect(of(V).blocked).toBeUndefined();
+    // Exactly what the host's planner reads (itemGates' `blocked`, from the reducer's GroupItem).
+    const gates = itemGates(reviewStateOf(input.records, input.judgement));
+    expect([B, W, P, V].map((r) => gates.get(r.id)?.blocked)).toEqual([true, true, false, false]);
+    // A hidden Result never carries it (its class, judged state and dependencies are hidden), whatever the host's says.
+    expect(view.items.find((i) => i.kind === 'result')).not.toHaveProperty('blocked');
+    // Shown: nothing is hidden, so nothing waits; the dependency is named as before.
+    const shown = buildSessionView(withItems(input, items, { forced: SHOW }));
+    expect(shown.items.find((i) => i.id === B.id)?.blocked).toBeUndefined();
+    // While a step runs every gate is closed by the phase: no item carries it (D2-62).
+    const step = buildSessionView({ ...input, records: { ...input.records, phase: 'step' } });
+    expect(step.items.some((i) => i.blocked !== undefined)).toBe(false);
+  });
+
   it('Results’ parts are left out of the list, the counts, the board, "Rejected in this session" and the withdrawn list (F10); no listed item names one', () => {
     const items = [
       formalize(),

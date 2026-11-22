@@ -4,7 +4,10 @@
  * proposition's "follows from nothing" mark alone (no premises). Pure, so the board's action model, the extension
  * host's start check and their tests share it.
  *
- * The host checks a `startRun` request before the consent question (docs/slice1-plan.md 2.5, `formalizeStartProblem`):
+ * Slice 1e: the host checked a `startRun` request before the consent question (docs/slice1-plan.md 2.5,
+ * `formalizeStartProblem`). Since 2h every start is a `formalize` message, checked by review/formalize.ts
+ * `formalizeStartProblems` (several targets), which shares these texts and the cycle check; this one-target check stays
+ * for its callers and tests:
  *   - the target is a proposition of the board;
  *   - every premise is the source of an arrow drawn into the target (AR-4: the arrows are already in the files, so the
  *     run writes no `premises:` of its own); no premises at all only when the target is marked "follows from nothing";
@@ -18,7 +21,7 @@ import { cutText } from './project/text.js';
 import type { TlEdge, TlNode } from './model.js';
 import { stronglyConnected } from './review/scc.js';
 
-/** The texts of a refused start (the host's `startRun` check; the board's action model uses the cycle text too). */
+/** The texts of a refused start (the host's start check; the board's action model uses the cycle text too). */
 export const FORMALIZE_START_TEXTS = {
   /** The premises are not a question about one card (nothing selected into a card without the mark). */
   oneTarget: 'Select arrows into one card.',
@@ -153,7 +156,7 @@ export function needsHoldsFirst(node: TlNode): boolean {
 }
 
 /**
- * The host's check of a `startRun` request (see the module comment), on the board of the run's subject: the refusal
+ * Slice 1e's check of a one-target start (see the module comment), on the board of the run's subject: the refusal
  * text, or undefined when the run may start. Unknown cards are named as the runner's preflight names them.
  */
 export function formalizeStartProblem(board: ArrowBoard & { subject?: string }, target: string, premises: readonly string[]): string | undefined {

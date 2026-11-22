@@ -15,6 +15,7 @@
  * Provenance (D-15): every string marked "Claude's words" is shown in italics with a marker, never in the user's style.
  */
 import { parseNodeType, type BoardDiagnostic, type StatusFlag, type TlGraph, type TlNode } from './model.js';
+import type { ArrowProvenance } from './actions.js';
 import type { SessionPhase, StepView } from './review/view.js';
 
 // ---------------------------------------------------------------------------------------------
@@ -137,7 +138,7 @@ export function isTerminalRunState(state: RunState): boolean {
  * change, add, delete, move, new subject, Undo, Redo or History revert. The extension host refuses each such message
  * with this text (`conflict`), and the board shows it on every control it disables.
  */
-export const EDIT_SESSION_ACTIVE = "An edit session is active: the board can't be edited until you accept or discard it.";
+export const EDIT_SESSION_ACTIVE = "An edit session is active: the board can't be edited until you apply or exit it.";
 
 /** Whether `run` locks the boards of its model folder (ES-9): it exists and has not ended. */
 export function runLocksBoard(run: Pick<RunView, 'state'> | null | undefined): boolean {
@@ -620,6 +621,12 @@ export interface AttemptResolution {
   date: string;
   /** `superseded`: a Feedback or ghost adoption started the next round. */
   resolution: 'accepted' | 'discarded' | 'superseded';
+  /**
+   * (slice 2f, docs/slice2-plan.md 3.10 step 4, coverage audit G1; additive) With `accepted`, an edit session's Apply:
+   * the accepted Add arrows and Add premises' arrows that the step of this record proposed, each with its step. They
+   * outlive the run directory (`pruneRunDirs`). Absent (an old record, nothing accepted, or none from that step): none.
+   */
+  arrows?: ArrowProvenance[];
 }
 
 export type AttemptLine = AttemptRecord | AttemptResolution;

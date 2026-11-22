@@ -1,0 +1,12 @@
+
+ RUN  v5.0.5 /home/zhengyew/telelean/packages/runner
+
+
+ Test Files  77 passed (77)
+      Tests  883 passed | 1 skipped (884)
+   Start at  22:46:14
+   Duration  2308.73s (tests 98%, import 2%)
+
+    Isolate  77 workers spawned · ~202ms startup each (spawn + environment, per file)
+             at least ~15.37s faster with isolate: false — reuses workers across files instead of one per file
+

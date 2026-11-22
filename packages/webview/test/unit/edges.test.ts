@@ -21,10 +21,10 @@ describe('toDisplayEdges', () => {
     // Spec v4 BD-5 (slice 1d): TL109 (declared, unused by the proof) is plain dotted, not in the warning colour.
     expect(byId['new-spyro-pg->d-hyp']).toMatchObject({ pattern: 'declared', title: 'Not used by the current proof' });
     expect(byId['new-spyro-pg->d-hyp']?.mismatch).toBeUndefined();
-    expect(arrowLook(byId['new-spyro-pg->d-hyp'] as DisplayEdge)).toEqual({ line: 'dotted', head: 'filled', warning: false });
+    expect(arrowLook(byId['new-spyro-pg->d-hyp'] as DisplayEdge)).toEqual({ line: 'dotted', head: 'filled', warning: false, translucent: false, badge: null });
     // TL107 (used, not drawn) keeps the warning colour and its tooltip.
     expect(byId['cynder-dark-past->d-hyp']).toMatchObject({ pattern: 'verified', mismatch: 'used-undeclared', title: 'The proof uses it, but no arrow is drawn from it (TL107)' });
-    expect(arrowLook(byId['cynder-dark-past->d-hyp'] as DisplayEdge)).toEqual({ line: 'solid', head: 'filled', warning: true });
+    expect(arrowLook(byId['cynder-dark-past->d-hyp'] as DisplayEdge)).toEqual({ line: 'solid', head: 'filled', warning: true, translucent: false, badge: null });
     expect(plain.some((e) => e.pattern === 'reference')).toBe(false);
 
     const focused = toDisplayEdges(edges, new Set(['cynder-not-good']));
@@ -59,11 +59,11 @@ describe('toDisplayEdges', () => {
 describe('arrow looks (spec v4 BD-5, slice 1d)', () => {
   it('dotted while only drawn, solid once a proof uses it, hollow head when it is a hypothesis; only TL107 warns', () => {
     const look = (pattern: 'declared' | 'verified' | 'reference', extra: Partial<DisplayEdge> = {}) => arrowLook({ pattern, ...extra });
-    expect(look('declared')).toEqual({ line: 'dotted', head: 'filled', warning: false });
-    expect(look('verified')).toEqual({ line: 'solid', head: 'filled', warning: false });
-    expect(look('verified', { conditional: true })).toEqual({ line: 'solid', head: 'hollow', warning: false });
-    expect(look('verified', { mismatch: 'used-undeclared' })).toEqual({ line: 'solid', head: 'filled', warning: true });
-    expect(look('declared', { mismatch: 'declared-unused' })).toEqual({ line: 'dotted', head: 'filled', warning: false });
+    expect(look('declared')).toEqual({ line: 'dotted', head: 'filled', warning: false, translucent: false, badge: null });
+    expect(look('verified')).toEqual({ line: 'solid', head: 'filled', warning: false, translucent: false, badge: null });
+    expect(look('verified', { conditional: true })).toEqual({ line: 'solid', head: 'hollow', warning: false, translucent: false, badge: null });
+    expect(look('verified', { mismatch: 'used-undeclared' })).toEqual({ line: 'solid', head: 'filled', warning: true, translucent: false, badge: null });
+    expect(look('declared', { mismatch: 'declared-unused' })).toEqual({ line: 'dotted', head: 'filled', warning: false, translucent: false, badge: null });
     expect(look('reference').line).toBe('thin');
   });
 

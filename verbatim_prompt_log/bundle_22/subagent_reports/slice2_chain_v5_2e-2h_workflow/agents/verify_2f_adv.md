@@ -1,0 +1,50 @@
+# verify:2f:adv
+
+Agent `afb60f185abc8a0fe` of workflow `wf_bee8fde1-76d`. Verbatim output (JSON alongside).
+
+- **summary:** I found no state or event order in 2f that breaks the safety lens (a)-(g). Each candidate below was traced through the code and held up, apart from the four findings (three minor test gaps and one unverified nit), none of which is a blocker or major.
+
+Method: I read sessionEnd.ts, premises.ts, the 2f parts of review.ts, session.ts, manager.ts, the history, files and modelWorkspace diffs, the core codec and text diffs, and the host and webview diffs. I re-ran session.end (33 passed) and session.premises (21 passed) with the fakes, from a private copy of core and runner in my scratch dir. I made seven mutations in that copy and restored every file. Three mutations were not caught by any test, which gives findings F1 to F3, and the rest led to F4.
+
+Traced and found sound:
+- **Accepts and the premise write (a):** premiseDue needs status `accepted`, no card and no ledger entry. The write reads holdAs and the Why only from the Accept's record and never defaults. A premise with no holdAs fails closed, shows no card and stays unwritten, and the backstop's not-written refusal then blocks Apply. Recovery enqueues only accepted premises and only in the `stage` phase.
+- **Review actions queued behind Submit:** reviewNow re-checks the guards inside the write queue, so a decide that waited behind a Submit queue cannot run while a step runs.
+- **Completions (b, d):** a completion runs only after the premise write returned `written`/`not-due` with the meaning checked. A mismatch or a failure is taken back out by a `revert` commit. T's Result goes back to review as "updated". A failed completion is never retried by itself, because the marker and the Retry step gate it.
+- **Apply and Exit (c, e):**
+  - Apply re-derives the check id from the head and the item records, requires rt.final for that id, re-reads drift, and re-runs the backstop on exactly the model that passed. It sets phase `applying` with no await after its last live check.
+  - Exit sets `stopping`, which makes `live()` false, so Apply, Back and queued decisions all stop after it. Exit is refused once the phase is `applying`.
+  - A reload with the state `passed` is reset to `running` and the check runs again. A reload during Apply compares the real files with F and with B and never writes again blindly.
+- **Claude and the user's files (f):** the sidecar path check in applyChangesNow accepts only the set's own subject's two sidecars. Moves, positions and layout come only from the user. History trailers are single tokens, so a label cannot forge an arrow line.
+- **Anonymous instances (f):** the `declarationNames` change (naming an anonymous instance so it gets a `created` ledger entry) only moves the instance into ownership. An instance with no owner is still refused as unowned.
+- **Misleading green (g):** none found. The failure and environment paths set `failed`, and drift refuses Apply.
+
+Carry-overs from 2e (R1-1, R1-2): fine. R1-1 has its own runner text, and the mutation checks the builder reports for it hold up in the tests I read. R1-2(c) is an equivalent mutant, as the builder says.
+- **findings:**
+  - [1]
+    - **id:** F1
+    - **severity:** minor
+    - **where:** packages/runner/src/run/sessionEnd.ts:330 (endorsementsChange status filter and the vocabulary-change exclusion); tests in packages/runner/test/run/session.end.test.ts:119 and :142
+    - **problem:** The rule that only individually accepted definition, instance, coercion and presupposition items are endorsed has no test that fails without it. In every test that writes endorsements, all declaration items are accepted. The one test that has a rejected declaration item rejects everything, so Apply returns early before endorsementsChange runs.
+    - **evidence:** I deleted `r.status !== 'accepted' ||` in a scratch copy: session.end (33 tests) and session.premises (21 tests) still passed. I also deleted `|| r.declKind === 'vocabulary-change'`: session.end still passed. With the status check gone, a definition the user Rejected would get an endorsement: its text hash is computed from `d.text`, because F no longer holds it. If the user later types the same definition by hand, it would count as endorsed and lose its 'needs your endorsement' flag, a misleading green.
+    - **fix:** Add a session.end test with two definition items, one accepted and one declined (option reject), then Apply. Assert that the endorsements.json change lists only the accepted name, and that the declined name is absent. Add one case with an accepted `vocabulary-change` item and assert it is not endorsed. Optionally also skip names that F does not hold.
+  - [2]
+    - **id:** F2
+    - **severity:** minor
+    - **where:** packages/runner/src/run/premises.ts:471 (completionFailed: the stage heading is set only when it has none); no test
+    - **problem:** The rule 'a failed completion gives the stage a heading only when it has none' is untested, and it is safety-relevant. core view.ts:621 derives `didNotPass`, and with it the Accept gate (reducer.ts:306), from `records.heading?.kind === 'did-not-pass'`. If the guard were dropped, a failed completion in a stage under a 'did-not-pass' heading would replace it with a 'failed' heading and lift the Accept gate on a working copy that does not pass. The current code is correct, but nothing would catch a regression.
+    - **evidence:** I replaced the condition with `if (true)` in a scratch copy: all 21 session.premises tests passed. The only test of the heading (the failed-completion test at :148) starts from a stage with no heading.
+    - **fix:** Add a test with a stage already under a 'did-not-pass' heading, or under a failed step's heading with its Retry, and a due completion that fails, for example via a reload that makes the completion due. Assert the heading's kind and text are unchanged and that Accept is still refused with the did-not-pass text.
+  - [3]
+    - **id:** F3
+    - **severity:** minor
+    - **where:** packages/runner/src/run/sessionEnd.ts:516 and :518 (moveNow: subject check and finite-number check); test at session.end.test.ts:599
+    - **problem:** Two refusals of moveProposed are untested: a card of another subject, and a non-finite coordinate. The move test checks only an unknown id and an axiom card.
+    - **evidence:** In a scratch copy I replaced `node.subject !== subject` with `false` in one run, and the whole position check (`typeof p !== 'object' ... isFinite`) with `if (false)` in another. In both, all 33 session.end tests passed. A NaN or Infinity position would reach s.positions and then layout.json, where JSON.stringify writes it as `null`.
+    - **fix:** In the move test, add `moveProposed(runId, { [T]: { x: NaN, y: 1 } })` and an Infinity case. Expect code `invalid` and unchanged positions. Add one card of another subject, which is a dependency's proposition, and expect `not-found`.
+  - [4]
+    - **id:** F4
+    - **severity:** nit
+    - **where:** packages/runner/src/run/sessionEnd.ts:542-557 (recoverApply compares only model and project files)
+    - **problem:** A reload during Apply decides 'it finished' by comparing the real model files with F. The subject's endorsements.json and layout.json, which the same Apply writes, are not compared. If applyChanges had written the model files and then been interrupted before the sidecars, recovery would finish the session as applied and the endorsements and positions would be lost. They are not recoverable, because the session ends. The failure direction is safe: the definitions simply stay unendorsed. I did not verify how atomic applyChanges and applyRecorded are across several files, so this is only a possibility.
+    - **evidence:** Code trace only. `paths` is filtered by isModelOrProjectFile, and no test covers a crash between the model files and the sidecars.
+    - **fix:** Either also require the sidecars to equal their intended text before treating the files as applied (they can be recomputed from the records and F), or record in plan section 8 that the Apply write is treated as atomic.

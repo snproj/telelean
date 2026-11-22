@@ -57,6 +57,27 @@ describe('AT1.10 attempts.jsonl', () => {
     expect(parseAttemptLines(`${serializeAttemptLine(RECORD)}\r\n`)).toEqual([RECORD]);
   });
 
+  it('slice 2f (G1): an accepted resolution\'s `arrows` round trip, keys in order; malformed entries are dropped; an old record without them, or none left, reads as none', () => {
+    const arrows: NonNullable<AttemptResolution['arrows']> = [
+      { source: 'aux-one', target: 'cynder-not-good', step: 's1', kind: 'arrow' },
+      { source: 'a-premise', target: 'cynder-not-good', step: 's2', kind: 'premise' },
+    ];
+    const withArrows: AttemptResolution = { ...RESOLUTION, arrows };
+    const line = serializeAttemptLine(withArrows);
+    expect(Object.keys(JSON.parse(line) as object)).toEqual(['format', 'version', 'run', 'round', 'date', 'resolution', 'arrows']);
+    expect(line).toContain('{"source":"aux-one","target":"cynder-not-good","step":"s1","kind":"arrow"}');
+    expect(parseAttemptLines(line)).toEqual([withArrows]);
+    // An old record (no `arrows`) still loads, as before, and reads as none.
+    expect(parseAttemptLines(serializeAttemptLine(RESOLUTION))).toEqual([RESOLUTION]);
+    const raw = (value: unknown) => JSON.stringify({ ...RESOLUTION, arrows: value });
+    expect(parseAttemptLines(raw([{ source: 'a', target: 't', step: 's1', kind: 'arrow' }, { source: 'a', target: 't', step: 's1', kind: 'other' }, { source: 1 }, 'x']))).toEqual([
+      { ...RESOLUTION, arrows: [{ source: 'a', target: 't', step: 's1', kind: 'arrow' }] },
+    ]);
+    expect(parseAttemptLines(raw([{ kind: 'premise' }]))).toEqual([RESOLUTION]);
+    expect(parseAttemptLines(raw('not a list'))).toEqual([RESOLUTION]);
+    expect(parseAttemptLines(raw([]))).toEqual([RESOLUTION]);
+  });
+
   it('summariseAttempts: records newest first, each with its latest resolution', () => {
     const summary = summariseAttempts(parseAttemptLines(attemptsJsonl));
     expect(summary.map((s) => [s.id, s.resolution])).toEqual([

@@ -1,0 +1,12 @@
+tsc_core rc=0 
+tsc_runner rc=0 
+tsc_web rc=0 
+tsc_webnode rc=0 
+tsc_ext rc=0 
+vt_core rc=0  Test Files 76 passed (76)  Tests 1134 passed (1134) 
+vt_web rc=0  Test Files 22 passed (22)  Tests 399 passed (399) 
+vt_ext rc=0  Test Files 22 passed (22)  Tests 219 passed (219) 
+vt_runner rc=0  Test Files 77 passed (77)  Tests 880 passed | 2 skipped (882) 
+vt_runner_expected_skips=2
+tmp_leftovers=0
+DONE

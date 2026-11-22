@@ -1318,6 +1318,11 @@ svg.tl-draft {
 .tl-history__entry { display: flex; align-items: center; gap: 6px; padding: 2px 6px; border-radius: 3px; }
 .tl-history__entry:hover { background: var(--vscode-toolbar-hoverBackground); }
 .tl-history__line { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+/* Slice 2f (G1): an Apply's "Arrows from Claude", one line each, under the entry's line. */
+.tl-history__text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.tl-history__arrows { display: flex; flex-direction: column; margin-top: 2px; color: var(--vscode-descriptionForeground); font-size: 11px; }
+.tl-history__arrows-title { font-weight: 600; }
+.tl-history__arrow { padding-left: 8px; }
 .tl-history__buttons { flex: none; display: inline-flex; gap: 2px; }
 .tl-history__prune { display: flex; align-items: center; gap: 6px; margin-top: 6px; padding: 6px 6px 2px; border-top: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); }
 .tl-history__prune-label { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; }
@@ -2046,6 +2051,109 @@ body.vscode-high-contrast-light .tl-handle { border-color: var(--vscode-contrast
 body.vscode-high-contrast .tl-draw-hint,
 body.vscode-high-contrast-light .tl-draw-hint { box-shadow: none; border-color: var(--vscode-contrastBorder); }
 
+/* ----------------------------------------------------------------------------------------------------------------
+ * Slice 2g (docs/slice2-plan.md 5.3-5.9): the session bar and the review panel. Statuses are glyph and word, never
+ * colour alone; no style attribute (the CSP allows none): sizes and states come from classes and data attributes.
+ */
+.tl-session-bar { flex-direction: column; align-items: stretch; gap: 3px; }
+.tl-session-bar__main { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
+.tl-session-bar__title { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.tl-session-bar__stage { padding: 0 6px; border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); border-radius: 3px; font-variant-numeric: tabular-nums; }
+.tl-session-bar__phase { color: var(--vscode-descriptionForeground); min-width: 0; }
+.tl-session-bar[data-phase='stage'] .tl-session-bar__phase,
+.tl-session-bar[data-phase='confirming'] .tl-session-bar__phase { color: var(--vscode-foreground); }
+.tl-session-bar__go { font-size: 11.5px; }
+.tl-session-bar__line { display: flex; align-items: flex-start; gap: 6px; margin: 0; padding-left: 22px; font-size: 11.5px; }
+.tl-session-bar__line[data-kind='heading'],
+.tl-session-bar__line[data-kind='drift'] { color: var(--vscode-foreground); }
+.tl-session-bar__line[data-kind='drift'] .codicon,
+.tl-session-bar__line[data-kind='problem'] .codicon { color: var(--tl-warn); }
+.tl-session-bar__line[data-kind='heading'] .codicon { color: var(--tl-info); }
+
+.tl-run--session .tl-run__state { font-weight: normal; font-size: 12px; }
+.tl-review-inference { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.tl-review-chip { padding: 0 5px; border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); border-radius: 8px; font-size: 10.5px; color: var(--vscode-descriptionForeground); }
+.tl-review-chip[data-state='running'] { border-color: var(--tl-aura); color: var(--tl-aura); }
+.tl-review-chip[data-state='failed'],
+.tl-review-chip[data-state='cancelled'] { border-color: var(--tl-warn); }
+.tl-stage-report__target { margin: 2px 0 6px; }
+.tl-stage-report__name { font-weight: 600; }
+.tl-stage-report__step { margin: 6px 0; }
+.tl-review-verdict { font-weight: 600; }
+.tl-review-band [data-claude] { font-style: italic; }
+.tl-review-events { padding: 4px 8px; border-left: 3px solid var(--tl-info); background: color-mix(in srgb, var(--tl-info) 8%, transparent); }
+.tl-review-events .tl-run__heading { display: flex; align-items: center; }
+
+/* The list and its detail: side by side from 640 px (model/review.ts paneModeFor), else one of them. */
+.tl-review-area { display: flex; gap: 10px; align-items: flex-start; margin: 8px 0; min-width: 0; }
+.tl-review-area[data-mode='split'] > .tl-review-list { flex: 1 1 45%; min-width: 0; }
+.tl-review-area[data-mode='split'] > .tl-review-detail { flex: 1 1 55%; min-width: 0; }
+.tl-review-area[data-mode='list'] > .tl-review-list,
+.tl-review-area[data-mode='detail'] > .tl-review-detail { flex: 1 1 auto; min-width: 0; }
+.tl-review-list__head { display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; }
+.tl-review-list__counts { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.tl-review-list__tools { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.tl-review-list__left { margin: 0; font-size: 11.5px; color: var(--vscode-descriptionForeground); }
+.tl-review-list__box { display: flex; flex-direction: column; gap: 6px; outline: none; }
+.tl-review-list__box:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: 2px; }
+.tl-review-group__title { padding: 2px 0; font-size: 11.5px; font-weight: 600; color: var(--vscode-descriptionForeground); }
+.tl-review-group__title[data-off-board]::after { content: ' (not on the board)'; font-weight: normal; }
+.tl-review-group__summary { font-weight: normal; }
+.tl-review-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; padding: 3px 6px; border: 1px solid transparent; border-radius: 3px; cursor: default; font-size: 12px; }
+.tl-review-row:hover { background: var(--vscode-list-hoverBackground); }
+.tl-review-row[aria-selected='true'] { background: var(--vscode-list-inactiveSelectionBackground); }
+.tl-review-row[data-current] { border-color: var(--vscode-focusBorder); }
+.tl-review-list__box:focus .tl-review-row[data-current] { background: var(--vscode-list-activeSelectionBackground); color: var(--vscode-list-activeSelectionForeground); }
+.tl-review-row__check { margin: 0; align-self: center; }
+.tl-review-row__label { flex: 1 1 12em; min-width: 0; overflow-wrap: anywhere; }
+.tl-review-status { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tl-review-status__glyph { display: inline-block; min-width: 1em; text-align: center; }
+/* Builder 2g r1 (F-V2G-FC-2): an accepted item is the user's decision, not a Lean check: no green (BD-6). */
+.tl-review-status[data-status='declined'] .tl-review-status__glyph { color: var(--tl-error); }
+.tl-review-status[data-status='to-be-redone'] .tl-review-status__glyph { color: var(--tl-warn); }
+.tl-review-status[data-status='hidden'] { color: var(--vscode-descriptionForeground); }
+.tl-review-badges { display: inline-flex; flex-wrap: wrap; gap: 3px; }
+.tl-review-badge,
+.tl-review-marker { padding: 0 5px; border-radius: 3px; font-size: 10.5px; white-space: nowrap; }
+.tl-review-badge { border: 1px solid var(--tl-aura); color: var(--tl-aura); }
+.tl-review-marker { border: 1px dashed var(--vscode-widget-border, var(--vscode-panel-border)); color: var(--vscode-descriptionForeground); }
+.tl-review-spinner { color: var(--tl-aura); }
+.tl-review-code { font-family: var(--vscode-editor-font-family); font-size: 0.95em; }
+
+.tl-review-detail { padding: 6px 8px; border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); border-radius: 4px; min-width: 0; }
+.tl-review-detail__head { display: flex; flex-direction: column; gap: 3px; }
+.tl-review-detail__title { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+.tl-review-detail__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.tl-review-detail__nav { display: inline-flex; align-items: center; gap: 2px; font-variant-numeric: tabular-nums; }
+.tl-review-body { margin: 6px 0; }
+.tl-review-body .tl-lean { white-space: pre-wrap; overflow-wrap: anywhere; }
+.tl-review-flag { display: flex; gap: 6px; margin: 3px 0; font-size: 11.5px; }
+.tl-review-flag .codicon { flex: none; margin-top: 1px; color: var(--tl-info); }
+.tl-review-hidden { color: var(--vscode-descriptionForeground); }
+.tl-review-before { opacity: 0.75; text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--vscode-foreground) 40%, transparent); }
+.tl-review-footer { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--vscode-widget-border, var(--vscode-panel-border)); }
+.tl-review-footer[data-readonly] { color: var(--vscode-descriptionForeground); }
+.tl-review-reason { margin: 4px 0 0; font-size: 11.5px; color: var(--vscode-descriptionForeground); }
+.tl-review-decided { margin: 0; }
+.tl-review-note { margin: 4px 0 0; font-size: 11.5px; }
+
+.tl-decline { margin-top: 6px; padding: 6px 8px; border: 1px solid var(--vscode-focusBorder); border-radius: 4px; background: var(--vscode-editorWidget-background); }
+.tl-decline__options { display: flex; flex-direction: column; gap: 4px; }
+.tl-decline__option { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.tl-decline__description { font-size: 11.5px; color: var(--vscode-descriptionForeground); }
+.tl-decline__note { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.tl-decline__label { font-size: 11.5px; }
+.tl-decline__text { width: 100%; box-sizing: border-box; resize: vertical; font-family: inherit; }
+.tl-decline__buttons { display: flex; gap: 6px; margin-top: 6px; }
+
+.tl-end { padding: 6px 8px; border: 1px solid var(--vscode-focusBorder); border-radius: 4px; }
+.tl-end__check[data-state='failed'] p { color: var(--tl-error); }
+.tl-end__check[data-state='passed'] p > span[aria-hidden] { color: var(--tl-proved); }
+.tl-review-rejected li[data-superseded] { color: var(--vscode-descriptionForeground); }
+
+body.vscode-high-contrast .tl-review-row[data-current],
+body.vscode-high-contrast-light .tl-review-row[data-current] { outline: 1px dashed var(--vscode-contrastActiveBorder, var(--vscode-focusBorder)); }
+
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; }
   .codicon-modifier-spin { animation: none; }
@@ -2057,3 +2165,56 @@ body.vscode-reduce-motion .tl-card[data-highlight],
 body.vscode-reduce-motion .tl-vocab__item[data-highlight],
 body.vscode-reduce-motion .tl-presup[data-highlight] { animation: none; }
 body.vscode-reduce-motion .codicon-modifier-spin { animation: none; }
+
+/* ----------------------------------------------------------------------------------------------------------------
+ * Slice 2h (docs/slice2-plan.md 5.10): the Proposed view of an edit session. Never colour alone: Claude's arrows are
+ * translucent while undecided (a dashed outline in high contrast) and carry a "+" or "−" badge; a card's review items
+ * are glyph, word and status. Claude's arrows are never round dots in review (round dots are the person's arrows).
+ */
+[data-mark='added'] { --tl-diff: var(--tl-diff-added); }
+[data-mark='changed'] { --tl-diff: var(--tl-diff-changed); }
+[data-mark='removed'] { --tl-diff: var(--tl-diff-removed); }
+.tl-edge--proposed { stroke: var(--tl-diff-added); }
+.tl-edge--proposed.tl-edge--focus,
+.tl-edge--proposed.tl-edge--selected { stroke: var(--tl-edge-focus); }
+.tl-edge--translucent { opacity: 0.45; }
+.tl-edge--translucent.tl-edge--hover { opacity: 0.7; }
+.tl-edge-hit[data-hit='proposed'] { cursor: pointer; }
+.tl-arrow-badge { pointer-events: none; }
+.tl-arrow-badge__disc { fill: var(--vscode-editor-background); stroke: var(--tl-diff-added); stroke-width: 1.3; }
+.tl-arrow-badge__glyph { fill: var(--tl-diff-added); font-size: 11px; font-weight: 700; font-family: var(--vscode-editor-font-family); }
+body.vscode-high-contrast .tl-edge--translucent,
+body.vscode-high-contrast-light .tl-edge--translucent { opacity: 1; stroke-dasharray: 7 4; }
+body.vscode-high-contrast .tl-arrow-badge__disc,
+body.vscode-high-contrast-light .tl-arrow-badge__disc { stroke: var(--vscode-contrastBorder); }
+/* ItemMark (§5.10: it replaces DiffBadge): a small button per review item on the card's first line; a click shows it. */
+.tl-mark-item {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  margin-right: 4px;
+  padding: 0 5px;
+  border: 1px solid var(--tl-diff);
+  border-radius: 3px;
+  background: transparent;
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 15px;
+  color: var(--tl-diff);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tl-mark-item:hover { background: color-mix(in srgb, var(--tl-diff) 15%, transparent); }
+.tl-mark-item:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: 1px; }
+.tl-mark-item[data-selected] { outline: 2px solid var(--tl-edge-focus); outline-offset: 1px; }
+.tl-card[data-marked] { box-shadow: 0 0 0 2px var(--tl-diff-changed), 0 0 10px 2px color-mix(in srgb, var(--tl-diff-changed) 35%, transparent); }
+.tl-card__diffline { flex-wrap: wrap; gap: 3px 0; }
+/* The legend's `proposed` swatch: Claude's translucent line with its "+" badge. */
+.tl-legend__line--proposed { stroke: var(--tl-diff-added); opacity: 0.45; }
+.tl-legend__head--proposed { fill: var(--tl-diff-added); opacity: 0.45; }
+.tl-legend__badge { font-size: 9px; }
+/* A "Claude suggests" card's status (D2-35: decided only in the list). */
+.tl-ghost__status { display: inline-block; margin: 2px 0; font-size: 10.5px; color: var(--vscode-descriptionForeground); }
+body.vscode-high-contrast .tl-card[data-marked],
+body.vscode-high-contrast-light .tl-card[data-marked] { box-shadow: none; outline: 2px solid var(--vscode-contrastBorder); }

@@ -7,9 +7,9 @@
 import { spyroGraph, spyroProvedGraph, type TlGraph, type TlNode, type VocabItem } from '@telelean/core';
 import { describe, expect, it } from 'vitest';
 import { BAND_COMPLETE_TITLE, bandName, bandOf, bandsOf, directOf, type BandContext } from '../../src/board/band';
-import { buildOverlay } from '../../src/model/run';
+import { sessionOverlay } from '../../src/model/sessionBoard';
 import { makeNode } from '../shared/graphs';
-import { normativeProposal } from '../shared/runs';
+import { hiddenStage, shownStage } from '../shared/sessions';
 
 const GOAL = 'cynder-not-good';
 const DARK = 'cynder-dark-past';
@@ -160,15 +160,16 @@ describe('proved from nothing (no card in the footprint)', () => {
   });
 });
 
-describe('the Proposed view (D-19, RV-6)', () => {
+describe('the Proposed view (D-19, RV-6; slice 2h: an edit session’s)', () => {
   it('the band of a card whose result is hidden is not drawn until the result is revealed', () => {
-    const proposal = normativeProposal();
     const current = spyroGraph();
-    const nodes = Object.fromEntries(current.nodes.map((n) => [n.id, n]));
-    const hidden = buildOverlay(proposal, { nodes, vocabulary: current.vocabulary }, true);
+    const board = { nodes: Object.fromEntries(current.nodes.map((n) => [n.id, n])), vocabulary: current.vocabulary };
+    // The host masks the graph while hidden (§4.7); a proved graph here shows that `hidden` alone keeps the band out.
+    const proved = spyroProvedGraph();
+    const hidden = sessionOverlay(hiddenStage({ board: { ...hiddenStage().board, graph: proved } }), board);
     expect(hidden.hidden.has(GOAL)).toBe(true);
     expect(bandsOf({ nodes: hidden.nodes, edges: hidden.edges, vocab: hidden.vocab, hidden: hidden.hidden })).toEqual([]);
-    const revealed = buildOverlay(proposal, { nodes, vocabulary: current.vocabulary }, false);
+    const revealed = sessionOverlay(shownStage({}, { board: { ...shownStage().board, graph: proved } }), board);
     expect(bandsOf({ nodes: revealed.nodes, edges: revealed.edges, vocab: revealed.vocab, hidden: revealed.hidden }).map((b) => [b.target, b.complete])).toEqual([[GOAL, true]]);
   });
 });

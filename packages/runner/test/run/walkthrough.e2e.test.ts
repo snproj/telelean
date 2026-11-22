@@ -15,18 +15,20 @@
  *           resting on an assumption that is not selected, in a not-proved and in a proved round; fixer round 3 adds
  *           an `example` resting on an unselected assumption, before the freeze and after it, never written by Accept
  *
- * Slice 2d (docs/slice2-plan.md §0, "Tests that move"): every start is an edit session. (a) and (b) test Accept and the
- * adoption of a ghost, and move to 2f. The cheating scripts run as a one-step session (Formalize with the script's
+ * Slice 2d (docs/slice2-plan.md §0, "Tests that move"): every start is an edit session. (a) and (b) tested Accept and the
+ * adoption of a ghost, and moved to 2f, which rewrote them as sessions to their Apply (the premise's Accept and write,
+ * the completion with real Lean, the final check); so did the definition-belief Accept refusal. The cheating scripts run as a one-step session (Formalize with the script's
  * premises): the same checks of the step's gate (the transcript, run.json's notices and the step's counters and
  * verdict, since a session's RunView withholds Claude's notices until the results are shown), then the stage opens with
  * a real judgement and the user's files are untouched; what each script's run left is read in the session's working
- * copy. The Accept refusal of a flagged definition moves to 2f. A new (a) runs the normative script as a session.
+ * copy. The Accept refusal of a flagged definition moved to 2f (a belief item now). A new (a) runs the normative script
+ * as a session.
  */
 import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { parseAttemptLines, type RunView } from '@telelean/core';
+import { parseAttemptLines, REVIEW_TEXTS, type RunView } from '@telelean/core';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { createLeanCheckEngine } from '../../src/gate/index.js';
@@ -38,6 +40,7 @@ import { createRunManager, DEFAULT_RUN_SETTINGS, gateCheckOf, type PersistedRun,
 import { listRunDirs } from '../../src/shadow/index.js';
 import { createModelWorkspace, fsEditApplier, fsTextSource, type ModelWorkspace } from '../../src/workspace/index.js';
 import { cleanup, makeTempDir, MENTAL_MODEL } from './helpers/env.js';
+import { applyEverything } from './helpers/apply.js';
 import { loadWalkthrough, waitForRun } from './helpers/harness.js';
 
 const MAIN = 'Model/Spyro/Main.lean';
@@ -109,20 +112,6 @@ async function setup(name: string): Promise<Walk> {
   return { dir, root, workspace, manager, play, file, runsDir };
 }
 
-/** Starts the script's run and answers the modality question as the script's `answer` says. */
-async function runRound1(w: Walk): Promise<RunView> {
-  const premises = (w.file['premises'] as string[] | undefined) ?? ['cynder-dark-past', 'new-spyro-pg', 'pg-no-dark-past'];
-  const started = await w.manager.start({ subject: 'Spyro', target: 'cynder-not-good', premises });
-  expect(started, JSON.stringify(started)).toMatchObject({ ok: true });
-  const option = (w.file['answer'] as { option: number } | undefined)?.option ?? 0;
-  const waiting = await waitForRun(w.manager, (v) => v.state === 'waiting-for-answer' || v.state === 'review' || v.state === 'failed', 180_000);
-  if (waiting.state === 'waiting-for-answer') {
-    const answered = await w.manager.answer(waiting.runId, waiting.pendingQuestions?.id ?? '', [{ question: 0, choice: { kind: 'option', option }, scope: 'run' }]);
-    expect(answered).toMatchObject({ ok: true });
-  }
-  return waitForRun(w.manager, (v) => v.state === 'review' || v.state === 'failed', 300_000, 'the end of round 1');
-}
-
 interface StepEnd {
   view: RunView;
   /** run.json at the stage (the session's RunView withholds Claude's notices, §3.12). */
@@ -179,20 +168,15 @@ function noLeftoverUnits(runId: string): void {
   }
 }
 
-describe('the walkthrough end to end (AT3.14)', () => {
-  it.skip('moves to 2f: (a) normative: proved, Accept writes the formalisation and the proof and keeps the type: line; Undo restores', async () => {
+describe('the walkthrough end to end (AT3.14), in slice 2f as an edit session to its Apply', () => {
+  it('(a) normative: proved; every item accepted, the final check passed, Apply writes the formalisation and the proof and keeps the type: line; one history entry; Undo restores', async () => {
     const w = await setup('normative');
     const before = modelTree(w.root);
-    const review = await runRound1(w);
-    expect(review.state, JSON.stringify(review.notices)).toBe('review');
-    expect(review.verdict).toBe('proved');
-    expect(modelTree(w.root)).toEqual(before); // nothing reaches the real files before Accept
-    const proposal = w.manager.proposal();
-    expect(proposal).not.toHaveProperty('lifecycle');
-    expect(proposal?.report.footprint).toEqual(expect.arrayContaining((w.file['expect'] as { footprint: string[] }).footprint));
-    expect(proposal?.definitions).toEqual([]);
-    const accepted = await w.manager.accept(review.runId, proposal?.proposalId ?? '', []);
-    expect(accepted, JSON.stringify(accepted)).toMatchObject({ ok: true });
+    const { view, raw } = await runStep1(w);
+    expect(view.state, JSON.stringify(raw.view.notices)).toBe('review');
+    expect(modelTree(w.root)).toEqual(before); // nothing reaches the real files before Apply
+    const applied = await applyEverything(w.manager, view.runId);
+    expect(applied, JSON.stringify(applied)).toMatchObject({ ok: true, undoable: true });
     const main = readFileSync(path.join(w.root, MAIN), 'utf8');
     expect(main).toContain('lean: Spyro.pg_no_dark_past');
     expect(main).toContain('/-- PG games cannot have characters with dark pasts -/\nabbrev pg_no_dark_past : Prop :=');
@@ -201,44 +185,40 @@ describe('the walkthrough end to end (AT3.14)', () => {
     expect(main).toMatch(/id: cynder-not-good\ntype: GOAL\n/);
     const history = await w.workspace.listHistory('Spyro');
     expect(history.entries.filter((e) => (e.action as string) === 'accept-proposal')).toHaveLength(1);
+    expect(history.entries[0]?.label).toBe(REVIEW_TEXTS.applyLabel(['Cynder would not be a good addition to the new Spyro game']));
     const attempts = parseAttemptLines(readFileSync(path.join(w.root, '.telelean', 'subjects', 'Spyro', 'attempts.jsonl'), 'utf8'));
     expect(attempts.some((a) => a.format === 'telelean-attempt-resolution' && a.resolution === 'accepted')).toBe(true);
+    expect(w.manager.current()?.state).toBe('accepted');
     const undone = await w.workspace.undo('Spyro');
     expect(undone).toMatchObject({ ok: true });
     expect(modelTree(w.root)).toEqual(before);
     w.manager.dispose();
-    noLeftoverUnits(review.runId);
+    noLeftoverUnits(view.runId);
   });
 
-  it.skip('moves to 2f: (b) literal: not proved with a ghost; adopting it re-freezes and proves; Accept writes the agent-worded card', async () => {
+  it('(b) literal: not proved with a premise suggested; its Accept (as an axiom, with the Why) writes the card worded by Claude, telelean completes the proof (real Lean: a new freeze, the gate, the comparator), and Apply writes both', async () => {
     const w = await setup('literal');
     const before = modelTree(w.root);
-    const r1 = await runRound1(w);
-    expect(r1.state, JSON.stringify(r1.notices)).toBe('review');
-    expect(r1.verdict).toBe('not-proved');
-    expect(r1.ghosts).toHaveLength(1);
-    expect(r1.ghosts[0]).toMatchObject({ id: 'ghost-1', closesGap: true, aloneEntails: false, state: 'suggested', leanStatement: '∀ (c : Character) (g : Game), ¬ InGame c g → ¬ GoodAddition c g' });
-    expect(w.manager.proposal()?.review.some((item) => item.kind === 'vocabulary' && item.items.some((i) => i.name.endsWith('InGame')))).toBe(true);
-    const adopted = await w.manager.adoptGhost(r1.runId, 'ghost-1', 'it seems obvious to me');
-    expect(adopted, JSON.stringify(adopted)).toMatchObject({ ok: true });
-    const r2 = await waitForRun(w.manager, (v) => v.round === 2 && (v.state === 'review' || v.state === 'failed'), 300_000, 'round 2');
-    expect(r2.verdict, JSON.stringify(r2.notices)).toBe('proved');
-    expect(modelTree(w.root)).toEqual(before);
-    const proposal = w.manager.proposal();
-    expect(proposal?.report.footprint).toContain('a-character-who-cannot-be-in');
-    const accepted = await w.manager.accept(r2.runId, proposal?.proposalId ?? '', proposal?.definitions.map((d) => d.id) ?? []);
-    expect(accepted, JSON.stringify(accepted)).toMatchObject({ ok: true });
+    const { view, raw } = await runStep1(w);
+    expect(view.state, JSON.stringify(raw.view.notices)).toBe('review');
+    expect(raw.session?.premises.map((d) => [d.leanName, d.leanStatement])).toEqual([['not_in_game_not_good', '∀ (c : Character) (g : Game), ¬ InGame c g → ¬ GoodAddition c g']]);
+    const applied = await applyEverything(w.manager, view.runId, { holdAs: 'axiom', rationale: 'it seems obvious to me' });
+    expect(applied, JSON.stringify(applied)).toMatchObject({ ok: true });
     const main = readFileSync(path.join(w.root, MAIN), 'utf8');
     expect(main).toContain('natural_name: A character who cannot be in a game would not be a good addition to it');
     expect(main).toContain('worded_by: agent');
     expect(main).toContain('origin: agent');
-    expect(main).toContain(`session: ${r2.runId}`);
+    expect(main).toContain(`session: ${view.runId}`);
     expect(main).toContain('rationale: it seems obvious to me');
-    expect(main).toContain('not_in_game_not_good.holds cynder newSpyro');
-    // Fixer round 1: the adopted card is declared on the target (the user adopted it for this target), so the board
-    // shows no TL107 ("uses … which the declared premises do not cover") and no used-undeclared arrow after Accept.
+    expect(main).toContain('theorem cynder_not_good.holds : cynder_not_good :=');
+    expect(main).toContain('Spyro.not_in_game_not_good.holds');
+    // The written card is declared on the target (the adoption appends it), so the board shows no TL107 after Apply.
     expect(main).toMatch(/id: cynder-not-good\ntype: GOAL\nnatural_name: [^\n]*\npremises: cynder-dark-past, new-spyro-pg, pg-no-dark-past, a-character-who-cannot-be-in\n/);
     expect(main).toContain('id: a-character-who-cannot-be-in\ntype: AXIOM\n');
+    // G1: the premise's arrow is on the attempt record (the run directory is pruned in time; the record is not).
+    const attempts = parseAttemptLines(readFileSync(path.join(w.root, '.telelean', 'subjects', 'Spyro', 'attempts.jsonl'), 'utf8'));
+    expect(attempts.find((a) => a.format === 'telelean-attempt-resolution')).toMatchObject({ resolution: 'accepted', arrows: [{ source: 'a-character-who-cannot-be-in', target: 'cynder-not-good', step: 's1', kind: 'premise' }] });
+    expect((await w.workspace.listHistory('Spyro')).entries[0]?.arrows).toEqual([{ source: 'a-character-who-cannot-be-in', target: 'cynder-not-good', step: 's1', kind: 'premise' }]);
     await w.workspace.refreshNow();
     const graph = w.workspace.graph('Spyro');
     const target = graph.nodes.find((n) => n.id === 'cynder-not-good');
@@ -246,8 +226,9 @@ describe('the walkthrough end to end (AT3.14)', () => {
     expect(target?.premises).toContain('a-character-who-cannot-be-in');
     expect(graph.diagnostics.filter((d) => d.nodeId === 'cynder-not-good' && d.code === 'TL107')).toEqual([]);
     expect(graph.edges.filter((e) => e.mismatch !== undefined)).toEqual([]);
+    expect(modelTree(w.root)).not.toEqual(before);
     w.manager.dispose();
-    noLeftoverUnits(r2.runId);
+    noLeftoverUnits(view.runId);
   });
 });
 
@@ -279,8 +260,8 @@ describe('the walkthrough as an edit session (slice 2d)', () => {
     const ws = readFileSync(path.join(runDir, 'ws', MAIN), 'utf8');
     expect(ws).toContain('theorem cynder_not_good.holds : cynder_not_good :=');
     expect(modelTree(w.root)).toEqual(before); // nothing reaches the user's files during the session
-    // Until 2f, Exit is the RunManager's discard (builder 2d): the session ends and the files are as they were.
-    const ended = await w.manager.discard(view.runId);
+    // Exit (2f; 2h retired the RunManager's discard, builder 2d's stopgap): the session ends and the files are as they were.
+    const ended = await w.manager.end(view.runId, 'exit');
     expect(ended, JSON.stringify(ended)).toMatchObject({ ok: true });
     expect(modelTree(w.root)).toEqual(before);
     w.manager.dispose();
@@ -379,16 +360,26 @@ describe('the cheating scripts end to end (AT3.15)', () => {
       expect(existsSync(path.join(w.root, '.telelean'))).toBe(true);
     });
   }
-  // definition-belief's flagged definition held Accept back until it was approved: Accept is 2f's.
-  it.skip('moves to 2f: the cheating scripts (AT3.15) definition-belief: a flagged definition holds Accept back until it is approved', async () => {
+  // definition-belief's flagged definition held M2's Accept back until it was approved; in a session (2f) it is an item.
+  it('the cheating scripts (AT3.15) definition-belief: the flagged definition is a belief item: a group Accept leaves it, Submit review waits for it, and its own Accept lets Apply through', async () => {
     const w = await setup('cheat-definition-belief');
-    const review = await runRound1(w);
-    const proposal = w.manager.proposal();
-    expect(proposal?.definitions.map((d) => d.name)).toContain('Spyro.InGame');
-    const refused = await w.manager.accept(review.runId, proposal?.proposalId ?? '', []);
-    expect(refused).toMatchObject({ ok: false, code: 'invalid' });
-    const ok = await w.manager.accept(review.runId, proposal?.proposalId ?? '', proposal?.definitions.map((d) => d.id) ?? []);
-    expect(ok, JSON.stringify(ok)).toMatchObject({ ok: true });
+    const { view, raw } = await runStep1(w);
+    expect(view.state, JSON.stringify(raw.view.notices)).toBe('review');
+    const definition = raw.session?.items.find((r) => r.key === 'decl:Spyro.InGame');
+    expect(definition).toMatchObject({ kind: 'declaration', status: 'in-review' });
+    const v = w.manager.session();
+    const item = v?.items.find((i) => i.id === definition?.id);
+    expect(item?.classes?.belief).toBe(true);
+    const group = await w.manager.decide(view.runId, 1, false, [{ item: definition?.id ?? '', rev: definition?.rev ?? 0, to: 'accepted' }], false);
+    expect(group).toMatchObject({ ok: true, review: { taken: [], left: [{ item: definition?.id, reason: 'own-accept' }] } });
+    expect(await w.manager.submit(view.runId, 1)).toMatchObject({ ok: false, code: 'refused' });
+    const applied = await applyEverything(w.manager, view.runId);
+    expect(applied, JSON.stringify(applied)).toMatchObject({ ok: true });
+    expect(readFileSync(path.join(w.root, 'Model/Spyro/Vocabulary.lean'), 'utf8')).toContain('def InGame (c : Character) (g : Game) : Prop := GoodAddition c g');
+    // EN-3: the definition is endorsed at Apply, so the board stops asking for its endorsement.
+    expect(readFileSync(path.join(w.root, '.telelean', 'subjects', 'Spyro', 'endorsements.json'), 'utf8')).toContain('"name": "Spyro.InGame"');
+    await w.workspace.refreshNow();
+    expect(w.workspace.graph('Spyro').vocabulary.find((x) => x.name === 'Spyro.InGame')?.flags ?? []).not.toContain('definitional-choice');
     w.manager.dispose();
   });
 });

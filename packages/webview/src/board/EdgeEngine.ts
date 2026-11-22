@@ -25,10 +25,15 @@
  * Slice 1d (BD-7): it also draws the bands (`setBands`, from board/band.ts): a bracket across the arrows a checked
  * proof uses, just before they reach the card (several arrows into one canvas card arrive spread along its left edge,
  * a band's together), with a ✓ seal when complete; in their own group, above the arrows and stubs, under the canvas clip.
+ *
+ * Slice 2h (§5.10, BD-5, D2-34): badges at the middle of arrows (`setBadges`: Claude's "+" and "−"; FZ-13's lock badges
+ * will share it), in their own group above the bands; the hit path of Claude's undecided arrow says `data-hit="proposed"`
+ * with its item (`data-hit-item`); and an element marked `data-edge-anchor` in the AXIOMS column (a "Claude suggests"
+ * card) is measured as an arrow end, under that id, though it is no card of the model.
  */
 import type { CanvasView } from './canvas/CanvasView';
 import { edgeClass, markerVariant } from './edges';
-import { arrowAt, hitRole, inColumnRegion, type CardBox, type DrawnMark, type DrawnPath, type HitRole } from './gestures';
+import { arrowAt, hitRole, inColumnRegion, pathMidpoint, type CardBox, type DrawnMark, type DrawnPath, type HitRole } from './gestures';
 import {
   anchor,
   badgeLabel,
@@ -68,8 +73,15 @@ export interface EdgeEngineElements {
   canvas: { viewport: HTMLElement; layer: HTMLElement; view: CanvasView; slots: Readonly<Record<CanvasSide, HTMLElement>> };
   /** The overlay; its clip rectangles carry `data-clip` = column | gap | canvas. */
   svg: SVGSVGElement;
-  /** Arrows under the board clip, arrows under the canvas clip, the ∅ stubs, and (slice 1d) the bands. */
-  groups: { board: SVGGElement; canvas: SVGGElement; marks: SVGGElement; bands: SVGGElement };
+  /** Arrows under the board clip, arrows under the canvas clip, the ∅ stubs, (slice 1d) the bands, (slice 2h) the badges. */
+  groups: { board: SVGGElement; canvas: SVGGElement; marks: SVGGElement; bands: SVGGElement; badges?: SVGGElement };
+}
+
+/** Slice 2h: a badge at the middle of a drawn arrow (`edge`: its edge id), with its tooltip. */
+export interface ArrowBadge {
+  edge: string;
+  text: string;
+  title: string;
 }
 
 export interface EdgeEngineStats {
@@ -91,6 +103,8 @@ export interface EdgeEngineStats {
   marks: number;
   /** Slice 1d: bands drawn (complete or open). */
   bands: number;
+  /** Slice 2h: arrow badges drawn (Claude's "+" and "−"). */
+  arrowBadges: number;
   culled: number;
   missing: number;
   overBudget: number;
@@ -113,6 +127,8 @@ interface PathRecord {
   /** Slice 1c2: the hit path after it (null for a mention, which is not selectable). */
   hit: SVGPathElement | null;
   hitRole: HitRole | '';
+  /** Slice 2h: the review item a `proposed` hit path names. */
+  hitItem: string;
   hitD: string;
   hitTitle: string;
   hitTitleEl: SVGTitleElement | null;
@@ -152,6 +168,9 @@ export class EdgeEngine {
   /** Slice 1d (BD-7): the bands to draw (board/band.ts). */
   private bands: readonly BandSpec[] = [];
   private readonly bandPool = new Map<string, BandRecord>();
+  /** Slice 2h: the arrow badges to draw, and their elements by edge id. */
+  private badges: readonly ArrowBadge[] = [];
+  private readonly badgePool = new Map<string, { el: SVGGElement; circle: SVGCircleElement; text: SVGTextElement; title: SVGTitleElement; key: string }>();
   /** Slice 1c2: the arrow (edge id) or ∅ stub (card id) under the pointer. */
   private hoveredEdge: string | null = null;
   private hoveredMark: string | null = null;
@@ -186,6 +205,7 @@ export class EdgeEngine {
     stubs: 0,
     marks: 0,
     bands: 0,
+    arrowBadges: 0,
     culled: 0,
     missing: 0,
     overBudget: 0,
@@ -242,6 +262,12 @@ export class EdgeEngine {
     this.schedule();
   }
 
+  /** Slice 2h (§5.10): badges at the middle of drawn arrows (Claude's "+" and "−"); an arrow not drawn shows none. */
+  setBadges(badges: readonly ArrowBadge[]): void {
+    this.badges = badges;
+    this.schedule();
+  }
+
   /** Slice 1c2: the arrow (edge id) or ∅ stub (card id) under the pointer gets the hover look; null for none. */
   setHovered(edge: string | null, mark: string | null): void {
     if (this.hoveredEdge === edge && this.hoveredMark === mark) return;
@@ -275,7 +301,7 @@ export class EdgeEngine {
     const out: DrawnPath[] = [];
     for (const p of this.lastPaths) {
       const role = hitRole(p.edge);
-      if (role) out.push({ id: p.edge.id, source: p.edge.source, target: p.edge.target, role, d: p.d, stub: p.stub });
+      if (role) out.push({ id: p.edge.id, source: p.edge.source, target: p.edge.target, role, ...(p.edge.proposed !== undefined ? { item: p.edge.proposed.item } : {}), d: p.d, stub: p.stub });
     }
     return out;
   }
@@ -351,6 +377,8 @@ export class EdgeEngine {
     }
     for (const rec of this.markPool.values()) rec.el.remove();
     for (const rec of this.bandPool.values()) rec.el.remove();
+    for (const rec of this.badgePool.values()) rec.el.remove();
+    this.badgePool.clear();
     for (const button of this.badgeButtons.values()) button.remove();
     this.pool.clear();
     this.markPool.clear();
@@ -390,6 +418,7 @@ export class EdgeEngine {
     this.writePaths(out);
     this.writeMarks(out.marks);
     this.writeBands(out.bands);
+    this.writeArrowBadges(out.paths);
     this.writeBadges(out.badges);
     const s = this.stats;
     s.frames++;
@@ -397,6 +426,7 @@ export class EdgeEngine {
     s.stubs = out.paths.filter((p) => p.stub).length;
     s.marks = out.marks.length;
     s.bands = out.bands.length;
+    s.arrowBadges = this.badgePool.size;
     s.culled = out.culled;
     s.missing = out.missing;
     s.overBudget = out.overBudget;
@@ -428,8 +458,9 @@ export class EdgeEngine {
       viewBottom: contentTop - by + list.clientHeight,
     };
     const scrollTop = list.scrollTop;
-    for (const card of list.querySelectorAll<HTMLElement>('[data-node-id]')) {
-      const id = card.dataset.nodeId;
+    // Slice 2h: a "Claude suggests" card is an arrow end too (`data-edge-anchor`), though it is no card of the model.
+    for (const card of list.querySelectorAll<HTMLElement>('[data-node-id], [data-edge-anchor]')) {
+      const id = card.dataset.nodeId ?? card.dataset.edgeAnchor;
       if (!id) continue;
       const c = card.getBoundingClientRect();
       cards.set(id, { part: 'column', left: c.left - contentLeft, top: c.top - contentTop + scrollTop, width: c.width, height: c.height });
@@ -517,6 +548,7 @@ export class EdgeEngine {
           group: null,
           hit: null,
           hitRole: '',
+          hitItem: '',
           hitD: '',
           hitTitle: '',
           hitTitleEl: null,
@@ -593,6 +625,7 @@ export class EdgeEngine {
         rec.hit.remove();
         rec.hit = null;
         rec.hitRole = '';
+        rec.hitItem = '';
         rec.hitD = '';
         rec.hitTitle = '';
         rec.hitTitleEl = null;
@@ -609,6 +642,12 @@ export class EdgeEngine {
     }
     const hit = rec.hit;
     if (rec.hitRole !== role) hit.dataset.hit = rec.hitRole = role;
+    const item = role === 'proposed' ? (edge.proposed?.item ?? '') : '';
+    if (rec.hitItem !== item) {
+      if (item) hit.dataset.hitItem = item;
+      else delete hit.dataset.hitItem;
+      rec.hitItem = item;
+    }
     if (rec.hitD !== d) hit.setAttribute('d', (rec.hitD = d));
     const title = edge.title ?? '';
     if (rec.hitTitle !== title) {
@@ -731,6 +770,59 @@ export class EdgeEngine {
       if (!seen.has(id)) {
         rec.el.remove();
         this.bandPool.delete(id);
+      }
+    }
+  }
+
+  /**
+   * Slice 2h: the arrow badges (`setBadges`) at the middle of their drawn paths (`pathMidpoint`): a small disc with its
+   * glyph and tooltip, in the badges group (under the board clip, above everything else the overlay draws). A badge
+   * whose arrow is not drawn in this frame is not drawn either.
+   */
+  private writeArrowBadges(paths: readonly PathSpec[]): void {
+    const group = this.el.groups.badges;
+    const seen = new Set<string>();
+    if (group !== undefined) {
+      const byEdge = new Map(paths.map((p) => [p.edge.id, p]));
+      for (const badge of this.badges) {
+        const path = byEdge.get(badge.edge);
+        const at = path !== undefined ? pathMidpoint(path.d) : null;
+        if (at === null) continue;
+        seen.add(badge.edge);
+        let rec = this.badgePool.get(badge.edge);
+        if (!rec) {
+          const el = document.createElementNS(SVG_NS, 'g');
+          el.setAttribute('class', 'tl-arrow-badge');
+          el.dataset.badgeFor = badge.edge;
+          const circle = el.appendChild(document.createElementNS(SVG_NS, 'circle'));
+          circle.setAttribute('class', 'tl-arrow-badge__disc');
+          circle.setAttribute('r', '6.5');
+          const text = el.appendChild(document.createElementNS(SVG_NS, 'text'));
+          text.setAttribute('class', 'tl-arrow-badge__glyph');
+          text.setAttribute('text-anchor', 'middle');
+          text.setAttribute('dominant-baseline', 'central');
+          const title = el.appendChild(document.createElementNS(SVG_NS, 'title'));
+          group.appendChild(el);
+          rec = { el, circle, text, title, key: '' };
+          this.badgePool.set(badge.edge, rec);
+        }
+        const x = String(Math.round(at.x * 10) / 10);
+        const y = String(Math.round(at.y * 10) / 10);
+        const key = `${x},${y}|${badge.text}|${badge.title}`;
+        if (rec.key === key) continue;
+        rec.key = key;
+        rec.circle.setAttribute('cx', x);
+        rec.circle.setAttribute('cy', y);
+        rec.text.setAttribute('x', x);
+        rec.text.setAttribute('y', y);
+        rec.text.textContent = badge.text;
+        rec.title.textContent = badge.title;
+      }
+    }
+    for (const [id, rec] of this.badgePool) {
+      if (!seen.has(id)) {
+        rec.el.remove();
+        this.badgePool.delete(id);
       }
     }
   }

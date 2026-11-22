@@ -2,13 +2,16 @@
  * What an action of the right-click menu (CM-7) or of the Context Menu section (CM-1–CM-5, slice 1e) does: one runner
  * for both, so the two never drift apart. `thing` is what the action is about: the thing under the pointer for the
  * menu; for the section, the one selected card (its actions), or null (Formalize and Delete act on the selection).
+ * Slice 2h (§5.10): a session's Proposed view adds a review item's actions (`entry.item`): Accept (its own Accept, as
+ * the detail's: the menu names this one item), Decline… (an arrow's plain decline, DO-0), Show its review item; and
+ * "Open in editor" opens the card's place in the user's files (the Current graph's: the session's graph has none).
  */
 import type { TlNode } from '@telelean/core';
-import type { BoardActions, BoardStore } from '../state/store';
+import { proposedOverlay, type BoardActions, type BoardStore } from '../state/store';
 import type { CanvasView } from './canvas/CanvasView';
 import { tidyLayout } from './CanvasToolbar';
 import type { ContextAction } from './contextActions';
-import type { MenuThing } from './menu';
+import type { MenuEntry, MenuThing } from './menu';
 
 export interface ActionDeps {
   actions: BoardActions;
@@ -19,12 +22,36 @@ export interface ActionDeps {
   canvas?: CanvasView;
 }
 
-export function runBoardAction(action: ContextAction, thing: MenuThing | null, deps: ActionDeps): void {
+export function runBoardAction(action: ContextAction, thing: MenuThing | null, deps: ActionDeps, entry?: Pick<MenuEntry, 'item'>): void {
   const { actions, store, nodes, canvas } = deps;
   const cardId =
-    thing === null ? null : thing.kind === 'card' || thing.kind === 'mark' ? thing.id : thing.kind === 'arrow' || thing.kind === 'undeclared' ? thing.target : null;
+    thing === null
+      ? null
+      : thing.kind === 'card' || thing.kind === 'mark'
+        ? thing.id
+        : thing.kind === 'arrow' || thing.kind === 'undeclared' || thing.kind === 'proposed'
+          ? thing.target
+          : null;
   const node = cardId ? nodes[cardId] : undefined;
+  const item = entry?.item ?? (thing?.kind === 'proposed' ? thing.item : undefined);
   switch (action) {
+    case 'accept-item':
+      if (item !== undefined) actions.acceptItem(item);
+      return;
+    case 'decline-item': {
+      // An arrow item's one decline (DO-0); any other item opens its decline menu in the review panel.
+      if (item === undefined) return;
+      const found = store.getState().session?.items.find((i) => i.id === item);
+      if (found?.kind === 'add-arrow' || found?.kind === 'remove-arrow') actions.declineItem(item, 'plain');
+      else {
+        actions.focusItem(item);
+        actions.openDeclineMenu([item], 'item');
+      }
+      return;
+    }
+    case 'show-item':
+      if (item !== undefined) actions.focusItem(item);
+      return;
     case 'formalize':
       // Slice 1e: the selection is the question (the right click selected the arrow or mark first, CM-7).
       actions.formalize();
@@ -67,9 +94,13 @@ export function runBoardAction(action: ContextAction, thing: MenuThing | null, d
     case 'details':
       if (cardId) actions.toggleExpanded(cardId);
       return;
-    case 'open':
-      if (node?.loc) actions.openInEditor(node.loc.file, node.loc.range);
+    case 'open': {
+      // Slice 2h: in the Proposed view, the card's place in the user's files (the session's graph carries none, §4.7).
+      const overlay = proposedOverlay(store.getState());
+      const loc = overlay !== null && cardId !== null ? overlay.locations[cardId] : node?.loc;
+      if (loc) actions.openInEditor(loc.file, loc.range);
       return;
+    }
     case 'edit':
       if (cardId) actions.startEdit(cardId, 'naturalName');
       return;
@@ -89,10 +120,10 @@ export function runBoardAction(action: ContextAction, thing: MenuThing | null, d
       return;
     }
     case 'show-source':
-      if (thing?.kind === 'arrow' || thing?.kind === 'undeclared') actions.revealNode(thing.source);
+      if (thing?.kind === 'arrow' || thing?.kind === 'undeclared' || thing?.kind === 'proposed') actions.revealNode(thing.source);
       return;
     case 'show-target':
-      if (thing?.kind === 'arrow' || thing?.kind === 'undeclared') actions.revealNode(thing.target);
+      if (thing?.kind === 'arrow' || thing?.kind === 'undeclared' || thing?.kind === 'proposed') actions.revealNode(thing.target);
       return;
     case 'remove-mark': {
       if (thing?.kind !== 'mark') return;

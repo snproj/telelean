@@ -1,0 +1,85 @@
+{
+  "summary": "Two real defects were found by trace and by running probes (F1, F2). The rest are test gaps that mutation runs exposed, with the test to add for each. No blocker. The headline safety paths hold: decisions refused while a step runs, Submit after a decision's judge, the host's `confirmed` defaults, un-reject and Undo merges, and the 2d carry-overs R1-1 to R1-5. I mutated the code in a copy of packages/core, runner and extension (scratch `.../v2e-adv/m`), 35 mutants in all; the repo was not touched. Killed: the host routing (`confirmed`, `own`, `via` and `stage` for all six messages), `viewVersion`, the stale-stage and view-error refusals, the judge-apply guard for a step running, openStage after a failed Submit queue, and R1-1, R1-3 and R1-4 (R1-2 and R1-5 not re-run). Survivors are in F3 to F10; mutants that changed no behaviour are left out. Probes ran under the unmutated code, except P2's mutated run (i4, F3) and P1's mutated run (e1, F4). The full session.* suite, 120 tests, passes in the copy.",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "major",
+      "where": "packages/runner/src/run/session.ts:1647-1652 (judgeLoop: engine.judge throws, only `endsQueue` clears the judgement); review.ts:114-123 (reviewRefusal reads only `judgement === null`); review.ts:515 (submitNow)",
+      "problem": "A judge that a decision started and that throws leaves the old stage judgement standing over a head it never judged. Plan §3.1 says the head of ws/ is a state telelean judged, or `judging` is true.\n- A queue's end whose judge throws is made fail-closed (openStageWithoutJudgement: judgement cleared, actions answer NO_JUDGEMENT).\n- A decision-started judge only logs and returns, so `judging` goes false and nothing marks the head as unjudged.\n- Accept, Reject, Submit and the diff then run on the stale classes and dependencies.\n- Submit can go to phase `confirming` on a head no judge looked at.\n- The final check of 2f may catch it at Apply, but 2e counts the state as judged.",
+      "fix": "In judgeLoop's catch (the `engine.judge` throw), and where a judgeApply write fails, do what openStageWithoutJudgement does for any judge, not only a queue's end:\n- set `rt.judgement = null` and `rt.judgedModel = undefined`;\n- `delete s.judged` and bump the view version;\n- save.\nThen every review action answers NO_JUDGEMENT, and a reload (`recoverSession`: head != judged.commit) judges again.\nAdd a test beside 'a stale stage is conflict; with no stage judgement…' (session.review.test.ts ~878): Reject a Result, make `h.engine.onJudge` throw, let the judge finish, then expect decide, submit and sessionDiff to answer NO_JUDGEMENT.",
+      "evidence": "Probe P4 (…/v2e-adv/m/packages/runner/test/run/zzprobe.review.test.ts, output …/v2e-adv/probe.out), unmutated code: Reject RESULT; onJudge throws. Then `head==judged? false`. A later Accept of PG returns {ok:true}. Submit returns 'Confirm the end of the session' and phase is `confirming`. The only test of a thrown judge uses a queue's end (session.review.test.ts:878-903)."
+    },
+    {
+      "id": "F2",
+      "severity": "major",
+      "where": "packages/runner/src/run/session.ts:1733-1735 (judgeApply sets the heading); cleared only by openStage (:1708) and finishQueueStart (:1458); text REVIEW_TEXTS.acceptDidNotPass",
+      "problem": "The 'did not pass' heading that a decision's judge sets is never lifted when a later judge passes. Plan §3.6 gives the condition as 'if B plus the accepted items still fail', which is evaluated at each judge.\n- `judgement.ok` is false for a build failure, a global finding or a facts problem (core judge.ts:498), so one transient Lean or environment failure after a decision triggers it.\n- Afterwards Accept stays refused for the rest of the session, until a whole Claude queue passes.\n- The refusal reads \"Claude's step did not pass: nothing can be accepted until a later step passes.\" when no step ran, so the red is stale and misleading.\n- Items in review cannot be accepted, so Submit stays closed. The user can only decline everything or Exit.\n- Builder decision 4 chose this on purpose. The alternative it rejected drops a cancelled step's heading and its Retry.",
+      "fix": "Remember where the heading came from, for example `heading.by: 'decision'` or the DECISIONS_DID_NOT_PASS text. In judgeApply, when `options.decided === true`, no revert is left and `judgement.ok` is true, drop a decision-made 'did-not-pass' heading. Restore the underlying 'cancelled' or 'failed' heading and its Retry if that heading was replaced. Give the decision case its own refusal text, not 'Claude's step did not pass'.\nAdd a test: fail the judge on one decision (errorAt, as session.review.test.ts:841), then make the judge pass with another decision, for example an Undo of the Reject. Expect no heading and Accept allowed.",
+      "evidence": "Probe P3, unmutated: after the passing judge, `judged.ok true`, heading still `did-not-pass` (the view too), and Accept answers refused \"Claude's step did not pass: nothing can be accepted until a later step passes.\" The existing test (session.review.test.ts:841-855) has a failure that never goes away, so it cannot show this."
+    },
+    {
+      "id": "F3",
+      "severity": "minor",
+      "where": "packages/runner/src/run/review.ts:141-152 (the Undo badge workaround) and its tests",
+      "problem": "No runner test shows that an Undo is refused when the restored Accept's class has grown (RV-7, AF13, Undo side). The workaround's two guards, 'only for content-out items' and 'only where the judgement has no class', each cover for the other. Dropping both lets the Undo bypass RV-7 for any restored Accept.",
+      "fix": "Add test P2. Accept PG, Shaky-decline PG, let a judge grow PG's class (`belief` and `changesProved` true, as in the Redo test at session.review.test.ts:539), then Undo the Shaky decline. Expect {ok:false, code:'refused', error:'Formalize “PG games cannot have characters with dark pasts” needs its own Accept (changes what is proved)'} and nothing changed. A second test: an Undo of a Reject of an accepted item whose content is out must still succeed (the existing test at :518).",
+      "evidence": "Mutant i4 (both guards dropped, review.ts:147-151), session.* files: 120 of 120 pass. Probe P2 under i4: the Undo returns ok:true and PG is `accepted`. Unmutated it returns the refusal above. Each guard alone (i1, i2, i3) also survives."
+    },
+    {
+      "id": "F4",
+      "severity": "minor",
+      "where": "packages/runner/src/run/review.ts:176-178 (reviewNow's check inside the write queue); also :512-513 (submitNow's)",
+      "problem": "The re-check inside the write queue is covered by no test. Without it, a decision queued behind a Submit that is starting its queue is carried out beside Claude's step (D2-62). The host's run queue serialises the messages, so this is defence in depth, not reachable today from the host.",
+      "fix": "Add test P1. Run a Submit after a Shaky decline. Hold `finishQueueStart` (white box, as the AF3 tests do) and send decide(PG, 'in-review') while it is held. Release, then expect {ok:false, code:'refused', error:REVIEW_TEXTS.stepRunning}, a stack of [decide, seal] and no new decision commit.",
+      "evidence": "Mutant e1 (the in-queue check removed): all 120 tests pass. Probe P1 under e1: the decision returns ok:true while phase is `step`, and the stack is decide, seal, decide. Unmutated: refused. Mutant e2 (the same check in submitNow) also survives."
+    },
+    {
+      "id": "F5",
+      "severity": "minor",
+      "where": "packages/runner/src/run/session.ts:1584 (asLastWrite: `rt.queuedJudges > 0`, `rt.pendingWrites > 1`)",
+      "problem": "Only the `rt.judging` part of the last-write check is tested (the white-box test at session.review.test.ts:765). The other two parts can be removed without any test failing. They are what keeps a queue from starting beside a judge that is due but not started, or a write queued behind it.",
+      "fix": "Add two white-box tests like :765. One makes the first `idle` miss a judge that is queued but not running. The other queues a write, via `enqueueWrite`, between the wait and the job. Expect the job to wait in both.",
+      "evidence": "Mutants a2 (`rt.queuedJudges > 0` removed) and a3 (`rt.pendingWrites > 1` removed): 120 of 120 pass. Mutant a1 (`rt.judging` removed) is killed by that white-box test."
+    },
+    {
+      "id": "F6",
+      "severity": "minor",
+      "where": "packages/runner/src/run/review.ts:290-302 (abortWrite) and :273-283 (recordsOnly)",
+      "problem": "The failure paths of a decision's write are tested only for its first write.\n- A failing files write or commit (steps 2 and 3) is never injected. Without the `revertTo`, half-written files stay in ws/ and the next decision's commit takes them in unjudged.\n- A failing persist in recordsOnly is never injected. Without the `run.p.session = s` restore, the decision is refused but stays applied in memory.",
+      "fix": "Add fault-injection tests in session.review or session.failclosed. (a) Make `shadow.writeFiles` or `commit` throw once during a Reject. Expect refused 'telelean could not carry out your decision', ws/ equal to the head, no inFlight, an unchanged session. (b) Make `persistChecked` fail for a records-only decision (an Accept). Expect refused and an unchanged in-memory session.",
+      "evidence": "Mutant j1 (the `revertTo` in abortWrite removed) and mutant n1 (the restore in recordsOnly removed): both survive, 120 of 120."
+    },
+    {
+      "id": "F7",
+      "severity": "minor",
+      "where": "packages/runner/src/run/review.ts:765-768 (replayWrite's `reviewRefusal` guard)",
+      "problem": "Recovery of a `decide` write found in flight, with no stage judgement to read, is untested. Without the guard the reducer runs with no dependency edges (RV-5 reads none, so it fails open).",
+      "fix": "Add a reload test. Leave a `decide` write in flight, make `recomputeJudgement` return false because the facts are missing, and recover. Expect the write is not made and nothing is recorded.",
+      "evidence": "Mutant k1 (the guard removed): 120 of 120 pass."
+    },
+    {
+      "id": "F8",
+      "severity": "minor",
+      "where": "packages/runner/src/run/review.ts:359 (inverse-merge commit order) and :378 (the mark-removed filter)",
+      "problem": "A group un-reject of items declined at different commits is untested, and so is a premise ledger that mark-removed entries moved. The newest-first order is not pinned: the wrong order gives spurious 'can't be restored' refusals. Not unsafe.",
+      "fix": "Add a test: Reject two items in the same file, whose texts are adjacent, in two actions. Un-reject both in one group decision. Expect both restored and no conflict. Add the ledger case to the written-premise reload tests, or move it to 2f.",
+      "evidence": "Mutants p1 (the sort sign flipped) and p2 (the mark-removed filter dropped): both survive."
+    },
+    {
+      "id": "F9",
+      "severity": "minor",
+      "where": "packages/runner/src/run/review.ts:556-560 (Submit's `startStep` failure and `first === undefined`)",
+      "problem": "R1-3 and AF14 are tested for Resume and for a Retry's start. A Submit whose first step cannot start, for example a failed `--resume`, is untested. It must answer why, not 'Claude is working on…'.",
+      "fix": "Add a test in session.submit: make the backend's first `--resume` throw after a Submit's queue-start. Expect {ok:false, code:'not-yet', error:/could not be resumed/}, the step interrupted, and `undeliveredTurn` starting with the feedback turn.",
+      "evidence": "Mutant s6 (`if (!started.ok) return started` removed): 120 of 120 pass. s5 (the `first === undefined` guard) also survives."
+    },
+    {
+      "id": "F10",
+      "severity": "minor",
+      "where": "review.ts:494 (raw diff `.lean` filter); session.ts:1733 (`options.decided === true` in the heading rule); review.ts:578 (item statuses in the confirmation's check id)",
+      "problem": "Three conditions are covered by no test.\n- The raw diff's `.lean`-only filter.\n- The 'did not pass' heading being set only by decision-started judges. A queue-end judge with `ok:false` and no failed step would otherwise set it.\n- The statuses in the confirmation's check id, which 2f will use to spot a stale confirmation.",
+      "fix": "Add three assertions.\n- A non-.lean file in ws/ (the lakefile) is absent from sessionDiff.\n- A queue-end judge with `ok:false` and no failed step sets no heading.\n- Two sessions with the same files but different item statuses get different `confirmation.checkId`.",
+      "evidence": "Mutants v1 (the `.lean` filter dropped), g1 (`decided` dropped) and o1 (the statuses emptied): all survive, 120 of 120."
+    }
+  ]
+}

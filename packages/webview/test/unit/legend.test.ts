@@ -1,6 +1,7 @@
 /** Spec v4 BD-9 (slice 1d): the legend's entries, each with a swatch that is not colour alone. */
 import { describe, expect, it } from 'vitest';
-import { LEGEND_ENTRIES } from '../../src/header/legend';
+import { REVIEW_TEXTS } from '@telelean/core';
+import { LEGEND_ENTRIES, legendEntries, PROPOSED_LEGEND_ENTRY } from '../../src/header/legend';
 
 describe('the legend (BD-9)', () => {
   it('lists declared, verified by Lean, conditional, mismatch, formalised, established, the band and pending proof, in that order', () => {
@@ -26,5 +27,15 @@ describe('the legend (BD-9)', () => {
     expect(LEGEND_ENTRIES.find((e) => e.key === 'band')?.title).toContain('consistency unchecked');
     // TL109 is not a mismatch any more: only a use nobody drew is (BD-5).
     expect(LEGEND_ENTRIES.find((e) => e.key === 'mismatch')?.title).toContain('TL107');
+  });
+});
+
+describe('slice 2h (§5.10): the legend during an edit session', () => {
+  it('adds `proposed` ("proposed by Claude: + adds, − removes") only during a session, after BD-9’s entries', () => {
+    expect(legendEntries(false)).toBe(LEGEND_ENTRIES);
+    expect(legendEntries(true).map((e) => e.key)).toEqual([...LEGEND_ENTRIES.map((e) => e.key), 'proposed']);
+    expect(PROPOSED_LEGEND_ENTRY).toMatchObject({ key: 'proposed', label: REVIEW_TEXTS.legendProposed, glyph: '+' });
+    expect(REVIEW_TEXTS.legendProposed).toBe('proposed by Claude: + adds, − removes');
+    expect(PROPOSED_LEGEND_ENTRY.title.length).toBeGreaterThan(20);
   });
 });

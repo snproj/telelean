@@ -11,8 +11,8 @@ import { describe, expect, it } from 'vitest';
 
 import { CLAUDE_SESSION_TEXTS } from '@telelean/core';
 
-import { adoptionTurn, buildContextBundle, buildSystemPrompt, DEFAULT_RUN_SETTINGS, feedbackTurn, NUDGE_TURN, resumeTurn, shortNames } from '../../src/run/index.js';
-import { formalizePlan, stepTurn, type StepTurnInput } from '../../src/run/prompts.js';
+import { buildContextBundle, buildSystemPrompt, DEFAULT_RUN_SETTINGS, NUDGE_TURN, resumeTurn, shortNames } from '../../src/run/index.js';
+import { formalizePlan, stepTurn, submitFeedbackTurn, type StepTurnInput } from '../../src/run/prompts.js';
 import { REPO_ROOT } from './helpers/env.js';
 import { FakeWorkspace } from './helpers/fakeServices.js';
 
@@ -191,17 +191,7 @@ describe('the context bundle (section 5.2)', () => {
 });
 
 describe('later user turns (section 5.3)', () => {
-  const caps = DEFAULT_RUN_SETTINGS.caps;
-  it('Feedback', () => {
-    expect(feedbackTurn('Read "cannot" as a rule.', caps)).toBe(
-      'Feedback from the person on your previous result:\n"Read "cannot" as a rule."\nThis starts a new round. Your earlier changes are still in the files. If statements need to change, revise them, then call check_lean and freeze_statements again before proving: finish with status proved needs a freeze in this round. Budget for this round: 25 Lean checks, 80 turns, 20 minutes.',
-    );
-  });
-  it('Adoption', () => {
-    expect(adoptionTurn({ nodeId: 'a-character-who-cannot-be-in', sentence: 'A character who cannot be in a game would not be a good addition to it', leanName: 'Spyro.not_in_game_not_good', statement: '∀ (c : Character) (g : Game), ¬ InGame c g → ¬ GoodAddition c g', caps })).toBe(
-      'The person adopted your suggestion as an axiom:\n- a-character-who-cannot-be-in (AXIOM, worded by you): "A character who cannot be in a game would not be a good addition to it"\n  Lean: Spyro.not_in_game_not_good := ∀ (c : Character) (g : Game), ¬ InGame c g → ¬ GoodAddition c g; axiom Spyro.not_in_game_not_good.holds (telelean wrote it right before the target\'s block).\nThe statements are frozen again with it selected, so you may use Spyro.not_in_game_not_good.holds. Prove the target now and call finish. Budget for this round: 25 Lean checks, 80 turns, 20 minutes.',
-    );
-  });
+  // Slice 2h: M2's Feedback and adoption turns went with their actions (Feedback, "I hold this"); the session's turns are below.
   it('Resume and the nudge', () => {
     expect(resumeTurn(true)).toBe("The session was interrupted (the person's editor reloaded) while you were working. Your files are as you left them; the statements are frozen. Continue the run from where you were.");
     expect(resumeTurn(false)).toContain('the statements are not frozen yet.');
@@ -262,5 +252,66 @@ describe('an edit session\'s turns (slice 2d, docs/slice2-plan.md 2.8)', () => {
     expect(stepTurn({ ...base, decisions: [] })).toContain(`${CLAUDE_SESSION_TEXTS.decisionsSince}\n(none)\n`);
     expect(stepTurn({ ...base, decisions: ['Accept: Formalize “A”'] })).toContain(`${CLAUDE_SESSION_TEXTS.decisionsSince}\n- Accept: Formalize “A”\n`);
     expect(stepTurn({ ...base, decisions: ['a', 'b'] })).toContain(`${CLAUDE_SESSION_TEXTS.decisionsSince}\n- a\n- b\n`);
+  });
+});
+
+describe('Submit review\'s feedback turn (slice 2e, docs/slice2-plan.md 2.8, 3.7)', () => {
+  const empty = { stage: 3, accepted: [], rejected: [], shaky: [], redo: [], steps: [] };
+
+  it('its first line is fixed; every section says "(none)" when empty, and STEPS PLANNED lists none', () => {
+    expect(submitFeedbackTurn(empty)).toBe(
+      [
+        CLAUDE_SESSION_TEXTS.reviewSubmitted(3),
+        '',
+        'ACCEPTED: keep them exactly as they are.',
+        '(none)',
+        '',
+        'REJECTED: they were removed; never propose these exact versions again.',
+        '(none)',
+        '',
+        'SHAKY: propose a different arrangement for these together. Any single one may come back unchanged, but not the whole set; if there is none, finish with no_alternative: true.',
+        '(none)',
+        '',
+        'TO BE REDONE: propose them again; what each relied on:',
+        '(none)',
+        '',
+        'STEPS PLANNED (one step per target, in this order):',
+        '',
+      ].join('\n'),
+    );
+  });
+
+  it('one item per section: its label and Lean (indented), a Shaky note quoted, what an item to be redone relied on', () => {
+    const turn = submitFeedbackTurn({
+      stage: 1,
+      accepted: [{ label: 'Formalize “A”', lean: 'abbrev a : Prop := True' }],
+      rejected: [{ label: 'Result “B”', lean: 'theorem b.holds : b := trivial\n' }],
+      shaky: [{ label: 'Formalize “C”', lean: 'abbrev c : Prop := True', note: 'Read it as a rule.' }],
+      redo: [{ label: 'Result “D”', lean: '', reliedOn: ['Formalize “C”'] }],
+      steps: [{ id: 'c', sentence: 'C holds' }],
+    });
+    expect(turn).toContain('ACCEPTED: keep them exactly as they are.\n- Formalize “A”\n    abbrev a : Prop := True\n\n');
+    expect(turn).toContain('REJECTED: they were removed; never propose these exact versions again.\n- Result “B”\n    theorem b.holds : b := trivial\n\n');
+    expect(turn).toContain('finish with no_alternative: true.\n- Formalize “C”\n    abbrev c : Prop := True\n  The person\'s note: "Read it as a rule."\n\n');
+    expect(turn).toContain('TO BE REDONE: propose them again; what each relied on:\n- Result “D”\n  It relied on: Formalize “C”\n\n');
+    expect(turn.endsWith('STEPS PLANNED (one step per target, in this order):\n1. c: "C holds"\n')).toBe(true);
+  });
+
+  it('many: every item in order, a multi-line Lean text, a Shaky item Submit took out with what it rests on, the steps numbered', () => {
+    const turn = submitFeedbackTurn({
+      ...empty,
+      shaky: [
+        { label: 'S1', lean: 'def x := 1\ndef y := 2', note: 'two\nlines' },
+        { label: 'S2', lean: 'abbrev s2 : Prop := True', reliedOn: ['Formalize “A”', 'Result “B”'] },
+      ],
+      redo: [{ label: 'R1', lean: 'r1' }, { label: 'R2', lean: 'r2', reliedOn: [] }],
+      steps: [
+        { id: 'a', sentence: 'A' },
+        { id: 'b', sentence: 'B' },
+      ],
+    });
+    expect(turn).toContain('- S1\n    def x := 1\n    def y := 2\n  The person\'s note: "two\nlines"\n- S2\n    abbrev s2 : Prop := True\n  It relied on: Formalize “A”; Result “B”\n\n');
+    expect(turn).toContain('- R1\n    r1\n- R2\n    r2\n\n');
+    expect(turn).toContain('1. a: "A"\n2. b: "B"\n');
   });
 });

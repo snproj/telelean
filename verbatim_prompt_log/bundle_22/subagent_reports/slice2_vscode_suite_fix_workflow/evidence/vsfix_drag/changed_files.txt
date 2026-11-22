@@ -1,0 +1,1 @@
+/tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/vsfix_drag/backup/packages/extension/test/suite/e2e.test.ts

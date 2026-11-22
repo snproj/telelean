@@ -1,7 +1,9 @@
 /**
  * M2 runs on the board (docs/m2-plan.md section 6.4): starting a run, now "Formalize for dependencies" in the Context
  * Menu section that replaced the tray (AT6.1; spec v4.1 ES-2, CM-3), the run panel's status line, notices, activity and
- * states (AT6.2), and another subject's run as one compact line (AT6.11).
+ * states (AT6.2), and another subject's run as one compact line (AT6.11). Slice 2h: a start is a `formalize` with its
+ * inferences (several targets at once, sources first), and Stop ends an interrupted run with `cancelRun` (M2's
+ * Discard is retired).
  */
 import { expect, test } from '@playwright/test';
 import { hostMessage, spyroGraph, type RunNotice, type TlGraph } from '@telelean/core';
@@ -45,7 +47,7 @@ const NOTICES: RunNotice[] = [
   { id: 'n5', at: '2026-11-01T10:03:50.000Z', level: 'error', kind: 'environment', text: 'telelean could not run Lean (low memory): not Claude’s fault, and not counted as an attempt.' },
 ];
 
-test('AT6.1 Formalize for dependencies posts startRun for the selected arrows, or for a ∅ mark from no premises; disabled during a run, with the reason', async ({ page }) => {
+test('AT6.1 Formalize for dependencies posts `formalize` for the selected arrows, or for a ∅ mark from no premises; several targets at once (slice 2h); disabled during a run, with the reason', async ({ page }) => {
   board = await openBoard(page, markedGraph(), 'dark', { workspace: workspaceState() });
   const formalize = page.getByTestId('formalize');
   // Two of the goal's arrows: exactly their sources.
@@ -65,10 +67,10 @@ test('AT6.1 Formalize for dependencies posts startRun for the selected arrows, o
   await page.mouse.click(stub.x + stub.width / 2, stub.y + stub.height / 2);
   await expect(page.getByTestId('context-summary')).toHaveText('the "follows from nothing" mark of “Spyro games avoid dark characters”');
   await formalize.click();
-  expect((await postedOfType(page, 'startRun')).map((m) => m.payload)).toEqual([
-    { target: TARGET, premises: ['cynder-dark-past', 'new-spyro-pg'], requestId: 'r1' },
-    { target: TARGET, premises: [...ALL_PREMISES], requestId: 'r2' },
-    { target: 'side-claim', premises: [], requestId: 'r3' },
+  expect((await postedOfType(page, 'formalize')).map((m) => m.payload)).toEqual([
+    { inferences: [{ target: TARGET, premises: ['cynder-dark-past', 'new-spyro-pg'] }], requestId: 'r1' },
+    { inferences: [{ target: TARGET, premises: [...ALL_PREMISES] }], requestId: 'r2' },
+    { inferences: [{ target: 'side-claim', premises: [] }], requestId: 'r3' },
   ]);
   expect(await postedOfType(page, 'theseSuffice')).toEqual([]);
 
@@ -78,10 +80,10 @@ test('AT6.1 Formalize for dependencies posts startRun for the selected arrows, o
   await expect(page.getByTestId('formalize-reason')).toHaveText('A run is active. Claude is already working on Bayonetta: wait for it to finish, or cancel it.');
   // A run of this subject waiting in review blocks too.
   await send(page, hostMessage('run', { run: runView({ state: 'review', proposalId: 'p1' }) }));
-  await expect(page.getByTestId('formalize-reason')).toContainText('waiting for your review');
+  await expect(page.getByTestId('formalize-reason')).toHaveText('A run is active. An edit session is waiting for your review: apply or exit it first.');
   await page.screenshot({ path: shotPath('m2-formalize-blocked.png') });
 
-  // No run: arrows into two propositions are not one question (AP-9); the disabled button sends nothing.
+  // No run: an arrow into one proposition and another's mark are two targets of one request (slice 2h, §5.11).
   await send(page, hostMessage('run', { run: null }));
   await expect(formalize).toBeEnabled();
   await clickArrow(page, 'cynder-dark-past', TARGET);
@@ -89,10 +91,16 @@ test('AT6.1 Formalize for dependencies posts startRun for the selected arrows, o
   await page.mouse.click(stub.x + stub.width / 2, stub.y + stub.height / 2);
   await page.keyboard.up('ControlOrMeta');
   await expect(page.getByTestId('context-summary')).toHaveText('1 arrow into “Cynder would not be a good addition to …” · the "follows from nothing" mark of “Spyro games avoid dark characters”');
-  await expect(formalize).toBeDisabled();
-  await expect(page.getByTestId('formalize-reason')).toHaveText('Select arrows into one card: several targets come with the review list.');
-  await formalize.click({ force: true });
-  expect(await postedOfType(page, 'startRun')).toHaveLength(3);
+  await expect(formalize).toBeEnabled();
+  await expect(formalize).toHaveAttribute('title', 'Ask Claude to formalise the selected arrows and prove 2 targets, one step each, sources first');
+  await formalize.click();
+  expect((await postedOfType(page, 'formalize')).at(-1)?.payload).toEqual({
+    inferences: [
+      { target: TARGET, premises: ['cynder-dark-past'] },
+      { target: 'side-claim', premises: [] },
+    ],
+    requestId: 'r4',
+  });
 });
 
 test('AT6.2 the run panel: state and stage, counters, usage with "estimate", rate limit, notices, Claude’s words italic with a marker; Cancel posts cancelRun', async ({ page }) => {
@@ -185,7 +193,8 @@ test('AT6.2 the run states: starting, proving, waiting (clock paused), checking,
   await send(page, hostMessage('run', { run: runView({ state: 'interrupted', canResume: true, updatedAt: '2026-11-01T10:05:00.000Z' }) }));
   await panel.getByTestId('stop-run').click();
   expect((await postedOfType(page, 'resumeRun')).map((m) => m.payload)).toEqual([{ runId: RUN_ID, requestId: 'r1' }]);
-  expect((await postedOfType(page, 'discardProposal')).map((m) => m.payload)).toEqual([{ runId: RUN_ID, requestId: 'r2' }]);
+  // Slice 2h: Stop ends it with cancelRun (M2's Discard is retired).
+  expect((await postedOfType(page, 'cancelRun')).map((m) => m.payload)).toEqual([{ runId: RUN_ID, requestId: 'r2' }]);
 
   await send(page, hostMessage('run', { run: runView({ state: 'failed', verdict: 'failed', error: 'your files have Lean errors (Model/Spyro/Main.lean:12: unknown identifier `Gme`); fix or save them, then start again' }) }));
   await expect(panel.getByTestId('run-state')).toHaveText('Failed');

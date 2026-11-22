@@ -1,0 +1,4 @@
+/tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/vsfix_at59/backup/packages/extension/src/api.ts
+/tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/vsfix_at59/backup/packages/extension/src/board/BoardPanel.ts
+/tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/vsfix_at59/backup/packages/extension/src/vscode/host.ts
+/tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/vsfix_at59/backup/packages/extension/test/suite/runs.test.ts

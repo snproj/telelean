@@ -356,7 +356,7 @@ test('drags: a proposition dropped on the AXIOMS column runs "Move to axioms"; a
   expect((await postedOfType(page, 'reorder')).map((m) => m.payload)).toEqual([{ id: 'new-spyro-pg', column: 'AXIOM', beforeId: 'cynder-dark-past', requestId: 'r2' }]);
 });
 
-test('click selects, Ctrl/Cmd-click multi-selects, the Context Menu section counts; the selected cards’ arrows are highlighted; Formalize posts startRun with the selected arrows', async ({ page }) => {
+test('click selects, Ctrl/Cmd-click multi-selects, the Context Menu section counts; the selected cards’ arrows are highlighted; Formalize posts `formalize` with the selected arrows', async ({ page }) => {
   const graph = spyroGraph();
   board = await openBoard(page, graph, 'light');
   const summary = page.getByTestId('context-summary');
@@ -402,12 +402,13 @@ test('click selects, Ctrl/Cmd-click multi-selects, the Context Menu section coun
   await expect(summary).toHaveText('3 arrows into “Cynder would not be a good addition to …”');
   await expect(formalize).toBeEnabled();
   await formalize.click();
-  const sent = await postedOfType(page, 'startRun');
+  // Slice 2h: a start is a `formalize` with its inferences (M2's startRun is retired).
+  const sent = await postedOfType(page, 'formalize');
   expect(sent).toEqual([
     {
       v: 1,
-      type: 'startRun',
-      payload: { target: 'cynder-not-good', premises: ['cynder-dark-past', 'new-spyro-pg', 'pg-no-dark-past'], requestId: 'r1' },
+      type: 'formalize',
+      payload: { inferences: [{ target: 'cynder-not-good', premises: ['cynder-dark-past', 'new-spyro-pg', 'pg-no-dark-past'] }], requestId: 'r1' },
     },
   ]);
   expect(await postedOfType(page, 'theseSuffice')).toEqual([]);

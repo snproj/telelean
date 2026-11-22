@@ -60,12 +60,12 @@ describe('board store (M0 behaviour, M1 protocol)', () => {
     expect(state().selected).toEqual(['cynder-dark-past']);
   });
 
-  it('Formalize for dependencies (slice 1e): the selected arrows into one proposition are the question; startRun posts their sources', () => {
+  it('Formalize for dependencies (slice 1e): the selected arrows into one proposition are the question; `formalize` posts their sources (slice 2h)', () => {
     const { state, last, sent } = setup();
     state().selectArrow('cynder-dark-past', 'cynder-not-good', false);
     state().selectArrow('new-spyro-pg', 'cynder-not-good', true);
     expect(state().formalize()).toBe(true);
-    expect(last()).toEqual({ v: 1, type: 'startRun', payload: { target: 'cynder-not-good', premises: ['cynder-dark-past', 'new-spyro-pg'], requestId: 'r1' } });
+    expect(last()).toEqual({ v: 1, type: 'formalize', payload: { inferences: [{ target: 'cynder-not-good', premises: ['cynder-dark-past', 'new-spyro-pg'] }], requestId: 'r1' } });
     // Nothing declares premises any more (the arrows are drawn already, AR-4).
     expect(sent.some((m) => m.type === 'theseSuffice' || m.type === 'addArrows')).toBe(false);
   });
@@ -93,10 +93,11 @@ describe('board store (M0 behaviour, M1 protocol)', () => {
     state().clickCard('cynder-dark-past', false);
     expect(state().formalize()).toBe(false);
     expect(state().toasts.map((t) => [t.level, t.text])).toEqual([['info', "Select arrows, or a 'follows from nothing' mark."]]);
-    expect(sent.some((m) => m.type === 'startRun')).toBe(false);
+    expect(sent.some((m) => m.type === 'formalize')).toBe(false);
     state().selectMark('cynder-not-good', false);
     expect(state().formalize()).toBe(true);
-    expect(last()).toEqual({ v: 1, type: 'startRun', payload: { target: 'cynder-not-good', premises: [], requestId: 'r1' } });
+    // Slice 2h: the start is a `formalize` with its inferences (M2's startRun is retired).
+    expect(last()).toEqual({ v: 1, type: 'formalize', payload: { inferences: [{ target: 'cynder-not-good', premises: [] }], requestId: 'r1' } });
   });
 
   it('a drop across columns moves the card and posts kindChange; within a column it posts reorder (M1: M0 posted nothing)', () => {
@@ -466,16 +467,17 @@ describe('requests, persistence, highlights, subjects, toasts', () => {
     expect(state().dialog).toBeNull();
   });
 
-  it('deleteNode posts keepLean and closes the dialog; provisional cards cannot be deleted or edited', () => {
+  it('deleteNode posts the delete (slice 2i: never a keepLean, the card\'s Lean always goes) and closes the dialog; provisional cards cannot be deleted or edited', () => {
     const { state, last, sent } = setup();
     state().openDelete('cynder-dark-past');
-    state().deleteNode('cynder-dark-past', true);
+    state().deleteNode('cynder-dark-past');
     expect(state().dialog).toBeNull();
-    expect(last()).toEqual({ v: 1, type: 'deleteNode', payload: { id: 'cynder-dark-past', keepLean: true, requestId: 'r1' } });
+    expect(last()).toEqual({ v: 1, type: 'deleteNode', payload: { id: 'cynder-dark-past', requestId: 'r1' } });
+    expect(sent.filter((m) => m.type === 'deleteNode').every((m) => !('keepLean' in m.payload))).toBe(true);
     const id = state().addNode('PROPOSITION', 'Provisional') ?? '';
     const count = sent.length;
     state().openDelete(id);
-    state().deleteNode(id, false);
+    state().deleteNode(id);
     expect(state().editNode(id, 'naturalName', 'Other')).toBe(false);
     state().requestKindChange(id, 'AXIOM', null);
     expect(state().dialog).toBeNull();
@@ -535,9 +537,9 @@ describe('delete with its Lean code when other declarations use it (D-18)', () =
   it('needs-confirmation re-opens the delete dialog with the host’s list, no toast; Delete anyway resends with confirmed', () => {
     const { state, result, last, sent } = setup(spyroProvedGraph(1));
     state().openDelete('cynder-dark-past');
-    state().deleteNode('cynder-dark-past', false);
+    state().deleteNode('cynder-dark-past');
     expect(state().dialog).toBeNull();
-    expect(last()).toEqual({ v: 1, type: 'deleteNode', payload: { id: 'cynder-dark-past', keepLean: false, requestId: 'r1' } });
+    expect(last()).toEqual({ v: 1, type: 'deleteNode', payload: { id: 'cynder-dark-past', requestId: 'r1' } });
     result(
       'r1',
       refused('needs-confirmation', 'Deleting its Lean code breaks 2 declarations that use it (…): they stop compiling.', ['cynder-not-good', 'Spyro.helper_lemma']),
@@ -545,9 +547,9 @@ describe('delete with its Lean code when other declarations use it (D-18)', () =
     expect(state().dialog).toEqual({ kind: 'delete', id: 'cynder-dark-past', dependents: ['cynder-not-good', 'Spyro.helper_lemma'] });
     expect(state().toasts).toEqual([]);
     expect(state().nodes['cynder-dark-past']).toBeDefined(); // delete is not optimistic: nothing to roll back
-    state().deleteNode('cynder-dark-past', false, true);
+    state().deleteNode('cynder-dark-past', true);
     expect(state().dialog).toBeNull();
-    expect(last()).toEqual({ v: 1, type: 'deleteNode', payload: { id: 'cynder-dark-past', keepLean: false, confirmed: true, requestId: 'r2' } });
+    expect(last()).toEqual({ v: 1, type: 'deleteNode', payload: { id: 'cynder-dark-past', confirmed: true, requestId: 'r2' } });
     result('r2', OK);
     expect(state().toasts).toEqual([]);
     expect(sent.filter((m) => m.type === 'deleteNode')).toHaveLength(2);
@@ -555,7 +557,7 @@ describe('delete with its Lean code when other declarations use it (D-18)', () =
 
   it('keeps the host’s description of the cards among the dependents (another subject’s card shows by its sentence)', () => {
     const { state, result } = setup(spyroProvedGraph(1));
-    state().deleteNode('cynder-dark-past', false);
+    state().deleteNode('cynder-dark-past');
     const dependentCards = { 'other-goal': { subject: 'Bayonetta', type: 'PROPOSITION' as const, naturalName: 'Bayonetta would be a good addition' } };
     result('r1', { ok: false, code: 'needs-confirmation', error: 'breaks 2', dependents: ['other-goal', 'Spyro.helper_lemma'], dependentCards });
     expect(state().dialog).toEqual({ kind: 'delete', id: 'cynder-dark-past', dependents: ['other-goal', 'Spyro.helper_lemma'], cards: dependentCards });
@@ -568,30 +570,36 @@ describe('delete with its Lean code when other declarations use it (D-18)', () =
     expect(state().dialog).toMatchObject({ kind: 'dependents', id: 'cynder-not-good', dependents: ['other-goal'], cards: dependentCards, detail: 'others use it' });
   });
 
-  it('from the confirmation, "card only" posts keepLean (never confirmed); Cancel posts nothing', () => {
+  it('from the confirmation, Cancel posts nothing; a new delete asks again, and Delete anyway is the only way on (slice 2i)', () => {
     const { state, result, last, sent } = setup(spyroProvedGraph(1));
-    state().deleteNode('cynder-dark-past', false);
+    state().deleteNode('cynder-dark-past');
     result('r1', refused('needs-confirmation', 'breaks', ['Spyro.helper_lemma']));
     state().closeDialog();
     expect(state().dialog).toBeNull();
     expect(sent.filter((m) => m.type === 'deleteNode')).toHaveLength(1);
-    state().deleteNode('cynder-dark-past', false);
+    state().deleteNode('cynder-dark-past');
     result('r2', refused('needs-confirmation', 'breaks', ['Spyro.helper_lemma']));
-    state().deleteNode('cynder-dark-past', true, true);
-    expect(last()).toEqual({ v: 1, type: 'deleteNode', payload: { id: 'cynder-dark-past', keepLean: true, requestId: 'r3' } });
+    expect(state().dialog).toEqual({ kind: 'delete', id: 'cynder-dark-past', dependents: ['Spyro.helper_lemma'] });
+    state().deleteNode('cynder-dark-past', true);
+    expect(last()).toEqual({ v: 1, type: 'deleteNode', payload: { id: 'cynder-dark-past', confirmed: true, requestId: 'r3' } });
+    expect(sent.filter((m) => m.type === 'deleteNode').map((m) => m.payload)).toEqual([
+      { id: 'cynder-dark-past', requestId: 'r1' },
+      { id: 'cynder-dark-past', requestId: 'r2' },
+      { id: 'cynder-dark-past', confirmed: true, requestId: 'r3' },
+    ]);
   });
 
   it('a confirmed delete refused again, other refusals and a card that is gone meanwhile show the error toast instead', () => {
     const { state, result } = setup(spyroProvedGraph(1));
-    state().deleteNode('cynder-dark-past', false, true);
+    state().deleteNode('cynder-dark-past', true);
     result('r1', refused('needs-confirmation', 'still refused', ['Spyro.helper_lemma']));
     expect(state().dialog).toBeNull(); // no loop of questions
     expect(state().toasts.map((t) => t.text)).toEqual(['still refused']);
-    state().deleteNode('cynder-dark-past', true);
+    state().deleteNode('cynder-dark-past');
     result('r2', refused('conflict', 'Model/Spyro/Main.lean changed since telelean planned "Delete: x"; nothing was applied.'));
     expect(state().dialog).toBeNull();
     expect(state().toasts.map((t) => t.text)).toContain('Model/Spyro/Main.lean changed since telelean planned "Delete: x"; nothing was applied.');
-    state().deleteNode('new-spyro-pg', false);
+    state().deleteNode('new-spyro-pg');
     state().applyGraph({ ...spyroProvedGraph(2), nodes: spyroProvedGraph().nodes.filter((n) => n.id !== 'new-spyro-pg') });
     result('r3', refused('needs-confirmation', 'gone meanwhile', ['cynder-not-good']));
     expect(state().dialog).toBeNull();

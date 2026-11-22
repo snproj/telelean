@@ -18,17 +18,17 @@
  * Always: the user's HEAD, index, branches, config, hooks and status outside the model stay as they were, and no
  * telelean-<runId>-* unit is left.
  *
- * Slice 2d (docs/slice2-plan.md §0, "Tests that move"): every start is an edit session. (a), (b) and (c) test Accept, the
- * adoption of a ghost and Accept's drift refusal, and move to 2f. (d) and (e) run as sessions: each resolves at the
- * stage (the step ended, the queue's judgement converged) and reads the step's verdict from run.json (a session's
- * RunView has none); Discard is the stopgap Exit until 2f.
+ * Slice 2d (docs/slice2-plan.md §0, "Tests that move"): every start is an edit session. (a), (b) and (c) tested Accept,
+ * the adoption of a ghost and Accept's drift refusal; they moved to 2f, which rewrote them as sessions to their Apply
+ * (the premise's Accept, write and completion; drift recorded and refusing Apply; Exit). (d) and (e) run as sessions:
+ * each resolves at the stage and reads the step's verdict from run.json (a session's RunView has none).
  */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { cpSync, existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import type { RunView } from '@telelean/core';
+import { REVIEW_TEXTS, type RunView } from '@telelean/core';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { createLeanCheckEngine } from '../../src/gate/index.js';
@@ -40,6 +40,7 @@ import { createRunManager, DEFAULT_RUN_SETTINGS, type PersistedRun, type RunMana
 import { listRunDirs, openRunShadow } from '../../src/shadow/index.js';
 import { createModelWorkspace, fsEditApplier, fsTextSource, type ModelWorkspace } from '../../src/workspace/index.js';
 import { cleanup, makeTempDir, MENTAL_MODEL } from '../run/helpers/env.js';
+import { acceptEverything, applyEverything, confirm } from '../run/helpers/apply.js';
 import { loadWalkthrough, waitForRun } from '../run/helpers/harness.js';
 
 const MAIN = 'Model/Spyro/Main.lean';
@@ -163,19 +164,6 @@ const writeReal = async (f: Flow, rel: string, text: string): Promise<void> => {
   await f.workspace.invalidate([rel]); // as the extension's file watcher does
 };
 
-/** Starts a run with `premises` and answers its question (if it asks) with `option`; resolves at the end of round 1. */
-async function round1(f: Flow, option: number, premises: string[] = ALL): Promise<RunView> {
-  const started = await f.manager.start({ subject: 'Spyro', target: TARGET, premises });
-  expect(started, JSON.stringify(started)).toMatchObject({ ok: true });
-  const first = await waitForRun(f.manager, (v) => v.state === 'waiting-for-answer' || v.state === 'review' || v.state === 'failed', 240_000, 'the question or the end of round 1');
-  f.runIds.push(first.runId);
-  if (first.state === 'waiting-for-answer') {
-    const answered = await f.manager.answer(first.runId, first.pendingQuestions?.id ?? '', [{ question: 0, choice: { kind: 'option', option }, scope: 'run' }]);
-    expect(answered, JSON.stringify(answered)).toMatchObject({ ok: true });
-  }
-  return waitForRun(f.manager, (v) => v.state === 'review' || v.state === 'failed', 300_000, 'the end of round 1');
-}
-
 async function finishFlow(f: Flow): Promise<void> {
   await f.manager.dispose();
   f.workspace.dispose();
@@ -216,33 +204,29 @@ async function rawRunOf(f: Flow, runId: string): Promise<PersistedRun> {
 }
 
 describe('M2 flows end to end (real workspace, engine, proposals, git; FakeBackend)', () => {
-  it.skip('moves to 2f: (a) normative: Accept, Undo, Redo; a History revert of the Accept restores the files and can itself be undone', async () => {
+  it('(a) normative: Apply, Undo, Redo; a History revert of the Apply restores the files and can itself be undone (2f: the session to its Apply)', async () => {
     const f = await setupFlow('normative', normative());
     const original = { main: read(f, MAIN), vocabulary: read(f, VOCABULARY) };
-    const review = await round1(f, 0);
-    expect(review.verdict, JSON.stringify(review.notices)).toBe('proved');
-    expect(read(f, MAIN)).toBe(original.main); // nothing before Accept
-    const proposal = f.manager.proposal();
-    expect(proposal).not.toHaveProperty('lifecycle');
-    const accepted = await f.manager.accept(review.runId, proposal?.proposalId ?? '', []);
-    expect(accepted, JSON.stringify(accepted)).toMatchObject({ ok: true, undoable: true });
-    const afterAccept = read(f, MAIN);
-    expect(afterAccept).toContain('lean: Spyro.pg_no_dark_past');
-    expect(afterAccept).toContain('theorem cynder_not_good.holds : cynder_not_good :=');
+    const review = await stage1(f, 0);
+    expect(read(f, MAIN)).toBe(original.main); // nothing before Apply
+    const applied = await applyEverything(f.manager, review.runId);
+    expect(applied, JSON.stringify(applied)).toMatchObject({ ok: true, undoable: true });
+    const afterApply = read(f, MAIN);
+    expect(afterApply).toContain('lean: Spyro.pg_no_dark_past');
+    expect(afterApply).toContain('theorem cynder_not_good.holds : cynder_not_good :=');
     // Spec v4: the proved proposition keeps its `type:` line as written (GOAL, an alias of PROPOSITION).
-    expect(afterAccept).toMatch(/id: cynder-not-good\ntype: GOAL\n/);
+    expect(afterApply).toMatch(/id: cynder-not-good\ntype: GOAL\n/);
 
     const listing = await f.workspace.listHistory('Spyro');
-    expect(listing.entries[0]).toMatchObject({ action: 'accept-proposal' });
-    expect(listing.entries[0]?.label).toMatch(/^Formalize → proved: Cynder would not be a good addition/);
+    expect(listing.entries[0]).toMatchObject({ action: 'accept-proposal', label: REVIEW_TEXTS.applyLabel(['Cynder would not be a good addition to the new Spyro game']) });
     expect(listing.entries.filter((e) => e.action === 'accept-proposal')).toHaveLength(1);
 
     expect(await f.workspace.undo('Spyro')).toMatchObject({ ok: true });
     expect(read(f, MAIN)).toBe(original.main);
     expect(await f.workspace.redo('Spyro')).toMatchObject({ ok: true });
-    expect(read(f, MAIN)).toBe(afterAccept);
+    expect(read(f, MAIN)).toBe(afterApply);
 
-    // History: revert to the state before the Accept (the subject's first snapshot), then undo the revert.
+    // History: revert to the state before the Apply (the subject's first snapshot), then undo the revert.
     const entries = (await f.workspace.listHistory('Spyro')).entries;
     const initial = entries.find((e) => e.action === 'initial');
     expect(initial, JSON.stringify(entries.map((e) => e.action))).toBeDefined();
@@ -250,90 +234,86 @@ describe('M2 flows end to end (real workspace, engine, proposals, git; FakeBacke
     expect(read(f, MAIN)).toBe(original.main);
     expect(read(f, VOCABULARY)).toBe(original.vocabulary);
     expect(await f.workspace.undo('Spyro')).toMatchObject({ ok: true });
-    expect(read(f, MAIN)).toBe(afterAccept);
+    expect(read(f, MAIN)).toBe(afterApply);
     await finishFlow(f);
   });
 
-  it.skip('moves to 2f: (b) literal: not proved with a ghost; adopted, re-frozen and proved; Accept writes the card worded by Claude', async () => {
+  it('(b) literal: not proved with a premise suggested; its Accept writes the card worded by Claude and telelean completes the proof; Apply writes both (2f)', async () => {
     const f = await setupFlow('literal', loadWalkthrough('literal').turns);
-    const r1 = await round1(f, 1);
-    expect(r1.verdict, JSON.stringify(r1.notices)).toBe('not-proved');
-    expect(r1.ghosts.map((g) => [g.id, g.state, g.closesGap, g.aloneEntails])).toEqual([['ghost-1', 'suggested', true, false]]);
-    expect(await f.manager.adoptGhost(r1.runId, 'ghost-1', 'it seems obvious to me')).toMatchObject({ ok: true });
-    const frozen = await waitForRun(f.manager, (v) => v.round === 2 && v.frozen?.round === 2, 60_000, 'the re-freeze');
-    expect(frozen.frozen?.permitted.selected).toContain('Spyro.not_in_game_not_good.holds');
-    const r2 = await waitForRun(f.manager, (v) => v.round === 2 && (v.state === 'review' || v.state === 'failed'), 300_000, 'round 2');
-    expect(r2.verdict, JSON.stringify(r2.notices)).toBe('proved');
-    const proposal = f.manager.proposal();
-    expect(proposal?.report.footprint).toContain('a-character-who-cannot-be-in');
-    const accepted = await f.manager.accept(r2.runId, proposal?.proposalId ?? '', proposal?.definitions.map((d) => d.id) ?? []);
-    expect(accepted, JSON.stringify(accepted)).toMatchObject({ ok: true });
+    const r1 = await stage1(f, 1);
+    const raw = await rawRunOf(f, r1.runId);
+    expect(raw.session?.steps.map((x) => [x.state, x.attempt?.verdict]), JSON.stringify(raw.view.notices)).toEqual([['passed', 'not-proved']]);
+    expect(raw.session?.premises.map((d) => [d.leanName, d.aloneEntails])).toEqual([['not_in_game_not_good', false]]);
+    const applied = await applyEverything(f.manager, r1.runId, { holdAs: 'axiom', rationale: 'it seems obvious to me' });
+    expect(applied, JSON.stringify(applied)).toMatchObject({ ok: true });
     const main = read(f, MAIN);
     expect(main).toContain('natural_name: A character who cannot be in a game would not be a good addition to it\n');
     expect(main).toContain('id: a-character-who-cannot-be-in\ntype: AXIOM\n');
     expect(main).toContain('worded_by: agent\n');
-    expect(main).toContain(`session: ${r2.runId}\n`);
+    expect(main).toContain(`session: ${r1.runId}\n`);
     expect(main).toContain('rationale: it seems obvious to me\n');
     expect(read(f, VOCABULARY)).toContain('axiom InGame : Character → Game → Prop');
-    expect((await f.workspace.listHistory('Spyro')).entries[0]?.label).toMatch(/^Formalize → proved/);
-    // Fixer round 1: the adopted card is declared on the goal, so the refreshed board has no TL107 and no mismatch.
+    const top = (await f.workspace.listHistory('Spyro')).entries[0];
+    expect(top?.label).toBe(REVIEW_TEXTS.applyLabel(['Cynder would not be a good addition to the new Spyro game']));
+    // G1: History's entry says where the written arrow came from.
+    expect(top?.arrows).toEqual([{ source: 'a-character-who-cannot-be-in', target: TARGET, step: 's1', kind: 'premise' }]);
+    // The written card is declared on the goal, so the refreshed board has no TL107 and no mismatch.
     expect(main).toContain('premises: cynder-dark-past, new-spyro-pg, pg-no-dark-past, a-character-who-cannot-be-in\n');
     await f.workspace.refreshNow();
     const graph = f.workspace.graph('Spyro');
     expect(graph.diagnostics.filter((d) => d.code === 'TL107')).toEqual([]);
     expect(graph.edges.filter((e) => e.mismatch !== undefined)).toEqual([]);
+    expect(graph.nodes.find((n) => n.id === TARGET)?.status.proof.kind).toBe('proved');
     await finishFlow(f);
   });
 
-  it.skip("moves to 2f: (c) Accept while the files differ from the run's base (ES-7, slice 1f): refused with the file named, nothing merged; once the edit is undone the same Accept goes through", async () => {
+  it("(c) Apply while the files differ from the session's base (ES-7): refused with the file named, nothing merged, the base never moves; once the edit is undone the same Apply goes through; an edit next to telelean's pin is refused the same way, and Exit leaves it", async () => {
     const f = await setupFlow('drift', [...normative(), ...normative()]);
-    const drifted = `Your files changed since this run started (${MAIN}). Undo those edits in the editor, or discard the run.`;
-    // Run 1: while the proposal waits, the user edits new-spyro-pg's reason by hand (the board itself is locked, ES-9).
-    const review = await round1(f, 0);
-    expect(review.verdict, JSON.stringify(review.notices)).toBe('proved');
+    const drifted = REVIEW_TEXTS.drift([MAIN]);
+    // Session 1: in the end confirmation, the user edits new-spyro-pg's reason by hand (the board itself is locked, ES-9).
+    const review = await stage1(f, 0);
+    await acceptEverything(f.manager, review.runId);
+    const c = await confirm(f.manager, review.runId);
+    expect(c.check.state).toBe('passed');
     const original = read(f, MAIN);
     const edited = original.replace('rationale: known from gaming news\n', 'rationale: known from the official gaming news\n');
     expect(edited).not.toBe(original);
     await writeReal(f, MAIN, edited);
-    const proposal = f.manager.proposal();
-    const refused = await f.manager.accept(review.runId, proposal?.proposalId ?? '', []);
-    expect(refused).toEqual({ ok: false, code: 'conflict', error: drifted });
+    expect(await f.manager.end(review.runId, 'apply', 1, c.check.id)).toEqual({ ok: false, code: 'conflict', error: drifted });
     expect(read(f, MAIN)).toBe(edited); // nothing applied
-    expect(f.manager.current()).toMatchObject({ state: 'review', proposalId: proposal?.proposalId });
+    expect(f.manager.session()).toMatchObject({ phase: 'confirming', drift: { files: [MAIN] } });
     // No rebase, and the base did not move (it is still the user's files at the start).
     const shadow = await openRunShadow(await runDirOf(f, review.runId), { root: f.root, library: 'Model' });
-    const kinds = (await shadow.commits()).map((c) => c.kind);
+    const kinds = (await shadow.commits()).map((x) => x.kind);
     expect(kinds).not.toContain('accept-base');
     expect(kinds).not.toContain('rebase');
     expect((await shadow.baseFiles()).get(MAIN)).toBe(original);
-    // The user undoes the edit in the editor: the same Accept goes through, with Claude's changes only.
+    // The user undoes the edit in the editor: the same Apply goes through, with Claude's changes only.
     await writeReal(f, MAIN, original);
-    const accepted = await f.manager.accept(review.runId, proposal?.proposalId ?? '', []);
-    expect(accepted, JSON.stringify(accepted)).toMatchObject({ ok: true });
+    for (let k = 0; k < 300 && f.manager.session()?.drift !== null; k++) await new Promise((r) => setTimeout(r, 20));
+    expect(await f.manager.end(review.runId, 'apply', 1, c.check.id)).toMatchObject({ ok: true });
     const main = read(f, MAIN);
     expect(main).toContain('rationale: known from gaming news\n');
     expect(main).toContain('lean: Spyro.pg_no_dark_past');
     expect(main).toContain('theorem cynder_not_good.holds : cynder_not_good :=');
     expect(main).toMatch(/id: cynder-not-good\ntype: GOAL\n/);
-    // Undo reverts the Accept.
+    // Undo reverts the Apply.
     expect(await f.workspace.undo('Spyro')).toMatchObject({ ok: true });
     expect(read(f, MAIN)).toBe(original);
     expect(await f.manager.dismiss(review.runId)).toMatchObject({ ok: true });
 
-    // Run 2: an edit inside pg-no-dark-past's block, next to the pin telelean's normalisation adds, is refused the same
-    // way (not a merge conflict); the proposal stays open, and Discard leaves the user's files as they are.
-    const review2 = await round1(f, 0);
-    expect(review2.verdict, JSON.stringify(review2.notices)).toBe('proved');
+    // Session 2: an edit inside pg-no-dark-past's block, next to the pin telelean's normalisation adds, is refused the
+    // same way (no merge); the session stays in its end confirmation, and Exit leaves the user's files as they are.
+    const review2 = await stage1(f, 0);
+    await acceptEverything(f.manager, review2.runId);
+    const c2 = await confirm(f.manager, review2.runId);
     const overlapping = original.replace('natural_name: PG games cannot have characters with dark pasts\nstance: rule\n', 'natural_name: PG games cannot have characters with dark pasts\nstance: believe\n');
     expect(overlapping).not.toBe(original);
     await writeReal(f, MAIN, overlapping);
-    const proposal2 = f.manager.proposal();
-    const refused2 = await f.manager.accept(review2.runId, proposal2?.proposalId ?? '', []);
-    expect(refused2).toEqual({ ok: false, code: 'conflict', error: drifted });
+    expect(await f.manager.end(review2.runId, 'apply', 1, c2.check.id)).toEqual({ ok: false, code: 'conflict', error: drifted });
     expect(read(f, MAIN)).toBe(overlapping); // nothing applied
-    expect(f.manager.current()?.state).toBe('review'); // the proposal stays open
-    expect(f.manager.proposal()?.proposalId).toBe(proposal2?.proposalId);
-    expect(await f.manager.discard(review2.runId)).toMatchObject({ ok: true });
+    expect(f.manager.current()?.state).toBe('review');
+    expect(await f.manager.end(review2.runId, 'exit')).toMatchObject({ ok: true });
     expect(read(f, MAIN)).toBe(overlapping);
     await finishFlow(f);
   });
@@ -362,7 +342,7 @@ describe('M2 flows end to end (real workspace, engine, proposals, git; FakeBacke
     const shadow = await openRunShadow(await runDirOf(f, review.runId), { root: f.root, library: 'Model' });
     const base = (await shadow.commits()).find((c) => c.kind === 'base');
     expect((await shadow.filesAt(base?.id ?? '')).get(MAIN)).toBe(main);
-    expect(await f.manager.discard(review.runId)).toMatchObject({ ok: true });
+    expect(await f.manager.end(review.runId, 'exit')).toMatchObject({ ok: true });
 
     // Preflight refuses an axiom as the target: nothing is declared, no run directory is made.
     const runDirsBefore = (await listRunDirs(f.runsDir, f.root)).length;
@@ -410,7 +390,7 @@ describe('M2 flows end to end (real workspace, engine, proposals, git; FakeBacke
     // The decision was recorded when the user answered (after the reload).
     const decisions = JSON.parse(readFileSync(path.join(f.root, '.telelean', 'subjects', 'Spyro', 'decisions.json'), 'utf8')) as { decisions: Array<{ run: string; answerText: string }> };
     expect(decisions.decisions.map((d) => [d.run, d.answerText])).toEqual([[waiting.runId, 'A rule (normative)']]);
-    expect(await f.manager.discard(review.runId)).toMatchObject({ ok: true });
+    expect(await f.manager.end(review.runId, 'exit')).toMatchObject({ ok: true });
     expect(existsSync(path.join(f.root, '.telelean', 'subjects', 'Spyro', 'attempts.jsonl'))).toBe(true);
     expect(statSync(path.join(f.root, MAIN)).isFile()).toBe(true);
     await finishFlow(f);

@@ -3,12 +3,14 @@
  * (a 2 px outline in high contrast), with its "✓ established" chip; a proved card that rests on a pending claim keeps
  * the blue glow and says why; the band binds the drawn arrows a checked proof uses, with its ✓ and "Together these
  * suffice" only when it is complete, and drawn open (dashed, no ✓) naming what lies outside it otherwise; a proof from
- * nothing puts its band on the ∅ stub; the Proposed view hides a band until the review reveals the result.
+ * nothing puts its band on the ∅ stub; the Proposed view hides a band until the review reveals the result (slice 2h:
+ * an edit session's, its results hidden until shown).
  */
 import { expect, test, type Page } from '@playwright/test';
 import { buildGraph, hostMessage, spyroGraph, spyroProvedGraph, type TlGraph } from '@telelean/core';
 import { makeNode, mapNode, withStatus, workspaceState } from '../shared/graphs';
-import { normativeProposal, reviewRun, TARGET, UPDATED } from '../shared/runs';
+import { TARGET, UPDATED } from '../shared/runs';
+import { hiddenStage, sessionRun, shownStage } from '../shared/sessions';
 import { card, checkArrows, edgePairs, openBoard, send, settle, shotPath, type OpenedBoard } from './helpers';
 
 let board: OpenedBoard | undefined;
@@ -202,17 +204,21 @@ test('a proof from nothing puts its band on the card’s ∅ stub', async ({ pag
   await page.screenshot({ path: shotPath('s1-band-on-mark.png') });
 });
 
-test('the Proposed view hides the band and the green glow of a new result until the review reveals it (RV-6, D-19)', async ({ page }) => {
+test('the Proposed view hides the band and the green glow of a new result until the review reveals it (RV-6, D-19; slice 2h: an edit session’s)', async ({ page }) => {
   board = await openBoard(page, spyroGraph(), 'dark', { vars: PROVED, workspace: workspaceState(), clock: UPDATED });
   await expect(band(page, TARGET)).toHaveCount(0); // not proved on the Current board
-  const proposal = normativeProposal();
-  await send(page, hostMessage('run', { run: reviewRun(proposal) }));
-  await send(page, hostMessage('proposal', { proposal }));
+  // The host's masked board while the results are hidden (§4.7): the target with the neutral chip, no band, no glow.
+  const hidden = hiddenStage();
+  await send(page, hostMessage('run', { run: sessionRun(hidden) }));
+  await send(page, hostMessage('session', { session: hidden }));
   await expect(page.locator('.tl-board')).toHaveAttribute('data-view', 'proposed');
   await expect(card(page, TARGET).locator('[data-chip="result-hidden"]')).toHaveText('result after the review');
   await expect(band(page, TARGET)).toHaveCount(0);
   await expect(card(page, TARGET)).not.toHaveAttribute('data-glow', 'established');
-  await page.getByTestId('show-result').click();
+  // Shown (Show results, or every statement decided): the host's board with the proof.
+  const shown = shownStage({}, { board: { ...shownStage().board, graph: spyroProvedGraph(11) } });
+  await send(page, hostMessage('session', { session: shown }));
+  await expect(card(page, TARGET).locator('[data-chip="result-hidden"]')).toHaveCount(0);
   await expect(band(page, TARGET)).toHaveCount(1);
   expect((await bandOf(page, TARGET)).complete).toBe('true');
   await expect(card(page, TARGET)).toHaveAttribute('data-glow', 'established');

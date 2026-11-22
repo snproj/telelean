@@ -158,7 +158,10 @@ test('AT6.7 the delete dialog lists premise dependents, proof dependents and sta
   await expect(dialog.getByTestId('delete-declared')).toContainText('Cynder would not be a good addition to the new Spyro game');
   await expect(dialog.getByTestId('delete-proofs')).toContainText('Cynder would not be a good addition to the new Spyro game');
   await expect(dialog.getByTestId('delete-mentions')).toHaveCount(0);
-  await expect(dialog).toContainText('hidden assumption');
+  // Slice 2i (S9, ES-9): no card-only delete, and so no warning about the hidden assumption it would leave behind.
+  await expect(dialog.getByRole('button')).toHaveText(['Delete card and its Lean code', 'Cancel']);
+  await expect(dialog).not.toContainText('keep Lean');
+  await expect(dialog).not.toContainText('hidden assumption');
   await page.screenshot({ path: shotPath('m1-delete-dialog.png') });
   // Cancel posts nothing; Escape too.
   await dialog.getByRole('button', { name: 'Cancel' }).click();
@@ -169,10 +172,10 @@ test('AT6.7 the delete dialog lists premise dependents, proof dependents and sta
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
   expect(await postedOfType(page, 'deleteNode')).toEqual([]);
-  // Card only, keep Lean.
+  // The card and its Lean code: the only delete there is.
   await dark.getByRole('button', { name: 'Delete' }).click();
-  await dialog.getByRole('button', { name: 'Delete card only, keep Lean' }).click();
-  expect((await postedOfType(page, 'deleteNode')).map((m) => m.payload)).toEqual([{ id: 'cynder-dark-past', keepLean: true, requestId: 'r1' }]);
+  await dialog.getByRole('button', { name: 'Delete card and its Lean code' }).click();
+  expect((await postedOfType(page, 'deleteNode')).map((m) => m.payload)).toEqual([{ id: 'cynder-dark-past', requestId: 'r1' }]);
   await expect(dialog).toHaveCount(0);
 });
 
@@ -198,7 +201,7 @@ test('AT6.7 statement mentions (lean-ref) are listed; Cancel has the focus, so D
   expect(await postedOfType(page, 'deleteNode')).toEqual([]);
   await dark.getByRole('button', { name: 'Delete' }).click();
   await dialog.getByRole('button', { name: 'Delete card and its Lean code' }).click();
-  expect((await postedOfType(page, 'deleteNode')).map((m) => m.payload)).toEqual([{ id: 'cynder-dark-past', keepLean: false, requestId: 'r1' }]);
+  expect((await postedOfType(page, 'deleteNode')).map((m) => m.payload)).toEqual([{ id: 'cynder-dark-past', requestId: 'r1' }]);
 
   // A code-less card offers just "Delete card".
   await card(page, 'pg-no-dark-past').locator('.tl-card__chevron').click();
@@ -214,7 +217,7 @@ test('AT6.7 when other declarations use its Lean code the host asks first: the d
   const refusal = (dependents: string[], dependentCards?: Record<string, { subject: string; type: 'PROPOSITION'; naturalName: string }>) => ({
     ok: false as const,
     code: 'needs-confirmation' as const,
-    error: `Deleting its Lean code breaks ${dependents.length} declarations that use it: they stop compiling. Delete anyway, or keep its Lean.`,
+    error: `Deleting its Lean code breaks ${dependents.length} declarations that use it: they stop compiling. Delete anyway, or cancel.`,
     dependents,
     ...(dependentCards ? { dependentCards } : {}),
   });
@@ -227,7 +230,7 @@ test('AT6.7 when other declarations use its Lean code the host asks first: the d
   // The answer opens the dialog again with the host's list: cards by their sentence (another subject's with its
   // subject), the lemma by its Lean name.
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole('heading')).toHaveText('Delete its Lean code too?');
+  await expect(dialog.getByRole('heading')).toHaveText('Delete it anyway?');
   await expect(dialog.getByTestId('delete-breaks-explanation')).toHaveText('These 3 declarations use its Lean code. They stop compiling if the code is deleted:');
   await expect(dialog.getByTestId('delete-breaks').locator('li')).toHaveText([
     'PCynder would not be a good addition to the new Spyro game',
@@ -237,20 +240,22 @@ test('AT6.7 when other declarations use its Lean code the host asks first: the d
   await expect(dialog.getByTestId('delete-breaks').locator('code')).toHaveText(['Spyro.helper_lemma']);
   await expect(dialog.locator('[data-dependent="other-goal"] .tl-glyph')).toHaveAttribute('data-kind', 'PROPOSITION');
   await expect(dialog.locator('[data-dependent="other-goal"]')).toHaveAttribute('data-subject', 'Bayonetta');
-  await expect(dialog.getByRole('button')).toHaveText(['Delete anyway', 'Delete card only, keep Lean', 'Cancel']);
+  // Slice 2i (S9, ES-9): Delete anyway or Cancel; the card-only delete is gone.
+  await expect(dialog.getByRole('button')).toHaveText(['Delete anyway', 'Cancel']);
+  await expect(dialog).not.toContainText('hidden assumption');
   await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
   await expect(page.getByTestId('toast')).toHaveCount(0); // a question, not an error
   await page.screenshot({ path: shotPath('m1-delete-needs-confirmation.png') });
   await dialog.getByRole('button', { name: 'Delete anyway' }).click();
   await expect(dialog).toHaveCount(0);
   expect((await postedOfType(page, 'deleteNode')).map((m) => m.payload)).toEqual([
-    { id: 'cynder-dark-past', keepLean: false, requestId: 'r1' },
-    { id: 'cynder-dark-past', keepLean: false, confirmed: true, requestId: 'r2' },
+    { id: 'cynder-dark-past', requestId: 'r1' },
+    { id: 'cynder-dark-past', confirmed: true, requestId: 'r2' },
   ]);
   await settle(page);
   await expect(page.getByTestId('toast')).toHaveCount(0);
 
-  // Asked again: Enter is Cancel (nothing is posted), and "card only" deletes the card and keeps the Lean.
+  // Asked again: Enter is Cancel (nothing is posted); asked once more, Escape posts nothing either, and the card stays.
   await replyNext(page, 'deleteNode', refusal(['Spyro.helper_lemma']));
   await dark.getByRole('button', { name: 'Delete' }).click();
   await dialog.getByRole('button', { name: 'Delete card and its Lean code' }).click();
@@ -261,12 +266,12 @@ test('AT6.7 when other declarations use its Lean code the host asks first: the d
   await replyNext(page, 'deleteNode', refusal(['Spyro.helper_lemma']));
   await dark.getByRole('button', { name: 'Delete' }).click();
   await dialog.getByRole('button', { name: 'Delete card and its Lean code' }).click();
-  await expect(dialog.getByTestId('delete-breaks')).toBeVisible(); // the second question (the first one has this button too)
-  await dialog.getByRole('button', { name: 'Delete card only, keep Lean' }).click();
-  expect((await postedOfType(page, 'deleteNode')).slice(3).map((m) => m.payload)).toEqual([
-    { id: 'cynder-dark-past', keepLean: false, requestId: 'r4' },
-    { id: 'cynder-dark-past', keepLean: true, requestId: 'r5' },
-  ]);
+  await expect(dialog.getByTestId('delete-breaks')).toBeVisible(); // the second question
+  await expect(dialog.getByRole('button')).toHaveText(['Delete anyway', 'Cancel']);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  expect((await postedOfType(page, 'deleteNode')).slice(3).map((m) => m.payload)).toEqual([{ id: 'cynder-dark-past', requestId: 'r4' }]);
+  await expect(card(page, 'cynder-dark-past')).toBeVisible();
   await expect(page.getByTestId('toast')).toHaveCount(0);
 });
 
@@ -339,8 +344,8 @@ test('AT6.11 the Context Menu section shows what the question’s statements pre
   await expect(summary).toHaveAttribute('title', /\+ presupposes: assumes characters exist, assumes games exist$/);
   await page.screenshot({ path: shotPath('m1-context-presupposes.png') });
   await page.getByTestId('formalize').click();
-  expect((await postedOfType(page, 'startRun')).map((m) => m.payload)).toEqual([
-    { target: 'cynder-not-good', premises: ['cynder-dark-past', 'new-spyro-pg'], requestId: 'r1' },
+  expect((await postedOfType(page, 'formalize')).map((m) => m.payload)).toEqual([
+    { inferences: [{ target: 'cynder-not-good', premises: ['cynder-dark-past', 'new-spyro-pg'] }], requestId: 'r1' },
   ]);
   expect(await postedOfType(page, 'theseSuffice')).toEqual([]);
   // The presuppositions themselves are in the Vocabulary band, above the board (no longer inside the column). A

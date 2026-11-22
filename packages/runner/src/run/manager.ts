@@ -2,71 +2,48 @@
  * The RunManager (WP3; docs/m2-plan.md sections 2, 3.7, 4 and 7.1; contracts in ./types.ts): one per model root, at
  * most one active run. Slice 2 (docs/slice2-plan.md 2d): every start is an edit session (`formalize`; `start` is a
  * one-inference `formalize`), run by the session layer (./session.ts) on top of the StepRunner (./step.ts), which runs
- * each step as one round. A run of version 1 (M2's, slice 1's) still runs M2's flow here (its proposal, Accept,
- * Feedback, ghost adoption, Discard) until it is reloaded in review, when it is converted into a session (§3.11,
- * ./legacy.ts). It never runs Lean itself (LeanCheckEngine) and writes the user's files only through the
- * ProposalService's apply (Accept).
+ * each step as one round. Slice 2h retired M2's review (its proposal, Accept, Feedback, ghost adoption and Discard): a
+ * run of version 1 (M2's, slice 1's) is converted into a session when it is recovered in review, or when a round it
+ * resumed after a reload ends (§3.11, ./legacy.ts). It never runs Lean itself (LeanCheckEngine) and writes the user's
+ * files only through the ProposalService's apply (a session's Apply).
  */
 import path from 'node:path';
 
 import {
-  ActionError,
-  buildProjectModel,
   isTerminalRunState,
-  parseLeanFile,
   REVIEW_TEXTS,
   upgradeLegacyProposal,
   type ActionOutcome,
   type CanvasPosition,
   type FileChange,
   type ItemDecision,
-  type ProjectModel,
-  type ProposalView,
   type RunVerdict,
   type RunView,
   type SessionView,
 } from '@telelean/core';
 
-import type { CheckContext, CheckReport, FreezeOutcome, FreezeRecord, GateReport, RenderedStatement } from '../gate/types.js';
 import { cancelRun as leanCancelRun } from '../lean/runLean.js';
 import { renderAnswersAsUserTurn } from '../llm/toolSchemas.js';
-import type { FinishStatus } from '../llm/types.js';
 import { openRunShadow } from '../shadow/index.js';
-import { PASSING_COMMIT_KINDS, type ShadowCommit, type ShadowWorkspace } from '../shadow/types.js';
+import { PASSING_COMMIT_KINDS, type ShadowWorkspace } from '../shadow/types.js';
 import type { Disposable } from '../workspace/types.js';
 import { legacySession } from './legacy.js';
 import { nonTerminal, scanRuns, writeJsonAtomic } from './persist.js';
-import { adoptionTurn, feedbackTurn, resumeTurn } from './prompts.js';
-import { ReviewRunner } from './review.js';
-import {
-  ActiveRun,
-  argsOfAnswered,
-  diffMaps,
-  driftRefusal,
-  errorText,
-  headCommit,
-  isModelPath,
-  okOutcome,
-  refused,
-  sentenceShort,
-  statusForRegate,
-  stripGhost,
-  summaryOf,
-} from './step.js';
-import type { FormalizeRequest, RunChange, RunCore, RunManager, RunManagerOptions, RunStartRequest } from './types.js';
+import { resumeTurn } from './prompts.js';
+import { EndRunner } from './sessionEnd.js';
+import { ActiveRun, argsOfAnswered, errorText, okOutcome, refused } from './step.js';
+import type { FormalizeRequest, RunChange, RunManager, RunManagerOptions, RunStartRequest } from './types.js';
 
 export { condenseRateLimit, driftRefusal, ENVIRONMENT_RETRY_MS, gateCheckOf, localTime, rateLimitNotice, validateAnswers, verdictOfStatus } from './step.js';
 
 
-/** Slice 2: the M2 actions of a proposal refused in an edit session (2h retires them). */
-const IN_A_SESSION = 'This run is an edit session: review its items instead.';
 /** Slice 2: a session action on a run of version 1. */
 const NOT_A_SESSION = 'This run is not an edit session.';
 
 // ---------------------------------------------------------------------------------------------
 // The manager
 
-class RunManagerImpl extends ReviewRunner implements RunManager {
+class RunManagerImpl extends EndRunner implements RunManager {
   constructor(o: RunManagerOptions) {
     super(o);
   }
@@ -84,12 +61,6 @@ class RunManagerImpl extends ReviewRunner implements RunManager {
     this.touch(run);
     if (run.p.session !== undefined) return this.sessionRunView(structuredClone(run.p), run.live?.view ?? null, run.live?.viewError);
     return structuredClone(run.view);
-  }
-
-  proposal(): ProposalView | null {
-    const shown = this.run?.saved;
-    if (shown === undefined || shown.view.state !== 'review' || shown.proposal === undefined || shown.session !== undefined) return null;
-    return structuredClone(shown.proposal);
   }
 
   session(): SessionView | null {
@@ -131,14 +102,14 @@ class RunManagerImpl extends ReviewRunner implements RunManager {
     }
   }
 
-  // ---- what ends a round: M2's proposal (a run of version 1), or a session step's end
+  // ---- what ends a round: a session step's end, or (a run of version 1 resumed after a reload) its conversion
 
   protected roundAccepted(run: ActiveRun): Promise<void> {
-    return run.p.session !== undefined ? this.stepAccepted(run) : this.settleAccepted(run);
+    return run.p.session !== undefined ? this.stepAccepted(run) : this.settleLegacy(run);
   }
 
   protected roundReverted(run: ActiveRun, verdict: RunVerdict, reason: string): Promise<void> {
-    return run.p.session !== undefined ? this.stepReverted(run, verdict, reason) : this.settleReverted(run, verdict, reason);
+    return run.p.session !== undefined ? this.stepReverted(run, verdict, reason) : this.settleLegacy(run, reason);
   }
 
   protected roundEnvironment(run: ActiveRun, reason: string): Promise<void> {
@@ -149,131 +120,35 @@ class RunManagerImpl extends ReviewRunner implements RunManager {
     return run.p.session !== undefined ? this.failStep(run, 'failed', error) : this.failRun(run, error);
   }
 
-  /** The gate passed: ws/ back to the gate-pass files (edits after finish are discarded), then the proposal. */
-  protected async settleAccepted(run: ActiveRun): Promise<void> {
-    const r = run.round;
-    const gatePass = r.gatePass;
-    const passing = r.passing;
-    if (gatePass === undefined || passing === undefined) throw new Error('the passing gate state is missing');
-    const after = await run.shadow.changes(gatePass.id);
-    if (after.length > 0) {
-      await run.shadow.revertTo(gatePass.id, 'Discarded edits made after finish', run.view.round);
-      this.notice(run, 'info', 'info', 'Changes made after finish were discarded: the proposal shows exactly the files the checks passed.');
-    }
-    await this.buildProposal(run, r.verdict ?? 'proved', passing.check, passing.flaggedDefinitions);
-  }
-
-  /** Give-up, no finish, caps: revert to the last passing commit, normalise it, re-check it, then the proposal. */
-  protected async settleReverted(run: ActiveRun, verdict: RunVerdict, reason: string): Promise<void> {
+  /**
+   * Slice 2h (§3.11, D2-16): the round of a run of version 1 ended (an M2 run, interrupted under an older telelean and
+   * resumed here). M2 settled it into a proposal for its Accept, Feedback and Discard, which 2h retires; it becomes an
+   * edit session instead, as a v1 run in review does when it is recovered (`convertLegacy`), so its work is reviewed as
+   * items. ws/ first goes back to exactly the files the checks passed: the gate-pass commit (edits after finish are
+   * discarded), or, for a give-up, a cap or no finish (`reverted`), the last commit that passed (M2's revert).
+   */
+  protected async settleLegacy(run: ActiveRun, reverted?: string): Promise<void> {
     const shadow = run.shadow;
-    const target = await shadow.lastCommit(PASSING_COMMIT_KINDS);
-    let reverted: ProposalView['report']['reverted'];
-    if (target !== undefined) {
-      await shadow.revertTo(target.id, `Reverted to “${target.label}”`, run.view.round);
-      reverted = { toCommit: target.id, label: target.label, reason };
-      this.notice(run, 'reverted', 'warning', `telelean reverted Claude's working copy to “${target.label}” (${reason}).`);
-      if (target.kind === 'base') {
-        // Back before any freeze of this round: the shown state is unfrozen.
-        run.view.stage = 'formalise';
-        run.view.frozen = undefined;
+    if (reverted === undefined) {
+      const gatePass = run.round.gatePass;
+      if (gatePass === undefined) throw new Error('the passing gate state is missing');
+      if ((await shadow.changes(gatePass.id)).length > 0) {
+        await shadow.revertTo(gatePass.id, 'Discarded edits made after finish', run.view.round);
+        this.notice(run, 'info', 'info', 'Changes made after finish were discarded: the session shows exactly the files the checks passed.');
       }
-    }
-    const ctx = this.checkContext(run);
-    try {
-      await this.o.services.engine.normalise(ctx);
-    } catch (e) {
-      this.log('warn', `normalising the reverted state failed: ${errorText(e)}`);
-    }
-    let check: CheckReport;
-    try {
-      check = await this.o.services.engine.check(ctx);
-    } catch (e) {
-      check = { outcome: 'environment', environment: errorText(e), g0: [], findings: [], diagnostics: [], durationMs: 0 };
-    }
-    if (!this.live(run)) return;
-    await this.buildProposal(run, verdict, check, check.rules?.flaggedDefinitions ?? [], reverted);
-  }
-
-  protected statementsToRender(run: ActiveRun, check: CheckReport): string[] {
-    const model = check.model;
-    if (model === undefined) return [];
-    const sel = run.p.selection;
-    const focus = new Set([sel.target, ...sel.premises, ...sel.adoptedGhosts]);
-    const touched = new Set([...(check.rules?.declarations.added ?? []), ...(check.rules?.declarations.changed ?? [])]);
-    const names = new Set<string>();
-    for (const entry of model.nodes.values()) {
-      if (entry.node.subject !== sel.subject) continue;
-      const st = entry.node.lean.statement;
-      if (st !== undefined && (touched.has(st) || focus.has(entry.node.id))) names.add(st);
-    }
-    return [...names];
-  }
-
-  protected async buildProposal(
-    run: ActiveRun,
-    verdict: RunVerdict,
-    check: CheckReport,
-    flagged: GateReport['flaggedDefinitions'],
-    reverted?: ProposalView['report']['reverted'],
-  ): Promise<void> {
-    const { engine, proposals } = this.o.services;
-    const shadow = run.shadow;
-    let rendered: RenderedStatement[] = [];
-    if (check.model !== undefined && check.outcome !== 'environment' && check.g0.length === 0) {
-      const names = this.statementsToRender(run, check);
-      if (names.length > 0) {
-        try {
-          rendered = await engine.renderStatements({ shadow, job: this.checkContext(run).job }, names);
-        } catch (e) {
-          this.log('warn', `statements could not be rendered: ${errorText(e)}`);
-        }
+    } else {
+      const target = await shadow.lastCommit(PASSING_COMMIT_KINDS);
+      if (target !== undefined) {
+        await shadow.revertTo(target.id, `Reverted to “${target.label}”`, run.view.round);
+        this.notice(run, 'reverted', 'warning', `telelean reverted Claude's working copy to “${target.label}” (${reverted}).`);
       }
     }
     if (!this.live(run)) return;
-    let drift: string[] = [];
-    try {
-      const readText = this.o.workspace.readText?.bind(this.o.workspace);
-      if (readText !== undefined) drift = await proposals.baseDrift(shadow, readText, this.o.workspace.modelFiles?.());
-    } catch (e) {
-      this.log('warn', `drift could not be computed: ${errorText(e)}`);
-    }
-    const currentGraph = this.graph(run.p.selection.subject);
-    if (currentGraph === undefined) throw new Error(`the subject ${run.p.selection.subject} could not be loaded`);
-    run.ids.proposal += 1;
-    const proposalId = `p${run.ids.proposal}`;
-    this.touch(run);
-    const proposal = await proposals.build({
-      runId: run.runId,
-      round: run.view.round,
-      proposalId,
-      selection: run.p.selection,
-      shadow,
-      check,
-      rendered,
-      currentGraph,
-      verdict,
-      ...(run.p.lastFinish !== undefined ? { finish: run.p.lastFinish } : {}),
-      ghosts: run.p.ghosts.map(stripGhost),
-      gateAttempts: run.p.gateAttempts.filter((g) => g.round === run.view.round),
-      flaggedDefinitions: flagged,
-      usage: { ...run.view.usage },
-      durationMs: Math.max(0, this.nowMs() - Date.parse(run.view.startedAt)),
-      agentMs: run.p.clocks.totalAgentMs + (run.clockSince !== undefined ? Math.max(0, this.nowMs() - run.clockSince) : 0),
-      ...(reverted !== undefined ? { reverted } : {}),
-      drift,
-      graphVersion: this.nowMs(),
-    });
-    if (!this.live(run)) return;
-    run.p.proposal = proposal;
-    run.view.proposalId = proposalId;
-    run.view.verdict = verdict;
-    this.setState(run, 'review');
-    this.activity(run, 'system', `Round ${run.view.round} ended: ${verdict}. The proposal is ready for review.`);
-    await this.appendAttempt(run, verdict, proposal.report.footprint);
-    await this.save(run, { run: true, proposal: true, session: false });
+    run.view.state = 'review';
+    await this.convertLegacy(run);
   }
 
-  // ---- RunManager: cancel, resume, discard, dismiss
+  // ---- RunManager: cancel, resume, dismiss
 
   async cancel(runId: string): Promise<ActionOutcome> {
     const run = this.runFor(runId);
@@ -337,32 +212,6 @@ class RunManagerImpl extends ReviewRunner implements RunManager {
     return this.continueSession(run, resumeTurn(this.currentFreeze(run) !== undefined));
   }
 
-  async discard(runId: string): Promise<ActionOutcome> {
-    return this.exclusive('discarding', () => this.discardNow(runId));
-  }
-
-  protected async discardNow(runId: string): Promise<ActionOutcome> {
-    const run = this.runFor(runId);
-    if (run === undefined) return refused('not-found', 'That run is not active any more.');
-    const state = run.view.state;
-    if (state !== 'review' && state !== 'interrupted') return refused('conflict', 'Only a finished round (or an interrupted run) can be discarded; Cancel stops a working run.');
-    if (run.p.session !== undefined) {
-      // Until 2f's Exit (endSession): a session in a stage, or interrupted, ends discarded; its records are written now (D2-11).
-      await this.writeSessionAttempts(run, 'discarded');
-      await this.endRun(run, 'discarded');
-      return okOutcome('Session ended');
-    }
-    const hadProposal = state === 'review' && run.p.proposal !== undefined;
-    if (state === 'review') await this.resolveAttempt(run, 'discarded');
-    else {
-      await this.appendAttempt(run, 'cancelled');
-      await this.resolveAttempt(run, 'discarded');
-    }
-    await this.endRun(run, 'discarded');
-    // "Stop" on an interrupted run discards no proposal (fixer round 1).
-    return okOutcome(hadProposal ? 'Proposal discarded' : 'Run stopped');
-  }
-
   async dismiss(runId: string): Promise<ActionOutcome> {
     const run = this.runFor(runId);
     if (run === undefined) return refused('not-found', 'That run is not shown any more.');
@@ -370,278 +219,6 @@ class RunManagerImpl extends ReviewRunner implements RunManager {
     this.run = undefined;
     this.emit({ run: true, proposal: true, session: true });
     return okOutcome('Run dismissed');
-  }
-
-  // ---- RunManager: feedback (docs/m2-plan.md section 4.8)
-
-  // ---- RunManager: feedback (docs/m2-plan.md section 4.8)
-
-  async feedback(runId: string, text: string): Promise<ActionOutcome> {
-    return this.exclusive('sending feedback', () => this.feedbackNow(runId, text));
-  }
-
-  protected async feedbackNow(runId: string, text: string): Promise<ActionOutcome> {
-    const run = this.runFor(runId);
-    if (run === undefined) return refused('not-found', 'That run is not active any more.');
-    if (run.p.session !== undefined) return refused('conflict', IN_A_SESSION);
-    if (run.view.state !== 'review') return refused('conflict', 'Feedback is possible once Claude has finished its round.');
-    const trimmed = text.trim();
-    if (trimmed === '') return refused('invalid', 'Write what Claude should change.');
-    await this.resolveAttempt(run, 'superseded');
-    const head = await headCommit(run.shadow);
-    this.startNewRound(run, 'formalise');
-    if (head !== undefined) run.p.roundStartCommit = head.id;
-    this.notice(run, 'info', 'info', `Round ${run.view.round}: your feedback was sent to Claude.`);
-    this.activity(run, 'system', `Round ${run.view.round} (Feedback): “${sentenceShort(trimmed, 120)}”`);
-    this.setState(run, 'working');
-    await this.save(run, { run: true, proposal: true, session: false });
-    const outcome = await this.continueSession(run, feedbackTurn(trimmed, this.o.settings.caps));
-    return outcome.ok ? okOutcome('Feedback sent to Claude') : outcome;
-  }
-
-  // ---- RunManager: ghosts (docs/m2-plan.md section 4.9)
-
-  async adoptGhost(runId: string, ghostId: string, rationale?: string): Promise<ActionOutcome> {
-    return this.exclusive('adopting the suggestion', () => this.adoptGhostNow(runId, ghostId, rationale));
-  }
-
-  protected async adoptGhostNow(runId: string, ghostId: string, rationale?: string): Promise<ActionOutcome> {
-    const run = this.runFor(runId);
-    if (run === undefined) return refused('not-found', 'That run is not active any more.');
-    if (run.p.session !== undefined) return refused('conflict', IN_A_SESSION);
-    if (run.view.state !== 'review') return refused('conflict', "A suggestion can be adopted once Claude's round has ended.");
-    const ghost = run.p.ghosts.find((g) => g.id === ghostId);
-    if (ghost === undefined) return refused('not-found', 'That suggestion is not part of this run.');
-    if (ghost.state !== 'suggested') return refused('conflict', `That suggestion was already ${ghost.state}.`);
-    const shadow = run.shadow;
-    const sel = run.p.selection;
-    const before = await headCommit(shadow);
-    let model: ProjectModel;
-    try {
-      model = await this.shadowModel(run);
-    } catch (e) {
-      return refused('internal', `telelean could not read its working copy: ${errorText(e)}`);
-    }
-    let plan: ReturnType<RunCore['planGhostAdoption']>;
-    try {
-      plan = this.core.planGhostAdoption(model, {
-        subject: sel.subject,
-        target: sel.target,
-        naturalName: ghost.naturalName,
-        leanStatement: ghost.leanStatement,
-        leanName: ghost.leanName,
-        ...(rationale !== undefined && rationale.trim() !== '' ? { rationale: rationale.trim() } : {}),
-        session: run.runId,
-        today: this.today(),
-      });
-    } catch (e) {
-      if (e instanceof ActionError) return refused(e.code, e.message);
-      return refused('internal', `The suggestion could not be written: ${errorText(e)}`);
-    }
-    const nextRound = run.view.round + 1;
-    let adoptCommit: ShadowCommit;
-    try {
-      await shadow.writeFiles(plan.changes);
-      adoptCommit = await shadow.commit('adopt', `Adopted “${sentenceShort(ghost.naturalName)}”`, nextRound);
-    } catch (e) {
-      if (before !== undefined) await shadow.revertTo(before.id, 'Adoption undone', run.view.round).catch(() => undefined);
-      return refused('internal', `The suggestion could not be written: ${errorText(e)}`);
-    }
-    const selection = { ...sel, adoptedGhosts: [...sel.adoptedGhosts, plan.nodeId] };
-    const ctx: CheckContext = {
-      ...this.checkContext(run),
-      selection,
-      stage: 'formalise',
-      round: nextRound,
-      teleleanBlocks: [...selection.adoptedGhosts],
-      roundStartCommit: adoptCommit.id,
-    };
-    delete ctx.freeze;
-    let frozen: FreezeOutcome;
-    try {
-      frozen = await this.o.services.engine.freeze(ctx);
-    } catch (e) {
-      frozen = { ok: false, refusals: [errorText(e)], report: { outcome: 'environment', environment: errorText(e), g0: [], findings: [], diagnostics: [], durationMs: 0 }, environment: errorText(e) };
-    }
-    if (!this.live(run)) return refused('conflict', 'This run has ended.');
-    if (!frozen.ok) {
-      if (before !== undefined) await shadow.revertTo(before.id, 'Adoption undone: the statements could not be frozen with it', run.view.round);
-      const why = frozen.environment !== undefined ? `telelean could not run Lean (${frozen.environment})` : frozen.refusals.join('; ');
-      this.notice(run, 'info', 'warning', `“${sentenceShort(ghost.naturalName)}” could not be adopted: ${why}.`);
-      await this.save(run);
-      return refused('conflict', `The suggestion could not be adopted: ${why}`);
-    }
-    await this.resolveAttempt(run, 'superseded');
-    this.startNewRound(run, 'prove');
-    run.p.selection = selection;
-    run.p.roundStartCommit = adoptCommit.id;
-    run.p.freezes.push(frozen.record);
-    run.view.frozen = { round: run.view.round, at: frozen.record.at, permitted: summaryOf(frozen.record.snapshot.permitted) };
-    ghost.state = 'adopted';
-    ghost.nodeId = plan.nodeId;
-    const shortName = plan.leanName.split('.').pop() ?? plan.leanName;
-    ghost.leanName = shortName;
-    if (frozen.report.model !== undefined) run.lastModel = frozen.report.model;
-    this.notice(run, 'info', 'info', `You adopted “${sentenceShort(ghost.naturalName)}” as an axiom; Claude now proves the target with it (round ${run.view.round}).`);
-    this.activity(run, 'ghost', `Adopted ${ghost.id} as ${plan.nodeId}; statements frozen again with it selected.`, true);
-    this.setState(run, 'working');
-    await this.save(run, { run: true, proposal: true, session: false });
-    const turn = adoptionTurn({ nodeId: plan.nodeId, sentence: ghost.naturalName, leanName: plan.leanName, statement: ghost.leanStatement, caps: this.o.settings.caps });
-    const outcome = await this.continueSession(run, turn);
-    return outcome.ok ? okOutcome(`Adopted “${sentenceShort(ghost.naturalName)}”`) : outcome;
-  }
-
-  async rejectGhost(runId: string, ghostId: string): Promise<ActionOutcome> {
-    const run = this.runFor(runId);
-    if (run === undefined) return refused('not-found', 'That run is not active any more.');
-    if (run.ended || isTerminalRunState(run.view.state)) return refused('conflict', 'This run has already ended.');
-    if (run.p.session !== undefined) return refused('conflict', IN_A_SESSION);
-    const ghost = run.p.ghosts.find((g) => g.id === ghostId);
-    if (ghost === undefined) return refused('not-found', 'That suggestion is not part of this run.');
-    if (ghost.state !== 'suggested') return refused('conflict', `That suggestion was already ${ghost.state}.`);
-    ghost.state = 'rejected';
-    const shown = run.p.proposal?.ghosts.find((g) => g.id === ghostId);
-    if (shown !== undefined) shown.state = 'rejected';
-    this.activity(run, 'ghost', `You declined ${ghost.id}: “${sentenceShort(ghost.naturalName)}”.`);
-    await this.save(run, { run: true, proposal: run.p.proposal !== undefined, session: false });
-    return okOutcome('Suggestion declined');
-  }
-
-  /** The shadow's model files parsed (syntactic: what core's adoption plan needs). */
-  protected async shadowModel(run: ActiveRun): Promise<ProjectModel> {
-    const files = await run.shadow.currentFiles();
-    const library = run.p.library;
-    const parsed = [...files.entries()].filter(([rel]) => rel.endsWith('.lean') && isModelPath(rel, library)).map(([rel, text]) => parseLeanFile(rel, text));
-    const lakefile = files.get('lakefile.toml');
-    return buildProjectModel({ files: parsed, fileHashes: {}, library, ...(lakefile !== undefined ? { lakefile: { path: 'lakefile.toml', text: lakefile } } : {}) });
-  }
-
-  // ---- RunManager: accept (docs/m2-plan.md section 7.1)
-
-  async accept(runId: string, proposalId: string, definitions: readonly string[]): Promise<ActionOutcome> {
-    return this.exclusive('accepting', () => this.acceptNow(runId, proposalId, definitions));
-  }
-
-  protected async acceptNow(runId: string, proposalId: string, definitions: readonly string[]): Promise<ActionOutcome> {
-    const run = this.runFor(runId);
-    if (run === undefined) return refused('not-found', 'That run is not active any more.');
-    if (run.p.session !== undefined) return refused('conflict', IN_A_SESSION);
-    if (run.view.state !== 'review' || run.p.proposal === undefined) return refused('conflict', 'There is no proposal to accept.');
-    const proposal = run.p.proposal;
-    if (proposal.proposalId !== proposalId) return refused('not-found', 'That proposal was replaced; review the current one.');
-    const missingDefinitions = proposal.definitions.filter((d) => !definitions.includes(d.id));
-    if (missingDefinitions.length > 0) return refused('invalid', 'Answer every definition question: a “no” is feedback.');
-    const workspace = this.o.workspace;
-    const readReal = workspace.readText?.bind(workspace);
-    if (readReal === undefined || workspace.applyChanges === undefined) return refused('not-yet', 'This workspace cannot apply proposals.');
-    const { proposals, engine } = this.o.services;
-    const shadow = run.shadow;
-    const request = { proposal, shadow, readReal, today: this.today(), premises: run.p.selection.premises.length };
-    const drift = await proposals.baseDrift(shadow, readReal, workspace.modelFiles?.());
-    // Spec v4 ES-7 (slice 1f): the run's base never moves. While the user's files differ from it (a hand edit, a git
-    // checkout, another tool: the board itself cannot be edited during a run, ES-9), Accept settles nothing and says
-    // which files differ; the run stays in review, so undoing those edits makes the same Accept go through.
-    if (drift.length > 0) return refused('conflict', driftRefusal(drift));
-    let plan = await proposals.planAccept(request);
-    if (!plan.ok) return refused(plan.code, plan.error);
-    // Slice 1e (1f's verification, ES-7 / A4 "nothing is merged"): the plan reads the user's files again and merges onto
-    // what it read, so a hand edit that lands between `baseDrift`'s read and the plan's would be merged silently. The
-    // plan's own drift (computed from the very read it applies) is authoritative: if the files differ from the base
-    // now, nothing is applied.
-    if (plan.drift.length > 0) return refused('conflict', driftRefusal(plan.drift));
-    if (!this.live(run)) return refused('conflict', 'This run has ended.');
-
-    let shown: ShadowCommit | undefined;
-    if (drift.length > 0) {
-      // This rebase is unreachable since slice 1f (ES-7): the drift refusal above returns first. Slice 2 removes it.
-      // D-21: rebase onto the user's current files, then re-freeze and re-gate with B = their files at Accept.
-      shown = await headCommit(shadow);
-      try {
-        const library = run.p.library;
-        const realPaths = new Set((workspace.modelFiles?.() ?? []).filter((p) => isModelPath(p, library)));
-        const wsNow = await shadow.currentFiles();
-        const real = new Map<string, string>();
-        for (const rel of realPaths) {
-          const text = await readReal(rel);
-          if (text !== null) real.set(rel, text);
-        }
-        await shadow.writeFiles(diffMaps(wsNow, real, library));
-        const acceptBase = await shadow.commit('accept-base', 'Your files at Accept', run.view.round);
-        await shadow.writeFiles(diffMaps(real, plan.shadowState, library));
-        const rebase = await shadow.commit('rebase', "Claude's changes rebased onto your files", run.view.round);
-        const status = statusForRegate(proposal.report.verdict, run.p.lastFinish?.status);
-        const ctx: CheckContext = { ...this.checkContext(run), baseCommit: acceptBase.id, roundStartCommit: rebase.id, stage: 'formalise' };
-        delete ctx.freeze;
-        await engine.normalise(ctx);
-        let failure: string | undefined;
-        let freeze: FreezeRecord | undefined;
-        if (status === 'proved') {
-          const f = await engine.freeze(ctx);
-          if (!f.ok) failure = f.environment !== undefined ? `telelean could not run Lean (${f.environment})` : f.refusals.join('; ');
-          else freeze = f.record;
-        }
-        if (failure === undefined) {
-          const gateCtx: CheckContext & { status: FinishStatus } = { ...ctx, stage: freeze !== undefined ? 'prove' : 'formalise', status };
-          if (freeze !== undefined) gateCtx.freeze = freeze;
-          const report = await engine.gate(gateCtx);
-          if (report.environment !== undefined) failure = `telelean could not run the checks (${report.environment})`;
-          else if (!report.passed) {
-            const dctx = this.describeContext(run, report.check.model);
-            failure = report.findings.map((f) => this.describe(f, dctx)).join('; ') || 'the checks failed';
-          }
-        }
-        if (failure !== undefined) {
-          if (shown !== undefined) await shadow.revertTo(shown.id, 'Accept refused: working copy restored', run.view.round);
-          return refused(
-            'conflict',
-            `Accept was refused: Claude's changes, applied to your current files, did not pass the checks (${failure}). Discard, or undo your edits since the run started and Accept again.`,
-          );
-        }
-        const shownState = new Map([...(await shadow.currentFiles())].filter(([rel]) => isModelPath(rel, library)));
-        plan = await proposals.planAccept({ ...request, shownState });
-        if (!plan.ok) {
-          if (shown !== undefined) await shadow.revertTo(shown.id, 'Accept refused: working copy restored', run.view.round);
-          return refused(plan.code, plan.error);
-        }
-      } catch (e) {
-        if (shown !== undefined) await shadow.revertTo(shown.id, 'Accept refused: working copy restored', run.view.round).catch(() => undefined);
-        return refused('internal', `Accept failed: ${errorText(e)}`);
-      }
-    }
-    if (!this.live(run)) return refused('conflict', 'This run has ended.');
-    const outcome = await proposals.apply(plan, workspace, run.p.selection.subject);
-    if (!outcome.ok) {
-      if (shown !== undefined) await shadow.revertTo(shown.id, 'Accept refused: working copy restored', run.view.round).catch(() => undefined);
-      return outcome;
-    }
-    await this.resolveAttempt(run, 'accepted');
-    const target = this.graph(run.p.selection.subject)?.nodes.find((n) => n.id === run.p.selection.target);
-    // An Accept that changed no file records the outcome only: no history entry, so no Undo step (fixer round 1). The
-    // workspace says which: `undoable` is false exactly when it applied nothing.
-    const changedFiles = !outcome.ok || outcome.undoable;
-    let label: string | undefined;
-    try {
-      label = this.core.proposalLabel(proposal.report.verdict, target?.naturalName ?? run.p.selection.target, {
-        adoptedGhosts: run.p.selection.adoptedGhosts.length,
-        premises: run.p.selection.premises.length,
-      });
-    } catch {
-      label = undefined;
-    }
-    // Fixer round 3: the outcome as data (core RunView.accepted), so a board that did not send the Accept need not parse
-    // the notice below.
-    run.view.accepted = { changedFiles };
-    if (changedFiles) this.notice(run, 'info', 'info', label !== undefined ? `Accepted: ${label}. Undo reverts it.` : 'Accepted. Undo reverts it.');
-    else this.notice(run, 'info', 'info', `Recorded${label !== undefined ? `: ${label}` : ''} (no file changed).`);
-    await this.endRun(run, 'accepted');
-    return changedFiles ? outcome : { ...outcome, label: label !== undefined ? `Recorded: ${label} (no file changed)` : 'Recorded (no file changed)' };
-  }
-
-  async proposalDiff(runId: string, proposalId: string): Promise<FileChange[]> {
-    const run = this.runFor(runId);
-    const proposal = run?.p.proposal;
-    if (run === undefined || run.p.session !== undefined || proposal === undefined || proposal.proposalId !== proposalId) return [];
-    return this.o.services.proposals.diffFiles(run.shadow, proposal);
   }
 
   // ---- recovery and disposal (docs/m2-plan.md section 4.6)
@@ -670,8 +247,9 @@ class RunManagerImpl extends ReviewRunner implements RunManager {
     }
     if (newest === undefined) return;
     const p = newest.run;
-    // A proposal saved by a build before spec v4 (three kinds, lifecycle items) is read in the two kinds, so the board
-    // can still show it, and Accept or Discard it (slice 1a fixer; the save at the end writes it back upgraded).
+    // A proposal saved by a build before spec v4 (three kinds, lifecycle items) is read in the two kinds (slice 1a fixer):
+    // since 2h no board shows a proposal, and a v1 run in review is converted into a session below (2d), which reads the
+    // shadow's commits, never the proposal; the upgrade stays so that run.json is never left in the old kinds.
     if (p.proposal !== undefined && upgradeLegacyProposal(p.proposal)) {
       this.log('info', `run ${p.view.runId}: its proposal was saved by an older telelean; it is read with the kinds AXIOM and PROPOSITION`);
     }
@@ -756,6 +334,7 @@ class RunManagerImpl extends ReviewRunner implements RunManager {
         .catch(() => undefined);
     }
     this.disposed = true;
+    this.disposeEnd();
     this.listeners.clear();
     return written;
   }
@@ -789,15 +368,15 @@ class RunManagerImpl extends ReviewRunner implements RunManager {
       this.log('error', `run ${p.view.runId} could not be converted into an edit session: ${errorText(e)}`);
       delete p.proposal;
       delete p.view.proposalId;
-      p.view.error = `This run was started by an older telelean and could not be converted (${errorText(e)}): Exit it.`;
+      // Slice 2h: with no session, Exit is not offered; Stop (Cancel) ends it, its files untouched.
+      p.view.error = `This run was started by an older telelean and could not be converted (${errorText(e)}): Stop it.`;
       this.notice(run, 'info', 'error', p.view.error);
       await this.save(run, { run: true, proposal: true, session: false });
     }
   }
 
   // ---- Slice 2 (docs/slice2-plan.md 2.5): the review actions. While a step runs, D2-62's refusal. 2e builds decide,
-  // reveal, the Undo and Redo, submit and the raw diff (review.ts); `end` and `moveProposed` are 2f's (until then
-  // `not-yet`).
+  // reveal, the Undo and Redo, submit and the raw diff (review.ts); 2f `end` (sessionEnd.ts) and `moveProposed`.
 
   /** The session run `runId` names, or why there is none. */
   protected sessionRun(runId: string): ActiveRun | ActionOutcome {
@@ -805,15 +384,6 @@ class RunManagerImpl extends ReviewRunner implements RunManager {
     if (run === undefined || run.ended) return refused('not-found', 'That run is not active any more.');
     if (run.p.session === undefined) return refused('conflict', NOT_A_SESSION);
     return run;
-  }
-
-  /** D2-62 for a review action, then `not-yet` until its sub-slice builds it. */
-  protected reviewAction(runId: string): Promise<ActionOutcome> {
-    const run = this.sessionRun(runId);
-    if (!(run instanceof ActiveRun)) return Promise.resolve(run);
-    const s = this.sessionOf(run);
-    if (this.stepRunning(s)) return Promise.resolve(refused('refused', REVIEW_TEXTS.stepRunning));
-    return Promise.resolve(refused('not-yet', REVIEW_TEXTS.notBuiltYet));
   }
 
   /** A review action of 2e on the session run `runId` names (review.ts). */
@@ -853,12 +423,24 @@ class RunManagerImpl extends ReviewRunner implements RunManager {
     return this.exclusive('submitting the review', () => this.submitNow(run, stage));
   }
 
-  /** EN-1-EN-4 (2f). While a step runs only `exit` is not refused (D2-62); Exit itself comes with 2f. */
-  end(runId: string, decision: 'apply' | 'exit' | 'back', _stage?: number, _check?: string): Promise<ActionOutcome> {
-    if (decision !== 'exit') return this.reviewAction(runId);
+  /**
+   * EN-1-EN-4 (2f, §3.10; sessionEnd.ts). While a step runs only `exit` is not refused (D2-62). Exit is never locked out
+   * by another action in progress (the host does not queue it either, AF14), so it can always stop a step; Apply and Back
+   * to review are one user action at a time, as Submit review.
+   */
+  async end(runId: string, decision: 'apply' | 'exit' | 'back', stage?: number, check?: string): Promise<ActionOutcome> {
+    if (this.disposed) return refused('conflict', 'telelean is shutting down.');
     const run = this.sessionRun(runId);
-    if (!(run instanceof ActiveRun)) return Promise.resolve(run);
-    return Promise.resolve(refused('not-yet', REVIEW_TEXTS.notBuiltYet));
+    if (!(run instanceof ActiveRun)) return run;
+    try {
+      if (decision === 'exit') return await this.exitNow(run);
+      if (this.stepRunning(this.sessionOf(run))) return refused('refused', REVIEW_TEXTS.stepRunning);
+      if (decision === 'back') return await this.exclusive('going back to the review', () => this.backNow(run, stage));
+      return await this.exclusive('applying the session', () => this.applyNow(run, stage, check));
+    } catch (e) {
+      this.log('error', `ending the session failed: ${errorText(e)}`);
+      return refused('internal', `telelean could not end the session: ${errorText(e)}`);
+    }
   }
 
   async retry(runId: string): Promise<ActionOutcome> {
@@ -878,8 +460,9 @@ class RunManagerImpl extends ReviewRunner implements RunManager {
     }
   }
 
-  moveProposed(runId: string, _positions: Readonly<Record<string, CanvasPosition>>): Promise<ActionOutcome> {
-    return this.reviewAction(runId);
+  /** D2-33 (2f): a move on the Proposed view, one session-stack step (refused while a step runs, as every review action). */
+  moveProposed(runId: string, positions: Readonly<Record<string, CanvasPosition>>): Promise<ActionOutcome> {
+    return this.review(runId, (run) => this.moveNow(run, positions));
   }
 
 }

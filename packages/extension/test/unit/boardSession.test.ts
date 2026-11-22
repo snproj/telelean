@@ -71,7 +71,7 @@ describe('actions: actionResult and notices (AT5.7)', () => {
   });
 
   it('without a requestId posts no actionResult, only the notice', async () => {
-    await session.handle(message('deleteNode', { id: 'pg-no-dark-past', keepLean: false }));
+    await session.handle(message('deleteNode', { id: 'pg-no-dark-past' }));
     expect(ports.of('actionResult')).toEqual([]);
     expect(ports.of('notice')[0]?.payload).toMatchObject({ text: 'did delete-node', undoable: true });
   });
@@ -113,7 +113,7 @@ describe('actions: actionResult and notices (AT5.7)', () => {
     ws.graph = (subject: string) => (subject === 'Bayonetta' ? { ...spyro, subject, nodes: [otherGoal], edges: [] } : spyro);
     const dependents = ['cynder-not-good', 'other-goal', 'Spyro.helper_lemma'];
     ws.outcome = { ok: false, code: 'needs-confirmation', error: 'Deleting its Lean code breaks 3 declarations that use it', dependents };
-    await session.handle(message('deleteNode', { id: 'cynder-dark-past', keepLean: false, requestId: 'r-9' }));
+    await session.handle(message('deleteNode', { id: 'cynder-dark-past', requestId: 'r-9' }));
     expect(ports.of('actionResult')[0]?.payload.outcome).toEqual({
       ...ws.outcome,
       dependentCards: {
@@ -125,11 +125,11 @@ describe('actions: actionResult and notices (AT5.7)', () => {
     // Other refusals, and a list with no card in it, are passed on as they are.
     ports.clear();
     ws.outcome = { ok: false, code: 'needs-confirmation', error: 'a lemma uses it', dependents: ['Spyro.helper_lemma'] };
-    await session.handle(message('deleteNode', { id: 'cynder-dark-past', keepLean: false, requestId: 'r-10' }));
+    await session.handle(message('deleteNode', { id: 'cynder-dark-past', requestId: 'r-10' }));
     expect(ports.of('actionResult')[0]?.payload.outcome).toEqual(ws.outcome);
     ports.clear();
     ws.outcome = { ok: false, code: 'unsafe', error: 'no', dependents: ['cynder-not-good'] };
-    await session.handle(message('deleteNode', { id: 'cynder-dark-past', keepLean: false, requestId: 'r-11' }));
+    await session.handle(message('deleteNode', { id: 'cynder-dark-past', requestId: 'r-11' }));
     expect(ports.of('actionResult')[0]?.payload.outcome).toEqual(ws.outcome);
   });
 
@@ -214,7 +214,7 @@ describe('actions: actionResult and notices (AT5.7)', () => {
     await Promise.all([
       session.handle(message('addNode', { clientId: 'c', type: 'PROPOSITION', naturalName: 'g' })),
       session.handle(message('reorder', { id: 'a', column: 'PROPOSITION', beforeId: null })),
-      session.handle(message('deleteNode', { id: 'a', keepLean: true })),
+      session.handle(message('deleteNode', { id: 'a' })),
     ]);
     expect(order).toEqual(['add-node', 'reorder', 'delete-node']);
   });

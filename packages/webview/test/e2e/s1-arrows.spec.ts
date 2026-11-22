@@ -274,7 +274,7 @@ test('"Follows from nothing" draws the ∅ mark; a click selects it, Formalize a
   await expect(page.getByTestId('formalize')).toHaveAttribute('title', 'Ask Claude to prove “Spyro games avoid dark characters” from no premises at all (you marked it "follows from nothing")');
   await page.screenshot({ path: shotPath('s1-mark-selected.png') });
   await page.getByTestId('formalize').click();
-  expect((await postedOfType(page, 'startRun')).map((m) => m.payload)).toEqual([{ target: SIDE, premises: [], requestId: 'r2' }]);
+  expect((await postedOfType(page, 'formalize')).map((m) => m.payload)).toEqual([{ inferences: [{ target: SIDE, premises: [] }], requestId: 'r2' }]);
   // While the start is on its way the board is read-only (slice 1f); the host's answer (here no run follows) ends that.
   await expect(page.getByTestId('formalize')).toBeEnabled();
 
@@ -434,5 +434,5 @@ test('the ∅ mark’s right-click menu offers Formalize for dependencies first:
   await expect(boardMenu(page).getByRole('menuitem')).toHaveText(['Formalize for dependencies', "Remove 'follows from nothing'", 'Show on board']);
   await expect(page.locator(`[data-mark-id="${SIDE}"]`)).toHaveClass(/tl-mark--selected/); // selected first
   await menuItem(page, 'formalize').click();
-  expect((await postedOfType(page, 'startRun')).map((m) => m.payload)).toEqual([{ target: SIDE, premises: [], requestId: 'r1' }]);
+  expect((await postedOfType(page, 'formalize')).map((m) => m.payload)).toEqual([{ inferences: [{ target: SIDE, premises: [] }], requestId: 'r1' }]);
 });

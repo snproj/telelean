@@ -18,17 +18,15 @@
  *   historyList, historyPreview, historyRevert, historyPrune, initGit   (D-33)
  *   copyText, openInEditor, refresh                             (card and toolbar buttons)
  *
- * M2 (docs/m2-plan.md section 6.3), a Claude run and its proposal:
+ * M2 (docs/m2-plan.md section 6.3), a Claude run:
  * host -> webview
  *   run            the root's current run (RunView) or null
- *   proposal       the current run's proposal (ProposalView) or null
  * webview -> host
- *   startRun                                                    Formalize for dependencies (spec v4.1 ES-2; the
- *                                                               Context Menu section and the right-click menu)
  *   answerQuestions, cancelRun, resumeRun, dismissRun           the run panel
- *   acceptProposal, feedback, discardProposal, openProposalDiff the review
- *   adoptGhost, rejectGhost                                     "Claude suggests" cards
  *   kindChange gains `confirmedDependents` (carry-over 3)
+ * Slice 2h retired M2's review (docs/slice2-plan.md 2.4): the host -> webview `proposal`, and `startRun`,
+ * `acceptProposal`, `feedback`, `discardProposal`, `adoptGhost`, `rejectGhost` and `openProposalDiff`. Every start is
+ * now a `formalize`, and a session's review replaces the proposal's; the validator refuses the old types as unknown.
  *
  * Spec v4, slice 1b (docs/slice1-plan.md 2.5), arrows as board edits (answered with `actionResult`, like the others):
  * webview -> host
@@ -41,7 +39,9 @@
  * host -> webview
  *   session        the root's current session view (SessionView, built by core `buildSessionView`) or null
  * webview -> host (each in RUN_MESSAGE_TYPES, so the ES-9 lock never refuses it; answered with `actionResult`)
- *   formalize                                                   a start, or a mid-stage Formalize (`runId` and `stage`)
+ *   formalize                                                   a start, or a mid-stage Formalize (`runId` and `stage`):
+ *                                                               Formalize for dependencies (spec v4.1 ES-2, RV-9; the
+ *                                                               Context Menu section and the right-click menu)
  *   decideItems, revealResult, sessionUndo, sessionRedo         decisions, Show results, the session stack
  *   submitReview, endSession, retryStep                         Submit review, Apply / Exit / Back to review, Retry step
  *   openSessionDiff, moveProposed                               the raw Lean diff, moves on the Proposed view
@@ -58,7 +58,7 @@ import { EVIDENTIALS, isNodeType, STANCES } from './model.js';
 import { isSubjectName } from './paths.js';
 import type { DeclineOption, ItemDecision } from './review/types.js';
 import type { SessionView } from './review/view.js';
-import type { AnswerChoiceView, DecisionScope, ProposalView, QuestionAnswer, RunView } from './run.js';
+import type { AnswerChoiceView, DecisionScope, QuestionAnswer, RunView } from './run.js';
 import { DECISION_SCOPES } from './run.js';
 
 export const PROTOCOL_VERSION = 1 as const;
@@ -84,8 +84,6 @@ export type NoticeMessage = Envelope<'notice', { id: string; level: NoticeLevel;
  * A run of another subject is still posted: the board shows a compact "Claude is working on <subject>" line.
  */
 export type RunMessage = Envelope<'run', { run: RunView | null }>;
-/** M2: the current run's proposal (state `review`), or null when there is none. Posted when it is built or cleared. */
-export type ProposalMessage = Envelope<'proposal', { proposal: ProposalView | null }>;
 /**
  * Slice 2 (docs/slice2-plan.md 2.4): the root's current edit session (SessionView, masked while the results are
  * hidden), or null. Posted on `ready` and whenever the session itself changes (items, statuses, phase, step states, the
@@ -100,7 +98,6 @@ export type HostToWebviewMessage =
   | ActionResultMessage
   | NoticeMessage
   | RunMessage
-  | ProposalMessage
   | SessionMessage;
 
 // ---------- webview -> host ----------
@@ -157,11 +154,20 @@ export type DiagnosticMessage = Envelope<
 /** In-place edit. `value: null` removes the field (not allowed for `naturalName`). */
 export type EditNodeMessage = Envelope<'editNode', { id: string; field: EditableField; value: string | null; requestId?: string }>;
 /**
- * D-18 delete. With `keepLean: false`, when other declarations use the card's Lean (proofs, other subjects, untracked
+ * D-18 delete: the card and its Lean. When other declarations use the card's Lean (proofs, other subjects, untracked
  * lemmas) the host answers `needs-confirmation` with those `dependents`; the board lists them and sends the delete
- * again with `confirmed: true` if the user still wants it (they stop compiling).
+ * again with `confirmed: true` if the user still wants it (they stop compiling). Slice 2i (spec v4 S9, ES-9): the
+ * card-only delete (`keepLean`) is gone; the validator refuses a message that still asks for it
+ * (`DELETE_ALWAYS_REMOVES_LEAN`).
  */
-export type DeleteNodeMessage = Envelope<'deleteNode', { id: string; keepLean: boolean; confirmed?: boolean; requestId?: string }>;
+export type DeleteNodeMessage = Envelope<'deleteNode', { id: string; confirmed?: boolean; requestId?: string }>;
+
+/**
+ * Slice 2i (spec v4 S9, ES-9; audit G4): why a `deleteNode` with `keepLean: true` is refused. Keeping the Lean of a
+ * deleted card left `axiom ….holds` behind as an unmarked axiom, a hidden belief. (`keepLean: false` asks for what
+ * every delete does now, and is dropped.)
+ */
+export const DELETE_ALWAYS_REMOVES_LEAN = 'Deleting a card always deletes its Lean.';
 /** Drag within a column (layout only). */
 export type ReorderMessage = Envelope<'reorder', { id: string; column: NodeType; beforeId: string | null; requestId?: string }>;
 export type UndoMessage = Envelope<'undo', { requestId?: string }>;
@@ -202,39 +208,15 @@ export type MoveCardsMessage = Envelope<'moveCards', { positions: Record<string,
 
 // ---------- webview -> host, M2: runs (docs/m2-plan.md section 6.3) ----------
 
-/**
- * Formalize for dependencies (spec v4.1 ES-2, one target in slice 1, AP-9): `premises` are the sources of the arrows the
- * user selected into `target` (empty: the target's "follows from nothing" mark was selected). Slice 1e: the host first
- * applies the board edits that reached it before this message, then checks the request against the files (core
- * `formalizeStartProblem`: every premise the source of an arrow drawn into the target, or no premises for a target
- * marked "follows from nothing"; every proposition premise with a `.holds`; no cycle of arrows anywhere in the subject,
- * named (since 2b2: AP-29, G2); refused `invalid`), then asks for egress consent; the RunManager runs preflight and starts a Claude run
- * proving `target` from exactly `premises` (D-5). Nothing declares premises any more (M2's `set-premises` at start is
- * gone: the arrows are in the files). Refused (`conflict`) while another run of this root is active. Answered with
- * `actionResult` (ok once the run started; failures name the problem).
- */
-export type StartRunMessage = Envelope<'startRun', { target: string; premises: string[]; requestId?: string }>;
 /** Answers a pending ask_user batch (every question of the batch exactly once). */
 export type AnswerQuestionsMessage = Envelope<'answerQuestions', { runId: string; setId: string; answers: QuestionAnswer[]; requestId?: string }>;
-/** Interrupt + kill the run's Lean scopes; the shadow and transcript are kept (03 section 8.6). */
+/**
+ * Interrupt + kill the run's Lean scopes; the shadow and transcript are kept (03 section 8.6). In a session it is
+ * Cancel step (slice 2d): it never ends the session.
+ */
 export type CancelRunMessage = Envelope<'cancelRun', { runId: string; requestId?: string }>;
 /** Resumes an `interrupted` run (window reload mid-turn) in a new CLI process (`--resume <session>`). */
 export type ResumeRunMessage = Envelope<'resumeRun', { runId: string; requestId?: string }>;
-/**
- * Accept (D-21, all-or-nothing): applies the reviewed proposal to the real files through the M1 history/undo path.
- * `definitions` = ids of the definition questions answered "yes" (all of them are required: a "no" is Feedback, not
- * Accept). (Spec v4 removed the lifecycle items and their `lifecycle` ids: docs/slice1-plan.md 2.6.) Spec v4 ES-7
- * (slice 1f): refused (`conflict`, naming the files) while the user's files differ from the run's base.
- */
-export type AcceptProposalMessage = Envelope<'acceptProposal', { runId: string; proposalId: string; definitions: string[]; requestId?: string }>;
-/** Feedback (D-21): continues the same Claude session with the user's text (a new round; statements may change). */
-export type FeedbackMessage = Envelope<'feedback', { runId: string; text: string; requestId?: string }>;
-export type DiscardProposalMessage = Envelope<'discardProposal', { runId: string; requestId?: string }>;
-/** "I hold this" (D-6): the ghost becomes an AXIOM card in the shadow; telelean re-freezes and Claude re-proves. */
-export type AdoptGhostMessage = Envelope<'adoptGhost', { runId: string; ghostId: string; rationale?: string; requestId?: string }>;
-export type RejectGhostMessage = Envelope<'rejectGhost', { runId: string; ghostId: string; requestId?: string }>;
-/** "Raw Lean diff…": VS Code's multi-file diff (`vscode.changes`) of the proposal, optionally focused on one file. */
-export type OpenProposalDiffMessage = Envelope<'openProposalDiff', { runId: string; proposalId: string; file?: string }>;
 /** Removes an ended run (terminal state) from the board. */
 export type DismissRunMessage = Envelope<'dismissRun', { runId: string }>;
 
@@ -242,8 +224,11 @@ export type DismissRunMessage = Envelope<'dismissRun', { runId: string }>;
 
 /**
  * Formalize for dependencies with one or more targets (ES-1, RV-9): each target with the sources of the arrows selected
- * into it (empty: its "follows from nothing" mark). Without `runId` and `stage` it starts a session; with both, it is
- * a mid-stage Formalize of that session's current stage. `startRun` stays, as a one-inference `formalize`, until 2h.
+ * into it (empty: its "follows from nothing" mark). Without `runId` and `stage` it starts a session: the host first
+ * applies the board edits that reached it before this message, then checks the request against the files (core
+ * `formalizeStartProblems`; refused `invalid`), then asks for egress consent. With both, it is a mid-stage Formalize of
+ * that session's current stage, which the runner checks on the session's own records (slice 2d). Since 2h it is the
+ * only start: M2's `startRun` (one inference) is retired.
  */
 export type FormalizeMessage = Envelope<'formalize', { inferences: Array<{ target: string; premises: string[] }>; runId?: string; stage?: number; requestId?: string }>;
 /**
@@ -297,16 +282,9 @@ export type WebviewToHostMessage =
   | SetFromNothingMessage
   | ClaimPendingMessage
   | MoveCardsMessage
-  | StartRunMessage
   | AnswerQuestionsMessage
   | CancelRunMessage
   | ResumeRunMessage
-  | AcceptProposalMessage
-  | FeedbackMessage
-  | DiscardProposalMessage
-  | AdoptGhostMessage
-  | RejectGhostMessage
-  | OpenProposalDiffMessage
   | DismissRunMessage
   | FormalizeMessage
   | DecideItemsMessage
@@ -337,20 +315,7 @@ export const SESSION_MESSAGE_TYPES = [
 ] as const;
 
 /** M2: the webview messages that act on a run (the extension routes them to the root's RunManager); slice 2's too. */
-export const RUN_MESSAGE_TYPES = [
-  'startRun',
-  'answerQuestions',
-  'cancelRun',
-  'resumeRun',
-  'acceptProposal',
-  'feedback',
-  'discardProposal',
-  'adoptGhost',
-  'rejectGhost',
-  'openProposalDiff',
-  'dismissRun',
-  ...SESSION_MESSAGE_TYPES,
-] as const;
+export const RUN_MESSAGE_TYPES = ['answerQuestions', 'cancelRun', 'resumeRun', 'dismissRun', ...SESSION_MESSAGE_TYPES] as const;
 
 export type WebviewToHostType = WebviewToHostMessage['type'];
 export type HostToWebviewType = HostToWebviewMessage['type'];
@@ -387,8 +352,6 @@ export const LIMITS = {
   keepLastMax: 100_000,
   /** M2: ask_user batches hold 1-3 questions (D-20). */
   answersPerBatch: 3,
-  /** M2: approved definitions per Accept. */
-  reviewItems: 200,
   /** Spec v4 slice 1b: a canvas coordinate (`moveCards`) lies within ± this. */
   coordinate: 1_000_000,
   /** Slice 2 (docs/slice2-plan.md 2.4): the targets of one `formalize`. */
@@ -589,16 +552,7 @@ function token(value: unknown, what: string): string {
   return value;
 }
 
-/** A list of distinct host-generated ids. */
-function tokens(value: unknown, what: string, max: number): string[] {
-  if (!Array.isArray(value)) fail(`${what} must be an array`);
-  if (value.length > max) fail(`${what} has more than ${max} entries`);
-  const list = value.map((entry, i) => token(entry, `${what}[${i}]`));
-  if (new Set(list).size !== list.length) fail(`${what} lists an entry more than once`);
-  return list;
-}
-
-/** Text the user typed into the run panel (an answer, feedback): not blank, may span lines. */
+/** Text the user typed into the run panel (an answer): not blank, may span lines. */
 function freeText(value: unknown, what: string): string {
   const text = str(value, what, LIMITS.textLength);
   if (text.trim().length === 0) fail(`${what} must not be blank`);
@@ -838,13 +792,17 @@ export function parseWebviewToHost(raw: unknown): ParseResult<WebviewToHostMessa
         }
         return webviewMessage('editNode', { id: node, field: field as EditableField, value, ...requestId(p.requestId) });
       }
-      case 'deleteNode':
+      case 'deleteNode': {
+        const node = id(p.id, 'payload.id');
+        // Slice 2i (S9): a delete always removes the card's Lean, so a request to keep it is refused, never carried out
+        // as the full delete it did not ask for.
+        if (p.keepLean !== undefined && bool(p.keepLean, 'payload.keepLean')) fail(DELETE_ALWAYS_REMOVES_LEAN);
         return webviewMessage('deleteNode', {
-          id: id(p.id, 'payload.id'),
-          keepLean: bool(p.keepLean, 'payload.keepLean'),
+          id: node,
           ...(p.confirmed !== undefined ? { confirmed: bool(p.confirmed, 'payload.confirmed') } : {}),
           ...requestId(p.requestId),
         });
+      }
       case 'reorder': {
         const node = id(p.id, 'payload.id');
         const beforeId = p.beforeId === null ? null : id(p.beforeId, 'payload.beforeId');
@@ -915,13 +873,7 @@ export function parseWebviewToHost(raw: unknown): ParseResult<WebviewToHostMessa
         return webviewMessage('claimPending', { id: id(p.id, 'payload.id'), ...requestId(p.requestId) });
       case 'moveCards':
         return webviewMessage('moveCards', { positions: positionMap(p.positions, 'payload.positions'), ...requestId(p.requestId) });
-      // ---- M2 runs ----
-      case 'startRun': {
-        const premises = ids(p.premises, 'payload.premises');
-        const target = id(p.target, 'payload.target');
-        if (premises.includes(target)) fail('payload.target must not also be a premise');
-        return webviewMessage('startRun', { target, premises, ...requestId(p.requestId) });
-      }
+      // ---- M2 runs (2h retired M2's review messages: they are unknown types now) ----
       case 'answerQuestions':
         return webviewMessage('answerQuestions', {
           runId: runId(p.runId, 'payload.runId'),
@@ -933,35 +885,6 @@ export function parseWebviewToHost(raw: unknown): ParseResult<WebviewToHostMessa
         return webviewMessage('cancelRun', { runId: runId(p.runId, 'payload.runId'), ...requestId(p.requestId) });
       case 'resumeRun':
         return webviewMessage('resumeRun', { runId: runId(p.runId, 'payload.runId'), ...requestId(p.requestId) });
-      case 'acceptProposal':
-        return webviewMessage('acceptProposal', {
-          runId: runId(p.runId, 'payload.runId'),
-          proposalId: token(p.proposalId, 'payload.proposalId'),
-          definitions: tokens(p.definitions, 'payload.definitions', LIMITS.reviewItems),
-          ...requestId(p.requestId),
-        });
-      case 'feedback':
-        return webviewMessage('feedback', { runId: runId(p.runId, 'payload.runId'), text: freeText(p.text, 'payload.text'), ...requestId(p.requestId) });
-      case 'discardProposal':
-        return webviewMessage('discardProposal', { runId: runId(p.runId, 'payload.runId'), ...requestId(p.requestId) });
-      case 'adoptGhost': {
-        const rationale = p.rationale === undefined ? undefined : str(p.rationale, 'payload.rationale', LIMITS.textLength, true).trim();
-        if (rationale !== undefined && /[\r\n]/.test(rationale)) fail('payload.rationale must be a single line');
-        return webviewMessage('adoptGhost', {
-          runId: runId(p.runId, 'payload.runId'),
-          ghostId: token(p.ghostId, 'payload.ghostId'),
-          ...(rationale ? { rationale } : {}),
-          ...requestId(p.requestId),
-        });
-      }
-      case 'rejectGhost':
-        return webviewMessage('rejectGhost', { runId: runId(p.runId, 'payload.runId'), ghostId: token(p.ghostId, 'payload.ghostId'), ...requestId(p.requestId) });
-      case 'openProposalDiff':
-        return webviewMessage('openProposalDiff', {
-          runId: runId(p.runId, 'payload.runId'),
-          proposalId: token(p.proposalId, 'payload.proposalId'),
-          ...(p.file !== undefined ? { file: relativePath(p.file, 'payload.file') } : {}),
-        });
       case 'dismissRun':
         return webviewMessage('dismissRun', { runId: runId(p.runId, 'payload.runId') });
       // ---- slice 2: an edit session (docs/slice2-plan.md 2.4) ----
@@ -1082,14 +1005,6 @@ export function parseHostToWebview(raw: unknown): ParseResult<HostToWebviewMessa
           fail('payload.run needs notices, activity, answered and ghosts arrays');
         }
         return hostMessage('run', { run: run as unknown as RunView });
-      }
-      case 'proposal': {
-        if (payload.proposal === null) return hostMessage('proposal', { proposal: null });
-        const proposal = record(payload.proposal, 'payload.proposal');
-        if (typeof proposal.proposalId !== 'string' || typeof proposal.runId !== 'string') fail('payload.proposal needs runId and proposalId');
-        const graph = record(proposal.graph, 'payload.proposal.graph');
-        if (!Array.isArray(graph.nodes) || !Array.isArray(graph.edges)) fail('payload.proposal.graph needs nodes and edges arrays');
-        return hostMessage('proposal', { proposal: proposal as unknown as ProposalView });
       }
       case 'session': {
         if (payload.session === null) return hostMessage('session', { session: null });

@@ -106,24 +106,34 @@ describe('protocol message -> BoardAction (AT5.7)', () => {
     expect(action('editNode', { id: 'n', field: 'rationale', value: null })).toEqual({ kind: 'edit-node', id: 'n', field: 'rationale', value: null });
     expect(action('editNode', { id: 'n', field: 'stance', value: 'rule' })).toEqual({ kind: 'edit-node', id: 'n', field: 'stance', value: 'rule' });
     expect(action('editNode', { id: 'n', field: 'source', value: 'common' })).toEqual({ kind: 'edit-node', id: 'n', field: 'source', value: 'common' });
-    expect(action('deleteNode', { id: 'n', keepLean: true })).toEqual({ kind: 'delete-node', id: 'n', keepLean: true });
+    expect(action('deleteNode', { id: 'n' })).toEqual({ kind: 'delete-node', id: 'n' });
     expect(action('reorder', { id: 'n', column: 'PROPOSITION', beforeId: 'm' })).toEqual({ kind: 'reorder', id: 'n', column: 'PROPOSITION', beforeId: 'm' });
     expect(action('createSubject', { name: 'Bayonetta' })).toEqual({ kind: 'create-subject', name: 'Bayonetta' });
   });
 
   it('deleteNode keeps "confirmed" (Delete anyway after the needs-confirmation list); without it there is none', () => {
     // The webview's resend after the host listed the declarations that use the card's Lean code.
-    expect(action('deleteNode', { id: 'cynder-dark-past', keepLean: false, confirmed: true, requestId: 'r9' })).toEqual({
+    expect(action('deleteNode', { id: 'cynder-dark-past', confirmed: true, requestId: 'r9' })).toEqual({
       kind: 'delete-node',
       id: 'cynder-dark-past',
-      keepLean: false,
       confirmed: true,
     });
-    const first = action('deleteNode', { id: 'cynder-dark-past', keepLean: false, requestId: 'r8' });
-    expect(first).toEqual({ kind: 'delete-node', id: 'cynder-dark-past', keepLean: false });
+    const first = action('deleteNode', { id: 'cynder-dark-past', requestId: 'r8' });
+    expect(first).toEqual({ kind: 'delete-node', id: 'cynder-dark-past' });
     expect(first).not.toHaveProperty('confirmed');
-    expect(action('deleteNode', { id: 'n', keepLean: false, confirmed: false })).not.toHaveProperty('confirmed');
-    expect(() => message('deleteNode', { id: 'n', keepLean: false, confirmed: 'yes' })).toThrow(/confirmed/);
+    expect(action('deleteNode', { id: 'n', confirmed: false })).not.toHaveProperty('confirmed');
+    expect(() => message('deleteNode', { id: 'n', confirmed: 'yes' })).toThrow(/confirmed/);
+  });
+
+  it('slice 2i (S9): a delete never keeps the card\'s Lean: keepLean: true never becomes an action, keepLean: false is the plain delete', () => {
+    // The card-only delete is gone: core's validator refuses the request before any mapping, so it is never carried out
+    // as the full delete it did not ask for.
+    expect(() => message('deleteNode', { id: 'n', keepLean: true })).toThrow('Deleting a card always deletes its Lean.');
+    expect(() => message('deleteNode', { id: 'n', keepLean: true, confirmed: true, requestId: 'r1' })).toThrow('Deleting a card always deletes its Lean.');
+    // An older board's keepLean: false asked for what every delete does: the same action, with no keepLean in it.
+    expect(action('deleteNode', { id: 'n', keepLean: false, requestId: 'r2' })).toEqual({ kind: 'delete-node', id: 'n' });
+    expect(action('deleteNode', { id: 'n', keepLean: false, confirmed: true })).toEqual({ kind: 'delete-node', id: 'n', confirmed: true });
+    expect(action('deleteNode', { id: 'n' })).not.toHaveProperty('keepLean');
   });
 
   it('classifies exactly the mutating board edits as action messages', () => {
@@ -201,7 +211,7 @@ describe('protocol message -> BoardAction (AT5.7)', () => {
     expect(requestIdOf(message('undo', { requestId: 'u-1' }))).toBe('u-1');
     expect(requestIdOf(message('undo', {}))).toBeUndefined();
     expect(requestIdOf(message('copyText', { text: 'x' }))).toBeUndefined();
-    const m = message('deleteNode', { id: 'n', keepLean: false, requestId: 'd_2' }) as ActionMessage;
+    const m = message('deleteNode', { id: 'n', requestId: 'd_2' }) as ActionMessage;
     expect(requestIdOf(m)).toBe('d_2');
   });
 });

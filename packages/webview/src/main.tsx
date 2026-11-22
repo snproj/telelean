@@ -8,6 +8,7 @@ import { currentEngineStats, partHeights, stylesApplied, themeColors } from './b
 import { connectHost, reportCspViolations, type HostBridge } from './host/bridge';
 import { isTextEntry, selectionKeyFor, shortcutFor } from './model/format';
 import { BoardStoreProvider } from './state/context';
+import { readPersistedReview } from './state/session';
 import { createBoardStore, readSplit, readTopSplit, type BoardStore, type PersistedState } from './state/store';
 
 /**
@@ -87,12 +88,15 @@ function reportRendered(host: HostBridge, graph: TlGraph, seq: number, latestSeq
 /** The persisted per-board state, read defensively (the panel serializer or an older build may have written it). */
 function readPersisted(host: HostBridge): PersistedState {
   const raw = host.readState();
+  const sessionReview = readPersistedReview(raw.sessionReview);
   return {
     ...(typeof raw.subject === 'string' ? { subject: raw.subject } : {}),
     ...(typeof raw.vocabCollapsed === 'boolean' ? { vocabCollapsed: raw.vocabCollapsed } : {}),
     ...(typeof raw.requestCounter === 'number' && Number.isSafeInteger(raw.requestCounter) && raw.requestCounter >= 0 ? { requestCounter: raw.requestCounter } : {}),
     ...(raw.runSplit !== undefined ? { runSplit: readSplit(raw.runSplit) } : {}),
     ...(raw.topSplit !== undefined ? { topSplit: readTopSplit(raw.topSplit) } : {}),
+    // Slice 2g: the review UI of the session this panel showed (used again only for the same run).
+    ...(sessionReview !== undefined ? { sessionReview } : {}),
   };
 }
 
@@ -105,8 +109,16 @@ function readPersisted(host: HostBridge): PersistedState {
  * (the disabled Undo button says why); Delete then sends nothing and its toast says why. Slice 1c2: Delete goes
  * through the store's `pressDelete` (no card focused here: a focused card's Delete is the card's own), which also says
  * why in the Proposed view, where arrows change only through review items and transforms.
+ *
+ * Slice 2h (§5.12, UN-1, D2-38): Ctrl+Z and Ctrl+Shift+Z act on the stack `undoScope` names: the session stack in a
+ * session's Proposed view or with the focus inside `data-undo-scope="session"` (the review panel; the store follows the
+ * focus through `focusin`), else the board stack, which posts nothing during a session (the button says why).
  */
 function installShortcuts(store: BoardStore) {
+  const inSession = (target: EventTarget | null) => target instanceof Element && target.closest('[data-undo-scope="session"]') !== null;
+  document.addEventListener('focusin', (event) => store.getState().setFocusInSession(inSession(event.target)));
+  // Focus that leaves for nothing (a click on the canvas or a card's text) fires no focusin: it left the scope then.
+  document.addEventListener('focusout', (event) => store.getState().setFocusInSession(inSession(event.relatedTarget)));
   window.addEventListener('keydown', (event) => {
     const busy = () => isTextEntry(event.target) || isTextEntry(document.activeElement) || document.querySelector('dialog[open]') !== null;
     const action = shortcutFor(event);
@@ -119,8 +131,8 @@ function installShortcuts(store: BoardStore) {
     }
     if (event.repeat || busy()) return;
     event.preventDefault();
-    if (action === 'undo') store.getState().undo();
-    else store.getState().redo();
+    if (action === 'undo') store.getState().undoInScope();
+    else store.getState().redoInScope();
   });
 }
 

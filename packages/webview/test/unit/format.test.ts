@@ -1,7 +1,24 @@
 import type { SemanticSummary } from '@telelean/core';
 import { describe, expect, it } from 'vitest';
 import { semanticBadge, whyPlaceholder } from '../../src/labels';
-import { codeSpans, formatBytes, formatTime, oneLine, pastedLine, plainText, selectionKeyFor, sentences, shortcutFor } from '../../src/model/format';
+import { codeSpans, formatBytes, formatTime, historyArrowLines, oneLine, pastedLine, plainText, selectionKeyFor, sentences, shortcutFor } from '../../src/model/format';
+
+describe('History\'s provenance of an Apply (slice 2f, coverage audit G1)', () => {
+  it('one line per arrow Claude proposed, "‹source› → ‹target› (step ‹n›)"; an entry without arrows (any other, an older Apply) has none', () => {
+    expect(
+      historyArrowLines({
+        arrows: [
+          { source: 'aux-one', target: 'cynder-not-good', step: 's1', kind: 'arrow' },
+          { source: 'a-premise', target: 'cynder-not-good', step: 's12', kind: 'premise' },
+        ],
+      }),
+    ).toEqual(['aux-one → cynder-not-good (step 1)', 'a-premise → cynder-not-good (step 12)']);
+    expect(historyArrowLines({})).toEqual([]);
+    expect(historyArrowLines({ arrows: [] })).toEqual([]);
+    // A step id of another shape is shown as it is.
+    expect(historyArrowLines({ arrows: [{ source: 'a', target: 'b', step: 'telelean', kind: 'arrow' }] })).toEqual(['a → b (step telelean)']);
+  });
+});
 
 describe('formatters', () => {
   it('formats history times: HH:MM today, "Mon D HH:MM" otherwise', () => {

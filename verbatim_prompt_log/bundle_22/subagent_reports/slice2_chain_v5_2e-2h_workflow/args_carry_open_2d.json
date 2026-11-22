@@ -1,0 +1,42 @@
+[
+ {
+  "id": "R1-1",
+  "severity": "minor",
+  "where": "packages/runner/src/run/session.ts:1583-1593 (openStageWithoutJudgement) and :1810 (recoverSession: `else if (now.phase === 'stage' && !recomputed) judgeOptions ??= {}`)",
+  "problem": "A queue's end can stay unreconciled for good. When the first judge of a queue's end throws:\n- the stage opens with no judgement, and `queueEndReconciled` stays at the previous queue;\n- the way on that this round's A-F4 entry names (\"a reload runs the judge\") judges with `{}`, so reconcile's queue-end rules never run for that queue.\n\nWhat that skips:\n- AF1's \"proposed again\": a re-ask that proved a target whose Result was to be redone (reverted) is `keptOut`, and the reload's judge-apply takes the proof out of ws/ again. Claude's passed work is silently lost, and the Result stays to be redone.\n- D2-17's withdrawals.\n- The force's end (C-V2C2-C1, RV-6), which is latent until 2e brings forces.\n\nWithout a reload there is no way on in 2d: a mid-stage Formalize answers 'judging' while judgedModel is unset. The path existed before this round, but `queueEndReconciled` (new this round) now records exactly that the queue was never reconciled.",
+  "fix": "In recoverSession: when the phase is 'stage', `now.judged === undefined` and `now.queueEndReconciled !== currentQueue(now)`, judge with `{ queueSteps: <the current queue's step ids> }`.\n- Pass no endsQueue: the stage is already open, and openStage would raise the stage again.\n- From 2e on, do this only while no decision was stacked since the queue's seal (\u00a73.5: never at a decision-started judge). In 2d none can be.\n\nAdd the probe as a reload test: queue 1's judge reverts T's Result; a mid-stage re-ask proves T; queue 2's judge throws; after the reload, T's Result is back in review and T.holds stays in ws/.",
+  "evidence": "Probe: /tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/rv2dr1/mrepo/packages/runner/test/run/zzprobe.rv.test.ts. Output: /tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/rv2dr1/logs/probe1.out.\n- Control, queue 2's judge runs: Result in-review, T.holds in ws/: true.\n- Queue 2's judge throws: before the reload, judged:false and queueEndReconciled:1; recovery asked [{}]; Result {status:'to-be-redone', redo:{reverted:true}}; T.holds in ws/: false.\n\nWith the suggested change applied in the mirror: recovery asked [{\"queueSteps\":[\"s2\"]}], the Result is in-review, T.holds stays, and the five session files pass 66/66. See /tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/rv2dr1/logs/probe1-with-suggested-fix.out and /tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/rv2dr1/logs/fixexp-suite.log. The mirror was restored with cmp OK."
+ },
+ {
+  "id": "R1-2",
+  "severity": "minor",
+  "where": "packages/runner/src/run/session.ts:1079-1083 (proposedNothing's `sameFiles(endFiles, startFiles)`); packages/runner/test/run/session.queue.test.ts:221-242 (the RV-13 test)",
+  "problem": "RV-13's key condition, that the step's end files equal S\u2080's, is caught by no test. The RV-13 test checks only a step that changed nothing and a premise-only step. No test asserts that an ordinary passed step (one that wrote statements or a proof, with no arrow and no premise) has no `proposedNothing`. With the condition removed, every such step's report would read \"Claude's step proposed nothing: \u2039reason\u203a\", a misleading report line, and all tests still pass.",
+  "fix": "Assert the negative case for a step that wrote its proof, for example in the RV-13 test or in 'sources first, one step each\u2026':\n- `rawStep(h, 's1').proposedNothing` is undefined;\n- `h.manager.session()?.report.steps.map((x) => x.proposedNothing)` is all undefined once the results are shown.",
+  "evidence": "Mutant X1 (sameFiles condition removed), run on the five session.* files: 'Test Files 5 passed (5) | Tests 66 passed (66)'. The only proposedNothing assertions in any test are session.queue.test.ts:227-241. Results: /tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/rv2dr1/logs/mut/results.txt."
+ },
+ {
+  "id": "R1-3",
+  "severity": "minor",
+  "where": "packages/runner/src/run/session.ts:1396-1405 (resumeBetweenSteps returns startStep's refusal); packages/runner/test/run/session.reload.test.ts:874-910 (only the Retry path is tested)",
+  "problem": "Part of the FC-5/A-F5 fix has no test. A-F5 named \"Resume of a queue waiting between steps\" as a trigger, and the fix makes resumeBetweenSteps answer the refusal and keep the step's turn. No test catches that branch: with it reverted to always answer 'Claude continues', every session test passes. The behaviour itself is correct, as the probe shows.",
+  "fix": "Add the probe as a test in session.reload: 'right after a queue-start write', with a second manager whose backend makes the first `--resume` throw. Then:\n- the first Resume answers {ok:false, code:'not-yet', error:'Claude could not be resumed: \u2026'};\n- s2 is 'interrupted', and undeliveredTurn's first line is \"Step 1 of 1: formalize and prove \u201ccynder-not-good\u201d\";\n- the second Resume sends that turn (never the generic resume turn), and s2 passes with undeliveredTurn cleared.",
+  "evidence": "Mutant X13 (resumeBetweenSteps ignores startStep's outcome): 'Tests 66 passed (66)'.\n\nProbe: /tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/rv2dr1/mrepo/packages/runner/test/run/zzprobe.resume.test.ts. Output: /tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/rv2dr1/logs/probe2.out.\n- first resume: {\"ok\":false,\"code\":\"not-yet\",\"error\":\"Claude could not be resumed: the CLI could not resume\"}, s2 interrupted, undeliveredTurn line 1 \"Step 1 of 1: formalize and prove \u201ccynder-not-good\u201d\";\n- second resume: ok;\n- played: that step turn; s2 passed; undeliveredTurn null."
+ },
+ {
+  "id": "R1-4",
+  "severity": "minor",
+  "where": "packages/runner/src/run/session.ts:1836-1839 (replaySteps' mid-stage Formalize branch, rewritten for A-F7)",
+  "problem": "No test catches the replay of a mid-stage Formalize queue-start (a crash between its step 1 and step 4). All replay tests use `by: 'retry'` or the unrebuildable 'submit'. If the replayed steps get the wrong question (for example an empty, from-nothing one), every test still passes. A wrong question there is what the gate would enforce, and what Claude would be asked.",
+  "fix": "Add a reload test like 'a Retry's steps are rebuilt as Retry built them', but for `formalize({ \u2026, runId, stage })` in a stage with the results shown. Let step 1 of the queue-start write land, then close the window. After recover():\n- the replayed steps equal the ones formalizeInStage builds: kind 'formalize', target, scope.question from the request, the queue number;\n- the inferences carry the request's questions (with A-F1's rule for a target with no ended step).",
+  "evidence": "Mutant Y9 (the replayed Formalize step's question set to { sources: [], fromNothing: true }), run on the five session.* files: 'Tests 66 passed (66)'. Results: /tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/rv2dr1/logs/mut/results.txt. Grep: every 'queue-start' replay test in session.reload.test.ts (lines 205-222 and 717-772) uses by 'retry' or 'submit'."
+ },
+ {
+  "id": "R1-5",
+  "severity": "nit",
+  "where": "docs/slice2-plan.md:3557 (builder 2d decided, judging: 'A judge-apply that changes nothing writes nothing: \u2026 not a queue end, no written cards.')",
+  "problem": "This round removed `writtenCards`, and with it that condition from `unchanged`. The builder's line still lists \"no written cards\" as a condition. The neighbouring replaced lines (3565, 3570) were annotated; this one was not.",
+  "fix": "Drop \"no written cards\", or annotate it as the other lines are: '(replaced by fixer 2d r1, A-F2: cards come from the ledger at every judge-apply)'.",
+  "evidence": "grep -n 'written cards' docs/slice2-plan.md \u2192 3557. session.ts:1650-1658: `unchanged` no longer mentions writtenCards."
+ }
+]

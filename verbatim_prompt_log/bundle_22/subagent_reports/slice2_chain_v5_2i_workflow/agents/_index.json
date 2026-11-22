@@ -1,0 +1,41 @@
+[
+  {
+    "label": "build:2i",
+    "agentId": "a0808bb48429cf138",
+    "file": "agents/build_2i.json",
+    "toolsUsed": [
+      "Read",
+      "Bash",
+      "Edit",
+      "Write",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "verify:2i:fc",
+    "agentId": "a31ab49650e5d3d33",
+    "file": "agents/verify_2i_fc.json",
+    "toolsUsed": [
+      "Bash",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "fix:2i:r1",
+    "agentId": "a1e118421c91441fa",
+    "file": "agents/fix_2i_r1.json",
+    "toolsUsed": [
+      "Bash",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "integrate:2i",
+    "agentId": "ab2af0239bedac8bc",
+    "file": "agents/integrate_2i.json",
+    "toolsUsed": [
+      "Bash",
+      "StructuredOutput"
+    ]
+  }
+]

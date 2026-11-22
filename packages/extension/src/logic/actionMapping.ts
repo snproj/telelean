@@ -35,7 +35,7 @@ export function isActionMessage(message: WebviewToHostMessage): message is Actio
  * The BoardAction for an action message, or undefined when there is none: an M1 `theseSuffice` with no premises asks
  * for a proof from nothing, which is a Claude run; the host answers it `not-yet`. (Spec v4.1, slice 1e: the board never
  * sends `theseSuffice` any more: arrows are drawn with `addArrows`, and a proof from nothing is Formalize for
- * dependencies on a "follows from nothing" mark, a `startRun`.)
+ * dependencies on a "follows from nothing" mark: since 2h a `formalize`.)
  * `addNode.clientId` is the webview's provisional id and never becomes the node's id (the host derives ids, 6.2).
  */
 export function toBoardAction(message: ActionMessage, subject: string): BoardAction | undefined {
@@ -80,9 +80,10 @@ export function toBoardAction(message: ActionMessage, subject: string): BoardAct
     }
     case 'deleteNode': {
       // `confirmed`: the user saw the declarations that use the card's Lean code (the host's needs-confirmation list)
-      // and deletes it anyway; without it core refuses such a delete.
-      const { id, keepLean, confirmed } = message.payload;
-      return { kind: 'delete-node', id, keepLean, ...(confirmed ? { confirmed } : {}) };
+      // and deletes it anyway; without it core refuses such a delete. Slice 2i (S9): the card's Lean always goes with
+      // it (core's validator refuses a request to keep it).
+      const { id, confirmed } = message.payload;
+      return { kind: 'delete-node', id, ...(confirmed ? { confirmed } : {}) };
     }
     case 'reorder': {
       const { id, column, beforeId } = message.payload;

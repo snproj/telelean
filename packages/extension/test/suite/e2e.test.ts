@@ -376,9 +376,31 @@ suite('end to end on a copy of mental_model (real workspace, Lean, git, the boar
     await expand('cynder-dark-past');
     const f = await frame();
     const code = (await card('cynder-dark-past')).locator('.tl-lean');
-    await code.scrollIntoViewIfNeeded();
+    await code.evaluate('(el) => el.scrollIntoView({ block: "center", inline: "nearest" })'); // well inside the webview, not at its edge
+    await sleep(200);
     const box = await code.boundingBox();
     assert.ok(box && box.width > 20 && box.height > 10, JSON.stringify(box));
+    // Where the end of the code is, in the page's coordinates: the end of the last line's text, measured in the webview
+    // and mapped through the iframe's offset and scale (the box is measured in the page, the Range in the webview).
+    // The drag ends ON a glyph of the last line, not on the box's corner: a corner (padding) point is hit-tested into
+    // the next block when the layout differs by a pixel or two, and Chromium then adds that block's line breaks.
+    const inner = JSON.parse(
+      String(
+        await f.evaluate(`(() => {
+          const pre = document.querySelector('[data-node-id="cynder-dark-past"] .tl-lean');
+          const range = document.createRange();
+          range.selectNodeContents(pre);
+          const rects = Array.from(range.getClientRects()).filter((r) => r.width > 0);
+          const last = rects[rects.length - 1];
+          const box = pre.getBoundingClientRect();
+          return JSON.stringify({ box: { x: box.x, y: box.y, width: box.width, height: box.height }, last: { x: last.x, y: last.y, width: last.width, height: last.height } });
+        })()`),
+      ),
+    ) as { box: { x: number; y: number; width: number; height: number }; last: { x: number; y: number; width: number; height: number } };
+    const scale = inner.box.width > 0 ? box.width / inner.box.width : 1;
+    const toPage = (x: number, y: number) => ({ x: box.x + (x - inner.box.x) * scale, y: box.y + (y - inner.box.y) * scale });
+    const end = toPage(inner.last.x + Math.max(1, inner.last.width - 4), inner.last.y + inner.last.height / 2);
+    const start = toPage(inner.box.x + 8, inner.box.y + 9);
     const column = f.locator('.tl-col[data-kind="AXIOM"] [data-node-id]');
     const orderBefore = await column.evaluateAll((els) => els.map((e) => e.getAttribute('data-node-id')));
     await f.evaluate('window.getSelection()?.removeAllRanges()'); // (a string: this file has no DOM typings)
@@ -387,10 +409,10 @@ suite('end to end on a copy of mental_model (real workspace, Lean, git, the boar
       if (event.root === root) sent.push(event.message);
     });
     try {
-      await wb.page.mouse.move(box.x + 4, box.y + 6);
+      await wb.page.mouse.move(start.x, start.y);
       await wb.page.mouse.down();
       await wb.page.mouse.move(box.x + box.width * 0.5, box.y + box.height / 2, { steps: 8 });
-      await wb.page.mouse.move(box.x + box.width - 6, box.y + box.height - 4, { steps: 8 });
+      await wb.page.mouse.move(end.x, end.y, { steps: 8 });
       assert.equal(await (await card('cynder-dark-past')).getAttribute('data-dragging'), null, 'the card is being dragged');
       await wb.page.mouse.up();
       await sleep(500);
@@ -399,7 +421,14 @@ suite('end to end on a copy of mental_model (real workspace, Lean, git, the boar
     }
     const selected = String(await f.evaluate("window.getSelection()?.toString() ?? ''"));
     assert.ok(selected.length > 0, 'no text was selected');
-    assert.ok(node('cynder-dark-past')?.lean.code?.includes(selected), `the selection is not code text: ${JSON.stringify(selected)}`);
+    // Line breaks that Chromium adds at block boundaries when a selection runs on past the code are not code text; any
+    // other text outside the code (the card's other parts) would still fail this.
+    const selectedText = selected.replace(/^\s+|\s+$/g, '');
+    assert.ok(selectedText.length > 0, `only blanks were selected: ${JSON.stringify(selected)}`);
+    assert.ok(
+      node('cynder-dark-past')?.lean.code?.includes(selectedText),
+      `the selection is not code text: ${JSON.stringify(selected)} (box ${JSON.stringify(box)}, in the webview ${JSON.stringify(inner)}, scale ${scale}, end ${JSON.stringify(end)})`,
+    );
     const moves = sent.filter((m) => m.type === 'reorder' || m.type === 'kindChange');
     assert.deepEqual(moves, [], 'the drag posted a move');
     assert.deepEqual(await column.evaluateAll((els) => els.map((e) => e.getAttribute('data-node-id'))), orderBefore);

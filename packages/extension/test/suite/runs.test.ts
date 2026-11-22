@@ -6,15 +6,17 @@
  * script of docs/m2-plan.md section 10.2, installed through the testing API (real Claude is disabled in Test mode, and
  * TELELEAN_NO_REAL_CLAUDE=1 is set for the instance by .vscode-test.mjs).
  *
- *   open the board, initialize git, refresh -> startRun from the board (consent answered by the testing API) -> the
+ *   open the board, initialize git, refresh -> `formalize` from the board (consent answered by the testing API) -> the
  *   modality question arrives -> answered through simulateBoardMessage (Claude's guess revealed only now) -> the gate
- *   passes, a proved proposal arrives (spec v4: no G->D lifecycle item), the real files are untouched -> the raw Lean diff
- *   opens -> Accept: Main.lean changes on disk, one history entry, Undo restores it byte-exactly -> a second run
- *   waits for an answer; the window "reloads" (testing.disposeWorkspace) and the restored board shows the question
- *   again -> Cancel -> a third run is working when the window goes: restored as interrupted (Resume offered), its
- *   session was closed -> Stop.
+ *   passes, the edit session's first stage arrives (its results hidden), the real files are untouched -> the raw Lean
+ *   diff opens -> Exit -> a second run waits for an answer; the window "reloads" (testing.disposeWorkspace) and the
+ *   restored board shows the question again -> Exit -> a third run is working when the window goes: restored as
+ *   interrupted (Resume offered), its session was closed -> Exit.
  *
- * (Gated on WP1-WP4 while the builders worked in parallel; the integrator removed the gate and runs it.)
+ * (Gated on WP1-WP4 while the builders worked in parallel; the integrator removed the gate and runs it.) Slice 2h
+ * retired M2's review: a start is a `formalize`, a run in review is an edit session (no proposal), and an interrupted
+ * session ends by Exit (`endSession`). M2's Accept test is skipped until it is rewritten as the session's Apply (builder 2h; the session's
+ * Apply is covered by the runner's session.end and sessionApply suites meanwhile).
  */
 import * as assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -22,7 +24,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 
-import type { ActionOutcome, HistoryListing, ProposalView, RunView, TlGraph } from '@telelean/core';
+import type { ActionOutcome, HistoryListing, RunView, SessionView, TlGraph } from '@telelean/core';
 import { FakeBackend, type FakeStep } from '@telelean/runner/llm/fake.js';
 import type { BackendCaps, LlmBackend, LlmEvent, LlmSession, SessionConfig } from '@telelean/runner/llm/types.js';
 
@@ -155,13 +157,14 @@ suite('a Claude run through the board (FakeBackend; AT5.8, AT5.9)', () => {
   let root: string;
   let latestGraph: TlGraph | undefined;
   let latestRun: RunView | null | undefined;
-  let latestProposal: ProposalView | null | undefined;
+  let latestSession: SessionView | null | undefined;
   let subscription: vscode.Disposable | undefined;
+  /** Panels of boards the window "closed" (windowGoes): VS Code reports a post's delivery late, so their events can still arrive. */
+  const retiredPanels = new Set<vscode.WebviewPanel>();
   let restoreBackend: (() => void) | undefined;
   let mainBefore = '';
   let runId = '';
   let setId = '';
-  let proposal: ProposalView | undefined;
   const normative = new FakeBackend(NORMATIVE);
   const backend = new SwitchingBackend(normative);
 
@@ -184,6 +187,21 @@ suite('a Claude run through the board (FakeBackend; AT5.8, AT5.9)', () => {
     await waitFor(() => runNow() === null, 10_000, 'the dismissed run to leave the board');
   }
 
+  /**
+   * The window goes (deactivation: the RunManager is disposed before the workspace). The board's panel is retired first:
+   * VS Code reports the delivery of a post a few milliseconds after the post, so the "delivered" event of the last
+   * `working` view of the old board can arrive after this returns, and would stand in for the restored board's first
+   * view (it did, in VS Code 1.145: the restored run read `working` before the restored board had posted anything).
+   */
+  async function windowGoes(): Promise<void> {
+    const old = api.boardFor(root)?.panel;
+    assert.ok(old, 'a board is open for the model');
+    retiredPanels.add(old);
+    await api.testing?.disposeWorkspace(root);
+    latestRun = undefined;
+    latestSession = undefined;
+  }
+
   /** Restores the board as VS Code would after a reload (the serializer path), on a fresh panel. */
   async function restoreBoard(): Promise<void> {
     const panel = vscode.window.createWebviewPanel('telelean.board', `telelean: ${path.basename(root)}`, vscode.ViewColumn.Active, { enableScripts: true });
@@ -204,10 +222,10 @@ suite('a Claude run through the board (FakeBackend; AT5.8, AT5.9)', () => {
     restoreBackend = api.testing.useRunBackend(() => backend);
     api.testing.answerPrompts({ claudeConsent: true, initGit: true });
     subscription = api.onDidPostToBoard((e) => {
-      if (e.root !== root) return;
+      if (e.root !== root || retiredPanels.has(e.panel)) return;
       if (e.message.type === 'graph') latestGraph = e.message.payload.graph;
       if (e.message.type === 'run') latestRun = e.message.payload.run;
-      if (e.message.type === 'proposal') latestProposal = e.message.payload.proposal;
+      if (e.message.type === 'session') latestSession = e.message.payload.session;
     });
   });
 
@@ -219,7 +237,7 @@ suite('a Claude run through the board (FakeBackend; AT5.8, AT5.9)', () => {
     await closeAllEditors();
   });
 
-  test('startRun from the board: the egress consent (testing API), then the run asks its question', async function () {
+  test('Formalize from the board: the egress consent (testing API), then the run asks its question', async function () {
     this.timeout(LEAN_TIMEOUT_MS * 2);
     const opened = await vscode.commands.executeCommand<OpenBoardResult>('telelean.openBoard', { root });
     assert.deepEqual(opened, { root, asked: false });
@@ -232,7 +250,7 @@ suite('a Claude run through the board (FakeBackend; AT5.8, AT5.9)', () => {
     await waitFor(() => latestGraph?.semantic.state === 'fresh', LEAN_TIMEOUT_MS, `semantic "fresh" (now ${latestGraph?.semantic.state})`, 500);
     mainBefore = read(MAIN);
 
-    const started = await request('startRun', { target: TARGET, premises: PREMISES, requestId: 'run-start' });
+    const started = await request('formalize', { inferences: [{ target: TARGET, premises: PREMISES }], requestId: 'run-start' });
     assert.equal(started.ok, true, JSON.stringify(started));
     await waitFor(() => latestRun?.pendingQuestions !== undefined, LEAN_TIMEOUT_MS, `the question (run state ${latestRun?.state}: ${latestRun?.error ?? ''})`, 250);
     assert.ok(latestRun?.pendingQuestions);
@@ -249,7 +267,7 @@ suite('a Claude run through the board (FakeBackend; AT5.8, AT5.9)', () => {
     assert.ok(existsSync(runs), `${runs} does not exist`);
   });
 
-  test('the answer goes through the board; the gate passes and a proved proposal arrives; the real files are untouched', async function () {
+  test('the answer goes through the board; the gate passes and the edit session’s first stage arrives; the real files are untouched', async function () {
     this.timeout(LEAN_TIMEOUT_MS * 2);
     const answered = await request('answerQuestions', {
       runId,
@@ -258,40 +276,40 @@ suite('a Claude run through the board (FakeBackend; AT5.8, AT5.9)', () => {
       requestId: 'run-answer',
     });
     assert.equal(answered.ok, true, JSON.stringify(answered));
+    const stage = (): SessionView | null | undefined => latestSession;
     await waitFor(
-      () => latestProposal?.report.verdict !== undefined || latestRun?.state === 'failed',
+      () => (stage()?.stage ?? 0) >= 1 || latestRun?.state === 'failed',
       LEAN_TIMEOUT_MS,
-      `the proposal (run state ${latestRun?.state}: ${latestRun?.notices.map((n) => n.text).join(' | ') ?? ''})`,
+      `the session's first stage (run state ${latestRun?.state}: ${latestRun?.notices.map((n) => n.text).join(' | ') ?? ''})`,
       500,
     );
-    assert.ok(latestProposal, `no proposal: ${JSON.stringify(latestRun?.notices)} ${latestRun?.error ?? ''}`);
-    proposal = latestProposal;
-    assert.equal(proposal.report.verdict, 'proved', JSON.stringify(proposal.report));
+    const session = stage();
+    assert.ok(session, `no session: ${JSON.stringify(latestRun?.notices)} ${latestRun?.error ?? ''}`);
+    assert.equal(session.runId, runId);
+    assert.equal(session.phase, 'stage');
     assert.equal(latestRun?.state, 'review');
-    // Spec v4 (slice 1a): a proof no longer proposes a kind change (the GOAL -> DERIVATION lifecycle item is gone).
-    assert.equal('lifecycle' in proposal, false, 'a proposal of this build has no lifecycle items');
-    assert.deepEqual(proposal.definitions, [], 'the normative reading introduces no definition');
+    // RV-6 (D2-5): the stage opens with its results hidden; its Result is a neutral row.
+    assert.equal(session.results.shown, session.results.waitingFor.length === 0, JSON.stringify(session.results));
+    assert.ok(session.items.length > 0, 'the stage lists its items');
     assert.equal(latestRun?.answered[0]?.claudesGuess?.option, 0, "Claude's guess is revealed after the answer");
-    assert.equal(read(MAIN), mainBefore, "the user's files change only on Accept");
+    assert.equal(read(MAIN), mainBefore, "the user's files change only on Apply");
   });
 
   test('the raw Lean diff opens beside the board (vscode.changes)', async function () {
     this.timeout(60_000);
-    assert.ok(proposal);
-    await api.simulateBoardMessage(root, message('openProposalDiff', { runId, proposalId: proposal.proposalId }));
+    const stage = latestSession?.stage ?? 1;
+    // Opening it counts as Show results while they are hidden (RV-6): `confirmed`, as the board's reveal dialog sends it.
+    const opened = await request('openSessionDiff', { runId, stage, confirmed: true, requestId: 'run-diff' });
+    assert.equal(opened.ok, true, JSON.stringify(opened));
     await waitFor(() => vscode.window.tabGroups.all.flatMap((g) => g.tabs).some((t) => t.label.startsWith('Raw Lean diff')), 15_000, 'the raw Lean diff editor');
     await closeTextEditors();
   });
 
-  test('Accept: Main.lean changes on disk, one history entry is recorded, Undo restores the file', async function () {
+  // Skipped for later (builder 2h): M2's Accept is retired; to be rewritten as the session's Apply (accept every item,
+  // Submit review, the end confirmation, Apply), which writes Main.lean and one history entry that Undo reverts.
+  test.skip('Accept: Main.lean changes on disk, one history entry is recorded, Undo restores the file', async function () {
     this.timeout(LEAN_TIMEOUT_MS * 2);
-    assert.ok(proposal);
-    const accepted = await request('acceptProposal', {
-      runId,
-      proposalId: proposal.proposalId,
-      definitions: proposal.definitions.map((d) => d.id),
-      requestId: 'run-accept',
-    });
+    const accepted = await request('endSession', { runId, decision: 'apply', requestId: 'run-accept' });
     assert.equal(accepted.ok, true, JSON.stringify(accepted));
     const main = read(MAIN);
     assert.match(main, /abbrev pg_no_dark_past : Prop :=/);
@@ -317,24 +335,29 @@ suite('a Claude run through the board (FakeBackend; AT5.8, AT5.9)', () => {
 
   test('a restored board shows a pending question again (persisted at "reload", recovered by the new RunManager)', async function () {
     this.timeout(LEAN_TIMEOUT_MS * 2);
+    // The first session ends by Exit (slice 2h: M2's Accept is retired, and its test skipped): the files stay as they were.
+    const exited = await request('endSession', { runId, decision: 'exit', requestId: 'run-exit' });
+    assert.equal(exited.ok, true, JSON.stringify(exited));
+    await waitFor(() => runNow()?.state === 'discarded', 30_000, `the exited run (now ${runNow()?.state})`);
+    assert.equal(read(MAIN), mainBefore, 'Exit leaves the files as they were');
     await dismiss(runId);
-    const started = await request('startRun', { target: TARGET, premises: PREMISES, requestId: 'run-start-2' });
+    const started = await request('formalize', { inferences: [{ target: TARGET, premises: PREMISES }], requestId: 'run-start-2' });
     assert.equal(started.ok, true, JSON.stringify(started));
     await waitFor(() => latestRun?.pendingQuestions !== undefined, LEAN_TIMEOUT_MS, `the second run's question (state ${latestRun?.state})`, 250);
     const waiting = latestRun;
     assert.ok(waiting?.pendingQuestions);
 
-    await api.testing?.disposeWorkspace(root); // the window reloads: the RunManager persists the waiting question
-    latestRun = undefined;
+    await windowGoes(); // the window reloads: the RunManager persists the waiting question
     await restoreBoard();
     await waitFor(() => runNow()?.runId === waiting.runId && runNow()?.pendingQuestions !== undefined, 30_000, 'the restored question');
     assert.equal(runNow()?.state, 'waiting-for-answer');
     assert.equal(runNow()?.pendingQuestions?.id, waiting.pendingQuestions.id);
     assert.equal(runNow()?.pendingQuestions?.questions[0]?.question, waiting.pendingQuestions.questions[0]?.question);
 
-    const cancelled = await request('cancelRun', { runId: waiting.runId, requestId: 'run-cancel' });
-    assert.equal(cancelled.ok, true, JSON.stringify(cancelled));
-    await waitFor(() => runNow()?.state === 'cancelled', 30_000, 'the cancelled run');
+    // Slice 2h: a session's Cancel is Cancel step (the session stays); Exit ends it, also while its step waits (D2-62).
+    const ended = await request('endSession', { runId: waiting.runId, decision: 'exit', requestId: 'run-cancel' });
+    assert.equal(ended.ok, true, JSON.stringify(ended));
+    await waitFor(() => runNow()?.state === 'discarded', 30_000, 'the exited run');
     await dismiss(waiting.runId);
   });
 
@@ -343,24 +366,25 @@ suite('a Claude run through the board (FakeBackend; AT5.8, AT5.9)', () => {
     const hanging = new HangingBackend();
     backend.current = hanging;
     try {
-      const started = await request('startRun', { target: TARGET, premises: PREMISES, requestId: 'run-start-3' });
+      const started = await request('formalize', { inferences: [{ target: TARGET, premises: PREMISES }], requestId: 'run-start-3' });
       assert.equal(started.ok, true, JSON.stringify(started));
       await waitFor(() => latestRun?.state === 'working' && hanging.sessions.length === 1, LEAN_TIMEOUT_MS, `the working run (state ${latestRun?.state})`, 250);
       const working = latestRun;
       assert.ok(working);
 
-      await api.testing?.disposeWorkspace(root); // deactivation path: RunManager.dispose before the workspace
+      await windowGoes(); // deactivation path: RunManager.dispose before the workspace
       await waitFor(() => hanging.sessions[0]?.closed === true, 10_000, 'the session to be closed');
-      latestRun = undefined;
       await restoreBoard();
       await waitFor(() => runNow()?.runId === working.runId, 30_000, 'the restored run');
       assert.equal(runNow()?.state, 'interrupted');
       assert.equal(runNow()?.canResume, true);
       assert.equal(hanging.sessions.length, 1, 'recovery never starts a session by itself');
 
-      const stopped = await request('discardProposal', { runId: working.runId, requestId: 'run-stop' }); // "Stop" = Discard
+      // Slice 2h: the run is an edit session, interrupted: the session bar offers Resume, Cancel step and Exit; Exit ends it
+      // (cancelRun is Cancel step in a session, which keeps it).
+      const stopped = await request('endSession', { runId: working.runId, decision: 'exit', requestId: 'run-stop' });
       assert.equal(stopped.ok, true, JSON.stringify(stopped));
-      await waitFor(() => runNow()?.state === 'discarded', 30_000, 'the discarded run');
+      await waitFor(() => runNow()?.state === 'discarded', 30_000, 'the exited run');
       assert.equal(read(MAIN), mainBefore, "the user's files are untouched by runs that were never accepted");
     } finally {
       backend.current = normative;

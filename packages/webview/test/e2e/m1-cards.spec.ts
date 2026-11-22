@@ -92,6 +92,8 @@ test('AT6.3 cards show their glow, a chip per proof status and flag, the attenti
   await expect(chip('a-stale', 'proof')).toHaveAttribute('data-dim', 'true');
   // An axiom whose premises: line was written before v4 (A19): its arrows are not drawn, the chip says what to do.
   await expect(chip('a-premised', 'declared-before-v4')).toHaveText('declared before v4: make it a proposition, or drop these arrows');
+  // Slice 2i (audit G11): the chip's tooltip names the card the undrawn arrow comes from.
+  await expect(chip('a-premised', 'declared-before-v4')).toHaveAttribute('title', /\(1 arrow into it, from “Cynder is a character who has a dark past”\)/);
   await expect(page.locator('path[data-edge-id="cynder-dark-past->a-premised"]')).toHaveCount(0);
   await expect(page.locator('path[data-edge-id][data-target="a-premised"]')).toHaveCount(0);
   await expect(card(page, 'cynder-dark-past').locator('[data-chip="declared-before-v4"]')).toHaveCount(0);
@@ -106,12 +108,18 @@ test('AT6.3 cards show their glow, a chip per proof status and flag, the attenti
   expect(await postedOfType(page, 'select')).toEqual([]);
   await page.screenshot({ path: shotPath('m1-status-gallery.png') });
 
-  // The "declared before v4" card's details offer its two ways out; "Drop these arrows" removes them (one edit).
+  // The "declared before v4" card's details name the cards first, then offer its two ways out; "Drop these arrows"
+  // removes them (one edit). No other card has that line.
   const premised = card(page, 'a-premised');
   await premised.locator('.tl-card__chevron').click();
+  await expect(premised.getByTestId('declared-before-v4')).toHaveText('Declared before v4 (not drawn): arrows from “Cynder is a character who has a dark past”.');
   await expect(premised.getByTestId('legacy-make-proposition')).toHaveText('Make it a proposition (pending)');
   await premised.getByTestId('legacy-drop-arrows').click();
   expect((await postedOfType(page, 'removeArrows')).map((m) => m.payload)).toEqual([{ arrows: [{ source: 'cynder-dark-past', target: 'a-premised' }], requestId: 'r1' }]);
+  const dark = card(page, 'cynder-dark-past');
+  await dark.locator('.tl-card__chevron').click();
+  await expect(dark.getByTestId('arrow-actions')).toBeVisible();
+  await expect(dark.getByTestId('declared-before-v4')).toHaveCount(0);
 });
 
 test('AT6.17 the "uses:" line truncates after two names and its dropdown lists all, highlighting the item (request 2)', async ({ page }) => {

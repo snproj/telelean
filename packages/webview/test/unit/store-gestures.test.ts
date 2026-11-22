@@ -3,14 +3,17 @@
  * (`pressDelete`: one removeArrows for the selected arrows and marks, a card's dialog only without them, the reason
  * while locked or in the Proposed view), the selection rectangle (`selectArea`), a proposition moved over the AXIOMS
  * column (`overAxioms`, and the "Move to axioms" a drop there runs), and which gestures work when (`gestureGateOf`).
+ * Slice 2h (§5.10, D2-20, D2-33): the Proposed view is an edit session's: it selects (never Claude's undecided arrow),
+ * moves a card as a session step, and draws nothing.
  */
-import { buildGraph, EDIT_SESSION_ACTIVE, hostMessage, spyroGraph, spyroProvedGraph, type ActionOutcome, type TlGraph, type WebviewToHostMessage } from '@telelean/core';
+import { buildGraph, EDIT_SESSION_ACTIVE, hostMessage, REVIEW_TEXTS, spyroGraph, spyroProvedGraph, type ActionOutcome, type SessionView, type TlGraph, type WebviewToHostMessage } from '@telelean/core';
 import { describe, expect, it } from 'vitest';
 import { canvasDropOutcome } from '../../src/board/gestures';
-import { MENU_PROPOSED_ARROWS, MENU_PROPOSED_READ_ONLY } from '../../src/board/menu';
+import { MENU_PROPOSED_ARROWS } from '../../src/board/menu';
 import { createBoardStore, gestureGateOf } from '../../src/state/store';
 import { makeNode, workspaceState } from '../shared/graphs';
-import { normativeProposal, reviewRun, runView } from '../shared/runs';
+import { runView } from '../shared/runs';
+import { confirmingSession, sessionRun, shownStage, stepSession } from '../shared/sessions';
 
 const GOAL = 'cynder-not-good';
 const DARK = 'cynder-dark-past';
@@ -32,7 +35,12 @@ function setup(graph: TlGraph = withMark()) {
   const state = () => store.getState();
   const result = (requestId: string, outcome: ActionOutcome) => state().receive(hostMessage('actionResult', { requestId, outcome }));
   const ofType = (type: string) => sent.filter((m) => m.type === type);
-  return { store, sent, state, result, ofType };
+  /** Slice 2h: an edit session's stage arrives (its run first): the board switches to its Proposed view. */
+  const session = (view: SessionView = shownStage()) => {
+    state().receive(hostMessage('run', { run: sessionRun(view) }));
+    state().receive(hostMessage('session', { session: view }));
+  };
+  return { store, sent, state, result, ofType, session };
 }
 
 const toasts = (t: ReturnType<typeof setup>) => t.state().toasts.map((x) => [x.level, x.text]);
@@ -91,11 +99,11 @@ describe('the Delete key (AR-1): arrows and marks first, a card only without the
 
   it('in the Proposed view: arrows change only through review items and transforms (the reason, nothing sent)', () => {
     const t = setup(spyroProvedGraph());
-    t.state().selectIncomingArrows(GOAL);
-    const p = normativeProposal();
-    t.state().receive(hostMessage('run', { run: reviewRun(p) }));
-    t.state().receive(hostMessage('proposal', { proposal: p }));
+    t.session();
     expect(t.state().proposedView).toBe(true);
+    // Slice 2h: a session's Proposed view selects its drawn arrows, never Claude's arrow still in review (D2-20).
+    t.state().selectIncomingArrows(GOAL);
+    expect(t.state().selectedArrows.map((a) => a.source)).toEqual([DARK, RULE]);
     expect(t.state().pressDelete(null)).toBe(true);
     expect(toasts(t)).toEqual([['info', MENU_PROPOSED_ARROWS]]);
     expect(t.ofType('removeArrows')).toEqual([]);
@@ -148,17 +156,22 @@ describe('the selection rectangle (CM-2): selectArea', () => {
     expect(t.state().selectedMarks).toEqual([MARKED]);
   });
 
-  it('works during an edit session (selecting is viewing), and does nothing in the Proposed view', () => {
+  it('works during an edit session (selecting is viewing); in a session\'s Proposed view it selects there, never Claude\'s undecided arrow (slice 2h)', () => {
     const t = setup();
     t.state().receive(hostMessage('run', { run: runView({ state: 'working' }) }));
     t.state().selectArea(found, false);
     expect(t.state().selected).toEqual([GOAL, MARKED]);
     const p = setup(spyroProvedGraph());
-    const proposal = normativeProposal();
-    p.state().receive(hostMessage('run', { run: reviewRun(proposal) }));
-    p.state().receive(hostMessage('proposal', { proposal }));
-    p.state().selectArea({ cards: [GOAL], arrows: [{ source: DARK, target: GOAL }], marks: [] }, false);
-    expect([p.state().selected, p.state().selectedArrows]).toEqual([[], []]);
+    p.session();
+    p.state().selectArea({ cards: [GOAL], arrows: [{ source: DARK, target: GOAL }, { source: PG, target: GOAL }], marks: [] }, false);
+    expect([p.state().selected, p.state().selectedArrows]).toEqual([[GOAL], [{ source: DARK, target: GOAL }]]);
+    // Accepted, Claude's arrow is drawn as any arrow: it can be selected (and so asked about, D2-20).
+    p.state().receive(hostMessage('session', { session: shownStage({ arrow: 'accepted' }) }));
+    p.state().selectArea({ cards: [], arrows: [{ source: PG, target: GOAL }], marks: [] }, true);
+    expect(p.state().selectedArrows).toEqual([
+      { source: DARK, target: GOAL },
+      { source: PG, target: GOAL },
+    ]);
   });
 });
 
@@ -186,11 +199,9 @@ describe('a proposition moved over the AXIOMS column (AR-7)', () => {
     u.state().setOverAxioms({ id: GOAL, count: 1 });
     u.state().applyGraph({ ...spyroGraph(9), subject: 'Bayonetta' });
     expect(u.state().overAxioms).toBeNull();
-    // Slice 1d carry-over: really switching to the Proposed view, by the toggle and by a proposal that arrives.
+    // Slice 1d carry-over: really switching to the Proposed view, by the toggle and by a session's stage that arrives.
     const v = setup(spyroProvedGraph());
-    const p = normativeProposal();
-    v.state().receive(hostMessage('run', { run: reviewRun(p) }));
-    v.state().receive(hostMessage('proposal', { proposal: p }));
+    v.session();
     expect(v.state().proposedView).toBe(true);
     v.state().setProposedView(false);
     v.state().setOverAxioms({ id: GOAL, count: 1 });
@@ -199,9 +210,9 @@ describe('a proposition moved over the AXIOMS column (AR-7)', () => {
     expect(v.state().proposedView).toBe(true);
     expect(v.state().overAxioms).toBeNull();
     const w = setup(spyroProvedGraph());
-    w.state().receive(hostMessage('run', { run: reviewRun(p) }));
+    w.state().receive(hostMessage('run', { run: sessionRun(shownStage()) }));
     w.state().setOverAxioms({ id: GOAL, count: 1 });
-    w.state().receive(hostMessage('proposal', { proposal: p }));
+    w.state().receive(hostMessage('session', { session: shownStage() }));
     expect(w.state().proposedView).toBe(true);
     expect(w.state().overAxioms).toBeNull();
   });
@@ -220,21 +231,39 @@ describe('a proposition moved over the AXIOMS column (AR-7)', () => {
 });
 
 describe('which gestures work when (ES-9; gestureGateOf)', () => {
-  it('everything on an idle board; during a run or a start on its way, only selecting; the Proposed view, nothing', () => {
+  it('everything on an idle board; during a run or a start on its way, only selecting; a session\'s Proposed view selects and moves (slice 2h), never draws', () => {
     const t = setup(spyroProvedGraph());
     expect(gestureGateOf(t.state())).toEqual({ draw: null, move: null, select: true });
     t.store.setState({ runBusy: { action: 'start', requestId: 'r9' } });
     expect(gestureGateOf(t.state())).toEqual({ draw: EDIT_SESSION_ACTIVE, move: EDIT_SESSION_ACTIVE, select: true });
     t.store.setState({ runBusy: null });
-    const p = normativeProposal();
-    t.state().receive(hostMessage('run', { run: reviewRun(p) }));
+    t.state().receive(hostMessage('run', { run: sessionRun(shownStage()) }));
     expect(gestureGateOf(t.state())).toEqual({ draw: EDIT_SESSION_ACTIVE, move: EDIT_SESSION_ACTIVE, select: true });
-    t.state().receive(hostMessage('proposal', { proposal: p }));
+    t.state().receive(hostMessage('session', { session: shownStage() }));
     expect(t.state().proposedView).toBe(true);
-    expect(gestureGateOf(t.state())).toEqual({ draw: MENU_PROPOSED_ARROWS, move: MENU_PROPOSED_READ_ONLY, select: false });
+    // D2-33: a move there is a session step; drawing stays off (arrows change only through review items).
+    expect(gestureGateOf(t.state())).toEqual({ draw: MENU_PROPOSED_ARROWS, move: null, select: true });
+    // D2-62: while Claude's step runs nothing moves; nor while the end confirmation or Apply runs.
+    t.state().receive(hostMessage('session', { session: stepSession() }));
+    expect(gestureGateOf(t.state())).toEqual({ draw: MENU_PROPOSED_ARROWS, move: REVIEW_TEXTS.stepRunning, select: true });
+    t.state().receive(hostMessage('session', { session: confirmingSession() }));
+    expect(gestureGateOf(t.state()).move).toBe(REVIEW_TEXTS.formalizeConfirming);
+    t.state().receive(hostMessage('session', { session: confirmingSession({}, { phase: 'applying' }) }));
+    expect(gestureGateOf(t.state()).move).toBe(REVIEW_TEXTS.applyingNow);
     // Back on the Current view during the session: the session's reason.
     t.state().setProposedView(false);
     expect(gestureGateOf(t.state()).draw).toBe(EDIT_SESSION_ACTIVE);
+  });
+
+  it('slice 2h: the first stage switches to Proposed, and the selection keeps only what that view draws (D2-20)', () => {
+    const t = setup(spyroProvedGraph());
+    t.state().receive(hostMessage('run', { run: sessionRun(stepSession()) }));
+    // On the Current board during the step: the arrows into the goal, Claude's future one included (it is the person's here).
+    t.state().selectIncomingArrows(GOAL);
+    expect(t.state().selectedArrows.map((a) => a.source)).toEqual([DARK, PG, RULE]);
+    t.state().receive(hostMessage('session', { session: shownStage() }));
+    expect(t.state().proposedView).toBe(true);
+    expect(t.state().selectedArrows.map((a) => a.source)).toEqual([DARK, RULE]);
   });
 
   it('a draw released on a card adds one arrow, source → target (the store\'s addArrows; an axiom asks first, AR-6)', () => {

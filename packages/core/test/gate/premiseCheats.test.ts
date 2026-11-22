@@ -166,6 +166,7 @@ describe('ghost adoption declares the adopted card on the target (G5 accepts exa
     leanName: 'not_in_game_not_good',
     session: 'r1',
     today: '2026-11-02',
+    holdAs: 'axiom' as const,
   };
 
   it('after adoption: no markup finding for the target\'s premises; Claude changing them further is one', () => {

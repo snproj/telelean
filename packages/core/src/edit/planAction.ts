@@ -141,22 +141,24 @@ function deleteDependents(model: ProjectModel, nodeId: string, broken: readonly 
 function planDeleteNode(model: ProjectModel, action: Extract<BoardAction, { kind: 'delete-node' }>, ctx: PlanContext): EditPlan {
   const entry = entryOf(model, action.id);
   const node = entry.node;
-  const del = planDel(model, { id: node.id, keepLean: action.keepLean });
-  if (!action.keepLean && del.brokenDependents.length > 0 && action.confirmed !== true) {
+  // Slice 2i (spec v4 S9, ES-9): the card's Lean always goes with it; "Delete anyway" (confirmed) still deletes a card
+  // whose Lean other declarations use.
+  const del = planDel(model, { id: node.id });
+  if (del.brokenDependents.length > 0 && action.confirmed !== true) {
     const dependents = deleteDependents(model, node.id, del.brokenDependents);
     const shown = dependents.map((d) => model.nodes.get(d)?.node.naturalName ?? d);
     const list = shown.length > 3 ? `${shown.slice(0, 3).join('; ')}; … (${shown.length - 3} more)` : shown.join('; ');
     throw new ActionError(
       'needs-confirmation',
       dependents.length === 1
-        ? `Deleting its Lean code breaks a declaration that uses it (${list}), which stops compiling. Delete anyway, or keep its Lean.`
-        : `Deleting its Lean code breaks ${dependents.length} declarations that use it (${list}): they stop compiling. Delete anyway, or keep its Lean.`,
+        ? `Deleting its Lean code breaks a declaration that uses it (${list}), which stops compiling. Delete anyway, or cancel.`
+        : `Deleting its Lean code breaks ${dependents.length} declarations that use it (${list}): they stop compiling. Delete anyway, or cancel.`,
       dependents,
     );
   }
   const session = new EditSession(model);
   const archive: ArchiveEntry[] = [];
-  if (!action.keepLean && node.lean.statement && del.removeDecls.length > 0) {
+  if (node.lean.statement && del.removeDecls.length > 0) {
     const statement = node.lean.statement;
     const ops = new Map<string, LeanOp[]>();
     const add = (file: string, op: LeanOp) => ops.set(file, [...(ops.get(file) ?? []), op]);

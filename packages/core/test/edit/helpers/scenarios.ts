@@ -232,7 +232,7 @@ export function planScenarios(parse: Parser): void {
 
   describe('AT2.7 delete-node', () => {
     it('removes the block, its statement and .holds, and the id from other premises', () => {
-      const plan = planAction(spyro(), { kind: 'delete-node', id: 'cynder-dark-past', keepLean: false }, { ...CTX, layouts: { Spyro: emptyLayout() } });
+      const plan = planAction(spyro(), { kind: 'delete-node', id: 'cynder-dark-past' }, { ...CTX, layouts: { Spyro: emptyLayout() } });
       expect(plan).toMatchObject({ action: 'delete-node', label: 'Delete: Cynder is a character who has a dark past', nodes: ['cynder-dark-past', 'cynder-not-good'] });
       expect(plan.archive).toBeUndefined();
       const lines = SPYRO_TEXTS.main.split('\n');
@@ -241,8 +241,8 @@ export function planScenarios(parse: Parser): void {
       expect(plan.layout).toEqual({ subject: 'Spyro', layout: emptyLayout() });
     });
 
-    it('archives a theorem .holds; keepLean leaves the declarations', () => {
-      const plan = planAction(proved(), { kind: 'delete-node', id: 'cynder-not-good', keepLean: false }, CTX);
+    it('archives a theorem .holds; an axiom card always takes its abbrev and .holds with it (slice 2i, S9)', () => {
+      const plan = planAction(proved(), { kind: 'delete-node', id: 'cynder-not-good' }, CTX);
       expect(plan.archive).toEqual([
         {
           subject: 'Spyro',
@@ -252,11 +252,13 @@ export function planScenarios(parse: Parser): void {
           reason: 'deleted',
         },
       ]);
-      const keep = planAction(spyro(), { kind: 'delete-node', id: 'new-spyro-pg', keepLean: true }, CTX);
-      const text = after(keep, 'Model/Spyro/Main.lean') ?? '';
-      expect(text).toContain('abbrev new_spyro_pg : Prop := IsPG newSpyro\naxiom new_spyro_pg.holds : new_spyro_pg');
+      // Slice 2i: there is no card-only delete, so no `axiom new_spyro_pg.holds` stays behind as an unmarked axiom.
+      const axiom = planAction(spyro(), { kind: 'delete-node', id: 'new-spyro-pg' }, CTX);
+      const text = after(axiom, 'Model/Spyro/Main.lean') ?? '';
+      expect(text).not.toContain('new_spyro_pg');
       expect(text).not.toContain('id: new-spyro-pg');
       expect(text).toContain('premises: cynder-dark-past, pg-no-dark-past');
+      expect(axiom.archive).toBeUndefined(); // an axiom has no proof to archive
     });
   });
 

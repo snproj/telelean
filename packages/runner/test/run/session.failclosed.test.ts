@@ -5,7 +5,8 @@
  *   - `session()` is null (nothing stale is shown);
  *   - the RunView withholds Claude's activity and notices, shows only telelean's notice that the list could not be
  *     built, and its inferences follow the question each step asked (which tells no outcome);
- *   - a mid-stage Formalize is refused with that notice's text (whether the results are shown is not known);
+ *   - a mid-stage Formalize is refused with that notice's text (whether the results are shown is not known), and so is
+ *     every review action (slice 2e);
  *   - once the view can be built again, it is shown, and the notice goes.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -84,6 +85,15 @@ describe('a SessionView that cannot be built (fixer 2d r1, A-F4: fail closed)', 
       await h.manager.formalize({ subject: 'Spyro', inferences: [{ target: 'link-two', premises: ['link-one', 'new-spyro-pg'] }], runId: working.runId, stage: 1 }),
     ).toEqual({ ok: false, code: 'conflict', error: SESSION_VIEW_FAILED });
     expect(rawRun(h).session?.steps).toHaveLength(2);
+    // Slice 2e: so is every review action (whether the results are shown is not known), and nothing changes.
+    const formalizeItem = raw.session?.items[0];
+    const refusal = { ok: false, code: 'conflict', error: SESSION_VIEW_FAILED };
+    expect(await h.manager.decide(working.runId, 1, true, [{ item: formalizeItem?.id ?? '', rev: formalizeItem?.rev ?? 0, to: 'accepted' }], false)).toEqual(refusal);
+    expect(await h.manager.reveal(working.runId, 1, 'show-result')).toEqual(refusal);
+    expect(await h.manager.undoSession(working.runId, 1, false)).toEqual(refusal);
+    expect(await h.manager.submit(working.runId, 1)).toEqual(refusal);
+    expect(await h.manager.sessionDiff(working.runId, 1, true)).toEqual(refusal);
+    expect(rawRun(h).session).toEqual(raw.session);
     // The view can be built again (a reload builds it): shown, hidden results and all, and the notice is gone.
     control.throwNow = false;
     await h.manager.dispose();

@@ -230,6 +230,7 @@ describe('behaviour the single function had that no test held (found by 2b1a’s
       leanName: 'not_in_game_not_good',
       session: 'r1',
       today: '2026-11-02',
+      holdAs: 'axiom',
     });
     const A = model({ ...literalTexts, [MAIN]: plan.changes[0]?.after as string });
     const selection: Selection = { ...SEL, adoptedGhosts: [plan.nodeId] };

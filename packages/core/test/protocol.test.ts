@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseHostToWebview, parseWebviewToHost, spyroGraph, webviewMessage, hostMessage, LIMITS } from '../src/index.js';
+import { parseHostToWebview, parseWebviewToHost, spyroGraph, webviewMessage, hostMessage, LIMITS, DELETE_ALWAYS_REMOVES_LEAN } from '../src/index.js';
 import { createUserNode, slugId, validateGraph, buildGraph } from '../src/index.js';
 
 describe('parseWebviewToHost', () => {
@@ -21,8 +21,8 @@ describe('parseWebviewToHost', () => {
       webviewMessage('editNode', { id: 'a', field: 'rationale', value: null, requestId: 'r4' }),
       webviewMessage('editNode', { id: 'a', field: 'stance', value: 'supposing' }),
       webviewMessage('editNode', { id: 'a', field: 'source', value: null }),
-      webviewMessage('deleteNode', { id: 'a', keepLean: false }),
-      webviewMessage('deleteNode', { id: 'a', keepLean: false, confirmed: true, requestId: 'r7' }),
+      webviewMessage('deleteNode', { id: 'a' }),
+      webviewMessage('deleteNode', { id: 'a', confirmed: true, requestId: 'r7' }),
       webviewMessage('reorder', { id: 'a', column: 'AXIOM', beforeId: 'b' }),
       webviewMessage('undo', {}),
       webviewMessage('redo', { requestId: 'r5' }),
@@ -71,7 +71,8 @@ describe('parseWebviewToHost', () => {
       { v: 1, type: 'editNode', payload: { id: 'a', field: 'naturalName', value: null } },
       { v: 1, type: 'editNode', payload: { id: 'a', field: 'source', value: 'rumour' } },
       { v: 1, type: 'deleteNode', payload: { id: 'a', keepLean: 'yes' } },
-      { v: 1, type: 'deleteNode', payload: { id: 'a', keepLean: false, confirmed: 'yes' } },
+      { v: 1, type: 'deleteNode', payload: { id: 'a', confirmed: 'yes' } },
+      { v: 1, type: 'deleteNode', payload: { id: '', confirmed: true } },
       { v: 1, type: 'reorder', payload: { id: 'a', column: 'AXIOM', beforeId: 'a' } },
       { v: 1, type: 'undo', payload: { requestId: 'has spaces' } },
       { v: 1, type: 'selectSubject', payload: { subject: 'spyro' } },
@@ -109,6 +110,30 @@ describe('parseWebviewToHost', () => {
       if (!result.ok) expect(result.error).toMatch(error);
     }
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+
+  it('slice 2i (S9, ES-9): a delete always removes the card\'s Lean: keepLean: true is refused, keepLean: false is dropped', () => {
+    const refusedKeep = (payload: Record<string, unknown>) => parseWebviewToHost({ v: 1, type: 'deleteNode', payload });
+    // The card-only delete is gone: a message that still asks for it is refused with the reason, never carried out as
+    // the full delete it did not ask for. Confirmed or not, with or without a request id.
+    for (const payload of [{ id: 'a', keepLean: true }, { id: 'a', keepLean: true, confirmed: true, requestId: 'r1' }, { id: 'a', keepLean: true, confirmed: false }]) {
+      expect(refusedKeep(payload)).toEqual({ ok: false, error: DELETE_ALWAYS_REMOVES_LEAN });
+    }
+    expect(DELETE_ALWAYS_REMOVES_LEAN).toBe('Deleting a card always deletes its Lean.');
+    // keepLean: false asks for what every delete does now: accepted, and the field is not passed on.
+    expect(parseWebviewToHost({ v: 1, type: 'deleteNode', payload: { id: 'a', keepLean: false } })).toEqual({ ok: true, value: webviewMessage('deleteNode', { id: 'a' }) });
+    expect(parseWebviewToHost({ v: 1, type: 'deleteNode', payload: { id: 'a', keepLean: false, confirmed: true, requestId: 'r2' } })).toEqual({
+      ok: true,
+      value: webviewMessage('deleteNode', { id: 'a', confirmed: true, requestId: 'r2' }),
+    });
+    // Without the field (what the board sends): accepted as it is.
+    expect(parseWebviewToHost({ v: 1, type: 'deleteNode', payload: { id: 'a', requestId: 'r3' } })).toEqual({ ok: true, value: webviewMessage('deleteNode', { id: 'a', requestId: 'r3' }) });
+    // Anything else in keepLean is malformed; a bad id is still reported first.
+    for (const keepLean of ['yes', 1, null, 'true']) {
+      const result = refusedKeep({ id: 'a', keepLean });
+      expect(result, String(keepLean)).toEqual({ ok: false, error: 'payload.keepLean must be true or false' });
+    }
+    expect(refusedKeep({ id: 7, keepLean: true })).toEqual({ ok: false, error: 'payload.id must be a string' });
   });
 
   it('drops unknown extra properties and normalises optional text', () => {

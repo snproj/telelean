@@ -213,8 +213,8 @@ describe('deactivation with the real RunManager (AT5.9)', () => {
       await window.host.openBoardCommand({ root });
       await window.api.simulateBoardMessage(root, {
         v: 1,
-        type: 'startRun',
-        payload: { target: 'cynder-not-good', premises: ['cynder-dark-past', 'new-spyro-pg', 'pg-no-dark-past'], requestId: 'refused' },
+        type: 'formalize',
+        payload: { inferences: [{ target: 'cynder-not-good', premises: ['cynder-dark-past', 'new-spyro-pg', 'pg-no-dark-past'] }], requestId: 'refused' },
       });
       const panel = window.api.boardFor(root)?.panel as unknown as stub.FakePanel;
       const result = (panel.posted as Array<{ type: string; payload: { requestId?: string; outcome?: { ok: boolean; code?: string; error?: string } } }>).find(
@@ -239,8 +239,8 @@ describe('deactivation with the real RunManager (AT5.9)', () => {
       await first.host.openBoardCommand({ root });
       await first.api.simulateBoardMessage(root, {
         v: 1,
-        type: 'startRun',
-        payload: { target: 'cynder-not-good', premises: ['cynder-dark-past', 'new-spyro-pg', 'pg-no-dark-past'], requestId: 'start' },
+        type: 'formalize',
+        payload: { inferences: [{ target: 'cynder-not-good', premises: ['cynder-dark-past', 'new-spyro-pg', 'pg-no-dark-past'] }], requestId: 'start' },
       });
       const panel = first.api.boardFor(root)?.panel as unknown as stub.FakePanel;
       const result = (panel.posted as Array<{ type: string; payload: { requestId?: string; outcome?: unknown } }>).find(
@@ -297,12 +297,13 @@ describe('deactivation with the real RunManager (AT5.9)', () => {
       const manager = window.api.runsFor(root);
       if (!manager) throw new Error('no RunManager');
       for (let i = 0; i < 200 && manager.current()?.state !== 'interrupted'; i++) await sleep(25);
-      await window.api.simulateBoardMessage(root, { v: 1, type: 'discardProposal', payload: { runId, requestId: 'stop' } }); // "Stop" the recovered run
+      // Exit the recovered session (2h: M2's Discard, the stopgap Exit, is retired).
+      await window.api.simulateBoardMessage(root, { v: 1, type: 'endSession', payload: { runId, decision: 'exit', requestId: 'stop' } });
       await window.api.simulateBoardMessage(root, { v: 1, type: 'dismissRun', payload: { runId } });
       await window.api.simulateBoardMessage(root, {
         v: 1,
-        type: 'startRun',
-        payload: { target: 'cynder-not-good', premises: ['cynder-dark-past', 'new-spyro-pg', 'pg-no-dark-past'], requestId: 'start-2' },
+        type: 'formalize',
+        payload: { inferences: [{ target: 'cynder-not-good', premises: ['cynder-dark-past', 'new-spyro-pg', 'pg-no-dark-past'] }], requestId: 'start-2' },
       });
       for (let i = 0; i < 200 && manager.current()?.state !== 'working'; i++) await sleep(25);
       expect(manager.current()?.state).toBe('working');

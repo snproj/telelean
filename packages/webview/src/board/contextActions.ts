@@ -7,7 +7,7 @@
  *  - **Formalize for dependencies** (a labelled button): the selected arrows into exactly one proposition, or that
  *    proposition's "follows from nothing" mark, are the question; enabled when no run of the model folder is active,
  *    otherwise disabled with the reason on hover (CM-3). Only drawn arrows and ∅ marks can be selected (the store keeps
- *    nothing else), so warning and mention arrows never count. Several targets wait for the review list (slice 2).
+ *    nothing else), so warning and mention arrows never count. (Slice 2h: several targets at once, below.)
  *    No cycle of arrows (drawn and solid, TL015; AP-13) may lie anywhere in the subject: one through the target or a
  *    source names that card, any other is named too (core `formalizeCycleProblem`; AP-29, G2, slice 2b2).
  *  - Delete (the selected arrows and marks, one Undo step);
@@ -17,18 +17,26 @@
  *    selected, the same actions (those any of them offers) are listed disabled, with "Select one card for this action."
  *    on hover (CM-3; fixer 1e: they were left out, with no reason shown).
  * An unproved proposition among the sources does not disable Formalize: pressing it asks first (AR-8, the store).
+ *
+ * Slice 2h (§5.11, RV-9, ES-1): Formalize takes several targets at once (the "several targets" reason went): one
+ * inference per proposition the selected arrows or marks point into, ordered sources first (core `formalizeOrder`), and
+ * checked with core `formalizeStartProblems`, the host's own check, all but its AR-8 check 4 (the store asks about an
+ * unproved source instead). During an edit session it is a mid-stage Formalize of the Proposed view, disabled while
+ * Claude's step runs, while the results are hidden (D2-65, with Show results), while confirming, in the Current view,
+ * while judging, and on another subject's board. The section also lists the selection's review items ("N review items")
+ * with Accept and Decline… (RV-8: a group, `own: false`, previewed with core `planGroupAccept`).
  */
-import { formalizeCycleProblem, type ArrowEnds, type RunView, type TlEdge, type TlNode } from '@telelean/core';
+import { formalizeOrder, formalizeStartProblems, REVIEW_TEXTS, type ArrowEnds, type RunView, type SessionView, type TlEdge, type TlGraph, type TlNode } from '@telelean/core';
+import { acceptPreview, leftNote, listControls, stepRunning, type Control } from '../model/review';
 import { trayRunBlock } from '../model/run';
+import { formalizeSessionOf } from '../model/sessionBoard';
 import { cardActions, FORMALIZE_LABEL, MENU_PROPOSED_ARROWS, MENU_PROVISIONAL, menuName, removeSelectionLabel, type MenuAction, type MenuContext } from './menu';
 
 /** The labelled button's words (CM-3; defined with the right-click menu, which offers the same entry). */
 export { FORMALIZE_LABEL };
 
-/** Why Formalize for dependencies cannot be pressed (CM-3: the reason on hover). */
+/** Why Formalize for dependencies cannot be pressed (CM-3: the reason on hover). (Slice 2h: no "several targets" reason.) */
 export const FORMALIZE_TEXTS = {
-  /** Arrows (or marks) into several propositions: one target at a time in slice 1 (AP-9). */
-  several: 'Select arrows into one card: several targets come with the review list.',
   /** No arrow and no mark selected. */
   none: "Select arrows, or a 'follows from nothing' mark.",
   /** A run of the model folder is active, or a start is on its way. */
@@ -39,28 +47,44 @@ export const FORMALIZE_TEXTS = {
   severalCards: 'Select one card for this action.',
 } as const;
 
+/** One inference of a Formalize: a target and the sources of the arrows selected into it (none: its mark). */
+export interface FormalizeInference {
+  target: string;
+  premises: string[];
+}
+
 /** What Formalize for dependencies would ask now. */
 export interface FormalizeState {
   /** Why it cannot be pressed now, or null. */
   disabled: string | null;
-  /** The proposition the question is about (the selected arrows' target, or the marked card), when there is one. */
-  target: string | null;
-  /** The question: the selected arrows' sources (empty for a "follows from nothing" mark), in selection order. */
-  sources: string[];
+  /**
+   * The question (slice 2h, §5.11): one inference per proposition the selected arrows (or "follows from nothing" marks)
+   * point into, its premises the selected arrows' sources in selection order (none for a mark), ordered sources first
+   * (core `formalizeOrder`) when it can be pressed.
+   */
+  inferences: FormalizeInference[];
   /** The button's tooltip: the reason when disabled, else what it asks. */
   title: string;
+  /** A session's start (`start`), or a Formalize of the session's current stage (`mid-stage`, RV-9). */
+  mode: 'start' | 'mid-stage';
+  /** D2-65: disabled because the results are hidden; Show results is offered beside the reason. */
+  showResults?: true;
 }
 
 export interface FormalizeContext {
-  /** The Current board's cards. */
+  /** The cards of the board on screen (the Current board's; in a session, the Proposed view's). */
   nodes: Readonly<Record<string, TlNode>>;
-  /** The Current board's edges (drawn and verified ones count for cycles). */
+  /** That board's edges (drawn and verified ones count for cycles). */
   edges: readonly TlEdge[];
   selectedArrows: readonly ArrowEnds[];
   selectedMarks: readonly string[];
   provisional: Readonly<Record<string, true>>;
-  /** Why no run can start now (`formalizeRunBlock`), or null. */
+  /** Why no run can start now (`formalizeRunBlock`; outside a session), or null. */
   runBlock: string | null;
+  /** Slice 2h: the board's subject (a session of another subject disables Formalize). */
+  subject?: string;
+  /** Slice 2h: the root's edit session, and whether its Proposed view is on screen. */
+  session?: { view: SessionView; proposed: boolean };
 }
 
 /**
@@ -75,26 +99,80 @@ export function formalizeRunBlock(run: RunView | null | undefined, subject: stri
 
 const unique = <T>(items: readonly T[]): T[] => [...new Set(items)];
 
+/**
+ * The reasons Formalize is off during a session, in §5.11's order (null: none): another subject's session, a step
+ * running, confirming (applying), the Current view, the results hidden (D2-65), judging, then the host's own gate
+ * (`SessionView.formalize`).
+ */
+function sessionReason(ctx: FormalizeContext): { text: string; showResults?: true } | null {
+  const s = ctx.session;
+  if (s === undefined) return null;
+  const v = s.view;
+  if (ctx.subject !== undefined && v.subject !== ctx.subject) return { text: REVIEW_TEXTS.runElsewhere(v.subject) };
+  if (stepRunning(v)) return { text: REVIEW_TEXTS.formalizeStepRunning };
+  if (v.phase === 'confirming') return { text: REVIEW_TEXTS.formalizeConfirming };
+  if (v.phase === 'applying') return { text: REVIEW_TEXTS.applyingNow };
+  if (!s.proposed) return { text: REVIEW_TEXTS.formalizeCurrentView };
+  if (!v.results.shown) return { text: REVIEW_TEXTS.formalizeResultsHidden, showResults: true };
+  if (v.judging) return { text: REVIEW_TEXTS.judging };
+  if (!v.formalize.ok) return { text: v.formalize.reason };
+  return null;
+}
+
 /** Formalize for dependencies on the current selection (see the module comment). */
 export function formalizeState(ctx: FormalizeContext): FormalizeState {
-  const off = (disabled: string, target: string | null = null, sources: string[] = []): FormalizeState => ({ disabled, target, sources, title: disabled });
-  if (ctx.runBlock !== null) return off(ctx.runBlock);
+  const mode: FormalizeState['mode'] = ctx.session !== undefined ? 'mid-stage' : 'start';
+  const off = (disabled: string, inferences: FormalizeInference[] = [], extra: { showResults?: true } = {}): FormalizeState => ({ disabled, inferences, title: disabled, mode, ...extra });
+  const blocked = sessionReason(ctx);
+  if (blocked !== null) return off(blocked.text, [], blocked.showResults === true ? { showResults: true } : {});
+  if (ctx.session === undefined && ctx.runBlock !== null) return off(ctx.runBlock);
   const arrows = ctx.selectedArrows.filter((a) => ctx.nodes[a.target] !== undefined && ctx.nodes[a.source] !== undefined);
   const marks = ctx.selectedMarks.filter((id) => ctx.nodes[id] !== undefined);
   const targets = unique([...arrows.map((a) => a.target), ...marks]);
   if (targets.length === 0) return off(FORMALIZE_TEXTS.none);
-  if (targets.length > 1) return off(FORMALIZE_TEXTS.several);
-  const target = targets[0] as string;
-  const sources = unique(arrows.filter((a) => a.target === target).map((a) => a.source));
-  if ([target, ...sources].some((id) => ctx.provisional[id] === true)) return off(MENU_PROVISIONAL, target, sources);
-  const cycle = formalizeCycleProblem({ nodes: ctx.nodes, edges: ctx.edges }, [target, ...sources]);
-  if (cycle !== undefined) return off(cycle, target, sources);
-  const name = menuName(ctx.nodes, target);
-  const title =
-    sources.length === 0
-      ? `Ask Claude to prove “${name}” from no premises at all (you marked it "follows from nothing")`
-      : `Ask Claude to formalise ${sources.length === 1 ? 'the selected arrow' : `the ${sources.length} selected arrows`} and prove “${name}” from exactly ${sources.length === 1 ? 'its source' : 'their sources'}`;
-  return { disabled: null, target, sources, title };
+  const asked: FormalizeInference[] = targets.map((target) => ({ target, premises: unique(arrows.filter((a) => a.target === target).map((a) => a.source)) }));
+  if (asked.some((inf) => [inf.target, ...inf.premises].some((id) => ctx.provisional[id] === true))) return off(MENU_PROVISIONAL, asked);
+  // The host's own check (core §4.12), all but check 4: an unproved source is asked about when Formalize is pressed (AR-8).
+  // The subject is the board's (all its cards are of it; the session's in a session, sessionReason refused another).
+  const subject = ctx.session?.view.subject ?? (ctx.subject !== undefined && ctx.subject !== '' ? ctx.subject : (Object.values(ctx.nodes)[0]?.subject ?? ''));
+  const board = { subject, nodes: Object.values(ctx.nodes), edges: [...ctx.edges] } as unknown as TlGraph;
+  const session = ctx.session !== undefined ? formalizeSessionOf(ctx.session.view) : undefined;
+  const problem = formalizeStartProblems(board, asked, session).find((p) => p.check !== 4);
+  if (problem !== undefined) return off(problem.text, asked);
+  const order = formalizeOrder(board, asked);
+  const inferences = order.map((t) => asked.find((inf) => inf.target === t) as FormalizeInference);
+  return { disabled: null, inferences, title: formalizeTitle(ctx.nodes, inferences), mode };
+}
+
+/** What Formalize asks, for its tooltip: one target as slice 1e worded it; several, sources first (builder 2h). */
+function formalizeTitle(nodes: Readonly<Record<string, TlNode>>, inferences: readonly FormalizeInference[]): string {
+  if (inferences.length > 1) return `Ask Claude to formalise the selected arrows and prove ${inferences.length} targets, one step each, sources first`;
+  const only = inferences[0] as FormalizeInference;
+  const name = menuName(nodes, only.target);
+  const sources = only.premises;
+  return sources.length === 0
+    ? `Ask Claude to prove “${name}” from no premises at all (you marked it "follows from nothing")`
+    : `Ask Claude to formalise ${sources.length === 1 ? 'the selected arrow' : `the ${sources.length} selected arrows`} and prove “${name}” from exactly ${sources.length === 1 ? 'its source' : 'their sources'}`;
+}
+
+/** Slice 2h (CM-2, RV-8): the Context Menu section's review items: "N review items", Accept k of N, Decline…. */
+export interface ReviewItemsModel {
+  items: string[];
+  text: string;
+  accept: Control & { label: string };
+  decline: Control;
+}
+
+/**
+ * The section's review items (`ids`, model/sessionBoard.ts `contextItems`), with the list's group controls (D2-62
+ * first). "Accept k of N" says on hover which items it leaves and why (core `planGroupAccept`'s reasons, RV-8).
+ */
+export function reviewItemsModel(view: SessionView, ids: readonly string[], busy: boolean): ReviewItemsModel | null {
+  if (ids.length === 0) return null;
+  const controls = listControls(view, ids, busy);
+  const left = leftNote(view.items, acceptPreview(view.items, ids).left);
+  const accept = controls.acceptGroup.enabled && left !== null ? { ...controls.acceptGroup, title: `${controls.acceptGroup.title}\n${left}` } : controls.acceptGroup;
+  return { items: [...ids], text: REVIEW_TEXTS.reviewItems(ids.length), accept, decline: controls.declineGroup };
 }
 
 export interface SelectionContext {
@@ -209,6 +287,9 @@ export const CONTEXT_ICONS: Readonly<Record<ContextAction, string>> = {
   'new-here': 'add',
   fit: 'screen-full',
   tidy: 'layout',
+  'accept-item': 'check',
+  'decline-item': 'close',
+  'show-item': 'list-flat',
 };
 
 /** The section's model for the selection (see the module comment). `menu`: the right-click menu's context for the cards. */

@@ -44,7 +44,7 @@ export interface BoardPanelDeps {
   /** Every validated message (the TeleleanApi events). `root` is undefined for the sample board. */
   onMessage(root: string | undefined, message: WebviewToHostMessage): void;
   /** Every message posted to a webview. */
-  onPost(root: string | undefined, message: HostToWebviewMessage, delivered: boolean): void;
+  onPost(root: string | undefined, message: HostToWebviewMessage, delivered: boolean, panel: vscode.WebviewPanel): void;
 }
 
 type Mode =
@@ -201,7 +201,7 @@ export class BoardPanel implements vscode.Disposable {
     const line = `[host->webview] ${what}: ${delivered ? 'delivered' : 'not delivered (the board was closed or its webview was replaced)'}`;
     if (message.type === 'graph' || message.type === 'workspace' || message.type === 'history') this.deps.log.debug(line);
     else this.deps.log.info(`${line} ${JSON.stringify(message.payload).slice(0, 300)}`);
-    this.deps.onPost(this.root, message, delivered);
+    this.deps.onPost(this.root, message, delivered, this.panel);
   }
 
   private async handle(message: WebviewToHostMessage): Promise<void> {

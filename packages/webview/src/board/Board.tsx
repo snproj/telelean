@@ -7,6 +7,8 @@
  * the pointer says where the arrow would land (AR-6: the impact before you let go).
  * Slice 1d (BD-5, BD-7): the arrows' tooltips know the cards' proofs (TL109's "not used by the current proof"), and each
  * checked proposition's band (board/band.ts) is drawn by the engine in its own group, above the arrows it binds.
+ * Slice 2h (§5.10, BD-5, D2-34, D2-35): in a session's Proposed view Claude's arrows get their own looks and "+" / "−"
+ * badges (a group above the bands), and each "Claude suggests" card a "+" arrow into its target.
  */
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/adapter/element-adapter';
 import type { ArrowEnds } from '@telelean/core';
@@ -21,7 +23,8 @@ import { ContextMenu } from './ContextMenu';
 import { setCurrentEngine } from './diagnostics';
 import { columnOf, dropPlacement, isCardDragData } from './dnd';
 import { EdgeEngine, MARKER_VARIANTS } from './EdgeEngine';
-import { hasFocusEdges, toDisplayEdges, type DisplayContext } from './edges';
+import { hasFocusEdges, proposedBadges, toDisplayEdges, type DisplayContext, type DisplayEdge } from './edges';
+import { premiseAnchor, proposedLook } from '../model/sessionBoard';
 import { CANVAS_SIDES, type CanvasSide } from './geometry';
 import { PropositionCanvas, type CanvasRefs } from './PropositionCanvas';
 import { VocabularyBand } from './Vocabulary';
@@ -80,8 +83,33 @@ const marksOf = (s: BoardState): string[] => {
 };
 /** Slice 1d: what the arrows' tooltips may say about proofs (nothing for a result the Proposed view still hides). */
 const displayContextOf = (s: BoardState): DisplayContext => {
-  const hidden = proposedOverlay(s)?.hidden;
-  return { nodes: boardView(s).nodes, ...(hidden ? { hidden } : {}) };
+  const overlay = proposedOverlay(s);
+  return { nodes: boardView(s).nodes, ...(overlay ? { hidden: overlay.hidden, proposed: overlay.proposed } : {}) };
+};
+
+/** Slice 2h (D2-35): the "+" arrow of each "Claude suggests" card into its target (the card is an arrow end, `data-edge-anchor`). */
+const premiseEdgesOf = (s: BoardState): DisplayEdge[] =>
+  (proposedOverlay(s)?.premises ?? []).map((p) => {
+    const arrow = { change: 'add' as const, status: p.status, used: false };
+    const look = proposedLook(arrow);
+    const source = premiseAnchor(p.item);
+    return {
+      id: `${source}->${p.target}`,
+      source,
+      target: p.target,
+      pattern: look.line === 'solid' ? 'verified' : look.line === 'thin' ? 'reference' : 'declared',
+      declared: false,
+      verified: false,
+      proposed: { item: p.item, ...arrow },
+      title: look.title,
+    };
+  });
+
+/** The arrows the engine draws: the board's, and (slice 2h) the "Claude suggests" cards'. */
+const edgesOf = (s: BoardState): DisplayEdge[] => {
+  const edges = toDisplayEdges(boardView(s).edges, focusOf(s), displayContextOf(s));
+  const premises = premiseEdgesOf(s);
+  return premises.length > 0 ? [...edges, ...premises] : edges;
 };
 /** Slice 1d (BD-7): the bands of the board on screen (none for a result the Proposed view still hides). */
 const bandsOfState = (s: BoardState) => {
@@ -137,6 +165,7 @@ export function Board() {
   const canvasGroup = useRef<SVGGElement>(null);
   const marksGroup = useRef<SVGGElement>(null);
   const bandsGroup = useRef<SVGGElement>(null);
+  const badgesGroup = useRef<SVGGElement>(null);
   const draftSvg = useRef<SVGSVGElement>(null);
   const draftArea = useRef<SVGRectElement>(null);
   const draftArrow = useRef<SVGPathElement>(null);
@@ -175,10 +204,10 @@ export function Board() {
   useLayoutEffect(() => {
     const board = boardRef.current;
     const svg = svgRef.current;
-    const groups = { board: boardGroup.current, canvas: canvasGroup.current, marks: marksGroup.current, bands: bandsGroup.current };
+    const groups = { board: boardGroup.current, canvas: canvasGroup.current, marks: marksGroup.current, bands: bandsGroup.current, badges: badgesGroup.current };
     const { section, list, up, down, viewport, layer, slots } = parts.current;
     const draft = { svg: draftSvg.current, area: draftArea.current, arrow: draftArrow.current, hint: drawHint.current };
-    if (!board || !svg || !groups.board || !groups.canvas || !groups.marks || !groups.bands || !section || !list || !up || !down || !viewport || !layer) return;
+    if (!board || !svg || !groups.board || !groups.canvas || !groups.marks || !groups.bands || !groups.badges || !section || !list || !up || !down || !viewport || !layer) return;
     if (!CANVAS_SIDES.every((side) => slots[side])) return;
     if (!draft.svg || !draft.area || !draft.arrow || !draft.hint) return;
     const engine = new EdgeEngine({
@@ -186,10 +215,12 @@ export function Board() {
       column: { list, up, down },
       canvas: { viewport, layer, view: canvas, slots: slots as Record<CanvasSide, HTMLElement> },
       svg,
-      groups: { board: groups.board, canvas: groups.canvas, marks: groups.marks, bands: groups.bands },
+      groups: { board: groups.board, canvas: groups.canvas, marks: groups.marks, bands: groups.bands, badges: groups.badges },
     });
     const initial = store.getState();
-    engine.setEdges(toDisplayEdges(boardView(initial).edges, focusOf(initial), displayContextOf(initial)));
+    const initialEdges = edgesOf(initial);
+    engine.setEdges(initialEdges);
+    engine.setBadges(proposedBadges(initialEdges));
     engine.setFocus(focusOf(initial));
     engine.setSelection(selectedEdgesOf(initial.selectedArrows), new Set(initial.selectedMarks));
     engine.setMarks(marksOf(initial));
@@ -201,10 +232,15 @@ export function Board() {
       const before = boardView(previous);
       const edges = view.edges;
       // Slice 1d: the tooltips and the bands depend on the cards' proofs and on which results the overlay hides.
-      const hiddenChanged = proposedOverlay(state)?.hidden !== proposedOverlay(previous)?.hidden;
+      // Slice 2h: and on Claude's arrows and the premise suggestions (a new overlay holds new ones).
+      const hiddenChanged = proposedOverlay(state) !== proposedOverlay(previous);
       const proofsChanged = view.nodes !== before.nodes || hiddenChanged;
       // lean-ref arrows are drawn only while one of their ends has focus, so a focus change can change the set.
-      if (edges !== before.edges || proofsChanged || (focusChanged && hasFocusEdges(edges))) engine.setEdges(toDisplayEdges(edges, focusOf(state), displayContextOf(state)));
+      if (edges !== before.edges || proofsChanged || (focusChanged && hasFocusEdges(edges))) {
+        const shown = edgesOf(state);
+        engine.setEdges(shown);
+        engine.setBadges(proposedBadges(shown));
+      }
       if (focusChanged) engine.setFocus(focusOf(state));
       if (state.selectedArrows !== previous.selectedArrows || state.selectedMarks !== previous.selectedMarks) {
         engine.setSelection(selectedEdgesOf(state.selectedArrows), new Set(state.selectedMarks));
@@ -247,6 +283,8 @@ export function Board() {
           <g ref={marksGroup} clipPath="url(#tl-clip-canvas)" />
           {/* Slice 1d (BD-7): the bands, above the arrows and stubs they bind, clipped like them. */}
           <g ref={bandsGroup} clipPath="url(#tl-clip-canvas)" />
+          {/* Slice 2h (BD-5): the badges of Claude's arrows ("+", "−"), above everything else the overlay draws. */}
+          <g ref={badgesGroup} clipPath="url(#tl-clip-board)" />
         </svg>
         <AxiomsColumn refs={columnRefs} />
         <PropositionCanvas canvas={canvas} refs={canvasRefs} />

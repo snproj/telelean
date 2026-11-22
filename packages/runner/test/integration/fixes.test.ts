@@ -129,7 +129,7 @@ describe('the M1 fixes with real Lean on a copy of mental_model/', () => {
   it('delete with Lean of a statement with a column-0 comment removes all of it; Lean builds', async (ctx) => {
     if (!(await waitForMemory())) ctx.skip();
     const before = read(root, MAIN);
-    const outcome = await ws.perform({ kind: 'delete-node', id: 'a-multi', keepLean: false });
+    const outcome = await ws.perform({ kind: 'delete-node', id: 'a-multi' });
     expect(outcome, JSON.stringify(outcome)).toMatchObject({ ok: true, label: 'Delete: The game is PG, written on two lines' });
     const main = read(root, MAIN);
     expect(main).not.toContain('a_multi');
@@ -193,13 +193,13 @@ describe('the M1 fixes with real Lean on a copy of mental_model/', () => {
     expect(ws.graph('Other').nodes.find((n) => n.id === 'other-goal')?.status.proof.kind).toBe('proved');
 
     const before = read(root, MAIN);
-    const asked = await ws.perform({ kind: 'delete-node', id: 'cynder-dark-past', keepLean: false });
+    const asked = await ws.perform({ kind: 'delete-node', id: 'cynder-dark-past' });
     expect(asked).toMatchObject({ ok: false, code: 'needs-confirmation' });
     if (asked.ok) throw new Error('expected a confirmation request');
     expect(asked.dependents).toEqual(expect.arrayContaining(['d1', 'other-goal', 'Spyro.helper_lemma']));
     expect(read(root, MAIN)).toBe(before);
 
-    const deleted = await ws.perform({ kind: 'delete-node', id: 'cynder-dark-past', keepLean: false, confirmed: true });
+    const deleted = await ws.perform({ kind: 'delete-node', id: 'cynder-dark-past', confirmed: true });
     expect(deleted, JSON.stringify(deleted)).toMatchObject({ ok: true, label: 'Delete: Cynder is a character who has a dark past' });
     expect(read(root, MAIN)).not.toContain('abbrev cynder_dark_past');
     expect(await ws.undo('Spyro')).toMatchObject({ ok: true });

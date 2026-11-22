@@ -237,7 +237,7 @@ describe('a board session with real Lean on a copy of mental_model/ (plan 11.3)'
 
   it('delete removes the block and its declarations, keeping the proof in the attic; Lean is fresh again', async (ctx) => {
     if (!(await waitForMemory())) ctx.skip();
-    const outcome = await ws.perform({ kind: 'delete-node', id: 'pg-again', keepLean: false });
+    const outcome = await ws.perform({ kind: 'delete-node', id: 'pg-again' });
     expect(outcome, JSON.stringify(outcome)).toMatchObject({ ok: true, label: 'Delete: The new Spyro game is PG, again' });
     expect(read(root, MAIN)).not.toContain('pg_again');
     const attic = listFiles(root).filter((rel) => rel.startsWith('.telelean/subjects/Spyro/attic/'));

@@ -173,7 +173,8 @@ export function busyRefusal(run: RunView | null | undefined): string | undefined
   if (!run || isTerminalRunState(run.state)) return undefined;
   switch (run.state) {
     case 'review':
-      return `Claude's proposal for "${run.subject}" is waiting for your review: Accept, Feedback or Discard it first.`;
+      // Slice 2h: a run in review is an edit session (M2's Accept, Feedback and Discard are retired).
+      return `An edit session on "${run.subject}" is waiting for your review: Apply or Exit it first.`;
     case 'interrupted':
       return `A Claude run on "${run.subject}" was interrupted: Resume or Stop it first.`;
     case 'waiting-for-answer':
@@ -185,14 +186,11 @@ export function busyRefusal(run: RunView | null | undefined): string | undefined
 
 /** Run messages whose success the board also shows as a toast (an answer or a dismissal shows in the run panel itself). */
 export const RUN_SUCCESS_NOTICES: ReadonlySet<RunRequestType> = new Set<RunRequestType>([
-  'startRun',
   'formalize',
   'retryStep',
+  'submitReview',
+  // Slice 2f: Apply (its toast carries Undo), Exit and Back to review.
+  'endSession',
   'cancelRun',
   'resumeRun',
-  'acceptProposal',
-  'feedback',
-  'discardProposal',
-  'adoptGhost',
-  'rejectGhost',
 ]);

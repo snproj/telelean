@@ -328,12 +328,13 @@ export interface GhostAdoptionRequest {
   /** `YYYY-MM-DD` for `asserted:`. */
   today: string;
   /**
-   * Slice 2 (docs/slice2-plan.md 3.8; 2b2, additive): how the person holds the premise they accepted. `axiom` (the
-   * default, M2's "I hold this"): an AXIOM card. `pending`: a PROPOSITION card with `axiom P.holds`, pending proof and
-   * never green (A26). Any other value is refused. A session's premise write always passes it, read from the item's
-   * Accept, never a default (§3.8).
+   * Slice 2 (docs/slice2-plan.md 3.8; 2b2): how the person holds the premise they accepted. `axiom`: an AXIOM card.
+   * `pending`: a PROPOSITION card with `axiom P.holds`, pending proof and never green (A26). Required since 2h (fixer 2b2
+   * r1, S-V2B2-S2): with M2's `adoptGhost` retired, every caller is a session's premise write, which passes the item's
+   * Accept (`accepted.holdAs`, §3.8), never a default; a missing one (`undefined` past the type) or any other value is
+   * refused (`invalid`), so no forgotten choice writes an AXIOM card for a premise the person holds as pending.
    */
-  holdAs?: 'axiom' | 'pending';
+  holdAs: 'axiom' | 'pending';
 }
 
 export interface GhostAdoptionPlan {

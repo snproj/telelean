@@ -1588,7 +1588,7 @@ class Engine implements LeanCheckEngine {
       this.core.applyBackstop({ base: base.model, final, items: s.items, ledger: s.ledger, inferences: s.inferences, judgement }).refusals;
     const failed = (current: ProjectModel, judgement: StateJudgement, extra: FinalCheckReport['failures'] = []): FinalCheckReport => {
       const backstop = backstopOf(current, judgement);
-      return { passed: false, reusedFileChecks: false, judgement, failures: [...extra, ...finalCheckFailures(judgement, s.items, backstop)], backstop };
+      return { passed: false, reusedFileChecks: false, judgement, failures: [...extra, ...finalCheckFailures(judgement, s.items, backstop)], backstop, model: current };
     };
 
     // F is ws/ at the end, where no write is in flight (Submit and Apply wait for the session's write queue): the final
@@ -1676,6 +1676,8 @@ class Engine implements LeanCheckEngine {
       failures,
       backstop,
       comparator,
+      // Builder 2f: F with the facts judged, for Apply's backstop (run again there, pure, never reused).
+      model: current,
     };
   }
 

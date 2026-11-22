@@ -7,7 +7,7 @@
  * Slice 2d: every start is an edit session. Cancel is Cancel step (the step back to its start, the stage opens; the
  * session goes on: Discard ends it until 2f's Exit), the step's outcome is on its record, and the RunView withholds the
  * notices while a step runs and while the results are hidden (run.json holds them). A v1 run in review is converted
- * into a session when it is recovered (§3.11, session.reload.test.ts), so M2's legacy-proposal test moves to 2h.
+ * into a session when it is recovered (§3.11, session.reload.test.ts); M2's legacy-proposal test was deleted in 2h.
  */
 import { cpSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -69,9 +69,9 @@ describe('cancel (AT3.6)', () => {
     expect(h.engine.methods()).not.toContain('gate');
     // The shadow and transcript are kept.
     expect(readFileSync(path.join(h.shadow().paths.sessionDir, 'transcript.jsonl'), 'utf8')).toContain('"kind":"tool-call","tool":"check_lean"');
-    // No step runs any more: a second Cancel is refused; the session ends with Discard (2f: Exit), then dismissed.
+    // No step runs any more: a second Cancel is refused; the session ends with Exit (2h: Discard is retired), then dismissed.
     expect(await h.manager.cancel(runId)).toMatchObject({ ok: false, code: 'conflict' });
-    expect(await h.manager.discard(runId)).toMatchObject({ ok: true, label: 'Session ended' });
+    expect(await h.manager.end(runId, 'exit')).toMatchObject({ ok: true, label: 'Session ended' });
     expect(h.sidecars.attempts).toEqual([expect.objectContaining({ run: runId, round: 1, verdict: 'cancelled' })]);
     expect(h.sidecars.resolutions).toEqual([expect.objectContaining({ run: runId, round: 1, resolution: 'discarded' })]);
     expect(await h.manager.dismiss(runId)).toMatchObject({ ok: true });
@@ -179,76 +179,9 @@ describe('recovery after a reload (AT3.7)', () => {
     expect(b.backend?.sessions).toHaveLength(0);
   });
 
-  // Slice 2d: a run in review is a session now, and a v1 run in review is converted into one when it is recovered
-  // (§3.11; session.reload.test.ts covers the conversion): its proposal is not used again, so no legacy proposal is
-  // upgraded for Accept any more. Retired with the old review (`proposal()`, `accept`).
-  it.skip('moves to 2h: a run in review saved before spec v4 comes back with its proposal in the two kinds, and can be accepted (slice 1a fixer)', async () => {
-    const a = makeHarness({ script: [round1(step.freeze(), step.finish(), step.result())] });
-    toDispose.push(() => cleanup(a.dir));
-    await a.manager.start(START);
-    const review = await waitForRun(a.manager, state('review'));
-    await a.manager.dispose(); // run.json holds its final state (no write still queued that could overwrite ours)
-    // What a build before spec v4 left in run.json: three kinds, a pending promotion, the old flags and diagnostics,
-    // and a lifecycle item (a proved GOAL made a DERIVATION).
-    const stateFile = a.shadow().paths.stateFile;
-    const old = JSON.parse(readFileSync(stateFile, 'utf8')) as {
-      proposal: {
-        lifecycle?: unknown[];
-        graph: {
-          nodes: Array<{ id: string; type: string; status: { proof: { kind: string; footprint?: string[] }; flags: string[] } }>;
-          diagnostics: Array<{ code: string; severity: string; message: string; nodeId?: string }>;
-        };
-      };
-    };
-    const node = (id: string) => {
-      const found = old.proposal.graph.nodes.find((n) => n.id === id);
-      if (!found) throw new Error(`no node ${id}`);
-      return found;
-    };
-    node('cynder-dark-past').type = 'ASSUMPTION';
-    Object.assign(node('new-spyro-pg'), { type: 'DERIVATION', status: { ...node('new-spyro-pg').status, proof: { kind: 'pending-promotion' }, flags: ['claimed'] } });
-    Object.assign(node('pg-no-dark-past'), { type: 'GOAL', status: { ...node('pg-no-dark-past').status, proof: { kind: 'assumed' }, flags: [] } });
-    const footprint = ['cynder-dark-past', 'new-spyro-pg', 'pg-no-dark-past'];
-    Object.assign(node(START.target), { type: 'GOAL', status: { ...node(START.target).status, proof: { kind: 'proved', footprint }, flags: ['proved-goal', 'rests-on-claimed'] } });
-    old.proposal.graph.diagnostics = [
-      { code: 'TL105', severity: 'info', message: 'This goal is already proved: make it a Derivation?', nodeId: START.target },
-      { code: 'TL116', severity: 'warning', message: 'This goal is asserted as an axiom (Spyro.pg_no_dark_past.holds): make it an Assumption?', nodeId: 'pg-no-dark-past' },
-      { code: 'TL102', severity: 'warning', message: 'The proof rests on a goal asserted as an axiom: pg-no-dark-past.', nodeId: START.target },
-      { code: 'TL109', severity: 'info', message: 'kept as it is', nodeId: START.target },
-    ];
-    old.proposal.lifecycle = [{ id: 'l1', kind: 'change-kind', nodeId: START.target, from: 'GOAL', to: 'DERIVATION', recommended: true, reason: 'Lean proved it' }];
-    writeFileSync(stateFile, JSON.stringify(old));
-
-    const b = makeHarness({ reuse: { dir: a.dir, root: a.root, runsDir: a.runsDir, workspace: a.workspace } });
-    toDispose.push(() => b.dispose());
-    await b.manager.recover();
-    expect(b.manager.current()).toMatchObject({ runId: review.runId, state: 'review' });
-    const proposal = b.manager.proposal();
-    if (proposal === null) throw new Error('no proposal after the reload');
-    expect(proposal).not.toHaveProperty('lifecycle');
-    const kinds = Object.fromEntries(proposal.graph.nodes.map((n) => [n.id, n.type]));
-    expect(kinds).toEqual({ 'cynder-dark-past': 'AXIOM', 'new-spyro-pg': 'PROPOSITION', 'pg-no-dark-past': 'PROPOSITION', [START.target]: 'PROPOSITION' });
-    const status = (id: string) => proposal.graph.nodes.find((n) => n.id === id)?.status;
-    expect(status('new-spyro-pg')).toMatchObject({ proof: { kind: 'pending' }, flags: [] });
-    expect(status('pg-no-dark-past')).toMatchObject({ proof: { kind: 'pending' }, flags: [] });
-    expect(status(START.target)).toMatchObject({ proof: { kind: 'proved', footprint }, flags: ['rests-on-pending'] });
-    // The legacy TL102 goes; slice 1f (carry-over 3): the proof that rests on the now pending cards gets the warning a
-    // fresh build gives it (B.5), beside its flag.
-    expect(proposal.graph.diagnostics.map((d) => [d.code, d.message])).toEqual([
-      ['TL109', 'kept as it is'],
-      ['TL102', 'The proof rests on pending: new-spyro-pg, pg-no-dark-past.'],
-    ]);
-    expect(proposal.graph.diagnostics[1]).toMatchObject({ severity: 'warning', nodeId: START.target });
-    // The board builds its proposed view from it (overlayFor -> columnOrder) without meeting an unknown kind.
-    expect(columnOrder(proposal.graph.nodes)).toEqual({ AXIOM: ['cynder-dark-past'], PROPOSITION: expect.arrayContaining(['new-spyro-pg', 'pg-no-dark-past', START.target]) });
-    // run.json is written back upgraded.
-    const saved = readJson<PersistedRun>(stateFile);
-    expect(saved.proposal).not.toHaveProperty('lifecycle');
-    expect(saved.proposal?.graph.nodes.every((n) => n.type === 'AXIOM' || n.type === 'PROPOSITION')).toBe(true);
-    // Accept takes it as any proposal of this build.
-    expect(await b.manager.accept(review.runId, proposal.proposalId, [])).toMatchObject({ ok: true });
-    expect(b.manager.current()).toMatchObject({ state: 'accepted' });
-  });
+  // Slice 2h deleted 2d's placeholder "a run in review saved before spec v4 comes back with its proposal in the two
+  // kinds, and can be accepted": M2's proposal and its Accept are retired. A v1 run in review is converted into a
+  // session (session.reload.test.ts, its proposal in the old kinds included), and core's legacy.test.ts covers the upgrade.
 
   it('a run that was working comes back interrupted; Resume continues the session with the resume turn', async () => {
     const a = makeHarness({ script: [round1(step.check(), { kind: 'sleep', ms: 60_000 })] });
@@ -290,7 +223,7 @@ describe('recovery after a reload (AT3.7)', () => {
     await b.manager.recover();
     const back = b.manager.current();
     expect(back).toMatchObject({ state: 'interrupted' });
-    expect(await b.manager.discard(back?.runId ?? '')).toMatchObject({ ok: true, label: 'Session ended' });
+    expect(await b.manager.end(back?.runId ?? '', 'exit')).toMatchObject({ ok: true, label: 'Session ended' });
     expect(b.manager.current()).toMatchObject({ state: 'discarded' });
   });
 

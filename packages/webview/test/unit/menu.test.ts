@@ -5,13 +5,14 @@
  * empty canvas), disabled with the reason during an edit session (ES-9) and in the Proposed view. Also the AXIOMS
  * header's "also assumed" line and the Vocabulary and Definitions band's summary (BD-1).
  */
-import { EDIT_SESSION_ACTIVE, type TlNode, type VocabItem } from '@telelean/core';
+import { EDIT_SESSION_ACTIVE, ITEM_KIND_LABELS, REVIEW_TEXTS, type TlNode, type VocabItem } from '@telelean/core';
 import { describe, expect, it } from 'vitest';
 import { alsoAssumed, alsoAssumedParts } from '../../src/board/assumed';
 import { MENU_PROPOSED_ARROWS, MENU_PROPOSED_READ_ONLY, MENU_PROVISIONAL, menuEntries, menuSelection, removeSelectionLabel, type MenuContext } from '../../src/board/menu';
 import { bandSummary, bandSummaryText, splitVocabulary } from '../../src/board/vocabularyBand';
 import { PROPOSED_ARROWS_LOCKED } from '../../src/state/store';
 import { makeNode } from '../shared/graphs';
+import { IDS, shownStage, stepSession } from '../shared/sessions';
 
 /** Proved (so "Mark pending" does not apply). */
 const proved = (id: string) => ({ binding: 'pinned' as const, statement: `Spyro.${id}`, justification: `Spyro.${id}.holds`, justificationKind: 'theorem' as const });
@@ -210,5 +211,66 @@ describe('what the AXIOMS header counts, and the band above (BD-1)', () => {
     expect(summary).toEqual({ vocabulary: 4, definitions: 2, hidden: 1, endorse: 1, added: { vocabulary: 0, definitions: 1 } });
     expect(bandSummaryText(summary)).toBe('Vocabulary 4 · 1 hidden assumption · Definitions 2 · 1 needs your endorsement · 1 new');
     expect(bandSummaryText(bandSummary([]))).toBe('Vocabulary 0 · Definitions 0');
+  });
+});
+
+describe('slice 2h (§5.10): the menus of a session’s Proposed view', () => {
+  const view = shownStage();
+  const review = (patch: Partial<NonNullable<MenuContext['review']>> = {}): NonNullable<MenuContext['review']> => ({
+    items: view.items,
+    phase: view.phase,
+    busy: false,
+    marks: { p: [{ item: IDS.formalize, kind: 'formalize', status: 'in-review' }, { item: IDS.arrow, kind: 'add-arrow', status: 'in-review' }] },
+    locations: { p: { file: 'Model/Spyro/Main.lean', range: { start: { line: 1, character: 0 }, end: { line: 1, character: 0 } }, markupVersion: 1 } },
+    ...patch,
+  });
+  const session = (patch: Partial<MenuContext> = {}) => ctx({ proposed: true, review: review(), ...patch });
+
+  it('Claude’s arrow still undecided: Accept, Decline…, Show its review item, Show “source”, Show “target”', () => {
+    const thing = { kind: 'proposed' as const, item: IDS.arrow, source: 'a', target: 'p' };
+    expect(menuEntries(thing, session()).map((e) => [e.action, e.label, e.disabled, e.item ?? null])).toEqual([
+      ['accept-item', REVIEW_TEXTS.accept, null, IDS.arrow],
+      ['decline-item', 'Decline…', null, IDS.arrow],
+      ['show-item', REVIEW_TEXTS.showReviewItem, null, IDS.arrow],
+      ['show-source', 'Show “Cynder has a dark past”', null, null],
+      ['show-target', 'Show “Cynder is not PG material”', null, null],
+    ]);
+    // D2-62: while Claude's step runs nothing is decided (the reason on hover); showing stays.
+    const running = menuEntries(thing, session({ review: review({ items: stepSession().items, phase: 'step' }) }));
+    expect(running.find((e) => e.action === 'accept-item')?.disabled).toBe(REVIEW_TEXTS.stepRunning);
+    expect(running.find((e) => e.action === 'decline-item')?.disabled).toBe(REVIEW_TEXTS.stepRunning);
+    expect(running.find((e) => e.action === 'show-item')?.disabled).toBeNull();
+    // An item the view no longer lists: "changed since you looked at it" (the host refuses a stale decision anyway).
+    const gone = menuEntries({ ...thing, item: 'gone' }, session());
+    expect(gone.find((e) => e.action === 'accept-item')?.disabled).toBe(REVIEW_TEXTS.conflict('gone'));
+    // An Add premise draft's "+" arrow: decided only in the list (D2-35).
+    expect(actions({ kind: 'proposed', item: IDS.premise, source: 'premise:x', target: 'p' }, session())).toEqual(['show-item', 'show-target']);
+  });
+
+  it('a card: its review items, Select incoming arrows (a mid-stage Formalize takes them), the editing entries disabled, Open in editor with its tooltip', () => {
+    const entries = menuEntries({ kind: 'card', id: 'p' }, session());
+    expect(entries.map((e) => e.action)).toEqual(['select-incoming', 'move-to-axioms', 'show-item', 'show-item', 'show', 'details', 'open']);
+    expect(entries.filter((e) => e.action === 'show-item').map((e) => [e.label, e.item])).toEqual([
+      [`${REVIEW_TEXTS.showReviewItem}: ${ITEM_KIND_LABELS.formalize}`, IDS.formalize],
+      [`${REVIEW_TEXTS.showReviewItem}: ${ITEM_KIND_LABELS['add-arrow']}`, IDS.arrow],
+    ]);
+    expect(entries.find((e) => e.action === 'select-incoming')?.disabled).toBeNull();
+    expect(entries.find((e) => e.action === 'move-to-axioms')?.disabled).toBe(MENU_PROPOSED_ARROWS);
+    expect(entries.find((e) => e.action === 'open')).toEqual({ action: 'open', label: 'Open in editor', disabled: null, title: REVIEW_TEXTS.openInEditorTip });
+    expect(REVIEW_TEXTS.openInEditorTip).toBe("Opens your file; Claude's version is in the raw diff");
+    // A card only the session has: nothing to open in the user's files.
+    expect(menuEntries({ kind: 'card', id: 'q' }, session()).find((e) => e.action === 'open')).toEqual({ action: 'open', label: 'Open in editor', disabled: REVIEW_TEXTS.openInEditorDisabled });
+    // No marks: no item entries; an axiom has no "Select incoming arrows".
+    expect(actions({ kind: 'card', id: 'a' }, session())).toEqual(['from-nothing', 'show', 'details', 'open']);
+  });
+
+  it('Formalize on a drawn arrow is the mid-stage one (its own reasons), not the old read-only reason', () => {
+    const formalize = { disabled: REVIEW_TEXTS.formalizeResultsHidden, inferences: [], title: REVIEW_TEXTS.formalizeResultsHidden, mode: 'mid-stage' as const, showResults: true as const };
+    const arrow = menuEntries({ kind: 'arrow', source: 'a', target: 'p' }, session({ formalize, selectedArrows: [{ source: 'a', target: 'p' }] }));
+    expect(arrow[0]).toEqual({ action: 'formalize', label: 'Formalize for dependencies', disabled: REVIEW_TEXTS.formalizeResultsHidden });
+    const ready = { disabled: null, inferences: [{ target: 'p', premises: ['a'] }], title: 'Ask', mode: 'mid-stage' as const };
+    expect(menuEntries({ kind: 'arrow', source: 'a', target: 'p' }, session({ formalize: ready, selectedArrows: [{ source: 'a', target: 'p' }] }))[0]?.disabled).toBeNull();
+    // Without a session's review (no session, never since 2h), the Proposed view keeps the old read-only reason.
+    expect(menuEntries({ kind: 'arrow', source: 'a', target: 'p' }, ctx({ proposed: true, formalize: ready }))[0]?.disabled).toBe(MENU_PROPOSED_ARROWS);
   });
 });

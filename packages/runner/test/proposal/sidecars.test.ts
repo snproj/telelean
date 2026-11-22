@@ -265,5 +265,36 @@ describe('AT4.8 the run sidecar store', () => {
       ]);
       expect(readFileSync(decisionsFile(), 'utf8').endsWith('}\n')).toBe(true);
     });
+
+    it('slice 2f (G1): an accepted resolution\'s `arrows` go on its line, in order, and come back; lines without them (older ones, an Exit\'s) read as before', async () => {
+      const store = createRunSidecarStore();
+      const arrows = [
+        { source: 'aux-one', target: 'cynder-not-good', step: 's1', kind: 'arrow' as const },
+        { source: 'aux-two', target: 'cynder-not-good', step: 's1', kind: 'arrow' as const },
+        { source: 'not-in-game-not-good', target: 'cynder-not-good', step: 's2', kind: 'premise' as const },
+      ];
+      await store.appendAttempt(root, record('r1', 1, '2026-11-01T10:00:00.000Z'));
+      await store.resolveAttempt(root, 'Spyro', resolution('r1', 1, 'discarded'));
+      await store.appendAttempt(root, record('r2', 1, '2026-11-02T10:00:00.000Z'));
+      await store.resolveAttempt(root, 'Spyro', { ...resolution('r2', 1, 'accepted', '2026-11-02T12:00:00.000Z'), arrows });
+      const text = readFileSync(attemptsFile(), 'utf8');
+      const lines = text.split('\n').filter((l) => l !== '');
+      expect(lines).toHaveLength(4);
+      expect(JSON.parse(lines[3] ?? '{}')).toEqual({ ...resolution('r2', 1, 'accepted', '2026-11-02T12:00:00.000Z'), arrows });
+      expect(Object.keys(JSON.parse(lines[3] ?? '{}'))).toEqual(['format', 'version', 'run', 'round', 'date', 'resolution', 'arrows']);
+      expect(JSON.parse(lines[1] ?? '{}')).not.toHaveProperty('arrows');
+      const { parseAttemptLines } = await import('@telelean/core');
+      const parsed = parseAttemptLines(text);
+      expect(parsed.map((l) => ('resolution' in l ? [l.run, l.resolution, l.arrows] : [l.run, 'record']))).toEqual([
+        ['r1', 'record'],
+        ['r1', 'discarded', undefined],
+        ['r2', 'record'],
+        ['r2', 'accepted', arrows],
+      ]);
+      expect((await store.readAttempts(root, 'Spyro')).map((a) => [a.id, a.resolution])).toEqual([
+        ['r2.1', 'accepted'],
+        ['r1.1', 'discarded'],
+      ]);
+    });
   });
 });

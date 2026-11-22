@@ -22,7 +22,7 @@ function attempt(uses: string): string[] | 'removed' {
   const files = [...checkedFiles, parseLeanFile('Model/S/Uses.lean', `import Model.S.Main\n\n${uses}\n`)];
   const model = buildProjectModel({ files, fileHashes: { ...freshHashes(checkedFiles), 'Model/S/Uses.lean': 'sha-new' }, facts, library: 'Model' });
   try {
-    planAction(model, { kind: 'delete-node', id: 'a1', keepLean: false }, CTX);
+    planAction(model, { kind: 'delete-node', id: 'a1' }, CTX);
     return 'removed';
   } catch (error) {
     if (error instanceof ActionError && error.code === 'needs-confirmation') return [...error.dependents];

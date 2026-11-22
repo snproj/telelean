@@ -1,0 +1,29 @@
+[
+  {
+    "label": "fix:drag",
+    "agentId": "afff91889bf5e393d",
+    "file": "agents/fix_drag.json",
+    "toolsUsed": [
+      "Bash",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "fix:at59",
+    "agentId": "a06b11f9c4696bd38",
+    "file": "agents/fix_at59.json",
+    "toolsUsed": [
+      "Bash",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "check:at59",
+    "agentId": "a53d8b3b0cb13b19e",
+    "file": "agents/check_at59.json",
+    "toolsUsed": [
+      "Bash",
+      "StructuredOutput"
+    ]
+  }
+]

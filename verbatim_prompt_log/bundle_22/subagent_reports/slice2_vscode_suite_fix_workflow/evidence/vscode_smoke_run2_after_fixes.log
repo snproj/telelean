@@ -1,0 +1,343 @@
+[smoke] profile and workspace: /tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/final_checks/vscode/vscode-1015820
+[smoke] sample model copied from mental_model
+[smoke] VS Code: the snap /snap/code/278 (VS Code 1.145.2, snap version c4453f8e) through its electron-launch
+[smoke] AppArmor label snap.code.code (complain); cgroup /user.slice/user-1002.slice/user@1002.service/app.slice/run-rcc17dd5a608c49b28532285970b7768f.scope
+[90m[main 2026-11-22T07:47:42.333Z][0m [node-compile-cache] main: packaged cache enabled (status: enabled, configured: /snap/code/278/usr/share/code/resources/app/node-compile-cache/main, active: /snap/code/278/usr/share/code/resources/app/node-compile-cache/main/v24.22.1-x64-60e4fe36)
+[90m[main 2026-11-22T07:47:42.394Z][0m StorageMainService: creating application shared storage
+[90m[main 2026-11-22T07:47:42.397Z][0m update#ctor - updates are disabled
+[90m[main 2026-11-22T07:47:42.545Z][0m [shared storage] Creating shared storage database at ':memory:' (wasCreated: true)
+[90m[main 2026-11-22T07:47:42.546Z][0m [shared storage] Initializing fallback application storage (path: in-memory)
+[90m[main 2026-11-22T07:47:42.571Z][0m [shared storage] Fallback application storage initialized with 3 items
+Via 'product.json#extensionEnabledApiProposals' extension 'ms-vscode.remote-repositories' wants API proposal 'timeline' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+Via 'product.json#extensionEnabledApiProposals' extension 'github.vscode-pull-request-github' wants API proposal 'agentsWindowActivation' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+Via 'product.json#extensionEnabledApiProposals' extension 'github.remotehub' wants API proposal 'timeline' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+[RemoteAgentHost] Reconciling: desired=[], current=[]
+Started local extension host with pid 1016056.
+Started initializing default profile extensions in extensions installation folder. file:///tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/final_checks/vscode/vscode-1015820/extensions
+[AccountPolicyGate] apply: state=inactive, reason=undefined, isRestricted=false
+Completed initializing default profile extensions in extensions installation folder. file:///tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/final_checks/vscode/vscode-1015820/extensions
+Loading development extension at /home/zhengyew/telelean/packages/extension
+[RemoteAgentHost] Reconciling: desired=[], current=[]
+Settings Sync: Account status changed from uninitialized to unavailable
+
+  activation, opt-in and isolation
+    ✔ the opted-in workspace activates the extension by itself (workspaceContains:**/.telelean/config.json)
+    ✔ VS Code sees the 3 commands, the settings with their defaults and the 6 colours (107ms)
+    ✔ the instance runs in the isolated profile (HOME, XDG dirs, git config) set up by scripts/smoke.mjs
+    ✔ a folder without .telelean gets no board and no model workspace (so it never runs Lean)
+    ✔ with two model roots Open Board asks which one; the answer (a test argument) opens that board (219ms)
+  a Claude run through the board (FakeBackend; AT5.8, AT5.9)
+[AccountPolicyGate] apply: state=inactive, reason=undefined, isRestricted=false
+    ✔ Formalize from the board: the egress consent (testing API), then the run asks its question (11431ms)
+    ✔ the answer goes through the board; the gate passes and the edit session’s first stage arrives; the real files are untouched (18553ms)
+InstantiationService has been disposed: Error: InstantiationService has been disposed
+    at s._throwIfDisposed (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:2046:574)
+    at s.createInstance (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:2046:1228)
+    at Object.createTemplate (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:31764)
+    at mOo._create (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:1819)
+    at mOo.acquire (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:4247)
+    at WPi.acquire (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:1876)
+    at hOo._render (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:2809)
+    at hOo.render (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:2680)
+    at vOo.render (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:46138)
+    at UPi._render (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:28453)
+    at UPi._update (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:28199)
+    at vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:23601
+    at V8 (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:31:112589)
+    at t$._runFn (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:23590)
+    at t$._run (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:32:6694)
+    at t$.endUpdate (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:32:7326)
+    at bw.endUpdate (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:32:14173)
+    at bw.endUpdate (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:32:14173)
+    at Sz.finish (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:31:113304)
+    at FB.set (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:32:2882)
+    at vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:1271
+    at PVe.value (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:11471)
+    at A._deliver (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:30:3669)
+    at A.fire (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:30:3988)
+    at gOo.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:674)
+    at gOo.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:18282)
+    at Oye.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:1368)
+    at mOo.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:4647)
+    at _3i._fn (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:1676)
+    at _3i.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1319)
+    at ft (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:747)
+    at s.clear (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1634)
+    at s.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1544)
+    at WPi.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:2429)
+    at ft (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:747)
+    at s.clear (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1634)
+    at s.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1544)
+    at Fye.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:2429)
+    at se.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:2837)
+    at ft (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:747)
+    at s.clear (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1634)
+    at s.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1544)
+    at DX.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:2429)
+    at ft (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:747)
+    at s.clear (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1634)
+    at s.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1544)
+    at um.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:2429)
+    at um.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:727:56315)
+    at ft (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:747)
+    at s.clear (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1634)
+    at s.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1544)
+    at s6e.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:2429)
+    at ft (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:747)
+    at s.clear (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1634)
+    at s.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1544)
+    at tw.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:2429)
+    at tw.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:1342:89746)
+    at f6e.doRemoveEmptyGroup (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:1342:118055)
+    at f6e.removeGroup (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:1342:117675)
+    at tw.doCloseActiveEditor (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:1342:82451)
+    at tw.doCloseEditors (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:1342:85060)
+    at tw.closeEditors (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:1342:84570)
+    at async Mpi.$closeTab (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:753:9839)
+    ✔ the raw Lean diff opens beside the board (vscode.changes) (813ms)
+    - Accept: Main.lean changes on disk, one history entry is recorded, Undo restores the file
+    ✔ a restored board shows a pending question again (persisted at "reload", recovered by the new RunManager) (6060ms)
+    ✔ AT5.9: a working run is persisted as interrupted when the window goes, its session closed; the restored board offers Resume (5827ms)
+  model board on the copied sample (real workspace; AT5.5)
+    ✔ Open Board (two roots: asks) shows the 4 Spyro cards (289ms)
+    ✔ after a refresh: semantic fresh and 9 vocabulary items (4824ms)
+    ✔ addNode writes a block to Model/Spyro/Inbox.lean; undo removes it (326ms)
+    ✔ P->A ("Move to axioms") on cynder-not-good adds the axiom and drops its arrows; the refresh shows it assumed (4670ms)
+    ✔ copyText puts the code on the clipboard
+InstantiationService has been disposed: Error: InstantiationService has been disposed
+    at s._throwIfDisposed (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:2046:574)
+    at s.createInstance (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:2046:1228)
+    at Object.createTemplate (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:31764)
+    at mOo._create (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:1819)
+    at mOo.acquire (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:4247)
+    at WPi.acquire (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:1876)
+    at hOo._render (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:2809)
+    at hOo.render (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:2680)
+    at vOo.render (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:46138)
+    at UPi._render (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:28453)
+    at UPi._update (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:28199)
+    at vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:23601
+    at V8 (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:31:112589)
+    at t$._runFn (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:23590)
+    at t$._run (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:32:6694)
+    at t$.endUpdate (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:32:7326)
+    at bw.endUpdate (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:32:14173)
+    at bw.endUpdate (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:32:14173)
+    at Sz.finish (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:31:113304)
+    at FB.set (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:32:2882)
+    at vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:1271
+    at PVe.value (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:11471)
+    at A._deliver (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:30:3669)
+    at A.fire (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:30:3988)
+    at gOo.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:674)
+    at gOo.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:18282)
+    at Oye.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:1368)
+    at mOo.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:4647)
+    at _3i._fn (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:1676)
+    at _3i.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1319)
+    at ft (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:747)
+    at s.clear (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1634)
+    at s.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1544)
+    at WPi.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:2429)
+    at ft (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:747)
+    at s.clear (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1634)
+    at s.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1544)
+    at Fye.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:2429)
+    at se.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:2837)
+    at ft (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:747)
+    at s.clear (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1634)
+    at s.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1544)
+    at DX.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:2429)
+    at ft (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:747)
+    at s.clear (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1634)
+    at s.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1544)
+    at um.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:2429)
+    at um.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:727:56315)
+    at ft (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:747)
+    at s.clear (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1634)
+    at s.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1544)
+    at s6e.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:2429)
+    at ft (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:747)
+    at s.clear (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1634)
+    at s.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1544)
+    at tw.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:2429)
+    at tw.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:1342:89746)
+    at f6e.doRemoveEmptyGroup (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:1342:118055)
+    at f6e.removeGroup (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:1342:117675)
+    at tw.doCloseActiveEditor (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:1342:82451)
+    at tw.doCloseEditors (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:1342:85060)
+    at tw.closeEditors (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:1342:84570)
+    at async Mpi.$closeTab (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:753:9839)
+    ✔ initGit, historyList, historyPreview (diff editor) and historyRevert work, with private refs only (2465ms)
+    ✔ openInEditor opens Main.lean (237ms)
+    ✔ .telelean/graph.json exists
+    ✔ Initialize Model Here on a fresh empty folder (real planInitialize): refuses a bad name, scaffolds, git offer, board (AT5.3) (706ms)
+  the extension host environment (snap leaks, Lean sandbox, Claude env, hook runtime)
+      host environment: {"execPath":"/snap/code/278/usr/share/code/code","electron":"43.8.3","node":"24.22.1","vscodeVersion":"1.145.2","appRoot":"/snap/code/278/usr/share/code/resources/app","apparmor":"snap.code.code (complain)","cgroup":"/user.slice/user-1002.slice/user@1002.service/app.slice/run-rcc17dd5a608c49b28532285970b7768f.scope","snapLeaks":["ELECTRON_NO_ATTACH_CONSOLE","ELECTRON_RUN_AS_NODE","FONTCONFIG_FILE","FONTCONFIG_PATH","GDK_PIXBUF_MODULEDIR","GDK_PIXBUF_MODULE_FILE","GIO_MODULE_DIR","GSETTINGS_SCHEMA_DIR","GTK_EXE_PREFIX","GTK_IM_MODULE_FILE","GTK_MODULES","GTK_PATH","LOCPATH","SNAP","SNAP_APP_COMMON_ID","SNAP_APP_DESKTOP_FILE","SNAP_APP_NAME","SNAP_ARCH","SNAP_COMMON","SNAP_CONTEXT","SNAP_COOKIE","SNAP_DATA","SNAP_EUID","SNAP_INSTANCE_NAME","SNAP_LAUNCHER_ARCH_TRIPLET","SNAP_LIBRARY_PATH","SNAP_NAME","SNAP_REAL_HOME","SNAP_REVISION","SNAP_UID","SNAP_USER_COMMON","SNAP_USER_DATA","SNAP_VERSION","XDG_CONFIG_DIRS_VSCODE_SNAP_ORIG","XDG_DATA_DIRS_VSCODE_SNAP_ORIG"],"values":{"SNAP":"/snap/code/278","SNAP_REVISION":"278","SNAP_USER_DATA":"/tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/final_checks/vscode/vscode-1015820/home/snap/code/278","SNAP_USER_COMMON":"/tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/final_checks/vscode/vscode-1015820/home/snap/code/common","SNAP_LAUNCHER_ARCH_TRIPLET":"x86_64-linux-gnu","GTK_PATH":"/snap/code/278/usr/lib/x86_64-linux-gnu/gtk-3.0","GIO_MODULE_DIR":"/tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/final_checks/vscode/vscode-1015820/home/snap/code/common/.cache/gio-modules","LOCPATH":"/snap/code/278/usr/lib/locale","XDG_DATA_DIRS":"/tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/final_checks/vscode/vscode-1015820/home/snap/code/278/.local/share:/tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/final_checks/vscode/vscode-1015820/home/snap/code/278:/snap/code/278/usr/share:/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop","XDG_CONFIG_DIRS":"/etc/xdg/xdg-ubuntu:/etc/xdg","XDG_RUNTIME_DIR":"/run/user/1002","ELECTRON_RUN_AS_NODE":"1","VSCODE_CLI":"1","HOME":"/tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/final_checks/vscode/vscode-1015820/home"},"hookRuntime":{"command":"/home/zhengyew/.local/bin/node","args":[]}}
+    ✔ the VS Code under test, and what its extension host inherited (snap mode: the snap through electron-launch)
+    ✔ the Lean sandbox works from this environment: preflight, the userns probe, then a sandboxed `lean --version` (244ms)
+      removed for Claude: ELECTRON_NO_ATTACH_CONSOLE ELECTRON_RUN_AS_NODE GDK_PIXBUF_MODULEDIR GDK_PIXBUF_MODULE_FILE GIO_MODULE_DIR GSETTINGS_SCHEMA_DIR GTK_EXE_PREFIX GTK_IM_MODULE_FILE GTK_MODULES GTK_PATH LOCPATH SNAP SNAP_APP_COMMON_ID SNAP_APP_DESKTOP_FILE SNAP_APP_NAME SNAP_ARCH SNAP_COMMON SNAP_CONTEXT SNAP_COOKIE SNAP_DATA SNAP_EUID SNAP_INSTANCE_NAME SNAP_LAUNCHER_ARCH_TRIPLET SNAP_LIBRARY_PATH SNAP_NAME SNAP_REAL_HOME SNAP_REVISION SNAP_UID SNAP_USER_COMMON SNAP_USER_DATA SNAP_VERSION SSH_AUTH_SOCK VSCODE_CLI VSCODE_CRASH_REPORTER_PROCESS_TYPE VSCODE_CWD VSCODE_ESM_ENTRYPOINT VSCODE_HANDLES_UNCAUGHT_ERRORS VSCODE_IPC_HOOK VSCODE_L10N_BUNDLE_LOCATION VSCODE_NLS_CONFIG VSCODE_NODE_COMPILE_CACHE_KIND VSCODE_NODE_COMPILE_CACHE_ROOT VSCODE_PID VSCODE_TEST_OPTIONS XDG_CONFIG_DIRS_VSCODE_SNAP_ORIG XDG_DATA_DIRS_VSCODE_SNAP_ORIG
+    ✔ Claude Code's environment keeps none of the snap's variables or paths
+    ✔ the path guard answers its self-test under the chosen hook runtime and under Electron-as-Node (441ms)
+  model boards (fake model workspace, real VS Code adapters)
+      webview reported: graph v1795333725203 (#2): 4 cards, 3 arrows drawn (0 stubs); viewport 626x799, column heights 448,543, styled true, visible; aura rgb(55, 148, 255), kinds rgb(177, 128, 215) rgb(209, 134, 22), proved rgb(115, 201, 145), vocabulary rgb(78, 201, 176), highlight rgb(229, 192, 123); engine frames 2, measures 2, measured graph #2, culled 0, missing 0, cards measured 4, lists connected true, waited 0 frames
+    ✔ one BoardPanel per model root; reopening reveals it; the webview renders the root board (290ms)
+    ✔ createSubject switches the board; the serializer restores root and subject; undo makes it vanish and the board switches back (718ms)
+    ✔ a state saved by the webview ({ root, subject }) also restores a board
+    ✔ addNode writes a block to Model/Spyro/Inbox.lean through the EditApplier (WorkspaceEdit + save); undo removes it (272ms)
+    ✔ unsaved typing in an open editor is what the TextSource reads; the applied edit keeps it and saves (638ms)
+    ✔ copyText puts the code on the clipboard and says "Copied" (54ms)
+    ✔ openInEditor opens Model/Spyro/Main.lean at the range; a link out of the model root is refused (240ms)
+InstantiationService has been disposed: Error: InstantiationService has been disposed
+    at s._throwIfDisposed (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:2046:574)
+    at s.createInstance (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:2046:1228)
+    at Object.createTemplate (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:31764)
+    at mOo._create (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:1819)
+    at mOo.acquire (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:4247)
+    at WPi.acquire (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:1876)
+    at hOo._render (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:2809)
+    at hOo.render (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:2680)
+    at vOo.render (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:46138)
+    at UPi._render (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:28453)
+    at UPi._update (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:28199)
+    at vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:23601
+    at V8 (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:31:112589)
+    at t$._runFn (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:23590)
+    at t$._run (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:32:6694)
+    at t$.endUpdate (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:32:7326)
+    at bw.endUpdate (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:32:14173)
+    at bw.endUpdate (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:32:14173)
+    at Sz.finish (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:31:113304)
+    at FB.set (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:32:2882)
+    at vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:1271
+    at PVe.value (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:11471)
+    at A._deliver (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:30:3669)
+    at A.fire (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:30:3988)
+    at gOo.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:674)
+    at gOo.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:18282)
+    at Oye.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:1368)
+    at mOo.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:4647)
+    at _3i._fn (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:3044:1676)
+    at _3i.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1319)
+    at ft (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:747)
+    at s.clear (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1634)
+    at s.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1544)
+    at WPi.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:2429)
+    at ft (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:747)
+    at s.clear (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1634)
+    at s.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1544)
+    at Fye.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:2429)
+    at se.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:2837)
+    at ft (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:747)
+    at s.clear (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1634)
+    at s.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1544)
+    at DX.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:2429)
+    at ft (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:747)
+    at s.clear (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1634)
+    at s.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1544)
+    at um.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:2429)
+    at um.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:727:56315)
+    at ft (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:747)
+    at s.clear (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1634)
+    at s.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1544)
+    at s6e.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:2429)
+    at ft (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:747)
+    at s.clear (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1634)
+    at s.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:1544)
+    at tw.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:28:2429)
+    at tw.dispose (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:1342:89746)
+    at f6e.doRemoveEmptyGroup (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:1342:118055)
+    at f6e.removeGroup (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:1342:117675)
+    at tw.doCloseActiveEditor (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:1342:82451)
+    at tw.doCloseEditors (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:1342:85060)
+    at tw.closeEditors (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:1342:84570)
+    at async Mpi.$closeTab (vscode-file://vscode-app/snap/code/278/usr/share/code/resources/app/out/vs/workbench/workbench.desktop.main.js:753:9839)
+    ✔ initGit asks first; historyList, historyPreview (diff editor) and historyRevert (undoable) work (762ms)
+    ✔ typing only re-parses (batched); a save re-parses and requests a refresh; files changed on disk are re-read (2776ms)
+    ✔ the Refresh message runs refreshNow and republishes
+    ✔ Initialize Model Here on an empty folder validates the subject, writes the scaffold, offers git and opens the board (AT5.3) (120ms)
+    ✔ a model that cannot be loaded says why on its board; Open Board again retries (208ms)
+  telelean board webview (sample board)
+      webview reported: graph v1 (#2): 4 cards, 3 arrows drawn (0 stubs); viewport 626x799, column heights 474,569, styled true, visible; aura rgb(55, 148, 255), kinds rgb(177, 128, 215) rgb(209, 134, 22), proved rgb(115, 201, 145), vocabulary rgb(78, 201, 176), highlight rgb(229, 192, 123); engine frames 2, measures 2, measured graph #2, culled 0, missing 0, cards measured 4, lists connected true, waited 0 frames
+    ✔ openBoard({ sample }) opens the panel; the webview loads under the CSP, posts ready and renders the graph (1242ms)
+      webview reported: graph v1 (#3): 75 cards, 66 arrows drawn (57 stubs); viewport 626x799, column heights 543,605, styled true, visible; aura rgb(55, 148, 255), kinds rgb(177, 128, 215) rgb(209, 134, 22), proved rgb(115, 201, 145), vocabulary rgb(78, 201, 176), highlight rgb(229, 192, 123); engine frames 4, measures 4, measured graph #3, culled 38, missing 0, cards measured 75, lists connected true, waited 0 frames
+    ✔ running the command again reveals the same panel and sends the new graph to the live webview (153ms)
+      webview reported: graph v2 (#3): 4 cards, 3 arrows drawn (0 stubs); viewport 626x799, column heights 474,569, styled true, visible; aura rgb(55, 148, 255), kinds rgb(177, 128, 215) rgb(209, 134, 22), proved rgb(115, 201, 145), vocabulary rgb(78, 201, 176), highlight rgb(229, 192, 123); engine frames 2, measures 2, measured graph #3, culled 0, missing 0, cards measured 4, lists connected true, waited 0 frames
+    ✔ a graph sent while the webview is still loading is re-sent on "ready" (the latest graph wins) (270ms)
+      webview reported: graph v1 (#2): 4 cards, 3 arrows drawn (0 stubs); viewport 626x799, column heights 474,569, styled true, visible; aura rgb(255, 0, 255), kinds rgb(0, 255, 0) rgb(255, 255, 0), proved rgb(0, 255, 255), vocabulary rgb(18, 52, 86), highlight rgb(101, 67, 33); engine frames 2, measures 2, measured graph #2, culled 0, missing 0, cards measured 4, lists connected true, waited 0 frames; formalised card: rgb(255, 0, 255) 0px 0px 0px 1px, color(srgb 1 0 1 / 0.55) 0px 0px 10px 2px
+    ✔ the colours the extension contributes reach the webview (workbench.colorCustomizations) (571ms)
+  39 passing (1m)
+  1 pending
+[90m[main 2026-11-22T07:48:53.792Z][0m Extension host with pid 1016056 exited with code: 0, signal: unknown.
+Exit code:   0
+
+DevTools listening on ws://127.0.0.1:39843/devtools/browser/0cf14948-f2eb-49bf-92ee-e327aaf9c92d
+[90m[main 2026-11-22T07:48:54.898Z][0m [node-compile-cache] main: packaged cache enabled (status: enabled, configured: /snap/code/278/usr/share/code/resources/app/node-compile-cache/main, active: /snap/code/278/usr/share/code/resources/app/node-compile-cache/main/v24.22.1-x64-60e4fe36)
+[90m[main 2026-11-22T07:48:54.919Z][0m StorageMainService: creating application shared storage
+[90m[main 2026-11-22T07:48:54.922Z][0m update#ctor - updates are disabled
+[90m[main 2026-11-22T07:48:55.088Z][0m [shared storage] Creating shared storage database at ':memory:' (wasCreated: true)
+[90m[main 2026-11-22T07:48:55.088Z][0m [shared storage] Initializing fallback application storage (path: in-memory)
+[90m[main 2026-11-22T07:48:55.121Z][0m [shared storage] Fallback application storage initialized with 3 items
+Via 'product.json#extensionEnabledApiProposals' extension 'ms-vscode.remote-repositories' wants API proposal 'timeline' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+Via 'product.json#extensionEnabledApiProposals' extension 'github.vscode-pull-request-github' wants API proposal 'agentsWindowActivation' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+Via 'product.json#extensionEnabledApiProposals' extension 'github.remotehub' wants API proposal 'timeline' but that proposal DOES NOT EXIST. Likely, the proposal has been finalized (check 'vscode.d.ts') or was abandoned.
+[RemoteAgentHost] Reconciling: desired=[], current=[]
+Started local extension host with pid 1017880.
+Loading development extension at /home/zhengyew/telelean/packages/extension
+[AccountPolicyGate] apply: state=inactive, reason=undefined, isRestricted=false
+[RemoteAgentHost] Reconciling: desired=[], current=[]
+Settings Sync: Account status changed from uninitialized to unavailable
+
+  end to end on a copy of mental_model (real workspace, Lean, git, the board UI through CDP)
+(node:1017880) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `exe --trace-deprecation ...` to show where the warning was created)
+      [e2e] VS Code's startup toast about --disable-extensions appeared and was cleared
+[AccountPolicyGate] apply: state=inactive, reason=undefined, isRestricted=false
+    ✔ Open Board: the graph comes from the files, with Lean statuses (5838ms)
+    ✔ History dropdown: "Initialize git" creates the repository and starts the history (1019ms)
+    ✔ the A|P box adds an axiom with stance and why: the block is written to the Inbox (1107ms)
+    ✔ editing a card's sentence rewrites natural_name and the docstring that mirrors it (D-9) (732ms)
+    ✔ "Move to axioms" on the goal: the D-11 impact, the "why" dialog, the axiom, its arrows removed; Lean then says assumed (7342ms)
+    ✔ Undo restores the files byte-exactly (three steps back to the copy as it was); Redo brings them back (2311ms)
+    ✔ History lists the snapshots; "Revert to this" restores Initial state byte-exactly, and the revert can be undone (1187ms)
+    ✔ "New subject…" in the picker: a second subject appears there, and the board can switch back (1142ms)
+    ✔ the card shows the "uses:" vocabulary from Lean, truncated inline, with the full list in its dropdown (6461ms)
+    ✔ the expanded card's Copy button puts exactly its Lean code on the clipboard (279ms)
+    ✔ hovering an identifier in the expanded code shows its gloss; clicking it highlights it in the Vocabulary group (request 4) (437ms)
+    ✔ a mouse drag inside the expanded Lean code selects text and never drags the card (request 1) (1162ms)
+    ✔ deleting a card with its Lean code while others use it: the dialog lists them, "Delete anyway" deletes what core plans, Undo restores it (D-18) (5983ms)
+  M2 end to end: "Formalize for dependencies" through the board UI (FakeBackend, real Lean, CDP)
+    ✔ the board opens on the copy; "Initialize git" starts its history; Lean checks the files (5783ms)
+    - normative: the question answered on the board, the overlay, the explicit toggle, the raw diff; Accept writes Main.lean, one history entry, Undo restores it byte-exactly
+    - literal: not proved, the "Claude suggests" card, "I hold this", re-frozen with it, proved; Accept writes the card worded by Claude; Undo restores
+    - cheating: the smuggled axiom is refused with a notice and Claude retries; Feedback continues the same session; Discard leaves the files untouched
+    - give-up: three refused attempts; telelean reverts to the frozen formalisation and says so; Discard
+    - cancel: Cancel on the run panel stops Claude while it works; nothing is written
+    - race: Formalize pressed while the board's Lean refresh rebuilds .lake/build (no wait for idle Lean): the run starts, waits for the refresh, proves; Discard
+    - reload while a question waits: the restored board shows it again; answering it there resumes the session and the run finishes
+  14 passing (1m)
+  7 pending
+[90m[main 2026-11-22T07:50:01.462Z][0m Extension host with pid 1017880 exited with code: 0, signal: unknown.
+Exit code:   0
+
+[smoke] isolation checks:
+  ok    isolated user-data dir used: 145 entries (e.g. Backups/, Cache/, Cache/Cache_Data/, Cache/Cache_Data/0f1fd10f93e8d0b3_0)
+  ok    isolated HOME afterwards: .vscode/, .vscode/argv.json, .vscode/cli/, snap/, snap/code/
+  ok    ~/.copilot: unchanged (83 entries)
+  ok    ~/.config/Code (top level): unchanged (76 entries)
+  ok    ~/.config/Code/logs: unchanged (13 entries)
+  ok    ~/.config/google-chrome (top level): unchanged (1 entries)
+  ok    ~/.config/google-chrome/Crash Reports: unchanged (9 entries)
+  ok    ~/.local/share/Trash/files: unchanged (49 entries)
+  ok    ~/.vscode (top level): unchanged (3 entries)
+  ok    ~/snap/code (top level): unchanged (4 entries)
+  ok    ~/snap/code/278: unchanged (6 entries)
+  ok    ~/snap/code/common: unchanged (24 entries)
+  ok    ~/snap/code/278: no entry written (times of 7 entries unchanged)
+  ok    ~/snap/code/common: no entry written (times of 25 entries unchanged)
+  ok    the extension host ran /snap/code/278/usr/share/code/code (VS Code 1.145.2, Electron 43.8.3), AppArmor snap.code.code (complain); snap variables it had: ELECTRON_NO_ATTACH_CONSOLE ELECTRON_RUN_AS_NODE FONTCONFIG_FILE FONTCONFIG_PATH GDK_PIXBUF_MODULEDIR GDK_PIXBUF_MODULE_FILE GIO_MODULE_DIR GSETTINGS_SCHEMA_DIR GTK_EXE_PREFIX GTK_IM_MODULE_FILE GTK_MODULES GTK_PATH LOCPATH SNAP SNAP_APP_COMMON_ID SNAP_APP_DESKTOP_FILE SNAP_APP_NAME SNAP_ARCH SNAP_COMMON SNAP_CONTEXT SNAP_COOKIE SNAP_DATA SNAP_EUID SNAP_INSTANCE_NAME SNAP_LAUNCHER_ARCH_TRIPLET SNAP_LIBRARY_PATH SNAP_NAME SNAP_REAL_HOME SNAP_REVISION SNAP_UID SNAP_USER_COMMON SNAP_USER_DATA SNAP_VERSION XDG_CONFIG_DIRS_VSCODE_SNAP_ORIG XDG_DATA_DIRS_VSCODE_SNAP_ORIG
+  ok    the run's AppArmor label snap.code.code (complain), cgroup /user.slice/user-1002.slice/user@1002.service/app.slice/run-rcc17dd5a608c49b28532285970b7768f.scope
+  ok    no process of this run is left
+  ok    this run's extension hosts (from its logs): pids 1016056, 1017880; Claude run ids of this run: 3
+[smoke] vscode-test exit code 0; 0 isolation failure(s), 0 warning(s); summary in /tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/final_checks/vscode/vscode-1015820/smoke-summary.json
+smoke rc=0 142s mem_avail_mb=36885

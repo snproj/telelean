@@ -30,6 +30,7 @@ import {
 import type { AcceptPlan, AcceptRequest, ApplyRequest, ProposalBuildInput, ProposalService, ReadRealText, RunSidecarStore } from '../../../src/proposal/types.js';
 import type { ShadowWorkspace } from '../../../src/shadow/types.js';
 import type { ExternalChangeSet, ModelWorkspace, WorkspaceChange } from '../../../src/workspace/types.js';
+import { createProposalService } from '../../../src/proposal/index.js';
 import { SPYRO_FACTS, SPYRO_FIXTURE } from './env.js';
 
 // ---------------------------------------------------------------------------------------------
@@ -104,12 +105,17 @@ export class FakeProposals implements ProposalService {
     return { ok: true, changes: [], label: 'These suffice → proved: Cynder would not be a good addition to the new…', nodes: [request.proposal.report.target], drift: [...this.drift], shadowState };
   }
 
-  /** Slice 2b3b: an edit session's Apply plan (no default: a test that reaches it scripts `onPlanApply`). */
+  /**
+   * Slice 2b3b: an edit session's Apply plan. Slice 2f: by default the real service's (`planApply` reads the real files
+   * once and compares them with B: no Lean), so the tests exercise its drift refusal; `onPlanApply` replaces it.
+   */
   onPlanApply?: (request: ApplyRequest) => AcceptPlan | Promise<AcceptPlan>;
+  readonly applyRequests: ApplyRequest[] = [];
 
   async planApply(request: ApplyRequest): Promise<AcceptPlan> {
     this.log.push('proposals.planApply');
-    if (this.onPlanApply === undefined) throw new Error('FakeProposals.planApply is not scripted');
+    this.applyRequests.push(request);
+    if (this.onPlanApply === undefined) return createProposalService().planApply(request);
     return this.onPlanApply(request);
   }
 
@@ -118,7 +124,7 @@ export class FakeProposals implements ProposalService {
     this.applied.push(plan);
     if (this.applyOutcome !== undefined) return this.applyOutcome;
     if (workspace.applyChanges !== undefined && plan.changes.length > 0) {
-      return workspace.applyChanges({ label: plan.label, action: 'accept-proposal', subject, nodes: plan.nodes, changes: plan.changes });
+      return workspace.applyChanges({ label: plan.label, action: 'accept-proposal', subject, nodes: plan.nodes, changes: plan.changes, ...(plan.arrows !== undefined ? { arrows: plan.arrows } : {}) });
     }
     return { ok: true, label: plan.label, undoable: true };
   }
@@ -267,8 +273,14 @@ export class FakeWorkspace implements ModelWorkspace {
   semantic() {
     return { state: 'fresh' as const };
   }
-  onDidChange(_listener: (change: WorkspaceChange) => void) {
-    return { dispose: () => undefined };
+  /** Slice 2f: the drift watcher's subscription; `fire()` is a change of the person's files (typing, a save). */
+  readonly changeListeners = new Set<(change: WorkspaceChange) => void>();
+  onDidChange(listener: (change: WorkspaceChange) => void) {
+    this.changeListeners.add(listener);
+    return { dispose: () => this.changeListeners.delete(listener) };
+  }
+  fire(change: WorkspaceChange = { subjects: ['Spyro'], semantic: false, subjectsListChanged: false }): void {
+    for (const listener of [...this.changeListeners]) listener(change);
   }
   async invalidate(): Promise<void> {}
   requestRefresh(): void {}

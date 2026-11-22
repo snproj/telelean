@@ -151,7 +151,8 @@ describe('busy check', () => {
     expect(busyRefusal(null)).toBeUndefined();
     for (const state of ['accepted', 'discarded', 'cancelled', 'failed'] as const) expect(busyRefusal(sampleRun({ state })), state).toBeUndefined();
     expect(busyRefusal(sampleRun({ state: 'working' }))).toBe('Claude is already working on "Spyro" in this model: wait for it to finish, or Cancel it first.');
-    expect(busyRefusal(sampleRun({ state: 'review' }))).toMatch(/Accept, Feedback or Discard/);
+    // Slice 2h: a run in review is an edit session (M2's Accept, Feedback and Discard are retired).
+    expect(busyRefusal(sampleRun({ state: 'review' }))).toBe('An edit session on "Spyro" is waiting for your review: Apply or Exit it first.');
     expect(busyRefusal(sampleRun({ state: 'interrupted' }))).toMatch(/Resume or Stop/);
     expect(busyRefusal(sampleRun({ state: 'waiting-for-answer' }))).toMatch(/waiting for your answer/);
   });

@@ -21,6 +21,7 @@ import path from 'node:path';
 import {
   ATTEMPT_FORMAT,
   ATTEMPT_RESOLUTION_FORMAT,
+  applyBackstop as coreApplyBackstop,
   attemptNotice as coreAttemptNotice,
   DECISION_SCOPES,
   decisionsInForce as coreDecisionsInForce,
@@ -424,6 +425,21 @@ export interface SessionRuntime {
    * one), the RunView withholds Claude's work, and a mid-stage Formalize is refused (fail closed).
    */
   viewError?: string;
+  /**
+   * (2f, §3.8) An accepted Add premise whose premise write could not be made, by item id: the stage problem "“‹item›”
+   * was accepted, but telelean could not write it: ‹error›. Reload the window to try again, or decline it." (in memory:
+   * a reload runs the due write again).
+   */
+  writeProblems?: Map<string, string>;
+  /**
+   * (2f, §3.10) The final check that passed, for Apply's backstop (pure, run again at Apply, never reused): its check
+   * id, the judgement of F and F's model with the facts it judged. Not persisted: after a reload the check runs again.
+   */
+  final?: { checkId: string; judgement: StateJudgement; model?: ProjectModel };
+  /** (2f, EN-2) The comparator passes the last final check recorded (by target), which the next one may reuse. */
+  comparator?: Record<string, { filesKey: string; permitted: string[] }>;
+  /** (2f, D2-18) The person's endorsements of the session's subject (its endorsements.json), the board's build input. */
+  endorsements?: Record<string, Array<{ name: string; textHash: string }>>;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -442,6 +458,7 @@ export abstract class StepRunner {
   constructor(protected readonly o: RunManagerOptions) {
     this.core = {
       attemptNotice: coreAttemptNotice,
+      applyBackstop: coreApplyBackstop,
       describeFinding: coreDescribeFinding,
       planGhostAdoption: corePlanGhostAdoption,
       proposalLabel: coreProposalLabel,

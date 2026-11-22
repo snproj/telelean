@@ -1,0 +1,37 @@
+{
+  "summary": "2i is faithful to its plan entry and I found no blocker or major problem. The card-only Delete is gone end to end (`keepLean` has no non-test, non-comment use left in the repo). `keepLean: true` is refused with the plan's exact text. \"Delete anyway\" is unchanged. An old axiom's declared premises are named in the chip tooltip, the details row and TL122. The guide's placement and Delete text matches the code I traced: `planAddNode` stores the position in the same plan, and the A|P box passes `position` when a canvas exists. `layoutToProposition`/`planChangeKind` and `planDeleteNode` drop the card's place. I confirmed `changes_2i.patch` equals the current tree (`patch -R --dry-run` clean). I also checked that no caller still passes the old `deleteNode(id, true)` meaning \"card only\", which would now silently mean \"Delete anyway\": every call site was updated. All typechecks and unit suites pass. I did not run Playwright or the VS Code suite (integrator's job). Remaining items are three minor edge cases and one nit.",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "minor",
+      "where": "packages/core/src/edit/planDelete.ts:19-22 (planDel)",
+      "problem": "S9's \"a delete always removes the card's Lean\" holds only when the card's statement declaration exists. Both removeDecls entries (statement and `.holds`) are pushed inside `if (statement && exists(statement))`. If a card names `lean: S.x` but only `axiom S.x.holds` exists in the files (the abbrev is missing), the delete removes just the block and leaves an orphan `axiom x.holds`, an unmarked axiom. This is the hidden belief S9 targets. It is not new to 2i: the old non-keepLean path behaved the same.",
+      "evidence": "planDel: `if (statement && exists(statement)) { decls.push(statement); if (exists(holdsName(statement))) decls.push(holdsName(statement)); }`. planDeleteNode (planAction.ts:161) gates the remove-holds op on `del.removeDecls.includes(holdsName(statement))`. No test builds a card with a `.holds` but no statement declaration.",
+      "fix": "In planDel, check the `.holds` independently of the statement's existence: if `statement` is set and `exists(holdsName(statement))`, push it. Add a delete.test.ts case (axiom `.holds` present, abbrev absent) asserting that no `.holds` remains in the written file. Otherwise record the limit in the plan's §8."
+    },
+    {
+      "id": "F2",
+      "severity": "minor",
+      "where": "packages/webview/src/model/cardData.ts:231-234 (declaredBeforeV4) versus packages/core/src/project/build.ts:1103-1106",
+      "problem": "The two namings of an old axiom's premises differ for another subject's card. TL122 names it by its sentence (core's byId spans every subject). The chip tooltip and the details row name it by its id, because the webview's `nodes` holds only the current board. The plan says \"by sentence\". The builder recorded this choice in a comment (`a card not on this board (a missing one, or another subject's) by its id`) and in §8, but not as a discrepancy between the two surfaces.",
+      "evidence": "build.ts: `byId.get(premise)?.block.fields.naturalName` (all subjects). cardData.ts: `nodes[id]?.naturalName ?? id` (current subject only). The tests cover \"another subject's card by its sentence\" only for TL122 (arrows.test.ts) and only \"a card not on the board by its id\" for the webview.",
+      "fix": "Either accept it as a documented difference, or have the host send the premise sentences with the old-axiom info (as `dependentCards` does for deletes). Otherwise add a line to §8 naming the difference."
+    },
+    {
+      "id": "F3",
+      "severity": "minor",
+      "where": "packages/webview/src/board/CardDetails.tsx:538-556 (Proposed branch)",
+      "problem": "The plan says the details row names the premises. In the Proposed view the details show neither the `DeclaredBeforeV4` line nor Problems (`problems` is empty when `proposed`), so an old axiom there is named only in the chip tooltip. This is acceptable because the two choices are not offered in the Proposed view either, but no test pins it.",
+      "evidence": "`DeclaredBeforeV4` sits only in the `!proposed` fragment, and line 500 sets `problems = proposed ? [] : …`. m1-cards.spec.ts checks the Current view only.",
+      "fix": "Add a unit or e2e assertion that the Proposed view has no `declared-before-v4` line (so a later change is deliberate), or render the line there too."
+    },
+    {
+      "id": "F4",
+      "severity": "nit",
+      "where": "packages/webview/src/dialogs/Dialogs.tsx:1-12 (header comment)",
+      "problem": "The header comment still opens with \"delete the card and its Lean code, or cancel\" in the same bullet that says the card-only button is gone, so it reads redundantly. Cosmetic only. The user-facing texts are consistent with the plan.",
+      "evidence": "Dialogs.tsx lines 8-12.",
+      "fix": "Optional: shorten the comment."
+    }
+  ]
+}

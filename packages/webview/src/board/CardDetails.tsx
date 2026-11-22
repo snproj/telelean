@@ -16,11 +16,12 @@ import { AgentText } from '../common/AgentText';
 import { ExternalUserItem } from '../common/ExternalUser';
 import { InlineCode } from '../common/InlineCode';
 import { KIND_GLYPH, SOURCE_LABEL, STANCE_LABEL } from '../labels';
-import { dependsOn, footprintEntries, presuppositionLabel, RELATION_TEXT, usedBy, type Relation } from '../model/cardData';
+import { declaredBeforeV4, dependsOn, footprintEntries, presuppositionLabel, quotedNames, RELATION_TEXT, usedBy, type Relation } from '../model/cardData';
 import { formatTime, plainText } from '../model/format';
 import { VERDICT_LABEL } from '../model/run';
 import { useBoard, useBoardActions } from '../state/context';
 import { boardView, editLock, impactOf, PROPOSED_ARROWS_LOCKED, proposedOverlay } from '../state/store';
+import { MENU_PROPOSED_READ_ONLY } from './menu';
 import { LeanCode } from './LeanCode';
 
 const stop = (event: MouseEvent) => event.stopPropagation();
@@ -379,6 +380,22 @@ function ArrowActions({ node, lock }: { node: TlNode; lock: string | null }) {
 }
 
 /**
+ * Spec v4 A19 (slice 2i; audit G11): above an old axiom's "Make it a proposition (pending)" and "Drop these arrows",
+ * the cards its `premises:` (written before v4, not drawn) names, by their sentences, so neither choice is made blind.
+ * Nothing for any other card.
+ */
+function DeclaredBeforeV4({ node }: { node: TlNode }) {
+  const nodes = useBoard((s) => s.nodes);
+  const declared = declaredBeforeV4(node, nodes);
+  if (declared.length === 0) return null;
+  return (
+    <p className="tl-details__none tl-details__readonly" data-testid="declared-before-v4">
+      Declared before v4 (not drawn): arrows from {quotedNames(declared)}.
+    </p>
+  );
+}
+
+/**
  * Spec v4 ES-9 (slice 1f): in the Proposed view the arrow actions and "Move to axioms" are there but disabled, with the
  * reason on hover (arrows change only through review items and transforms; in slice 1 the proposal is read-only).
  */
@@ -511,7 +528,7 @@ export function CardDetails({ node }: { node: TlNode }) {
       {proposed ? (
         <>
           <p className="tl-details__none tl-details__readonly" data-testid="proposal-readonly">
-            This is Claude’s proposal (read-only). Your board can be edited again once you accept or discard it.
+            {MENU_PROPOSED_READ_ONLY}
           </p>
           <ProposedArrowActions node={node} />
         </>
@@ -523,6 +540,7 @@ export function CardDetails({ node }: { node: TlNode }) {
             </p>
           ) : null}
           <Choices node={node} lock={lock} />
+          <DeclaredBeforeV4 node={node} />
           <ArrowActions node={node} lock={lock} />
           <Actions node={node} lock={lock} />
         </>

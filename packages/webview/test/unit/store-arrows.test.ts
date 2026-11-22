@@ -8,7 +8,7 @@ import { buildGraph, hostMessage, spyroGraph, spyroProvedGraph, type ActionOutco
 import { describe, expect, it } from 'vitest';
 import { ARROW_TEXTS, createBoardStore, type StoreOptions } from '../../src/state/store';
 import { makeNode, mapNode } from '../shared/graphs';
-import { normativeProposal } from '../shared/runs';
+import { sessionRun, shownStage } from '../shared/sessions';
 
 const GOAL = 'cynder-not-good';
 const DARK = 'cynder-dark-past';
@@ -362,19 +362,23 @@ describe('"Move to axioms" (AR-7) shows its impact first', () => {
   });
 });
 
-describe('the proposed view is read-only', () => {
-  it('no arrow change, selection of arrows or move is made while the proposal is on screen', () => {
+describe('the proposed view changes no arrow (slice 2h: an edit session’s)', () => {
+  it('no arrow change or pending mark is made while the session’s Proposed view is on screen; selecting works there, and a move is a session step', () => {
     const { state, sent } = setup(spyroProvedGraph());
-    state().receive(hostMessage('proposal', { proposal: normativeProposal() }));
+    state().receive(hostMessage('run', { run: sessionRun(shownStage()) }));
+    state().receive(hostMessage('session', { session: shownStage() }));
     expect(state().proposedView).toBe(true);
     const count = sent.length;
     expect(state().addArrows(GOAL, [DARK])).toBe(false);
     expect(state().removeArrows([{ source: DARK, target: GOAL }])).toBe(false);
     expect(state().setFromNothing(GOAL, true)).toBe(false);
-    expect(state().selectIncomingArrows(GOAL)).toBe(false);
     state().claimPending(GOAL);
-    state().moveCards({ [GOAL]: { x: 1, y: 1 } });
     expect(state().deleteSelectedArrows()).toBe(false);
     expect(sent.length).toBe(count);
+    // Slice 2h (§5.10): it selects the drawn arrows (never Claude's still in review), and moves through the session.
+    expect(state().selectIncomingArrows(GOAL)).toBe(true);
+    expect(state().selectedArrows.map((a) => a.source)).toEqual([DARK, 'pg-no-dark-past']);
+    state().moveCards({ [GOAL]: { x: 1, y: 1 } });
+    expect(sent.slice(count).map((m) => m.type)).toEqual(['moveProposed']);
   });
 });

@@ -56,4 +56,11 @@ describe('contributed theme colours (packages/extension/package.json) and board.
     expect(used.size).toBeGreaterThan(0);
     for (const name of used) expect(known, name).toContain(name);
   });
+
+  it('green stays for what Lean checked: no review status other than a passed check is drawn in --tl-proved (BD-6, F-V2G-FC-2)', () => {
+    const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => [(m[1] ?? '').trim(), m[2] ?? ''] as const);
+    const reviewStatus = rules.filter(([selector]) => selector.includes('.tl-review-status'));
+    expect(reviewStatus.length).toBeGreaterThan(0);
+    for (const [selector, body] of reviewStatus) expect(body, selector).not.toContain('--tl-proved');
+  });
 });

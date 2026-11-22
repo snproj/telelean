@@ -2,16 +2,18 @@
  * Spec v4.1 slice 1e: the Context Menu section (CM-1–CM-5, which replaced the tray) and Formalize for dependencies
  * (ES-2 with AP-9's one target, AR-8). The section reads "Select some items to see possible actions here." when nothing
  * is selected; otherwise it sums the selection up, offers the labelled "Formalize for dependencies" button (enabled for
- * arrows into exactly one proposition, or its ∅ mark; otherwise disabled, the reason on hover and beside it) and the
- * other actions as icons (a "…" menu on a narrow window). Formalize posts startRun with the selected arrows' sources;
- * the right-click menu of a drawn arrow offers it too. A source that is an unproved proposition is asked about first
- * (AR-8): "Mark pending and continue" (claimPending, then the start) or Cancel; without a Lean statement, Cancel only.
- * A card the extension has not written yet can be neither end of a selected arrow nor marked (fixer 1g).
+ * arrows into propositions, or their ∅ marks; otherwise disabled, the reason on hover and beside it) and the other
+ * actions as icons (a "…" menu on a narrow window). Formalize posts the selected arrows' sources (slice 2h: a
+ * `formalize` with one inference per target, several at once, sources first); the right-click menu of a drawn arrow
+ * offers it too. A source that is an unproved proposition is asked about first (AR-8): "Mark pending and continue"
+ * (claimPending, then the start) or Cancel; without a Lean statement, Cancel only. A card the extension has not written
+ * yet can be neither end of a selected arrow nor marked (fixer 1g). Slice 2h retired M2's report card, whose missing-
+ * arrow hints (A10) the edit session's stage report carries now (s2-review, s2-board).
  */
 import { expect, test, type Page } from '@playwright/test';
 import { buildGraph, hostMessage, spyroGraph, type TlGraph } from '@telelean/core';
-import { makeNode, mapNode, workspaceState } from '../shared/graphs';
-import { normativeProposal, reviewRun, runView, TARGET, UPDATED } from '../shared/runs';
+import { makeNode, workspaceState } from '../shared/graphs';
+import { runView, TARGET } from '../shared/runs';
 import { boardMenu, card, cardPoint, clickArrow, contextSection, drawArrow, menuItem, openBoard, postedOfType, rightClick, send, settle, shotPath, type OpenedBoard } from './helpers';
 
 let board: OpenedBoard | undefined;
@@ -72,11 +74,11 @@ async function selectIncoming(page: Page, id: string) {
 }
 
 /**
- * Formalize's reasons on the board (formalizeState): no arrow or mark selected, several targets, a run active (another
- * subject's), a start on its way, a cycle of arrows. Its fifth, a card the extension has not written yet, never arises
- * from the board's gestures: the next test shows why.
+ * Formalize's reasons on the board (formalizeState): no arrow or mark selected, a run active (another subject's), a
+ * start on its way, a cycle of arrows (slice 2h: several targets are one request now). Its fifth, a card the extension
+ * has not written yet, never arises from the board's gestures: the next test shows why.
  */
-test('the Context Menu section: empty text, the selection summed up, Formalize enabled, or disabled with its reason (no arrow, several targets, a run active or starting, a cycle); a fixed height (CM-1–CM-5, AP-13)', async ({ page }) => {
+test('the Context Menu section: empty text, the selection summed up, Formalize enabled (one target or several), or disabled with its reason (no arrow, a run active or starting, a cycle); a fixed height (CM-1–CM-5, AP-13)', async ({ page }) => {
   // The test answers the host's part itself (here: the start).
   board = await openBoard(page, twoTargetsGraph(), 'dark', { workspace: workspaceState(), autoReply: false });
   const section = contextSection(page);
@@ -117,11 +119,12 @@ test('the Context Menu section: empty text, the selection summed up, Formalize e
   await expect(page.getByTestId('context-actions').locator('[data-action="remove-selection"]')).toHaveAttribute('aria-label', 'Remove 3 arrows');
   await page.screenshot({ path: shotPath('s1-context-formalize.png') });
 
-  // Arrows into two propositions: one target at a time in slice 1 (AP-9).
+  // Arrows into two propositions: slice 2h asks for both in one request, one step each (§5.11).
   await clickArrow(page, 'cynder-dark-past', SIDE, true);
   await expect(page.getByTestId('context-summary')).toHaveText('4 arrows into 2 propositions');
-  await expect(formalize).toBeDisabled();
-  await expect(reason).toHaveText('Select arrows into one card: several targets come with the review list.');
+  await expect(formalize).toBeEnabled();
+  await expect(reason).toHaveCount(0);
+  await expect(formalize).toHaveAttribute('title', 'Ask Claude to formalise the selected arrows and prove 2 targets, one step each, sources first');
   expect((await section.boundingBox())?.height).toBe(emptyHeight);
 
   // A run of the model folder is active (here another subject's): disabled, saying so.
@@ -132,11 +135,11 @@ test('the Context Menu section: empty text, the selection summed up, Formalize e
   await expect(reason).toHaveText('A run is active. Claude is already working on Bayonetta: wait for it to finish, or cancel it.');
   await send(page, hostMessage('run', { run: null }));
   await expect(formalize).toBeEnabled();
-  expect(await postedOfType(page, 'startRun')).toEqual([]);
+  expect(await postedOfType(page, 'formalize')).toEqual([]);
 
   // The start is on its way (the host has not answered yet): disabled, saying so; the host's answer ends that.
   await formalize.click();
-  expect((await postedOfType(page, 'startRun')).map((m) => m.payload)).toEqual([{ target: SIDE, premises: ['cynder-dark-past'], requestId: 'r1' }]);
+  expect((await postedOfType(page, 'formalize')).map((m) => m.payload)).toEqual([{ inferences: [{ target: SIDE, premises: ['cynder-dark-past'] }], requestId: 'r1' }]);
   await expect(formalize).toBeDisabled();
   await expect(reason).toHaveText('A run is active. It is starting.');
   const declined = 'Not started: telelean sends nothing to Claude until you allow it ("Run with Claude").';
@@ -156,7 +159,7 @@ test('the Context Menu section: empty text, the selection summed up, Formalize e
   expect((await section.boundingBox())?.height).toBe(emptyHeight);
   await page.screenshot({ path: shotPath('s1-context-cycle.png') });
   await formalize.click({ force: true });
-  expect(await postedOfType(page, 'startRun')).toHaveLength(1);
+  expect(await postedOfType(page, 'formalize')).toHaveLength(1);
 });
 
 test('a card the extension has not written yet is never part of a question: it has no handle, an arrow into it is refused, and "Follows from nothing" is off, each with the reason', async ({ page }) => {
@@ -227,12 +230,12 @@ test('one card selected: its actions as icons with their labels; several cards: 
   await expect(menu).toHaveCount(0);
 });
 
-test('Formalize posts startRun with the selected arrows’ sources; a drawn arrow’s right-click menu offers it on that arrow (CM-7)', async ({ page }) => {
+test('Formalize posts `formalize` with the selected arrows’ sources; a drawn arrow’s right-click menu offers it on that arrow (CM-7)', async ({ page }) => {
   board = await openBoard(page, spyroGraph(), 'dark', { workspace: workspaceState() });
   await selectIncoming(page, TARGET);
   await page.getByTestId('formalize').click();
-  expect((await postedOfType(page, 'startRun')).map((m) => m.payload)).toEqual([
-    { target: TARGET, premises: ['cynder-dark-past', 'new-spyro-pg', 'pg-no-dark-past'], requestId: 'r1' },
+  expect((await postedOfType(page, 'formalize')).map((m) => m.payload)).toEqual([
+    { inferences: [{ target: TARGET, premises: ['cynder-dark-past', 'new-spyro-pg', 'pg-no-dark-past'] }], requestId: 'r1' },
   ]);
   expect(await postedOfType(page, 'theseSuffice')).toEqual([]);
 
@@ -254,7 +257,7 @@ test('Formalize posts startRun with the selected arrows’ sources; a drawn arro
   await expect(menu.getByRole('menuitem').first()).toHaveText('Formalize for dependencies');
   await expect(page.getByTestId('context-summary')).toHaveText(`1 arrow into ${GOAL_NAME}`);
   await menuItem(page, 'formalize').click();
-  expect((await postedOfType(page, 'startRun')).at(-1)?.payload).toEqual({ target: TARGET, premises: ['new-spyro-pg'], requestId: 'r2' });
+  expect((await postedOfType(page, 'formalize')).at(-1)?.payload).toEqual({ inferences: [{ target: TARGET, premises: ['new-spyro-pg'] }], requestId: 'r2' });
 });
 
 test('AR-8: an unproved source with a Lean statement: "Mark pending and continue" marks it, then starts; Cancel sends nothing; without a statement, Cancel only', async ({ page }) => {
@@ -272,17 +275,17 @@ test('AR-8: an unproved source with a Lean statement: "Mark pending and continue
   await dialog.getByTestId('formalize-cancel').click();
   await expect(dialog).toHaveCount(0);
   expect(await postedOfType(page, 'claimPending')).toEqual([]);
-  expect(await postedOfType(page, 'startRun')).toEqual([]);
+  expect(await postedOfType(page, 'formalize')).toEqual([]);
 
   // Again: mark it pending and continue. The mark is the user's own edit, sent first; the start follows its answer.
   await formalize.click();
   await dialog.getByTestId('formalize-mark-pending').click();
   await expect(dialog).toHaveCount(0);
-  await expect.poll(async () => (await postedOfType(page, 'startRun')).length).toBe(1);
-  const sent = (await page.evaluate(() => window.__tlHarness.posted)).filter((m) => m.type === 'claimPending' || m.type === 'startRun').map((m) => m.type);
-  expect(sent).toEqual(['claimPending', 'startRun']);
+  await expect.poll(async () => (await postedOfType(page, 'formalize')).length).toBe(1);
+  const sent = (await page.evaluate(() => window.__tlHarness.posted)).filter((m) => m.type === 'claimPending' || m.type === 'formalize').map((m) => m.type);
+  expect(sent).toEqual(['claimPending', 'formalize']);
   expect((await postedOfType(page, 'claimPending')).map((m) => m.payload)).toEqual([{ id: 'rating-claim', requestId: 'r1' }]);
-  expect((await postedOfType(page, 'startRun')).map((m) => m.payload)).toEqual([{ target: TARGET, premises: ['cynder-dark-past', 'rating-claim'], requestId: 'r2' }]);
+  expect((await postedOfType(page, 'formalize')).map((m) => m.payload)).toEqual([{ inferences: [{ target: TARGET, premises: ['cynder-dark-past', 'rating-claim'] }], requestId: 'r2' }]);
 
   // A source without a Lean statement must be formalised and proved first: Cancel only (AP-10).
   await selectIncoming(page, SIDE);
@@ -292,36 +295,9 @@ test('AR-8: an unproved source with a Lean statement: "Mark pending and continue
   await expect(dialog.getByRole('button')).toHaveText(['Cancel']);
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
-  expect(await postedOfType(page, 'startRun')).toHaveLength(1);
+  expect(await postedOfType(page, 'formalize')).toHaveLength(1);
   // The cards themselves are not selected by any of this.
   await expect(card(page, 'rating-claim')).not.toHaveAttribute('data-selected', /.*/);
   await rightClick(page, await cardPoint(page, 'rating-claim'));
   await expect(boardMenu(page)).toBeVisible();
-});
-
-test('a result that is not proved names the cards the proof needs that nobody selected: "Select … too" or "Draw (or select) the arrow …" (A10)', async ({ page }) => {
-  const base = normativeProposal();
-  // The run asked from two of the goal's arrows; new-spyro-pg's arrow is not drawn in this proposal's board.
-  const graph = mapNode(base.graph, TARGET, (n) => ({ ...n, premises: ['cynder-dark-past', 'pg-no-dark-past'] }));
-  const report = { ...base.report, verdict: 'not-proved' as const, gap: 'The proof needs new-spyro-pg: that the new game is PG.' };
-  const proposal = normativeProposal({ graph, report });
-  board = await openBoard(page, spyroGraph(), 'dark', { workspace: workspaceState(), clock: UPDATED });
-  await send(page, hostMessage('run', { run: reviewRun(proposal, { premises: ['cynder-dark-past', 'pg-no-dark-past'] }) }));
-  await send(page, hostMessage('proposal', { proposal }));
-  const review = page.getByTestId('review');
-  await review.getByTestId('show-result').click();
-  await review.locator('.tl-review__step[data-step-kind="result"]').click();
-  const hints = page.getByTestId('report-missing-arrows');
-  await expect(hints.locator('li')).toHaveText(['Draw (or select) the arrow from “The new Spyro game is PG” and run again.']);
-  await expect(hints.locator('li')).toHaveAttribute('data-hint', 'draw');
-  await page.screenshot({ path: shotPath('s1-report-missing-arrow.png') });
-
-  // The same gap where the arrow is drawn but was not selected: "Select … too".
-  const drawn = normativeProposal({ proposalId: 'p2', report });
-  await send(page, hostMessage('proposal', { proposal: drawn }));
-  await send(page, hostMessage('run', { run: reviewRun(drawn, { premises: ['cynder-dark-past', 'pg-no-dark-past'] }) }));
-  await review.getByTestId('show-result').click();
-  await review.locator('.tl-review__step[data-step-kind="result"]').click();
-  await expect(hints.locator('li')).toHaveText(['Select “The new Spyro game is PG” → “Cynder would not be a good addition to …” too.']);
-  await expect(hints.locator('li')).toHaveAttribute('data-hint', 'select');
 });

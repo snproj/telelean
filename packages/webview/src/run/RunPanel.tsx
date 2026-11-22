@@ -7,24 +7,37 @@
  *  - A2's notices (an attempt that did not pass, giving up, the revert, a cap, an environment problem): while Claude
  *    works all of them; once the round ended, the ones that explain how it ended come before the review and the rest
  *    are folded below it (`placeNotices`);
- *  - the review stepper with the report card and Accept / Feedback / Discard (D-19, D-21);
  *  - Resume / Stop for an interrupted run, the outcome of an ended run with Dismiss;
  *  - the answered questions with Claude's guess revealed (D-20);
  *  - the activity feed, where Claude's own messages are italic with a marker (D-15).
  * Its edge towards the board is a handle that resizes it (RunSplitter). Closing the panel (or the board) never stops
  * the run; the header's run badge opens it again.
+ *
+ * Slice 2g (docs/slice2-plan.md 5.3): during an edit session the panel is the review panel ("Edit session"): the status
+ * line; Inferences with their step chips; Claude's pending questions and the notices shown up front; the stage report;
+ * the events box; the list with the detail (the end confirmation in its place while confirming); "Rejected in this
+ * session"; folded, the answered questions, Claude's activity (withheld while a step runs and while the results are
+ * hidden: "Show Claude's activity" opens the reveal dialog, D2-10) and the backend. The session bar holds its controls.
+ *
+ * Slice 2h retired M2's review stepper (the statements, the report card, Accept / Feedback / Discard): a run in review
+ * is an edit session, shown as above once its view arrives ("Preparing the review…" until then); a run of version 1
+ * whose conversion into a session failed offers Stop (Cancel: it ends, the files untouched).
  */
-import type { RunActivity, RunNotice, RunView } from '@telelean/core';
+import { REVIEW_TEXTS, type RunActivity, type RunNotice, type RunView, type SessionView } from '@telelean/core';
 import { useLayoutEffect, useRef, useSyncExternalStore, type KeyboardEvent, type PointerEvent, type RefObject } from 'react';
 import { AgentText, UserText } from '../common/AgentText';
 import { InlineCode } from '../common/InlineCode';
 import { useNow } from '../common/useNow';
 import { NOTICE_ICON } from '../labels';
+import { listControls, partsText, stepRunning } from '../model/review';
 import { clockRuns, endedOutcome, ENDED_TEXT, formatClock, placeNotices, runStateLabel, runStatusParts } from '../model/run';
+import { sessionBarState } from '../model/sessionBar';
 import { useBoard, useBoardActions } from '../state/context';
 import { clampSplit, type RunPanelLayout } from '../state/store';
 import { AnsweredQuestions, QuestionSet } from './Questions';
-import { Review } from './Review';
+import { EndConfirmation } from './review/EndConfirmation';
+import { ReviewArea } from './review/ReviewList';
+import { EventsBox, Inferences, RejectedList, StageReport } from './review/StageReport';
 
 /** The width below which board.css puts the run panel under the board (keep the two in sync). */
 export const NARROW_QUERY = '(max-width: 1000px)';
@@ -294,9 +307,9 @@ function Activity({ activity, open }: { activity: readonly RunActivity[]; open: 
 function Outcome({ run }: { run: RunView }) {
   const actions = useBoardActions();
   const busy = useBoard((s) => s.runBusy?.action ?? null);
-  const accepted = useBoard((s) => s.accepted);
-  // An Accept that changed no file is worded "Recorded", without the Undo hint (it left no Undo step).
-  const ended = endedOutcome(run, accepted);
+  // An Apply that changed no file is worded "Recorded", without the Undo hint (it left no Undo step). Slice 2h: the
+  // runner's record decides (`RunView.accepted`); the board sends no Accept of its own any more.
+  const ended = endedOutcome(run, null);
   switch (run.state) {
     case 'starting':
       return (
@@ -322,7 +335,7 @@ function Outcome({ run }: { run: RunView }) {
                 {busy === 'resume' ? 'Resuming…' : 'Resume'}
               </button>
             ) : null}
-            <button type="button" className="tl-button tl-button--secondary" data-testid="stop-run" disabled={busy !== null} title="End the run (like Discard)" onClick={() => actions.stopRun()}>
+            <button type="button" className="tl-button tl-button--secondary" data-testid="stop-run" disabled={busy !== null} title={STOP_TITLE} onClick={() => actions.stopRun()}>
               {busy === 'stop' ? 'Stopping…' : 'Stop'}
             </button>
           </div>
@@ -334,7 +347,8 @@ function Outcome({ run }: { run: RunView }) {
     case 'failed':
       return (
         <div className="tl-run__outcome" data-testid="run-ended" data-outcome={ended ?? run.state} data-tone={run.state === 'failed' ? 'error' : undefined}>
-          <p>{ENDED_TEXT[ended ?? run.state]}</p>
+          {/* Slice 2g (§5.9): after a session's Apply that changed the files. */}
+          <p>{run.session !== undefined && ended === 'accepted' ? REVIEW_TEXTS.applied : ENDED_TEXT[ended ?? run.state]}</p>
           {run.error ? (
             <p className="tl-run__error" data-testid="run-error">
               <span className="codicon codicon-error" aria-hidden="true" /> <InlineCode text={run.error} />
@@ -352,12 +366,67 @@ function Outcome({ run }: { run: RunView }) {
   }
 }
 
+/**
+ * Slice 2g: Claude's activity in a session: shown with the results only (D2-10); while it is withheld, "Show Claude's
+ * activity", which counts as Show results (the reveal dialog first), and while a step runs, disabled with why.
+ */
+function SessionActivity({ run, session }: { run: RunView; session: SessionView }) {
+  const busy = useBoard((s) => s.sessionBusy !== null);
+  const actions = useBoardActions();
+  if (!stepRunning(session) && session.results.shown) return <Activity key="folded" activity={run.activity} open={false} />;
+  const control = listControls(session, [], busy).activity;
+  return (
+    <details className="tl-run__section tl-activity" data-testid="run-activity" data-withheld="true">
+      <summary className="tl-run__heading">Activity</summary>
+      <p className="tl-run__hint">{SESSION_ACTIVITY_WITHHELD}</p>
+      <button type="button" className="tl-button tl-button--secondary tl-button--small" data-testid="show-activity" disabled={!control.enabled} title={control.title} onClick={() => actions.openReveal('activity')}>
+        {REVIEW_TEXTS.showClaudesActivity}
+      </button>
+    </details>
+  );
+}
+
+/** Builder 2h: a run in review before its session view arrives. */
+export const PREPARING_REVIEW = 'Preparing the review…';
+/** Builder 2h: Stop's tooltip (a Cancel: M2's Discard is retired). */
+export const STOP_TITLE = 'End the run; your files are not changed';
+
+/** Builder 2g: why the activity is not listed (D2-10). */
+export const SESSION_ACTIVITY_WITHHELD = "Claude's activity is withheld while a step runs and while the results are hidden.";
+
+/** Slice 2g: the review panel's body (§5.3). */
+function SessionBody({ run, session }: { run: RunView; session: SessionView }) {
+  const notices = placeNotices(run);
+  const confirming = (session.phase === 'confirming' || session.phase === 'applying') && session.confirmation !== undefined;
+  return (
+    <div className="tl-run__body">
+      <Inferences session={session} />
+      {run.state === 'starting' ? <Outcome run={run} /> : null}
+      {run.pendingQuestions ? <QuestionSet run={run} set={run.pendingQuestions} /> : null}
+      <Notices notices={notices.upfront} />
+      {session.stage >= 1 ? <StageReport session={session} /> : null}
+      <EventsBox session={session} />
+      {confirming && session.confirmation !== undefined ? <EndConfirmation session={session} confirmation={session.confirmation} /> : <ReviewArea session={session} />}
+      <RejectedList session={session} />
+      <Notices notices={notices.later} folded />
+      <AnsweredQuestions answered={run.answered} />
+      <SessionActivity run={run} session={session} />
+      <p className="tl-run__backend" data-testid="run-backend">
+        {run.backend.model}
+        {run.backend.effort ? ` · effort ${run.backend.effort}` : ''}
+        {run.backend.cliVersion ? ` · Claude Code ${run.backend.cliVersion}` : ''}
+      </p>
+    </div>
+  );
+}
+
 export function RunPanel() {
   const run = useBoard((s) => (s.run && s.run.subject === s.subject ? s.run : null));
   const open = useBoard((s) => s.runPanelOpen);
-  const proposal = useBoard((s) => (s.proposal && s.run && s.proposal.runId === s.run.runId ? s.proposal : null));
-  const revealed = useBoard((s) => s.review?.revealed ?? true);
+  const busy = useBoard((s) => s.runBusy?.action ?? null);
   const cancelling = useBoard((s) => s.runBusy?.action === 'cancel');
+  // Slice 2g: the run's edit session, when the host posted one for it (the panel is then the review panel).
+  const session = useBoard((s) => (s.session && s.run && s.session.runId === s.run.runId && s.session.subject === s.subject ? s.session : null));
   const layout: RunPanelLayout = useNarrow() ? 'narrow' : 'wide';
   const split = useBoard((s) => s.runSplit[layout]);
   const actions = useBoardActions();
@@ -375,6 +444,36 @@ export function RunPanel() {
   const cancellable = !ended && run.state !== 'review' && run.state !== 'interrupted';
   const reviewing = run.state === 'review';
   const notices = placeNotices(run);
+  if (session !== null) {
+    return (
+      <aside
+        ref={panel}
+        className="tl-run tl-run--session"
+        data-testid="run-panel"
+        data-session={session.phase}
+        data-state={run.state}
+        data-sized={split !== null || undefined}
+        data-undo-scope="session"
+        aria-label={REVIEW_TEXTS.panelLabel}
+      >
+        <RunSplitter panel={panel} layout={layout} />
+        <header className="tl-run__head">
+          <span className="tl-run__title">
+            <span className="codicon codicon-sparkle" aria-hidden="true" /> {REVIEW_TEXTS.panelLabel}
+          </span>
+          <span className="tl-run__state" data-testid="run-state" role="status">
+            {partsText(sessionBarState(session, run, true).phase)}
+          </span>
+          <span className="tl-details__spacer" />
+          <button type="button" className="tl-icon-button" aria-label="Hide the run panel" title="Hide (the session goes on; the badge in the header shows it again)" onClick={() => actions.setRunPanelOpen(false)}>
+            <span className="codicon codicon-close" aria-hidden="true" />
+          </button>
+        </header>
+        <StatusLine run={run} />
+        <SessionBody run={run} session={session} />
+      </aside>
+    );
+  }
   return (
     <aside ref={panel} className="tl-run" data-testid="run-panel" data-state={run.state} data-stage={run.stage} data-sized={split !== null || undefined} aria-label="Claude run">
       <RunSplitter panel={panel} layout={layout} />
@@ -383,7 +482,7 @@ export function RunPanel() {
           <span className="codicon codicon-sparkle" aria-hidden="true" /> Claude
         </span>
         <span className="tl-run__state" data-testid="run-state" role="status">
-          {runStateLabel(run, revealed)}
+          {runStateLabel(run, false)}
         </span>
         <span className="tl-details__spacer" />
         {cancellable ? (
@@ -402,11 +501,19 @@ export function RunPanel() {
         {run.pendingQuestions ? <QuestionSet run={run} set={run.pendingQuestions} /> : null}
         {/* How the round ended (gave up, a limit, no finish, the revert) comes before the review, not after it. */}
         <Notices notices={notices.upfront} />
-        {reviewing && proposal ? <Review proposal={proposal} /> : null}
-        {reviewing && !proposal ? (
+        {/* Slice 2h: a run in review is an edit session, shown as its review panel once its view arrives. */}
+        {reviewing && run.session !== undefined ? (
           <p className="tl-run__progress" data-testid="run-progress">
-            <span className="codicon codicon-loading codicon-modifier-spin" aria-hidden="true" /> Preparing the proposal…
+            <span className="codicon codicon-loading codicon-modifier-spin" aria-hidden="true" /> {PREPARING_REVIEW}
           </p>
+        ) : null}
+        {/* A run of version 1 whose conversion into a session failed (its error says so): Stop ends it. */}
+        {reviewing && run.session === undefined ? (
+          <div className="tl-run__buttons">
+            <button type="button" className="tl-button tl-button--secondary" data-testid="stop-run" disabled={busy !== null} title={STOP_TITLE} onClick={() => actions.stopRun()}>
+              {busy === 'stop' ? 'Stopping…' : 'Stop'}
+            </button>
+          </div>
         ) : null}
         <Notices notices={notices.later} folded />
         <AnsweredQuestions answered={run.answered} />

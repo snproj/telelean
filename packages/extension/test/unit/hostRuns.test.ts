@@ -29,7 +29,7 @@ import { activate, deactivate } from '../../src/extension';
 import { CONSENT_DECLINED, CONSENT_DETAIL, CONSENT_MESSAGE, consentKey, TEST_MODE_NO_CLAUDE } from '../../src/logic/runs';
 import { TeleleanHost } from '../../src/vscode/host';
 import type { RunnerFunctions } from '../../src/vscode/runner';
-import { FakeRunManager, FakeWorkspace, sampleProposal, sampleRun } from './fakes';
+import { FakeRunManager, FakeWorkspace, sampleRun } from './fakes';
 import * as stub from './vscodeStub';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -190,11 +190,11 @@ describe('one RunManager per model root (section 8.1)', () => {
     expect(managers[1]?.callsOf('recover')).toHaveLength(1);
   });
 
-  it('the board gets the run and proposal once attached, and on every change of the RunManager', async () => {
+  it('the board gets the run and the session once attached (2h: no proposal), and on every change of the RunManager', async () => {
     const { host, api } = newHost(stub.ExtensionMode.Test);
     await host.openBoardCommand({ root: rootA });
     await sleep(0);
-    expect(posted(api, rootA).map((m) => m.type)).toEqual(['workspace', 'graph', 'run', 'proposal', 'session']);
+    expect(posted(api, rootA).map((m) => m.type)).toEqual(['workspace', 'graph', 'run', 'session']);
     const manager = managers[0];
     if (!manager) throw new Error('no RunManager');
     manager.run = sampleRun({ state: 'waiting-for-answer', subject: 'Other' });
@@ -210,7 +210,7 @@ describe('one RunManager per model root (section 8.1)', () => {
     await host.openBoardCommand({ root: rootA });
     expect(managers).toEqual([]);
     api.testing?.answerPrompts({ claudeConsent: true });
-    const outcome = await request(api, rootA, 'startRun', { ...START, requestId: 's1' });
+    const outcome = await request(api, rootA, 'formalize', { inferences: [START], requestId: 's1' });
     expect(outcome).toEqual({ ok: false, code: 'not-yet', error: 'Claude runs are not available: VS Code gave telelean no global storage folder for its run directories' });
   });
 });
@@ -220,7 +220,7 @@ describe('the lazy backend and the Test-mode guard (AT5.4)', () => {
     const { host, api } = newHost(stub.ExtensionMode.Test);
     await host.openBoardCommand({ root: rootA });
     api.testing?.answerPrompts({ claudeConsent: true });
-    const outcome = await request(api, rootA, 'startRun', { ...START, requestId: 's1' });
+    const outcome = await request(api, rootA, 'formalize', { inferences: [START], requestId: 's1' });
     expect(outcome).toEqual({ ok: false, code: 'not-yet', error: TEST_MODE_NO_CLAUDE });
     expect(claudeCalls).toEqual([]);
     expect(managers[0]?.backend).toBeUndefined();
@@ -233,7 +233,7 @@ describe('the lazy backend and the Test-mode guard (AT5.4)', () => {
     const fake = new FakeBackend([]);
     const roots: string[] = [];
     const restore = api.testing?.useRunBackend((root) => (roots.push(root), fake));
-    const outcome = await request(api, rootA, 'startRun', { ...START, requestId: 's1' });
+    const outcome = await request(api, rootA, 'formalize', { inferences: [START], requestId: 's1' });
     expect(outcome).toMatchObject({ ok: true });
     expect(managers[0]?.backend).toBe(fake);
     expect(roots).toEqual([rootA]);
@@ -241,7 +241,7 @@ describe('the lazy backend and the Test-mode guard (AT5.4)', () => {
 
     restore?.();
     await host.openBoardCommand({ root: rootB });
-    expect(await request(api, rootB, 'startRun', { ...START, requestId: 's2' })).toEqual({ ok: false, code: 'not-yet', error: TEST_MODE_NO_CLAUDE });
+    expect(await request(api, rootB, 'formalize', { inferences: [START], requestId: 's2' })).toEqual({ ok: false, code: 'not-yet', error: TEST_MODE_NO_CLAUDE });
   });
 
   it('Production: createClaudeBackend runs only at a start, with the dist/bin guard, the hook runtime, telelean/<version>, setpriv, and the Claude extension\'s folder first', async () => {
@@ -250,7 +250,7 @@ describe('the lazy backend and the Test-mode guard (AT5.4)', () => {
     await host.openBoardCommand({ root: rootA });
     expect(claudeCalls).toEqual([]);
     stub.messageAnswers.push('Run with Claude');
-    const outcome = await request(api, rootA, 'startRun', { ...START, requestId: 's1' });
+    const outcome = await request(api, rootA, 'formalize', { inferences: [START], requestId: 's1' });
     expect(outcome).toMatchObject({ ok: true });
     expect(claudeCalls).toHaveLength(1);
     expect(claudeCalls[0]).toMatchObject({
@@ -270,28 +270,28 @@ describe('egress consent, once per model root (AT5.2)', () => {
     const { host, api } = newHost(stub.ExtensionMode.Production);
     await host.openBoardCommand({ root: rootA });
     stub.messageAnswers.push('Run with Claude');
-    expect(await request(api, rootA, 'startRun', { ...START, requestId: 'a1' })).toMatchObject({ ok: true });
+    expect(await request(api, rootA, 'formalize', { inferences: [START], requestId: 'a1' })).toMatchObject({ ok: true });
     expect(stub.shown).toEqual([
       { level: 'info', message: CONSENT_MESSAGE, options: { modal: true, detail: CONSENT_DETAIL }, items: ['Run with Claude'], answer: 'Run with Claude' },
     ]);
     expect(globalState.get(consentKey(rootKeyOf(rootA)))).toBe(true);
-    expect(managers[0]?.callsOf('start')).toEqual([[{ subject: 'Spyro', ...START }]]);
+    expect(managers[0]?.callsOf('formalize')).toEqual([[{ subject: 'Spyro', inferences: [START] }]]);
 
     // The same root again: no question (the run ended in the meantime).
     if (managers[0]) managers[0].run = sampleRun({ state: 'accepted' });
-    expect(await request(api, rootA, 'startRun', { ...START, requestId: 'a2' })).toMatchObject({ ok: true });
+    expect(await request(api, rootA, 'formalize', { inferences: [START], requestId: 'a2' })).toMatchObject({ ok: true });
     expect(stub.shown).toHaveLength(1);
-    expect(managers[0]?.callsOf('start')).toHaveLength(2);
+    expect(managers[0]?.callsOf('formalize')).toHaveLength(2);
 
     // Another root asks again; dismissing the modal starts nothing, declares nothing, and is not remembered.
     await host.openBoardCommand({ root: rootB });
-    expect(await request(api, rootB, 'startRun', { ...START, requestId: 'b1' })).toEqual({ ok: false, code: 'not-yet', error: CONSENT_DECLINED });
+    expect(await request(api, rootB, 'formalize', { inferences: [START], requestId: 'b1' })).toEqual({ ok: false, code: 'not-yet', error: CONSENT_DECLINED });
     expect(stub.shown).toHaveLength(2);
-    expect(managers[1]?.calls.filter((c) => c.method === 'start')).toEqual([]);
+    expect(managers[1]?.calls.filter((c) => c.method === 'formalize')).toEqual([]);
     expect(workspaces[1]?.performed).toEqual([]);
     expect(globalState.has(consentKey(rootKeyOf(rootB)))).toBe(false);
     stub.messageAnswers.push('Run with Claude');
-    expect(await request(api, rootB, 'startRun', { ...START, requestId: 'b2' })).toMatchObject({ ok: true });
+    expect(await request(api, rootB, 'formalize', { inferences: [START], requestId: 'b2' })).toMatchObject({ ok: true });
     expect(stub.shown).toHaveLength(3);
   });
 
@@ -299,39 +299,42 @@ describe('egress consent, once per model root (AT5.2)', () => {
     const { host, api } = newHost(stub.ExtensionMode.Production);
     await host.openBoardCommand({ root: rootA });
     if (managers[0]) managers[0].run = sampleRun({ state: 'working' });
-    expect(await request(api, rootA, 'startRun', { ...START, requestId: 'a1' })).toMatchObject({ ok: false, code: 'conflict' });
+    expect(await request(api, rootA, 'formalize', { inferences: [START], requestId: 'a1' })).toMatchObject({ ok: false, code: 'conflict' });
     expect(stub.shown).toEqual([]);
   });
 
   it('Test mode: the testing API answers the consent; reset() forgets the remembered consents and the run backend', async () => {
     const { host, api } = newHost(stub.ExtensionMode.Test);
     await host.openBoardCommand({ root: rootA });
-    expect(await request(api, rootA, 'startRun', { ...START, requestId: 't1' })).toEqual({ ok: false, code: 'not-yet', error: CONSENT_DECLINED }); // unanswered = no
+    expect(await request(api, rootA, 'formalize', { inferences: [START], requestId: 't1' })).toEqual({ ok: false, code: 'not-yet', error: CONSENT_DECLINED }); // unanswered = no
     api.testing?.answerPrompts({ claudeConsent: true });
     api.testing?.useRunBackend(() => new FakeBackend([]));
-    expect(await request(api, rootA, 'startRun', { ...START, requestId: 't2' })).toMatchObject({ ok: true });
+    expect(await request(api, rootA, 'formalize', { inferences: [START], requestId: 't2' })).toMatchObject({ ok: true });
     expect(globalState.get(consentKey(rootKeyOf(rootA)))).toBe(true);
     expect(stub.shown).toEqual([]); // never a real modal in Test mode
     await api.testing?.reset();
     expect(globalState.size).toBe(0);
     await host.openBoardCommand({ root: rootA });
     api.testing?.answerPrompts({ claudeConsent: true });
-    expect(await request(api, rootA, 'startRun', { ...START, requestId: 't3' })).toEqual({ ok: false, code: 'not-yet', error: TEST_MODE_NO_CLAUDE });
+    expect(await request(api, rootA, 'formalize', { inferences: [START], requestId: 't3' })).toEqual({ ok: false, code: 'not-yet', error: TEST_MODE_NO_CLAUDE });
   });
 });
 
-describe('the raw Lean diff (AT5.6)', () => {
-  it('opens vscode.changes over the read-only telelean-proposal: provider: base on the left, the proposal on the right', async () => {
+describe('the raw Lean diff (AT5.6; since 2h only a session\'s, openSessionDiff)', () => {
+  it('opens vscode.changes over the read-only telelean-proposal: provider: base on the left, the working copy on the right', async () => {
     const { host, api } = newHost(stub.ExtensionMode.Test);
     await host.openBoardCommand({ root: rootA });
     const manager = managers[0];
     if (!manager) throw new Error('no RunManager');
-    manager.currentProposal = sampleProposal();
-    await api.simulateBoardMessage(rootA, { v: 1, type: 'openProposalDiff', payload: { runId: 'r1', proposalId: 'p1' } });
+    manager.sessionDiffFiles = [
+      { path: 'Model/Spyro/Main.lean', before: 'abbrev a : Prop := True\n', after: 'abbrev a : Prop := True\ntheorem a.holds : a := trivial\n' },
+      { path: 'Model/Spyro/Lemmas.lean', before: null, after: 'namespace Spyro\nend Spyro\n' },
+    ];
+    await api.simulateBoardMessage(rootA, { v: 1, type: 'openSessionDiff', payload: { runId: 'r1', stage: 1, requestId: 'd1' } });
     const changes = stub.executed.filter((c) => c.id === 'vscode.changes');
     expect(changes).toHaveLength(1);
     const [title, resources] = changes[0]?.args as [string, Array<[stub.Uri, stub.Uri | undefined, stub.Uri | undefined]>];
-    expect(title).toBe('Raw Lean diff: Spyro (round 1)');
+    expect(title).toBe('Raw Lean diff: Spyro');
     expect(resources.map(([file, left, right]) => [file.fsPath, left?.scheme, right?.scheme])).toEqual([
       [path.join(rootA, 'Model', 'Spyro', 'Main.lean'), 'telelean-proposal', 'telelean-proposal'],
       [path.join(rootA, 'Model', 'Spyro', 'Lemmas.lean'), undefined, 'telelean-proposal'], // created by the proposal

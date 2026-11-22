@@ -29,7 +29,7 @@ import type {
 
 export * from './types.js';
 // Additive exports (WP3): the later user turns, helpers the tests and the walkthrough script use.
-export { adoptionTurn, budgetText, collapseWhitespace, feedbackTurn, NUDGE_TURN, resumeTurn, shortNames } from './prompts.js';
+export { budgetText, collapseWhitespace, NUDGE_TURN, resumeTurn, shortNames } from './prompts.js';
 export { condenseRateLimit, ENVIRONMENT_RETRY_MS, gateCheckOf, localTime, rateLimitNotice, validateAnswers, verdictOfStatus } from './manager.js';
 export { AXIOM_TARGET_REFUSAL, missingWorkspaceMembers } from './preflight.js';
 export { PDEATHSIG_ARGS, setprivLauncher } from './backend.js';

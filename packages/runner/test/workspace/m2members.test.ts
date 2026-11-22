@@ -185,7 +185,8 @@ describe('AT4.7 the workspace M2 members', () => {
     expect((await w.workspaceState('Spyro')).undo).toBe('These suffice → proved: Cynder would not be a good addition…');
     expect(await w.undo('Spyro')).toMatchObject({ ok: true, label: 'Undo: These suffice → proved: Cynder would not be a good addition…' });
     expect(read(root, 'Model/Spyro/Main.lean')).toBe(main);
-    expect(await w.applyChanges?.({ label: 'x', action: 'accept-proposal', subject: 'Spyro', nodes: [], changes: [{ path: '.telelean/subjects/Spyro/layout.json', before: null, after: '{}' }] })).toMatchObject({
+    // Slice 2f: the subject's layout.json and endorsements.json are accepted (an edit session's Apply); anything else is not.
+    expect(await w.applyChanges?.({ label: 'x', action: 'accept-proposal', subject: 'Spyro', nodes: [], changes: [{ path: '.telelean/subjects/Spyro/decisions.json', before: null, after: '{}' }] })).toMatchObject({
       ok: false,
       code: 'unsafe',
     });

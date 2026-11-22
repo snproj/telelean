@@ -18,6 +18,7 @@ const REQUEST: GhostAdoptionRequest = {
   rationale: 'it seems obvious to me',
   session: 'rmabc123',
   today: '2026-11-02',
+  holdAs: 'axiom',
 };
 const TARGET_BLOCK = '/-\n@@ telelean v1\nid: cynder-not-good';
 
@@ -144,9 +145,8 @@ describe('AT1.6 planGhostAdoption', () => {
     expect(refusal(() => planGhostAdoption(model(LITERAL), { ...REQUEST, subject: 'Other' })).code).toBe('not-found');
   });
 
-  it('2b2 (§3.8): `holdAs` as an axiom writes exactly what the default writes: an AXIOM card', () => {
+  it('2b2 (§3.8): `holdAs` as an axiom writes an AXIOM card (what M2\'s "I hold this" wrote)', () => {
     const asAxiom = planGhostAdoption(model(LITERAL), { ...REQUEST, holdAs: 'axiom' });
-    expect(asAxiom).toEqual(planGhostAdoption(model(LITERAL), REQUEST));
     const m = model({ ...LITERAL, [MAIN]: asAxiom.changes[0]?.after as string });
     expect(m.nodes.get(asAxiom.nodeId)?.node).toMatchObject({ type: 'AXIOM', lean: { justificationKind: 'axiom' }, status: { proof: { kind: 'assumed' } } });
   });
@@ -188,6 +188,17 @@ describe('AT1.6 planGhostAdoption', () => {
     const target = m.nodes.get('cynder-not-good')?.node;
     expect(target?.premises).toEqual([plan.nodeId]);
     expect(target?.fromNothing).toBeUndefined();
+  });
+
+  it('2h (fixer 2b2 r1, S-V2B2-S2): `holdAs` is required: a request without it does not compile, and `undefined` past the type is refused (`invalid`), never written as an AXIOM card', () => {
+    const { holdAs: _drop, ...without } = REQUEST;
+    // @ts-expect-error -- the type requires the choice: a premise write that forgot it does not compile.
+    const forgot: GhostAdoptionRequest = without;
+    for (const request of [forgot, { ...REQUEST, holdAs: undefined as unknown as 'axiom' }]) {
+      const error = refusal(() => planGhostAdoption(model(LITERAL), request));
+      expect(error.code).toBe('invalid');
+      expect(error.message).toBe('A premise is held as an axiom or as a proposition pending proof, not left unchosen.');
+    }
   });
 
   it('2b2 (§3.8): any other `holdAs` is refused (`invalid`), and nothing is planned', () => {

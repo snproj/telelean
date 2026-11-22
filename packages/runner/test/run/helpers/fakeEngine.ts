@@ -17,12 +17,13 @@
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { buildProjectModel, judgeState, parseLeanFile, type FileChange, type GateFinding, type LeanFacts, type PermittedAxioms, type ProjectModel } from '@telelean/core';
+import { applyBackstop, buildProjectModel, judgeState, parseLeanFile, type FileChange, type GateFinding, type LeanFacts, type PermittedAxioms, type ProjectModel } from '@telelean/core';
 
 import type { PremiseDraft, StateJudgement } from '@telelean/core';
 
 import { fakeFacts } from '../../../../core/test/project/helpers/fakeFacts.js';
 import { filesKey } from '../../../src/gate/engine.js';
+import { finalCheckFailures } from '../../../src/gate/index.js';
 
 import type {
   CheckContext,
@@ -48,16 +49,20 @@ import type { ShadowCommit, ShadowWorkspace } from '../../../src/shadow/types.js
  * source hashes are the files' real sha256, as a refresh records them, so a model the runner builds from the same files
  * (session.ts `filesModel`) reads these facts as fresh.
  */
-export function fakeModel(files: ReadonlyMap<string, string>, library = 'Model', facts = true): ProjectModel {
+export function fakeModel(files: ReadonlyMap<string, string>, library = 'Model', facts = true, adjust?: (facts: LeanFacts, files: ReadonlyMap<string, string>) => LeanFacts): ProjectModel {
   const parsed = [...files.keys()].filter((p) => isLeanModelPath(p, library)).sort().map((p) => parseLeanFile(p, files.get(p) ?? ''));
   const hashes = Object.fromEntries(parsed.map((f) => [f.path, sha256Text(f.text)]));
   let f: LeanFacts | undefined = facts ? fakeFacts(parsed, { library, valueConsts: true, typeConsts: true, probe: 'ok' }) : undefined;
   if (f !== undefined) f = { ...f, modules: f.modules.map((m) => ({ ...m, sourceSha256: hashes[m.file] ?? m.sourceSha256 })) };
+  if (f !== undefined && adjust !== undefined) f = adjust(f, files);
   return buildProjectModel({ files: parsed, fileHashes: hashes, library, ...(f !== undefined ? { facts: f } : {}) });
 }
 
-/** Slice 2d: the default stage judge of the fake engine (see the module comment). */
-export async function fakeStageJudge(ctx: CheckContext): Promise<{ judgement: StateJudgement; report: CheckReport }> {
+/**
+ * Slice 2d: the default stage judge of the fake engine (see the module comment). Slice 2e: `adjust` changes the judged
+ * state's facts first (e.g. a Lean error inside a declaration: a state that does not build).
+ */
+export async function fakeStageJudge(ctx: CheckContext, adjust?: (facts: LeanFacts, files: ReadonlyMap<string, string>) => LeanFacts): Promise<{ judgement: StateJudgement; report: CheckReport }> {
   const shadow = ctx.shadow;
   const s = ctx.session;
   if (s === undefined) throw new TypeError('judge needs ctx.session');
@@ -67,7 +72,7 @@ export async function fakeStageJudge(ctx: CheckContext): Promise<{ judgement: St
   if (head === undefined || base === undefined) throw new Error('the shadow has no commits');
   const files = await shadow.filesAt(head.id);
   const baseModel = fakeModel(await shadow.filesAt(base.id), shadow.library);
-  const current = fakeModel(files, shadow.library);
+  const current = fakeModel(files, shadow.library, true, adjust);
   const judgement = judgeState({
     purpose: 'stage',
     stage: 'prove',
@@ -85,6 +90,49 @@ export async function fakeStageJudge(ctx: CheckContext): Promise<{ judgement: St
   const report: CheckReport = { outcome: judgement.ok ? 'ok' : 'problems', g0: [], findings: [...judgement.global], diagnostics: [], durationMs: 1, model: current, base: baseModel, judgement };
   if (current.facts !== undefined) report.facts = current.facts;
   return { judgement, report };
+}
+
+/**
+ * Slice 2f: the final check of the fake engine, as the real one minus Lean (§3.10 step 2): core `judgeState('final')` on
+ * the shadow's head with fake facts, the backstop (core `applyBackstop`), the failures by rule as the engine maps them
+ * (`finalCheckFailures`), no comparator; EN-2's reuse when the stage judgement judged exactly F and was ok. `adjust`
+ * changes F's facts first.
+ */
+export async function fakeFinalCheck(ctx: CheckContext, reuse?: { judgement: StateJudgement }, adjust?: (facts: LeanFacts, files: ReadonlyMap<string, string>) => LeanFacts): Promise<FinalCheckReport> {
+  const shadow = ctx.shadow;
+  const s = ctx.session;
+  if (s === undefined) throw new TypeError('finalCheck needs ctx.session');
+  const commits = await shadow.commits();
+  const head = commits.at(-1);
+  const base = commits.find((c) => c.kind === 'base');
+  if (head === undefined || base === undefined) throw new Error('the shadow has no commits');
+  const files = await shadow.filesAt(head.id);
+  const key = filesKey(files);
+  const baseModel = fakeModel(await shadow.filesAt(base.id), shadow.library);
+  const current = fakeModel(files, shadow.library, true, adjust);
+  const judgement = judgeState({ purpose: 'final', stage: 'prove', commit: head.id, filesKey: key, base: baseModel, current, inferences: s.inferences, ledger: s.ledger, items: s.items, premises: s.premises, ended: s.ended, rejectedArrows: s.rejectedArrows });
+  const backstop = applyBackstop({ base: baseModel, final: current, items: s.items, ledger: s.ledger, inferences: s.inferences, judgement }).refusals;
+  const failures = finalCheckFailures(judgement, s.items, backstop);
+  const reused = reuse !== undefined && reuse.judgement.filesKey === key && reuse.judgement.ok;
+  return { passed: failures.length === 0, reusedFileChecks: reused, judgement, failures, backstop, comparator: {}, model: current };
+}
+
+/**
+ * Slice 2f: the fake engine's premise write (§3.8, F11), as the real one minus Lean: the `adopt` commit of ws/ as the
+ * runner wrote it, judged with core `judgeState('stage')` on fake facts (the ledger with the write's entries, as the
+ * runner passes it); `meaningMatches` unless `mismatch`.
+ */
+export async function fakeWritePremise(ctx: CheckContext, premise: { item: string; draft: PremiseDraft; card: string }, mismatch = false): Promise<PremiseWriteReport> {
+  await ctx.shadow.commit('adopt', `Premise written: ${premise.draft.naturalName}`, ctx.round);
+  const { judgement } = await fakeStageJudge(ctx);
+  return { ok: true, meaningMatches: !mismatch, explicit: mismatch ? `${premise.draft.explicit} (elsewhere)` : premise.draft.explicit, judgement };
+}
+
+/** Slice 2f: the fake engine's completion (§3.8): the `completion` commit of ws/ as the runner wrote it, judged as a stage. */
+export async function fakeComplete(ctx: CheckContext, premise: { item: string; draft: PremiseDraft; card: string }): Promise<CompletionReport> {
+  const commit = await ctx.shadow.commit('completion', `Completed “${premise.draft.target}”`, ctx.round);
+  const { judgement } = await fakeStageJudge(ctx);
+  return { ok: true, commit, judgement };
 }
 
 /** Keeps B's fake facts in the run directory, as the real engine's checkBase keeps B's (base-facts.json). */
@@ -165,7 +213,7 @@ export class FakeEngine implements LeanCheckEngine {
   onJudge: Handler<[CheckContext], { judgement: StateJudgement; report: CheckReport }> = (ctx) => fakeStageJudge(ctx);
   /** Slice 2d: whether checkBase keeps B's fake facts (default yes). */
   keepBaseFacts = true;
-  onFinalCheck: Handler<[CheckContext], FinalCheckReport> = () => {
+  onFinalCheck: Handler<[CheckContext, { judgement: StateJudgement } | undefined], FinalCheckReport> = () => {
     throw new Error('FakeEngine.finalCheck is not scripted');
   };
   onWritePremise: Handler<[CheckContext, { item: string; draft: PremiseDraft; card: string }], PremiseWriteReport> = () => {
@@ -269,9 +317,9 @@ export class FakeEngine implements LeanCheckEngine {
     return this.onJudge(ctx);
   }
 
-  async finalCheck(ctx: CheckContext): Promise<FinalCheckReport> {
+  async finalCheck(ctx: CheckContext, reuse?: { judgement: StateJudgement }): Promise<FinalCheckReport> {
     this.record('finalCheck', ctx);
-    return this.onFinalCheck(ctx);
+    return this.onFinalCheck(ctx, reuse);
   }
 
   async writePremise(ctx: CheckContext, premise: { item: string; draft: PremiseDraft; card: string }): Promise<PremiseWriteReport> {

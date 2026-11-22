@@ -20909,13 +20909,19 @@ var toolInputShapes = {
     proof: external_exports.string().min(1).max(4e3).describe("A Lean term of type (lean_statement) \u2192 target statement, using only selected premises"),
     lean_name: external_exports.string().regex(/^[a-z][a-z0-9_]{0,59}$/).optional().describe("Preferred snake_case statement name")
   },
+  propose_arrow: {
+    source: external_exports.string().min(1).max(200).describe("The id of the existing card the proof needs (it has a .holds)"),
+    target: external_exports.string().min(1).max(200).describe("The id of this step's target"),
+    why: external_exports.string().min(1).max(2e3).describe("Why the proof needs it, in one sentence")
+  },
   finish: {
     status: external_exports.enum(["proved", "insufficient", "inconsistent", "not_proved", "lean_errors"]),
     summary: external_exports.string().min(1).max(4e3),
     gap: external_exports.string().max(4e3).optional(),
     conflict: external_exports.array(external_exports.string().max(200)).max(50).optional(),
     unused: external_exports.array(external_exports.string().max(200)).max(50).optional(),
-    assumed_without_asking: external_exports.array(external_exports.string().max(1e3)).max(50).describe("Every interpretive choice you made without asking; [] if none")
+    assumed_without_asking: external_exports.array(external_exports.string().max(1e3)).max(50).describe("Every interpretive choice you made without asking; [] if none"),
+    no_alternative: external_exports.boolean().optional().describe("Rework steps only: you found no other arrangement for the items the person declined as Shaky")
   }
 };
 var toolInputSchemas = {
@@ -20923,6 +20929,7 @@ var toolInputSchemas = {
   check_lean: external_exports.object(toolInputShapes.check_lean),
   freeze_statements: external_exports.object(toolInputShapes.freeze_statements),
   propose_assumption: external_exports.object(toolInputShapes.propose_assumption),
+  propose_arrow: external_exports.object(toolInputShapes.propose_arrow),
   finish: external_exports.object(toolInputShapes.finish)
 };
 

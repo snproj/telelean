@@ -34,6 +34,8 @@ import {
   ActionError,
   attemptsPath,
   buildProjectModel,
+  endorsementsPath,
+  parseEndorsements,
   CONFIG_PATH,
   defaultProjectConfig,
   GRAPH_JSON_PATH,
@@ -51,6 +53,7 @@ import {
   TELELEAN_DIR,
   toGraphJson,
   type ActionOutcome,
+  type ArrowProvenance,
   type AttemptSummary,
   type BoardAction,
   type BoardDiagnostic,
@@ -79,9 +82,11 @@ import { noteRefreshOutput } from '../shadow/seed.js';
 import {
   assertRelativePath,
   attemptsSubject,
+  endorsementsSubject,
   isModelFile,
   isSubjectScopeFile,
   layoutSubject,
+  listEndorsementFiles,
   listLayoutFiles,
   listModelFiles,
   listScopeFiles,
@@ -126,6 +131,11 @@ export function nextGraphVersion(): number {
 }
 
 let workspaceCounter = 0;
+
+/** Slice 2f (D2-18): the `{ name, textHash }` entries of an endorsements.json text (core's lenient reader: fails closed). */
+function endorsedEntries(text: string): Array<{ name: string; textHash: string }> {
+  return parseEndorsements(text).endorsed.map((e) => ({ name: e.name, textHash: e.textHash }));
+}
 let graphJsonWrites = 0;
 
 /** The lakefiles whose text feeds TL110 (`autoImplicit` on); Lake prefers lakefile.lean when both exist. */
@@ -158,6 +168,8 @@ interface RecordedOperation {
    * in-memory undo stack.
    */
   requireBaseSnapshot?: boolean;
+  /** (slice 2f, G1) An Apply's provenance, recorded in the action snapshot of `subject` (`Telelean-Arrow` trailers). */
+  arrows?: readonly ArrowProvenance[];
 }
 
 const DISPOSED: ActionOutcome = { ok: false, code: 'internal', error: 'The model workspace was closed.' };
@@ -259,6 +271,12 @@ export class ModelWorkspaceImpl implements ModelWorkspace {
   private config: ProjectConfig = defaultProjectConfig();
   private files = new Map<string, ModelFile>();
   private layouts = new Map<string, LayoutFile>();
+  /**
+   * Slice 2f (docs/slice2-plan.md 2.6, D2-18, EN-3): each subject's `endorsements.json` (its text and endorsed entries),
+   * read on load, when the file changes, and after an Apply or its Undo (they re-read the paths they wrote), and passed to
+   * `buildProjectModel`, which stops flagging an endorsed definition whose text is unchanged.
+   */
+  private endorsements = new Map<string, { text: string; entries: Array<{ name: string; textHash: string }> }>();
   private lakefile: { path: string; text: string } | undefined;
   /** M2: the PROJECT_FILES that exist (TextSource), for modelFiles(). */
   private projectFiles = new Set<string>();
@@ -558,10 +576,16 @@ export class ModelWorkspaceImpl implements ModelWorkspace {
   /** Re-lists and re-reads every model file and layout. */
   private async rescan(): Promise<void> {
     const library = this.config.library;
-    const [modelPaths, layoutPaths] = await Promise.all([listModelFiles(this.root, library), listLayoutFiles(this.root)]);
+    const [modelPaths, layoutPaths, endorsementPaths] = await Promise.all([listModelFiles(this.root, library), listLayoutFiles(this.root), listEndorsementFiles(this.root)]);
     const files = new Map<string, ModelFile>();
     const layouts = new Map<string, LayoutFile>();
+    const endorsements = new Map<string, { text: string; entries: Array<{ name: string; textHash: string }> }>();
     await Promise.all([
+      ...endorsementPaths.map(async (rel) => {
+        const subject = endorsementsSubject(rel);
+        const text = await this.text.read(rel);
+        if (subject !== undefined && text !== null) endorsements.set(subject, { text, entries: endorsedEntries(text) });
+      }),
       ...modelPaths.map(async (rel) => {
         const text = await this.text.read(rel);
         if (text !== null) files.set(rel, { path: rel, text, hash: sha256(text) });
@@ -574,6 +598,7 @@ export class ModelWorkspaceImpl implements ModelWorkspace {
     ]);
     this.files = files;
     this.layouts = layouts;
+    this.endorsements = endorsements;
     this.lakefile = await this.readLakefile();
     this.projectFiles = await this.presentProjectFiles();
     for (const rel of [...this.parseCache.keys()]) if (!files.has(rel)) this.parseCache.delete(rel);
@@ -631,7 +656,7 @@ export class ModelWorkspaceImpl implements ModelWorkspace {
   private async reread(paths: readonly string[]): Promise<void> {
     const library = this.config.library;
     const before = this.subjectNames();
-    const changed = { lean: false, config: false, lakefile: false, projectFiles: false, layouts: new Set<string>(), attempts: new Set<string>() };
+    const changed = { lean: false, config: false, lakefile: false, projectFiles: false, layouts: new Set<string>(), attempts: new Set<string>(), endorsements: new Set<string>() };
     await Promise.all(
       paths.map(async (p) => {
         const rel = toRelative(this.root, p);
@@ -648,6 +673,23 @@ export class ModelWorkspaceImpl implements ModelWorkspace {
         const attemptsOf = attemptsSubject(rel);
         if (attemptsOf !== undefined) {
           changed.attempts.add(attemptsOf);
+          return;
+        }
+        // Slice 2f (D2-18): an Apply, its Undo, a revert or a hand edit changed a subject's endorsements.
+        const endorsedOf = endorsementsSubject(rel);
+        if (endorsedOf !== undefined) {
+          const { text, latest } = await this.readTracked(rel);
+          if (!latest) return;
+          const old = this.endorsements.get(endorsedOf);
+          if (text === null) {
+            if (old !== undefined) {
+              this.endorsements.delete(endorsedOf);
+              changed.endorsements.add(endorsedOf);
+            }
+          } else if (old?.text !== text) {
+            this.endorsements.set(endorsedOf, { text, entries: endorsedEntries(text) });
+            changed.endorsements.add(endorsedOf);
+          }
           return;
         }
         const model = isModelFile(rel, library);
@@ -701,11 +743,12 @@ export class ModelWorkspaceImpl implements ModelWorkspace {
     }
     if (changed.projectFiles) this.projectFiles = await this.presentProjectFiles();
     for (const subject of changed.attempts) await this.loadAttempts(subject);
-    if (!changed.lean && changed.layouts.size === 0 && changed.attempts.size === 0) return;
-    if (changed.lean || changed.layouts.size > 0) this.modelCache = undefined; // attempts do not change the model
+    if (!changed.lean && changed.layouts.size === 0 && changed.attempts.size === 0 && changed.endorsements.size === 0) return;
+    // Attempts do not change the model; endorsements do (the build reads them, slice 2f).
+    if (changed.lean || changed.layouts.size > 0 || changed.endorsements.size > 0) this.modelCache = undefined;
     const after = this.subjectNames();
     this.emit({
-      subjects: changed.lean ? [...new Set([...before, ...after])].sort() : [...new Set([...changed.layouts, ...changed.attempts])].sort(),
+      subjects: changed.lean ? [...new Set([...before, ...after])].sort() : [...new Set([...changed.layouts, ...changed.attempts, ...changed.endorsements])].sort(),
       semantic: false,
       subjectsListChanged: before.join('\n') !== after.join('\n'),
     });
@@ -739,6 +782,7 @@ export class ModelWorkspaceImpl implements ModelWorkspace {
       library: this.config.library,
       ...(this.facts ? { facts: this.facts } : {}),
       ...(this.lakefile ? { lakefile: this.lakefile } : {}),
+      ...(this.endorsements.size > 0 ? { endorsements: Object.fromEntries([...this.endorsements].map(([subject, file]) => [subject, file.entries])) } : {}),
     });
     return this.modelCache;
   }
@@ -929,7 +973,9 @@ export class ModelWorkspaceImpl implements ModelWorkspace {
 
   /**
    * M2: an accepted proposal's changes through the recorded write path (see applyRecorded): only model files, each
-   * path once, every path inside the root; no-op changes dropped; nothing to write -> `ok`, not undoable.
+   * path once, every path inside the root; no-op changes dropped; nothing to write -> `ok`, not undoable. Slice 2f
+   * (docs/slice2-plan.md 2.6): besides model files exactly the set's subject's two sidecars an edit session's Apply
+   * writes, its `layout.json` and its `endorsements.json`, so they are in the Apply's history entry and its Undo step.
    */
   private async applyChangesNow(set: ExternalChangeSet): Promise<ActionOutcome> {
     if (this.disposed) return DISPOSED;
@@ -946,7 +992,8 @@ export class ModelWorkspaceImpl implements ModelWorkspace {
       } catch (error) {
         return { ok: false, code: 'unsafe', error: `Nothing was changed: ${errorMessage(error)}` };
       }
-      if (!isModelFile(change.path, library)) {
+      const sidecar = change.path === layoutPath(set.subject) || change.path === endorsementsPath(set.subject);
+      if (!isModelFile(change.path, library) && !sidecar) {
         return { ok: false, code: 'unsafe', error: `Nothing was changed: ${change.path} is not a model file, and Accept changes only model files.` };
       }
       if (seen.has(change.path)) return { ok: false, code: 'invalid', error: `Nothing was changed: the proposal changes ${change.path} twice.` };
@@ -956,7 +1003,8 @@ export class ModelWorkspaceImpl implements ModelWorkspace {
     if (changes.length === 0) return { ok: true, label, undoable: false };
     const nodes = [...set.nodes];
     const entry = { label, subject: set.subject, nodes, changes, layoutOnly: false };
-    const failed = await this.applyRecorded({ changes, label, action: set.action, subject: set.subject, nodes, snapshot: true }, () => this.undoStacks.record(entry));
+    const arrows = set.arrows !== undefined && set.arrows.length > 0 ? { arrows: set.arrows.map((a) => ({ ...a })) } : {};
+    const failed = await this.applyRecorded({ changes, label, action: set.action, subject: set.subject, nodes, snapshot: true, ...arrows }, () => this.undoStacks.record(entry));
     return failed ?? { ok: true, label, undoable: true };
   }
 
@@ -1021,7 +1069,8 @@ export class ModelWorkspaceImpl implements ModelWorkspace {
     try {
       if (history && op.snapshot) {
         for (const scope of scopes) {
-          await this.snapshotScope(scope, { label: op.label, action: op.action, subject: scope.kind === 'subject' ? scope.subject : op.subject, nodes: op.nodes });
+          const arrows = op.arrows !== undefined && scope.kind === 'subject' && scope.subject === op.subject ? { arrows: op.arrows } : {};
+          await this.snapshotScope(scope, { label: op.label, action: op.action, subject: scope.kind === 'subject' ? scope.subject : op.subject, nodes: op.nodes, ...arrows });
         }
       }
       await this.reread(paths);

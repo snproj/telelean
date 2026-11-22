@@ -1,0 +1,76 @@
+### AP-41 · Sub-slices 2b3a, 2b3b and 2d done (the runner side: the isolated probe, the judging engine, and sessions with steps)
+- **Done.** 2b3a ran under AP-27's procedure (three verifiers). 2b3b and 2d ran under AP-34's middle ground (two verifiers each; a fix round is re-verified only when it fixed a blocker or a major):
+  - **2b3a:** the isolated probe.
+    - A separate Lean job now reads what each declaration uses. With real Lean, forged instances in a model fool the old in-file probe but not this one.
+    - It fails closed. A cut, failed or killed probe gives a problem that names the cause, and a base whose probe failed refuses the start before Claude is contacted.
+    - It also fixed the five carry-overs from 2c2's review.
+  - **2b3b:** the runner's judging engine.
+    - Judge, final check, writing an accepted premise, and completing the target from it.
+    - It re-checks a drafted premise only when something it relies on has changed.
+    - A check that Lean cannot run is left out and tried again at the next judge. It is never counted as a pass.
+  - **2d:** sessions, queues and steps.
+    - Each step is one round with fresh limits. Cancel step takes the step back, and Retry step runs it again.
+    - A Formalize can start in the middle of a stage.
+    - An older (v1) run is recovered as an edit session with every item in review.
+    - A session that never started ends as failed, with M2's "the editor reloaded" text.
+- **Caught by review and fixed (examples):** first-round findings were 2b3a 0 major (4 minor, 8 nit), 2b3b 6 major (5 minor, 1 nit), 2d 5 major (11 minor, 2 nit).
+  - A premise re-check was remembered when it ran, not when its result was kept. If a decision made the judge run again, the premise silently dropped out of the list. Now it is remembered with its outcome.
+  - Completing a target was refused after a crash replay, or after a decision changed an unrelated file. It now starts from the newest commit that holds the written premise.
+  - A mid-stage Formalize of a target whose earlier step was cancelled kept the old question, so the gate judged the proof against the wrong one. The new question now replaces it.
+  - When the review list could not be built, the old list was reused. That showed Claude's activity while results were meant to be hidden. It now fails closed, shows one telelean notice and refuses a mid-stage Formalize.
+  - "Claude's step proposed nothing" could never show, because every passed step ends on a new commit. It is now decided from the step's content.
+- **Decisions you might notice** (full list with alternatives: the plan's §8 under each builder's and fixer's entry, `docs/slice2-plan.md`):
+  - **Probe cost: accepted (AP-33).** The isolated probe needs more memory than the old in-file one (954 MB against 567 MB at its peak), over the plan's 1.5× line, because it loads Lean's own library data. Kept as the plan specifies. Alternative: read only the model's own modules, at about the old cost, but module-system files need extra handling.
+  - **A probe that runs out of memory** is an environment problem, not a budget finding against Claude. Alternative: count it as a budget finding.
+  - **One round per step,** with fresh limits. Alternative: one round for the whole session.
+  - **Cancel step** closes Claude's process and takes the step back to its start. Retry resumes the conversation. Alternative: keep the process alive between steps.
+  - **"No finish twice" counts as a give-up.** It goes back to the newest passing commit, keeping drafts and arrows still drawn. Alternative: treat it as a failure, back to the start.
+  - **A re-ask that ends without a proof** takes back only its Result and arrows. Alternative: take back the whole step.
+  - **Until 2f, Exit discards the session,** labelled "Session ended". Alternative: refuse Discard in a session.
+  - **Old v1 runs become edit sessions.** Alternative: end such runs.
+- **Tests (each sub-slice's integrator check):** typechecks clean in all 5 configs; all unit suites and the real-Lean runner suite passed.
+- **Reports:** `bundle_21/subagent_reports/slice2_chain_v3_workflow/` (2b3a) and `bundle_21/subagent_reports/slice2_chain_v4_part1_workflow/` (2b3b, 2d). Patches: `bundle_21/evidence/patches/after_slice_2b3a.patch`, `after_slice_2b3b.patch` and `after_slice_2d.patch`.
+
+### AP-42 · Sub-slices 2e, 2f, 2g, 2h and 2i done (the host and board side: review actions, the end of a session, the review panel and Proposed view, and a cleanup)
+- **Done, each under AP-38's procedure** (2e and 2f had two verifiers, 2g, 2h and 2i one each; minor-only fix rounds were not re-verified, AP-34):
+  - **2e:** the review actions.
+    - Accept, every decline, back to review, un-reject, Show results, Undo and Redo, Submit review, and the raw Lean diff.
+    - A decision cut off by a crash is made again, or dropped if the rules now refuse it.
+    - Submit sends Claude a fixed feedback turn: accepted, rejected, shaky (with notes), to be redone, steps planned.
+  - **2f:** Add premise items and the end of a session.
+    - An accepted premise is written to the model, and the target is completed from it. A failed completion is taken back.
+    - The confirmation, the final check, Apply, Exit, a watcher for files changed by hand, and the endorsement and layout files.
+    - History now records which arrows Claude proposed.
+  - **2g:** the review panel and the session bar.
+    - The review list, group Accept and Decline, the decline menu with the Shaky note, the item details, the stage report, the end confirmation and the Exit dialog.
+    - Claude's sentences are marked as Claude's.
+  - **2h:** the board in a session.
+    - The Proposed view, Formalize with several targets, and two Undo stacks (session and board).
+    - The old Accept, Discard and ghost messages are gone. The user guide is rewritten for sessions.
+  - **2i:** cleanup.
+    - The card-only Delete is removed.
+    - An old axiom's declared premises are now named in the chip tooltip, the details row and the TL122 problem.
+- **Caught by review and fixed (examples):** first-round findings were 2e 2 major (11 minor), 2f 0 major (5 minor, 3 nit), 2g 0 major (5 minor, 4 nit), 2h 0 major (3 minor, 1 nit), 2i 0 major (3 minor, 1 nit).
+  - When a decision's judge threw, the old judgement stayed in force. Accept, Submit and the diff then ran on another state's classes. It is now cleared, and review actions answer "no judgement".
+  - A "did not pass" heading after a decision was never lifted. One brief Lean failure left no Accept for the rest of the session. A later passing judge now lifts it.
+  - Exit during a premise write was read as an ordinary failure, so the write recorded a problem and took itself back on a session that was closing. The write now stops when the run is no longer live.
+  - A short sentence by Claude could mark matching words inside your own text. A phrase now marks only a whole piece of text.
+  - The board-lock text still said "until you accept or discard it", after those buttons were retired. It now says "apply or exit".
+  - Deleting a card whose statement declaration was missing left its `.holds` axiom behind as an unmarked axiom. Delete now finds the `.holds` on its own.
+- **Core defect found by 2e, your decision:** core's review reducer treats an item with no class in the stage judgement as if it had every badge.
+  - After a Reject the item's content is out of the working copy, so it has no class. An Undo that would restore its Accept is then always refused with RV-7's text.
+  - This affects the Undo of a Reject of an accepted item, the Undo of a Reject that took an accepted dependent out, and the Undo of a decline of an accepted arrow.
+  - **Workaround, in the runner:** `reviewState` in `packages/runner/src/run/review.ts` gives such an item the badges its Accept recorded, for Undo only. The next judge classifies it again.
+  - **Proper fix, in core:** treat "no class while its content is out" as those recorded badges. The workaround could then go. Alternatives: fix core inside 2e (its scope forbids it), or leave these Undos refused.
+- **Decisions you might notice** (full list with alternatives: the plan's §8 under each builder's and fixer's entry, `docs/slice2-plan.md`):
+  - **Decision headings:** "did not pass" after a decision is lifted by a later passing judge. Alternative: keep it until a later step passes.
+  - **Reload during Apply:** files equal the proposed state, so it finishes as applied. Files equal the base, so back to the confirmation. Anything else gives a notice and back to the confirmation. Alternative: apply again.
+  - **Moves:** only the subject's propositions may move. Exit drops them. Alternative: let axioms move too.
+  - **A failed completion** is taken back and marked, and never retried by itself. Alternative: a stage problem carrying Lean's message.
+  - **The Shaky note** is offered for every Shaky decline, including a Result's. Alternative: none on a Result's.
+  - **Lock text:** "…until you apply or exit it." (2h first kept slice 1's words; its fixer changed them).
+  - **Delete always removes the card's Lean.** The "keep Lean" choice is gone, and a `keepLean: true` request is refused. Alternative: keep the choice.
+  - **VS Code suites:** 7 old end-to-end scenarios of the retired review are skipped, with their bodies kept for a rewrite, and 2h converted `runs.test.ts` without running it. Alternative: delete them or rewrite them blind. (I ran these suites after the rebuild: AP-43.)
+- **Left as is (2i, minor [F-F2]):** for an old axiom's declared premises, the chip tooltip and the details row name a card from another subject by its id, while the TL122 text names it by its sentence. The webview holds only the current board. Documented in the plan's §8.
+- **Tests (after 2i):** typechecks clean in all 5 configs; core 1142, webview 435, extension 216, runner 883 passed with 1 expected skip (the opt-in real-Claude test). 2h's first full check "failed" only on the runner's old 40-minute cap, raised to 90 minutes (AP-40).
+- **Reports:** `bundle_22/subagent_reports/slice2_chain_v5_2e-2h_workflow/` and `bundle_22/subagent_reports/slice2_chain_v5_2i_workflow/`. Patches: `bundle_21/evidence/patches/after_slice_2e.patch` to `after_slice_2i.patch`.

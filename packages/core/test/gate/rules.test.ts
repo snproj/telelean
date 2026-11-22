@@ -382,6 +382,7 @@ describe('AT1.4 G5 markup', () => {
       leanName: 'not_in_game_not_good',
       session: 'r1',
       today: '2026-11-02',
+      holdAs: 'axiom',
     });
     const adoptedTexts = { ...literalTexts, [MAIN]: plan.changes[0]?.after as string };
     const A = model(adoptedTexts);
@@ -413,6 +414,7 @@ describe('AT1.4 G5 markup', () => {
       rationale: 'it seems obvious to me',
       session: 'r1',
       today: '2026-11-02',
+      holdAs: 'axiom',
     });
     const adoptedTexts = { ...literalTexts, [MAIN]: plan.changes[0]?.after as string };
     const A = model(adoptedTexts);

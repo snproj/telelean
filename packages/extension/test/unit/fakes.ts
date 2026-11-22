@@ -1,12 +1,11 @@
 /**
  * Test doubles for the vscode-free host logic: an in-memory ModelWorkspace, recording BoardSession ports and (M2) a
- * recording RunManager with RunView / ProposalView builders.
+ * recording RunManager with a RunView builder (2h: M2's proposal is retired, and so is its builder).
  */
 import {
   buildProjectModel,
   DEFAULT_RUN_CAPS,
   spyroGraph,
-  spyroProvedGraph,
   type ActionOutcome,
   type BoardAction,
   type CanvasPosition,
@@ -17,7 +16,6 @@ import {
   type HostToWebviewMessage,
   type ItemDecision,
   type ProjectModel,
-  type ProposalView,
   type QuestionAnswer,
   type Range,
   type RunView,
@@ -261,50 +259,12 @@ export function sampleRun(overrides: Partial<RunView> = {}): RunView {
   };
 }
 
-/** A proved proposal of the normative reading (graph: the proved Spyro sample). */
-export function sampleProposal(overrides: Partial<ProposalView> = {}): ProposalView {
-  return {
-    runId: 'r1',
-    proposalId: 'p1',
-    round: 1,
-    subject: 'Spyro',
-    graph: spyroProvedGraph(),
-    diff: { nodes: { 'cynder-not-good': { change: 'changed', fields: ['proof', 'status'] } }, vocabulary: {}, edges: { added: [], removed: [] }, counts: { added: 0, changed: 1, removed: 0, vocabularyAdded: 0 } },
-    files: [{ path: 'Model/Spyro/Main.lean', change: 'modified', additions: 5, deletions: 0 }],
-    review: [],
-    definitions: [],
-    ghosts: [],
-    report: {
-      verdict: 'proved',
-      target: 'cynder-not-good',
-      footprint: ['cynder-dark-past', 'new-spyro-pg', 'pg-no-dark-past', 'presup:Spyro.Character.exists', 'presup:Spyro.Game.exists'],
-      unusedPremises: [],
-      consistency: 'unchecked',
-      selfEvident: false,
-      assumedWithoutAsking: [],
-      gateAttempts: [],
-      usage: NO_USAGE,
-      durationMs: 1000,
-      agentMs: 800,
-    },
-    baseChanged: false,
-    empty: false,
-    ...overrides,
-  };
-}
-
 export type RunMethod =
   | 'start'
   | 'answer'
   | 'cancel'
   | 'resume'
-  | 'accept'
-  | 'feedback'
-  | 'discard'
-  | 'adoptGhost'
-  | 'rejectGhost'
   | 'dismiss'
-  | 'proposalDiff'
   | 'recover'
   | 'dispose'
   // Slice 2 (docs/slice2-plan.md 2.5)
@@ -326,20 +286,14 @@ export type RunMethod =
 export class FakeRunManager implements RunManager {
   calls: Array<{ method: RunMethod; args: unknown[] }> = [];
   run: RunView | null = null;
-  currentProposal: ProposalView | null = null;
   /** Slice 2d: what `session()` returns. */
   currentSession: SessionView | null = null;
   /** The outcome every action method resolves with (or computes from the call). */
   outcome: ActionOutcome | ((method: RunMethod, args: unknown[]) => ActionOutcome | Promise<ActionOutcome>) = (method) => ({
     ok: true,
     label: `did ${method}`,
-    undoable: method === 'accept',
+    undoable: false,
   });
-  /** What `proposalDiff` resolves with (an Error: it rejects). */
-  diffFiles: FileChange[] | Error = [
-    { path: 'Model/Spyro/Main.lean', before: 'abbrev a : Prop := True\n', after: 'abbrev a : Prop := True\ntheorem a.holds : a := trivial\n' },
-    { path: 'Model/Spyro/Lemmas.lean', before: null, after: 'namespace Spyro\nend Spyro\n' },
-  ];
   /** The backend `start` obtained. */
   backend?: LlmBackend;
   /** `recover()` waits for it (tests can hold the recovery back). */
@@ -353,9 +307,6 @@ export class FakeRunManager implements RunManager {
 
   current(): RunView | null {
     return this.run;
-  }
-  proposal(): ProposalView | null {
-    return this.currentProposal;
   }
   session(): SessionView | null {
     return this.currentSession;
@@ -403,21 +354,6 @@ export class FakeRunManager implements RunManager {
   resume(runId: string): Promise<ActionOutcome> {
     return this.resolve('resume', [runId]);
   }
-  accept(runId: string, proposalId: string, definitions: readonly string[]): Promise<ActionOutcome> {
-    return this.resolve('accept', [runId, proposalId, definitions]);
-  }
-  feedback(runId: string, text: string): Promise<ActionOutcome> {
-    return this.resolve('feedback', [runId, text]);
-  }
-  discard(runId: string): Promise<ActionOutcome> {
-    return this.resolve('discard', [runId]);
-  }
-  adoptGhost(runId: string, ghostId: string, rationale?: string): Promise<ActionOutcome> {
-    return this.resolve('adoptGhost', rationale === undefined ? [runId, ghostId] : [runId, ghostId, rationale]);
-  }
-  rejectGhost(runId: string, ghostId: string): Promise<ActionOutcome> {
-    return this.resolve('rejectGhost', [runId, ghostId]);
-  }
   dismiss(runId: string): Promise<ActionOutcome> {
     return this.resolve('dismiss', [runId]);
   }
@@ -459,16 +395,14 @@ export class FakeRunManager implements RunManager {
   retry(runId: string): Promise<ActionOutcome> {
     return this.resolve('retry', [runId]);
   }
-  sessionDiff(runId: string, stage: number, confirmed: boolean): Promise<ActionOutcome> {
-    return this.resolve('sessionDiff', [runId, stage, confirmed]);
+  /** Slice 2e: what `sessionDiff` answers once the outcome is ok (null: the outcome itself, as every action method). */
+  sessionDiffFiles: FileChange[] | null = null;
+  async sessionDiff(runId: string, stage: number, confirmed: boolean): Promise<{ ok: true; kind: 'diff'; files: FileChange[] } | ActionOutcome> {
+    const outcome = await this.resolve('sessionDiff', [runId, stage, confirmed]);
+    return outcome.ok && this.sessionDiffFiles !== null ? { ok: true, kind: 'diff', files: this.sessionDiffFiles } : outcome;
   }
   moveProposed(runId: string, positions: Readonly<Record<string, CanvasPosition>>): Promise<ActionOutcome> {
     return this.resolve('moveProposed', [runId, positions]);
-  }
-  async proposalDiff(runId: string, proposalId: string): Promise<FileChange[]> {
-    this.calls.push({ method: 'proposalDiff', args: [runId, proposalId] });
-    if (this.diffFiles instanceof Error) throw this.diffFiles;
-    return this.diffFiles;
   }
   async recover(): Promise<void> {
     this.calls.push({ method: 'recover', args: [] });

@@ -544,6 +544,7 @@ describe('the id write-back of a derived id (V2A1-C1)', () => {
       leanName: premise.leanName,
       session: 'run1',
       today: '2026-11-19',
+      holdAs: 'axiom',
     });
     const written = { ...base, [MAIN]: plan.changes[0]?.after as string };
     expect(written[MAIN]).toContain(`id: ${derived}\n`);
@@ -687,6 +688,7 @@ describe('premise items (§4.2, §4.3, AF10)', () => {
       leanName: premise.leanName,
       session: 'run1',
       today: '2026-11-19',
+      holdAs: 'axiom',
     });
     expect(plan.leanName).toBe('Spyro.cynder_is_evil');
     const written = { ...base, [MAIN]: plan.changes[0]?.after as string };
@@ -726,6 +728,7 @@ describe('premise items (§4.2, §4.3, AF10)', () => {
       leanName: premise.leanName,
       session: 'run1',
       today: '2026-11-19',
+      holdAs: 'axiom',
     });
     const one = { ...withArrow, [MAIN]: plan.changes[0]?.after as string };
     const two = edit(one, MAIN, `premises: cynder-dark-past, new-spyro-pg, ${plan.nodeId}`, `premises: cynder-dark-past, new-spyro-pg, ${plan.nodeId}, pg-no-dark-past`);

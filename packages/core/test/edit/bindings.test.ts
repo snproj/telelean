@@ -1,7 +1,8 @@
 /**
  * A plan never changes another card's binding as a side effect: a code-less block left directly above a declaration
- * (the block below it was deleted, or the declarations after it were) gets a blank line, so it does not silently
- * bind to that declaration. Real parser and primitives.
+ * (the block below it was deleted with its declarations) gets a blank line, so it does not silently bind to the next
+ * declaration. Real parser and primitives. (Slice 2i: the card-only delete, which left the declarations behind, is
+ * gone, and so is its case here.)
  */
 import { describe, expect, it } from 'vitest';
 import { planAction, type PlanContext } from '../../src/edit/index.js';
@@ -52,15 +53,8 @@ describe('deleting a block keeps the block above it code-less', () => {
     ]);
   });
 
-  it('"card only, keep Lean": a blank line separates upper from the declarations left behind', () => {
-    const plan = planAction(model(STACKED), { kind: 'delete-node', id: 'lower', keepLean: true }, CTX);
-    const after = plan.changes.find((c) => c.path === MAIN)?.after ?? '';
-    expect(after).toContain('natural_name: An informal goal written just above\n-/\n\n/-- T is good -/\nabbrev t_good');
-    expect(bindings(model(after))).toEqual([['upper', 'none', null]]);
-  });
-
-  it('"with its Lean" (confirmed): a blank line separates upper from the next untracked declaration', () => {
-    const plan = planAction(model(STACKED), { kind: 'delete-node', id: 'lower', keepLean: false, confirmed: true }, CTX);
+  it('"Delete anyway" (confirmed, with its Lean): a blank line separates upper from the next untracked declaration', () => {
+    const plan = planAction(model(STACKED), { kind: 'delete-node', id: 'lower', confirmed: true }, CTX);
     const after = plan.changes.find((c) => c.path === MAIN)?.after ?? '';
     expect(after).not.toContain('t_good : Prop');
     expect(after).toContain('natural_name: An informal goal written just above\n-/\n\ntheorem untracked');

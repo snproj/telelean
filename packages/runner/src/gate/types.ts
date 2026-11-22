@@ -379,6 +379,11 @@ export interface FinalCheckReport {
    * files key and the permitted set judged, which the caller records for EN-2's reuse.
    */
   comparator?: Record<string, { filesKey: string; permitted: string[] }>;
+  /**
+   * (builder 2f; additive) F's project model with the facts this check judged, so Apply runs the backstop again on
+   * exactly what passed (pure, never reused, §3.10 step 4). Set whenever the facts were read (reused or built).
+   */
+  model?: ProjectModel;
 }
 export type PremiseWriteReport =
   | { ok: true; meaningMatches: boolean; explicit: string; judgement: StateJudgement }

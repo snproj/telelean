@@ -378,7 +378,15 @@ export class ProposalServiceImpl implements ProposalService {
       return { ok: false, code: 'internal', error: 'This model workspace cannot apply proposals (it lacks the M2 members).' };
     }
     try {
-      return await workspace.applyChanges({ label: plan.label, action: ACCEPT_PROPOSAL_ACTION, subject, nodes: plan.nodes, changes: plan.changes });
+      return await workspace.applyChanges({
+        label: plan.label,
+        action: ACCEPT_PROPOSAL_ACTION,
+        subject,
+        nodes: plan.nodes,
+        changes: plan.changes,
+        // Slice 2f (G1): an edit session's Apply records Claude's arrows in its history entry.
+        ...(plan.arrows !== undefined && plan.arrows.length > 0 ? { arrows: plan.arrows } : {}),
+      });
     } catch (error) {
       return { ok: false, code: 'internal', error: errorMessage(error) };
     }

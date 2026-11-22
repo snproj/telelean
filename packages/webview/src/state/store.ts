@@ -10,12 +10,11 @@
  * a question, not an error: a kind change opens the dependents dialog, a delete (never optimistic) opens the delete
  * dialog again with the host's list of declarations that would stop compiling.
  *
- * M2 (docs/m2-plan.md section 6): the host's `run` (RunView) and `proposal` (ProposalView) are kept apart from the
- * board's graph: `applyGraph` never sees them, and the proposal's graph is never applied as the board. The proposed
- * view of the board reads a derived `overlay` instead (`boardView`), read-only. The review stepper's state (step,
- * explicit toggles, definition answers, the Feedback draft), the answer drafts of a pending
- * question and what the board's own Accept changed (`accepted`) live here too, so the run panel can be re-rendered (or
- * unit-tested) without losing them.
+ * M2 (docs/m2-plan.md section 6): the host's `run` (RunView) is kept apart from the board's graph: `applyGraph` never
+ * sees it. The answer drafts of a pending question live here too, so the run panel can be re-rendered (or unit-tested)
+ * without losing them. Slice 2h retired M2's review (its `proposal`, the stepper's state, Accept, Feedback, Discard,
+ * "I hold this"): the Proposed view is an edit session's (`overlay`, model/sessionBoard.ts `sessionOverlay`, built
+ * from the host's SessionView by state/session.ts), read through `boardView`.
  *
  * Spec v4 slice 1b: arrows as board edits (`addArrows`, `removeArrows`, `setFromNothing`, `claimPending`, `moveCards`),
  * each one message and one Undo step on the host, optimistic and rolled back like a drag; the `arrows` dialog states an
@@ -36,10 +35,18 @@
  * `addArrows`, and a drop on the column `moveToAxioms`.
  *
  * Spec v4.1 ES-2, AR-8, CM-1–CM-5 (slice 1e): the tray and its premises ⊢ target are gone. Formalize for dependencies
- * (`formalize`) takes the selected arrows into one proposition (or its "follows from nothing" mark) as the run's
- * question, as board/contextActions.ts `formalizeState` judges it; a source that is a proposition with neither a proof
- * nor a pending claim is asked about first (the `formalize` dialog: mark it pending, which is the user's own edit made
- * before the start, or cancel), then `startRun(target, sources)` is posted.
+ * (`formalize`) takes the selected arrows as the question, as board/contextActions.ts `formalizeState` judges it; a
+ * source that is a proposition with neither a proof nor a pending claim is asked about first (the `formalize` dialog).
+ * Slice 2h (§5.11): several targets at once, sources first, posted as `formalize { inferences }`, or during a session
+ * as a mid-stage `formalize { runId, stage, inferences }` of the Proposed view; the AR-8 dialog's modes are
+ * `mark-pending` (outside a session: mark it pending, the user's own edit made before the start), `in-session` (it
+ * can't be marked pending then), `no-statement` (formalize and prove it first), each with "Select the arrows into ‹L›
+ * too" where L has arrows or its mark, and `results-hidden` (D2-65: Show results first, never saying proved or not).
+ *
+ * Slice 2h (§5.10, §5.12): in a session's Proposed view the board selects cards, drawn arrows, accepted Claude arrows
+ * and marks (Claude's undecided arrows focus their item instead), a move is a session step (`moveProposed`), and Undo
+ * and Redo act on the stack `undoScope` names (the session's in the Proposed view or the review panel; the board's,
+ * locked during a session, elsewhere).
  */
 import {
   arrowsInUse,
@@ -55,6 +62,7 @@ import {
   needsHoldsFirst,
   NODE_TYPES,
   removeUsedArrowsText,
+  REVIEW_TEXTS,
   runLocksBoard,
   slugId,
   webviewMessage,
@@ -72,7 +80,6 @@ import {
   type KindChangeImpact,
   type NodeType,
   type NoticeLevel,
-  type ProposalView,
   type Range,
   type RunView,
   type SemanticSummary,
@@ -86,25 +93,15 @@ import {
   type WorkspaceState,
 } from '@telelean/core';
 import { createStore, type StoreApi } from 'zustand/vanilla';
-import { formalizeRunBlock, formalizeState, FORMALIZE_TEXTS, type FormalizeState } from '../board/contextActions';
+import { formalizeRunBlock, formalizeState, FORMALIZE_TEXTS, type FormalizeInference, type FormalizeState } from '../board/contextActions';
 import { deleteOutcome, DRAW_TEXTS, gestureGate, type AreaSelection, type GestureGate } from '../board/gestures';
 import { canMarkPending, MENU_PROPOSED_ARROWS, menuSelection, type MenuThing } from '../board/menu';
 import { vocabIndex } from '../model/cardData';
 import { oneLine } from '../model/format';
-import {
-  acceptChangesFiles,
-  acceptSelection,
-  buildOverlay,
-  definitionsApproved,
-  draftAnswers,
-  emptyDraft,
-  newVocabularyCount,
-  pastStatements,
-  reviewSteps,
-  type AnswerDraft,
-  type BoardViewData,
-  type Overlay,
-} from '../model/run';
+import { readOnlyReason, stepRunning } from '../model/review';
+import { draftAnswers, emptyDraft, newVocabularyCount, type AnswerDraft } from '../model/run';
+import { focusesItem, undoScope, type BoardViewData, type Overlay } from '../model/sessionBoard';
+import { createSessionSlice, isSessionDialog, type PersistedSessionReview, type SessionActions, type SessionDialogState, type SessionSlice } from './session';
 
 export type Post = (message: WebviewToHostMessage) => void;
 
@@ -123,6 +120,8 @@ export interface PersistedState {
    * board area, chosen by dragging the divider (absent or null = the default height).
    */
   topSplit?: number | null;
+  /** Slice 2g (docs/slice2-plan.md 5.2): the review UI of the session on screen, used again only for the same run. */
+  sessionReview?: PersistedSessionReview;
 }
 
 export interface StoreOptions {
@@ -257,30 +256,37 @@ export type DialogState =
       confirm: string;
     }
   /**
-   * D-18 delete. Without `dependents`: the first question (what refers to the card on this board; card only, or
-   * with its Lean code). With `dependents`: the host refused to delete the card's Lean code (`needs-confirmation`)
-   * because these declarations use it and would stop compiling (node ids, or fully-qualified Lean names of
-   * declarations without a card); the dialog lists them and offers "Delete anyway" (`confirmed: true`). `cards`:
-   * the host's description of the dependents that are cards, so another subject's card shows by its sentence.
+   * D-18 delete. Without `dependents`: the first question (what refers to the card on this board; delete it with its
+   * Lean code, or cancel: slice 2i, S9, there is no card-only delete). With `dependents`: the host refused to delete
+   * the card's Lean code (`needs-confirmation`) because these declarations use it and would stop compiling (node ids,
+   * or fully-qualified Lean names of declarations without a card); the dialog lists them and offers "Delete anyway"
+   * (`confirmed: true`). `cards`: the host's description of the dependents that are cards, so another subject's card
+   * shows by its sentence.
    */
   | { kind: 'delete'; id: string; dependents?: readonly string[]; cards?: Readonly<Record<string, DependentCard>> }
   | { kind: 'revert'; entry: HistoryEntry }
   /**
    * Spec v4.1 AR-8 (★D7 (b), slice 1e): Formalize for dependencies asks first about a source (`id`) that is a
-   * proposition with neither a proof nor a pending claim: `mark-pending` when it has a Lean statement (mark it pending,
-   * assumed until proved, and continue; or cancel), `no-statement` when it has none (formalize and prove it first:
-   * Cancel only, AP-10). One source at a time: `queue` holds the next ones to ask about, `confirmed` those the user
-   * chose to mark. `target` and `sources` are the question as it was when Formalize was pressed.
+   * proposition with neither a proof nor a pending claim, and is no target of the same request: `mark-pending` when it
+   * has a Lean statement (mark it pending, assumed until proved, and continue; or cancel), `no-statement` when it has
+   * none (formalize and prove it first, AP-10). Slice 2h (§5.11): `in-session`, such a source during a session ("it
+   * can't be marked pending"); `no-statement` and `in-session` offer "Select the arrows into ‹L› too" when L has drawn
+   * arrows or its mark (`selectToo`), which adds them to the selection and evaluates Formalize again; `results-hidden`
+   * (D2-65), Formalize pressed while the results are hidden: Show results or Cancel, never saying whether a proof
+   * exists. One source at a time: `queue` holds the next ones to ask about, `confirmed` those the user chose to mark.
+   * `inferences` is the question as it was when Formalize was pressed.
    */
   | {
       kind: 'formalize';
-      mode: 'mark-pending' | 'no-statement';
+      mode: 'mark-pending' | 'no-statement' | 'in-session' | 'results-hidden';
       id: string;
-      target: string;
-      sources: readonly string[];
+      inferences: readonly FormalizeInference[];
       queue: readonly string[];
       confirmed: readonly string[];
-    };
+      selectToo?: true;
+    }
+  /** Slice 2g (docs/slice2-plan.md 5.2): an edit session's dialogs (cascade, reveal, hold-as, exit-session). */
+  | SessionDialogState;
 
 export interface EditingState {
   id: string;
@@ -337,10 +343,15 @@ export interface BoardUi {
   flash: Flash | null;
   dialog: DialogState | null;
   editing: EditingState | null;
+  /**
+   * Slice 2h (§5.12, D2-38): the keyboard focus is inside `data-undo-scope="session"` (the review panel, a session
+   * dialog), so Undo and Redo act on the session stack there (`undoScope`).
+   */
+  focusInSession: boolean;
 }
 
-/** Run requests whose buttons show that they are in flight (until the host's `actionResult`). */
-export type RunAction = 'start' | 'answer' | 'cancel' | 'resume' | 'stop' | 'accept' | 'feedback' | 'discard' | 'adopt' | 'reject';
+/** Run requests whose buttons show that they are in flight (until the host's `actionResult`). (2h: M2's review's are gone.) */
+export type RunAction = 'start' | 'answer' | 'cancel' | 'resume' | 'stop';
 
 export interface RunBusy {
   action: RunAction;
@@ -349,59 +360,25 @@ export interface RunBusy {
   key?: string;
 }
 
-/** The end-of-round review (D-19), per proposal (proposal ids are unique within a run only, so the run id is part of the key). */
-export interface ReviewUi {
-  runId: string;
-  proposalId: string;
-  /** Index into `reviewSteps(proposal)`. */
-  step: number;
-  /** The report card is shown: the user went through the statements, or pressed "Show result" (D-19). */
-  revealed: boolean;
-  /** Statements shown in their fully explicit form, by node id. */
-  explicit: Readonly<Record<string, true>>;
-  /** Answers to the definition questions (Accept needs "yes" for each; "no" is Feedback). */
-  definitions: Readonly<Record<string, 'yes' | 'no'>>;
-  /** The Feedback draft (the user's words; may span lines). */
-  feedback: string;
-  feedbackOpen: boolean;
-  /** Bumped whenever the Feedback field should take the focus (a prefill, the banner's Feedback). */
-  feedbackFocus: number;
-}
-
-/**
- * What this board's own Accept did to the user's files, for the run panel's outcome line: an Accept of a round that
- * changed no file only records the outcome (no Undo step, no history entry). Set when Accept is sent, from the
- * proposal's `empty`; the host's answer then says for certain (`undoable` is
- * false exactly when Accept applied nothing, e.g. Claude's changes rebased onto identical edits of the user's).
- * Cleared by a refusal and by another run.
- */
-export interface AcceptedUi {
-  runId: string;
-  proposalId: string;
-  changedFiles: boolean;
-}
-
 export interface RunUi {
   /** The model root's current run (any subject), as the host last posted it. Never part of the graph. */
   run: RunView | null;
-  /** The current run's proposal, as the host last posted it. Its graph is shown only through `overlay`. */
-  proposal: ProposalView | null;
-  /** The board as the proposal would leave it (derived from `proposal`; read through `boardView`). */
+  /**
+   * The Proposed view of the root's edit session (model/sessionBoard.ts `sessionOverlay`, from the host's SessionView;
+   * read through `boardView`), or null without a session. Slice 2h: M2's proposal overlay is retired.
+   */
   overlay: Overlay | null;
-  /** The board shows the proposal ("Proposed") instead of the current files ("Current"). */
+  /** The board shows the session's Proposed view instead of the current files ("Current"). */
   proposedView: boolean;
-  /** The Vocabulary group in the proposed view: null = automatic (open when the proposal adds vocabulary). */
+  /** The Vocabulary group in the proposed view: null = automatic (open when the Proposed view adds vocabulary). */
   vocabProposedCollapsed: boolean | null;
   /** The run panel is open (it opens by itself when something needs the user). */
   runPanelOpen: boolean;
   /** The run panel's size, per layout (webview state). */
   runSplit: RunSplit;
-  review: ReviewUi | null;
   /** Answer drafts of the pending question set, by set id (one per question). */
   answerDrafts: Readonly<Record<string, readonly AnswerDraft[]>>;
   runBusy: RunBusy | null;
-  /** What the board's own Accept of the current run changed (null: no Accept sent from this board for it). */
-  accepted: AcceptedUi | null;
 }
 
 export interface AddExtras {
@@ -415,8 +392,9 @@ export interface AddExtras {
   position?: CanvasPosition;
 }
 
-export interface BoardActions {
-  /** Applies a host message (graph, workspace, history, actionResult, notice). */
+/** Slice 2g: the edit session's actions (state/session.ts) are board actions too. */
+export interface BoardActions extends SessionActions {
+  /** Applies a host message (graph, workspace, history, actionResult, notice; slice 2g: session). */
   receive(message: HostToWebviewMessage): void;
   /** Applies a graph unless it is older than the last one applied. Returns whether it was applied. */
   applyGraph(graph: TlGraph): boolean;
@@ -466,11 +444,12 @@ export interface BoardActions {
   editNode(id: string, field: EditableField, value: string | null): boolean;
   openDelete(id: string): void;
   /**
-   * Posts `deleteNode` (not optimistic) and closes the delete dialog. `confirmed` (only with `keepLean` false): the
-   * user saw the declarations that use its Lean code and deletes it anyway ("Delete anyway"). When the host answers
-   * `needs-confirmation` to an unconfirmed delete, the delete dialog opens again and lists them.
+   * Posts `deleteNode` (not optimistic): the card and its Lean code (slice 2i, S9: never the card alone), and closes
+   * the delete dialog. `confirmed`: the user saw the declarations that use its Lean code and deletes it anyway
+   * ("Delete anyway"). When the host answers `needs-confirmation` to an unconfirmed delete, the delete dialog opens
+   * again and lists them.
    */
-  deleteNode(id: string, keepLean: boolean, confirmed?: boolean): void;
+  deleteNode(id: string, confirmed?: boolean): void;
   // Spec v4 slice 1b, arrows as board edits. Each posts one message (one Undo step on the host), applied optimistically
   // and rolled back when the host refuses (with an error toast). Its impact is confirmed first in the arrows dialog
   // when the board's graph shows one (an axiom becomes a proposition; a removed arrow is used by a proof), and after
@@ -525,19 +504,25 @@ export interface BoardActions {
   /** AR-7 (slice 1c2): BoardInput's moved propositions entered (or left: null) the AXIOMS column. */
   setOverAxioms(over: { id: string; count: number } | null): void;
   /**
-   * Spec v4.1 ES-2 (slice 1e) "Formalize for dependencies": the selected arrows into one proposition (or its "follows
-   * from nothing" mark) are the question (`formalizeOf`). Refused, with an info toast giving the reason, when it cannot
-   * be pressed (CM-3). A source that is a proposition with neither a proof nor a pending claim opens the `formalize`
-   * dialog first (AR-8); otherwise posts `startRun` with the target and the sources. False when nothing was started or
-   * asked.
+   * Spec v4.1 ES-2 (slice 1e) "Formalize for dependencies": the selected arrows (or "follows from nothing" marks) are the
+   * question (`formalizeOf`; slice 2h: several targets, sources first). Refused, with an info toast giving the reason,
+   * when it cannot be pressed (CM-3); while a session's results are hidden it opens the `formalize` dialog's
+   * `results-hidden` mode (Show results, D2-65). A source that is a proposition with neither a proof nor a pending claim,
+   * and no target of the same request, opens the `formalize` dialog first (AR-8); otherwise posts `formalize` (a start),
+   * or during a session a mid-stage `formalize` with the session's run id and stage. False when nothing was sent or asked.
    */
   formalize(): boolean;
   /**
-   * AR-8: "Mark pending and continue" in the `formalize` dialog. The next unproved source is asked about; after the
-   * last one, each chosen source is marked pending (`claimPending`, the user's own edit, one Undo step each), and once
-   * the host has written them all the run is started. A refused mark starts nothing (its error toast says why).
+   * AR-8: "Mark pending and continue" in the `formalize` dialog (outside a session). The next unproved source is asked
+   * about; after the last one, each chosen source is marked pending (`claimPending`, the user's own edit, one Undo step
+   * each), and once the host has written them all the session is started. A refused mark starts nothing.
    */
   confirmFormalizePending(): void;
+  /**
+   * Slice 2h (§5.11): "Select the arrows into ‹L› too" in the `formalize` dialog: L's drawn arrows (or its mark) join the
+   * selection, so L becomes a target of the same request, and Formalize is evaluated again.
+   */
+  confirmFormalizeSelectToo(): void;
   /** Edits the answer draft of question `index` of the pending set `setId`. */
   setAnswerDraft(setId: string, index: number, patch: Partial<AnswerDraft>): void;
   /** Posts `answerQuestions` for the pending set, once every question has a valid answer. */
@@ -545,7 +530,10 @@ export interface BoardActions {
   cancelRun(): void;
   /** "Resume" on an interrupted run. */
   resumeRun(): void;
-  /** "Stop" on an interrupted run (= Discard, docs/m2-plan.md section 2). */
+  /**
+   * "Stop" on a run that is no session: an interrupted run of version 1, or one whose conversion into a session failed
+   * (docs/m2-plan.md section 2). Slice 2h: Cancel (M2's Discard is retired); it ends the run, the files untouched.
+   */
   stopRun(): void;
   /** Removes an ended run from the board. */
   dismissRun(): void;
@@ -554,28 +542,7 @@ export interface BoardActions {
   setRunSplit(layout: RunPanelLayout, fraction: number | null): void;
   /** Current | Proposed. */
   setProposedView(proposed: boolean): void;
-  /** The review stepper: go to a step (reaching one past the statements reveals the result). */
-  reviewGo(step: number): void;
-  /** "Show result" before the statements are done (D-19's explicit early reveal). */
-  revealResult(): void;
-  toggleExplicit(nodeId: string): void;
-  /** A definition question's yes/no. A "no" opens Feedback, prefilled. */
-  answerDefinition(id: string, answer: 'yes' | 'no'): void;
-  setFeedback(text: string): void;
-  /** Opens the Feedback field (and focuses it); `prefill` is added on a new line of the draft. */
-  openFeedback(prefill?: string): void;
-  closeFeedback(): void;
-  /** Posts `feedback` with the draft. */
-  sendFeedback(): boolean;
-  /** Posts `acceptProposal` with the approved definitions; refused until all are "yes". */
-  acceptProposal(): boolean;
-  discardProposal(): void;
-  /** "Raw Lean diff…" (one file, or all). */
-  openProposalDiff(file?: string): void;
-  /** "I hold this" (D-6), with the optional reason. */
-  adoptGhost(ghostId: string, rationale?: string): void;
-  rejectGhost(ghostId: string): void;
-  /** Shows a card of the proposal on the board (switches to the proposed view). */
+  /** Shows a card of the session's Proposed view on the board (switches to it). */
   showOnBoard(nodeId: string): void;
   toggleVocabulary(): void;
   setVocabularyCollapsed(collapsed: boolean): void;
@@ -591,6 +558,14 @@ export interface BoardActions {
    */
   undo(): void;
   redo(): void;
+  /**
+   * Slice 2h (§5.12, UN-1, D2-38): Ctrl+Z and Ctrl+Shift+Z, and the toolbar's buttons: the session stack's Undo and Redo
+   * (`sessionUndo`, `sessionRedo`) where `undoScope` says so, else the board's (which posts nothing during a session).
+   */
+  undoInScope(): void;
+  redoInScope(): void;
+  /** Slice 2h: whether the keyboard focus is inside `data-undo-scope="session"` (main.tsx follows `focusin`). */
+  setFocusInSession(inside: boolean): void;
   selectSubject(subject: string): void;
   /** Posts `createSubject`; `onResult` receives the host's answer. */
   createSubject(name: string, onResult?: (outcome: ActionOutcome) => void): void;
@@ -609,7 +584,7 @@ export interface BoardActions {
   isProvisional(id: string): boolean;
 }
 
-export type BoardState = BoardData & HostData & BoardUi & RunUi & BoardActions;
+export type BoardState = BoardData & HostData & BoardUi & RunUi & BoardActions & SessionSlice;
 export type BoardStore = StoreApi<BoardState>;
 
 /**
@@ -639,26 +614,33 @@ export function formalizeRunBlockOf(state: Pick<BoardState, 'run' | 'subject' | 
   return formalizeRunBlock(state.run, state.subject, state.runBusy?.action === 'start');
 }
 
-/** Slice 1e: Formalize for dependencies on the selection (board/contextActions.ts `formalizeState`), for the store's actions. */
+/**
+ * Slice 1e: Formalize for dependencies on the selection (board/contextActions.ts `formalizeState`), for the store's
+ * actions. Slice 2h: on the board on screen (the Proposed view's cards in a session), with the root's session.
+ */
 export function formalizeOf(
-  state: Pick<BoardState, 'nodes' | 'edges' | 'selectedArrows' | 'selectedMarks' | 'provisional' | 'run' | 'subject' | 'runBusy'>,
+  state: Pick<BoardState, 'nodes' | 'edges' | 'selectedArrows' | 'selectedMarks' | 'provisional' | 'run' | 'subject' | 'runBusy' | 'session' | 'proposedView' | 'overlay' | 'order' | 'vocabulary' | 'vocab' | 'positions'>,
 ): FormalizeState {
-  return formalizeState({ ...state, runBlock: formalizeRunBlockOf(state) });
+  const view = boardView(state);
+  return formalizeState({
+    nodes: view.nodes,
+    edges: view.edges,
+    selectedArrows: state.selectedArrows,
+    selectedMarks: state.selectedMarks,
+    provisional: state.provisional,
+    runBlock: formalizeRunBlockOf(state),
+    subject: state.subject,
+    ...(state.session !== null ? { session: { view: state.session, proposed: proposedOverlay(state) !== null } } : {}),
+  });
 }
 
-/** The proposed view applies to the board on screen only while the proposal is about its subject. */
+/** The Proposed view applies to the board on screen only while the session is about its subject. */
 export function proposedOverlay(state: Pick<BoardState, 'proposedView' | 'overlay' | 'subject'>): Overlay | null {
   return state.proposedView && state.overlay !== null && state.overlay.subject === state.subject ? state.overlay : null;
 }
 
 /** Spec v4 ES-9 (slice 1f): the reason the Proposed view's arrow actions are disabled (the right-click menu's too). */
 export const PROPOSED_ARROWS_LOCKED = MENU_PROPOSED_ARROWS;
-
-/**
- * Spec v4 UN-1 (slice 1f): the Proposed view has no file Undo (its own stack comes with slice 2). It exists only during
- * a run, whose lock says more; this is the reason should it ever be on screen without one.
- */
-export const PROPOSED_NO_UNDO = 'Undo works on the Current view: the proposal has no Undo of its own yet.';
 
 /**
  * Spec v4 ES-7, ES-9, UN-3 (slice 1f): why the board cannot be edited now (core EDIT_SESSION_ACTIVE), or null. While a
@@ -678,19 +660,31 @@ export function arrowLock(state: Pick<BoardState, 'run' | 'runBusy' | 'proposedV
 
 /**
  * Why the board's Undo and Redo (the host's stack of the user's files) do nothing now, or null (UN-1, UN-3, A27;
- * slice 1f): the edit session's lock, else the Proposed view, which has no file Undo.
+ * slice 1f): the edit session's lock. Slice 2h (§5.12): during a session the board stack stays locked with "Your files
+ * can't change during an edit session; Undo in the Proposed view undoes your review steps."
  */
-export function undoLock(state: Pick<BoardState, 'run' | 'runBusy' | 'proposedView' | 'overlay' | 'subject'>): string | null {
-  return editLock(state) ?? (proposedOverlay(state) !== null ? PROPOSED_NO_UNDO : null);
+export function undoLock(state: Pick<BoardState, 'run' | 'runBusy' | 'proposedView' | 'overlay' | 'subject' | 'session'>): string | null {
+  if (state.session !== null || state.run?.session !== undefined) {
+    if (state.run === null || !isTerminalRunState(state.run.state)) return REVIEW_TEXTS.boardUndoLocked;
+  }
+  return editLock(state) ?? (proposedOverlay(state) !== null ? REVIEW_TEXTS.boardUndoLocked : null);
+}
+
+/** Slice 2h (§5.12): the stack Undo and Redo act on now (`undoScope`). */
+export function undoScopeOf(state: Pick<BoardState, 'session' | 'proposedView' | 'overlay' | 'subject' | 'focusInSession'>): 'session' | 'board' {
+  return undoScope({ session: state.session !== null, proposedOnScreen: proposedOverlay(state) !== null, focusInSession: state.focusInSession });
 }
 
 /**
  * Slice 1c2: which of the board's gestures work now (board/gestures.ts `gestureGate`): during an edit session the
- * editing ones (drawing an arrow, moving a card, a drop on the column) are off with its reason, selecting stays; the
- * Proposed view selects nothing and changes nothing.
+ * editing ones (drawing an arrow, moving a card, a drop on the column) are off with its reason, selecting stays. Slice
+ * 2h: the Proposed view is the session's: it selects, draws nothing, and moves a card as a session step (off while
+ * Claude's step runs).
  */
-export function gestureGateOf(state: Pick<BoardState, 'run' | 'runBusy' | 'proposedView' | 'overlay' | 'subject'>): GestureGate {
-  return gestureGate({ lock: editLock(state), proposed: proposedOverlay(state) !== null });
+export function gestureGateOf(state: Pick<BoardState, 'run' | 'runBusy' | 'proposedView' | 'overlay' | 'subject' | 'session'>): GestureGate {
+  const proposed = proposedOverlay(state) !== null;
+  const session = proposed && state.session !== null ? { stage: state.session.phase === 'stage', stepRunning: stepRunning(state.session), applying: state.session.phase === 'applying' } : undefined;
+  return gestureGate({ lock: editLock(state), proposed, ...(session !== undefined ? { session } : {}) });
 }
 
 export interface UndoButton {
@@ -710,7 +704,7 @@ export function undoRedoButtons(workspace: Pick<WorkspaceState, 'undo' | 'redo'>
 }
 
 /**
- * What the board's columns show: the current graph, or in the proposed view the proposal's overlay. Both are kept in
+ * What the board's columns show: the current graph, or in the Proposed view the session's overlay. Both are kept in
  * the store, so a selector may return any field of the result (it is never a fresh object).
  */
 export function boardView(state: Pick<BoardState, 'proposedView' | 'overlay' | 'subject' | 'nodes' | 'order' | 'edges' | 'vocabulary' | 'vocab' | 'positions'>): BoardViewData {
@@ -727,8 +721,8 @@ export function readTopSplit(raw: unknown): number | null {
 }
 
 /**
- * Whether the Vocabulary group is collapsed: the user's choice on the current board; in the proposed view it opens by
- * itself when the proposal adds vocabulary ("+N new", 03 section 7) until the user closes it there.
+ * Whether the Vocabulary group is collapsed: the user's choice on the current board; in the Proposed view it opens by
+ * itself when the session adds vocabulary ("+N new", 03 section 7) until the user closes it there.
  */
 export function vocabularyCollapsed(state: Pick<BoardState, 'proposedView' | 'overlay' | 'subject' | 'vocabCollapsed' | 'vocabProposedCollapsed'>): boolean {
   const overlay = proposedOverlay(state);
@@ -817,7 +811,7 @@ type Pending =
   /** An in-place edit: `previous` is the card before it (only `field` is restored on a refusal). */
   | { kind: 'edit'; id: string; seq: number; field: EditableField; previous: TlNode }
   /** A delete: `needs-confirmation` (its Lean code is used elsewhere) re-opens the delete dialog with the list. */
-  | { kind: 'delete'; id: string; keepLean: boolean; confirmed: boolean }
+  | { kind: 'delete'; id: string; confirmed: boolean }
   /** M2: a run request (its buttons stay disabled until the answer; a refusal is an error toast). */
   | { kind: 'run'; action: RunAction }
   /**
@@ -872,23 +866,6 @@ function confirmSummary(to: NodeType, count: number): string {
   return `${to === 'AXIOM' ? 'Move to axioms' : `Make ${KIND_NAME[to]}`}: ${dependents} a rewrite`;
 }
 
-/** A new review: the first step, nothing answered. */
-function initialReview(proposal: ProposalView): ReviewUi {
-  const steps = reviewSteps(proposal);
-  return {
-    runId: proposal.runId,
-    proposalId: proposal.proposalId,
-    step: 0,
-    // Nothing to read first (no new or changed statement): the result is shown at once.
-    revealed: pastStatements(steps, 0),
-    explicit: {},
-    definitions: {},
-    feedback: '',
-    feedbackOpen: false,
-    feedbackFocus: 0,
-  };
-}
-
 /** A split fraction within RUN_SPLIT_LIMITS, rounded to a tenth of a percent. */
 export function clampSplit(fraction: number): number {
   return Math.round(Math.min(RUN_SPLIT_LIMITS.max, Math.max(RUN_SPLIT_LIMITS.min, fraction)) * 1000) / 1000;
@@ -899,13 +876,6 @@ export function readSplit(raw: unknown): RunSplit {
   const value = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? clampSplit(v) : null);
   const record = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
   return { narrow: value(record.narrow), wide: value(record.wide) };
-}
-
-/** The draft with `prefill` added on its own line (an empty draft becomes just the prefill). */
-function withPrefill(draft: string, prefill: string): string {
-  if (!prefill) return draft;
-  if (draft.trim().length === 0) return prefill;
-  return `${draft.replace(/\s+$/, '')}\n${prefill}`;
 }
 
 export function createBoardStore(post: Post, options: StoreOptions = {}): BoardStore {
@@ -936,6 +906,21 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
     };
 
     const plain = (onResult?: (outcome: ActionOutcome) => void) => track({ kind: 'plain', ...(onResult ? { onResult } : {}) });
+
+    /** Slice 2g (docs/slice2-plan.md 5.2): the edit session's slice (state/session.ts) and its wiring here. */
+    const sessionWiring = createSessionSlice({
+      set: (patch) => set(patch),
+      get,
+      post,
+      nextRequestId,
+      persist: (review) => persist({ sessionReview: review }),
+      ...(options.persisted?.sessionReview !== undefined ? { persisted: options.persisted.sessionReview } : {}),
+      // Slice 2h: the Current board the session's Proposed view is built against (its cards' places, its vocabulary).
+      current: () => {
+        const s = get();
+        return { nodes: s.nodes, vocabulary: s.vocabulary, positions: s.positions };
+      },
+    });
 
     const errorToast = (outcome: Extract<ActionOutcome, { ok: false }>) => get().pushToast('error', outcome.error || `Refused (${outcome.code}).`);
 
@@ -1376,11 +1361,14 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
     };
 
     /**
-     * Slice 1e: posts `startRun` for Formalize for dependencies (the host checks the question again on the files, and
-     * asks for the egress consent), unless a run of the model folder is active by now (an info toast then).
+     * Slice 1e, 2h: posts Formalize for dependencies (the host checks the question again on the files, and asks for the
+     * egress consent): a start (`formalize { inferences }`), unless a run of the model folder is active by now (an info
+     * toast then); during a session, a mid-stage Formalize of its current stage (state/session.ts: `runId` and `stage`).
      */
-    const postStart = (target: string, sources: readonly string[]): boolean => {
+    const postFormalize = (inferences: readonly FormalizeInference[]): boolean => {
       const s = get();
+      const list = inferences.map((i) => ({ target: i.target, premises: [...i.premises] }));
+      if (s.session !== null) return s.formalizeInStage(list);
       const blocked = formalizeRunBlockOf(s);
       if (blocked !== null) {
         get().pushToast('info', blocked);
@@ -1388,26 +1376,19 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
       }
       // A new start makes the note about an earlier declined consent stale.
       for (const toast of s.toasts) if (toast.text.startsWith(CONSENT_DECLINED_PREFIX)) get().dismissToast(toast.key);
-      post(webviewMessage('startRun', { target, premises: [...sources], requestId: trackRun('start') }));
+      post(webviewMessage('formalize', { inferences: list, requestId: trackRun('start') }));
       return true;
     };
 
-    /** The run a review action is about: the proposal's run, else the current run. */
-    const reviewRunId = () => get().proposal?.runId ?? get().run?.runId ?? null;
-
-    /** A new overlay for the current proposal (after the proposal, the board's graph or the reveal changed). */
-    const overlayFor = (
-      proposal: ProposalView | null,
-      review: ReviewUi | null,
-      current: { nodes: Readonly<Record<string, TlNode>>; vocabulary: readonly VocabItem[]; positions: Readonly<Record<string, CanvasPosition>> },
-    ) => (proposal ? buildOverlay(proposal, current, !(review?.revealed ?? false)) : null);
-
-    const setReview = (patch: Partial<ReviewUi>) => {
-      const s = get();
-      if (!s.review) return;
-      const review = { ...s.review, ...patch };
-      const revealChanged = review.revealed !== s.review.revealed;
-      set({ review, ...(revealChanged ? { overlay: overlayFor(s.proposal, review, s) } : {}) });
+    /**
+     * Slice 2h: an arrow that can be selected on the board on screen: a drawn arrow (a proposition's declared premise),
+     * never Claude's arrow still undecided in the Proposed view (it focuses its review item instead, D2-20).
+     */
+    const selectableArrow = (s: BoardState, source: string, target: string): boolean => {
+      const view = boardView(s);
+      const into = view.nodes[target];
+      if (source === target || view.nodes[source] === undefined || into?.type !== 'PROPOSITION' || !into.premises.includes(source)) return false;
+      return !focusesItem(proposedOverlay(s)?.proposed.get(`${source}->${target}`));
     };
 
     /** After any Undo or Redo, no toast's Undo names the action Undo would revert any more. */
@@ -1425,6 +1406,8 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
     };
 
     const applyActionResult = (requestId: string, outcome: ActionOutcome) => {
+      // Slice 2g: a session request's answer (its own requests, state/session.ts).
+      if (sessionWiring.result(requestId, outcome)) return;
       const entry = pending.get(requestId);
       pending.delete(requestId);
       if (!entry) {
@@ -1485,8 +1468,8 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
           if (outcome.ok) return;
           const s = get();
           // Deleting its Lean code would break other declarations: ask again, listing them (D-18). A confirmed delete
-          // is never asked again (a host that still refuses it says why in a toast), nor is "card only".
-          if (outcome.code === 'needs-confirmation' && !entry.keepLean && !entry.confirmed && s.nodes[entry.id] && !s.provisional[entry.id]) {
+          // is never asked again (a host that still refuses it says why in a toast).
+          if (outcome.code === 'needs-confirmation' && !entry.confirmed && s.nodes[entry.id] && !s.provisional[entry.id]) {
             set({
               dialog: { kind: 'delete', id: entry.id, dependents: [...(outcome.dependents ?? [])], ...(outcome.dependentCards ? { cards: outcome.dependentCards } : {}) },
             });
@@ -1497,10 +1480,6 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
         }
         case 'run': {
           if (get().runBusy?.requestId === requestId) set({ runBusy: null });
-          // The host's answer to Accept says for certain whether it changed the files (an Accept that applied
-          // nothing has no Undo step); a refused Accept changed nothing and the run goes on.
-          const accepted = get().accepted;
-          if (entry.action === 'accept' && accepted) set({ accepted: outcome.ok ? { ...accepted, changedFiles: outcome.undoable } : null });
           // Declining the egress consent is the user's own choice: information, not an error.
           if (!outcome.ok && entry.action === 'start' && outcome.error.startsWith(CONSENT_DECLINED_PREFIX)) get().pushToast('info', outcome.error);
           else if (!outcome.ok) errorToast(outcome);
@@ -1540,14 +1519,11 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
       const patch: Partial<BoardState> = { run };
       if (!run) {
         patch.answerDrafts = {};
-        patch.accepted = null;
         if (s.runBusy && s.runBusy.action !== 'start') patch.runBusy = null;
         set(patch);
         return;
       }
       const newRun = previous?.runId !== run.runId;
-      // What the board's own Accept changed is about that run only.
-      if (s.accepted && s.accepted.runId !== run.runId) patch.accepted = null;
       const pendingId = run.pendingQuestions?.id;
       const newQuestion = pendingId !== undefined && pendingId !== previous?.pendingQuestions?.id;
       const changedState = newRun || previous?.state !== run.state || previous?.round !== run.round;
@@ -1560,35 +1536,10 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
       patch.answerDrafts = pendingId !== undefined && drafts ? { [pendingId]: drafts } : {};
       // A request in flight is answered by its actionResult; a new state (or a new question) settles it as well.
       if (s.runBusy && (changedState || newQuestion || (s.runBusy.action === 'answer' && s.runBusy.key !== pendingId))) patch.runBusy = null;
-      // A run that left review (Feedback, an adopted suggestion, Accept) has no proposal to show any more, even before
-      // the host's `proposal: null` arrives.
-      if (s.proposedView && run.state !== 'review' && s.proposal?.runId === run.runId) patch.proposedView = false;
       // Slice 1f (ES-9): the board becomes read-only (a run became active without this board's start, e.g. one an
       // earlier window left): an inline edit, a drag or an edit dialog under way ends, as the host would refuse it.
       if (runLocksBoard(run) && editLock(s) === null) Object.assign(patch, { editing: null, drag: null, dropKind: null, overAxioms: null, dialog: null });
       set(patch);
-    };
-
-    /** The host's proposal: kept as sent; the review starts on a new proposal id, and the board shows it. */
-    const applyProposal = (proposal: ProposalView | null) => {
-      const s = get();
-      if (!proposal) {
-        set({ proposal: null, overlay: null, proposedView: false, review: null, vocabProposedCollapsed: null, ...(s.runBusy?.key === s.proposal?.proposalId ? { runBusy: null } : {}) });
-        return;
-      }
-      const fresh = !s.review || s.review.proposalId !== proposal.proposalId || s.review.runId !== proposal.runId;
-      const review = fresh ? initialReview(proposal) : s.review;
-      const overlay = overlayFor(proposal, review, s);
-      // The board switches to the proposal (its result hidden until the review reveals it, D-19), unless the user is
-      // in the middle of a drag or an edit; the Current | Proposed toggle switches back.
-      const show = fresh && proposal.subject === s.subject && s.drag === null && s.editing === null;
-      set({
-        proposal,
-        overlay,
-        review,
-        // Switching to the Proposed view ends a move over the AXIOMS column (slice 1d carry-over), as the toggle does.
-        ...(fresh ? { vocabProposedCollapsed: null, runPanelOpen: true, ...(show ? { proposedView: true, overAxioms: null } : {}) } : {}),
-      });
     };
 
     return {
@@ -1606,16 +1557,13 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
       attempts: [],
       positions: {},
       run: null,
-      proposal: null,
       overlay: null,
       proposedView: false,
       vocabProposedCollapsed: null,
       runPanelOpen: true,
       runSplit: readSplit(options.persisted?.runSplit),
-      review: null,
       answerDrafts: {},
       runBusy: null,
-      accepted: null,
       workspace: null,
       history: null,
       historyLoading: false,
@@ -1637,6 +1585,8 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
       flash: null,
       dialog: null,
       editing: null,
+      focusInSession: false,
+      ...sessionWiring.slice,
 
       receive(message) {
         switch (message.type) {
@@ -1658,8 +1608,8 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
           case 'run':
             applyRun(message.payload.run);
             return;
-          case 'proposal':
-            applyProposal(message.payload.proposal);
+          case 'session':
+            sessionWiring.receive(message.payload.session);
             return;
         }
       },
@@ -1725,16 +1675,19 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
                 editing: s.editing && keep(map(s.editing.id)) ? { ...s.editing, id: map(s.editing.id) } : null,
               };
             })();
-        const dialog = s.dialog && !subjectChanged && dialogStillValid(s.dialog, nodes) ? s.dialog : null;
+        // Slice 2h: in the Proposed view the dialog and the selection are about the session's board, which this graph
+        // does not change (the session's own message checks them).
+        const onProposed = !subjectChanged && proposedOverlay(s) !== null;
+        const dialog = s.dialog && !subjectChanged && (onProposed || dialogStillValid(s.dialog, nodes)) ? s.dialog : null;
         // Selected arrows and marks stay selected while they are still drawn (a removed one leaves the selection).
-        const arrowsKept = subjectChanged ? [] : s.selectedArrows.filter((a) => nodes[a.source] !== undefined && nodes[a.target]?.premises.includes(a.source) === true);
-        const marksKept = subjectChanged ? [] : s.selectedMarks.filter((id) => nodes[id]?.fromNothing === true);
+        const arrowsKept = subjectChanged ? [] : onProposed ? s.selectedArrows : s.selectedArrows.filter((a) => nodes[a.source] !== undefined && nodes[a.target]?.premises.includes(a.source) === true);
+        const marksKept = subjectChanged ? [] : onProposed ? s.selectedMarks : s.selectedMarks.filter((id) => nodes[id]?.fromNothing === true);
         const selectedArrows = arrowsKept.length === s.selectedArrows.length ? s.selectedArrows : arrowsKept;
         const selectedMarks = marksKept.length === s.selectedMarks.length ? s.selectedMarks : marksKept;
         const positions = Object.keys(provisionalPositions).length > 0 ? { ...(graph.positions ?? {}), ...provisionalPositions } : (graph.positions ?? {});
-        // The run and the proposal are not part of the graph; only the overlay derived from them refers to the
-        // current cards (the ones a proposal removes), so it is rebuilt.
-        const overlay = overlayFor(s.proposal, s.review, { nodes, vocabulary: graph.vocabulary, positions });
+        // The run is not part of the graph. Slice 2h: the session's Proposed view reads the Current board only for its
+        // cards' places in the files and its vocabulary, so it is rebuilt from the session against the new graph.
+        const overlay = s.session !== null ? sessionWiring.overlayOf(s.session, { nodes, vocabulary: graph.vocabulary, positions }) : null;
 
         set({
           version: graph.version,
@@ -1756,7 +1709,15 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
           selectedMarks,
           dialog,
           ...(subjectChanged
-            ? { flash: null, history: null, drag: null, dropKind: null, overAxioms: null, newCardAt: null, proposedView: s.proposal?.subject === graph.subject && s.proposedView }
+            ? {
+                flash: null,
+                history: null,
+                drag: null,
+                dropKind: null,
+                overAxioms: null,
+                newCardAt: null,
+                proposedView: s.session?.subject === graph.subject && s.proposedView,
+              }
             : {}),
         });
         if (!sameList(ui.selected, s.selected)) postSelection(ui.selected);
@@ -2065,14 +2026,13 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
         set({ dialog: { kind: 'delete', id } });
       },
 
-      deleteNode(id, keepLean, confirmed = false) {
+      deleteNode(id, confirmed = false) {
         const s = get();
         if (!s.nodes[id] || s.provisional[id]) return;
         if (s.dialog?.kind === 'delete') set({ dialog: null });
         if (locked()) return;
-        const sure = confirmed && !keepLean;
-        const requestId = track({ kind: 'delete', id, keepLean, confirmed: sure });
-        post(webviewMessage('deleteNode', { id, keepLean, ...(sure ? { confirmed: true } : {}), requestId }));
+        const requestId = track({ kind: 'delete', id, confirmed });
+        post(webviewMessage('deleteNode', { id, ...(confirmed ? { confirmed: true } : {}), requestId }));
       },
 
       addArrows(target, sources) {
@@ -2107,7 +2067,12 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
 
       moveCards(positions) {
         const s = get();
-        if (proposedOverlay(s) !== null || locked()) return;
+        // Slice 2h (D2-33): on a session's Proposed view a move is a session step (`moveProposed`), never `moveCards`.
+        if (proposedOverlay(s) !== null) {
+          if (s.session !== null) s.moveProposedCards(positions);
+          return;
+        }
+        if (locked()) return;
         const limit = LIMITS.coordinate;
         const clamp = (v: number) => Math.max(-limit, Math.min(limit, v));
         const moves = Object.entries(positions)
@@ -2137,11 +2102,10 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
 
       selectArrow(source, target, additive) {
         const s = get();
-        // Only drawn arrows can be selected (spec v4 Part 4, T21 ¶3): an old axiom's premises are not drawn (A19). The
-        // proposed view selects nothing (slice 1f, the 1b verification's F3); selecting stays allowed on a locked board.
-        const into = s.nodes[target];
-        if (proposedOverlay(s) !== null) return;
-        if (source === target || s.nodes[source] === undefined || into?.type !== 'PROPOSITION' || !into.premises.includes(source)) return;
+        // Only drawn arrows can be selected (spec v4 Part 4, T21 ¶3): an old axiom's premises are not drawn (A19); slice
+        // 2h: on the board on screen, so a session's Proposed view selects its drawn and accepted Claude arrows, never
+        // one of Claude's still undecided (D2-20). Selecting stays allowed on a locked board.
+        if (!gestureGateOf(s).select || !selectableArrow(s, source, target)) return;
         const arrow = { source, target };
         const has = s.selectedArrows.some((a) => sameArrow(a, arrow));
         if (additive) {
@@ -2155,8 +2119,8 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
 
       selectMark(id, additive) {
         const s = get();
-        // Like an arrow (1b): only a mark that is drawn; nothing in the Proposed view; allowed on a locked board.
-        if (proposedOverlay(s) !== null || s.nodes[id]?.fromNothing !== true) return;
+        // Like an arrow (1b): only a mark that is drawn on the board on screen; allowed on a locked board.
+        if (!gestureGateOf(s).select || boardView(s).nodes[id]?.fromNothing !== true) return;
         const has = s.selectedMarks.includes(id);
         if (additive) {
           set({ selectedMarks: has ? s.selectedMarks.filter((x) => x !== id) : [...s.selectedMarks, id] });
@@ -2169,7 +2133,7 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
 
       selectForMenu(thing) {
         const s = get();
-        const choice = menuSelection(s, thing, proposedOverlay(s) !== null);
+        const choice = menuSelection(s, thing, !gestureGateOf(s).select);
         switch (choice.kind) {
           case 'keep':
             return;
@@ -2187,11 +2151,12 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
 
       selectIncomingArrows(id) {
         const s = get();
-        const node = s.nodes[id];
-        // An old axiom's arrows (declared before v4) are not drawn, so they cannot be selected (A19).
-        if (!node || node.type !== 'PROPOSITION' || proposedOverlay(s) !== null) return false;
+        const node = boardView(s).nodes[id];
+        // An old axiom's arrows (declared before v4) are not drawn, so they cannot be selected (A19). Slice 2h: in a
+        // session's Proposed view, on its board, without Claude's arrows still undecided.
+        if (!node || node.type !== 'PROPOSITION' || !gestureGateOf(s).select) return false;
         const arrows = unique(node.premises)
-          .filter((source) => source !== id && s.nodes[source] !== undefined)
+          .filter((source) => source !== id && selectableArrow(s, source, id))
           .map((source) => ({ source, target: id }));
         const marks = node.fromNothing === true ? [id] : [];
         if (arrows.length === 0 && marks.length === 0) {
@@ -2238,16 +2203,17 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
 
       selectArea(found, additive) {
         const s = get();
-        if (proposedOverlay(s) !== null) return;
-        // As a click would: known cards; drawn arrows only (a proposition's declared premises, A19); drawn marks.
-        const cards = unique(found.cards).filter((id) => s.nodes[id] !== undefined);
+        if (!gestureGateOf(s).select) return;
+        // As a click would: known cards; drawn arrows only (a proposition's declared premises, A19; slice 2h: never one
+        // of Claude's still undecided); drawn marks. On the board on screen (a session's Proposed view included).
+        const nodes = boardView(s).nodes;
+        const cards = unique(found.cards).filter((id) => nodes[id] !== undefined);
         const arrows: ArrowEnds[] = [];
         for (const arrow of found.arrows) {
-          const into = s.nodes[arrow.target];
-          if (arrow.source === arrow.target || s.nodes[arrow.source] === undefined || into?.type !== 'PROPOSITION' || !into.premises.includes(arrow.source)) continue;
+          if (!selectableArrow(s, arrow.source, arrow.target)) continue;
           if (!arrows.some((a) => sameArrow(a, arrow))) arrows.push({ source: arrow.source, target: arrow.target });
         }
-        const marks = unique(found.marks).filter((id) => s.nodes[id]?.fromNothing === true);
+        const marks = unique(found.marks).filter((id) => nodes[id]?.fromNothing === true);
         const selected = additive ? unique([...s.selected, ...cards]) : cards;
         const selectedArrows = additive ? [...s.selectedArrows, ...arrows.filter((a) => !s.selectedArrows.some((b) => sameArrow(a, b)))] : arrows;
         const selectedMarks = additive ? unique([...s.selectedMarks, ...marks]) : marks;
@@ -2266,25 +2232,36 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
       formalize() {
         const s = get();
         const question = formalizeOf(s);
-        if (question.disabled !== null || question.target === null) {
+        // D2-65: while a session's results are hidden, the dialog offers Show results (it never says proved or not).
+        if (question.showResults === true && s.session !== null && s.session.phase === 'stage' && readOnlyReason(s.session) === null) {
+          set({ dialog: { kind: 'formalize', mode: 'results-hidden', id: '', inferences: [], queue: [], confirmed: [] } });
+          return true;
+        }
+        if (question.disabled !== null || question.inferences.length === 0) {
           get().pushToast('info', question.disabled ?? FORMALIZE_TEXTS.none);
           return false;
         }
-        const { target, sources } = question;
-        // AR-8 (★D7 (b)): a source that is a proposition with neither a proof nor a pending claim is asked about first.
-        // One without a Lean statement must be formalised and proved first (AP-10), so it is asked about before any mark.
-        const unproved = sources.filter((id) => s.nodes[id] !== undefined && needsHoldsFirst(s.nodes[id] as TlNode));
-        const bare = unproved.find((id) => !canMarkPending(s.nodes[id] as TlNode));
+        const { inferences } = question;
+        const nodes = boardView(s).nodes;
+        const targets = new Set(inferences.map((i) => i.target));
+        // AR-8 (★D7 (b)): a source that is a proposition with neither a proof nor a pending claim, and no target of the
+        // same request (a chain proves it first, sources first), is asked about first. One without a Lean statement must
+        // be formalised and proved first (AP-10), so it is asked about before any mark.
+        const unproved = unique(inferences.flatMap((i) => i.premises)).filter((id) => !targets.has(id) && nodes[id] !== undefined && needsHoldsFirst(nodes[id] as TlNode));
+        const selectToo = (id: string) => ((nodes[id]?.premises.length ?? 0) > 0 || nodes[id]?.fromNothing === true ? { selectToo: true as const } : {});
+        const bare = unproved.find((id) => !canMarkPending(nodes[id] as TlNode));
         if (bare !== undefined) {
-          set({ dialog: { kind: 'formalize', mode: 'no-statement', id: bare, target, sources, queue: [], confirmed: [] } });
+          set({ dialog: { kind: 'formalize', mode: 'no-statement', id: bare, inferences, queue: [], confirmed: [], ...selectToo(bare) } });
           return true;
         }
         const [first, ...rest] = unproved;
         if (first !== undefined) {
-          set({ dialog: { kind: 'formalize', mode: 'mark-pending', id: first, target, sources, queue: rest, confirmed: [] } });
+          // §5.11: during a session it can't be marked pending (ES-9): select its arrows too, or cancel.
+          const mode = s.session !== null ? 'in-session' : 'mark-pending';
+          set({ dialog: { kind: 'formalize', mode, id: first, inferences, queue: rest, confirmed: [], ...(mode === 'in-session' ? selectToo(first) : {}) } });
           return true;
         }
-        return postStart(target, sources);
+        return postFormalize(inferences);
       },
 
       confirmFormalizePending() {
@@ -2297,7 +2274,8 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
           return;
         }
         set({ dialog: null });
-        if (proposedOverlay(get()) !== null || locked()) return;
+        // Never during a session (ES-9: the base never changes): the Current board is locked then anyway.
+        if (proposedOverlay(get()) !== null || get().session !== null || locked()) return;
         // AR-8: each mark is the user's own edit (claimPending: `axiom n.holds`, one Undo step), made before the run starts
         // (the host applies the edits that reached it before the start first, so the run's base holds them).
         let left = confirmed.length;
@@ -2309,11 +2287,29 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
               requestId: plain((outcome) => {
                 if (!outcome.ok) refused = true;
                 left -= 1;
-                if (left === 0 && !refused) postStart(dialog.target, dialog.sources);
+                if (left === 0 && !refused) postFormalize(dialog.inferences);
               }),
             }),
           );
         }
+      },
+
+      confirmFormalizeSelectToo() {
+        const s = get();
+        const dialog = s.dialog;
+        if (dialog?.kind !== 'formalize' || dialog.selectToo !== true) return;
+        set({ dialog: null });
+        const node = boardView(s).nodes[dialog.id];
+        if (node === undefined || node.type !== 'PROPOSITION') return;
+        // The question as asked, plus L's drawn arrows (or its mark): L becomes a target of the same request.
+        const asked = dialog.inferences.flatMap((i) => (i.premises.length === 0 ? [] : i.premises.map((source) => ({ source, target: i.target }))));
+        const marks = dialog.inferences.filter((i) => i.premises.length === 0).map((i) => i.target);
+        const into = unique(node.premises).filter((source) => selectableArrow(s, source, node.id)).map((source) => ({ source, target: node.id }));
+        const arrows = [...asked, ...into.filter((a) => !asked.some((b) => sameArrow(a, b)))];
+        const mark = into.length === 0 && node.fromNothing === true ? [node.id] : [];
+        set({ selected: [], selectedArrows: arrows, selectedMarks: unique([...marks, ...mark]) });
+        if (s.selected.length > 0) postSelection([]);
+        get().formalize();
       },
 
       setAnswerDraft(setId, index, patch) {
@@ -2351,8 +2347,9 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
 
       stopRun() {
         const run = get().run;
-        if (!run || run.state !== 'interrupted' || get().runBusy !== null) return;
-        post(webviewMessage('discardProposal', { runId: run.runId, requestId: trackRun('stop') }));
+        // An interrupted run that is no session, or one in review whose conversion into a session failed (no session).
+        if (!run || (run.state !== 'interrupted' && run.state !== 'review') || run.session !== undefined || get().runBusy !== null) return;
+        post(webviewMessage('cancelRun', { runId: run.runId, requestId: trackRun('stop') }));
       },
 
       dismissRun() {
@@ -2378,113 +2375,21 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
         const s = get();
         const next = proposed && s.overlay !== null && s.overlay.subject === s.subject;
         if (s.proposedView === next) return;
-        // The proposed view is read-only: an inline edit or a drag of the current board ends.
-        set({ proposedView: next, ...(next ? { editing: null, drag: null, dropKind: null, overAxioms: null } : {}) });
-      },
-
-      reviewGo(step) {
-        const s = get();
-        if (!s.proposal || !s.review) return;
-        const steps = reviewSteps(s.proposal);
-        const next = Math.max(0, Math.min(steps.length - 1, Math.round(step)));
-        setReview({ step: next, ...(pastStatements(steps, next) ? { revealed: true } : {}) });
-      },
-
-      revealResult() {
-        const s = get();
-        if (!s.proposal || !s.review || s.review.revealed) return;
-        setReview({ revealed: true });
-      },
-
-      toggleExplicit(nodeId) {
-        const review = get().review;
-        if (!review) return;
-        const explicit = { ...review.explicit };
-        if (explicit[nodeId]) delete explicit[nodeId];
-        else explicit[nodeId] = true;
-        setReview({ explicit });
-      },
-
-      answerDefinition(id, answer) {
-        const s = get();
-        const question = s.proposal?.definitions.find((d) => d.id === id);
-        if (!s.review || !question) return;
-        setReview({ definitions: { ...s.review.definitions, [id]: answer } });
-        if (answer === 'no') {
-          const gloss = question.gloss ? ` (“${oneLine(question.gloss)}”)` : '';
-          get().openFeedback(`I don't endorse the definition \`${question.name}\`${gloss}: `);
-        }
-      },
-
-      setFeedback(text) {
-        if (get().review) setReview({ feedback: text });
-      },
-
-      openFeedback(prefill = '') {
-        const s = get();
-        if (!s.review) return;
-        setReview({ feedbackOpen: true, feedback: withPrefill(s.review.feedback, prefill), feedbackFocus: s.review.feedbackFocus + 1 });
-        if (!s.runPanelOpen) set({ runPanelOpen: true });
-      },
-
-      closeFeedback() {
-        if (get().review?.feedbackOpen) setReview({ feedbackOpen: false });
-      },
-
-      sendFeedback() {
-        const s = get();
-        const runId = reviewRunId();
-        const text = s.review?.feedback.trim() ?? '';
-        if (!runId || !s.review || text.length === 0 || text.length > LIMITS.textLength || s.runBusy !== null) return false;
-        post(webviewMessage('feedback', { runId, text, requestId: trackRun('feedback', s.review.proposalId) }));
-        return true;
-      },
-
-      acceptProposal() {
-        const s = get();
-        const { proposal, review } = s;
-        if (!proposal || !review || review.proposalId !== proposal.proposalId || review.runId !== proposal.runId || s.runBusy !== null) return false;
-        if (!definitionsApproved(proposal, review.definitions)) return false;
-        const { definitions } = acceptSelection(proposal, review);
-        // The run panel words the outcome by this until the host's answer says for certain (the run may end before it).
-        set({ accepted: { runId: proposal.runId, proposalId: proposal.proposalId, changedFiles: acceptChangesFiles(proposal) } });
-        post(
-          webviewMessage('acceptProposal', {
-            runId: proposal.runId,
-            proposalId: proposal.proposalId,
-            definitions,
-            requestId: trackRun('accept', proposal.proposalId),
-          }),
-        );
-        return true;
-      },
-
-      discardProposal() {
-        const s = get();
-        const runId = reviewRunId();
-        if (!runId || s.runBusy !== null) return;
-        post(webviewMessage('discardProposal', { runId, requestId: trackRun('discard', s.proposal?.proposalId) }));
-      },
-
-      openProposalDiff(file) {
-        const proposal = get().proposal;
-        if (!proposal) return;
-        post(webviewMessage('openProposalDiff', { runId: proposal.runId, proposalId: proposal.proposalId, ...(file ? { file } : {}) }));
-      },
-
-      adoptGhost(ghostId, rationale) {
-        const s = get();
-        const runId = reviewRunId();
-        if (!runId || s.runBusy !== null) return;
-        const reason = rationale ? oneLine(rationale) : '';
-        post(webviewMessage('adoptGhost', { runId, ghostId, ...(reason ? { rationale: reason } : {}), requestId: trackRun('adopt', ghostId) }));
-      },
-
-      rejectGhost(ghostId) {
-        const s = get();
-        const runId = reviewRunId();
-        if (!runId || s.runBusy !== null) return;
-        post(webviewMessage('rejectGhost', { runId, ghostId, requestId: trackRun('reject', ghostId) }));
+        // The Proposed view edits nothing of the Current board: an inline edit or a drag of it ends. Slice 2h: the
+        // selection keeps only what the view switched to shows (its cards, its drawn arrows, its marks).
+        const view = boardView({ ...s, proposedView: next });
+        const into = (a: ArrowEnds) => view.nodes[a.source] !== undefined && view.nodes[a.target]?.premises.includes(a.source) === true;
+        const selected = s.selected.filter((id) => view.nodes[id] !== undefined);
+        const selectedArrows = s.selectedArrows.filter((a) => into(a) && !(next && focusesItem(s.overlay?.proposed.get(`${a.source}->${a.target}`))));
+        const selectedMarks = s.selectedMarks.filter((id) => view.nodes[id]?.fromNothing === true);
+        set({
+          proposedView: next,
+          ...(next ? { editing: null, drag: null, dropKind: null, overAxioms: null } : {}),
+          ...(selected.length !== s.selected.length ? { selected } : {}),
+          ...(selectedArrows.length !== s.selectedArrows.length ? { selectedArrows } : {}),
+          ...(selectedMarks.length !== s.selectedMarks.length ? { selectedMarks } : {}),
+        });
+        if (selected.length !== s.selected.length) postSelection(selected);
       },
 
       showOnBoard(nodeId) {
@@ -2542,6 +2447,20 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
         if (proposedOverlay(get()) !== null || locked(true)) return;
         clearToastUndo();
         post(webviewMessage('redo', { requestId: plain() }));
+      },
+
+      undoInScope() {
+        if (undoScopeOf(get()) === 'session') get().sessionUndo();
+        else get().undo();
+      },
+
+      redoInScope() {
+        if (undoScopeOf(get()) === 'session') get().sessionRedo();
+        else get().redo();
+      },
+
+      setFocusInSession(inside) {
+        if (get().focusInSession !== inside) set({ focusInSession: inside });
       },
 
       selectSubject(subject) {
@@ -2630,8 +2549,12 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
 }
 
 function dialogStillValid(dialog: DialogState, nodes: Readonly<Record<string, TlNode>>): boolean {
-  if (dialog.kind === 'revert') return true;
-  // Slice 1e: the AR-8 question needs its whole question still on the board.
-  if (dialog.kind === 'formalize') return [dialog.id, dialog.target, ...dialog.sources].every((id) => nodes[id] !== undefined);
+  // Slice 2g: a session's dialogs are about its items; the session slice checks them on every `session` message.
+  if (dialog.kind === 'revert' || isSessionDialog(dialog)) return true;
+  // Slice 1e: the AR-8 question needs its whole question still on the board (2h: every inference's cards).
+  if (dialog.kind === 'formalize') {
+    const ids = [...(dialog.id !== '' ? [dialog.id] : []), ...dialog.inferences.flatMap((i) => [i.target, ...i.premises])];
+    return ids.every((id) => nodes[id] !== undefined);
+  }
   return nodes[dialog.id] !== undefined;
 }

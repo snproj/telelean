@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import type { ActionOutcome, HistoryListing, HostToWebviewMessage, ProposalView, RunView, TlGraph, WebviewToHostMessage, WorkspaceState } from '@telelean/core';
+import type { ActionOutcome, HistoryListing, HostToWebviewMessage, RunView, SessionView, TlGraph, WebviewToHostMessage, WorkspaceState } from '@telelean/core';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -15,9 +15,9 @@ export interface HarnessConfig {
   workspace?: WorkspaceState;
   history?: HistoryListing;
   autoReply?: boolean;
-  /** M2: sent after the graph, as the extension does on `ready`. */
+  /** M2: sent after the graph, as the extension does on `ready`. Slice 2h: the root's edit session after it. */
   run?: RunView;
-  proposal?: ProposalView;
+  session?: SessionView;
 }
 
 declare global {
@@ -50,9 +50,12 @@ export interface OpenOptions {
   autoReply?: boolean;
   /** Webview state before the page loads (e.g. { vocabCollapsed: false }). */
   state?: Record<string, unknown>;
-  /** M2: the root's run and its proposal, sent after the graph (the `run` and `proposal` messages). */
+  /**
+   * M2: the root's run, sent after the graph (the `run` message). Slice 2h: its edit session after it (`session`; M2's
+   * `proposal` is retired).
+   */
   run?: RunView;
-  proposal?: ProposalView;
+  session?: SessionView;
   /**
    * M2: pins the page's clock (Date.now) to this time, so the run panel's agent clock (which runs on between host
    * updates) shows exactly the fixture's figures. Timers keep running.
@@ -73,7 +76,7 @@ export async function openBoard(page: Page, graph: TlGraph, theme: Theme = 'dark
     ...(options.history ? { history: options.history } : {}),
     ...(options.autoReply === false ? { autoReply: false } : {}),
     ...(options.run ? { run: options.run } : {}),
-    ...(options.proposal ? { proposal: options.proposal } : {}),
+    ...(options.session ? { session: options.session } : {}),
   };
   if (options.clock) await page.clock.setFixedTime(new Date(options.clock));
   await page.addInitScript(

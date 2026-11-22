@@ -5,15 +5,17 @@
  *    needs fresh Lean facts), or keep them marked broken, or cancel (spec v4: no other kind change breaks a proof);
  *  - rationale: the optional "Why do you hold it?" of a change to Axiom (D-14: Skip is fine), titled like the action,
  *    "Move to axioms" (slice 1f carry-over 4);
- *  - delete: who declares it, which proofs use it, which statements mention it (D-18); delete the card with or
- *    without its Lean code (Cancel has the focus, so Delete then Enter deletes nothing). When the host refuses to
- *    delete the Lean code because other declarations use it, the dialog opens again listing them (they would stop
- *    compiling): "Delete anyway", card only, or cancel;
+ *  - delete: who declares it, which proofs use it, which statements mention it (D-18); delete the card with its Lean
+ *    code, or cancel (Cancel has the focus, so Delete then Enter deletes nothing). When other declarations use that
+ *    Lean code, the dialog opens again listing them (they would stop compiling): "Delete anyway", or cancel. Slice 2i
+ *    (spec v4 S9, ES-9): there is no "card only" choice, since it left `axiom ….holds` behind as an unmarked axiom;
  *  - revert: "Revert to this" in the history dropdown (D-33);
  *  - arrows (spec v4 slice 1b): an arrow change's impact, confirmed before it is sent (an axiom becomes a proposition,
  *    AR-6; arrows that proofs use, A16);
  *  - formalize (spec v4.1 AR-8, slice 1e): Formalize for dependencies asks about a source that is a proposition with
  *    neither a proof nor a pending claim: mark it pending and continue, or cancel; without a Lean statement, Cancel only.
+ *    Slice 2h (§5.11): during a session it can't be marked pending (`in-session`); `in-session` and `no-statement`
+ *    offer "Select the arrows into ‹L› too" when L has arrows or its mark; `results-hidden` (D2-65) offers Show results.
  * The host's lists name cards by id and other declarations by their Lean names: a card shows by its sentence (this
  * subject's from the board, another subject's from the host's `dependentCards`, with its subject), anything else by
  * its Lean name in code font.
@@ -23,8 +25,17 @@
  * only when nothing does; (2) the dialogs' own words are singular for one dependent ("Rewrite that proof …", "Keep
  * that proof …") and plural otherwise; (3) a kind change re-asked by the host lists the host's dependents and says
  * that it found more than the dialog showed before.
+ *
+ * Slice 2g (docs/slice2-plan.md 5.2, 5.6, 5.9; §3.6): an edit session's dialogs, each inside `data-undo-scope="session"`:
+ *  - cascade: a decision (or Undo) that takes Accepts away lists them first, with the hidden-results sentence while the
+ *    results are hidden (D2-64); Continue sends it again, `confirmed`; Cancel sends nothing;
+ *  - reveal: Show results, Raw Lean diff… while the results are hidden, and Show Claude's activity: every result of the
+ *    stage is shown, noted as seen early (D2-61, D2-10);
+ *  - hold-as: Accept on an Add premise asks how the user holds it, never defaulted (as an axiom, or as a proposition
+ *    pending proof), with an optional one-line Why; one already written offers only "as an axiom" (AF12);
+ *  - exit-session: what Exit discards (listed items only), and that Claude's step stops; it cannot be undone (D2-36).
  */
-import type { DependentCard } from '@telelean/core';
+import { LIMITS, REVIEW_TEXTS, type DependentCard, type ItemView } from '@telelean/core';
 import { useMemo, useState } from 'react';
 import { ExternalUserItem } from '../common/ExternalUser';
 import { InlineCode } from '../common/InlineCode';
@@ -32,9 +43,12 @@ import { Modal } from '../common/Modal';
 import { pasteOneLine } from '../common/OneLineInput';
 import { KIND_GLYPH, KIND_NOUN } from '../labels';
 import { deleteDependents } from '../model/cardData';
-import { formatTime } from '../model/format';
+import { formatTime, oneLine } from '../model/format';
+import { itemLabelParts, markAgent, agentPhrases, wordsIn } from '../model/review';
+import { Label } from '../run/review/parts';
 import { useBoard, useBoardActions } from '../state/context';
-import type { DialogState } from '../state/store';
+import type { SessionDialogState } from '../state/session';
+import { boardView, type DialogState } from '../state/store';
 
 /**
  * A dependent: a card by its sentence (a card of this board from the board itself, any other from the host's `card`,
@@ -182,12 +196,6 @@ function DeleteDialog({ dialog }: { dialog: Extract<DialogState, { kind: 'delete
   const affected = useMemo(() => deleteDependents(dialog.id, { nodes, edges, order }), [dialog.id, nodes, edges, order]);
   if (!node) return null;
   const hasLean = node.lean.statement !== undefined || node.lean.code !== undefined;
-  const cardOnlyNote = hasLean ? (
-    <p className="tl-dialog__note">
-      “Card only” keeps the Lean declarations: without the card, <code>axiom …holds</code> becomes an unmarked axiom, a hidden
-      assumption Lean still takes as given, and the board flags it in the Vocabulary group.
-    </p>
-  ) : null;
 
   if (dialog.dependents) {
     // The host refused to delete the Lean code: these declarations (cards, lemmas without a card, other subjects'
@@ -203,7 +211,7 @@ function DeleteDialog({ dialog }: { dialog: Extract<DialogState, { kind: 'delete
     return (
       <Modal labelledBy="tl-dialog-title" testId="dialog-delete" onCancel={() => actions.closeDialog()}>
         <h2 id="tl-dialog-title" className="tl-dialog__title">
-          Delete its Lean code too?
+          Delete it anyway?
         </h2>
         <p className="tl-dialog__subject">“{node.naturalName}”</p>
         <p data-testid="delete-breaks-explanation">{explanation}</p>
@@ -218,13 +226,9 @@ function DeleteDialog({ dialog }: { dialog: Extract<DialogState, { kind: 'delete
           “Delete anyway” deletes the card and its Lean code; {count === 1 ? 'that declaration then shows' : 'those declarations then show'} Lean
           errors until you change {count === 1 ? 'it' : 'them'}. Undo brings the code back.
         </p>
-        {cardOnlyNote}
         <div className="tl-dialog__buttons">
-          <button type="button" className="tl-button tl-button--danger" onClick={() => actions.deleteNode(node.id, false, true)}>
+          <button type="button" className="tl-button tl-button--danger" onClick={() => actions.deleteNode(node.id, true)}>
             Delete anyway
-          </button>
-          <button type="button" className="tl-button tl-button--secondary" onClick={() => actions.deleteNode(node.id, true)}>
-            Delete card only, keep Lean
           </button>
           <button type="button" className="tl-button tl-button--secondary" data-autofocus onClick={() => actions.closeDialog()}>
             Cancel
@@ -270,16 +274,10 @@ function DeleteDialog({ dialog }: { dialog: Extract<DialogState, { kind: 'delete
           </ul>
         </div>
       ) : null}
-      {cardOnlyNote}
       <div className="tl-dialog__buttons">
-        <button type="button" className="tl-button tl-button--danger" onClick={() => actions.deleteNode(node.id, false)}>
+        <button type="button" className="tl-button tl-button--danger" onClick={() => actions.deleteNode(node.id)}>
           {hasLean ? 'Delete card and its Lean code' : 'Delete card'}
         </button>
-        {hasLean ? (
-          <button type="button" className="tl-button tl-button--secondary" onClick={() => actions.deleteNode(node.id, true)}>
-            Delete card only, keep Lean
-          </button>
-        ) : null}
         <button type="button" className="tl-button tl-button--secondary" data-autofocus onClick={() => actions.closeDialog()}>
           Cancel
         </button>
@@ -336,32 +334,58 @@ function ArrowsDialog({ dialog }: { dialog: Extract<DialogState, { kind: 'arrows
  * changes nothing.
  */
 function FormalizeDialog({ dialog }: { dialog: Extract<DialogState, { kind: 'formalize' }> }) {
-  const node = useBoard((s) => s.nodes[dialog.id]);
+  const node = useBoard((s) => boardView(s).nodes[dialog.id]);
   const actions = useBoardActions();
-  const sentence = `“${node?.naturalName ?? dialog.id}”`;
+  const name = node?.naturalName ?? dialog.id;
+  const sentence = `“${name}”`;
   const asked = dialog.confirmed.length + 1;
   const total = asked + dialog.queue.length;
-  const pending = dialog.mode === 'mark-pending';
+  const mode = dialog.mode;
+  // Slice 2h (§5.11): the question per mode; D2-65's `results-hidden` names no card and never says proved or not.
+  const question =
+    mode === 'results-hidden'
+      ? REVIEW_TEXTS.formalizeResultsHidden
+      : mode === 'mark-pending'
+        ? `${sentence} is not proved. Mark it pending (assumed until proved), or cancel?`
+        : mode === 'in-session'
+          ? REVIEW_TEXTS.notPendableInSession(name)
+          : `${sentence} has no Lean statement and no proof yet: formalize and prove it first.`;
   return (
     <Modal labelledBy="tl-dialog-title" testId="dialog-formalize" onCancel={() => actions.closeDialog()}>
       <h2 id="tl-dialog-title" className="tl-dialog__title">
-        Formalize for dependencies{total > 1 ? ` (${asked} of ${total})` : ''}
+        Formalize for dependencies{mode !== 'results-hidden' && total > 1 ? ` (${asked} of ${total})` : ''}
       </h2>
-      <p className="tl-dialog__detail" data-testid="formalize-question">
-        {pending
-          ? `${sentence} is not proved. Mark it pending (assumed until proved), or cancel?`
-          : `${sentence} has no Lean statement and no proof yet: formalize and prove it first.`}
+      <p className="tl-dialog__detail" data-testid="formalize-question" data-mode={mode}>
+        {question}
       </p>
-      {pending ? (
+      {mode === 'mark-pending' ? (
         <p className="tl-dialog__note">
-          Marking it pending adds an axiom for its statement to your files before the run starts (your own edit: Undo takes it back). Cards that rest on it are
+          Marking it pending adds an axiom for its statement to your files before the session starts (your own edit: Undo takes it back). Cards that rest on it are
           not established until it is proved.
         </p>
       ) : null}
       <div className="tl-dialog__buttons">
-        {pending ? (
+        {mode === 'mark-pending' ? (
           <button type="button" className="tl-button" data-testid="formalize-mark-pending" onClick={() => actions.confirmFormalizePending()}>
             Mark pending and continue
+          </button>
+        ) : null}
+        {dialog.selectToo === true ? (
+          <button type="button" className="tl-button" data-testid="formalize-select-too" onClick={() => actions.confirmFormalizeSelectToo()}>
+            {REVIEW_TEXTS.selectArrowsInto(name)}
+          </button>
+        ) : null}
+        {mode === 'results-hidden' ? (
+          <button
+            type="button"
+            className="tl-button"
+            data-testid="formalize-show-results"
+            onClick={() => {
+              actions.closeDialog();
+              actions.openReveal('show-result');
+            }}
+          >
+            {REVIEW_TEXTS.showResults}
           </button>
         ) : null}
         <button type="button" className="tl-button tl-button--secondary" data-testid="formalize-cancel" data-autofocus onClick={() => actions.closeDialog()}>
@@ -396,6 +420,169 @@ function RevertDialog({ dialog }: { dialog: Extract<DialogState, { kind: 'revert
   );
 }
 
+function CascadeDialog({ dialog }: { dialog: Extract<SessionDialogState, { kind: 'cascade' }> }) {
+  const session = useBoard((s) => s.session);
+  const actions = useBoardActions();
+  const items = session?.items ?? NO_ITEMS;
+  const phrases = useMemo(() => (session !== null ? agentPhrases(session) : []), [session]);
+  return (
+    <Modal labelledBy="tl-dialog-title" testId="dialog-cascade" onCancel={() => actions.closeDialog()}>
+      <div data-undo-scope="session">
+        <h2 id="tl-dialog-title" className="tl-dialog__title">
+          {dialog.lead}
+        </h2>
+        {dialog.cascade.length > 0 ? (
+          <ul className="tl-dialog__list" data-testid="cascade-list">
+            {dialog.cascade.map((entry) => (
+              <li key={entry.item} className="tl-dialog__item" data-item={entry.item}>
+                <CascadeLabel id={entry.item} items={items} phrases={phrases} />{' '}
+                <span className="tl-dialog__from">
+                  (<Label parts={markAgent(entry.why, phrases)} />)
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {dialog.hiddenResults ? (
+          <p className="tl-dialog__note tl-dialog__note--attention" data-testid="cascade-hidden-results">
+            {REVIEW_TEXTS.cascadeHiddenResults}
+          </p>
+        ) : null}
+        <div className="tl-dialog__buttons">
+          <button type="button" className="tl-button" data-testid="cascade-continue" onClick={() => actions.confirmCascade()}>
+            {CONTINUE}
+          </button>
+          <button type="button" className="tl-button tl-button--secondary" data-testid="cascade-cancel" data-autofocus onClick={() => actions.closeDialog()}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+/** An item the cascade names: its label in parts, else its id (Claude's phrases marked). */
+function CascadeLabel({ id, items, phrases }: { id: string; items: readonly ItemView[]; phrases: readonly string[] }) {
+  const item = items.find((i) => i.id === id);
+  return <Label parts={item !== undefined ? itemLabelParts(item) : markAgent(id, phrases)} />;
+}
+
+/** Builder 2g: the cascade dialog's confirm button (§5.6's "Continue"). */
+const CONTINUE = 'Continue';
+const NO_ITEMS: readonly ItemView[] = [];
+
+const REVEAL_TITLE = { 'show-result': REVIEW_TEXTS.showResults, 'raw-diff': REVIEW_TEXTS.rawDiff, activity: REVIEW_TEXTS.showClaudesActivity } as const;
+
+function RevealDialog({ dialog }: { dialog: Extract<SessionDialogState, { kind: 'reveal' }> }) {
+  const undecided = useBoard((s) => s.session?.results.waitingFor.length ?? 0);
+  const hidden = useBoard((s) => s.session?.results.shown === false);
+  const actions = useBoardActions();
+  const text = dialog.via === 'raw-diff' ? REVIEW_TEXTS.rawDiffReveals : REVIEW_TEXTS.showResultsConfirm(undecided);
+  return (
+    <Modal labelledBy="tl-dialog-title" testId="dialog-reveal" onCancel={() => actions.closeDialog()}>
+      <div data-undo-scope="session" data-via={dialog.via}>
+        <h2 id="tl-dialog-title" className="tl-dialog__title">
+          {REVEAL_TITLE[dialog.via]}
+        </h2>
+        <p className="tl-dialog__detail" data-testid="reveal-text">
+          {text}
+        </p>
+        {dialog.via === 'raw-diff' && hidden ? <p className="tl-dialog__note">{REVIEW_TEXTS.showResultsConfirm(undecided)}</p> : null}
+        <div className="tl-dialog__buttons">
+          <button type="button" className="tl-button" data-testid="reveal-confirm" onClick={() => actions.confirmReveal()}>
+            {REVEAL_TITLE[dialog.via].replace('…', '')}
+          </button>
+          <button type="button" className="tl-button tl-button--secondary" data-testid="reveal-cancel" data-autofocus onClick={() => actions.closeDialog()}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function HoldAsDialog({ dialog }: { dialog: Extract<SessionDialogState, { kind: 'hold-as' }> }) {
+  const item = useBoard((s) => s.session?.items.find((i) => i.id === dialog.item));
+  const actions = useBoardActions();
+  const [choice, setChoice] = useState<'axiom' | 'pending' | null>(null);
+  const [why, setWhy] = useState('');
+  const detail = item?.detail.kind === 'add-premise' ? item.detail : null;
+  const written = detail?.writtenInReview === true;
+  const sentence = detail?.sentence ?? dialog.item;
+  const question = REVIEW_TEXTS.holdAsQuestion(sentence);
+  const missing = REVIEW_TEXTS.holdAsMissing(sentence);
+  return (
+    <Modal labelledBy="tl-dialog-title" testId="dialog-hold-as" onCancel={() => actions.closeDialog()}>
+      <div data-undo-scope="session">
+        <h2 id="tl-dialog-title" className="tl-dialog__title">
+          {/* The sentence is Claude's (an Add premise, D-15): it stays in Claude's style in the question. */}
+          <Label parts={detail === null ? [{ kind: 'text', text: question }] : wordsIn(question, sentence, 'agent')} />
+        </h2>
+        <fieldset className="tl-dialog__field" data-testid="hold-as-options">
+          <label className="tl-check">
+            <input type="radio" name="tl-hold-as" data-testid="hold-as-axiom" checked={choice === 'axiom'} onChange={() => setChoice('axiom')} />
+            {REVIEW_TEXTS.holdAsAxiom}
+          </label>
+          {!written ? (
+            <label className="tl-check">
+              <input type="radio" name="tl-hold-as" data-testid="hold-as-pending" checked={choice === 'pending'} onChange={() => setChoice('pending')} />
+              {REVIEW_TEXTS.holdAsPending}
+            </label>
+          ) : null}
+        </fieldset>
+        <label className="tl-dialog__field">
+          <span className="tl-dialog__heading">Why (optional)</span>
+          <input
+            className="tl-input"
+            data-testid="hold-as-why"
+            value={why}
+            maxLength={LIMITS.textLength}
+            onChange={(e) => setWhy(oneLine(e.target.value))}
+            onPaste={(e) => pasteOneLine(e, setWhy)}
+          />
+        </label>
+        {choice === null ? (
+          <p className="tl-dialog__note">
+            <Label parts={detail === null ? [{ kind: 'text', text: missing }] : wordsIn(missing, sentence, 'agent')} />
+          </p>
+        ) : null}
+        <div className="tl-dialog__buttons">
+          <button type="button" className="tl-button" data-testid="hold-as-accept" disabled={choice === null} onClick={() => choice !== null && actions.confirmHoldAs(choice, why)}>
+            {REVIEW_TEXTS.accept}
+          </button>
+          <button type="button" className="tl-button tl-button--secondary" data-autofocus onClick={() => actions.closeDialog()}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function ExitSessionDialog({ dialog }: { dialog: Extract<SessionDialogState, { kind: 'exit-session' }> }) {
+  const actions = useBoardActions();
+  return (
+    <Modal labelledBy="tl-dialog-title" testId="dialog-exit-session" onCancel={() => actions.closeDialog()}>
+      <div data-undo-scope="session">
+        <h2 id="tl-dialog-title" className="tl-dialog__title">
+          {REVIEW_TEXTS.exitSession}
+        </h2>
+        <p className="tl-dialog__detail" data-testid="exit-text">
+          {REVIEW_TEXTS.exitConfirm(dialog.accepted, dialog.inReview, dialog.stepRunning)}
+        </p>
+        <div className="tl-dialog__buttons">
+          <button type="button" className="tl-button tl-button--danger" data-testid="exit-confirm" onClick={() => actions.confirmExitSession()}>
+            {REVIEW_TEXTS.exitSession}
+          </button>
+          <button type="button" className="tl-button tl-button--secondary" data-testid="exit-back" data-autofocus onClick={() => actions.closeDialog()}>
+            {REVIEW_TEXTS.back}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 export function Dialogs() {
   const dialog = useBoard((s) => s.dialog);
   if (!dialog) return null;
@@ -411,6 +598,14 @@ export function Dialogs() {
     case 'revert':
       return <RevertDialog key={dialog.entry.id} dialog={dialog} />;
     case 'formalize':
-      return <FormalizeDialog key={`${dialog.target}-${dialog.id}-${dialog.mode}`} dialog={dialog} />;
+      return <FormalizeDialog key={`${dialog.inferences.map((i) => i.target).join(',')}-${dialog.id}-${dialog.mode}`} dialog={dialog} />;
+    case 'cascade':
+      return <CascadeDialog dialog={dialog} />;
+    case 'reveal':
+      return <RevealDialog key={dialog.via} dialog={dialog} />;
+    case 'hold-as':
+      return <HoldAsDialog key={dialog.item} dialog={dialog} />;
+    case 'exit-session':
+      return <ExitSessionDialog dialog={dialog} />;
   }
 }

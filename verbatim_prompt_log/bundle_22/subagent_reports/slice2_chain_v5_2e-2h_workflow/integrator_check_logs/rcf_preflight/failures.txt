@@ -1,0 +1,4 @@
+vt_runner:      × AF4: a Shaky decline of a definition makes its dependents P1 and P2 to be redone with their content kept: the results stay hidden, Submit's gate names them; once both are declined as Shaky the results show and Submit can run 366ms
+vt_runner:      × a stage with Formalize(pg) and the Result; then Reject pg 349ms
+vt_runner:  FAIL  test/run/session.review.test.ts > Shaky (D2-48, AF4) and the cascades > AF4: a Shaky decline of a definition makes its dependents P1 and P2 to be redone with their content kept: the results stay hidden, Submit's gate names them; once both are declined as Shaky the results show and Submit can run
+vt_runner:  FAIL  test/run/zz.explore.test.ts > explore > a stage with Formalize(pg) and the Result; then Reject pg

@@ -57,9 +57,15 @@ import { diffFileMaps, inverseMerge } from '../proposal/files.js';
 import { sha256Text } from '../semantic/project.js';
 import type { ShadowCommit } from '../shadow/types.js';
 import { submitFeedbackTurn, type FeedbackItem } from './prompts.js';
-import { endedTargets, filesModel, SESSION_VIEW_FAILED, SessionRunner, sessionSameFiles, toSessionRecords } from './session.js';
+import { DECISIONS_DID_NOT_PASS, endedTargets, filesModel, SESSION_VIEW_FAILED, SessionRunner, sessionSameFiles, toSessionRecords } from './session.js';
 import { errorText, okOutcome, refused, type ActiveRun } from './step.js';
 import type { PersistedSession, PersistedStep, SessionWrite } from './types.js';
+
+/**
+ * An Accept refused under the "did not pass" heading that a decision's judge made (fixer 2e r1, A-F2): not "Claude's step
+ * did not pass" (no step ran), and it says what lifts it. Core's text for the heading of a step stays for a step's.
+ */
+export const DECIDED_DID_NOT_PASS = `${DECISIONS_DID_NOT_PASS}: nothing can be accepted until it passes. Undo or change a decision to check it again.`;
 
 /** A review action with no stage judgement to read (a judge that could not run, A-F4): refused, fail closed. */
 export const NO_JUDGEMENT = 'telelean has no check of the working copy to decide on: reload the window to check it again, or Exit the session.';
@@ -70,6 +76,8 @@ type TakenOut = Extract<SessionAction, { kind: 'decide' }>['takenOut'][number];
 type WriteAction = Extract<SessionAction, { kind: 'decide' | 'reveal' }>;
 
 const isDeclinedOut = (r: Pick<ItemRecord, 'status' | 'decline'>): boolean => r.status === 'declined' && r.decline?.option !== 'shaky';
+/** Its content is out of ws/: declined by Reject or plainly, taken out to be redone, or withdrawn. */
+const contentOut = (r: Pick<ItemRecord, 'status' | 'decline' | 'redo'>): boolean => isDeclinedOut(r) || r.redo?.reverted === true || r.status === 'withdrawn';
 const isShaky = (r: Pick<ItemRecord, 'status' | 'decline'>): boolean => r.decline?.option === 'shaky' && (r.status === 'declined' || r.status === 'to-be-redone');
 const PREMISE_ENTRY_KINDS: ReadonlySet<LedgerEntry['kind']> = new Set<LedgerEntry['kind']>(['premise', 'mark-removed', 'completion']);
 /** A written premise's own ledger entries (§3.8): its `premise`, `mark-removed` and `completion` entries. */
@@ -120,12 +128,35 @@ export abstract class ReviewRunner extends SessionRunner {
     return undefined;
   }
 
-  /** The reducer's input: the records, the stage judgement they were reconciled with, and the view's labels (§2.9). */
-  protected reviewState(run: ActiveRun): ReviewState {
+  /**
+   * The reducer's input: the records, the stage judgement they were reconciled with, and the view's labels (§2.9).
+   *
+   * For an Undo (builder 2e): an item whose Accept the undone action took away and whose content that action took out
+   * of ws/ (a Reject, a plain decline, their cascades) has no draft in the stage judgement, hence no class, and core's
+   * reducer reads a missing class as every badge (fail closed), so restoring its Accept would always be refused with
+   * RV-7's text. Such an item gets, in both class maps and only where the judgement has none, the badges its restored
+   * Accept recorded: the Undo brings its content back, and the judge that follows classifies it again and returns it to
+   * review if its badges grew (RV-7, D2-23); Submit and Apply wait for that judge (AF3).
+   */
+  protected reviewState(run: ActiveRun, action?: ReviewAction): ReviewState {
     const s = this.sessionOf(run);
     const rt = this.runtimeOf(run);
     const view = rt.view ?? this.buildView(run);
-    return reviewStateOf(toSessionRecords(s), rt.judgement, view !== null ? sessionLabels(view) : undefined);
+    const state = reviewStateOf(toSessionRecords(s), rt.judgement, view !== null ? sessionLabels(view) : undefined);
+    const top = s.stack.done.at(-1);
+    if (action?.kind !== 'undo' || top === undefined || top.id !== action.step || (top.kind !== 'decide' && top.kind !== 'reveal')) return state;
+    const byId = new Map(s.items.map((r) => [r.id, r]));
+    const classes = { ...state.classes };
+    const classesBeforeReveal = { ...state.classesBeforeReveal };
+    for (const c of top.changes) {
+      const accepted = c.before.accepted;
+      const r = byId.get(c.item);
+      if (accepted === undefined || r === undefined || !contentOut(r)) continue;
+      const recorded = { belief: accepted.belief, changesProved: accepted.changesProved, reasons: [], complete: true };
+      if (!Object.hasOwn(classes, r.key)) classes[r.key] = recorded;
+      if (!Object.hasOwn(classesBeforeReveal, r.key)) classesBeforeReveal[r.key] = recorded;
+    }
+    return { ...state, classes, classesBeforeReveal };
   }
 
   /** Whether the stage's results are shown now (§4.7, `resultsState` on the records and `classesBeforeReveal`). */
@@ -154,11 +185,13 @@ export abstract class ReviewRunner extends SessionRunner {
       const done = await this.carryOut(run, action);
       moved = done.moved;
       wrote = done.outcome.ok;
+      // The judge is due from inside the write (AF3): the session never reads as idle between this write and its
+      // judge, so Submit, Apply, a mid-stage Formalize and Retry, which wait for an idle session, wait for it too.
+      if (moved) this.requestJudge(run);
       return done.outcome;
     });
-    if (moved) this.requestJudge(run);
     // The view was built while the write held the queue (`judging`): once nothing is queued or judged, it is posted again.
-    else if (wrote && !this.isJudging(run)) await this.save(run, SESSION_CHANGE_ONLY);
+    if (!moved && wrote && !this.isJudging(run)) await this.save(run, SESSION_CHANGE_ONLY);
     return outcome;
   }
 
@@ -174,17 +207,26 @@ export abstract class ReviewRunner extends SessionRunner {
    * the records alone in one run.json write, or the ItemWrite's four writes. `replay`: recovery runs a write found in
    * flight again (its step 1 is written again, the same).
    */
-  protected async carryOut(run: ActiveRun, action: ReviewAction): Promise<{ outcome: ActionOutcome; moved: boolean }> {
+  protected async carryOut(run: ActiveRun, given: ReviewAction): Promise<{ outcome: ActionOutcome; moved: boolean }> {
+    // (2f) An Exit that came in while this waited in the queue (Exit skips the queues, AF14) ended the session.
+    if (!this.live(run)) return { outcome: refused('conflict', 'This run has ended.'), moved: false };
     const s = this.sessionOf(run);
-    const state = this.reviewState(run);
+    // D2-33 (2f): a move's `before` is the positions as they are when its write starts (the runner keeps them).
+    const action: ReviewAction =
+      given.kind === 'move' ? { kind: 'move', before: Object.fromEntries(Object.keys(given.after).map((id) => [id, s.positions?.[id] ?? null])), after: given.after } : given;
+    const state = this.reviewState(run, action);
     const at = this.iso();
     const out = reduceReview(state, action, at);
-    if (!out.ok) return { outcome: this.refusalOf(out, action), moved: false };
+    if (!out.ok) {
+      const refusal = this.refusalOf(out, action, state);
+      if (!refusal.ok && refusal.error === REVIEW_TEXTS.acceptDidNotPass && s.decidedHeading !== undefined) return { outcome: { ...refusal, error: DECIDED_DID_NOT_PASS }, moved: false };
+      return { outcome: refusal, moved: false };
+    }
     // A group Accept that took nothing, Show results while they are shown: nothing changes, no stack step.
     if (out.stack === state.stack && out.write === null) return { outcome: this.okOf(out), moved: false };
-    const next = this.recordsAfter(s, out, at);
+    const next = this.recordsAfter(s, out, at, action);
     const write = out.write;
-    if (write === null) return { outcome: await this.recordsOnly(run, s, next, out), moved: false };
+    if (write === null) return { outcome: this.afterWrite(run, s, out, await this.recordsOnly(run, s, next, out)), moved: false };
     let plan: PlannedWrite;
     try {
       plan = await this.planItemWrite(run, s, out, write, action);
@@ -196,7 +238,7 @@ export abstract class ReviewRunner extends SessionRunner {
     this.applyPlanToRecords(next, plan, write, s, undefined);
     if (plan.changes.length === 0) {
       // Nothing in ws/ changes (the content was out already): the records alone, with the ledger the plan left.
-      return { outcome: await this.recordsOnly(run, s, next, out), moved: false };
+      return { outcome: this.afterWrite(run, s, out, await this.recordsOnly(run, s, next, out)), moved: false };
     }
     // Step 1: the write in flight.
     s.inFlight = { action: { kind: 'decide', action }, parent: s.head };
@@ -224,11 +266,28 @@ export abstract class ReviewRunner extends SessionRunner {
     } catch (e) {
       return { outcome: refused('internal', REVIEW_TEXTS.saveFailed(errorText(e))), moved: true };
     }
-    return { outcome: this.okOf(out), moved: true };
+    return { outcome: this.afterWrite(run, s, out, this.okOf(out)), moved: true };
   }
 
-  /** The records after the reducer's outcome (a copy of the session): statuses, questions, declined arrows, the force, the stack, events. */
-  protected recordsAfter(s: PersistedSession, out: ReviewOk, at: string): PersistedSession {
+  /** A review write that was made (`outcome.ok`): the writes it makes due follow it in the queue (`afterReviewWrite`). */
+  protected afterWrite(run: ActiveRun, before: PersistedSession, out: ReviewOk, outcome: ActionOutcome): ActionOutcome {
+    if (outcome.ok) this.afterReviewWrite(run, before, out);
+    return outcome;
+  }
+
+  /**
+   * §3.8 (2f, D2-71): after a review write is made, inside the write queue, the writes it made due join the queue after
+   * it (an Accept, or an Undo or Redo that accepts a premise again: its premise write). None here (premises.ts).
+   */
+  protected afterReviewWrite(_run: ActiveRun, _before: PersistedSession, _out: ReviewOk): void {}
+
+  /**
+   * The records after the reducer's outcome (a copy of the session): statuses, questions, declined arrows, the force, the
+   * stack, events; and (2f, D2-33) the positions of the cards moved on the Proposed view, which the runner keeps (the
+   * reducer records a move on the stack only): a move sets its `after`, its Undo puts its `before` back (a card that had
+   * none loses its position), its Redo sets its `after` again.
+   */
+  protected recordsAfter(s: PersistedSession, out: ReviewOk, at: string, action?: ReviewAction): PersistedSession {
     const next: PersistedSession = structuredClone(s);
     next.items = structuredClone(out.items);
     next.inferences = structuredClone(out.inferences);
@@ -240,6 +299,16 @@ export abstract class ReviewRunner extends SessionRunner {
     const lastId = s.events.at(-1)?.id ?? 0;
     next.events = [...s.events, ...out.events.map((e, k) => ({ id: lastId + k + 1, at, text: e.text, items: [...e.items] }))].slice(-50);
     next.viewVersion += 1;
+    const moved = movedPositions(out, action);
+    if (moved !== undefined) {
+      const positions = { ...(s.positions ?? {}) };
+      for (const [card, p] of Object.entries(moved)) {
+        if (p === null) delete positions[card];
+        else positions[card] = { x: p.x, y: p.y };
+      }
+      if (Object.keys(positions).length > 0) next.positions = positions;
+      else delete next.positions;
+    }
     return next;
   }
 
@@ -274,13 +343,19 @@ export abstract class ReviewRunner extends SessionRunner {
     return refused('internal', `telelean could not carry out your decision: ${errorText(e)}`);
   }
 
-  /** The reducer's refusal as an ActionOutcome; `needs-confirmation` with its dialog's lead-in (§3.6, §5.12, D2-64). */
-  protected refusalOf(out: Exclude<ReviewOutcome, { ok: true }>, action: ReviewAction): ActionOutcome {
+  /**
+   * The reducer's refusal as an ActionOutcome; `needs-confirmation` with its dialog's lead-in (§3.6, §5.12, D2-64): a
+   * decision's by what it does, a Redo's by the decisions it sends again (the undone action's request), an Undo's
+   * "Undoing it also returns these accepted items to review:".
+   */
+  protected refusalOf(out: Exclude<ReviewOutcome, { ok: true }>, action: ReviewAction, state?: ReviewState): ActionOutcome {
     if (out.code !== 'needs-confirmation') return refused(out.code, out.error);
     let lead: string = REVIEW_TEXTS.cascadeBackToReview;
+    const redone = action.kind === 'redo' ? state?.stack.undone.find((a) => a.id === action.step) : undefined;
+    const decisions = action.kind === 'decide' ? action.decisions : redone?.kind === 'decide' ? redone.request.decisions : [];
     if (action.kind === 'undo') lead = REVIEW_TEXTS.cascadeUndoAccept;
-    else if (action.kind === 'decide') {
-      const declines = action.decisions.filter((d) => d.to === 'declined');
+    else {
+      const declines = decisions.filter((d) => d.to === 'declined');
       if (declines.some((d) => d.option !== 'shaky')) lead = REVIEW_TEXTS.cascadeReject;
       else if (declines.length > 0) lead = REVIEW_TEXTS.cascadeShaky;
     }
@@ -466,16 +541,16 @@ export abstract class ReviewRunner extends SessionRunner {
   // Submit review (§3.7)
 
   /**
-   * RV-12: waits while the session judges or writes (AF3), then Submit's gate as the view has it: nothing listed in
-   * review, the results shown. Nothing Shaky or to be redone: the end confirmation (a partly accepted cycle refused).
-   * Otherwise the take-out and the queue of Submit steps, in one job of the write queue, so nothing comes between them.
+   * RV-12: waits while the session judges or writes (AF3: `asLastWrite`), then Submit's gate as the view has it: nothing
+   * listed in review, the results shown. Nothing Shaky or to be redone: the end confirmation (a partly accepted cycle
+   * refused). Otherwise the take-out and the queue of Submit steps, in one job of the write queue, so nothing comes
+   * between them.
    */
   protected async submitNow(run: ActiveRun, stage: number): Promise<ActionOutcome> {
     const early = this.reviewRefusal(run, stage);
     if (early !== undefined) return early;
-    await this.idle(run);
     let first: PersistedStep | undefined;
-    const outcome = await this.enqueueWrite(run, async (): Promise<ActionOutcome> => {
+    const outcome = await this.asLastWrite(run, async (): Promise<ActionOutcome> => {
       const now = this.reviewRefusal(run, stage);
       if (now !== undefined) return now;
       const s = this.sessionOf(run);
@@ -488,8 +563,12 @@ export abstract class ReviewRunner extends SessionRunner {
       if (plan.confirm) {
         const cycle = plan.partlyAccepted[0];
         if (cycle !== undefined) {
-          const labels = this.reviewState(run).labels ?? {};
-          return refused('refused', REVIEW_TEXTS.acceptOrRejectTogether(cycle.map((id) => labels[id] ?? this.labelOf(s, id))));
+          // The view's gate text: the cycle's items in list order, by the view's labels.
+          const view = this.runtimeOf(run).view;
+          const labels = view !== null ? sessionLabels(view) : {};
+          const order = new Map((view?.items ?? []).map((item, k) => [item.id, k]));
+          const listed = [...cycle].sort((a, b) => (order.get(a) ?? Number.MAX_SAFE_INTEGER) - (order.get(b) ?? Number.MAX_SAFE_INTEGER));
+          return refused('refused', REVIEW_TEXTS.acceptOrRejectTogether(listed.map((id) => labels[id] ?? this.labelOf(s, id))));
         }
         return this.openConfirmation(run);
       }
@@ -516,7 +595,12 @@ export abstract class ReviewRunner extends SessionRunner {
       }
       return this.finishQueueStart(run, write, steps);
     });
-    if (!outcome.ok || first === undefined) return outcome;
+    if (!outcome.ok || first === undefined) {
+      // The end confirmation (2f): its view was built while the write held the queue (`judging`); once nothing is
+      // queued or judged, it is posted again before Submit resolves, so the person sees the check running.
+      if (outcome.ok && !this.isJudging(run)) await this.save(run, SESSION_CHANGE_ONLY);
+      return outcome;
+    }
     // AF14: it resolves once its first step works; a step Claude did not get (a failed `--resume`) answers why.
     const started = await this.startStep(run, first.id);
     if (!started.ok) return started;
@@ -538,8 +622,7 @@ export abstract class ReviewRunner extends SessionRunner {
     const s = this.sessionOf(run);
     const files = await run.shadow.filesAt(s.head);
     const key = filesKey(files);
-    const statuses = s.items.map((r) => [r.id, r.rev, r.status, r.fingerprint, r.decline?.option ?? '']);
-    const checkId = `ck${sha256Text(JSON.stringify([key, statuses])).slice(0, 16)}`;
+    const checkId = confirmationCheckId(s, key);
     const next: PersistedSession = structuredClone(s);
     next.phase = 'confirming';
     next.confirmation = { checkId, filesKey: key, state: 'running', failures: [] };
@@ -641,7 +724,13 @@ export abstract class ReviewRunner extends SessionRunner {
     next.head = commit.id;
     delete next.inFlight;
     run.p.session = next;
-    await this.persistStep4(run);
+    try {
+      await this.persistStep4(run);
+    } catch (e) {
+      // As a decision's step 4 (carryOut): the head moved, so a judge follows; the answer says why (fixer 2e r1, F-FC-3).
+      this.requestJudge(run);
+      return refused('internal', REVIEW_TEXTS.saveFailed(errorText(e)));
+    }
     return okOutcome('taken out');
   }
 
@@ -705,7 +794,13 @@ export abstract class ReviewRunner extends SessionRunner {
       stage: s.stage,
       accepted: s.items.filter((r) => r.status === 'accepted').map((r) => row(r)),
       rejected: s.items.filter((r) => isDeclinedOut(r)).map((r) => row(r)),
-      shaky: s.items.filter((r) => isShaky(r)).map((r) => row(r, r.decline?.note !== undefined ? { note: r.decline.note } : {})),
+      shaky: s.items
+        .filter((r) => isShaky(r))
+        .map((r) => {
+          // D2-57: a Shaky item Submit took out says which items' rework it rests on.
+          const taker = (r.redo?.because ?? []).flatMap((id) => (byId.get(id) !== undefined ? [label(byId.get(id) as ItemRecord)] : []));
+          return row(r, { ...(r.decline?.note !== undefined ? { note: r.decline.note } : {}), ...(taker.length > 0 ? { reliedOn: taker } : {}) });
+        }),
       redo: s.items.filter((r) => r.status === 'to-be-redone' && !isShaky(r)).map((r) => row(r, { reliedOn: reliedOn(r) })),
       steps: steps.map((x) => ({ id: x.target, sentence: nodes?.get(x.target)?.node.naturalName ?? x.target })),
     });
@@ -735,6 +830,15 @@ export abstract class ReviewRunner extends SessionRunner {
   }
 }
 
+/**
+ * §3.10 step 1: the end confirmation's check id, a hash of F's files key and the item statuses (each item's id, rev,
+ * status, content key and decline option). Apply checks it again, so a status or ws/ change since refuses it (2f).
+ */
+export function confirmationCheckId(s: Pick<PersistedSession, 'items'>, filesKey: string): string {
+  const statuses = s.items.map((r) => [r.id, r.rev, r.status, r.fingerprint, r.decline?.option ?? '']);
+  return `ck${sha256Text(JSON.stringify([filesKey, statuses])).slice(0, 16)}`;
+}
+
 /** A review write refused while it was planned (a merge that conflicts): nothing was written. */
 class ItemWriteRefusal extends Error {
   constructor(
@@ -743,6 +847,20 @@ class ItemWriteRefusal extends Error {
   ) {
     super(message);
   }
+}
+
+/**
+ * D2-33 (2f): the positions a review action sets, by card (null: the card has none any more), or undefined when it moves
+ * nothing: a move its `after`; the Undo of a move (now on top of `undone`) its `before`; the Redo of one (now on top of
+ * `done`) its `after`.
+ */
+function movedPositions(out: ReviewOk, action: ReviewAction | undefined): Readonly<Record<string, { x: number; y: number } | null>> | undefined {
+  if (action === undefined) return undefined;
+  if (action.kind === 'move') return action.after;
+  // An Undo moves the action itself to `undone`; a Redo sends it again through the reducer, which records it anew (a new id).
+  const top = action.kind === 'undo' ? out.stack.undone.at(-1) : action.kind === 'redo' ? out.stack.done.at(-1) : undefined;
+  if (top?.kind !== 'move' || (action.kind === 'undo' && top.id !== action.step)) return undefined;
+  return action.kind === 'undo' ? top.before : top.after;
 }
 
 function copyCascade(c: CascadeEntry): CascadeEntry {

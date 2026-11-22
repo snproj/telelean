@@ -1,0 +1,37 @@
+Review submitted (stage 1)
+
+ACCEPTED: keep them exactly as they are.
+- Formalize “Cynder has a past that PG games exclude”
+    /-- Cynder has a past that PG games exclude -/
+    abbrev link_one : Prop := HasDarkPast cynder
+- Formalize “The new Spyro game excludes Cynder”
+    /-- The new Spyro game excludes Cynder -/
+    abbrev link_two : Prop := HasDarkPast cynder ∧ IsPG newSpyro
+- Result “Cynder has a past that PG games exclude”
+    theorem link_one.holds : link_one := cynder_dark_past.holds
+
+REJECTED: they were removed; never propose these exact versions again.
+(none)
+
+SHAKY: propose a different arrangement for these together. Any single one may come back unchanged, but not the whole set; if there is none, finish with no_alternative: true.
+- Result “The new Spyro game excludes Cynder”
+    theorem link_two.holds : link_two := ⟨link_one.holds, new_spyro_pg.holds⟩
+  The person's note: "Use And.intro instead of the anonymous constructor."
+
+TO BE REDONE: propose them again; what each relied on:
+- Result “Cynder would not be a good addition to the new Spyro game”
+    theorem cynder_not_good.holds : cynder_not_good := fun _ => link_two.holds.1.elim
+  It relied on: Result “The new Spyro game excludes Cynder”
+
+STEPS PLANNED (one step per target, in this order):
+1. link-two: "The new Spyro game excludes Cynder"
+2. cynder-not-good: "Cynder would not be a good addition to the new Spyro game"
+
+Step 1 of 2: rework “link-two” after the review
+
+TARGET: link-two (PROPOSITION): "The new Spyro game excludes Cynder"
+QUESTION: the person selected the arrows from link-one ("Cynder has a past that PG games exclude"), new-spyro-pg ("The new Spyro game is PG"): prove the target from exactly these.
+YOUR ARROWS INTO IT SO FAR: (none)
+OPEN IN THIS STEP: the target's proof (its .holds theorem) and the lemmas it needs; new arrows into the target, proposed with propose_arrow; the items to rework: proof:link-two.
+FIXED: everything else, also what earlier steps wrote and what the person is reviewing: leave it exactly as it is.
+BUDGET: 25 Lean checks, 80 turns, 20 minutes.

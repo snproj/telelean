@@ -25,7 +25,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const EDITS: ReadonlyArray<[string, Record<string, unknown>]> = [
   ['addNode', { clientId: 'tmp-1', type: 'AXIOM', naturalName: 'Cynder can fly' }],
   ['editNode', { id: 'cynder-not-good', field: 'naturalName', value: 'Cynder would be bad' }],
-  ['deleteNode', { id: 'pg-no-dark-past', keepLean: false }],
+  ['deleteNode', { id: 'pg-no-dark-past' }],
   ['kindChange', { id: 'cynder-not-good', from: 'PROPOSITION', to: 'AXIOM', beforeId: null }],
   ['reorder', { id: 'cynder-dark-past', column: 'AXIOM', beforeId: null }],
   ['theseSuffice', { premises: ['cynder-dark-past'], target: 'cynder-not-good' }],
@@ -86,7 +86,7 @@ describe('the board is read-only while a run of the model folder is active (ES-9
       expect(ports.of('notice'), state).toEqual([]); // the board shows the refusal it asked about
     }
     expect(changed()).toEqual([]);
-    expect(EDIT_SESSION_ACTIVE).toBe("An edit session is active: the board can't be edited until you accept or discard it.");
+    expect(EDIT_SESSION_ACTIVE).toBe("An edit session is active: the board can't be edited until you apply or exit it.");
   });
 
   it('a run of another subject locks this board too (the folder shares one base)', async () => {
@@ -155,11 +155,12 @@ describe('the board is read-only while a run of the model folder is active (ES-9
     expect(changed()).toEqual([]);
   });
 
-  it('the run messages themselves still reach the RunManager (Accept, Feedback, Discard, …)', async () => {
-    runs.run = sampleRun({ state: 'review', proposalId: 'p1' });
-    await session.handle(message('acceptProposal', { runId: 'r1', proposalId: 'p1', definitions: [], requestId: 'a1' }));
-    await session.handle(message('discardProposal', { runId: 'r1', requestId: 'd1' }));
-    expect(runs.calls.map((c) => c.method)).toEqual(['accept', 'discard']);
+  it('the run messages themselves still reach the RunManager (2h: a session\'s review, Apply and Exit)', async () => {
+    runs.run = sampleRun({ state: 'review' });
+    await session.handle(message('decideItems', { runId: 'r1', stage: 1, own: true, decisions: [{ item: 'it0123456789abcdef', rev: 1, to: 'accepted' }], requestId: 'a1' }));
+    await session.handle(message('endSession', { runId: 'r1', decision: 'apply', stage: 1, check: 'ck0123456789abcdef', requestId: 'p1' }));
+    await session.handle(message('endSession', { runId: 'r1', decision: 'exit', requestId: 'd1' }));
+    expect(runs.calls.map((c) => c.method)).toEqual(['decide', 'end', 'end']);
   });
 
   it('a run recovered from an earlier window locks the board from the first message on (edits wait for the recovery)', async () => {
@@ -168,7 +169,7 @@ describe('the board is read-only while a run of the model folder is active (ES-9
     const editing = session.handle(message('addNode', { clientId: 'tmp-1', type: 'AXIOM', naturalName: 'Cynder can fly', requestId: 'e1' }));
     await sleep(10);
     expect(ws.performed).toEqual([]);
-    runs.run = sampleRun({ state: 'review', proposalId: 'p1' }); // what the recovery brought back
+    runs.run = sampleRun({ state: 'review' }); // what the recovery brought back
     recover();
     await editing;
     expect(ws.performed).toEqual([]);
@@ -187,17 +188,19 @@ describe('the board is read-only while a run of the model folder is active (ES-9
 
 describe('starting a run locks the board from the request on (ES-7: the base is the files when the run starts)', () => {
   const START = { target: 'cynder-not-good', premises: ['cynder-dark-past'] };
+  /** Slice 2h: a start is a one-inference `formalize` (M2's `startRun` is retired). */
+  const start = (requestId: string) => message('formalize', { inferences: [START], requestId });
 
   it('board edits sent while the start is on its way are refused; a refused start unlocks the board again', async () => {
     let release!: () => void;
     const held = new Promise<void>((resolve) => (release = resolve));
     runs.outcome = async (method) => {
-      if (method === 'start') await held;
-      return method === 'start' ? { ok: false, code: 'not-yet', error: 'Claude could not be started: no binary' } : { ok: true, label: method, undoable: false };
+      if (method === 'formalize') await held;
+      return method === 'formalize' ? { ok: false, code: 'not-yet', error: 'Claude could not be started: no binary' } : { ok: true, label: method, undoable: false };
     };
-    const starting = session.handle(message('startRun', { ...START, requestId: 's1' }));
+    const starting = session.handle(start('s1'));
     await sleep(10);
-    expect(runs.callsOf('start')).toHaveLength(1);
+    expect(runs.callsOf('formalize')).toHaveLength(1);
     await session.handle(message('editNode', { id: 'cynder-not-good', field: 'naturalName', value: 'x', requestId: 'e1' }));
     await session.handle(message('undo', { requestId: 'u1' }));
     expect(ports.of('actionResult').map((m) => [m.payload.requestId, m.payload.outcome])).toEqual([
@@ -217,14 +220,14 @@ describe('starting a run locks the board from the request on (ES-7: the base is 
   it('the consent question locks the board too; declining it unlocks it', async () => {
     let answer!: (yes: boolean) => void;
     ports.claudeConsent = () => new Promise<boolean>((resolve) => (answer = resolve));
-    const starting = session.handle(message('startRun', { ...START, requestId: 's1' }));
+    const starting = session.handle(start('s1'));
     await sleep(5);
-    await session.handle(message('deleteNode', { id: 'pg-no-dark-past', keepLean: true, requestId: 'e1' }));
+    await session.handle(message('deleteNode', { id: 'pg-no-dark-past', requestId: 'e1' }));
     expect(ports.of('actionResult')[0]?.payload.outcome).toEqual({ ok: false, code: 'conflict', error: EDIT_SESSION_ACTIVE });
     answer(false);
     await starting;
-    expect(runs.callsOf('start')).toEqual([]);
-    await session.handle(message('deleteNode', { id: 'pg-no-dark-past', keepLean: true, requestId: 'e2' }));
+    expect(runs.callsOf('formalize')).toEqual([]);
+    await session.handle(message('deleteNode', { id: 'pg-no-dark-past', requestId: 'e2' }));
     expect(ws.performed.map((a) => a.kind)).toEqual(['delete-node']);
   });
 
@@ -245,7 +248,7 @@ describe('starting a run locks the board from the request on (ES-7: the base is 
     // e1 is under way; e2 waits behind it in the queue; then the start arrives; then e3 (after the start).
     const first = session.handle(message('addNode', { clientId: 'tmp-1', type: 'AXIOM', naturalName: 'Cynder can fly', requestId: 'e1' }));
     const second = session.handle(message('moveCards', { positions: { 'cynder-not-good': { x: 10, y: 20 } }, requestId: 'e2' }));
-    const starting = session.handle(message('startRun', { ...START, requestId: 's1' }));
+    const starting = session.handle(start('s1'));
     const third = session.handle(message('moveCards', { positions: { 'cynder-not-good': { x: 30, y: 40 } }, requestId: 'e3' }));
     await sleep(10);
     expect(order).toEqual(['perform add-node']);
@@ -253,7 +256,7 @@ describe('starting a run locks the board from the request on (ES-7: the base is 
     await Promise.all([first, second, starting, third]);
     // The two edits sent before the start are applied, in order, before the run starts from the files; the one sent
     // after it is refused.
-    expect(order).toEqual(['perform add-node', 'perform move-cards', 'runs.start']);
+    expect(order).toEqual(['perform add-node', 'perform move-cards', 'runs.formalize']);
     expect(ports.of('actionResult').map((m) => [m.payload.requestId, m.payload.outcome.ok])).toEqual([
       ['e1', true],
       ['e2', true],
@@ -280,12 +283,12 @@ describe('starting a run locks the board from the request on (ES-7: the base is 
     };
     const editing = session.handle(message('addNode', { clientId: 'tmp-1', type: 'AXIOM', naturalName: 'Cynder can fly', requestId: 'e1' }));
     await sleep(5);
-    const starting = session.handle(message('startRun', { ...START, requestId: 's1' }));
+    const starting = session.handle(start('s1'));
     await sleep(10);
     expect(order).toEqual(['perform add-node begins']); // the start waits for the edit already under way
     release();
     await Promise.all([editing, starting]);
-    expect(order).toEqual(['perform add-node begins', 'perform add-node ends', 'runs.start']);
+    expect(order).toEqual(['perform add-node begins', 'perform add-node ends', 'runs.formalize']);
     expect(ports.of('actionResult').map((m) => [m.payload.requestId, m.payload.outcome.ok])).toEqual([
       ['e1', true],
       ['s1', true],

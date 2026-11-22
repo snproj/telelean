@@ -14,34 +14,46 @@
  * - The Delete key (`deleteOutcome`, AR-1): the selected arrows and marks first; a card's delete dialog only when no
  *   arrow or mark is selected.
  * - What an edit session (ES-9) and the Proposed view allow (`gestureGate`).
+ * - Slice 2h (§5.10, BD-5, RV-9, CM-2): Claude's arrows still undecided take the pointer as `proposed` (a click focuses
+ *   their review item; never selectable, so never part of a Formalize question until accepted), and a session's
+ *   Proposed view selects cards, drawn arrows, accepted Claude arrows and marks (drawing stays off; a move is a session
+ *   step, refused while Claude's step runs).
  */
-import type { ArrowEnds, KindChangeImpact, TlEdge, TlNode } from '@telelean/core';
+import { REVIEW_TEXTS, type ArrowEnds, type ItemStatus, type KindChangeImpact, type TlEdge, type TlNode } from '@telelean/core';
 import { plainText } from '../model/format';
+import { focusesItem } from '../model/sessionBoard';
 import { cubicPath, type EdgePattern, type Part, type Point, type Rect } from './geometry';
 import { MENU_PROPOSED_ARROWS, MENU_PROPOSED_READ_ONLY, MENU_PROVISIONAL, menuName, type MenuThing } from './menu';
 
 // ---- what an arrow offers (A)
 
-/** `drawn`: a click selects it (CM-2). `undeclared`: a proof uses it but nobody drew it, so only its menu opens. */
-export type HitRole = 'drawn' | 'undeclared';
+/**
+ * `drawn`: a click selects it (CM-2). `undeclared`: a proof uses it but nobody drew it, so only its menu opens. Slice 2h:
+ * `proposed`, Claude's arrow still undecided in a session's Proposed view: a click focuses its review item.
+ */
+export type HitRole = 'drawn' | 'undeclared' | 'proposed';
 
 /**
  * What a click on an arrow can do, from how the overlay draws it: null for a mention (lean-ref), which is never
  * selectable (BD-5). An arrow is drawn when its pair has a declared premise (`declared`; a declared-only arrow is the
- * `declared` pattern); a verified arrow without one is a proof's use nobody drew (TL107).
+ * `declared` pattern); a verified arrow without one is a proof's use nobody drew (TL107). Slice 2h: Claude's arrow not
+ * accepted yet is `proposed` whatever its line (§5.10: never selectable for Formalize until accepted, D2-20).
  */
-export function hitRole(edge: { pattern: EdgePattern; declared?: boolean }): HitRole | null {
+export function hitRole(edge: { pattern: EdgePattern; declared?: boolean; proposed?: { change: 'add' | 'remove'; status: ItemStatus } }): HitRole | null {
+  if (focusesItem(edge.proposed)) return 'proposed';
   if (edge.pattern === 'reference') return null;
   return edge.declared === true || edge.pattern === 'declared' ? 'drawn' : 'undeclared';
 }
 
-/** An arrow (`id`: its edge id) or a ∅ stub (`id`: its card) under the pointer. */
-export type Hit = { kind: 'arrow'; id: string; source: string; target: string; role: HitRole } | { kind: 'mark'; id: string };
+/** An arrow (`id`: its edge id) or a ∅ stub (`id`: its card) under the pointer; Claude's arrow names its `item`. */
+export type Hit = { kind: 'arrow'; id: string; source: string; target: string; role: HitRole; item?: string } | { kind: 'mark'; id: string };
 
 /** What a left click (no drag) does with what is under the pointer (CM-2). */
 export type ClickOutcome =
   | { kind: 'select-arrow'; source: string; target: string; additive: boolean }
   | { kind: 'select-mark'; id: string; additive: boolean }
+  /** Slice 2h: Claude's arrow still undecided: its review item is shown (it is never selected). */
+  | { kind: 'focus-item'; item: string }
   /** Empty canvas: a plain click replaces the selection with nothing. */
   | { kind: 'clear' }
   | { kind: 'none' };
@@ -54,12 +66,14 @@ export type ClickOutcome =
 export function clickOutcome(hit: Hit | null, additive: boolean): ClickOutcome {
   if (hit === null) return additive ? { kind: 'none' } : { kind: 'clear' };
   if (hit.kind === 'mark') return { kind: 'select-mark', id: hit.id, additive };
+  if (hit.role === 'proposed') return hit.item !== undefined ? { kind: 'focus-item', item: hit.item } : { kind: 'none' };
   return hit.role === 'drawn' ? { kind: 'select-arrow', source: hit.source, target: hit.target, additive } : { kind: 'none' };
 }
 
-/** CM-7: the menu's thing for an arrow or a stub: a drawn arrow, an undeclared one (its menu only), or a mark. */
+/** CM-7: the menu's thing for an arrow or a stub: a drawn arrow, an undeclared one (its menu only), Claude's, or a mark. */
 export function hitThing(hit: Hit): MenuThing {
   if (hit.kind === 'mark') return { kind: 'mark', id: hit.id };
+  if (hit.role === 'proposed') return { kind: 'proposed', item: hit.item ?? '', source: hit.source, target: hit.target };
   return hit.role === 'drawn' ? { kind: 'arrow', source: hit.source, target: hit.target } : { kind: 'undeclared', source: hit.source, target: hit.target };
 }
 
@@ -70,6 +84,8 @@ export interface DrawnPath {
   source: string;
   target: string;
   role: HitRole;
+  /** Slice 2h: Claude's arrow's review item (role `proposed`). */
+  item?: string;
   d: string;
   /** Null for a whole arrow; set when one end is out of view (a cut arrow is never wholly inside a rectangle). */
   stub: null | 'source' | 'target';
@@ -139,6 +155,32 @@ export function pathPoints(d: string, steps = 12): Point[] {
     }
   }
   return points;
+}
+
+/**
+ * Slice 2h (§5.10): the point halfway along one of the overlay's paths, by length over its sampled points (`pathPoints`),
+ * where an arrow's badge sits ("+", "−"); null for a path with no point.
+ */
+export function pathMidpoint(d: string): Point | null {
+  const points = pathPoints(d);
+  const first = points[0];
+  if (first === undefined) return null;
+  let total = 0;
+  for (let i = 1; i < points.length; i++) total += Math.hypot((points[i] as Point).x - (points[i - 1] as Point).x, (points[i] as Point).y - (points[i - 1] as Point).y);
+  if (total === 0) return { x: first.x, y: first.y };
+  let left = total / 2;
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1] as Point;
+    const b = points[i] as Point;
+    const length = Math.hypot(b.x - a.x, b.y - a.y);
+    if (length >= left && length > 0) {
+      const t = left / length;
+      return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+    }
+    left -= length;
+  }
+  const last = points[points.length - 1] as Point;
+  return { x: last.x, y: last.y };
 }
 
 /** The distance from `p` to the segment `a`–`b`. */
@@ -452,10 +494,17 @@ export interface GestureGate {
 
 /**
  * ES-9 (slice 1f): while an edit session is active (`lock`), the gestures that edit are off with its reason, and
- * selecting and menus stay. The Proposed view is read-only: arrows change only through review items and transforms,
- * nothing moves, and nothing is selected.
+ * selecting and menus stay. In the Proposed view arrows change only through review items and transforms, so drawing is
+ * off. Slice 2h (RV-9, CM-2, D2-33, D2-62): it is a session's (`session`), so it selects as the Current board does
+ * (cards, drawn arrows, accepted Claude arrows, marks), and a move is a session step (`moveProposed`), off while Claude's
+ * step runs (`stepRunning`) or once the session left its stage. Without a session (never since 2h) it changes nothing.
  */
-export function gestureGate(state: { lock: string | null; proposed: boolean }): GestureGate {
-  if (state.proposed) return { draw: MENU_PROPOSED_ARROWS, move: MENU_PROPOSED_READ_ONLY, select: false };
+export function gestureGate(state: { lock: string | null; proposed: boolean; session?: { stage: boolean; stepRunning: boolean; applying?: boolean } }): GestureGate {
+  if (state.proposed) {
+    if (state.session === undefined) return { draw: MENU_PROPOSED_ARROWS, move: MENU_PROPOSED_READ_ONLY, select: false };
+    const s = state.session;
+    const move = s.stepRunning ? REVIEW_TEXTS.stepRunning : s.stage ? null : s.applying === true ? REVIEW_TEXTS.applyingNow : REVIEW_TEXTS.formalizeConfirming;
+    return { draw: MENU_PROPOSED_ARROWS, move, select: true };
+  }
   return { draw: state.lock, move: state.lock, select: true };
 }

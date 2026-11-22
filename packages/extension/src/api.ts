@@ -25,6 +25,11 @@ export interface BoardPostEvent {
   message: HostToWebviewMessage;
   /** False when the board was closed (or its webview replaced) before the message arrived. */
   delivered: boolean;
+  /**
+   * The panel the message was posted to. VS Code reports delivery some milliseconds after the post, so an event can arrive
+   * after that board was closed (and after a restored board took its place): a test tells the boards apart by this.
+   */
+  panel: vscode.WebviewPanel;
 }
 
 export interface BoardInfo {

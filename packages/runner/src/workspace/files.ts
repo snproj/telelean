@@ -15,6 +15,8 @@ import type { SnapshotScope } from './history.js';
 const SKIPPED_DIRS: ReadonlySet<string> = new Set(['node_modules', '.lake']);
 
 const LAYOUT_PATH_PATTERN = /^\.telelean\/subjects\/([^/]+)\/layout\.json$/;
+/** Slice 2f (docs/slice2-plan.md 2.6, D2-18): a subject's endorsed definitions, written by Apply inside its history entry. */
+const ENDORSEMENTS_PATH_PATTERN = /^\.telelean\/subjects\/([^/]+)\/endorsements\.json$/;
 const SIDECAR_PATH_PATTERN = /^\.telelean\/subjects\/([^/]+)\//;
 
 /** A regular file (a symlink is not followed, so it never counts). */
@@ -73,6 +75,17 @@ export async function listLayoutFiles(root: string): Promise<string[]> {
   return out.sort();
 }
 
+/** Slice 2f (D2-18): `.telelean/subjects/<S>/endorsements.json` for every subject name S that has one. */
+export async function listEndorsementFiles(root: string): Promise<string[]> {
+  const out: string[] = [];
+  for (const entry of await entriesOf(path.join(root, TELELEAN_DIR, 'subjects'))) {
+    if (!entry.isDirectory() || !isSubjectName(entry.name)) continue;
+    const rel = `${TELELEAN_DIR}/subjects/${entry.name}/endorsements.json`;
+    if (await isFile(path.join(root, rel))) out.push(rel);
+  }
+  return out.sort();
+}
+
 /** True for `<library>.lean` and `<library>/**.lean`. */
 export function isModelFile(rel: string, library: string): boolean {
   return rel === libraryRootFile(library) || (rel.startsWith(`${library}/`) && rel.endsWith('.lean'));
@@ -95,6 +108,12 @@ const ATTEMPTS_PATH_PATTERN = /^\.telelean\/subjects\/([^/]+)\/attempts\.jsonl$/
 /** M2: the subject whose `attempts.jsonl` `rel` is, if it is one. */
 export function attemptsSubject(rel: string): string | undefined {
   const subject = ATTEMPTS_PATH_PATTERN.exec(rel)?.[1];
+  return subject !== undefined && isSubjectName(subject) ? subject : undefined;
+}
+
+/** Slice 2f (D2-18): the subject whose `endorsements.json` `rel` is, if it is one. */
+export function endorsementsSubject(rel: string): string | undefined {
+  const subject = ENDORSEMENTS_PATH_PATTERN.exec(rel)?.[1];
   return subject !== undefined && isSubjectName(subject) ? subject : undefined;
 }
 
@@ -140,14 +159,16 @@ export function scopesOf(paths: Iterable<string>, library: string): SnapshotScop
 
 /**
  * The sidecar files of a subject that its history covers: `layout.json` and the attic's `.lean` files, which
- * telelean writes (UTF-8 text). Anything else a user drops into `.telelean/subjects/<S>/` (a picture, notes) is
- * never snapshotted, reverted or deleted: it would not survive being read as text.
+ * telelean writes (UTF-8 text), and (slice 2f, D2-18) `endorsements.json`, which an Apply writes inside its history
+ * entry, so that History's snapshots and the Apply's Undo cover it. Anything else a user drops into
+ * `.telelean/subjects/<S>/` (a picture, notes) is never snapshotted, reverted or deleted: it would not survive being
+ * read as text.
  */
 export function isSubjectSidecarFile(rel: string, subject: string): boolean {
   const dir = `${subjectSidecarDir(subject)}/`;
   if (!rel.startsWith(dir)) return false;
   const rest = rel.slice(dir.length);
-  return rest === 'layout.json' || /^attic\/[^/]+\.lean$/.test(rest);
+  return rest === 'layout.json' || rest === 'endorsements.json' || /^attic\/[^/]+\.lean$/.test(rest);
 }
 
 /** True for the files a subject's snapshots cover: its root file, the `.lean` files under its directory, its sidecars. */

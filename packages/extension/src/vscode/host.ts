@@ -409,7 +409,8 @@ export class TeleleanHost implements vscode.Disposable {
         this.messages.fire(message);
         this.events.fire({ root, message });
       },
-      onPost: (root: string | undefined, message: HostToWebviewMessage, delivered: boolean) => this.posts.fire({ root, message, delivered }),
+      onPost: (root: string | undefined, message: HostToWebviewMessage, delivered: boolean, panel: vscode.WebviewPanel) =>
+        this.posts.fire({ root, message, delivered, panel }),
     };
   }
 

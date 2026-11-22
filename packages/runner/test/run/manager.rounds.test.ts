@@ -5,21 +5,24 @@
  *   AT3.9 propose_assumption -> GhostView with the engine's checked statement; adoptGhost in review -> the adoption
  *         written (fake core planGhostAdoption), commit `adopt`, freeze with adoptedGhosts, round 2 in stage prove,
  *         the adoption turn naming the Lean name; a refused re-freeze reverts and stays in review
- * Slice 2d: every start is an edit session, which has no Feedback round (Submit review's queue, 2e) and no ghost
- * adoption (an Add premise item's Accept and write, 2f): those tests move (docs/slice2-plan.md 0). propose_assumption's
- * refusals before the freeze and its rejected check stay, in a session step (its draft, never a ghost).
+ * Slice 2d: every start is an edit session, which has no Feedback round and no ghost adoption (an Add premise item's
+ * Accept and write, 2f): those tests moved (docs/slice2-plan.md 0); 2f rewrote AT3.9 for the premise write. Slice 2e: AT3.8 is a Shaky Result's Submit step
+ * (Submit review's queue), with the same freeze rules. propose_assumption's refusals before the freeze and its rejected
+ * check stay, in a session step (its draft, never a ghost).
  */
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import type { GhostAdoptionRequest, ProjectModel } from '@telelean/core';
+import { planGhostAdoption as corePlanGhostAdoption, type GhostAdoptionRequest } from '@telelean/core';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { LlmEvent } from '../../src/llm/types.js';
 import type { CheckContext, FreezeOutcome } from '../../src/gate/types.js';
 import type { PersistedRun } from '../../src/run/types.js';
-import { fakeCore, makeHarness, readJson, round1, START, state, step, waitForRun, type Harness } from './helpers/harness.js';
+import { fakeCore, makeHarness, rawRun, rawStep, readJson, round1, START, state, step, waitForRun, waitForStage, type Harness } from './helpers/harness.js';
 import { okReport } from './helpers/fakeEngine.js';
+import { acceptPremise, PREMISE_KEY, premiseRecord, scriptEnd } from './helpers/premises.js';
+import { decision, PG, PG_BLOCK_END, PG_FORMALISED, settled } from './helpers/review.js';
 
 const MAIN = 'Model/Spyro/Main.lean';
 const TARGET_LINE = 'abbrev cynder_not_good : Prop := ¬ GoodAddition cynder newSpyro\n';
@@ -50,36 +53,42 @@ async function proofBeforeFreeze(ctx: CheckContext): Promise<FreezeOutcome | und
   return undefined;
 }
 
-describe('Feedback (AT3.8)', () => {
-  it.skip('moves to 2e: Feedback (AT3.8) starts round 2 in stage formalise; finish(proved) needs a new freeze; the old proof is not a proof before the freeze', async () => {
+describe('Feedback (AT3.8), now Submit review\'s queue (slice 2e)', () => {
+  it('a Shaky Result\'s Submit step is round 2, in stage formalise; finish(proved) needs a new freeze; the earlier proof, kept in its S₀, is not a proof before the freeze', async () => {
+    const proof = 'theorem cynder_not_good.holds : cynder_not_good := fun _ => cynder_dark_past.holds.elim\n';
     h = makeHarness({
       script: [
-        round1(step.check(), step.freeze(), step.edit(TARGET_LINE, TARGET_LINE + PROOF), step.finish(), step.result()),
-        { match: 'Feedback from the person', steps: [step.finish('proved', 'Nothing to change.'), step.freeze(), step.finish('proved', 'Re-frozen and proved.'), step.result()] },
+        round1(step.check(), step.freeze(), step.edit(TARGET_LINE, TARGET_LINE + proof), step.finish(), step.result()),
+        { match: 'Review submitted (stage 1)', steps: [step.finish('proved', 'Nothing to change.'), step.freeze(), step.finish('proved', 'Re-frozen and proved.'), step.result()] },
       ],
     });
     h.engine.onFreeze = proofBeforeFreeze;
-    await h.manager.start(START);
-    const r1 = await waitForRun(h.manager, state('review'));
-    expect(r1.verdict).toBe('proved');
-    const head = (await h.shadow().commits()).at(-1);
-
-    expect(await h.manager.feedback(r1.runId, '   ')).toMatchObject({ ok: false, code: 'invalid' });
-    expect(await h.manager.feedback(r1.runId, 'Use the same reading, but check it again.')).toMatchObject({ ok: true });
+    await h.manager.formalize({ subject: 'Spyro', inferences: [{ target: 'cynder-not-good', premises: ['cynder-dark-past', 'new-spyro-pg'] }] });
+    const r1 = await waitForStage(h.manager, 1);
+    expect(h.manager.session()?.results.shown).toBe(true);
+    const result = rawRun(h).session?.items.find((r) => r.key === 'proof:cynder-not-good');
+    expect(result).toMatchObject({ status: 'in-review' });
+    const note = 'Use the same reading, but check it again.';
+    expect(await h.manager.decide(r1.runId, 1, true, [{ item: result?.id ?? '', rev: result?.rev ?? 0, to: 'declined', option: 'shaky', note }], false)).toMatchObject({ ok: true });
+    expect(await h.manager.submit(r1.runId, 1)).toMatchObject({ ok: true });
     const working = h.manager.current();
-    expect(working).toMatchObject({ state: 'working', stage: 'formalise', round: 2 });
+    expect(working).toMatchObject({ stage: 'formalise', round: 2 });
+    expect(['working', 'gate']).toContain(working?.state);
     expect(working?.frozen).toBeUndefined();
     expect(working?.proposalId).toBeUndefined();
-    expect(h.manager.proposal()).toBeNull();
 
-    const r2 = await waitForRun(h.manager, (v) => v.state === 'review' && v.round === 2);
-    expect(r2.verdict).toBe('proved');
-    expect(r2.counters.gateAttempts).toBe(2);
+    const r2 = await waitForStage(h.manager, 2);
+    expect(r2.session).toMatchObject({ stage: 2, phase: 'stage' });
+    const s2 = rawStep(h, 's2');
+    expect(s2).toMatchObject({ kind: 'submit', state: 'passed', round: 2, queue: 2, counters: { gateAttempts: 2 } });
+    expect(s2.scope).toMatchObject({ openProof: true, openItems: ['proof:cynder-not-good'] });
+    // The earlier proof is in S₀ (Shaky takes nothing out): round 2's freeze accepts it.
+    expect((await h.shadow().filesAt(s2.startCommit ?? '')).get(MAIN)).toContain(proof);
     const gates = h.engine.calls.filter((c) => c.method === 'gate');
-    expect(gates[1]).toMatchObject({ round: 2, stage: 'formalise', frozen: false, roundStartCommit: head?.id });
-    expect(gates[2]).toMatchObject({ round: 2, stage: 'prove', frozen: true, freezeRound: 2, roundStartCommit: head?.id });
+    expect(gates[1]).toMatchObject({ round: 2, stage: 'formalise', frozen: false, roundStartCommit: s2.startCommit });
+    expect(gates[2]).toMatchObject({ round: 2, stage: 'prove', frozen: true, freezeRound: 2, roundStartCommit: s2.startCommit });
     const freezes = h.engine.calls.filter((c) => c.method === 'freeze');
-    expect(freezes[1]).toMatchObject({ round: 2, frozen: false, roundStartCommit: head?.id });
+    expect(freezes[1]).toMatchObject({ round: 2, frozen: false, roundStartCommit: s2.startCommit });
     const verdicts = toolResults(h).filter((r) => r.text.startsWith('Gate') || r.text.startsWith('Statements') || r.text.startsWith('Freeze'));
     expect(verdicts.map((r) => r.text.split('\n')[0])).toEqual([
       'Statements frozen (snapshot freeze-1). Now prove them unchanged.',
@@ -89,61 +98,37 @@ describe('Feedback (AT3.8)', () => {
       'Gate passed. The run is complete; stop here.',
     ]);
     expect(verdicts[2]?.text).toContain('- not_frozen: finish(proved) needs a successful freeze_statements in this round');
-    expect(r2.notices.find((n) => n.kind === 'gate-failed')?.text).toBe('FAKE attempt 1: not-frozen');
-    expect(h.sidecars.resolutions).toEqual([expect.objectContaining({ round: 1, resolution: 'superseded' })]);
+    expect(rawRun(h).view.notices.find((n) => n.kind === 'gate-failed')?.text).toBe('FAKE attempt 1: not-frozen');
+    // The step's turn started with the feedback turn, which quotes the note under SHAKY.
+    const turn = h.player?.played[1]?.turn ?? '';
+    expect(turn.startsWith('Review submitted (stage 1)\n')).toBe(true);
+    expect(turn).toContain(`The person's note: "${note}"`);
+    // D2-11: no attempt is resolved before the session ends.
+    expect(h.sidecars.resolutions).toEqual([]);
   });
 });
 
-const GHOST_BLOCK =
-  '/-\n@@ telelean v1\nid: a-character-who-cannot-be-in\ntype: AXIOM\nnatural_name: A character who cannot be in a game would not be a good addition to it\nrationale: it seems obvious to me\nasserted: 2026-11-01\nlean: Spyro.not_in_game_not_good\norigin: agent\nworded_by: agent\n-/\n/-- A character who cannot be in a game would not be a good addition to it -/\nabbrev not_in_game_not_good : Prop := ∀ (c : Character) (g : Game), ¬ InGame c g → ¬ GoodAddition c g\naxiom not_in_game_not_good.holds : not_in_game_not_good\n\n';
-const TARGET_BLOCK_START = '/-\n@@ telelean v1\nid: cynder-not-good';
-
-function fakeAdoption(requests: GhostAdoptionRequest[]) {
-  return (model: ProjectModel, request: GhostAdoptionRequest) => {
-    requests.push(request);
-    const text = model.files.get(MAIN)?.text ?? '';
-    return {
-      changes: [{ path: MAIN, before: text, after: text.replace(TARGET_BLOCK_START, GHOST_BLOCK + TARGET_BLOCK_START) }],
-      nodeId: 'a-character-who-cannot-be-in',
-      leanName: 'Spyro.not_in_game_not_good',
-    };
-  };
-}
-
-describe('ghosts (AT3.9)', () => {
-  it.skip('moves to 2f: ghosts (AT3.9) records a checked suggestion as a ghost; adopting it writes it, re-freezes with it selected and starts a proving round', async () => {
+describe('ghosts (AT3.9), in slice 2f an Add premise item\'s Accept and write', () => {
+  it('a checked suggestion is a draft outside ws/ (never a ghost); accepting it writes it (core planGhostAdoption with the Accept\'s hold-as and Why), and telelean completes the target from it with no Claude round (F15)', async () => {
     const requests: GhostAdoptionRequest[] = [];
     h = makeHarness({
-      core: { ...fakeCore(), planGhostAdoption: fakeAdoption(requests) },
-      script: [
-        round1(step.check(), step.freeze(), step.propose(), step.finish('not_proved', 'Under the literal reading the goal does not follow.'), step.result()),
-        { match: 'The person adopted your suggestion', steps: [step.edit(TARGET_LINE, TARGET_LINE + PROOF), step.finish('proved', 'Proved with the adopted premise.'), step.result()] },
-      ],
+      core: { ...fakeCore(), planGhostAdoption: (model, request) => (requests.push(request), corePlanGhostAdoption(model, request)) },
+      script: [round1(step.check(), step.edit(PG_BLOCK_END, PG_FORMALISED), step.freeze(), step.propose(), step.finish('not_proved', 'Under the literal reading the goal does not follow.'), step.result())],
     });
-    h.engine.onCheckGhost = (_ctx, ghost) => ({ ok: true, footprint: ['Spyro.pg_no_dark_past.holds', 'Spyro.InGame'], aloneEntails: false, statement: ghost.leanStatement.replace(/\s+/g, ' ').trim() });
+    scriptEnd(h);
+    h.engine.onCheckGhost = (_ctx, ghost) => ({ ok: true, footprint: ['Spyro.pg_no_dark_past.holds', 'Spyro.InGame'], aloneEntails: false, statement: ghost.leanStatement.replace(/\s+/g, ' ').trim(), explicit: 'explicit' });
     await h.manager.start(START);
-    const r1 = await waitForRun(h.manager, state('review'));
-    expect(r1.verdict).toBe('not-proved');
-    expect(r1.counters.checks).toBe(3);
-    expect(r1.ghosts).toEqual([
-      {
-        id: 'ghost-1',
-        naturalName: 'A character who cannot be in a game would not be a good addition to it',
-        leanStatement: '∀ (c : Character) (g : Game), ¬ InGame c g → ¬ GoodAddition c g',
-        leanName: 'not_in_game_not_good',
-        whyNeeded: 'Nothing links being in a game to being a good addition to it.',
-        closesGap: true,
-        aloneEntails: false,
-        state: 'suggested',
-        round: 1,
-      },
-    ]);
+    const r1 = await waitForStage(h.manager, 1);
+    expect(r1.ghosts).toEqual([]);
+    const draft = rawRun(h).session?.premises[0];
+    expect(draft).toMatchObject({ naturalName: 'A character who cannot be in a game would not be a good addition to it', leanStatement: '∀ (c : Character) (g : Game), ¬ InGame c g → ¬ GoodAddition c g', leanName: 'not_in_game_not_good', whyNeeded: 'Nothing links being in a game to being a good addition to it.', aloneEntails: false, explicit: 'explicit' });
     expect(h.engine.calls.find((c) => c.method === 'checkGhost')?.ghost?.leanStatement).toBe('∀ (c : Character) (g : Game),\n   ¬ InGame c g → ¬ GoodAddition c g');
-    expect(toolResults(h).find((r) => r.text.startsWith('Proposal recorded'))?.text).toContain('Proposal recorded as ghost-1');
-    expect(h.manager.proposal()?.ghosts.map((g) => g.id)).toEqual(['ghost-1']);
-
-    const adopted = await h.manager.adoptGhost(r1.runId, 'ghost-1', 'it seems obvious to me');
-    expect(adopted).toMatchObject({ ok: true });
+    expect((await h.shadow().currentFiles()).get(MAIN)).not.toContain('not_in_game_not_good');
+    // The results are shown once PG's Formalize is decided; the premise's own Accept then writes it.
+    expect(await h.manager.decide(r1.runId, 1, true, [decision(h, PG, 'accepted')], false)).toMatchObject({ ok: true });
+    await settled(h);
+    expect(await h.manager.decide(r1.runId, 1, true, [acceptPremise(h, 'axiom', 'it seems obvious to me')], false)).toMatchObject({ ok: true });
+    await settled(h);
     expect(requests).toEqual([
       {
         subject: 'Spyro',
@@ -153,57 +138,43 @@ describe('ghosts (AT3.9)', () => {
         leanName: 'not_in_game_not_good',
         rationale: 'it seems obvious to me',
         session: r1.runId,
-        today: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        today: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) as string,
+        holdAs: 'axiom',
       },
     ]);
     const shadow = h.shadow();
-    expect(shadow.kinds().slice(-2)).toEqual(['adopt', 'freeze']);
+    expect(shadow.kinds().slice(-2)).toEqual(['adopt', 'completion']);
     const adoptCommit = (await shadow.commits()).find((c) => c.kind === 'adopt');
-    expect((await shadow.filesAt(adoptCommit?.id ?? '')).get(MAIN)).toContain('id: a-character-who-cannot-be-in');
-    const refreeze = h.engine.calls.filter((c) => c.method === 'freeze').at(-1);
-    expect(refreeze).toMatchObject({ round: 2, adoptedGhosts: ['a-character-who-cannot-be-in'], teleleanBlocks: ['a-character-who-cannot-be-in'], roundStartCommit: adoptCommit?.id, frozen: false });
-    const now = h.manager.current();
-    expect(now).toMatchObject({ round: 2, stage: 'prove', frozen: { round: 2 } });
-    expect(now?.ghosts[0]).toMatchObject({ state: 'adopted', nodeId: 'a-character-who-cannot-be-in', leanName: 'not_in_game_not_good' });
-    expect(h.sidecars.resolutions).toEqual([expect.objectContaining({ round: 1, resolution: 'superseded' })]);
-
-    const r2 = await waitForRun(h.manager, (v) => v.state === 'review' && v.round === 2);
-    expect(r2.verdict).toBe('proved');
-    expect(h.player?.played[1]?.turn).toBe(
-      'The person adopted your suggestion as an axiom:\n- a-character-who-cannot-be-in (AXIOM, worded by you): "A character who cannot be in a game would not be a good addition to it"\n' +
-        '  Lean: Spyro.not_in_game_not_good := ∀ (c : Character) (g : Game), ¬ InGame c g → ¬ GoodAddition c g; axiom Spyro.not_in_game_not_good.holds (telelean wrote it right before the target\'s block).\n' +
-        'The statements are frozen again with it selected, so you may use Spyro.not_in_game_not_good.holds. Prove the target now and call finish. Budget for this round: 25 Lean checks, 80 turns, 20 minutes.',
-    );
-    const gate2 = h.engine.calls.filter((c) => c.method === 'gate').at(-1);
-    expect(gate2).toMatchObject({ round: 2, stage: 'prove', frozen: true, adoptedGhosts: ['a-character-who-cannot-be-in'] });
-    expect(h.proposals.builds[1]?.input.selection.adoptedGhosts).toEqual(['a-character-who-cannot-be-in']);
-    expect(h.sidecars.attempts[1]).toMatchObject({ round: 2, verdict: 'proved', premises: ['cynder-dark-past', 'new-spyro-pg', 'pg-no-dark-past', 'a-character-who-cannot-be-in'], ghosts: [{ id: 'ghost-1', adopted: true }] });
-    // The same ghost cannot be adopted twice.
-    expect(await h.manager.adoptGhost(r1.runId, 'ghost-1')).toMatchObject({ ok: false });
+    expect((await shadow.filesAt(adoptCommit?.id ?? '')).get(MAIN)).toContain('natural_name: A character who cannot be in a game would not be a good addition to it');
+    // No second Claude round: the completion is telelean's own write (F15), and no freeze or gate ran for it.
+    expect(h.player?.played).toHaveLength(1);
+    expect(h.engine.methods().filter((m) => m === 'freeze')).toHaveLength(1);
+    expect(h.manager.current()?.round).toBe(1);
+    expect(rawRun(h).session?.items.find((r) => r.key === 'proof:cynder-not-good')).toMatchObject({ status: 'in-review', markers: expect.arrayContaining(['updated']) });
+    // D2-11: no attempt is resolved before the session ends (the M2 round was "superseded" here).
+    expect(h.sidecars.resolutions).toEqual([]);
   });
 
-  it.skip('moves to 2f: ghosts (AT3.9) a refused re-freeze reverts the adoption and stays in review', async () => {
-    h = makeHarness({
-      core: { ...fakeCore(), planGhostAdoption: fakeAdoption([]) },
-      script: [round1(step.freeze(), step.propose(), step.finish('not_proved'), step.result())],
-    });
+  it('a premise write the engine refuses takes the write back out and keeps the Accept, its write due (§3.8); declining it instead lifts the problem', async () => {
+    h = makeHarness({ script: [round1(step.edit(PG_BLOCK_END, PG_FORMALISED), step.freeze(), step.propose(), step.finish('not_proved'), step.result())] });
+    scriptEnd(h);
+    h.engine.onWritePremise = () => ({ ok: false, error: 'vocabulary-shape: InGame is not a valid predicate' });
     await h.manager.start(START);
-    const r1 = await waitForRun(h.manager, state('review'));
+    const r1 = await waitForStage(h.manager, 1);
+    expect(await h.manager.decide(r1.runId, 1, true, [decision(h, PG, 'accepted')], false)).toMatchObject({ ok: true });
+    await settled(h);
     const before = await h.shadow().currentFiles();
-    h.engine.onFreeze = () => ({ ok: false, refusals: ['vocabulary-shape: InGame is not a valid predicate'], report: okReport({ outcome: 'problems' }) });
-    const outcome = await h.manager.adoptGhost(r1.runId, 'ghost-1');
-    expect(outcome).toMatchObject({ ok: false, code: 'conflict' });
-    expect(outcome.ok ? '' : outcome.error).toContain('vocabulary-shape: InGame is not a valid predicate');
+    expect(await h.manager.decide(r1.runId, 1, true, [acceptPremise(h, 'axiom')], false)).toMatchObject({ ok: true });
+    await settled(h);
     expect(await h.shadow().currentFiles()).toEqual(before);
-    const v = h.manager.current();
-    expect(v).toMatchObject({ state: 'review', round: 1, proposalId: 'p1' });
-    expect(v?.ghosts[0]?.state).toBe('suggested');
-    expect(h.manager.proposal()).not.toBeNull();
+    expect(premiseRecord(h)).toMatchObject({ status: 'accepted' });
+    expect(h.manager.session()?.problems[0]?.text).toContain('could not write it: vocabulary-shape: InGame is not a valid predicate.');
     expect(h.sidecars.resolutions).toEqual([]);
     // Declining it instead.
-    expect(await h.manager.rejectGhost(r1.runId, 'ghost-1')).toMatchObject({ ok: true });
-    expect(h.manager.current()?.ghosts[0]?.state).toBe('rejected');
-    expect(h.manager.proposal()?.ghosts[0]?.state).toBe('rejected');
+    expect(await h.manager.decide(r1.runId, 1, true, [decision(h, PREMISE_KEY, 'declined', { option: 'reject' })], true)).toMatchObject({ ok: true });
+    await settled(h);
+    expect(premiseRecord(h).status).toBe('declined');
+    expect(h.manager.session()?.problems).toEqual([]);
   });
 
   it('propose_assumption before the freeze is a tool error; a rejected check is reported to Claude', async () => {

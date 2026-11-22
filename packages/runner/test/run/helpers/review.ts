@@ -4,13 +4,19 @@
  * cynder-not-good from its three axioms; the step formalises pg-no-dark-past (an AXIOM card with no Lean: a Formalize
  * item, a belief) and proves the target from it (a Result that depends on it), or does not.
  */
-import type { ItemDecision, ItemRecord, ItemView, SessionView } from '@telelean/core';
+import { readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+
+import { judgeState, type GateFinding, type ItemDecision, type ItemRecord, type ItemView, type SessionView } from '@telelean/core';
 import { expect } from 'vitest';
 
+import { filesKey } from '../../../src/gate/engine.js';
 import type { FakeStep } from '../../../src/llm/fake.js';
 import type { FakeScriptTurn } from '../../../src/llm/fakeScripts.js';
 import type { PersistedSession } from '../../../src/run/types.js';
+import { fakeModel } from './fakeEngine.js';
 import { rawRun, round1, START, step, type Harness } from './harness.js';
+import { chainModel } from './sessions.js';
 
 /** The end of pg-no-dark-past's block (its statement goes directly below it). */
 export const PG_BLOCK_END = 'stance: rule\nasserted: 2026-11-01\n-/\n\n';
@@ -87,4 +93,89 @@ export async function consistent(h: Pick<Harness, 'shadow'>): Promise<void> {
   const newest = (await shadow.commits()).at(-1);
   expect(s.head).toBe(newest?.id);
   expect(await shadow.currentFiles()).toEqual(await shadow.filesAt(newest?.id ?? ''));
+}
+
+/**
+ * A gate that runs core's own step rules of the given codes (judgeState at the step's purpose, on fake facts, with the
+ * session's records, S₀ and StepScope as the runner passes them) and reports only their findings, else the fake
+ * engine's default verdict (`not-frozen` for finish(proved) without a freeze). Each gate call's findings are kept.
+ */
+export function rulesGate(h: Pick<Harness, 'engine'>, codes: ReadonlyArray<GateFinding['code']>): GateFinding[][] {
+  const seen: GateFinding[][] = [];
+  h.engine.onGate = async (ctx) => {
+    const s = ctx.session;
+    if (s?.scope === undefined || s.stepStartCommit === undefined) return undefined;
+    const shadow = ctx.shadow;
+    const base = (await shadow.commits()).find((c) => c.kind === 'base');
+    const files = await shadow.currentFiles();
+    const judgement = judgeState({
+      purpose: ctx.status === 'proved' ? 'gate-proved' : 'gate-other',
+      stage: ctx.stage,
+      commit: 'gate',
+      filesKey: filesKey(files),
+      base: fakeModel(await shadow.filesAt(base?.id ?? ''), shadow.library),
+      current: fakeModel(files, shadow.library),
+      stepStart: fakeModel(await shadow.filesAt(s.stepStartCommit), shadow.library),
+      scope: s.scope,
+      inferences: s.inferences,
+      ledger: s.ledger,
+      items: s.items,
+      premises: s.premises,
+      ended: s.ended,
+      rejectedArrows: s.rejectedArrows,
+      ...(s.noAlternative === true ? { noAlternative: true } : {}),
+    });
+    const findings = judgement.stepFindings.filter((f) => codes.includes(f.code));
+    seen.push(findings);
+    return findings.length > 0 ? { findings } : undefined;
+  };
+  return seen;
+}
+
+/** finish with `no_alternative` (DO-3). */
+export const finishNoAlternative = (status: 'proved' | 'not_proved' = 'proved', summary = 'No other arrangement.'): FakeStep => ({
+  kind: 'callTool',
+  tool: 'finish',
+  args: { status, summary, assumed_without_asking: [], no_alternative: true },
+});
+
+/** The review action ids on the done stack, as `kind` (a seal as `seal:<by>`). */
+export function stackKinds(h: Pick<Harness, 'shadow'>): string[] {
+  return session(h).stack.done.map((a) => (a.kind === 'seal' ? `seal:${a.by}` : a.kind));
+}
+
+/**
+ * A model folder in which two targets share a code-less source: the Spyro fixture with link-one resting on
+ * pg-no-dark-past (an AXIOM card with no Lean), and cynder-not-good resting on pg-no-dark-past alone.
+ */
+export function sharedModel(): string {
+  const dir = chainModel();
+  const file = path.join(dir, 'Model/Spyro/Main.lean');
+  const text = readFileSync(file, 'utf8');
+  const rewired = text.replace('id: link-one\ntype: PROPOSITION\nnatural_name: Cynder has a past that PG games exclude\npremises: cynder-dark-past\n', 'id: link-one\ntype: PROPOSITION\nnatural_name: Cynder has a past that PG games exclude\npremises: pg-no-dark-past\n');
+  const goal = rewired.replace('premises: link-two\n', 'premises: pg-no-dark-past\n');
+  if (goal === text || goal === rewired) throw new Error('the chain model changed');
+  writeFileSync(file, goal);
+  return dir;
+}
+
+/**
+ * A model folder for Claude's arrow from a proved card (D2-20, D2-50): the Spyro fixture with x-rule (an AXIOM card with
+ * no Lean) and cynder-excluded (L: a PROPOSITION proved in B from cynder-dark-past, with x-rule also drawn into it),
+ * before cynder-not-good (T).
+ */
+export const L_PROOF_B = 'theorem cynder_excluded.holds : cynder_excluded := cynder_dark_past.holds\n';
+export const X_BLOCK_END = 'natural_name: Characters with dark pasts are excluded from PG games\nrationale: house rule\nasserted: 2026-11-01\n-/\n';
+export function arrowModel(): string {
+  const dir = chainModel();
+  const file = path.join(dir, 'Model/Spyro/Main.lean');
+  const text = readFileSync(file, 'utf8');
+  const goal = '/-\n@@ telelean v1\nid: cynder-not-good';
+  const blocks =
+    `/-\n@@ telelean v1\nid: x-rule\ntype: AXIOM\n${X_BLOCK_END}\n` +
+    '/-\n@@ telelean v1\nid: cynder-excluded\ntype: PROPOSITION\nnatural_name: Cynder is excluded\npremises: cynder-dark-past, x-rule\nasserted: 2026-11-01\n-/\n' +
+    `/-- Cynder is excluded -/\nabbrev cynder_excluded : Prop := HasDarkPast cynder\n${L_PROOF_B}\n`;
+  if (!text.includes(goal)) throw new Error('the chain model changed');
+  writeFileSync(file, text.replace(goal, `${blocks}${goal}`).replace('premises: link-two\n', 'premises: cynder-dark-past, new-spyro-pg\n'));
+  return dir;
 }

@@ -1,0 +1,77 @@
+{
+  "summary": "I found no blocker and no major problem in sub-slice 2g. The slice is webview-only, as claimed. Comparing the current tree with after_slice_2f.patch shows changes only under packages/webview plus docs/slice2-plan.md, and nothing in core, runner or extension. The three carry-overs (F-F3, A-F4, F-F4) stay unchanged with reasons recorded in §8, and their reasons hold. I traced the safety lens through state/session.ts, model/review.ts, model/sessionBar.ts and the review components. No decision is sent without the user's own Accept. A group Accept always sends own:false, and an Add premise has the belief class, so the host leaves it. The webview shows no result before the meaning check and applies no state no check judged. The remaining findings are minor or nit: provenance gaps, wording and colour, and untested rules. I did not run the Playwright specs, which are the integrator's job; the builder's 10+ passes are unverified by me.",
+  "findings": [
+    {
+      "id": "V2G-FC-1",
+      "severity": "minor",
+      "where": "packages/webview/src/dialogs/Dialogs.tsx HoldAsDialog (h2 with REVIEW_TEXTS.holdAsQuestion(sentence)); test/e2e/s2-review.spec.ts:197",
+      "problem": "The hold-as dialog is where the user takes Claude's sentence as an axiom or pending proposition. Its title prints that sentence as plain text, not marked as Claude's words (D-15). The builder says every host text goes through markAgent and the provenance e2e is titled 'on every session screen', but dialogs are not covered. The cascade lead and the reveal text are plain strings too, though they embed no Claude sentence.",
+      "evidence": "HoldAsDialog renders `{REVIEW_TEXTS.holdAsQuestion(sentence)}` inside an <h2>. The provenance test visits the panel rows and the detail only. The e2e hold-as test checks only `toContainText(...)`.",
+      "fix": "Render the title as `<Label parts={wordsIn(REVIEW_TEXTS.holdAsQuestion(sentence), sentence, 'agent')} />`. Extend the provenance e2e to open the hold-as dialog and assert the sentence sits inside a [data-provenance=agent] node."
+    },
+    {
+      "id": "V2G-FC-2",
+      "severity": "minor",
+      "where": "packages/webview/src/styles/board.css:2111 (.tl-review-status[data-status='accepted'] .tl-review-status__glyph { color: var(--tl-proved) })",
+      "problem": "The ✓ of an item the user accepted is drawn in the same green (--tl-proved, testing-iconPassed) that the board keeps for what Lean checked. Spec BD-6 and line 209 say 'Green is kept for what Lean checked'. A user decision, such as a belief or an axiom the user holds, is not a Lean check. The glyph and word are present, so it is not colour alone, but the green reads as 'verified'.",
+      "evidence": "--tl-proved is defined at board.css:21 as the passed-test green. The same colour is used for the final check's passed ✓ at board.css:2151, which is correct there.",
+      "fix": "Colour the accepted glyph neutrally (foreground or description colour) or in the blue aura. Keep --tl-proved only for the passed final check."
+    },
+    {
+      "id": "V2G-FC-3",
+      "severity": "minor",
+      "where": "packages/webview/src/model/sessionBar.ts sessionBadgeText",
+      "problem": "The badge reads 'Edit session: review · Spyro' for every phase except step. In phase interrupted (Claude's step was cut off and all decisions are closed) and in confirming or applying it still says 'review'. That misdescribes the state. §5.8 lists only the working and review texts, so this is a gap, not a deviation.",
+      "evidence": "`if (session.phase === 'step' && run !== null) return badgeWorking(...); return badgeReview(subject);`",
+      "fix": "For interrupted, confirming and applying, use a neutral builder-worded text such as 'Edit session: interrupted', 'confirming', 'applying', with a test per phase. Log the wording in §8."
+    },
+    {
+      "id": "V2G-FC-4",
+      "severity": "minor",
+      "where": "packages/webview/src/model/review.ts markAgent and agentPhrases",
+      "problem": "markAgent matches Claude's phrases with a bare `indexOf`, with no word boundary or minimum length. A short Claude sentence, such as an Add premise 'Evil' or a card Claude worded 'Dark', also marks occurrences inside the user's own words or code names (for example 'IsEvil' in a label or a gate reason). The user's words then show in Claude's italic style, so the provenance is wrong in the other direction.",
+      "evidence": "markAgent: `const at = rest.indexOf(phrase)`. agentPhrases adds the whole sentence and its 60- and 40-character cuts, with no length floor. The test at review.test.ts:186 covers only long phrases.",
+      "fix": "Skip phrases shorter than about 8 characters, or require the match to start and end at non-word boundaries. Add a test with a short phrase embedded in a longer word."
+    },
+    {
+      "id": "V2G-FC-5",
+      "severity": "minor",
+      "where": "packages/webview/test/unit/store-session.test.ts and test/e2e/s2-review.spec.ts (untested rules)",
+      "problem": "Some rules would survive being inverted or dropped, because no test fails. (1) The stale-dialog rules in `receive` for the reveal dialog (closes when the results become shown or the phase leaves stage) and the cascade dialog (closes when a step starts). (2) Exit's dialog counts being refreshed on a later session message. (3) The decline menu being dropped when its items leave review or a step starts. (4) 'Select them' (`selectItems`, RV-5, which drops hidden items and duplicates). (5) 'Go to the first one'. (6) `dismissEvents` and the events box filtering by `seenEvent`. (7) `toggleItemExplicit`, and the pruning of `explicit` ids that left the view. (8) `lastGroup` being reset on a new stage. Mutants S32 and S31 cover only the hold-as dialog and Exit's counts.",
+      "evidence": "A grep of the three test files finds no call to selectItems, dismissEvents or toggleItemExplicit. Only the hold-as dialog is tested for becoming stale (store-session.test.ts:289). No e2e uses detail-select-them or session-go-first.",
+      "fix": "Add store-session tests for each: open a reveal dialog, then a session with results.shown=true (via 'show-result') and expect dialog===null. Open a cascade dialog, then a step session, and expect null. Select via a gate's `missing`, with a hidden id and a duplicate in the list, and expect only the listed ids once. Post events, call dismissEvents, and expect the box to filter by seenEvent. Toggle explicit, then send a session without that item, and expect explicit to be pruned. Send a new stage after a group note and expect lastGroup null."
+    },
+    {
+      "id": "V2G-FC-6",
+      "severity": "nit",
+      "where": "packages/webview/src/state/session.ts confirmExitSession, `track` and `result`",
+      "problem": "Exit is allowed while a decision is in flight and overwrites `sessionBusy` with its own request. If Exit's answer arrives first, for example a refusal, `sessionBusy` becomes null while the decision is still pending. A second request can then be sent next to it, and the decision's rows lose their spinner. This is the only way 'one session request at a time' is broken.",
+      "evidence": "track() calls `set({ sessionBusy: {...} })` unconditionally. result() clears it only when `sessionBusy.requestId === requestId`.",
+      "fix": "Do not put Exit into `sessionBusy` (it already has its own `exiting` guard), or keep busy as a set of request ids."
+    },
+    {
+      "id": "V2G-FC-7",
+      "severity": "nit",
+      "where": "packages/webview/src/state/session.ts declineMany and result",
+      "problem": "'Ask me instead' (origin 'report') goes through declineMany, which marks the request `group: true`. On success `result` then clears the user's group selection, and it can show a 'Left N' note for a decision that was not a list group action.",
+      "evidence": "declineMany -> decide(decisions, { group: true, ... }). result(): `if (resend.group) { setUi({ lastGroup }); set({ selectedItems: [] }) }`.",
+      "fix": "Pass `group: menu.origin !== 'report'` for the report origin, or keep the selection when the menu came from the report."
+    },
+    {
+      "id": "V2G-FC-8",
+      "severity": "nit",
+      "where": "packages/webview/src/run/review/parts.tsx ItemLink and usePhrases",
+      "problem": "Every ItemLink calls usePhrases(session) (agentPhrases over all items, with a sort), even though it needs the phrases only for its fallback text. Links in the confirmation changes list (up to 500) and the events list give O(links × items) work on each session update.",
+      "evidence": "ItemLink calls `usePhrases(session)` unconditionally. agentPhrases iterates all items and inferences and sorts every time `session` changes.",
+      "fix": "Compute the phrases only in the fallback branch, or pass the phrases down from the parent that already computed them once."
+    },
+    {
+      "id": "V2G-FC-9",
+      "severity": "nit",
+      "where": "packages/webview/src/model/review.ts groupItemOf (blocked)",
+      "problem": "The preview's `blocked` is rebuilt from the view as 'own Accept closed with no missing dependency'. The host's is `blockedBy(...) !== undefined || gate.waits`. When an item both waits for a hidden item and also has a missing dependency, the own gate answers 'depends' with `missing`, so the preview says 'depends' while the host says 'blocked'. Only the 'Accept k of N' label and the 'Left' wording can differ. The host decides, so nothing unsafe is sent.",
+      "evidence": "core reducer.ts groupItemOf and acceptGateIn: the reason is 'blocked' or 'depends' in the order checked. The webview reads accept.missing only.",
+      "fix": "Accept as a documented approximation in §8 (only the preview can differ), or have core expose a `groupItems` list in the view so the webview calls planGroupAccept on the host's own GroupItems."
+    }
+  ]
+}

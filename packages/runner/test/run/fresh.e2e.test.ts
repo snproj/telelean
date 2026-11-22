@@ -33,14 +33,16 @@
  * (TELELEAN_NO_REAL_CLAUDE=1 in the vitest config, FakeBackend only).
  *
  * Slice 2d (docs/slice2-plan.md §0, "Tests that move"): every start is an edit session, whose RunView has no verdict and
- * which has no proposal to Accept; each of these runs ends in Accept, so all of them move to 2f (Apply). The session
- * itself runs end to end with real Lean in walkthrough.e2e.test.ts.
+ * which has no proposal to Accept; each of these runs ended in Accept, so all of them moved to 2f, which rewrote them as
+ * sessions to their Apply: the step's verdict from run.json, M2's definition questions as presupposition items, every
+ * item accepted (each its own Accept), Submit review, the final check (real Lean), Apply; (b)'s hand edit is drift, and
+ * (c)'s "I hold this" is the Add premise's Accept, whose write and completion are telelean's (no second Claude round).
  */
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { parseNodeType, type NodeType, type RunView, type TlGraph } from '@telelean/core';
+import { parseNodeType, REVIEW_TEXTS, type NodeType, type RunView, type TlGraph } from '@telelean/core';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { createLeanCheckEngine } from '../../src/gate/index.js';
@@ -48,10 +50,11 @@ import { FakeBackend } from '../../src/llm/fake.js';
 import { playFakeScript, validateFakeScriptFile, type FakeScriptFile } from '../../src/llm/fakeScripts.js';
 import type { LlmEvent } from '../../src/llm/types.js';
 import { createProposalService, createRunSidecarStore } from '../../src/proposal/index.js';
-import { createRunManager, DEFAULT_RUN_SETTINGS, type RunManager } from '../../src/run/index.js';
+import { createRunManager, DEFAULT_RUN_SETTINGS, type PersistedRun, type RunManager } from '../../src/run/index.js';
 import { listRunDirs } from '../../src/shadow/index.js';
 import { createModelWorkspace, fsEditApplier, fsTextSource, inspectFolder, planInitialize, type ModelWorkspace } from '../../src/workspace/index.js';
 import { cleanup, makeTempDir, REPO_ROOT } from './helpers/env.js';
+import { acceptEverything, applyEverything, confirm } from './helpers/apply.js';
 import { waitForRun } from './helpers/harness.js';
 
 const FIXTURES = path.join(REPO_ROOT, 'test-fixtures', 'fresh');
@@ -182,23 +185,24 @@ function newManager(f: Fresh, script: FreshScript): RunManager {
 }
 
 /**
- * Runs "Formalize for dependencies" (spec v4.1, M2's "These suffice") on the arrows the person drew; answers Claude's
- * question (if it asks) as the script says. Resolves at the end of round 1. Slice 1e: a run no longer declares its
- * premises, so the person draws the arrows first (one `add-arrows`, as the board's handle or "Draw arrows from the
- * selection" would); the files then hold the same `premises:` line M2's start wrote, so the scripts' edits still apply.
- * (An empty question is left as it was: the runner does not check it; the extension host does, core
- * formalizeStartProblem.)
+ * Runs "Formalize for dependencies" (spec v4.1) on the arrows the person drew; answers Claude's question (if it asks) as
+ * the script says. Slice 2f: an edit session, so it resolves at the stage (the step ended, the queue's judgement
+ * converged), with the step's verdict and the session's records from run.json (a session's RunView has no verdict).
+ * The person draws the arrows first (one `add-arrows`, as the board's handle or "Draw arrows from the selection"
+ * would); the files then hold the `premises:` line the scripts' edits expect. (An empty question is left as it was:
+ * the runner does not check it; the extension host does, core formalizeStartProblems.)
  */
-async function theseSuffice(f: Fresh, manager: RunManager, script: FreshScript): Promise<{ review: RunView; before: Record<string, string> }> {
+async function theseSuffice(f: Fresh, manager: RunManager, script: FreshScript): Promise<{ review: RunView; before: Record<string, string>; raw: PersistedRun; verdict: string }> {
   if (script.premises.length > 0) {
     const drawn = await f.workspace.perform({ kind: 'add-arrows', target: script.target, sources: script.premises });
     expect(drawn, JSON.stringify(drawn)).toMatchObject({ ok: true });
   }
   const started = await manager.start({ subject: script.subject, target: script.target, premises: script.premises });
   expect(started, JSON.stringify(started)).toMatchObject({ ok: true });
-  // From here on (the arrows are drawn) nothing may change the person's files until Accept.
+  // From here on (the arrows are drawn) nothing may change the person's files until Apply.
   const before = modelTree(f.root);
-  const first = await waitForRun(manager, (v) => v.state === 'waiting-for-answer' || v.state === 'review' || v.state === 'failed', 240_000, 'the question or the end of round 1');
+  const atStage = (v: RunView): boolean => (v.session?.phase === 'stage' && manager.session()?.judging === false) || v.state === 'failed';
+  const first = await waitForRun(manager, (v) => v.state === 'waiting-for-answer' || atStage(v), 240_000, 'the question or the stage');
   f.runIds.push(first.runId);
   if (first.state === 'waiting-for-answer') {
     expect(script.answer, 'the script asks a question, so it says how to answer it').toBeDefined();
@@ -207,10 +211,31 @@ async function theseSuffice(f: Fresh, manager: RunManager, script: FreshScript):
   } else {
     expect(script.answer).toBeUndefined();
   }
-  const review = await waitForRun(manager, (v) => v.state === 'review' || v.state === 'failed', 300_000, 'the end of round 1');
-  expect(review.state, JSON.stringify({ error: review.error, notices: review.notices })).toBe('review');
+  const review = await waitForRun(manager, atStage, 600_000, 'the stage');
+  const raw = await rawRunOf(f, review.runId);
+  expect(review.state, JSON.stringify({ error: review.error, notices: raw.view.notices })).toBe('review');
   expect(modelTree(f.root)).toEqual(before);
-  return { review, before };
+  const verdict = raw.session?.steps[0]?.attempt?.verdict ?? '';
+  // Builder 2f: a step's new helper instance of a presupposition is owned (by its presupposition's item), never unowned.
+  expect(raw.session?.judged?.problems, JSON.stringify(raw.session?.judged)).toEqual([]);
+  return { review, before, raw, verdict };
+}
+
+/** run.json of a run as written now. */
+async function rawRunOf(f: Fresh, runId: string): Promise<PersistedRun> {
+  const found = (await listRunDirs(f.runsDir, f.root)).find((d) => d.runId === runId);
+  if (found === undefined) throw new Error(`no run directory for ${runId}`);
+  return JSON.parse(readFileSync(path.join(found.runDir, 'run.json'), 'utf8')) as PersistedRun;
+}
+
+/** Slice 2f: the presuppositions a session proposed (its `decl:` items of that kind), M2's definition questions. */
+function presuppositions(raw: PersistedRun): string[] {
+  return (raw.session?.items ?? []).filter((r) => r.kind === 'declaration' && r.declKind === 'presupposition').map((r) => r.key.slice('decl:'.length));
+}
+
+/** Slice 2f: the target's Result as the stage judged it (its verdict and what it rests on). */
+function judgedResult(raw: PersistedRun, target: string): NonNullable<NonNullable<PersistedRun['session']>['items'][number]['judged']> | undefined {
+  return raw.session?.items.find((r) => r.key === `proof:${target}`)?.judged;
 }
 
 /** Every tool result of the run so far, from its transcript. */
@@ -237,12 +262,11 @@ function neverRefused(results: readonly string[], failedChecks = 0, freezeRefusa
 
 const sorted = (xs: readonly string[]): string[] => [...xs].sort();
 
-/** Accepts the proposal with every definition approved. */
-async function acceptAll(f: Fresh, manager: RunManager, review: RunView): Promise<void> {
-  const proposal = manager.proposal();
-  expect(proposal).not.toBeNull();
-  const accepted = await manager.accept(review.runId, proposal?.proposalId ?? '', proposal?.definitions.map((d) => d.id) ?? []);
-  expect(accepted, JSON.stringify(accepted)).toMatchObject({ ok: true });
+/** Slice 2f: every item accepted (each its own Accept), Submit review, the final check passed, Apply. */
+async function acceptAll(f: Fresh, manager: RunManager, review: RunView, premise?: { holdAs: 'axiom' | 'pending'; rationale?: string }): Promise<void> {
+  void f;
+  const applied = await applyEverything(manager, review.runId, premise);
+  expect(applied, JSON.stringify(applied)).toMatchObject({ ok: true });
   expect(manager.current()?.state).toBe('accepted');
 }
 
@@ -280,20 +304,21 @@ async function oneRound(
   const f = await initialiseFolder(name, script.subject, script.today, git);
   await typeCards(f, script);
   const manager = newManager(f, script);
-  const { review } = await theseSuffice(f, manager, script);
-  expect(review.verdict, JSON.stringify(review.notices)).toBe(script.expect.verdict);
+  const { review, raw, verdict } = await theseSuffice(f, manager, script);
+  expect(verdict, JSON.stringify(raw.view.notices)).toBe(script.expect.verdict);
   neverRefused(await toolResults(f, review.runId), script.expect.failedChecks, script.expect.freezeRefusals);
-  const proposal = manager.proposal();
-  expect(proposal?.definitions.map((d) => d.name)).toEqual(script.expect.definitions);
-  for (const d of proposal?.definitions ?? []) expect(d.kind, d.name).toBe('presupposition');
+  // Slice 2f: M2's definition questions are the session's presupposition items, each with its own Accept.
+  expect(presuppositions(raw)).toEqual(script.expect.definitions);
   const targetType = kindOf(script.cards.find((c) => c.id === script.target)?.type);
   const proved = script.expect.verdict === 'proved';
-  // Spec v4: no lifecycle item; a proved proposition stays a proposition.
-  expect(proposal).not.toHaveProperty('lifecycle');
-  if (script.expect.footprint !== undefined) expect(sorted(proposal?.report.footprint ?? [])).toEqual(sorted(script.expect.footprint));
-  expect(proposal?.report.selfEvident).toBe(script.expect.selfEvident ?? false);
+  expect(judgedResult(raw, script.target)?.verdict).toEqual(proved ? expect.stringMatching(/^(proved|established)$/u) : 'not-proved');
+  // The Result rests on the selected cards the proof uses (M2's footprint, the presuppositions aside).
+  if (script.expect.footprint !== undefined && proved) {
+    expect(sorted(judgedResult(raw, script.target)?.restsOn ?? [])).toEqual(sorted(script.expect.footprint.filter((x) => !x.startsWith('presup:'))));
+  }
   await beforeAccept?.(f, script, manager, review);
-  await acceptAll(f, manager, review);
+  // (b)'s drift test ends the session itself, with the Apply that goes through once the edit is undone.
+  if (manager.current()?.state !== 'accepted') await acceptAll(f, manager, review);
   const graph = await refreshedGraph(f, script);
   const target = graph.nodes.find((n) => n.id === script.target);
   expect(target?.status.formal).toBe('formalized');
@@ -308,7 +333,7 @@ async function oneRound(
 }
 
 describe('fresh models: a demo user\'s own example from "Initialize Model Here" to the refreshed board', () => {
-  it.skip('moves to 2f: (a) socrates: proved; Accept writes the vocabulary and the formalisation; Undo/Redo; a second example reuses the vocabulary', async () => {
+  it('(a) socrates: proved; Apply writes the vocabulary and the formalisation; Undo/Redo; a second example reuses the vocabulary', async () => {
     const { f, script, graph } = await oneRound('socrates');
     const inbox = readFileSync(path.join(f.root, INBOX), 'utf8');
     for (const [id, statement] of [
@@ -345,11 +370,10 @@ describe('fresh models: a demo user\'s own example from "Initialize Model Here" 
     const plato = loadFresh('plato');
     await typeCards(f, plato);
     const manager = newManager(f, plato);
-    const { review } = await theseSuffice(f, manager, plato);
-    expect(review.verdict, JSON.stringify(review.notices)).toBe('proved');
+    const { review, raw, verdict } = await theseSuffice(f, manager, plato);
+    expect(verdict, JSON.stringify(raw.view.notices)).toBe('proved');
     neverRefused(await toolResults(f, review.runId));
-    expect(manager.proposal()?.definitions).toEqual([]);
-    expect(sorted(manager.proposal()?.report.footprint ?? [])).toEqual(sorted(plato.expect.footprint ?? []));
+    expect(presuppositions(raw)).toEqual([]);
     await acceptAll(f, manager, review);
     const after = await refreshedGraph(f, plato);
     for (const id of ['socrates-is-mortal', 'plato-is-mortal']) {
@@ -362,10 +386,10 @@ describe('fresh models: a demo user\'s own example from "Initialize Model Here" 
     await finishFresh(f);
   });
 
-  it.skip('moves to 2f: (b) chain: a named lemma and a tactic proof; proved; a hand edit made meanwhile holds Accept back until it is undone (ES-7)', async () => {
-    // While Claude works the person edits the Inbox by hand (the board itself cannot be edited during a run, ES-9).
-    // Accept then refuses, naming the file, and changes nothing; once the edit is undone (as the editor's Undo would),
-    // the same Accept goes through. (Before slice 1f, Accept rebased such edits, placed by card id.)
+  it('(b) chain: a named lemma and a tactic proof; proved; a hand edit made meanwhile holds Apply back until it is undone (ES-7)', async () => {
+    // During the session the person edits the Inbox by hand (the board itself cannot be edited during a run, ES-9).
+    // The drift watcher records it; Apply then refuses, naming the file, and changes nothing; once the edit is undone
+    // (as the editor's Undo would), the same Apply goes through. (Before slice 1f, Accept rebased such edits.)
     const meanwhile = async (f: Fresh, _script: FreshScript, manager: RunManager, review: RunView): Promise<void> => {
       const file = path.join(f.root, INBOX);
       const base = readFileSync(file, 'utf8');
@@ -373,13 +397,18 @@ describe('fresh models: a demo user\'s own example from "Initialize Model Here" 
       expect(edited).not.toBe(base);
       writeFileSync(file, edited);
       await f.workspace.invalidate([INBOX]);
-      const proposal = manager.proposal();
-      const refused = await manager.accept(review.runId, proposal?.proposalId ?? '', proposal?.definitions.map((d) => d.id) ?? []);
-      expect(refused).toEqual({ ok: false, code: 'conflict', error: `Your files changed since this run started (${INBOX}). Undo those edits in the editor, or discard the run.` });
+      await acceptEverything(manager, review.runId);
+      const c = await confirm(manager, review.runId);
+      for (let k = 0; k < 300 && manager.session()?.drift === null; k++) await new Promise((r) => setTimeout(r, 20));
+      expect(manager.session()?.drift?.files).toEqual([INBOX]);
+      const refused = await manager.end(review.runId, 'apply', manager.session()?.stage ?? 0, c.check.id);
+      expect(refused).toEqual({ ok: false, code: 'conflict', error: REVIEW_TEXTS.drift([INBOX]) });
       expect(manager.current()?.state).toBe('review');
       expect(readFileSync(file, 'utf8')).toBe(edited); // nothing applied
       writeFileSync(file, base);
       await f.workspace.invalidate([INBOX]);
+      for (let k = 0; k < 300 && manager.session()?.drift !== null; k++) await new Promise((r) => setTimeout(r, 20));
+      expect(await manager.end(review.runId, 'apply', manager.session()?.stage ?? 0, c.check.id)).toMatchObject({ ok: true });
     };
     const { f, graph } = await oneRound('chain', true, meanwhile);
     const inbox = readFileSync(path.join(f.root, INBOX), 'utf8');
@@ -391,31 +420,22 @@ describe('fresh models: a demo user\'s own example from "Initialize Model Here" 
     await finishFresh(f);
   });
 
-  it.skip('moves to 2f: (c) penguin: a question; not proved with a suggestion; "I hold this" re-freezes and proves; Accept writes the card worded by Claude', async () => {
+  it('(c) penguin: a question; not proved with a suggestion that closes the gap; its Accept ("I hold this", with the Why) writes the card worded by Claude and telelean completes the proof; Apply writes both', async () => {
     const script = loadFresh('penguin');
     const f = await initialiseFolder('penguin', script.subject, script.today, true);
     await typeCards(f, script);
     const manager = newManager(f, script);
-    const { review: r1, before } = await theseSuffice(f, manager, script);
-    expect(r1.verdict, JSON.stringify(r1.notices)).toBe(script.expect.round1);
-    expect(r1.ghosts).toHaveLength(1);
-    expect(r1.ghosts[0]).toMatchObject({ id: 'ghost-1', closesGap: true, aloneEntails: false, state: 'suggested', leanStatement: script.expect.ghostStatement });
-    expect(manager.proposal()?.definitions.map((d) => d.name)).toEqual(script.expect.definitions);
+    const { review: r1, before, raw, verdict } = await theseSuffice(f, manager, script);
+    expect(verdict, JSON.stringify(raw.view.notices)).toBe(script.expect.round1);
+    expect(raw.session?.premises.map((d) => d.leanStatement)).toEqual([script.expect.ghostStatement]);
+    expect(presuppositions(raw)).toEqual(script.expect.definitions);
     const decisions = JSON.parse(readFileSync(path.join(f.root, '.telelean', 'subjects', 'Demo', 'decisions.json'), 'utf8')) as { decisions: Array<{ phenomenon: string }> };
     expect(decisions.decisions.map((d) => d.phenomenon)).toEqual(['genericity']);
-    const adopted = await manager.adoptGhost(r1.runId, script.adopt?.ghost ?? '', script.adopt?.rationale);
-    expect(adopted, JSON.stringify(adopted)).toMatchObject({ ok: true });
-    const r2 = await waitForRun(manager, (v) => v.round === 2 && (v.state === 'review' || v.state === 'failed'), 300_000, 'round 2');
-    expect(r2.verdict, JSON.stringify(r2.notices)).toBe(script.expect.round2);
     expect(modelTree(f.root)).toEqual(before);
-    neverRefused(await toolResults(f, r2.runId));
-    const proposal = manager.proposal();
-    expect(proposal).not.toHaveProperty('lifecycle');
-    expect(proposal?.definitions.map((d) => d.name)).toEqual(script.expect.definitions);
-    expect(sorted(proposal?.report.footprint ?? [])).toEqual(sorted(script.expect.footprint ?? []));
-    await acceptAll(f, manager, r2);
+    // One Claude round only: the premise's write and the completion are telelean's (F15).
+    await acceptAll(f, manager, r1, { holdAs: 'axiom', ...(script.adopt?.rationale !== undefined ? { rationale: script.adopt.rationale } : {}) });
     const inbox = readFileSync(path.join(f.root, INBOX), 'utf8');
-    // The adopted card sits right before the target's block, worded by Claude, and joins the target's premises.
+    // The written card sits right before the target's block, worded by Claude, and joins the target's premises.
     const ghostAt = inbox.indexOf('natural_name: Every penguin is a bird');
     expect(ghostAt).toBeGreaterThan(inbox.indexOf('natural_name: Tweety is a penguin'));
     expect(ghostAt).toBeLessThan(inbox.indexOf('natural_name: Tweety can fly'));
@@ -435,7 +455,7 @@ describe('fresh models: a demo user\'s own example from "Initialize Model Here" 
     await finishFresh(f);
   });
 
-  it.skip('moves to 2f: (d) zero premises, not self-evident: not proved; Accept keeps the formalisation; the proposition stays one (no git history)', async () => {
+  it('(d) zero premises, not self-evident: not proved; Apply keeps the formalisation; the proposition stays one (no git history)', async () => {
     const { f, review, graph } = await oneRound('self-evident-not', false);
     expect(review.ghosts).toEqual([]);
     expect(readFileSync(path.join(f.root, INBOX), 'utf8')).toContain('abbrev pingu_can_swim : Prop := CanSwim pingu\n');
@@ -444,14 +464,14 @@ describe('fresh models: a demo user\'s own example from "Initialize Model Here" 
     await finishFresh(f);
   });
 
-  it.skip('moves to 2f: (e) the goal typed before its premises: the proof moves below them; proved', async () => {
+  it('(e) the goal typed before its premises: the proof moves below them; proved', async () => {
     const { f } = await oneRound('goal-first');
     const inbox = readFileSync(path.join(f.root, INBOX), 'utf8');
     expect(inbox.indexOf('theorem socrates_is_mortal.holds')).toBeGreaterThan(inbox.indexOf('axiom socrates_is_a_human.holds'));
     await finishFresh(f);
   });
 
-  it.skip('moves to 2f: (f) propositional, the conclusion typed as a Derivation: proved; no kind change; nothing to approve', async () => {
+  it('(f) propositional, the conclusion typed as a Derivation: proved; no kind change; nothing to approve', async () => {
     const { f, graph } = await oneRound('rain');
     expect(graph.vocabulary.map((v) => [v.shortName, v.kind])).toEqual([
       ['Rains', 'predicate'],
@@ -460,7 +480,7 @@ describe('fresh models: a demo user\'s own example from "Initialize Model Here" 
     await finishFresh(f);
   });
 
-  it.skip('moves to 2f: (h) honest variants: a named presupposition instance, vocabulary in Inbox.lean, `def` statements, the proof in Main.lean; a blank line named and fixed', async () => {
+  it('(h) honest variants: a named presupposition instance, vocabulary in Inbox.lean, `def` statements, the proof in Main.lean; a blank line named and fixed', async () => {
     const { f, review } = await oneRound('variants');
     const results = await toolResults(f, review.runId);
     // The one refusal names the blank line and never asks to remove the assumption's .holds.
@@ -472,15 +492,83 @@ describe('fresh models: a demo user\'s own example from "Initialize Model Here" 
     await finishFresh(f);
   });
 
-  it.skip('moves to 2f: (i) an intermediate step typed as a Derivation and selected: proved after the freeze and used; both proofs accepted', async () => {
-    const { f, graph } = await oneRound('derivation-premise');
-    const step = graph.nodes.find((n) => n.id === 'tom-is-a-mammal');
-    expect(step?.type).toBe('PROPOSITION');
-    expect(step?.status.proof.kind).toBe('proved');
+  it('(i) an intermediate step typed as a Derivation: in a session it is its own target (a two-target Formalize, sources first), proved in its own step and used by the next; both proofs applied', async () => {
+    // Slice 2f: the fixture's one round proved the selected intermediate card too, which a session step may not (ES-2,
+    // B.4 `not-target`: only its own target's proof). The person asks about both instead; its steps split the round.
+    const script = loadFresh('derivation-premise');
+    const all = script.turns[0]?.steps ?? [];
+    const edit = (needle: string) => {
+      const found = all.find((x) => x.kind === 'edit' && x.oldString.includes(needle));
+      if (found === undefined || found.kind !== 'edit') throw new Error(`the fixture has no edit at ${needle}`);
+      return found;
+    };
+    const statement = (card: string, premises: string, needle: string) => {
+      const e0 = edit(needle);
+      if (e0.kind !== 'edit') throw new Error('not an edit');
+      const block = `natural_name: ${card}\npremises: ${premises}\nasserted: 2026-11-10\n-/\n`;
+      return { ...e0, oldString: block, newString: block + e0.newString.slice(e0.oldString.length) };
+    };
+    const MAMMAL = 'every-cat-is-a-mammal, tom-is-a-cat';
+    const ANIMAL = 'every-mammal-is-an-animal, tom-is-a-mammal';
+    const turns = [
+      {
+        match: 'Run: "Formalize for dependencies"',
+        steps: [
+          edit('namespace Demo\n\nend Demo\n'),
+          edit('natural_name: Every cat is a mammal\n'),
+          edit('natural_name: Tom is a cat\n'),
+          statement('Tom is a mammal', MAMMAL, 'natural_name: Tom is a mammal\n'),
+          { kind: 'callTool' as const, tool: 'freeze_statements', args: { targets: ['tom-is-a-mammal'] } },
+          edit('abbrev tom_is_a_mammal : Prop := Mammal tom\n'),
+          { kind: 'callTool' as const, tool: 'finish', args: { status: 'proved', summary: 'Tom is a cat, so a mammal.', assumed_without_asking: [] } },
+          { kind: 'result' as const },
+        ],
+      },
+      {
+        match: 'Step 2 of 2: formalize and prove “tom-is-an-animal”',
+        steps: [
+          edit('natural_name: Every mammal is an animal\n'),
+          statement('Tom is an animal', ANIMAL, 'natural_name: Tom is an animal\n'),
+          { kind: 'callTool' as const, tool: 'freeze_statements', args: { targets: ['tom-is-an-animal'] } },
+          edit('abbrev tom_is_an_animal : Prop := Animal tom\n'),
+          { kind: 'callTool' as const, tool: 'finish', args: { status: 'proved', summary: 'A mammal, so an animal.', assumed_without_asking: [] } },
+          { kind: 'result' as const },
+        ],
+      },
+    ];
+    const f = await initialiseFolder('derivation-premise', script.subject, script.today, true);
+    await typeCards(f, script);
+    for (const [target, sources] of [['tom-is-a-mammal', ['every-cat-is-a-mammal', 'tom-is-a-cat']], ['tom-is-an-animal', ['every-mammal-is-an-animal', 'tom-is-a-mammal']]] as const) {
+      expect(await f.workspace.perform({ kind: 'add-arrows', target, sources: [...sources] })).toMatchObject({ ok: true });
+    }
+    const manager = newManager(f, { ...script, turns } as FreshScript);
+    const started = await manager.formalize({
+      subject: script.subject,
+      inferences: [
+        { target: 'tom-is-an-animal', premises: ['every-mammal-is-an-animal', 'tom-is-a-mammal'] },
+        { target: 'tom-is-a-mammal', premises: ['every-cat-is-a-mammal', 'tom-is-a-cat'] },
+      ],
+    });
+    expect(started, JSON.stringify(started)).toMatchObject({ ok: true });
+    const view = await waitForRun(manager, (v) => (v.session?.phase === 'stage' && manager.session()?.judging === false) || v.state === 'failed', 600_000, 'the stage');
+    f.runIds.push(view.runId);
+    const raw = await rawRunOf(f, view.runId);
+    expect(raw.session?.steps.map((x) => [x.target, x.state, x.attempt?.verdict])).toEqual([
+      ['tom-is-a-mammal', 'passed', 'proved'],
+      ['tom-is-an-animal', 'passed', 'proved'],
+    ]);
+    expect(raw.session?.judged?.problems).toEqual([]);
+    await acceptAll(f, manager, view);
+    const graph = await refreshedGraph(f, script);
+    for (const id of ['tom-is-a-mammal', 'tom-is-an-animal']) {
+      const node = graph.nodes.find((n) => n.id === id);
+      expect(node?.type, id).toBe('PROPOSITION');
+      expect(node?.status.proof.kind, id).toBe('proved');
+    }
     await finishFresh(f);
   });
 
-  it.skip('moves to 2f: (g) arithmetic with zero premises: proved and flagged self-evident (declarations that mention no constant get facts)', async () => {
+  it('(g) arithmetic with zero premises: proved and flagged self-evident (declarations that mention no constant get facts)', async () => {
     const { f, graph } = await oneRound('arith');
     expect(graph.nodes.find((n) => n.id === 'two-plus-two-is-four')?.status.flags).toContain('self-evident');
     expect(graph.vocabulary.find((v) => v.shortName === 'four_eq')?.kind).toBe('lemma');

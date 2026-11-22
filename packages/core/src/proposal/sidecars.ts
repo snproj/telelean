@@ -94,10 +94,22 @@ function recordOf(v: Json): AttemptRecord | null {
   };
 }
 
+/** Slice 2f (G1): a resolution's `arrows`, read leniently: a malformed entry is dropped; none left (or absent) reads as none. */
+function readArrows(v: unknown): NonNullable<AttemptResolution['arrows']> | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const out: NonNullable<AttemptResolution['arrows']> = [];
+  for (const a of v) {
+    if (!isRecord(a) || !isString(a.source) || !isString(a.target) || !isString(a.step) || (a.kind !== 'arrow' && a.kind !== 'premise')) continue;
+    out.push({ source: a.source, target: a.target, step: a.step, kind: a.kind });
+  }
+  return out.length > 0 ? out : undefined;
+}
+
 function resolutionOf(v: Json): AttemptResolution | null {
   const { run, round, date, resolution } = v;
   if (!isString(run) || !isNumber(round) || !isString(date) || !RESOLUTIONS.includes(resolution as AttemptResolution['resolution'])) return null;
-  return { format: ATTEMPT_RESOLUTION_FORMAT, version: 1, run, round, date, resolution: resolution as AttemptResolution['resolution'] };
+  const arrows = readArrows(v.arrows);
+  return { format: ATTEMPT_RESOLUTION_FORMAT, version: 1, run, round, date, resolution: resolution as AttemptResolution['resolution'], ...(arrows !== undefined ? { arrows } : {}) };
 }
 
 function lineOf(v: unknown): AttemptLine | null {
@@ -134,11 +146,15 @@ function ordered(obj: object, keys: readonly string[]): Json {
 }
 
 const RECORD_KEYS = ['format', 'version', 'id', 'run', 'round', 'date', 'subject', 'target', 'premises', 'verdict', 'footprint', 'ghosts', 'summary', 'gateAttempts', 'model', 'effort', 'usage'];
-const RESOLUTION_KEYS = ['format', 'version', 'run', 'round', 'date', 'resolution'];
+const RESOLUTION_KEYS = ['format', 'version', 'run', 'round', 'date', 'resolution', 'arrows'];
 
 /** See `serializeAttemptLine` in ./index.ts (keys in the interface's order; nothing is validated or dropped but unknown keys). */
 export function serializeAttempt(line: AttemptLine): string {
-  if (line.format === ATTEMPT_RESOLUTION_FORMAT) return JSON.stringify(ordered(line, RESOLUTION_KEYS));
+  if (line.format === ATTEMPT_RESOLUTION_FORMAT) {
+    const resolution = ordered(line, RESOLUTION_KEYS);
+    if (Array.isArray(resolution.arrows)) resolution.arrows = resolution.arrows.map((a: object) => ordered(a, ['source', 'target', 'step', 'kind']));
+    return JSON.stringify(resolution);
+  }
   const record = ordered(line, RECORD_KEYS);
   if (Array.isArray(record.ghosts)) record.ghosts = record.ghosts.map((g: object) => ordered(g, ['id', 'naturalName', 'adopted']));
   if (isRecord(record.usage)) record.usage = ordered(record.usage, ['requests', 'inputTokens', 'outputTokens', 'costEstimateUsd']);

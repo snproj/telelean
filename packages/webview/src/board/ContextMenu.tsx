@@ -4,15 +4,17 @@
  * selection rule). It is a common/Popover menu hanging from a 1-pixel anchor placed at the pointer through the CSSOM;
  * when it closes, the focus goes back to the card (or the canvas) it was about. Slice 1e: a drawn arrow's and a
  * mark's menus offer Formalize for dependencies as the header's Context Menu section does (board/useFormalize.ts),
- * and every action runs through board/runAction.ts, shared with that section.
+ * and every action runs through board/runAction.ts, shared with that section. Slice 2h (§5.10): in a session's Proposed
+ * view the menus get the session's review (`MenuReview`: the card marks, Claude's undecided arrows, the cards' places).
  */
 import { Fragment, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Popover } from '../common/Popover';
 import { useBoard, useBoardActions, useBoardStore } from '../state/context';
 import { boardView, editLock, proposedOverlay } from '../state/store';
+import type { MenuEntry, MenuReview } from './menu';
 import type { MenuRequest } from './BoardInput';
 import type { CanvasView } from './canvas/CanvasView';
-import { menuEntries, menuName, type MenuAction, type MenuThing } from './menu';
+import { menuEntries, menuName, type MenuThing } from './menu';
 import { runBoardAction } from './runAction';
 import { useFormalize } from './useFormalize';
 
@@ -28,6 +30,8 @@ function menuLabel(thing: MenuThing, name: (id: string) => string): string {
       return `Actions for the "follows from nothing" mark of “${name(thing.id)}”`;
     case 'canvas':
       return 'Canvas actions';
+    case 'proposed':
+      return `Actions for Claude's arrow from “${name(thing.source)}” into “${name(thing.target)}”`;
   }
 }
 
@@ -40,7 +44,15 @@ export function ContextMenu({ menu, onClose, canvas }: { menu: MenuRequest | nul
   const provisional = useBoard((s) => s.provisional);
   const lock = useBoard((s) => editLock(s));
   const proposed = useBoard((s) => proposedOverlay(s) !== null);
+  const overlay = useBoard((s) => proposedOverlay(s));
+  const session = useBoard((s) => s.session);
+  const busy = useBoard((s) => s.sessionBusy !== null);
   const formalize = useFormalize();
+  // Slice 2h: the session's review, while its Proposed view is on screen.
+  const review = useMemo<MenuReview | undefined>(
+    () => (overlay !== null && session !== null ? { items: session.items, phase: session.phase, busy, marks: overlay.marks, locations: overlay.locations } : undefined),
+    [overlay, session, busy],
+  );
   const actions = useBoardActions();
   const store = useBoardStore();
   const anchorRef = useRef<HTMLSpanElement>(null);
@@ -58,15 +70,15 @@ export function ContextMenu({ menu, onClose, canvas }: { menu: MenuRequest | nul
   }, [menu]);
 
   const entries = useMemo(
-    () => (menu ? menuEntries(menu.thing, { nodes, selected, selectedArrows, selectedMarks, expanded, provisional, lock, proposed, formalize }) : []),
-    [menu, nodes, selected, selectedArrows, selectedMarks, expanded, provisional, lock, proposed, formalize],
+    () => (menu ? menuEntries(menu.thing, { nodes, selected, selectedArrows, selectedMarks, expanded, provisional, lock, proposed, formalize, ...(review !== undefined ? { review } : {}) }) : []),
+    [menu, nodes, selected, selectedArrows, selectedMarks, expanded, provisional, lock, proposed, formalize, review],
   );
 
-  const run = (action: MenuAction) => {
+  const run = (entry: MenuEntry) => {
     const thing = menu?.thing;
     onClose();
     if (!thing) return;
-    runBoardAction(action, thing, { actions, store, nodes, canvas });
+    runBoardAction(entry.action, thing, { actions, store, nodes, canvas }, entry);
   };
 
   return (
@@ -83,16 +95,17 @@ export function ContextMenu({ menu, onClose, canvas }: { menu: MenuRequest | nul
         returnFocus={menu?.returnFocus ?? null}
       >
         {entries.map((entry, i) => (
-          <Fragment key={entry.action}>
+          <Fragment key={`${entry.action}:${entry.item ?? ''}`}>
             {entry.group && i > 0 ? <div className="tl-menu__separator" role="separator" /> : null}
             <button
               type="button"
               role="menuitem"
               className="tl-menu__item"
               data-action={entry.action}
+              data-item={entry.item}
               disabled={entry.disabled !== null}
-              title={entry.disabled ?? undefined}
-              onClick={() => run(entry.action)}
+              title={entry.disabled ?? entry.title}
+              onClick={() => run(entry)}
             >
               <span className="tl-menu__text">{entry.label}</span>
             </button>

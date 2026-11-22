@@ -174,9 +174,8 @@ export function fakePlanAction(model: ProjectModel, action: BoardAction, ctx: Pl
         nodes: [action.id],
         changes: [{ path: found.file, before, after }],
         layout: { subject, layout: withoutIds(ctx.layouts[subject] ?? emptyLayout(), [action.id]) },
-        archive: action.keepLean
-          ? []
-          : [{ subject, nodeId: action.id, declName: `${subject}.${lean}.holds`, text: `theorem ${lean}.holds : ${lean} := by\n  trivial`, reason: 'deleted' }],
+        // Slice 2i (S9): a delete always takes the card's Lean with it.
+        archive: [{ subject, nodeId: action.id, declName: `${subject}.${lean}.holds`, text: `theorem ${lean}.holds : ${lean} := by\n  trivial`, reason: 'deleted' }],
       };
     }
     case 'reorder': {

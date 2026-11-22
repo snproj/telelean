@@ -57,9 +57,16 @@ const FLAG_ORDER: readonly StatusFlag[] = [
 
 const SEVERITY_OF_LEAN: Readonly<Record<string, Severity>> = { error: 'error', warning: 'warning', information: 'info' };
 
-/** TL122 (spec v4 A19, slice 1b): an axiom block with a `premises:` list, written before v4. */
-export const AXIOM_PREMISES_MESSAGE =
-  'This axiom declares premises (`premises:`), written before v4, when axioms could have arrows: the board does not draw them. Make it a proposition (pending), or drop these arrows.';
+/**
+ * TL122 (spec v4 A19, slice 1b): an axiom block with a `premises:` list, written before v4. Slice 2i (audit G11): it
+ * names each premise once, in order, so "Make it a proposition (pending)" and "Drop these arrows" are not chosen
+ * blind: `names` are the premises' cards by their sentences, cut near 40 characters, and quoted (an id that is no
+ * card, by the id: TL007 reports it too).
+ */
+export function axiomPremisesMessage(names: readonly string[]): string {
+  const one = names.length === 1;
+  return `This axiom declares the premise${one ? '' : 's'} ${names.join(', ')} (\`premises:\`), written before v4, when axioms could have arrows: the board does not draw ${one ? 'it' : 'them'}. Make it a proposition (pending), or drop these arrows.`;
+}
 
 interface Located {
   file: ParsedFile;
@@ -1094,7 +1101,12 @@ export function buildProject(input: ProjectInput): ProjectModel {
     const at = { file: draft.file.path, range: draft.block.range, nodeId: draft.id };
     if (draft.type === 'AXIOM' && draft.premises.length > 0) {
       // Spec v4 A19 (slice 1b): only a proposition has arrows into it; the board does not draw these (subjectGraph).
-      draft.diagnostics.push({ code: 'TL122', severity: 'info', message: AXIOM_PREMISES_MESSAGE, ...at });
+      // Slice 2i: the message names them (each once), the cards by their sentences.
+      const names = [...new Set(draft.premises)].map((premise) => {
+        const sentence = byId.get(premise)?.block.fields.naturalName;
+        return sentence === undefined ? `"${premise}"` : `“${cutText(sentence, 40)}”`;
+      });
+      draft.diagnostics.push({ code: 'TL122', severity: 'info', message: axiomPremisesMessage(names), ...at });
     }
     for (const premise of draft.premises) {
       const target = byId.get(premise);

@@ -1,0 +1,260 @@
+{
+  "summary": "Build telelean sub-slices in order (quota-optimised, AP-38): Opus builder reading a plan extract, Sonnet verifiers (one for UI sub-slices), Sonnet fixer and re-verifier, Haiku integrator with the real-Lean suite; stop at the first failure",
+  "agentCount": 4,
+  "logs": [
+    "2i: 1 verifier(s), 4 findings, 0 blocker/major",
+    "2i round 1: only minor/nit findings, no re-verify; 1 left as carry-overs",
+    "2i done: patch saved; runner: vt_runner rc=0  Test Files 77 passed (77)  Tests 883 passed | 1 skipped (884). Expected skips = 1 (opt-in real-Claude test); no failures.",
+    "2i: 1 minor/nit findings carried into the next sub-slice"
+  ],
+  "result": {
+    "results": [
+      {
+        "id": "2i",
+        "built": "# Builder 2i report (slice 2: cleanup of built code, AP-29; ES-9, S9, A19, BD-3; audit G4, G11, G9)\n\nI implemented the §1.1 \"2i\" entry and nothing else:\n- the card-only Delete is removed end to end;\n- an old axiom's declared premises are now named in the chip tooltip, in the details row and in TL122;\n- the guide's placement and Delete text is corrected.\n\nEvery package typechecks. Every unit suite passes, and so do the runner files I touched, including the real-Lean ones. 9 Playwright specs ran against a scratch build and all passed. All 27 mutants were killed. No test is skipped for later. Git state is untouched (HEAD 1473ca0, nothing staged). dist/ and out/ were not written.\n\nA patch of only my changes (32 files, +410/−188, made against my pre-edit backups) is at /tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/b2i/changes_2i.patch. The backups are in /tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/b2i/copies/.\n\n## Files changed (one line each)\n\n**Core (source)**\n- `packages/core/src/edit/types.ts`: `DeleteRequest` is `{ id }`; `DeletePlan.leavesUnmarkedAxiom` is removed.\n- `packages/core/src/edit/planDelete.ts`: `planDel` always removes the statement and its `.holds`; there is no keepLean branch.\n- `packages/core/src/edit/planAction.ts`: `planDeleteNode` has no keepLean. The needs-confirmation text now ends \"Delete anyway, or cancel.\" \"Delete anyway\" (`confirmed`) is unchanged.\n- `packages/core/src/actions.ts`: `delete-node` is `{ kind, id, confirmed? }`.\n- `packages/core/src/protocol.ts`:\n  - `DeleteNodeMessage` loses `keepLean`.\n  - New export `DELETE_ALWAYS_REMOVES_LEAN` = \"Deleting a card always deletes its Lean.\"\n  - The validator refuses `keepLean: true` with that text, accepts and drops `keepLean: false`, and refuses a non-boolean as before.\n- `packages/core/src/project/build.ts`: TL122 now comes from `axiomPremisesMessage(names)`, which replaces the constant `AXIOM_PREMISES_MESSAGE`. It names each premise once, in order: by sentence, cut near 40 characters; an id that is no card by its id.\n\n**Webview (source)**\n- `packages/webview/src/dialogs/Dialogs.tsx`: the \"Delete card only, keep Lean\" buttons and their warning are gone from both dialogs. The re-asked dialog's title is \"Delete it anyway?\".\n- `packages/webview/src/state/store.ts`: `deleteNode(id, confirmed?)`; the pending entry has no `keepLean`; the comments are updated.\n- `packages/webview/src/model/cardData.ts`:\n  - new pure `declaredBeforeV4(node, nodes)` and `quotedNames`;\n  - the chip tooltip is now \"Its premises: line (N arrow(s) into it, from “A”, “B”) was written before v4, …\".\n- `packages/webview/src/board/CardDetails.tsx`: new `DeclaredBeforeV4` line above the two legacy buttons (Current view only): \"Declared before v4 (not drawn): arrows from “A”, “B”.\" (`data-testid=\"declared-before-v4\"`).\n\n**Extension**\n- `packages/extension/src/logic/actionMapping.ts`: `deleteNode` → `{ kind: 'delete-node', id, confirmed? }`.\n\n**Tests** (core, webview, extension, runner; details in the next section)\n- `packages/core/test/protocol.test.ts`, `packages/core/test/edit/delete.test.ts`, `packages/core/test/edit/bindings.test.ts`, `packages/core/test/edit/staleUsers.test.ts`, `packages/core/test/edit/helpers/scenarios.ts`, `packages/core/test/edit/arrows.test.ts`\n- `packages/webview/test/unit/store.test.ts`, `packages/webview/test/unit/store-lock.test.ts`, `packages/webview/test/unit/cardData.test.ts`, `packages/webview/test/e2e/m1-edits.spec.ts`, `packages/webview/test/e2e/m1-cards.spec.ts`\n- `packages/extension/test/unit/actionMapping.test.ts`, `boardSession.test.ts`, `editSessionLock.test.ts`, `dependentCards.test.ts`\n- `packages/runner/test/workspace/fakeCore.ts` (its delete always archives), `packages/runner/test/workspace/perform.test.ts`, `packages/runner/test/integration/fixes.test.ts`, `packages/runner/test/integration/session.test.ts`. No runner source changed.\n\n**Docs**\n- `docs/user-guide.md`:\n  - the Placement bullet is rewritten (G9);\n  - the Delete row of section 4 is rewritten (G4);\n  - the old-axiom bullet of 3.2 says the cards are named (A19);\n  - \"What changed in slice 2\" gets one sentence about Delete.\n- `docs/slice2-plan.md`: one §8 entry, \"builder 2i\", with its decisions, tests and mutation summary.\n\n## Tests\n\n**Added**\n- core `protocol.test.ts`: \"slice 2i (S9, ES-9): a delete always removes the card's Lean: keepLean: true is refused, keepLean: false is dropped\".\n- core `edit/arrows.test.ts`, new describe \"slice 2i (A19, audit G11): TL122 names the cards an old axiom declares as premises\", with 4 tests:\n  - \"none: an axiom without `premises:` gets no TL122\";\n  - \"one premise is named in the singular; several are named in their order, each by its sentence\";\n  - \"a premise listed twice is named once; a missing card by its id (TL007 too); another subject's card by its sentence (TL121 too); itself\";\n  - \"a long sentence is cut near 40 characters, as the planner names cards\".\n- webview `cardData.test.ts`, new describe \"slice 2i (A19, audit G11): an old axiom's declared premises are named\", with 4 tests:\n  - none (an axiom without premises, or a proposition);\n  - one and several;\n  - a duplicate, a missing card and the axiom itself;\n  - `quotedNames` with empty, one and many names.\n- extension `actionMapping.test.ts`: \"slice 2i (S9): a delete never keeps the card's Lean: keepLean: true never becomes an action, keepLean: false is the plain delete\".\n\n**Rewritten to the new rule**\n- core `delete.test.ts`: \"keepLean removes nothing from Lean; an axiom .holds left behind becomes an unmarked assumption\" → \"slice 2i (S9): an axiom's Lean always goes with it, so no `axiom ….holds` is left behind as an unmarked assumption\".\n\n**Updated (keepLean removed, texts changed)**\n- core `delete.test.ts`:\n  - \"lists the premise removals…\";\n  - \"a code-less card removes no declaration\" → \"…; an unknown card is not-found\";\n  - \"refuses with needs-confirmation…\" (exact message);\n  - \"with one dependent the refusal is worded in the singular\";\n  - \"goes ahead when confirmed, or when the Lean is kept, or when nothing uses it\" → \"goes ahead when confirmed (\"Delete anyway\"), or when nothing uses it; `confirmed: false` asks as no flag does\".\n- core `bindings.test.ts`: '\"with its Lean\" (confirmed)…' → '\"Delete anyway\" (confirmed, with its Lean)…'.\n- core `staleUsers.test.ts`: the `attempt()` helper.\n- core `scenarios.ts`, run by both `plans.fake.test.ts` and `plans.wp1.test.ts`:\n  - \"AT2.7 delete-node › removes the block…\";\n  - \"archives a theorem .holds; keepLean leaves the declarations\" → \"archives a theorem .holds; an axiom card always takes its abbrev and .holds with it (slice 2i, S9)\".\n- core `arrows.test.ts`: \"an old axiom's premises: are not drawn and get TL122…\" (exact message).\n- core `protocol.test.ts`: \"accepts every message type…\" and \"rejects wrong versions…\".\n- webview `store.test.ts`:\n  - \"deleteNode posts keepLean and closes the dialog…\" → \"deleteNode posts the delete (slice 2i: never a keepLean…)…\";\n  - \"needs-confirmation re-opens the delete dialog…\";\n  - \"keeps the host's description of the cards…\";\n  - \"from the confirmation, \"card only\" posts keepLean (never confirmed); Cancel posts nothing\" → \"from the confirmation, Cancel posts nothing; a new delete asks again, and Delete anyway is the only way on (slice 2i)\";\n  - \"a confirmed delete refused again…\".\n- webview `store-lock.test.ts`: the `tryEveryEdit` helper.\n- webview `cardData.test.ts`: \"one chip per ProofStatus kind and M1 flag\" (the tooltip is now checked).\n- e2e `m1-edits.spec.ts`:\n  - \"AT6.7 the delete dialog lists…\": buttons ['Delete card and its Lean code', 'Cancel'], no \"hidden assumption\";\n  - \"AT6.7 statement mentions…\";\n  - \"AT6.7 when other declarations use its Lean code…\": title \"Delete it anyway?\", buttons ['Delete anyway', 'Cancel']; the card-only step is replaced by Escape posting nothing.\n- e2e `m1-cards.spec.ts` \"AT6.3 …\": the chip tooltip, the details line, and no such line on another card.\n- extension:\n  - `actionMapping.test.ts`: \"editNode, deleteNode, reorder…\", \"deleteNode keeps \"confirmed\"…\", \"reads the request id…\";\n  - `boardSession.test.ts`: \"without a requestId…\", \"a refusal with a request id…\", \"runs mutating messages one at a time…\";\n  - `editSessionLock.test.ts`: the EDITS table, \"the consent question locks the board too…\";\n  - `dependentCards.test.ts`: \"names the other subject's card…\".\n- runner:\n  - `perform.test.ts`: \"delete-node: the Lean change…\", \"refusals become ok:false…\";\n  - `fixes.test.ts`: \"delete with Lean of a statement with a column-0 comment…\", \"delete with its Lean lists an untracked lemma…\";\n  - `session.test.ts`: \"delete removes the block and its declarations…\".\n\n**Deleted**\n- core `bindings.test.ts`: '\"card only, keep Lean\": a blank line separates upper from the declarations left behind'. That behaviour no longer exists; the blank-line rule stays covered by its confirmed twin.\n\n**Skipped for later:** none.\n\n## Verification\n\nAll commands ran from `packages/<pkg>`. S = /tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad. Final run logs are in S/b2i/logs/final_*.log and S/b2i/logs/final1800_*.log.\n\n**tsc:** `TMPDIR=$S/b2i/tmp $S/capped.sh 1800 /home/zhengyew/telelean/node_modules/.bin/tsc --noEmit -p <config>`. Clean (rc 0, no output) for core tsconfig.test.json, runner tsconfig.test.json, webview tsconfig.json, webview tsconfig.node.json and extension tsconfig.json.\n\n**vitest:** `env TMPDIR=$S/b2i/tmp TELELEAN_TEST_TMP=$S/b2i/ttmp TELELEAN_NO_REAL_CLAUDE=1 $S/capped.sh <cap> /home/zhengyew/telelean/node_modules/.bin/vitest run --maxWorkers=1 --no-cache --fsModuleCachePath=$S/b2i/fsmc [files]`\n\n| Suite | Before | After |\n|---|---|---|\n| core | 1137 (76 files) | Test Files 76 passed (76) · Tests 1141 passed (1141) |\n| webview | 431 (24 files) | Test Files 24 passed (24) · Tests 435 passed (435) |\n| extension | 215 (22 files) | Test Files 22 passed (22) · Tests 216 passed (216) |\n\n- I first ran these three suites under a 3000 MB cap, then reran them under 1800 MB to follow the builder rules; both runs passed.\n- Runner, at cap 3000 with `timeout 900` each:\n  - the 8 files that import the fake core (perform, m2members, sample, history, undo, scan, proposal/sidecars, refresh): Test Files 8 passed (8) · Tests 79 passed (79);\n  - real Lean (LEAN_NUM_THREADS=2 via capped.sh): `test/integration/fixes.test.ts` Tests 5 passed (5), 30 s; `test/integration/session.test.ts` Tests 8 passed (8), 39 s;\n  - the integrator runs the full runner suite.\n\n**Scratch build:** `TMPDIR=$S/b2i/tmp TELELEAN_WEBVIEW_OUT=$S/b2i/webview-out $S/capped.sh 3000 /home/zhengyew/telelean/node_modules/.bin/vite build` → \"✓ built in 438ms\". dist/webview/webview.js still has its 05:56 timestamp.\n\n**Playwright:** run one spec at a time against that build:\n`env TMPDIR=$S/b2i/tmp TELELEAN_WEBVIEW_OUT=$S/b2i/webview-out TELELEAN_TEST_RESULTS=$S/b2i/pw/shots $S/capped.sh 3000 sh -c 'ulimit -c 0; /home/zhengyew/telelean/node_modules/.bin/playwright test test/e2e/<spec>'`\n\n| Spec | Result |\n|---|---|\n| m1-edits | 7 passed |\n| m1-cards | 4 passed |\n| m1-store | 1 passed |\n| board | 13 passed |\n| s1-arrows | 11 passed |\n| s2-board | 8 passed |\n| s1-glows | 6 passed |\n| m2-carryover | 5 passed |\n| s1-session | 2 passed |\n\nThe home guard reported the home folder unchanged after every spec. These are the specs that grep finds for deleting cards and for card chips. The VS Code suites were not run (integrator only).\n\n## Mutation checks\n\n27 mutants, all killed. Each file was restored byte for byte, checked with `cmp` against a copy taken just before the mutant; the script is S/b2i/mutate.py and the results are in S/b2i/mut/results.json. For each: file:line, what I broke, and one test that failed.\n\n**Core: the protocol**\n- C01 `core/src/protocol.ts:799`, validator accepts `keepLean: true` again → protocol \"rejects wrong versions… malformed payloads\" and the slice 2i test failed.\n- C02 `protocol.ts:799`, refuses `keepLean: false` too → \"slice 2i (S9, ES-9)…\".\n- C03 `protocol.ts:799`, a non-boolean keepLean is accepted → \"rejects wrong versions…\".\n- C04 `protocol.ts:170`, refusal text changed → \"slice 2i (S9, ES-9)…\".\n\n**Core: the planners**\n- C05 `core/src/edit/planDelete.ts:30`, keeps the Lean (removeDecls `[]`) → delete \"lists the premise removals…\" (8 tests in 4 files).\n- C06 `planDelete.ts:25`, no dependents computed → delete \"lists the premise removals…\".\n- C07 `core/src/edit/planAction.ts:161`, the block is deleted but its Lean stays (the S9 hidden belief) → delete \"slice 2i (S9): an axiom's Lean always goes with it…\" (7 tests).\n- C08 `planAction.ts:147`, an unconfirmed delete that breaks dependents goes ahead → \"refuses with needs-confirmation…\".\n- C09 `planAction.ts:147`, \"Delete anyway\" (confirmed) is refused → \"slice 2i (S9)…\".\n- C10 `planAction.ts:154`, \"or keep its Lean\" back in the text → \"with one dependent the refusal is worded in the singular\".\n\n**Core: TL122**\n- C11 `core/src/project/build.ts:1105`, no dedupe → arrows \"a premise listed twice is named once…\".\n- C12 `build.ts:1107`, names by id → \"one premise is named in the singular…\".\n- C13 `build.ts:1107`, no 40-character cut → \"a long sentence is cut near 40 characters…\".\n- C14 `build.ts:68`, no names in TL122 → \"one premise…\".\n- C15 `build.ts:1102`, TL122 on an axiom without premises → arrows '\"Drop these arrows\" on an old axiom…' and \"none: …\".\n- C16 `build.ts:68`, the singular reads as plural → \"one premise…\".\n\n**Webview store and chip**\n- W01 `webview/src/state/store.ts:2035`, the board sends keepLean again → store \"deleteNode posts the delete (slice 2i…)…\".\n- W02 `store.ts:1472`, a confirmed delete is asked again → \"a confirmed delete refused again…\".\n- W03 `store.ts:2035`, `confirmed` not sent → \"needs-confirmation re-opens… Delete anyway resends with confirmed\".\n- W04 `webview/src/model/cardData.ts:217`, the tooltip gives only the count → \"one chip per ProofStatus kind and M1 flag\".\n- W05 `cardData.ts:232`, a proposition gets the old-axiom chip → \"one chip per…\" and \"none: …\".\n- W06 `cardData.ts:233`, no dedupe → \"a premise listed twice is named once and counted once…\".\n- W07 `cardData.ts:233`, names by id → \"one chip per…\".\n\n**Extension**\n- E01 `extension/src/logic/actionMapping.ts:86`, keepLean mapped into the action → \"editNode, deleteNode, reorder and createSubject map one to one\".\n\n**Webview UI** (a rebuild into the scratch dir, then one Playwright spec)\n- U01 `webview/src/dialogs/Dialogs.tsx:280`, card-only button back in the first dialog → m1-edits.spec.ts:151 \"AT6.7 the delete dialog lists…\".\n- U02 `Dialogs.tsx:232`, card-only button back in the re-asked dialog → m1-edits.spec.ts:212 \"AT6.7 when other declarations use its Lean code…\".\n- U03 `webview/src/board/CardDetails.tsx:390`, the details line is not rendered → m1-cards.spec.ts:71 \"AT6.3 …\".\n\n## Decisions for the orchestrator to log\n\nAll of these are also in the plan's §8 entry \"builder 2i\".\n\n1. **`keepLean: false` is accepted and dropped by the validator.** Only `true` is refused, with \"Deleting a card always deletes its Lean.\"; a non-boolean is refused as malformed (\"payload.keepLean must be true or false\"). *Alternative:* refuse any `keepLean` key, `false` included.\n2. **The refusal text `DELETE_ALWAYS_REMOVES_LEAN` lives in core `protocol.ts`**, beside the validator (its only user), rather than in `review/texts.ts`. *Alternative:* `review/texts.ts`.\n3. **`DeletePlan.leavesUnmarkedAxiom` is removed with `keepLean`** (it could only be true for the card-only delete); `DeleteRequest` is `{ id }`. Both are part of m1's frozen planner contract in `edit/index.ts`; no other package uses them. *Alternative:* keep the field, always false.\n4. **Texts that offered the removed choice are reworded.** Core's needs-confirmation text ends \"… Delete anyway, or cancel.\" (was \"… or keep its Lean.\"). The re-asked dialog's title is \"Delete it anyway?\" (was \"Delete its Lean code too?\"). *Alternative:* keep both texts.\n5. **How the cards are named (A19):**\n   - by sentence, in curly quotes;\n   - a premise listed twice is named once (and counted once in the tooltip);\n   - in TL122 each sentence is cut near 40 characters, like the planner's labels and cycle texts, and an id that is no card appears by its id in straight quotes (as TL007);\n   - the tooltip and the details line use the full sentence;\n   - the details line shows in the Current view only, where the two choices are;\n   - the arrows stay undrawn (AP-29's G11).\n   *Alternative:* name them by id (as TL007/TL107 do), or list them as \"Show this card\" buttons in the details.\n6. **Two guide sentences beyond the placement and Delete text:** \"What changed in slice 2\" says a Delete now always removes the card's Lean; the old-axiom bullet of 3.2 says the tooltip, the details and TL122 name the cards. *Alternative:* change only the placement and Delete text.\n\n**Contract note:** `DeleteNodeMessage` and `BoardAction` `delete-node` lose `keepLean`, as the 2i entry requires. Their users are updated: the extension's actionMapping, the webview store and the runner's test fake. No other sub-slice uses `keepLean`.\n\n**Docs read for correctness (§6.1):** the placement claims match `planAddNode` (position stored in the same plan), `planMoveCards`, Tidy layout's `moveCards`, `planChangeKind` and `layoutToProposition` (both use `withoutPosition`), and `planDeleteNode` (`withoutIds`). Nothing posts `moveCards` on open.\n\n## Effects outside the repo and the scratch dir\n\n- **Chrome temp dir:** each Playwright run (9 specs ×2, plus 3 mutant runs) had the harness create a short Chrome temp dir `/tmp/tl-pw-chrome-XXXXXX`, because the scratch path is too long for Chrome's socket. Its teardown deleted it; none are left. Chrome's HOME/XDG were isolated inside that dir, and the home guard reported the home folder unchanged each time.\n- **systemd scopes:** `capped.sh` started transient `systemd-run --user --scope` units; none remain.\n- **Inside the repo but outside packages/docs:** Vite's config loader wrote and removed its temporary config bundle in `/home/zhengyew/telelean/node_modules/.vite-temp/`. That folder existed before I started; it is left empty with a new mtime. This happened during 5 scratch builds, not the brief's one: 1 initial, 3 for the UI mutants, and 1 final rebuild because the last mutant had overwritten the scratch bundle.\n- **test-results:** Playwright created `packages/webview/test-results/`. I moved it to `$S/b2i/pw/test-results-moved/`; screenshots went to `$S/b2i/pw/shots/`.\n- **Nothing else:** no installs, no npx/npm, no network, no git changes, no real Claude (`TELELEAN_NO_REAL_CLAUDE=1` everywhere). No processes of mine are left; the Lean servers, Vivaldi and Discord still running are the user's own.\n\n## Not changed (reported)\n\n- `docs/m1-plan.md`, `docs/decisions-log.md`, `docs/project-report.md` and `docs/project-report-files.md` still describe the card-only Delete as it was built then. They are records outside 2i's entry.\n- The right-click menu's and the Context Menu section's legacy entries (menu.ts, contextActions.ts) are unchanged. The plan names only the chip tooltip, the details row and TL122.",
+        "verdicts": [
+          {
+            "summary": "2i is faithful to its plan entry and I found no blocker or major problem. The card-only Delete is gone end to end (`keepLean` has no non-test, non-comment use left in the repo). `keepLean: true` is refused with the plan's exact text. \"Delete anyway\" is unchanged. An old axiom's declared premises are named in the chip tooltip, the details row and TL122. The guide's placement and Delete text matches the code I traced: `planAddNode` stores the position in the same plan, and the A|P box passes `position` when a canvas exists. `layoutToProposition`/`planChangeKind` and `planDeleteNode` drop the card's place. I confirmed `changes_2i.patch` equals the current tree (`patch -R --dry-run` clean). I also checked that no caller still passes the old `deleteNode(id, true)` meaning \"card only\", which would now silently mean \"Delete anyway\": every call site was updated. All typechecks and unit suites pass. I did not run Playwright or the VS Code suite (integrator's job). Remaining items are three minor edge cases and one nit.",
+            "findings": [
+              {
+                "id": "F1",
+                "severity": "minor",
+                "where": "packages/core/src/edit/planDelete.ts:19-22 (planDel)",
+                "problem": "S9's \"a delete always removes the card's Lean\" holds only when the card's statement declaration exists. Both removeDecls entries (statement and `.holds`) are pushed inside `if (statement && exists(statement))`. If a card names `lean: S.x` but only `axiom S.x.holds` exists in the files (the abbrev is missing), the delete removes just the block and leaves an orphan `axiom x.holds`, an unmarked axiom. This is the hidden belief S9 targets. It is not new to 2i: the old non-keepLean path behaved the same.",
+                "evidence": "planDel: `if (statement && exists(statement)) { decls.push(statement); if (exists(holdsName(statement))) decls.push(holdsName(statement)); }`. planDeleteNode (planAction.ts:161) gates the remove-holds op on `del.removeDecls.includes(holdsName(statement))`. No test builds a card with a `.holds` but no statement declaration.",
+                "fix": "In planDel, check the `.holds` independently of the statement's existence: if `statement` is set and `exists(holdsName(statement))`, push it. Add a delete.test.ts case (axiom `.holds` present, abbrev absent) asserting that no `.holds` remains in the written file. Otherwise record the limit in the plan's §8."
+              },
+              {
+                "id": "F2",
+                "severity": "minor",
+                "where": "packages/webview/src/model/cardData.ts:231-234 (declaredBeforeV4) versus packages/core/src/project/build.ts:1103-1106",
+                "problem": "The two namings of an old axiom's premises differ for another subject's card. TL122 names it by its sentence (core's byId spans every subject). The chip tooltip and the details row name it by its id, because the webview's `nodes` holds only the current board. The plan says \"by sentence\". The builder recorded this choice in a comment (`a card not on this board (a missing one, or another subject's) by its id`) and in §8, but not as a discrepancy between the two surfaces.",
+                "evidence": "build.ts: `byId.get(premise)?.block.fields.naturalName` (all subjects). cardData.ts: `nodes[id]?.naturalName ?? id` (current subject only). The tests cover \"another subject's card by its sentence\" only for TL122 (arrows.test.ts) and only \"a card not on the board by its id\" for the webview.",
+                "fix": "Either accept it as a documented difference, or have the host send the premise sentences with the old-axiom info (as `dependentCards` does for deletes). Otherwise add a line to §8 naming the difference."
+              },
+              {
+                "id": "F3",
+                "severity": "minor",
+                "where": "packages/webview/src/board/CardDetails.tsx:538-556 (Proposed branch)",
+                "problem": "The plan says the details row names the premises. In the Proposed view the details show neither the `DeclaredBeforeV4` line nor Problems (`problems` is empty when `proposed`), so an old axiom there is named only in the chip tooltip. This is acceptable because the two choices are not offered in the Proposed view either, but no test pins it.",
+                "evidence": "`DeclaredBeforeV4` sits only in the `!proposed` fragment, and line 500 sets `problems = proposed ? [] : …`. m1-cards.spec.ts checks the Current view only.",
+                "fix": "Add a unit or e2e assertion that the Proposed view has no `declared-before-v4` line (so a later change is deliberate), or render the line there too."
+              },
+              {
+                "id": "F4",
+                "severity": "nit",
+                "where": "packages/webview/src/dialogs/Dialogs.tsx:1-12 (header comment)",
+                "problem": "The header comment still opens with \"delete the card and its Lean code, or cancel\" in the same bullet that says the card-only button is gone, so it reads redundantly. Cosmetic only. The user-facing texts are consistent with the plan.",
+                "evidence": "Dialogs.tsx lines 8-12.",
+                "fix": "Optional: shorten the comment."
+              }
+            ]
+          }
+        ],
+        "fixes": [
+          {
+            "round": 1,
+            "findings": [
+              {
+                "id": "F-F1",
+                "severity": "minor",
+                "where": "packages/core/src/edit/planDelete.ts:19-22 (planDel)",
+                "problem": "S9's \"a delete always removes the card's Lean\" holds only when the card's statement declaration exists. Both removeDecls entries (statement and `.holds`) are pushed inside `if (statement && exists(statement))`. If a card names `lean: S.x` but only `axiom S.x.holds` exists in the files (the abbrev is missing), the delete removes just the block and leaves an orphan `axiom x.holds`, an unmarked axiom. This is the hidden belief S9 targets. It is not new to 2i: the old non-keepLean path behaved the same.",
+                "evidence": "planDel: `if (statement && exists(statement)) { decls.push(statement); if (exists(holdsName(statement))) decls.push(holdsName(statement)); }`. planDeleteNode (planAction.ts:161) gates the remove-holds op on `del.removeDecls.includes(holdsName(statement))`. No test builds a card with a `.holds` but no statement declaration.",
+                "fix": "In planDel, check the `.holds` independently of the statement's existence: if `statement` is set and `exists(holdsName(statement))`, push it. Add a delete.test.ts case (axiom `.holds` present, abbrev absent) asserting that no `.holds` remains in the written file. Otherwise record the limit in the plan's §8."
+              },
+              {
+                "id": "F-F2",
+                "severity": "minor",
+                "where": "packages/webview/src/model/cardData.ts:231-234 (declaredBeforeV4) versus packages/core/src/project/build.ts:1103-1106",
+                "problem": "The two namings of an old axiom's premises differ for another subject's card. TL122 names it by its sentence (core's byId spans every subject). The chip tooltip and the details row name it by its id, because the webview's `nodes` holds only the current board. The plan says \"by sentence\". The builder recorded this choice in a comment (`a card not on this board (a missing one, or another subject's) by its id`) and in §8, but not as a discrepancy between the two surfaces.",
+                "evidence": "build.ts: `byId.get(premise)?.block.fields.naturalName` (all subjects). cardData.ts: `nodes[id]?.naturalName ?? id` (current subject only). The tests cover \"another subject's card by its sentence\" only for TL122 (arrows.test.ts) and only \"a card not on the board by its id\" for the webview.",
+                "fix": "Either accept it as a documented difference, or have the host send the premise sentences with the old-axiom info (as `dependentCards` does for deletes). Otherwise add a line to §8 naming the difference."
+              },
+              {
+                "id": "F-F3",
+                "severity": "minor",
+                "where": "packages/webview/src/board/CardDetails.tsx:538-556 (Proposed branch)",
+                "problem": "The plan says the details row names the premises. In the Proposed view the details show neither the `DeclaredBeforeV4` line nor Problems (`problems` is empty when `proposed`), so an old axiom there is named only in the chip tooltip. This is acceptable because the two choices are not offered in the Proposed view either, but no test pins it.",
+                "evidence": "`DeclaredBeforeV4` sits only in the `!proposed` fragment, and line 500 sets `problems = proposed ? [] : …`. m1-cards.spec.ts checks the Current view only.",
+                "fix": "Add a unit or e2e assertion that the Proposed view has no `declared-before-v4` line (so a later change is deliberate), or render the line there too."
+              },
+              {
+                "id": "F-F4",
+                "severity": "nit",
+                "where": "packages/webview/src/dialogs/Dialogs.tsx:1-12 (header comment)",
+                "problem": "The header comment still opens with \"delete the card and its Lean code, or cancel\" in the same bullet that says the card-only button is gone, so it reads redundantly. Cosmetic only. The user-facing texts are consistent with the plan.",
+                "evidence": "Dialogs.tsx lines 8-12.",
+                "fix": "Optional: shorten the comment."
+              }
+            ],
+            "fixed": "FIXER 2i ROUND 1 REPORT\n\nPer finding\n- F-F1 (minor): FIXED. `planDel` (packages/core/src/edit/planDelete.ts) now looks up the `.holds` on its own: it is pushed whenever `statement` is set and `exists(holdsName(statement))`, even if the abbrev is missing. `planDeleteNode` already removes the `.holds` through its remove-holds op, so the card's `axiom x.holds` no longer survives as an unmarked axiom. New test in core `test/edit/delete.test.ts`: \"slice 2i round 1 (F-F1): an axiom `.holds` whose abbrev is missing still goes with the card, so none is left behind\". It checks `removeDecls` is `['S.o.holds']`, that the written file has no `o.holds` and no `id: o`, and that the other card's `axiom k.holds : k` stays.\n- F-F2 (minor): NOT CHANGED IN CODE, documented. The webview holds only the current board, so the chip tooltip and the details row name a premise that is not on it (a missing card, or another subject's) by its id. TL122 names another subject's card by its sentence. The difference is rare and was already in a code comment. It is now written as a decision in the plan's §8 entry \"Fixer 2i round 1\".\n- F-F3 (minor): FIXED by a pinning test. New Playwright test in packages/webview/test/e2e/s1-session.spec.ts: \"in the Proposed view an old axiom is named only in its chip tooltip: its details have no \"declared before v4\" line (slice 2i round 1, F-F3)\". It gives `pg-no-dark-past` (an axiom) `premises: [cynder-dark-past]` in both the board's graph and the session's `board.graph`. Then:\n  - In the Current view the details line reads \"Declared before v4 (not drawn): arrows from “Cynder is a character who has a dark past”.\".\n  - In the Proposed view the chip tooltip names the card, the details show `proposal-readonly`, and there is no `declared-before-v4` line and no `legacy-drop-arrows`.\n  - My first version of this test failed because the Proposed view draws the session's own board graph, not the one the page was opened with. I rewrote it to patch the session's graph too.\n- F-F4 (nit): FIXED. The Dialogs.tsx header comment for the delete dialog now reads \"delete the card with its Lean code, or cancel … When other declarations use that Lean code, the dialog opens again … 'Delete anyway', or cancel. Slice 2i: there is no 'card only' choice …\".\n\nFiles changed (backups in S/f2ir1/backup, S = /tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad)\n- packages/core/src/edit/planDelete.ts (F-F1)\n- packages/core/test/edit/delete.test.ts (F-F1 test)\n- packages/webview/src/dialogs/Dialogs.tsx (comment only)\n- packages/webview/test/e2e/s1-session.spec.ts (F-F3 test)\n- docs/slice2-plan.md (one §8 entry, \"Fixer 2i round 1\")\n- packages/webview/src/board/CardDetails.tsx was touched only for a mutant and restored byte for byte (`cmp`), so it is not in changed_files.txt.\n\nMutation checks\n- F-F1: I put the original `planDel` (the `.holds` pushed only inside `if (statement && exists(statement))`) back into planDelete.ts. `test/edit/delete.test.ts` then failed: \"× slice 2i round 1 (F-F1): an axiom `.holds` whose abbrev is missing …\" (1 failed, 8 passed). I restored the fixed file and checked it with `cmp`.\n- F-F3: in src/board/CardDetails.tsx line 534 I rendered `<DeclaredBeforeV4 node={node} />` in the Proposed branch too, rebuilt the scratch bundle, and ran s1-session. The new test failed at `toHaveCount(0)` of `declared-before-v4` (1 failed, 2 passed). I restored the file (`cmp` identical) and rebuilt the scratch bundle.\n\nVerification (S/f2ir1 for fsmc, tmp, ttmp; `TELELEAN_NO_REAL_CLAUDE=1`; one heavy job at a time through capped.sh; MemAvailable about 38 GB)\n- tsc `--noEmit` (capped 1800), rc 0 with no output: core tsconfig.test.json; webview tsconfig.json; webview tsconfig.node.json.\n- vitest core, full suite, cap 1800, `--maxWorkers=1 --no-cache --fsModuleCachePath=…/fsmc`: \"Test Files 76 passed (76) · Tests 1142 passed (1142)\" (1141 before, plus the F-F1 test).\n- vitest webview, full suite: \"Test Files 24 passed (24) · Tests 435 passed (435)\".\n- runner files that go through real core delete, with real Lean (LEAN_NUM_THREADS=2, cap 3000, timeout 900):\n  - test/integration/fixes.test.ts: \"Test Files 1 passed (1) · Tests 5 passed (5)\"\n  - test/integration/session.test.ts: \"Test Files 1 passed (1) · Tests 8 passed (8)\"\n  - No runner file was touched, so I ran no other runner files.\n- Scratch build `TELELEAN_WEBVIEW_OUT=S/f2ir1/webview-out vite build`: \"✓ built in 472ms\". dist was not written.\n- Playwright `test/e2e/s1-session.spec.ts` against the scratch build: \"3 passed (7.5s)\". The home guard reported the home folder unchanged. I did not re-run the other Playwright specs from round 0, because this round changed no webview behaviour, only a comment and a test.\n- snapdiff: before.diff 441 files, after.diff 441 files (S/f2ir1/before.diff and S/f2ir1/after.diff).\n\nDecisions for the orchestrator to log (also in the plan's §8)\n1. F-F2: the chip tooltip and the details row name a premise that is not on the current board by its id; TL122 names another subject's card by its sentence. The two surfaces differ only for that rare case. Alternative: the host sends the premise sentences with the old-axiom information, as `dependentCards` does for deletes.\n2. F-F3: pin with a test that the Proposed view's details have no \"declared before v4\" line; the chip tooltip names the cards there, and the two choices are not offered there. Alternative: render the line in the Proposed view too.\n3. F-F1: `planDel` finds the `.holds` independently of the statement declaration. Alternative: record the limit in §8 only. I chose the fix because it is a one-line change that closes the hidden-belief case.\n\nEffects outside the repo and my scratch dir\n- Playwright runs created and deleted short Chrome temp dirs (`/tmp/tl-pw-chrome-XXXXXX`, isolated HOME/XDG); the home guard reported the home folder unchanged each time.\n- capped.sh started transient systemd user scopes; none remain.\n- vite wrote and removed its temporary config bundle in /home/zhengyew/telelean/node_modules/.vite-temp/ (the folder already existed). This happened in 4 scratch builds.\n- Playwright created packages/webview/test-results; I removed it (`rm -rf`). It is absent now.\n- No installs, npx/npm, network, git changes or real Claude. No processes of mine are left.",
+            "rev": null
+          }
+        ],
+        "open": [
+          {
+            "id": "F-F2",
+            "severity": "minor",
+            "where": "packages/webview/src/model/cardData.ts:231-234 (declaredBeforeV4) versus packages/core/src/project/build.ts:1103-1106",
+            "problem": "The two namings of an old axiom's premises differ for another subject's card. TL122 names it by its sentence (core's byId spans every subject). The chip tooltip and the details row name it by its id, because the webview's `nodes` holds only the current board. The plan says \"by sentence\". The builder recorded this choice in a comment (`a card not on this board (a missing one, or another subject's) by its id`) and in §8, but not as a discrepancy between the two surfaces.",
+            "evidence": "build.ts: `byId.get(premise)?.block.fields.naturalName` (all subjects). cardData.ts: `nodes[id]?.naturalName ?? id` (current subject only). The tests cover \"another subject's card by its sentence\" only for TL122 (arrows.test.ts) and only \"a card not on the board by its id\" for the webview.",
+            "fix": "Either accept it as a documented difference, or have the host send the premise sentences with the old-axiom info (as `dependentCards` does for deletes). Otherwise add a line to §8 naming the difference."
+          }
+        ],
+        "integ": {
+          "ok": true,
+          "summary": "Integrator check after slice 2i passed. All five tsc configs are rc=0. Vitest is green in core, webview, extension and the full runner suite with real Lean. Read-only safety checks passed before and after the run. Patch saved to /home/zhengyew/telelean/verbatim_prompt_log/bundle_21/evidence/patches/after_slice_2i.patch (7160689 bytes, 441 files). tmp_leftovers=0. No repo files were edited and nothing was staged or committed.",
+          "checks": [
+            "tsc_core rc=0 (tsconfig.test.json)",
+            "tsc_runner rc=0 (tsconfig.test.json)",
+            "tsc_web rc=0 (webview tsconfig.json)",
+            "tsc_webnode rc=0 (webview tsconfig.node.json)",
+            "tsc_ext rc=0 (extension tsconfig.json)",
+            "vt_core rc=0  Test Files 76 passed (76)  Tests 1142 passed (1142)",
+            "vt_web rc=0  Test Files 24 passed (24)  Tests 435 passed (435)",
+            "vt_ext rc=0  Test Files 22 passed (22)  Tests 216 passed (216)",
+            "vt_runner rc=0  Test Files 77 passed (77)  Tests 883 passed | 1 skipped (884)  (skips = 1, expected 1: the opt-in real-Claude test)",
+            "failures.txt is empty",
+            "tmp_leftovers=0",
+            "git diff --cached --stat: empty (nothing staged)",
+            "git log -1 --format=%h: 1473ca0",
+            "git status --porcelain -- packages/extension/dist packages/extension/out: empty",
+            "stat dist and out: both 2026-11-21 05:56:37 (sub-second .088 / .113)",
+            "ls -a packages/extension/out | grep -c '^.vite$': 0",
+            "savepatch.sh after_slice_2i: 7160689 bytes, 441 files, rc=0"
+          ],
+          "runner": "vt_runner rc=0  Test Files 77 passed (77)  Tests 883 passed | 1 skipped (884). Expected skips = 1 (opt-in real-Claude test); no failures."
+        },
+        "carriedIn": []
+      }
+    ],
+    "carryOut": [
+      {
+        "id": "F-F2",
+        "severity": "minor",
+        "where": "packages/webview/src/model/cardData.ts:231-234 (declaredBeforeV4) versus packages/core/src/project/build.ts:1103-1106",
+        "problem": "The two namings of an old axiom's premises differ for another subject's card. TL122 names it by its sentence (core's byId spans every subject). The chip tooltip and the details row name it by its id, because the webview's `nodes` holds only the current board. The plan says \"by sentence\". The builder recorded this choice in a comment (`a card not on this board (a missing one, or another subject's) by its id`) and in §8, but not as a discrepancy between the two surfaces.",
+        "evidence": "build.ts: `byId.get(premise)?.block.fields.naturalName` (all subjects). cardData.ts: `nodes[id]?.naturalName ?? id` (current subject only). The tests cover \"another subject's card by its sentence\" only for TL122 (arrows.test.ts) and only \"a card not on the board by its id\" for the webview.",
+        "fix": "Either accept it as a documented difference, or have the host send the premise sentences with the old-axiom info (as `dependentCards` does for deletes). Otherwise add a line to §8 naming the difference."
+      }
+    ]
+  },
+  "workflowProgress": [
+    {
+      "type": "workflow_phase",
+      "index": 1,
+      "title": "Build"
+    },
+    {
+      "type": "workflow_phase",
+      "index": 2,
+      "title": "Verify"
+    },
+    {
+      "type": "workflow_phase",
+      "index": 3,
+      "title": "Fix"
+    },
+    {
+      "type": "workflow_phase",
+      "index": 4,
+      "title": "Reverify"
+    },
+    {
+      "type": "workflow_phase",
+      "index": 5,
+      "title": "Integrate"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 1,
+      "label": "build:2i",
+      "phaseIndex": 1,
+      "phaseTitle": "Build",
+      "agentId": "a0808bb48429cf138",
+      "model": "claude-opus-5-5",
+      "state": "done",
+      "startedAt": 1795326494570,
+      "queuedAt": 1795326494560,
+      "attempt": 1,
+      "lastToolName": "SubagentHandback",
+      "lastToolSummary": "# Builder 2i report (slice 2: cleanup of built code, AP-29;…",
+      "promptPreview": "Your brief is the file /tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/briefs/2i.md. Read it completely, then read every file it tells you to read first, and do exactly what it says. You are the only agent writing code right now. Your final message is your report, as the brief specifies (include a section \"Decisions for the orchestrator to log\", each with i…",
+      "promptFramed": true,
+      "lastProgressAt": 1795328832599,
+      "tokens": 456073,
+      "toolCalls": 203,
+      "durationMs": 2338028,
+      "resultPreview": "# Builder 2i report (slice 2: cleanup of built code, AP-29; ES-9, S9, A19, BD-3; audit G4, G11, G9)\n\nI implemented the §1.1 \"2i\" entry and nothing else:\n- the card-only Delete is removed end to end;\n- an old axiom's declared premises are now named in the chip tooltip, in the details row and in TL122;\n- the guide's placement and Delete text is corrected.\n\nEvery package typechecks. Every unit suite …"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 2,
+      "label": "verify:2i:fc",
+      "phaseIndex": 2,
+      "phaseTitle": "Verify",
+      "agentId": "a31ab49650e5d3d33",
+      "model": "claude-sonnet-5-5",
+      "state": "done",
+      "startedAt": 1795328832676,
+      "queuedAt": 1795328832609,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "lastToolSummary": "2i is faithful to its plan entry and I found no blocker or …",
+      "promptPreview": "Read /tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/briefs/verify_common.md (your role and rules) and the brief /tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/briefs/2i.md, then the files the brief cites. Your scratch dir: /tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/v2i-…",
+      "promptFramed": true,
+      "lastProgressAt": 1795329504619,
+      "tokens": 104535,
+      "toolCalls": 30,
+      "durationMs": 671941,
+      "resultPreview": "{\"summary\":\"2i is faithful to its plan entry and I found no blocker or major problem. The card-only Delete is gone end to end (`keepLean` has no non-test, non-comment use left in the repo). `keepLean: true` is refused with the plan's exact text. \\\"Delete anyway\\\" is unchanged. An old axiom's declared premises are named in the chip tooltip, the details row and TL122. The guide's placement and Delet…"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 3,
+      "label": "fix:2i:r1",
+      "phaseIndex": 3,
+      "phaseTitle": "Fix",
+      "agentId": "a1e118421c91441fa",
+      "model": "claude-sonnet-5-5",
+      "state": "done",
+      "startedAt": 1795329504676,
+      "queuedAt": 1795329504627,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "lastToolSummary": "FIXER 2i ROUND 1 REPORT Per finding - F-F1 (minor): FIXED. …",
+      "promptPreview": "You are the FIXER (round 1) for 2i of telelean. Read /tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/builder_rules.md (mandatory) and the brief /tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/briefs/2i.md. Your scratch dir: /tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/f2ir1…",
+      "promptFramed": true,
+      "lastProgressAt": 1795329833019,
+      "tokens": 89622,
+      "toolCalls": 26,
+      "durationMs": 328342,
+      "resultPreview": "{\"report\":\"FIXER 2i ROUND 1 REPORT\\n\\nPer finding\\n- F-F1 (minor): FIXED. `planDel` (packages/core/src/edit/planDelete.ts) now looks up the `.holds` on its own: it is pushed whenever `statement` is set and `exists(holdsName(statement))`, even if the abbrev is missing. `planDeleteNode` already removes the `.holds` through its remove-holds op, so the card's `axiom x.holds` no longer survives as an u…"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 4,
+      "label": "integrate:2i",
+      "phaseIndex": 5,
+      "phaseTitle": "Integrate",
+      "agentId": "ab2af0239bedac8bc",
+      "model": "claude-haiku-5-5",
+      "state": "done",
+      "startedAt": 1795329833069,
+      "queuedAt": 1795329833025,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "lastToolSummary": "Integrator check after slice 2i passed. All five tsc config…",
+      "promptPreview": "You are the INTEGRATOR CHECK after 2i of telelean. Read /tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/builder_rules.md (mandatory). Do NOT edit, create or delete any file in the repository. Exceptions to the rules, for you only: you may run /tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/recheck_full.sh and /tmp/cl…",
+      "promptFramed": true,
+      "lastProgressAt": 1795332310612,
+      "tokens": 40715,
+      "toolCalls": 12,
+      "durationMs": 2477541,
+      "resultPreview": "{\"ok\":true,\"summary\":\"Integrator check after slice 2i passed. All five tsc configs are rc=0. Vitest is green in core, webview, extension and the full runner suite with real Lean. Read-only safety checks passed before and after the run. Patch saved to /home/zhengyew/telelean/verbatim_prompt_log/bundle_21/evidence/patches/after_slice_2i.patch (7160689 bytes, 441 files). tmp_leftovers=0. No repo file…"
+    }
+  ],
+  "totalTokens": 690945,
+  "totalToolCalls": 271
+}

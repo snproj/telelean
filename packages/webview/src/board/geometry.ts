@@ -21,6 +21,7 @@
  *   its source lies (`bandRoute`: a loop on the left from a card above or below, a hook round the card from one on its
  *   right), so the bracket always crosses the whole band; a band whose arrows are not all drawn shows no seal.
  */
+import type { ItemStatus } from '@telelean/core';
 import type { ViewTransform } from './canvas/view';
 
 /**
@@ -46,6 +47,11 @@ export interface EdgeSpec {
   declared?: boolean;
   /** Tooltip, on the arrow's hit path (slice 1c2: every drawn or used arrow takes the pointer there). */
   title?: string;
+  /**
+   * Slice 2h (BD-5, D2-34): one of Claude's arrows in a session's Proposed view, its item and its state (the look is
+   * edges.ts `arrowLook`'s; the badge is drawn by the engine's `setBadges`).
+   */
+  proposed?: { item: string; change: 'add' | 'remove'; status: ItemStatus; used: boolean };
 }
 
 /** Where a card is: the AXIOMS column (it scrolls) or the PROPOSITIONS canvas (pan and zoom). */

@@ -1,0 +1,73 @@
+{
+  "summary": "Fix round 2e r1 holds up: I found no blocker or major problem, and two small new gaps. I traced each fix in the code and mutated the fix in a scratch copy of the tree. The new tests fail without the fixes: the throw, the write failure, the heading lift and its restore, the reload `{decided:true}`, and the take-out's `saveFailed` with its judge. Two points need no action:\n- A-F8's `mark-removed` ledger case stays deferred to 2f. It is unreachable in 2e, because only 2f's premise write puts two written premises in one card, and the plan records it.\n- The `first === undefined` guard (A-F9) stays as an unreachable safeguard.\n\nVerification, run by me with capped.sh, one job at a time:\n- runner `tsc --noEmit -p tsconfig.test.json`: rc 0, no output.\n- runner vitest (session.*, manager.*, prompts, test/proposal): `Test Files  23 passed (23)`, `Tests  253 passed | 12 skipped (265)`, 114 s. This matches the fixer's numbers, and the earlier reload flake did not recur.\n- extension `tsc --noEmit -p tsconfig.json`: rc 0.\n- extension vitest: `Test Files  22 passed (22)`, `Tests  217 passed (217)`.\n- Core and webview were not re-run; no file in them changed.\n\nThe repository was not touched, and git state is unchanged. Mutation runs used a copy at /tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/rv2er1/m. No restore failed. A stray file in /tmp that the fixer reported was not looked for.",
+  "resolved": [
+    {
+      "id": "F-FC-1",
+      "how": "A decision's \"did not pass\" heading is now lifted by a later decision judge that passes. `PersistedSession.decidedHeading { under }` puts back the replaced heading with its Retry, or deletes it. The reload now judges `{decided:true}`. Tests are in session.review and session.reload. Mutants of the lift, of `under`, and of the reload option are caught."
+    },
+    {
+      "id": "F-FC-2",
+      "how": "`dropJudgement` runs when a decision's judge throws or its outcome cannot be written. It clears `rt.judgement`, `rt.judgedModel` and `s.judged`, so every review action answers NO_JUDGEMENT. Two new tests cover it, and mutants of both call sites fail them."
+    },
+    {
+      "id": "F-FC-3",
+      "how": "`submitTakeOut`'s last `persistStep4` is guarded: it requests a judge and answers saveFailed. The new test is caught by mutants that drop the guard or the judge request."
+    },
+    {
+      "id": "A-F1",
+      "how": "Same fix as F-FC-2. The throw case and the judged-facts write failure both end with decide, submit, sessionDiff and Undo answering NO_JUDGEMENT. A write failure that leaves the judgement describing the head keeps it."
+    },
+    {
+      "id": "A-F2",
+      "how": "Same fix as F-FC-1. An Accept refused under a decision's heading answers the new DECIDED_DID_NOT_PASS text. ES-4's own heading is never lifted this way, and a queue's start and end clear the marker."
+    },
+    {
+      "id": "A-F3",
+      "how": "Tests added: an Undo of an Accept whose class grew is refused with the RV-7 text, and an Undo of a Reject whose content is out still succeeds. Dropping both badge guards is caught. Dropping either one alone survives because they cover for each other; this is an equivalent mutant, not a gap."
+    },
+    {
+      "id": "A-F4",
+      "how": "Tests added for a decision, and for a second Submit (white box), queued behind a Submit that is starting its queue. Both are refused inside the queue with stepRunning, and the stack stays [decide, seal:submit]."
+    },
+    {
+      "id": "A-F5",
+      "how": "A white-box test covers `queuedJudges > 0` and `pendingWrites > 1` in `asLastWrite`."
+    },
+    {
+      "id": "A-F6",
+      "how": "Fault-injection tests cover a files write or a commit that fails, and a records-only persist that fails. `abortWrite`'s revert and `recordsOnly`'s restore are covered."
+    },
+    {
+      "id": "A-F7",
+      "how": "A reload test leaves a `decide` write in flight with the judged facts file removed. The write is not made and nothing is recorded."
+    },
+    {
+      "id": "A-F8",
+      "how": "Fixed in part: a new test un-rejects a statement and its proof, rejected in two actions, in one decision, which pins the newest-first merge order. The `mark-removed` ledger case is deferred to 2f (unreachable in 2e) and the plan §8 says so; I accept this."
+    },
+    {
+      "id": "A-F9",
+      "how": "A new Submit test makes the first step's `--resume` fail. It answers not-yet \"could not be resumed\", leaves the step interrupted with the feedback turn kept, and Resume then sends that turn. The `first === undefined` guard is unreachable and stays as a safeguard."
+    },
+    {
+      "id": "A-F10",
+      "how": "Assertions added for the `.lean`-only raw diff, for no heading from a plain or queue-end judge on a failing state, and for `checkId` following item statuses. The mutants are caught."
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1-1",
+      "severity": "nit",
+      "where": "packages/runner/src/run/session.ts:253 and :1762-1764 (the heading text a decision's judge sets), with review.ts DECIDED_DID_NOT_PASS",
+      "problem": "The refusal for an Accept under a decision's heading now avoids \"Claude's step did not pass\", but the heading the view shows still reads \"Claude's step did not pass: the working copy with your decisions does not pass its checks\", through core's `didNotPass` prefix. No step ran, so the heading is still slightly misleading. The two texts now disagree.",
+      "fix": "Give the decision's heading its own runner text, for example DECIDED_DID_NOT_PASS or a variant, instead of `REVIEW_TEXTS.didNotPass(DECISIONS_DID_NOT_PASS)`. Core's heading text stays as it is for a step's heading. Alternatively, record the leftover prefix as accepted in plan §8."
+    },
+    {
+      "id": "R1-2",
+      "severity": "nit",
+      "where": "packages/runner/src/run/session.ts dropJudgement (`s.phase !== 'stage'` and `rt.judgement.commit === s.head` guards) and finishQueueStart's `delete next.decidedHeading`",
+      "problem": "Three small guards that the fix added have no test that fails without them. I mutated each in a scratch copy, and the targeted tests still pass. (a) Removing `rt.judgement.commit === s.head` would clear a judgement that describes the head when only `persistStep4` failed. (b) Removing the phase check would let a stale decision judge clear the judgement during a step. (c) Not clearing `decidedHeading` at a queue's start is probably equivalent: the phase is `step`, so no lift happens, and the queue's end clears it. None of these is a defect today; they are untested safeguards.",
+      "fix": "Optionally add one test where the judge's persist fails after `rt.judgement` is set (the unchanged path) and the judgement is kept. Optionally add one test where a decision's judge throws while the phase is `step` and the judgement is left alone."
+    }
+  ]
+}

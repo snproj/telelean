@@ -55,11 +55,12 @@ export type BoardAction =
   /** `value: null` removes the field (not allowed for naturalName). */
   | { kind: 'edit-node'; id: string; field: EditableField; value: string | null }
   /**
-   * D-18 delete: the block, and unless `keepLean` also its bound declarations (theorem proofs are archived). Without
-   * `keepLean`, when other declarations use them (DeletePlan.brokenDependents) the planner refuses with
-   * `needs-confirmation` listing them, unless `confirmed` is set (the user saw the list and still deletes).
+   * D-18 delete: the block and its bound declarations (theorem proofs are archived). When other declarations use them
+   * (DeletePlan.brokenDependents) the planner refuses with `needs-confirmation` listing them, unless `confirmed` is set
+   * (the user saw the list and still deletes: "Delete anyway"). Slice 2i (spec v4 S9, ES-9): there is no card-only
+   * delete (`keepLean`) any more: it left `axiom ….holds` behind as an unmarked axiom, a hidden belief.
    */
-  | { kind: 'delete-node'; id: string; keepLean: boolean; confirmed?: boolean }
+  | { kind: 'delete-node'; id: string; confirmed?: boolean }
   /**
    * D-11 kind change (the card moves to `to`, above `beforeId`). Spec v4 (docs/slice1-plan.md 2.4): `to: 'AXIOM'` also
    * removes the card's `premises:` and `follows_from:` (AR-7); `to: 'PROPOSITION'` is refused (`invalid`, AR-6).
@@ -279,6 +280,19 @@ export type ActionOutcome =
 // ---------------------------------------------------------------------------------------------
 // History (D-33) and undo
 
+/**
+ * Slice 2 (docs/slice2-plan.md 3.10 step 4, coverage audit G1, AP-29; builder 2f, additive): where an arrow an Apply
+ * wrote came from (spec §14 item 2: "accepted arrows become yours; History records where they came from"): an accepted
+ * Add arrow item (`arrow`) or an accepted Add premise's arrow into its target (`premise`, the written card as `source`),
+ * with the id of the session step that proposed it.
+ */
+export interface ArrowProvenance {
+  source: string;
+  target: string;
+  step: string;
+  kind: 'arrow' | 'premise';
+}
+
 export interface HistoryEntry {
   /** Commit id (hex) of the snapshot. */
   id: string;
@@ -289,6 +303,8 @@ export interface HistoryEntry {
   label: string;
   subject: string;
   nodes: string[];
+  /** (slice 2f, G1; additive) An Apply's entry: Claude's arrows it wrote, shown under "Arrows from Claude". Absent: none. */
+  arrows?: ArrowProvenance[];
 }
 
 /** Disk used by telelean's history (D-33 counter): objects reachable from telelean's refs and from no branch or tag. */

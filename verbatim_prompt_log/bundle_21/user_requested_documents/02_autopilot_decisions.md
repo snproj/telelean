@@ -542,3 +542,146 @@ Each item below is a clause where v4.1 does not do literally what your turn-21 t
   - **The extracts** are generated and copied to `resume_kit/extracts/`.
   - **`RESUME.md`** is rewritten with these instructions at the top, as you asked: scope, small context, few wake-ups, models, extracts, light UI checks, quota report.
 - **To reverse:** run `chain_v4.js` (AP-34's middle ground) instead, or ask for slice 3.
+
+### AP-39 · A new machine (2026-11-21 ~23:20 SGT, session c398a83b): the build continues here unchanged
+- **What changed:** you moved the repository to this machine (64 GB, uid 1002) and committed the tree as `1473ca0` ("halfway through slice 2").
+  - **Checked:** `1473ca0` holds exactly the saved 2e partial work. All 403 files match, and the new snapshot script reproduces `wip_2e_interrupted2.full.diff` byte for byte.
+  - **From now on**, HEAD stays `1473ca0` with nothing staged. You commit.
+- **Adaptations.** The plan and the procedure (AP-38) are unchanged.
+  - **The scratch kit** moved to this session's scratchpad, `/tmp/claude-1002/-home-zhengyew-telelean/c398a83b-…/scratchpad`. I did not recreate `/tmp/claude-1000`: on this machine it would belong to another user account. 51 kit files had the old paths rewritten.
+  - **The patches stay cumulative against `187673d`**, in the old layout (`snapdiff_core.sh`), so each new patch still compares directly with the earlier ones. A HEAD-based diff would have hidden 2e's partial work from 2e's own verifiers.
+  - **The integrator's safety checks:**
+    - HEAD is `1473ca0`.
+    - `dist` and `out` are now tracked in git, and they are your installed extension on this machine, so `git status --porcelain` on them must print nothing.
+    - Their checkout timestamps are unchanged.
+  - **`builder_rules.md`:** this machine's RAM (caps and waits unchanged) and a note on the git state. A read-only copy of the tree as 2d left it is in `<S>/tree_2d/`.
+- **Installed `node_modules`:** this copy of the repository had none.
+  - `npm ci --offline` installed 310 packages (174 MB) from your local npm cache only, with no network. The lockfile is unchanged (hash checked), and npm's logs were kept in the scratchpad.
+  - npm 11 skipped esbuild's postinstall, which only checks the binary. esbuild works.
+  - **To undo:** `rm -rf node_modules`. It is git-ignored.
+- **A preflight with no quota spent:** the integrator's full check, run on the tree as committed.
+  - Typechecks and unit tests pass: core 1,133, webview 314, extension 213.
+  - The real-Lean runner suite: 715 passed, 30 skipped as expected.
+  - The only failures, 2 type errors and 2 tests, are in 2e's unfinished files.
+- **To reverse:** delete `node_modules`. The kit in `bundle_21/resume_kit/` is untouched; the adapted copy is in `bundle_22/resume_kit/`.
+
+### AP-40 · 2e, 2f and 2g done; 2h's full check hit an old time cap (2026-11-22)
+- **Done in chain v5** (run `wf_bee8fde1-76d`, 19 agents, ≈ 4.66 M subagent tokens, 13 h):
+  - **2e:** the reviewers found 2 major and 11 minor issues. All 13 were resolved, which the re-verifier confirmed.
+  - **2f:** 8 minor or nit findings, fixed in one round.
+  - **2g:** 9 minor or nit findings, fixed in one round.
+  - Each passed its full check: typechecks, unit tests and the real-Lean runner suite (2g: 880 passed, 2 planned skips).
+- **2h:** built, then reviewed (4 minor or nit findings, all fixed). But its full check stopped. The real-Lean runner suite was killed by the check script's cap of 40 minutes (`timeout 2400`) before it printed a result.
+  - **Why:** the cap was set on the old machine, when the whole check took about 12 minutes. On this machine the runner suite took 1,807 s (preflight), 1,630 s (2e), 2,362 s (2f) and 2,385 s (2g), so 2g passed with 15 s to spare. 2h's new tests pushed it over. It was not a hang: the CPU was mostly idle, and the suite is serial by design (one worker, `LEAN_NUM_THREADS=2`, under the memory cap).
+  - **Decision:** raise the cap to 90 minutes (`timeout 5400`), and the integrator's wait to 150 minutes. Nothing is weakened: every test must still run and pass, and the skip count check is unchanged.
+  - **Alternative not taken:** run the suite with two workers. It would be faster, but it breaks the one-heavy-job rule and comes closer to the memory cap.
+- **2h re-checked by me:** this is a script, so it cost no quota. It ran on the unchanged tree, which I checked with snapshots before and after.
+  - Everything passed: core 1,137; webview 431; extension 215; runner 883 passed with 1 planned skip, in 2,422 s.
+  - The safety checks passed too: nothing staged, HEAD `1473ca0`, `dist`/`out` untouched.
+  - `after_slice_2h.patch` is saved.
+- **Next:** chain v5 for 2i alone. 2h left no open findings, so 2i starts with no carry-overs.
+
+### AP-41 · Sub-slices 2b3a, 2b3b and 2d done (the runner side: the isolated probe, the judging engine, and sessions with steps)
+- **Done.** 2b3a ran under AP-27's procedure (three verifiers). 2b3b and 2d ran under AP-34's middle ground (two verifiers each; a fix round is re-verified only when it fixed a blocker or a major):
+  - **2b3a:** the isolated probe.
+    - A separate Lean job now reads what each declaration uses. With real Lean, forged instances in a model fool the old in-file probe but not this one.
+    - It fails closed. A cut, failed or killed probe gives a problem that names the cause, and a base whose probe failed refuses the start before Claude is contacted.
+    - It also fixed the five carry-overs from 2c2's review.
+  - **2b3b:** the runner's judging engine.
+    - Judge, final check, writing an accepted premise, and completing the target from it.
+    - It re-checks a drafted premise only when something it relies on has changed.
+    - A check that Lean cannot run is left out and tried again at the next judge. It is never counted as a pass.
+  - **2d:** sessions, queues and steps.
+    - Each step is one round with fresh limits. Cancel step takes the step back, and Retry step runs it again.
+    - A Formalize can start in the middle of a stage.
+    - An older (v1) run is recovered as an edit session with every item in review.
+    - A session that never started ends as failed, with M2's "the editor reloaded" text.
+- **Caught by review and fixed (examples):** first-round findings were 2b3a 0 major (4 minor, 8 nit), 2b3b 6 major (5 minor, 1 nit), 2d 5 major (11 minor, 2 nit).
+  - A premise re-check was remembered when it ran, not when its result was kept. If a decision made the judge run again, the premise silently dropped out of the list. Now it is remembered with its outcome.
+  - Completing a target was refused after a crash replay, or after a decision changed an unrelated file. It now starts from the newest commit that holds the written premise.
+  - A mid-stage Formalize of a target whose earlier step was cancelled kept the old question, so the gate judged the proof against the wrong one. The new question now replaces it.
+  - When the review list could not be built, the old list was reused. That showed Claude's activity while results were meant to be hidden. It now fails closed, shows one telelean notice and refuses a mid-stage Formalize.
+  - "Claude's step proposed nothing" could never show, because every passed step ends on a new commit. It is now decided from the step's content.
+- **Decisions you might notice** (full list with alternatives: the plan's §8 under each builder's and fixer's entry, `docs/slice2-plan.md`):
+  - **Probe cost: accepted (AP-33).** The isolated probe needs more memory than the old in-file one (954 MB against 567 MB at its peak), over the plan's 1.5× line, because it loads Lean's own library data. Kept as the plan specifies. Alternative: read only the model's own modules, at about the old cost, but module-system files need extra handling.
+  - **A probe that runs out of memory** is an environment problem, not a budget finding against Claude. Alternative: count it as a budget finding.
+  - **One round per step,** with fresh limits. Alternative: one round for the whole session.
+  - **Cancel step** closes Claude's process and takes the step back to its start. Retry resumes the conversation. Alternative: keep the process alive between steps.
+  - **"No finish twice" counts as a give-up.** It goes back to the newest passing commit, keeping drafts and arrows still drawn. Alternative: treat it as a failure, back to the start.
+  - **A re-ask that ends without a proof** takes back only its Result and arrows. Alternative: take back the whole step.
+  - **Until 2f, Exit discards the session,** labelled "Session ended". Alternative: refuse Discard in a session.
+  - **Old v1 runs become edit sessions.** Alternative: end such runs.
+- **Tests (each sub-slice's integrator check):** typechecks clean in all 5 configs; all unit suites and the real-Lean runner suite passed.
+- **Reports:** `bundle_21/subagent_reports/slice2_chain_v3_workflow/` (2b3a) and `bundle_21/subagent_reports/slice2_chain_v4_part1_workflow/` (2b3b, 2d). Patches: `bundle_21/evidence/patches/after_slice_2b3a.patch`, `after_slice_2b3b.patch` and `after_slice_2d.patch`.
+
+### AP-42 · Sub-slices 2e, 2f, 2g, 2h and 2i done (the host and board side: review actions, the end of a session, the review panel and Proposed view, and a cleanup)
+- **Done, each under AP-38's procedure** (2e and 2f had two verifiers, 2g, 2h and 2i one each; minor-only fix rounds were not re-verified, AP-34):
+  - **2e:** the review actions.
+    - Accept, every decline, back to review, un-reject, Show results, Undo and Redo, Submit review, and the raw Lean diff.
+    - A decision cut off by a crash is made again, or dropped if the rules now refuse it.
+    - Submit sends Claude a fixed feedback turn: accepted, rejected, shaky (with notes), to be redone, steps planned.
+  - **2f:** Add premise items and the end of a session.
+    - An accepted premise is written to the model, and the target is completed from it. A failed completion is taken back.
+    - The confirmation, the final check, Apply, Exit, a watcher for files changed by hand, and the endorsement and layout files.
+    - History now records which arrows Claude proposed.
+  - **2g:** the review panel and the session bar.
+    - The review list, group Accept and Decline, the decline menu with the Shaky note, the item details, the stage report, the end confirmation and the Exit dialog.
+    - Claude's sentences are marked as Claude's.
+  - **2h:** the board in a session.
+    - The Proposed view, Formalize with several targets, and two Undo stacks (session and board).
+    - The old Accept, Discard and ghost messages are gone. The user guide is rewritten for sessions.
+  - **2i:** cleanup.
+    - The card-only Delete is removed.
+    - An old axiom's declared premises are now named in the chip tooltip, the details row and the TL122 problem.
+- **Caught by review and fixed (examples):** first-round findings were 2e 2 major (11 minor), 2f 0 major (5 minor, 3 nit), 2g 0 major (5 minor, 4 nit), 2h 0 major (3 minor, 1 nit), 2i 0 major (3 minor, 1 nit).
+  - When a decision's judge threw, the old judgement stayed in force. Accept, Submit and the diff then ran on another state's classes. It is now cleared, and review actions answer "no judgement".
+  - A "did not pass" heading after a decision was never lifted. One brief Lean failure left no Accept for the rest of the session. A later passing judge now lifts it.
+  - Exit during a premise write was read as an ordinary failure, so the write recorded a problem and took itself back on a session that was closing. The write now stops when the run is no longer live.
+  - A short sentence by Claude could mark matching words inside your own text. A phrase now marks only a whole piece of text.
+  - The board-lock text still said "until you accept or discard it", after those buttons were retired. It now says "apply or exit".
+  - Deleting a card whose statement declaration was missing left its `.holds` axiom behind as an unmarked axiom. Delete now finds the `.holds` on its own.
+- **Core defect found by 2e, your decision:** core's review reducer treats an item with no class in the stage judgement as if it had every badge.
+  - After a Reject the item's content is out of the working copy, so it has no class. An Undo that would restore its Accept is then always refused with RV-7's text.
+  - This affects the Undo of a Reject of an accepted item, the Undo of a Reject that took an accepted dependent out, and the Undo of a decline of an accepted arrow.
+  - **Workaround, in the runner:** `reviewState` in `packages/runner/src/run/review.ts` gives such an item the badges its Accept recorded, for Undo only. The next judge classifies it again.
+  - **Proper fix, in core:** treat "no class while its content is out" as those recorded badges. The workaround could then go. Alternatives: fix core inside 2e (its scope forbids it), or leave these Undos refused.
+- **Decisions you might notice** (full list with alternatives: the plan's §8 under each builder's and fixer's entry, `docs/slice2-plan.md`):
+  - **Decision headings:** "did not pass" after a decision is lifted by a later passing judge. Alternative: keep it until a later step passes.
+  - **Reload during Apply:** files equal the proposed state, so it finishes as applied. Files equal the base, so back to the confirmation. Anything else gives a notice and back to the confirmation. Alternative: apply again.
+  - **Moves:** only the subject's propositions may move. Exit drops them. Alternative: let axioms move too.
+  - **A failed completion** is taken back and marked, and never retried by itself. Alternative: a stage problem carrying Lean's message.
+  - **The Shaky note** is offered for every Shaky decline, including a Result's. Alternative: none on a Result's.
+  - **Lock text:** "…until you apply or exit it." (2h first kept slice 1's words; its fixer changed them).
+  - **Delete always removes the card's Lean.** The "keep Lean" choice is gone, and a `keepLean: true` request is refused. Alternative: keep the choice.
+  - **VS Code suites:** 7 old end-to-end scenarios of the retired review are skipped, with their bodies kept for a rewrite, and 2h converted `runs.test.ts` without running it. Alternative: delete them or rewrite them blind. (I ran these suites after the rebuild: AP-43.)
+- **Left as is (2i, minor [F-F2]):** for an old axiom's declared premises, the chip tooltip and the details row name a card from another subject by its id, while the TL122 text names it by its sentence. The webview holds only the current board. Documented in the plan's §8.
+- **Tests (after 2i):** typechecks clean in all 5 configs; core 1142, webview 435, extension 216, runner 883 passed with 1 expected skip (the opt-in real-Claude test). 2h's first full check "failed" only on the runner's old 40-minute cap, raised to 90 minutes (AP-40).
+- **Reports:** `bundle_22/subagent_reports/slice2_chain_v5_2e-2h_workflow/` and `bundle_22/subagent_reports/slice2_chain_v5_2i_workflow/`. Patches: `bundle_21/evidence/patches/after_slice_2e.patch` to `after_slice_2i.patch`.
+
+### AP-43 · Slice 2 finished: the final checks, two VS Code test fixes, and your extension rebuilt (2026-11-22)
+- **2i passed its full check** (run `wf_2f71cf32-72e`, 4 agents, ≈ 0.69 M subagent tokens):
+  - typechecks clean in all 5 configs;
+  - core 1,142; webview 435; extension 216;
+  - runner 883 passed, with 1 planned skip.
+  - `after_slice_2i.patch` is saved. Its one leftover (F-F2) is in AP-42.
+- **Playwright, all 21 specs one at a time** against a scratch build: 118 tests passed, none failed or skipped. No new Chrome crash dumps.
+- **Your extension is rebuilt (AP-8)** with `vite build` and `node scripts/build.mjs`. `packages/extension/dist` and `out` are git-tracked and now show 17 modified files. HEAD is still `1473ca0`, with nothing staged.
+- **The VS Code suites ran for the first time since M2.**
+  - **Why:** the slice-2 plan's final checks include them "if RAM allows" (§6.3). 1g and 2h had converted them but only type-checked them.
+  - **How:** this machine has no copy of the 1.140.0 test build, and downloading one is not allowed. So they ran in your snap VS Code (1.145.2) through the project's own snap mode (`scripts/smoke.mjs --snap`), with a throwaway profile in the scratch dir.
+  - **Isolation:** every check passed. `~/.config/Code`, `~/snap/code`, `~/.copilot`, `~/.vscode` and the Chrome folders were unchanged, and no process was left.
+  - **First run:** 51 passed, 8 skipped, 2 failed. The 8 skips are 2h's: the old Accept test and 7 old review scenarios.
+  - **Both failures were test problems, not product bugs.** Run `wf_46e69f5f-f31` (3 agents, ≈ 0.27 M subagent tokens) gave each failure one Sonnet fixer. The fix that touched source got a Sonnet check too (verdict ok).
+    - **AT5.9 (a run still working when the window goes is kept as interrupted):** a race in the test. A late delivery report from the closed board set the test's copy of the run back to "working". The saved run file shows the product wrote "interrupted", as it should.
+      - **Fix:** every board post event now names its panel (a small addition to the extension's test interface), and the test ignores the closed board's events. AT5.8 had the same hidden flaw and gets the same fix.
+      - **Alternative:** a fixed wait. Rejected as timing-based.
+    - **A drag inside a card's Lean code selects text:** the test ended its drag in the code box's bottom padding. In VS Code's webview that point fell just past the code, so the selection picked up line breaks. The code view is unchanged since M2.
+      - **Fix (test only):** the drag now ends on the last line's text. The check ignores line breaks at the start and end of the selection; any other stray text still fails.
+      - **Alternative:** change the product's CSS. Rejected, since nothing visible is wrong.
+  - **Second run, after a rebuild with both fixes:** 53 passed, 8 skipped, none failed, and the isolation checks passed again. The extension's typecheck is clean, and its 216 unit tests pass.
+  - **Logged in the plan:** `docs/slice2-plan.md` §8, the entry dated 2026-11-22.
+- **Final patch:** `bundle_21/evidence/patches/after_slice_2_final.patch` (2i plus the two test fixes).
+- **Not done, for later:**
+  - `docs/DEMO.md` and the automated demo driver (`scripts/demo-driver.mjs`, `demo-ui.mjs`) still walk through M2's review (Accept, Discard). 2h reported this and left them as they are. My report has a demo script for slice 2.
+  - The 7 old VS Code review scenarios stay skipped until they are rewritten for sessions.
+  - The core defect in AP-42 waits for your decision.

@@ -331,7 +331,7 @@ export const REVIEW_TEXTS = {
   rejectResult: 'keeps the previous proof; Claude may not offer this exact proof again',
   shakyResult: 'Claude tries again at Submit review',
   noteForClaude: 'Note for Claude (optional)',
-  reviewItems: (n: number) => `${n} review items`,
+  reviewItems: (n: number) => `${n} review item${n === 1 ? '' : 's'}`,
 
   // ---- Submit review (§3.7, §5.8)
   submitReview: 'Submit review',
@@ -391,6 +391,10 @@ export const REVIEW_TEXTS = {
   applied: "Applied: the session's changes are in your files. One Undo takes the whole session back.",
   /** §3.10, D2-67: Apply's history label (M2's kind `accept-proposal`). */
   applyLabel: (targets: readonly string[]) => `Apply: Formalize for dependencies → ${joined(targets)}`,
+  /** §3.10 step 4 (coverage audit G1; builder 2f): History's entry for an Apply, the heading of Claude's arrows it wrote. */
+  arrowsFromClaude: 'Arrows from Claude',
+  /** §3.10 step 4 (G1; builder 2f): one of them, "‹source› → ‹target› (step ‹n›)"; `step` is the step's id (`s3` reads "step 3"). */
+  arrowFromClaude: (source: string, target: string, step: string) => `${source} → ${target} (step ${step.replace(/^s(?=\d)/u, '')})`,
 
   // ---- the Proposed view in a session (§5.10)
   markNewInReview: '+ new · in review',

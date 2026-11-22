@@ -29,11 +29,13 @@
  *   calls `addArrows(target, [source])` (into an axiom, 1b's impact dialog first); elsewhere it cancels, and so does Esc.
  * - Escape during a drag (a move, a draw, a rectangle) cancels it, and nothing else happens.
  * - While an edit session is active (ES-9) drawing and moving are off (the handles are not there); selecting and the
- *   menus stay. The Proposed view selects nothing and changes nothing (`gestureGateOf`).
+ *   menus stay. Slice 2h: the Proposed view is the session's: it selects (cards, drawn and accepted Claude arrows,
+ *   marks), draws nothing, and a move there is a session step (`moveProposed`, off while Claude's step runs); a click on
+ *   Claude's undecided arrow shows its review item (`gestureGateOf`).
  * - Keyboard, with the canvas (or a card on it) focused: + / − zoom about the centre, 0 is Fit all; with the canvas
  *   itself focused the arrow keys pan. A card focused from the keyboard (Tab) is brought into view.
  */
-import { gestureGateOf, impactOf, type BoardStore } from '../state/store';
+import { boardView, gestureGateOf, impactOf, type BoardStore } from '../state/store';
 import { isTextEntry } from '../model/format';
 import { NO_DRAG_SELECTOR } from './dragGuard';
 import type { CanvasView } from './canvas/CanvasView';
@@ -218,13 +220,15 @@ export function attachBoardInput(o: BoardInputOptions): () => void {
     if (mark?.dataset.markId && board.contains(mark)) return { kind: 'mark', id: mark.dataset.markId };
     const path = target.closest<SVGPathElement>('path[data-hit-edge]');
     if (path) {
-      const { hitEdge, source, target: into, hit } = path.dataset;
+      const { hitEdge, source, target: into, hit, hitItem } = path.dataset;
       if (hitEdge && source && into && (hit === 'drawn' || hit === 'undeclared')) return { kind: 'arrow', id: hitEdge, source, target: into, role: hit };
+      // Slice 2h: Claude's arrow still undecided (its click shows its review item).
+      if (hitEdge && source && into && hit === 'proposed' && hitItem) return { kind: 'arrow', id: hitEdge, source, target: into, role: 'proposed', item: hitItem };
       return null;
     }
     if (!column.contains(target) || onItem(target) || target.closest(NO_DRAG_SELECTOR) || onScrollbar(target, x)) return null;
     const found = engine.hitTestColumn(engine.toBoard(x, y));
-    return found ? { kind: 'arrow', id: found.id, source: found.source, target: found.target, role: found.role } : null;
+    return found ? { kind: 'arrow', id: found.id, source: found.source, target: found.target, role: found.role, ...(found.item !== undefined ? { item: found.item } : {}) } : null;
   };
 
   /** The card, drawn arrow, mark or empty canvas under the pointer, or null (the column's background, a control). */
@@ -239,10 +243,13 @@ export function attachBoardInput(o: BoardInputOptions): () => void {
     return { thing: { kind: 'canvas', at: canvas.clientToCanvas(x, y) }, focus: viewport };
   };
 
-  /** A proposition card on the canvas that a left drag may move now (ES-9: not during an edit session). */
+  /**
+   * A proposition card on the canvas that a left drag may move now (ES-9: not during an edit session; slice 2h: on the
+   * session's Proposed view, as a session step).
+   */
   const movable = (id: string) => {
     const s = store.getState();
-    return s.nodes[id]?.type === 'PROPOSITION' && !s.provisional[id] && gate().move === null && canvas.layout.has(id);
+    return boardView(s).nodes[id]?.type === 'PROPOSITION' && !s.provisional[id] && gate().move === null && canvas.layout.has(id);
   };
 
   const slotOf = (id: string) => board.querySelector<HTMLElement>(`${SLOT_SELECTOR}[data-slot-id="${CSS.escape(id)}"]`);
@@ -603,6 +610,7 @@ export function attachBoardInput(o: BoardInputOptions): () => void {
           const click = clickOutcome(p.hit, additive);
           if (click.kind === 'select-arrow') s.selectArrow(click.source, click.target, click.additive);
           else if (click.kind === 'select-mark') s.selectMark(click.id, click.additive);
+          else if (click.kind === 'focus-item') s.focusItem(click.item);
           else if (click.kind === 'clear') s.clearSelection();
           return;
         }

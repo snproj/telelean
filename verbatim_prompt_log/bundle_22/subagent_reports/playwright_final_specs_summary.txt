@@ -1,0 +1,22 @@
+board.spec.ts rc=0 32s  13 passed (30.4s); mem_avail_mb=36943
+m1-cards.spec.ts rc=0 12s  4 passed (10.5s); mem_avail_mb=36897
+m1-drag.spec.ts rc=0 13s  7 passed (12.2s); mem_avail_mb=36894
+m1-edits.spec.ts rc=0 13s  7 passed (12.3s); mem_avail_mb=36884
+m1-fixes.spec.ts rc=0 11s  8 passed (10.4s); mem_avail_mb=36910
+m1-header.spec.ts rc=0 10s  5 passed (9.4s); mem_avail_mb=36848
+m1-lean-code.spec.ts rc=0 9s  4 passed (8.2s); mem_avail_mb=36804
+m1-store.spec.ts rc=0 6s  1 passed (4.5s); mem_avail_mb=36857
+m2-carryover.spec.ts rc=0 10s  5 passed (9.9s); mem_avail_mb=36907
+m2-layout.spec.ts rc=0 9s  4 passed (8.0s); mem_avail_mb=36920
+m2-overlay.spec.ts rc=0 5s  1 passed (3.8s); mem_avail_mb=36870
+m2-provenance.spec.ts rc=0 7s  3 passed (5.6s); mem_avail_mb=36771
+m2-questions.spec.ts rc=0 7s  2 passed (5.5s); mem_avail_mb=36910
+m2-run.spec.ts rc=0 9s  5 passed (8.5s); mem_avail_mb=36813
+s1-arrows.spec.ts rc=0 19s  11 passed (17.9s); mem_avail_mb=36881
+s1-canvas.spec.ts rc=0 11s  4 passed (10.2s); mem_avail_mb=36861
+s1-formalize.spec.ts rc=0 11s  5 passed (10.4s); mem_avail_mb=36896
+s1-glows.spec.ts rc=0 9s  6 passed (8.2s); mem_avail_mb=36779
+s1-session.spec.ts rc=0 9s  3 passed (8.2s); mem_avail_mb=36903
+s2-board.spec.ts rc=0 14s  8 passed (13.3s); mem_avail_mb=37043
+s2-review.spec.ts rc=0 16s  12 passed (15.7s); mem_avail_mb=37088
+DONE

@@ -20,8 +20,17 @@
  * start with **Formalize for dependencies**, enabled or disabled exactly as the header's Context Menu section shows it
  * (board/contextActions.ts `formalizeState`, on the selection the right click made); the section shows a selected
  * card's actions from `cardActions`, so both share one action model.
+ *
+ * Slice 2h (§5.10): the Proposed view is an edit session's. A right click selects there as on the Current board; a
+ * card's menu offers Select incoming arrows, its review items ("Show its review item: ‹kind›"), Show on board and Open
+ * in editor ("Opens your file; Claude's version is in the raw diff", the card's place in the Current graph; disabled
+ * for a card that exists only in the session), its editing entries disabled with 1f's and 1c2's reasons; Formalize is
+ * a mid-stage Formalize. Claude's arrow still undecided (`proposed`) offers Accept, Decline…, Show its review item,
+ * Show “source” and Show “target”.
  */
-import type { ArrowEnds, CanvasPosition, TlNode } from '@telelean/core';
+import { DECLINE_OPTION_TEXTS, ITEM_KIND_LABELS, REVIEW_TEXTS, type ArrowEnds, type CanvasPosition, type ItemView, type SessionPhase, type SourceLocation, type TlNode } from '@telelean/core';
+import { itemControls, readOnlyReason } from '../model/review';
+import type { CardMark } from '../model/sessionBoard';
 import type { FormalizeState } from './contextActions';
 
 export type MenuThing =
@@ -30,7 +39,9 @@ export type MenuThing =
   /** Slice 1c2: an arrow a proof uses without a declaration (TL107): its menu only. */
   | { kind: 'undeclared'; source: string; target: string }
   | { kind: 'mark'; id: string }
-  | { kind: 'canvas'; at: CanvasPosition };
+  | { kind: 'canvas'; at: CanvasPosition }
+  /** Slice 2h: Claude's arrow still undecided in a session's Proposed view (its menu only; never selected). */
+  | { kind: 'proposed'; item: string; source: string; target: string };
 
 /** What a right click does to the selection before the menu opens. */
 export type MenuSelection = { kind: 'keep' } | { kind: 'card'; id: string } | { kind: 'arrow'; source: string; target: string } | { kind: 'mark'; id: string };
@@ -57,6 +68,9 @@ export function menuSelection(state: SelectionState, thing: MenuThing, readOnly 
       return state.selectedMarks.includes(thing.id) ? { kind: 'keep' } : { kind: 'mark', id: thing.id };
     case 'undeclared':
       // Not selectable (CF-7: a proof's use without a declaration is derived): only its menu opens.
+      return { kind: 'keep' };
+    case 'proposed':
+      // Slice 2h (§5.10, D2-20): Claude's arrow is not selectable until accepted; only its menu opens.
       return { kind: 'keep' };
     case 'canvas':
       return { kind: 'keep' };
@@ -87,7 +101,11 @@ export type MenuAction =
   | 'remove-mark'
   | 'new-here'
   | 'fit'
-  | 'tidy';
+  | 'tidy'
+  // Slice 2h (§5.10): a review item's actions in a session's Proposed view.
+  | 'accept-item'
+  | 'decline-item'
+  | 'show-item';
 
 export interface MenuEntry {
   action: MenuAction;
@@ -96,6 +114,23 @@ export interface MenuEntry {
   disabled: string | null;
   /** A separator line goes above it. */
   group?: true;
+  /** Slice 2h: the review item it is about (`accept-item`, `decline-item`, `show-item`). */
+  item?: string;
+  /** Slice 2h: its tooltip when it can be chosen ("Open in editor" in the Proposed view). */
+  title?: string;
+}
+
+/** Slice 2h: what a session's Proposed view adds to the menus (§5.10). */
+export interface MenuReview {
+  items: readonly ItemView[];
+  /** The session's phase (D2-62: nothing is decided while Claude's step runs). */
+  phase: SessionPhase;
+  /** A session request is on its way (one at a time). */
+  busy: boolean;
+  /** Listed items per card (the card marks). */
+  marks: Readonly<Record<string, readonly CardMark[]>>;
+  /** Each card's place in the user's files (the Current graph's): "Open in editor" opens it. */
+  locations: Readonly<Record<string, SourceLocation>>;
 }
 
 export interface MenuContext {
@@ -116,6 +151,8 @@ export interface MenuContext {
    * mark's menus list it first. Absent: not offered.
    */
   formalize?: FormalizeState;
+  /** Slice 2h: the session's review, when the Proposed view is on screen (absent otherwise). */
+  review?: MenuReview;
 }
 
 /** Slice 1e: the labelled button's words (spec v4.1 CM-3), in the Context Menu section and the right-click menu. */
@@ -123,8 +160,11 @@ export const FORMALIZE_LABEL = 'Formalize for dependencies';
 
 /** The reason the Proposed view's arrow actions are disabled (the store's PROPOSED_ARROWS_LOCKED). */
 export const MENU_PROPOSED_ARROWS = 'Arrows change only through review items and transforms.';
-/** The reason the Proposed view's other edits (a new card, a move, Tidy layout) are disabled. */
-export const MENU_PROPOSED_READ_ONLY = "This is Claude's proposal (read-only): your board can be edited again once you accept or discard it.";
+/**
+ * The reason the Proposed view's other edits (a new card, a field) are disabled. Slice 2h: worded for the session, since
+ * M2's Accept and Discard are retired (builder 2h).
+ */
+export const MENU_PROPOSED_READ_ONLY = "This is the edit session's Proposed view: your board can be edited again once the session ends (Apply or Exit).";
 /** A card the host has not written yet. */
 export const MENU_PROVISIONAL = 'Waiting for the extension to write this card.';
 
@@ -171,9 +211,21 @@ export function cardActions(id: string, ctx: MenuContext): MenuEntry[] {
     if (sources.length > 0) out.push({ action: 'draw-from-selection', label: 'Draw arrows from the selection', disabled: MENU_PROPOSED_ARROWS });
     if (marked) out.push({ action: 'remove-from-nothing', label: "Remove 'follows from nothing'", disabled: MENU_PROPOSED_ARROWS });
     else if (!isProposition || arrowsIn === 0) out.push({ action: 'from-nothing', label: 'Follows from nothing', disabled: MENU_PROPOSED_ARROWS });
+    // Slice 2h (§5.10, RV-9): the Proposed view selects, so a mid-stage Formalize can take a card's arrows.
+    if (ctx.review !== undefined && isProposition && (arrowsIn > 0 || marked)) out.push({ action: 'select-incoming', label: 'Select incoming arrows', disabled: null });
     if (isProposition) out.push({ action: 'move-to-axioms', label: 'Move to axioms', disabled: MENU_PROPOSED_ARROWS });
+    // Slice 2h: the card's review items (a click on its mark does the same).
+    const marks = ctx.review?.marks[id] ?? [];
+    marks.forEach((m, i) =>
+      out.push({ action: 'show-item', label: `${REVIEW_TEXTS.showReviewItem}: ${ITEM_KIND_LABELS[m.kind]}`, disabled: null, item: m.item, ...(i === 0 ? { group: true as const } : {}) }),
+    );
     out.push({ action: 'show', label: 'Show on board', disabled: null, group: true });
     out.push({ action: 'details', label: ctx.expanded[id] ? 'Hide details' : 'Show details', disabled: null });
+    // Slice 2h (§5.10): the card's place in the user's files; Claude's version is in the raw diff.
+    if (ctx.review !== undefined) {
+      const placed = ctx.review.locations[id] !== undefined;
+      out.push({ action: 'open', label: 'Open in editor', disabled: placed ? null : REVIEW_TEXTS.openInEditorDisabled, ...(placed ? { title: REVIEW_TEXTS.openInEditorTip } : {}) });
+    }
     return out;
   }
 
@@ -207,7 +259,35 @@ export function cardActions(id: string, ctx: MenuContext): MenuEntry[] {
  */
 function formalizeEntries(ctx: MenuContext): MenuEntry[] {
   if (ctx.formalize === undefined) return [];
-  return [{ action: 'formalize', label: FORMALIZE_LABEL, disabled: ctx.proposed ? MENU_PROPOSED_ARROWS : ctx.formalize.disabled }];
+  // Slice 2h: in a session's Proposed view it is a mid-stage Formalize (formalizeState knows the session's reasons).
+  return [{ action: 'formalize', label: FORMALIZE_LABEL, disabled: ctx.proposed && ctx.review === undefined ? MENU_PROPOSED_ARROWS : ctx.formalize.disabled }];
+}
+
+/**
+ * Slice 2h (§5.10): Claude's arrow still undecided: Accept (its own Accept: the menu names this one item, as the
+ * detail's Accept does), Decline… (an arrow's one plain decline, DO-0), Show its review item, and both ends.
+ */
+function proposedEntries(thing: Extract<MenuThing, { kind: 'proposed' }>, ctx: MenuContext): MenuEntry[] {
+  const review = ctx.review;
+  const item = review?.items.find((i) => i.id === thing.item);
+  const missing = REVIEW_TEXTS.conflict(thing.item);
+  const controls = item !== undefined && review !== undefined ? itemControls(item, { phase: review.phase }, review.busy) : undefined;
+  const reason = (c: { enabled: boolean; title: string } | undefined) => (c === undefined ? missing : c.enabled ? null : c.title);
+  const acceptOff = item !== undefined && item.status !== 'in-review' ? (readOnlyReason({ phase: review?.phase ?? 'stage' }) ?? REVIEW_TEXTS.leftNotInReview(item.label)) : reason(controls?.accept);
+  // D2-35: an Add premise draft's "+" arrow (from its "Claude suggests" card): decided only in the list.
+  if (item?.kind === 'add-premise') {
+    return [
+      { action: 'show-item', label: REVIEW_TEXTS.showReviewItem, disabled: null, item: thing.item },
+      { action: 'show-target', label: `Show “${menuName(ctx.nodes, thing.target)}”`, disabled: null, group: true },
+    ];
+  }
+  return [
+    { action: 'accept-item', label: REVIEW_TEXTS.accept, disabled: acceptOff, item: thing.item },
+    { action: 'decline-item', label: `${DECLINE_OPTION_TEXTS.plain}…`, disabled: reason(controls?.decline), item: thing.item },
+    { action: 'show-item', label: REVIEW_TEXTS.showReviewItem, disabled: item === undefined ? REVIEW_TEXTS.conflict(thing.item) : null, item: thing.item, group: true },
+    { action: 'show-source', label: `Show “${menuName(ctx.nodes, thing.source)}”`, disabled: null, group: true },
+    { action: 'show-target', label: `Show “${menuName(ctx.nodes, thing.target)}”`, disabled: null },
+  ];
 }
 
 /** The menu for the thing under the pointer (after `menuSelection` was applied). */
@@ -221,14 +301,19 @@ export function menuEntries(thing: MenuThing, ctx: MenuContext): MenuEntry[] {
       // (The Proposed view selects nothing and removes nothing: its entry is disabled and names this arrow only.)
       const inSelection = !ctx.proposed && ctx.selectedArrows.some((a) => a.source === thing.source && a.target === thing.target);
       const label = inSelection ? removeSelectionLabel(ctx.selectedArrows.length, ctx.selectedMarks.length) : 'Remove arrow';
+      // Slice 2h: an accepted Claude arrow in the Proposed view also shows its review item.
+      const accepted = ctx.review?.items.find((i) => i.kind === 'add-arrow' && i.detail.kind === 'add-arrow' && i.detail.source.id === thing.source && i.detail.target.id === thing.target);
       return [
         ...formalizeEntries(ctx),
         { action: 'remove-arrows', label, disabled: write(MENU_PROPOSED_ARROWS) },
-        { action: 'select-incoming', label: `Select the arrows into “${menuName(ctx.nodes, thing.target)}”`, disabled: ctx.proposed ? MENU_PROPOSED_ARROWS : null },
+        { action: 'select-incoming', label: `Select the arrows into “${menuName(ctx.nodes, thing.target)}”`, disabled: ctx.proposed && ctx.review === undefined ? MENU_PROPOSED_ARROWS : null },
+        ...(accepted !== undefined ? [{ action: 'show-item' as const, label: REVIEW_TEXTS.showReviewItem, disabled: null, item: accepted.id, group: true as const }] : []),
         { action: 'show-source', label: `Show “${menuName(ctx.nodes, thing.source)}”`, disabled: null, group: true },
         { action: 'show-target', label: `Show “${menuName(ctx.nodes, thing.target)}”`, disabled: null },
       ];
     }
+    case 'proposed':
+      return proposedEntries(thing, ctx);
     case 'undeclared':
       // AR-1, A16, A20: drawing it makes the proof's use a declared arrow (into an axiom: AR-6's dialog first).
       return [
@@ -248,10 +333,12 @@ export function menuEntries(thing: MenuThing, ctx: MenuContext): MenuEntry[] {
       ];
     case 'canvas': {
       const tidied = ctx.selected.filter((id) => ctx.nodes[id]?.type === 'PROPOSITION').length;
+      // Slice 2h (D2-33): in a session's Proposed view Tidy layout is a move, one session step (refused while a step runs).
+      const tidy = ctx.proposed && ctx.review !== undefined ? (readOnlyReason({ phase: ctx.review.phase }) ?? (ctx.review.phase === 'stage' ? null : REVIEW_TEXTS.formalizeConfirming)) : write(MENU_PROPOSED_READ_ONLY);
       return [
         { action: 'new-here', label: 'New proposition here', disabled: write(MENU_PROPOSED_READ_ONLY) },
         { action: 'fit', label: 'Fit all', disabled: null, group: true },
-        { action: 'tidy', label: tidied > 0 ? `Tidy layout (${tidied} selected)` : 'Tidy layout', disabled: write(MENU_PROPOSED_READ_ONLY) },
+        { action: 'tidy', label: tidied > 0 ? `Tidy layout (${tidied} selected)` : 'Tidy layout', disabled: tidy },
       ];
     }
   }

@@ -1,6 +1,8 @@
 // The architect's scratch test of the M2 protocol additions, copied by WP1 (docs/m2-plan.md section 0). Changes from
 // the scratch copy: imports from ../src/index.js with explicit vitest imports, and the last test expects WP1's
-// scanForbidden and diffGraphs to be implemented (the scratch copy asserted they were still stubs).
+// scanForbidden and diffGraphs to be implemented (the scratch copy asserted they were still stubs). Slice 2h
+// (docs/slice2-plan.md 2.4) retired M2's review messages and the host's `proposal`: their cases went, and a test pins
+// that the validators refuse them.
 import { describe, expect, it } from 'vitest';
 import { parseWebviewToHost, parseHostToWebview, webviewMessage, hostMessage, spyroGraph, RUN_MESSAGE_TYPES, DEFAULT_RUN_CAPS, isTerminalRunState, attemptsPath, decisionsPath, isImplemented, scanForbidden, diffGraphs } from '../src/index.js';
 
@@ -13,8 +15,6 @@ const bad = (m: unknown, part: string) => {
 
 describe('M2 webview -> host messages', () => {
   it('accepts every run message in canonical form', () => {
-    ok(webviewMessage('startRun', { target: 'g', premises: ['a', 'b'], requestId: 'r1' }));
-    ok(webviewMessage('startRun', { target: 'g', premises: [] }));
     ok(webviewMessage('answerQuestions', { runId: 'rabc_1', setId: 'q1', answers: [
       { question: 0, choice: { kind: 'option', option: 1 }, scope: 'run' },
       { question: 1, choice: { kind: 'free-text', text: 'I mean it as a norm.\nNot literally.' }, scope: 'subject' },
@@ -23,24 +23,14 @@ describe('M2 webview -> host messages', () => {
     ok(webviewMessage('answerQuestions', { runId: 'r1', setId: 'q2', answers: [{ question: 0, choice: { kind: 'decide-for-me' }, scope: 'run' }] }));
     ok(webviewMessage('cancelRun', { runId: 'r1' }));
     ok(webviewMessage('resumeRun', { runId: 'r1', requestId: 'x' }));
-    ok(webviewMessage('acceptProposal', { runId: 'r1', proposalId: 'p1', definitions: ['d1'], requestId: 'r3' }));
-    ok(webviewMessage('feedback', { runId: 'r1', text: 'Use the literal reading.' }));
-    ok(webviewMessage('discardProposal', { runId: 'r1' }));
-    ok(webviewMessage('adoptGhost', { runId: 'r1', ghostId: 'ghost-1', rationale: 'obvious to me' }));
-    ok(webviewMessage('adoptGhost', { runId: 'r1', ghostId: 'ghost-1' }));
-    ok(webviewMessage('rejectGhost', { runId: 'r1', ghostId: 'ghost-2', requestId: 'r4' }));
-    ok(webviewMessage('openProposalDiff', { runId: 'r1', proposalId: 'p1', file: 'Model/Spyro/Main.lean' }));
-    ok(webviewMessage('openProposalDiff', { runId: 'r1', proposalId: 'p1' }));
     ok(webviewMessage('dismissRun', { runId: 'r1' }));
     ok(webviewMessage('kindChange', { id: 'a', from: 'PROPOSITION', to: 'AXIOM', beforeId: null, dependents: 'rewrite', confirmedDependents: ['g', 'Spyro.lemma1'] }));
-    // Slice 2 (2c1) appends the session's messages (docs/slice2-plan.md 2.4); M2's eleven stay first.
-    expect(RUN_MESSAGE_TYPES.slice(0, 11)).toEqual(['startRun', 'answerQuestions', 'cancelRun', 'resumeRun', 'acceptProposal', 'feedback', 'discardProposal', 'adoptGhost', 'rejectGhost', 'openProposalDiff', 'dismissRun']);
-    expect(RUN_MESSAGE_TYPES.length).toBe(21);
+    // Slice 2 (2c1) appends the session's messages (docs/slice2-plan.md 2.4); since 2h M2's four kept ones come first.
+    expect(RUN_MESSAGE_TYPES.slice(0, 4)).toEqual(['answerQuestions', 'cancelRun', 'resumeRun', 'dismissRun']);
+    expect(RUN_MESSAGE_TYPES.length).toBe(14);
   });
 
   it('refuses malformed run messages', () => {
-    bad(webviewMessage('startRun', { target: 'g', premises: ['g'] } as never), 'must not also be a premise');
-    bad(webviewMessage('startRun', { target: 'g', premises: ['a', 'a'] } as never), 'more than once');
     bad(webviewMessage('cancelRun', { runId: 'bad id!' } as never), 'payload.runId');
     bad(webviewMessage('answerQuestions', { runId: 'r1', setId: 'q1', answers: [] } as never), '1 to 3 answers');
     bad(webviewMessage('answerQuestions', { runId: 'r1', setId: 'q1', answers: [
@@ -49,12 +39,27 @@ describe('M2 webview -> host messages', () => {
     bad(webviewMessage('answerQuestions', { runId: 'r1', setId: 'q1', answers: [{ question: 0, choice: { kind: 'free-text', text: '   ' }, scope: 'run' }] } as never), 'blank');
     bad(webviewMessage('answerQuestions', { runId: 'r1', setId: 'q1', answers: [{ question: 0, choice: { kind: 'leave-open' }, scope: 'forever' }] } as never), 'scope');
     bad(webviewMessage('answerQuestions', { runId: 'r1', setId: 'q1', answers: [{ question: 0, choice: { kind: 'guess' }, scope: 'run' }] } as never), 'kind');
-    bad(webviewMessage('acceptProposal', { runId: 'r1', proposalId: 'p1', definitions: ['d1', 'd1'] } as never), 'more than once');
-    bad(webviewMessage('feedback', { runId: 'r1', text: '' } as never), 'payload.text');
-    bad(webviewMessage('adoptGhost', { runId: 'r1', ghostId: 'g/1' } as never), 'payload.ghostId');
-    bad(webviewMessage('adoptGhost', { runId: 'r1', ghostId: 'ghost-1', rationale: 'two\nlines' } as never), 'single line');
-    bad(webviewMessage('openProposalDiff', { runId: 'r1', proposalId: 'p1', file: '../x.lean' } as never), 'payload.file');
     bad(webviewMessage('kindChange', { id: 'a', from: 'PROPOSITION', to: 'AXIOM', beforeId: null, confirmedDependents: 'g' } as never), 'confirmedDependents');
+  });
+
+  it('slice 2h: the retired messages are refused by the validators (M2\'s review, its start and the host\'s proposal)', () => {
+    // Well-formed payloads as M2's validators took them: each type is unknown now, whatever it carries.
+    const retired: Array<[string, Record<string, unknown>]> = [
+      ['startRun', { target: 'g', premises: ['a'], requestId: 'r1' }],
+      ['acceptProposal', { runId: 'r1', proposalId: 'p1', definitions: [] }],
+      ['feedback', { runId: 'r1', text: 'Use the literal reading.' }],
+      ['discardProposal', { runId: 'r1' }],
+      ['adoptGhost', { runId: 'r1', ghostId: 'ghost-1' }],
+      ['rejectGhost', { runId: 'r1', ghostId: 'ghost-1' }],
+      ['openProposalDiff', { runId: 'r1', proposalId: 'p1' }],
+    ];
+    for (const [type, payload] of retired) {
+      const r = parseWebviewToHost({ v: 1, type, payload });
+      expect(r, type).toEqual({ ok: false, error: `unknown message type "${type}"` });
+      expect((RUN_MESSAGE_TYPES as readonly string[]).includes(type), type).toBe(false);
+    }
+    expect(parseHostToWebview({ v: 1, type: 'proposal', payload: { proposal: null } })).toEqual({ ok: false, error: 'unknown message type "proposal"' });
+    expect(parseHostToWebview({ v: 1, type: 'proposal', payload: { proposal: { runId: 'r1', proposalId: 'p1', graph: spyroGraph() } } }).ok).toBe(false);
   });
 
   it('strips unknown properties', () => {
@@ -64,15 +69,11 @@ describe('M2 webview -> host messages', () => {
 });
 
 describe('M2 host -> webview messages', () => {
-  it('passes run and proposal through, and null clears them', () => {
+  it('passes run through, and null clears it (2h: the proposal message is retired, see above)', () => {
     expect(parseHostToWebview(hostMessage('run', { run: null }))).toEqual({ ok: true, value: hostMessage('run', { run: null }) });
-    expect(parseHostToWebview(hostMessage('proposal', { proposal: null })).ok).toBe(true);
     const run = { runId: 'r1', state: 'working', notices: [], activity: [], answered: [], ghosts: [] };
     expect(parseHostToWebview({ v: 1, type: 'run', payload: { run } }).ok).toBe(true);
     expect(parseHostToWebview({ v: 1, type: 'run', payload: { run: { runId: 'r1' } } }).ok).toBe(false);
-    const proposal = { runId: 'r1', proposalId: 'p1', graph: spyroGraph() };
-    expect(parseHostToWebview({ v: 1, type: 'proposal', payload: { proposal } }).ok).toBe(true);
-    expect(parseHostToWebview({ v: 1, type: 'proposal', payload: { proposal: { runId: 'r1', proposalId: 'p1', graph: {} } } }).ok).toBe(false);
   });
 });
 

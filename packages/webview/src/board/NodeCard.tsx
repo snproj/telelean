@@ -3,13 +3,12 @@ import { combine } from '@atlaskit/pragmatic-drag-and-drop/utils/combine';
 import { attachClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge/attach-closest-edge';
 import { extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge/extract-closest-edge';
 import type { Edge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/types';
-import type { NodeDiff } from '@telelean/core';
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { InlineEdit } from '../common/OneLineInput';
 import { KIND_GLYPH, KIND_NOUN } from '../labels';
 import { attentionDiagnostics, cardChips, cardGlow, type Chip } from '../model/cardData';
 import { plainText } from '../model/format';
-import { DIFF_GLYPH, DIFF_WORD, diffTitle, RESULT_CHIP_KEYS } from '../model/run';
+import { markGlyph, markText, RESULT_CHIP_KEYS, RESULT_HIDDEN_CHIP, type CardMark } from '../model/sessionBoard';
 import { useBoard, useBoardActions, useBoardStore } from '../state/context';
 import { boardView, editLock, flashTarget, gestureGateOf, proposedOverlay } from '../state/store';
 import { CardDetails } from './CardDetails';
@@ -18,26 +17,36 @@ import { guardCardDrag } from './dragGuard';
 import { revealCard, revealInColumn } from './reveal';
 import { UsesLine } from './UsesLine';
 
-/** The chip that stands for a proof result the overlay hides until the review reveals it (D-19). */
-const RESULT_HIDDEN_CHIP: Chip = {
-  key: 'result-hidden',
-  label: 'result after the review',
-  title: 'Proof status is shown after you have reviewed the statements (or pressed "Show result" in the review), so you judge their meaning first',
-  tone: 'subtle',
-};
-
 /**
- * A proposal's diff mark (03 section 7): a glyph and a word as well as the colour (never colour alone), plus the halo
- * the card gets from `data-diff`.
+ * Slice 2h (§5.10): a card's review item in a session's Proposed view (ItemMark replaces M2's DiffBadge): glyph, word
+ * and status, never colour alone ("+ new · in review", "~ Formalize · accepted ✓"). A click shows the item in the review
+ * panel; Ctrl/Cmd+click adds it to (or takes it from) the items selected for a group decision (CM-2).
  */
-export function DiffBadge({ diff, hideResult = false }: { diff: Pick<NodeDiff, 'change' | 'fields'>; hideResult?: boolean }) {
+export function ItemMark({ mark }: { mark: CardMark }) {
+  const actions = useBoardActions();
+  const selected = useBoard((s) => s.selectedItems.includes(mark.item));
+  const glyph = markGlyph(mark.kind);
+  const text = markText(mark);
   return (
-    <span className="tl-diff" data-diff={diff.change} data-testid="diff-badge" title={diffTitle({ change: diff.change, fields: diff.fields }, hideResult)}>
-      <span className="tl-diff__glyph" aria-hidden="true">
-        {DIFF_GLYPH[diff.change]}
-      </span>
-      {DIFF_WORD[diff.change]}
-    </span>
+    <button
+      type="button"
+      className="tl-mark-item"
+      data-testid="item-mark"
+      data-item={mark.item}
+      data-kind={mark.kind}
+      data-status={mark.status}
+      data-mark={glyph === '+' ? 'added' : glyph === '−' ? 'removed' : 'changed'}
+      data-selected={selected || undefined}
+      aria-pressed={selected}
+      title={`${text}: show it in the review (Ctrl+click: select it for a group decision)`}
+      onClick={(event) => {
+        event.stopPropagation();
+        if (event.ctrlKey || event.metaKey) actions.toggleItemSelected(mark.item);
+        else actions.focusItem(mark.item);
+      }}
+    >
+      {text}
+    </button>
   );
 }
 
@@ -101,7 +110,8 @@ export const NodeCard = memo(function NodeCard({ id, place = 'column' }: { id: s
   const provisional = useBoard((s) => s.provisional[id] === true);
   const flashed = useBoard((s) => (s.flash?.target === flashTarget.node(id) ? s.flash.token : 0));
   const proposed = useBoard((s) => proposedOverlay(s) !== null);
-  const diff = useBoard((s) => proposedOverlay(s)?.diff.nodes[id]);
+  // Slice 2h: the card's review items (listed ones; a hidden Result never: its target's chip stands for it).
+  const marks = useBoard((s) => proposedOverlay(s)?.marks[id]);
   const hideResult = useBoard((s) => proposedOverlay(s)?.hidden.has(id) === true);
   const editing = useBoard((s) => (s.editing?.id === id && proposedOverlay(s) === null ? s.editing.field : null));
   const checking = useBoard((s) => s.semantic.state === 'checking');
@@ -158,8 +168,8 @@ export const NodeCard = memo(function NodeCard({ id, place = 'column' }: { id: s
   const chips = useMemo(() => {
     if (!node) return [];
     const all = cardChips(node, nodes, checking);
-    // The proposal's result stays hidden until the review reveals it (D-19: meaning before proof status).
-    return hideResult ? [...all.filter((chip) => !RESULT_CHIP_KEYS.has(chip.key)), RESULT_HIDDEN_CHIP] : all;
+    // A target's result stays hidden until the stage's reveal (RV-6, D2-61: meaning before proof status).
+    return hideResult ? [...all.filter((chip) => !RESULT_CHIP_KEYS.has(chip.key)), RESULT_HIDDEN_CHIP as Chip] : all;
   }, [node, nodes, checking, hideResult]);
   // The board's diagnostics describe the current files, not the proposal.
   const attention = useMemo(() => (proposed ? [] : attentionDiagnostics(diagnostics, id)), [diagnostics, id, proposed]);
@@ -173,20 +183,22 @@ export const NodeCard = memo(function NodeCard({ id, place = 'column' }: { id: s
   const onChipAction = (action: NonNullable<Chip['action']>) => {
     if (action === 'edit-rationale') actions.startEdit(id, 'rationale');
   };
-  // The proposed view is read-only: a click neither selects nor changes the selection. (A locked Current board still
-  // selects: viewing stays, slice 1f.)
+  // A locked Current board still selects (viewing stays, slice 1f); slice 2h: so does a session's Proposed view (RV-9).
   const onClick = (event: MouseEvent) => {
-    if (!proposed) actions.clickCard(id, event.ctrlKey || event.metaKey);
+    if (gestureGateOf(store.getState()).select) actions.clickCard(id, event.ctrlKey || event.metaKey);
   };
   /** After an inline edit is saved or cancelled from the keyboard, the focus goes back to the card. */
   const focusCard = () => ref.current?.focus();
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.target !== event.currentTarget) return;
     if (proposed) {
-      // Read-only: only expanding works.
+      // Nothing of the Current board is edited here: expanding and (slice 2h) selecting work.
       if (event.key === 'Enter') {
         event.preventDefault();
         actions.toggleExpanded(id);
+      } else if (event.key === ' ' && gestureGateOf(store.getState()).select) {
+        event.preventDefault();
+        actions.clickCard(id, true);
       }
       return;
     }
@@ -243,18 +255,20 @@ export const NodeCard = memo(function NodeCard({ id, place = 'column' }: { id: s
       data-highlight={flashed ? 'true' : undefined}
       data-proposed={proposed || undefined}
       data-locked={(!proposed && lock !== null) || undefined}
-      data-diff={diff?.change}
-      aria-label={`${KIND_NOUN[node.type]}: ${node.naturalName}${selected ? ' (selected)' : ''}${diff ? ` (${DIFF_WORD[diff.change]} in the proposal)` : ''}`}
-      aria-keyshortcuts={proposed ? 'Enter' : lock !== null ? 'Enter Space' : place === 'column' ? 'Enter Space F2 Delete Alt+ArrowUp Alt+ArrowDown' : 'Enter Space F2 Delete'}
+      data-marked={marks !== undefined && marks.length > 0 ? 'true' : undefined}
+      aria-label={`${KIND_NOUN[node.type]}: ${node.naturalName}${selected ? ' (selected)' : ''}${marks !== undefined && marks.length > 0 ? ` (${marks.map(markText).join(', ')})` : ''}`}
+      aria-keyshortcuts={proposed ? 'Enter Space' : lock !== null ? 'Enter Space' : place === 'column' ? 'Enter Space F2 Delete Alt+ArrowUp Alt+ArrowDown' : 'Enter Space F2 Delete'}
       onClick={onClick}
       onKeyDown={onKeyDown}
       onMouseEnter={() => actions.setHover(id)}
       onMouseLeave={() => actions.setHover(null)}
     >
-      {/* The diff mark on a line of its own, so the sentence keeps the whole width of the card. */}
-      {diff ? (
-        <div className="tl-card__diffline">
-          <DiffBadge diff={diff} hideResult={hideResult} />
+      {/* Slice 2h: the review items' marks on a line of their own, so the sentence keeps the whole width of the card. */}
+      {marks !== undefined && marks.length > 0 ? (
+        <div className="tl-card__diffline" data-testid="item-marks">
+          {marks.map((m) => (
+            <ItemMark key={m.item} mark={m} />
+          ))}
         </div>
       ) : null}
       <div className="tl-card__row">

@@ -18,6 +18,7 @@
 import type {
   AcceptProposalAction,
   ActionOutcome,
+  ArrowProvenance,
   AttemptLine,
   AttemptSummary,
   BoardAction,
@@ -138,8 +139,17 @@ export interface ExternalChangeSet {
   /** The subject whose undo stack records it (never ''). */
   subject: string;
   nodes: readonly string[];
-  /** `before` = the current text as the TextSource reads it (null: must not exist). */
+  /**
+   * `before` = the current text as the TextSource reads it (null: must not exist). Model files only, and (slice 2f,
+   * docs/slice2-plan.md 2.6; additive) the subject's two sidecars an edit session's Apply writes: its `layout.json` (the
+   * cards moved on the Proposed view) and its `endorsements.json` (D2-18). Anything else is refused (`unsafe`).
+   */
   changes: readonly FileChange[];
+  /**
+   * (slice 2f, coverage audit G1; additive) An Apply's provenance: Claude's arrows it writes, recorded in its history
+   * entry (`HistoryEntry.arrows`, shown under "Arrows from Claude").
+   */
+  arrows?: readonly ArrowProvenance[];
 }
 
 export interface WorkspaceChange {

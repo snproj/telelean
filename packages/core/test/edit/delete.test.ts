@@ -1,7 +1,8 @@
 /**
  * AT2.7 (plan part): planDelete lists premise removals, removed declarations and broken dependents (proofs that use
- * the removed `.holds` and statements that mention the removed abbrev); keepLean leaves an unmarked axiom. Plus the
- * layout-only and validation paths of planAction that never touch text (reorder, set-premises refusals).
+ * the removed `.holds` and statements that mention the removed abbrev). Slice 2i (spec v4 S9, ES-9): a delete always
+ * removes the card's Lean; the card-only delete, which left `axiom ….holds` behind as an unmarked axiom, is gone. Plus
+ * the layout-only and validation paths of planAction that never touch text (reorder, set-premises refusals).
  */
 import { describe, expect, it } from 'vitest';
 import { ActionError } from '../../src/actions.js';
@@ -47,48 +48,83 @@ function refusal(fn: () => unknown): ActionError {
 
 describe('AT2.7 planDelete', () => {
   it('lists the premise removals, the removed declarations and what breaks (proof users and statements mentioning the abbrev)', () => {
-    expect(planDelete(model(), { id: 'a1', keepLean: false })).toEqual({
+    expect(planDelete(model(), { id: 'a1' })).toEqual({
       id: 'a1',
       removeDecls: ['S.a1', 'S.a1.holds'],
       premiseRemovals: ['dt', 'both'],
       brokenDependents: ['S.both', 'S.dt.holds', 'S.helper', 'S.gt.holds'],
-      leavesUnmarkedAxiom: false,
     });
   });
 
-  it('keepLean removes nothing from Lean; an axiom .holds left behind becomes an unmarked assumption', () => {
-    expect(planDelete(model(), { id: 'a2', keepLean: true })).toEqual({ id: 'a2', removeDecls: [], premiseRemovals: ['gt', 'both'], brokenDependents: [], leavesUnmarkedAxiom: true });
-    expect(planDelete(model(), { id: 'dt', keepLean: true }).leavesUnmarkedAxiom).toBe(false);
+  it('slice 2i (S9): an axiom\'s Lean always goes with it, so no `axiom ….holds` is left behind as an unmarked assumption', () => {
+    expect(planDelete(model(), { id: 'a2' })).toEqual({ id: 'a2', removeDecls: ['S.a2', 'S.a2.holds'], premiseRemovals: ['gt', 'both'], brokenDependents: ['S.both'] });
+    // A theorem's statement and .holds go too (one dependent), and a statement without a .holds goes alone (none).
+    expect(planDelete(model(), { id: 'dt' })).toEqual({ id: 'dt', removeDecls: ['S.dt', 'S.dt.holds'], premiseRemovals: ['gt'], brokenDependents: ['S.gt.holds'] });
+    expect(planDelete(model(), { id: 'both' })).toEqual({ id: 'both', removeDecls: ['S.both'], premiseRemovals: [], brokenDependents: [] });
+    // The plan the board carries out ("Delete anyway"): the abbrev and the axiom both leave the file.
+    const plan = planAction(model(), { kind: 'delete-node', id: 'a2', confirmed: true }, CTX);
+    const after = plan.changes.find((c) => c.path === 'Model/S/Main.lean')?.after ?? '';
+    expect(after).not.toContain('a2.holds');
+    expect(after).not.toContain('abbrev a2');
+    expect(after).not.toContain('id: a2');
+    expect(after).toContain('axiom a1.holds : a1'); // the other axiom stays
+    // What is left declares neither: no `axiom a2.holds` without its card (an unmarked axiom, a hidden belief).
+    const left = build({ 'Model/S/Vocabulary.lean': VOCAB_S, 'Model/S/Main.lean': after }).model;
+    const declared = [...left.files.values()].flatMap((f) => f.decls.map((d) => d.fullName));
+    expect(declared).toContain('S.a1.holds');
+    expect(declared.filter((name) => name === 'S.a2' || name === 'S.a2.holds')).toEqual([]);
+    expect(left.nodes.has('a2')).toBe(false);
   });
 
-  it('a code-less card removes no declaration', () => {
+  it('slice 2i round 1 (F-F1): an axiom `.holds` whose abbrev is missing still goes with the card, so none is left behind', () => {
+    const body = [
+      block({ id: 'o', type: 'ASSUMPTION', name: 'O', rationale: 'r', lean: 'S.o' }),
+      'axiom o.holds : Good t',
+      '',
+      block({ id: 'k', type: 'ASSUMPTION', name: 'K', rationale: 'r', lean: 'S.k' }),
+      'abbrev k : Prop := Good t',
+      'axiom k.holds : k',
+    ].join('\n');
+    const m = build({ 'Model/S/Vocabulary.lean': VOCAB_S, 'Model/S/Main.lean': mainS(body) }).model;
+    expect(planDelete(m, { id: 'o' })).toEqual({ id: 'o', removeDecls: ['S.o.holds'], premiseRemovals: [], brokenDependents: [] });
+    const after = planAction(m, { kind: 'delete-node', id: 'o' }, CTX).changes.find((c) => c.path === 'Model/S/Main.lean')?.after ?? '';
+    expect(after).not.toContain('o.holds');
+    expect(after).not.toContain('id: o');
+    expect(after).toContain('axiom k.holds : k'); // the other card's Lean stays
+  });
+
+  it('a code-less card removes no declaration; an unknown card is not-found', () => {
     const m = build({ 'Model/S/Vocabulary.lean': VOCAB_S, 'Model/S/Main.lean': mainS(block({ id: 'x', type: 'GOAL', name: 'X' })) }).model;
-    expect(planDelete(m, { id: 'x', keepLean: false })).toEqual({ id: 'x', removeDecls: [], premiseRemovals: [], brokenDependents: [], leavesUnmarkedAxiom: false });
-    expect(refusal(() => planDelete(m, { id: 'nope', keepLean: false })).code).toBe('not-found');
+    expect(planDelete(m, { id: 'x' })).toEqual({ id: 'x', removeDecls: [], premiseRemovals: [], brokenDependents: [] });
+    expect(refusal(() => planDelete(m, { id: 'nope' })).code).toBe('not-found');
   });
 });
 
 describe('D-18 delete with its Lean asks first when other declarations use it', () => {
   it('refuses with needs-confirmation listing the cards (then untracked declarations) that would stop compiling', () => {
-    const error = refusal(() => planAction(model(), { kind: 'delete-node', id: 'a1', keepLean: false }, CTX));
+    const error = refusal(() => planAction(model(), { kind: 'delete-node', id: 'a1' }, CTX));
     expect(error.code).toBe('needs-confirmation');
     expect(error.dependents).toEqual(['both', 'dt', 'gt', 'S.helper']);
-    expect(error.message).toMatch(/breaks 4 declarations that use it \(Both; DT; GT; … \(1 more\)\): they stop compiling/);
+    expect(error.message).toBe('Deleting its Lean code breaks 4 declarations that use it (Both; DT; GT; … (1 more)): they stop compiling. Delete anyway, or cancel.');
   });
 
   it('with one dependent the refusal is worded in the singular', () => {
-    const error = refusal(() => planAction(model(), { kind: 'delete-node', id: 'dt', keepLean: false }, CTX));
+    const error = refusal(() => planAction(model(), { kind: 'delete-node', id: 'dt' }, CTX));
     expect(error.code).toBe('needs-confirmation');
     expect(error.dependents).toEqual(['gt']);
-    expect(error.message).toBe('Deleting its Lean code breaks a declaration that uses it (GT), which stops compiling. Delete anyway, or keep its Lean.');
+    expect(error.message).toBe('Deleting its Lean code breaks a declaration that uses it (GT), which stops compiling. Delete anyway, or cancel.');
   });
 
-  it('goes ahead when confirmed, or when the Lean is kept, or when nothing uses it', () => {
-    const confirmed = planAction(model(), { kind: 'delete-node', id: 'a1', keepLean: false, confirmed: true }, CTX);
+  it('goes ahead when confirmed ("Delete anyway"), or when nothing uses it; `confirmed: false` asks as no flag does', () => {
+    const confirmed = planAction(model(), { kind: 'delete-node', id: 'a1', confirmed: true }, CTX);
     expect(confirmed.label).toBe('Delete: A1');
-    expect(confirmed.changes.find((c) => c.path === 'Model/S/Main.lean')?.after).not.toContain('abbrev a1');
-    expect(planAction(model(), { kind: 'delete-node', id: 'a1', keepLean: true }, CTX).label).toBe('Delete: A1');
-    expect(planAction(model(), { kind: 'delete-node', id: 'both', keepLean: false }, CTX).label).toBe('Delete: Both');
+    const after = confirmed.changes.find((c) => c.path === 'Model/S/Main.lean')?.after ?? '';
+    expect(after).not.toContain('abbrev a1');
+    expect(after).not.toContain('axiom a1.holds');
+    // The users stay (now broken), as the question said.
+    expect(after).toContain('theorem helper : Good t := a1.holds');
+    expect(planAction(model(), { kind: 'delete-node', id: 'both' }, CTX).label).toBe('Delete: Both');
+    expect(refusal(() => planAction(model(), { kind: 'delete-node', id: 'a1', confirmed: false }, CTX)).code).toBe('needs-confirmation');
   });
 });
 

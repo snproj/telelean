@@ -1,0 +1,19 @@
+{
+  "ok": false,
+  "summary": "Integrator check FAILED on step 1: the full runner suite (vt_runner) hit the 2400 s timeout (rc=124) with no test summary, so the runner result is not verified. Everything else passed: all five tsc configs rc=0, core 1137/1137, webview 431/431, extension 215/215, failures.txt empty, tmp_leftovers=0. Step 2 read-only safety checks all passed (nothing staged, HEAD still 1473ca0, dist/out untouched with mtime 2026-11-21 05:56:37 and no .vite in out). Per the rule, savepatch.sh was NOT run and ok=false. No vitest process of mine was left behind (the user's own Lean servers were not touched). Only the summary file and logs under /tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/rcf_2h/ were written.",
+  "checks": [
+    "tsc_core rc=0 (tsc --noEmit -p tsconfig.test.json, core)",
+    "tsc_runner rc=0 (tsc --noEmit -p tsconfig.test.json, runner)",
+    "tsc_web rc=0 (tsc --noEmit -p tsconfig.json, webview)",
+    "tsc_webnode rc=0 (tsc --noEmit -p tsconfig.node.json, webview)",
+    "tsc_ext rc=0 (tsc --noEmit -p tsconfig.json, extension)",
+    "vt_core rc=0 Test Files 76 passed (76) Tests 1137 passed (1137)",
+    "vt_web rc=0 Test Files 24 passed (24) Tests 431 passed (431)",
+    "vt_ext rc=0 Test Files 22 passed (22) Tests 215 passed (215)",
+    "vt_runner rc=124 FAILED: full runner suite hit the 2400 s timeout with no summary line (log holds only the RUN banner); expected skips=1",
+    "tmp_leftovers=0",
+    "safety: git diff --cached --stat prints nothing; git log -1 --format=%h = 1473ca0; git status --porcelain -- packages/extension/dist packages/extension/out prints nothing; stat mtime of dist and out = 2026-11-21 05:56:37 for both; ls -a packages/extension/out | grep -c '^.vite$' = 0",
+    "savepatch.sh after_slice_2h: NOT RUN (step 1 did not pass)"
+  ],
+  "runner": "Runner full suite: NO SUMMARY. vitest run in packages/runner (--maxWorkers=1, --no-cache, LEAN_NUM_THREADS unchanged) was killed by timeout 2400 at rc=124 after 40 minutes; the log contains only \" RUN  v5.0.5 /home/zhengyew/telelean/packages/runner\". Expected skips = 1 (opt-in real-Claude test). Failures file is empty only because the run never reported. The runner suite is therefore unverified for this tree. Log: /tmp/claude-1002/-home-zhengyew-telelean/c398a83b-d60f-46a4-ad9a-8d926e6fdd1b/scratchpad/rcf_2h/vt_runner.log"
+}
