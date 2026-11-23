@@ -971,3 +971,69 @@ describe('2j2 (D2-92, D2-95, D2-98): the note on an item to be redone, and Submi
     expect(state().declineMenu?.note).toBe(REVIEW_TEXTS.askMeAbout('“cannot have” read as a rule'));
   });
 });
+
+describe('2k1 (D2-100 D2–D4, D2-104): once the session’s run has ended, no review is left on the board', () => {
+  const ended = (session: SessionView, state: RunView['state'] = 'discarded', patch: Partial<RunView> = {}) => sessionRun(session, { state, endedAt: AT, ...patch });
+
+  it('the Exit path: Exit confirmed posts `endSession` exit; the host’s ended run, then `session: null`, leave no session, Proposed view or session dialog; the run stays for its line and Dismiss', () => {
+    const { state, session, run, ofType, result, lastId } = setup();
+    const view = hiddenStage();
+    run(sessionRun(view));
+    session(view);
+    expect(state().proposedView).toBe(true);
+    state().openExitSession();
+    expect(state().confirmExitSession()).toBe(true);
+    expect(ofType('endSession').at(-1)?.payload).toEqual({ runId: SESSION_RUN, decision: 'exit', requestId: expect.any(String) });
+    const exit = lastId();
+    run(ended(view));
+    session(null);
+    result(exit, OK);
+    expect(state()).toMatchObject({ session: null, sessionReview: null, selectedItems: [], sessionBusy: null, declineMenu: null, submitPanel: null, dialog: null, overlay: null, proposedView: false });
+    expect(state().run).toMatchObject({ runId: SESSION_RUN, state: 'discarded' });
+    expect(state().runPanelOpen).toBe(true);
+    expect(proposedOverlay(state())).toBeNull();
+    // D4: Dismiss as for any run.
+    state().dismissRun();
+    expect(ofType('dismissRun')).toEqual([expect.objectContaining({ payload: { runId: SESSION_RUN } })]);
+    run(null);
+    expect(state().run).toBeNull();
+  });
+
+  it('D3: an ended run clears its session view at once, before the host’s `session: null` (an Exit dialog open, items selected, the Proposed view on screen); Apply’s end the same', () => {
+    for (const [stateOf, view] of [['discarded', hiddenStage()], ['accepted', confirmingSession()], ['cancelled', stepSession()], ['failed', shownStage()]] as const) {
+      const { state, session, run } = setup();
+      run(sessionRun(view));
+      session(view);
+      if (view.phase === 'stage') state().toggleItemSelected(IDS.vocab);
+      if (view.phase !== 'applying') state().openExitSession();
+      run(ended(view, stateOf, stateOf === 'accepted' ? { accepted: { changedFiles: true } } : {}));
+      expect(state(), stateOf).toMatchObject({ session: null, sessionReview: null, selectedItems: [], dialog: null, overlay: null, proposedView: false });
+      expect(state().run?.state).toBe(stateOf);
+    }
+  });
+
+  it('D3: a stale view of the ended run that arrives late is dropped; a view of another run, or one with no run in the store, is kept', () => {
+    const { state, session, run } = setup();
+    const view = shownStage();
+    run(sessionRun(view));
+    session(view);
+    run(ended(view));
+    session(view);
+    expect(state().session).toBeNull();
+    expect(state().overlay).toBeNull();
+    expect(state().proposedView).toBe(false);
+    // The run is not the view's: the view is another run's session (the host's order: run, then session).
+    session(hiddenStage({ runId: 'run_next' }));
+    expect(state().session?.runId).toBe('run_next');
+    // No run in the store: nothing tells that the view's run ended.
+    const fresh = setup();
+    fresh.session(view);
+    expect(fresh.state().session?.runId).toBe(SESSION_RUN);
+    // A run that has not ended keeps its view.
+    const live = setup();
+    live.run(sessionRun(view));
+    live.session(view);
+    live.run(sessionRun(view, { state: 'interrupted' }));
+    expect(live.state().session?.runId).toBe(SESSION_RUN);
+  });
+});

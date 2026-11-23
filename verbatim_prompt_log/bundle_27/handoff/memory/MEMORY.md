@@ -1,0 +1,6 @@
+- [User profile](user-profile.md) — formal-methods background, linguistics/cognition/HCI interests, Lean 4 user, wants Claude-subscription-powered tools
+- [Prompt logging](prompt-logging-instruction.md) — standing order: one verbatim_prompt_log/bundle_N per user TURN (mid-turn msgs → promptN_midturn.md), plus responses, modelinfo, requested docs and ALL subagent reports
+- [telelean project](telelean-project.md) — VS Code A/D/G board backed by Lean; 2j committed (4640902); turn 27: 2k1 Exit/Apply fix verified, uncommitted, final checks pending; 2k2 interrupted (partial patch); work moved to another machine via bundle_27/handoff/START_HERE.md; next: slice 3
+- [Watch RAM](watch-ram-usage.md) — machine crashed from RAM exhaustion before; arm a MemAvailable monitor during fan-out/builds, kill only my own processes
+- [Personal prototype scope](telelean-scope-personal-prototype.md) — telelean is a personal-use prototype: keep proof-integrity checks, defer adversarial security hardening, explain relevance plainly
+- [Track downloads/installs](track-downloads-installs.md) — user wants an exhaustive, verified ledger of downloads/installs/outside writes; audit = ctime disk scan + broad transcript scan + reconcile; isolate HOME for test Chrome/VS Code

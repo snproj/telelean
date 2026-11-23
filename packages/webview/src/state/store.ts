@@ -1540,6 +1540,9 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
       // earlier window left): an inline edit, a drag or an edit dialog under way ends, as the host would refuse it.
       if (runLocksBoard(run) && editLock(s) === null) Object.assign(patch, { editing: null, drag: null, dropKind: null, overAxioms: null, dialog: null });
       set(patch);
+      // 2k1 (D2-100 D3, D2-104): the run has ended, so no session view of it stays, even before the host's `session:
+      // null` (the review panel, the session bar, the Proposed view and the session's dialogs go with it).
+      if (isTerminalRunState(run.state) && get().session?.runId === run.runId) sessionWiring.receive(null);
     };
 
     return {

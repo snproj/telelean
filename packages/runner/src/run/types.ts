@@ -216,7 +216,10 @@ export interface RunManager extends Disposable {
   // Cancel step in a session: it never ends the session. When each call resolves (D2-74): formalize, submit and retry
   // once their queue's first step is working; decide, reveal, the Undo and Redo and moves after their write's step 4.
 
-  /** The root's current session view (masked while the results are hidden), or null when the run is no session. */
+  /**
+   * The root's current session view (masked while the results are hidden), or null when the run is no session. 2k1
+   * (D2-100 D1): null too once the session's run has ended, by any path, from the run.json write that ends it.
+   */
   session(): SessionView | null;
   /** ES-1, RV-9: starts a session (no `runId`), or queues a mid-stage Formalize of the current stage (`runId`, `stage`). */
   formalize(request: FormalizeRequest): Promise<ActionOutcome>;

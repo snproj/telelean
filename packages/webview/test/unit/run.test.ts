@@ -1,4 +1,4 @@
-import { DEFAULT_RUN_CAPS, spyroGraph, type QuestionView, type RunNotice, type TlNode } from '@telelean/core';
+import { DEFAULT_RUN_CAPS, REVIEW_TEXTS, spyroGraph, type QuestionView, type RunNotice, type TlNode } from '@telelean/core';
 import { describe, expect, it } from 'vitest';
 import {
   acceptChangedFiles,
@@ -8,6 +8,7 @@ import {
   emptyDraft,
   ENDED_TEXT,
   endedOutcome,
+  endedText,
   formatCost,
   formatDuration,
   formatTokens,
@@ -140,6 +141,21 @@ describe('the status line', () => {
     expect(endedOutcome(runView({ state: 'review' }), { runId: RUN_ID, changedFiles: false })).toBeNull();
     expect(ENDED_TEXT.recorded).not.toMatch(/Undo|History/);
     expect(ENDED_TEXT.accepted).toMatch(/Undo \(Ctrl\+Z\) or History reverts them/);
+  });
+
+  it('2k1 (D2-100 D2): an ended run\'s line; an edit session\'s Exit and Apply in the session\'s words, "Recorded" for an Apply that changed no file, every other end as any run\'s', () => {
+    const session = { stage: 1, phase: 'stage' as const };
+    expect(endedText(runView({ state: 'discarded', session }))).toBe(REVIEW_TEXTS.exited);
+    expect(endedText(runView({ state: 'accepted', session, accepted: { changedFiles: true } }))).toBe(REVIEW_TEXTS.applied);
+    expect(endedText(runView({ state: 'accepted', session, accepted: { changedFiles: false } }))).toBe(ENDED_TEXT.recorded);
+    expect(endedText(runView({ state: 'cancelled', session }))).toBe(ENDED_TEXT.cancelled);
+    expect(endedText(runView({ state: 'failed', session }))).toBe(ENDED_TEXT.failed);
+    // A run with no session (a v1 run that could not be converted) keeps the plain words.
+    expect(endedText(runView({ state: 'discarded' }))).toBe(ENDED_TEXT.discarded);
+    expect(endedText(runView({ state: 'accepted', accepted: { changedFiles: true } }))).toBe(ENDED_TEXT.accepted);
+    // Not ended: no line.
+    for (const state of ['starting', 'working', 'review', 'interrupted'] as const) expect(endedText(runView({ state, session }))).toBeNull();
+    expect(REVIEW_TEXTS.exited).toBe("You exited the edit session: your files were not changed. Your answers to Claude's questions stay recorded.");
   });
 
   it('a statement in the review is the proposition alone, without Lean’s #print header', () => {

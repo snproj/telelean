@@ -3,6 +3,8 @@
  * records", "Provenance", an empty Apply, an interrupted Apply): the end of an edit session, with the FakeBackend and
  * the fake engine (its final check is core's `judgeState('final')` and backstop on fake facts; `planApply` is the real
  * service's, a comparison of files), and the fake workspace, whose `applyChanges` records every change set (the spy).
+ * 2k1 (D2-100 D1, 6.1's 2k1 list): after the end, by any path (Exit, Apply, a Cancel while starting, a failure, an end
+ * on recovery), `session()` is null from the write that ends the run, whose change names the session.
  */
 import { cpSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -13,6 +15,7 @@ import {
   applyBackstop as coreApplyBackstop,
   endorsementHash,
   endorsementsPath,
+  isTerminalRunState,
   layoutPath,
   parseEndorsements,
   parseLayout,
@@ -20,15 +23,19 @@ import {
   serializeEndorsements,
   serializeLayout,
   type ActionOutcome,
+  type RunView,
+  type SessionView,
   type StateJudgement,
 } from '@telelean/core';
 
 import type { FinalCheckReport } from '../../src/gate/types.js';
+import type { LlmSession } from '../../src/llm/types.js';
+import { RunFiles } from '../../src/run/persist.js';
 import { END_TEXTS } from '../../src/run/sessionEnd.js';
 import { sentenceShort } from '../../src/run/step.js';
-import type { PersistedSession } from '../../src/run/types.js';
+import type { PersistedSession, RunChange } from '../../src/run/types.js';
 import { fakeFinalCheck, fakeModel } from './helpers/fakeEngine.js';
-import { fakeCore, makeHarness, rawRun, round1, START, step, waitForRun, waitForStage, type Harness } from './helpers/harness.js';
+import { fakeCore, makeHarness, rawRun, round1, START, step, TrackingBackend, waitForRun, waitForStage, type Harness } from './helpers/harness.js';
 import { acceptEverything } from './helpers/apply.js';
 import { acceptPremise, auxModel, confirmedStage, PREMISE_KEY, premiseRecord, proposeArrow, proposePremise, scriptEnd } from './helpers/premises.js';
 import { decision, GOAL_LINE, GOAL_PROOF, GOAL_PROOF_AXIOMS, main, PG, PG_BLOCK_END, PG_FORMALISED, pgScript, record, RESULT, session, settled, T } from './helpers/review.js';
@@ -90,6 +97,27 @@ async function confirmed(
 }
 
 const T_SENTENCE = 'Cynder would not be a good addition to the new Spyro game';
+
+/** 2k1: every change the manager emits from now on, with what `current()` and `session()` return when it is heard. */
+type Heard = Array<{ change: RunChange; state: RunView['state'] | undefined; session: SessionView | null }>;
+function heard(h: Harness): Heard {
+  const out: Heard = [];
+  const sub = h.manager.onDidChange((change) => out.push({ change, state: h.manager.current()?.state, session: h.manager.session() }));
+  toDispose.unshift(() => sub.dispose());
+  return out;
+}
+
+/** 2k1: the change that ended the run (the first heard with an ended state). */
+const endOf = (changes: Heard) => changes.find((c) => c.state !== undefined && isTerminalRunState(c.state));
+
+/** 2k1: every item rejected, so Apply changes no file (D2-39's "Recorded" end). */
+async function rejectAll(x: Harness, id: string): Promise<void> {
+  ok(await x.manager.reveal(id, 1, 'show-result'));
+  ok(await x.manager.decide(id, 1, true, [decision(x, PG, 'declined', { option: 'reject' })], true));
+  await settled(x);
+  if (record(x, RESULT).status !== 'declined') ok(await x.manager.decide(id, 1, true, [decision(x, RESULT, 'declined', { option: 'reject' })], true));
+  await settled(x);
+}
 
 describe('Apply (§3.10 step 4, EN-3, D2-67, UN-2)', () => {
   it('writes exactly F in one applyChanges call (kind accept-proposal, the Apply label) only at Apply, across the session, the review and the end; the attempt records are resolved accepted; the run ends accepted', async () => {
@@ -441,14 +469,19 @@ describe('Exit (§3.10 step 6, ES-8, EN-4)', () => {
     expect(h.sidecars.attempts.map((a) => a.round)).toEqual([1]);
     expect(h.sidecars.resolutions.map((r) => r.resolution)).toEqual(['discarded']);
     expect(rawRun(h).view.state).toBe('discarded');
-    expect(rawRun(h).view.notices.at(-1)?.text).toBe(END_TEXTS.exited);
+    expect(rawRun(h).view.notices.at(-1)?.text).toBe(REVIEW_TEXTS.exited);
   });
 
   it('stops a running step (Claude\'s process and the run\'s Lean jobs, as Cancel step does), whose attempt is recorded cancelled, then discarded', async () => {
     const h = harness({ script: [round1(step.check(), { kind: 'sleep', ms: 60_000 })] });
     expect(await h.manager.start(START)).toMatchObject({ ok: true });
     const working = await waitForRun(h.manager, (v) => v.state === 'working' && v.counters.checks === 1);
+    const changes = heard(h);
     expect(await h.manager.end(working.runId, 'exit')).toMatchObject({ ok: true });
+    // 2k1 (D2-100 D1): the Exit most likely pressed, in the middle of a step (it closes the step before the end): the
+    // review view goes with the end, and the change that ends the run names the session.
+    expect(h.manager.session()).toBeNull();
+    expect(endOf(changes)).toEqual({ change: { run: true, proposal: true, session: true }, state: 'discarded', session: null });
     expect(h.backend?.interrupts.length).toBeGreaterThan(0);
     expect(h.cancelled).toContain(working.runId);
     expect(rawRun(h).view.state).toBe('discarded');
@@ -718,11 +751,15 @@ describe('a reload in the end confirmation and during Apply (§3.10 step 7, §3.
   it('the real files equal F: Apply had finished, so the session ends as applied', async () => {
     const { h, F } = await applying();
     h.workspace.texts.set(MAIN, F);
-    const b = await reload(h);
+    let changes: Heard = [];
+    const b = await reload(h, (x) => (changes = heard(x)));
     const v = await waitForRun(b.manager, (x) => x.state === 'accepted');
     expect(v.accepted).toEqual({ changedFiles: true });
     expect(b.sidecars.resolutions.map((r) => r.resolution)).toEqual(['accepted']);
     expect(b.workspace.appliedChanges).toEqual([]);
+    // 2k1 (D2-100 D1): an end on recovery sends no review view either, and tells the host that the session changed.
+    expect(b.manager.session()).toBeNull();
+    expect(endOf(changes)).toEqual({ change: { run: true, proposal: true, session: true }, state: 'accepted', session: null });
   });
 
   it('the real files equal B: nothing was written, so back to the end confirmation, whose check runs again', async () => {
@@ -870,5 +907,182 @@ describe('a presupposition\'s helper instance (RV-1; found by builder 2f with re
     expect(session(h).confirmation).toMatchObject({ state: 'passed', failures: [] });
     ok(await h.manager.end(runId, 'apply', 1, checkId));
     expect(h.workspace.texts.get(VOCAB)).toContain('instance : Nonempty Dragon := Dragon.exists');
+  });
+});
+
+describe('after the end, by any path, the runner sends no review view (2k1, D2-100 D1, D2-101, D2-102)', () => {
+  const ENDED = { run: true, proposal: true, session: true };
+
+  /** A new manager on the same runs folder (the window reloaded): `recover()` reads only runs that have not ended. */
+  async function reloadAfterEnd(a: Harness): Promise<Harness> {
+    await a.manager.dispose();
+    const b = makeHarness({ reuse: { dir: a.dir, root: a.root, runsDir: a.runsDir, workspace: a.workspace } });
+    toDispose.unshift(() => b.dispose());
+    scriptEnd(b);
+    await b.manager.recover();
+    return b;
+  }
+
+  /** The session's start held where Claude's process starts (its base model is loaded by then); `refuse` lets it go. */
+  function holdClaudesStart(h: Harness): { started: Promise<void>; refuse: (e: Error) => void } {
+    const backend = h.backend as TrackingBackend;
+    let refuse!: (e: Error) => void;
+    let called!: () => void;
+    const started = new Promise<void>((r) => (called = r));
+    backend.startSession = () => {
+      called();
+      return new Promise<LlmSession>((_, reject) => (refuse = reject));
+    };
+    return { started, refuse: (e) => refuse(e) };
+  }
+
+  it('Exit in a stage whose results are hidden: session() is null from the write that ends the run, whose change names the session; current() keeps the ended state and, the results hidden, every notice withheld (D2-102); a second Exit is refused; a reload does not bring it back', async () => {
+    const h = harness({ script: [pgScript('proved')] });
+    expect(await h.manager.start(START)).toMatchObject({ ok: true });
+    const { runId } = await waitForStage(h.manager, 1);
+    await settled(h);
+    expect(h.manager.session()?.results.shown).toBe(false);
+    const changes = heard(h);
+    ok(await h.manager.end(runId, 'exit'));
+    expect(h.manager.session()).toBeNull();
+    // When the host hears the end, current() already reads it and session() is null: it posts `session: null`.
+    expect(endOf(changes)).toEqual({ change: ENDED, state: 'discarded', session: null });
+    const v = h.manager.current();
+    expect(v).toMatchObject({ runId, state: 'discarded', session: { stage: 1 } });
+    expect(v?.endedAt).toBeDefined();
+    expect(v?.notices).toEqual([]);
+    expect(v?.activity).toEqual([]);
+    expect(rawRun(h).view.notices.at(-1)?.text).toBe(REVIEW_TEXTS.exited);
+    // D5: a second Exit sent in a race still gets the runner's refusal; no file changed.
+    expect(await h.manager.end(runId, 'exit')).toMatchObject({ ok: false, code: 'not-found' });
+    expect(h.workspace.appliedChanges).toEqual([]);
+    expect(h.manager.session()).toBeNull();
+    const b = await reloadAfterEnd(h);
+    expect(b.manager.current()).toBeNull();
+    expect(b.manager.session()).toBeNull();
+  });
+
+  it('Exit in the end confirmation (the results shown): session() is null; the end\'s notice is the RunView\'s last; Dismiss clears the run, with the session in its change (D4)', async () => {
+    const { h, runId } = await confirmed();
+    expect(h.manager.session()?.results.shown).toBe(true);
+    const changes = heard(h);
+    ok(await h.manager.end(runId, 'exit'));
+    expect(h.manager.session()).toBeNull();
+    expect(endOf(changes)).toEqual({ change: ENDED, state: 'discarded', session: null });
+    expect(h.manager.current()?.state).toBe('discarded');
+    expect(h.manager.current()?.notices.at(-1)?.text).toBe(REVIEW_TEXTS.exited);
+    ok(await h.manager.dismiss(runId));
+    expect(changes.at(-1)).toEqual({ change: ENDED, state: undefined, session: null });
+    expect(h.manager.current()).toBeNull();
+    expect(h.manager.session()).toBeNull();
+  });
+
+  it('session() turns with the run.json write that ends the run, as current() does, not before it (D2-101): while that write is held the live view and the active state are still sent; once it lands, both read the end', async () => {
+    const { h, runId } = await confirmed();
+    const real = RunFiles.prototype.writeState;
+    let reached!: () => void;
+    const atEnd = new Promise<void>((r) => (reached = r));
+    let release!: () => void;
+    const held = new Promise<void>((r) => (release = r));
+    vi.spyOn(RunFiles.prototype, 'writeState').mockImplementation(async function (this: RunFiles, text: string) {
+      if ((JSON.parse(text) as { view: { state: string } }).view.state === 'discarded') {
+        reached();
+        await held;
+      }
+      return real.call(this, text);
+    });
+    const changes = heard(h);
+    const exiting = h.manager.end(runId, 'exit');
+    await atEnd;
+    // endRun has set the state in memory (the run is ended), but run.json does not hold it yet.
+    expect(h.manager.session()).not.toBeNull();
+    expect(h.manager.current()?.state).toBe('review');
+    expect(endOf(changes)).toBeUndefined();
+    release();
+    ok(await exiting);
+    vi.restoreAllMocks();
+    expect(h.manager.session()).toBeNull();
+    expect(h.manager.current()?.state).toBe('discarded');
+    expect(endOf(changes)).toEqual({ change: ENDED, state: 'discarded', session: null });
+  });
+
+  it('an Apply that changed the files: session() is null; current() reads accepted, changedFiles and the Apply notice; a reload does not bring it back', async () => {
+    const { h, runId, checkId } = await confirmed();
+    const changes = heard(h);
+    ok(await h.manager.end(runId, 'apply', 1, checkId));
+    expect(h.manager.session()).toBeNull();
+    expect(endOf(changes)).toEqual({ change: ENDED, state: 'accepted', session: null });
+    const v = h.manager.current();
+    expect(v).toMatchObject({ state: 'accepted', accepted: { changedFiles: true } });
+    expect(v?.notices.at(-1)?.text).toBe(REVIEW_TEXTS.applied);
+    expect(h.workspace.appliedChanges).toHaveLength(1);
+    const b = await reloadAfterEnd(h);
+    expect(b.manager.current()).toBeNull();
+    expect(b.manager.session()).toBeNull();
+  });
+
+  it('an Apply that changed no file ("Recorded", D2-39): session() is null; current() reads accepted with changedFiles false and the recorded notice', async () => {
+    const { h, runId, checkId } = await confirmed({}, rejectAll);
+    const changes = heard(h);
+    ok(await h.manager.end(runId, 'apply', 1, checkId));
+    expect(h.manager.session()).toBeNull();
+    expect(endOf(changes)).toEqual({ change: ENDED, state: 'accepted', session: null });
+    const v = h.manager.current();
+    expect(v).toMatchObject({ state: 'accepted', accepted: { changedFiles: false } });
+    expect(v?.notices.at(-1)?.text).toBe(END_TEXTS.recorded);
+    expect(h.workspace.appliedChanges).toEqual([]);
+  });
+
+  it('a Cancel while the session starts (its Stop): session() is null; current() reads cancelled; a reload does not bring it back', async () => {
+    const h = harness({ script: [pgScript('proved')] });
+    const hold = holdClaudesStart(h);
+    const start = h.manager.start(START);
+    await hold.started;
+    const runId = h.manager.current()?.runId ?? '';
+    expect(h.manager.current()?.state).toBe('starting');
+    const changes = heard(h);
+    ok(await h.manager.cancel(runId));
+    hold.refuse(new Error('closed'));
+    expect(await start).toMatchObject({ ok: false });
+    expect(h.manager.session()).toBeNull();
+    expect(endOf(changes)).toEqual({ change: ENDED, state: 'cancelled', session: null });
+    expect(h.manager.current()).toMatchObject({ runId, state: 'cancelled' });
+    const b = await reloadAfterEnd(h);
+    expect(b.manager.current()).toBeNull();
+    expect(b.manager.session()).toBeNull();
+  });
+
+  it('a failure (Claude refused at the session\'s start, after its base model was read): session() is null; current() reads failed with the error', async () => {
+    const h = harness({ script: [round1(step.result())] });
+    const backend = h.backend as TrackingBackend;
+    const refusal = 'Refusing to run: the Claude CLI is not on a claude.ai subscription login (verdict=api-key).';
+    backend.startSession = async () => {
+      throw new Error(refusal);
+    };
+    const changes = heard(h);
+    expect(await h.manager.start(START)).toMatchObject({ ok: false, code: 'not-yet' });
+    expect(h.manager.session()).toBeNull();
+    expect(endOf(changes)).toEqual({ change: ENDED, state: 'failed', session: null });
+    expect(h.manager.current()).toMatchObject({ state: 'failed', error: refusal });
+    const b = await reloadAfterEnd(h);
+    expect(b.manager.current()).toBeNull();
+    expect(b.manager.session()).toBeNull();
+  });
+
+  it('an end on recovery: a reload before Claude had started ends the session failed, and session() is null', async () => {
+    const a = makeHarness({ script: [pgScript('proved')] });
+    toDispose.push(() => a.dispose());
+    const hold = holdClaudesStart(a);
+    void a.manager.start(START);
+    await hold.started;
+    await a.manager.dispose();
+    hold.refuse(new Error('closed'));
+    const b = makeHarness({ reuse: { dir: a.dir, root: a.root, runsDir: a.runsDir, workspace: a.workspace } });
+    toDispose.unshift(() => b.dispose());
+    const changes = heard(b);
+    await b.manager.recover();
+    expect(b.manager.current()).toMatchObject({ state: 'failed', error: 'the editor reloaded before Claude had started' });
+    expect(b.manager.session()).toBeNull();
+    expect(endOf(changes)).toEqual({ change: ENDED, state: 'failed', session: null });
   });
 });

@@ -30,7 +30,7 @@ import { InlineCode } from '../common/InlineCode';
 import { useNow } from '../common/useNow';
 import { NOTICE_ICON } from '../labels';
 import { listControls, partsText, stepRunning } from '../model/review';
-import { clockRuns, endedOutcome, ENDED_TEXT, formatClock, placeNotices, runStateLabel, runStatusParts } from '../model/run';
+import { clockRuns, endedOutcome, endedText, formatClock, placeNotices, runStateLabel, runStatusParts } from '../model/run';
 import { sessionBarState } from '../model/sessionBar';
 import { useBoard, useBoardActions } from '../state/context';
 import { clampSplit, type RunPanelLayout } from '../state/store';
@@ -347,8 +347,8 @@ function Outcome({ run }: { run: RunView }) {
     case 'failed':
       return (
         <div className="tl-run__outcome" data-testid="run-ended" data-outcome={ended ?? run.state} data-tone={run.state === 'failed' ? 'error' : undefined}>
-          {/* Slice 2g (§5.9): after a session's Apply that changed the files. */}
-          <p>{run.session !== undefined && ended === 'accepted' ? REVIEW_TEXTS.applied : ENDED_TEXT[ended ?? run.state]}</p>
+          {/* Slice 2g, 2k1 (§5.9, D2-100 D2): a session's Apply and Exit in the session's words. */}
+          <p data-testid="run-ended-text">{endedText(run)}</p>
           {run.error ? (
             <p className="tl-run__error" data-testid="run-error">
               <span className="codicon codicon-error" aria-hidden="true" /> <InlineCode text={run.error} />

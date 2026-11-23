@@ -5,8 +5,9 @@
  * host's (`submit.gate`, `heading.retry`, `confirmation.apply`); the bar only says why, and closes Apply also on its
  * own when the check has not passed or the files drift (EN-2, ES-7), whatever the gate says. Never a verdict.
  */
-import { REVIEW_TEXTS, type EndConfirmationView, type FinalCheckRule, type RunView, type SessionView, type StepView } from '@telelean/core';
+import { isTerminalRunState, REVIEW_TEXTS, type EndConfirmationView, type FinalCheckRule, type RunView, type SessionView, type StepView } from '@telelean/core';
 import { readOnlyReason, stepRunning, wordsIn, type LabelPart } from './review';
+import { runBadgeText } from './run';
 
 export { readOnlyReason, stepRunning };
 
@@ -163,6 +164,18 @@ export function sessionBadgeText(session: Pick<SessionView, 'subject' | 'phase'>
   if (session.phase === 'confirming') return badgeConfirming(session.subject);
   if (session.phase === 'applying') return badgeApplying(session.subject);
   return REVIEW_TEXTS.badgeReview(session.subject);
+}
+
+/**
+ * The header's run badge (§5.8): while a session's run has not ended, the session's words (never a verdict), its phase
+ * from the session view, or from the run while no view came yet; any other run's badge otherwise. 2k1 (D2-100 D2,
+ * D2-103): a session's run that has ended reads as any ended run ("Claude: discarded · Spyro").
+ */
+export function runBadge(run: RunView, session: Pick<SessionView, 'subject' | 'phase'> | null): string {
+  if (isTerminalRunState(run.state)) return runBadgeText(run);
+  if (session !== null) return sessionBadgeText(session, run);
+  if (run.session !== undefined) return sessionBadgeText({ subject: run.subject, phase: run.session.phase }, run);
+  return runBadgeText(run);
 }
 
 /** §5.9: the Exit dialog's counts, listed items only (a hidden Result is never counted, §2.3). */

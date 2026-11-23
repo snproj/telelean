@@ -1,0 +1,24 @@
+{
+  "ok": true,
+  "summary": "Integrator check after sub-slice 2k1 passed. All five tsc configs and the vitest runs in core, webview and extension passed, and the full runner suite passed with real Lean. Failures file is empty and no tmp leftovers were found. Read-only git and dist/out safety checks all match the expected values, both before and after the run. The patch was saved to verbatim_prompt_log/bundle_27/evidence/patches/after_slice_2k1.patch (94564 bytes, 19 files). No repository files were edited by this check.",
+  "checks": [
+    "tsc_core rc=0",
+    "tsc_runner rc=0",
+    "tsc_web rc=0",
+    "tsc_webnode rc=0",
+    "tsc_ext rc=0",
+    "vt_core rc=0  Test Files 78 passed (78)  Tests 1193 passed (1193)",
+    "vt_web rc=0  Test Files 25 passed (25)  Tests 449 passed (449)",
+    "vt_ext rc=0  Test Files 22 passed (22)  Tests 217 passed (217)",
+    "vt_runner rc=0  Test Files 78 passed (78)  Tests 905 passed | 1 skipped (906)",
+    "vt_runner_expected_skips=1",
+    "tmp_leftovers=0",
+    "git diff --cached --stat: empty (nothing staged)",
+    "git log -1 --format=%h: 4640902",
+    "git status --porcelain -- packages/extension/dist packages/extension/out: empty",
+    "stat dist: 2026-11-22 07:58:19.589394203 -0800; stat out: 2026-11-22 07:58:20.063312842 -0800",
+    "ls -a packages/extension/out | grep -c '^.vite$': 0",
+    "savepatch2.sh after_slice_2k1: /home/zhengyew/telelean/verbatim_prompt_log/bundle_27/evidence/patches/after_slice_2k1.patch 94564 bytes, 19 files, rc=0"
+  ],
+  "runner": "vt_runner rc=0  Test Files 78 passed (78)  Tests 905 passed | 1 skipped (906); expected skips=1 (the opt-in real-Claude binary test)"
+}

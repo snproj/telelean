@@ -6,7 +6,8 @@
 import { REVIEW_TEXTS, type SessionView } from '@telelean/core';
 import { describe, expect, it } from 'vitest';
 import { partsText } from '../../src/model/review';
-import { CANCEL_STEP_TITLE, confirmationModel, exitCounts, FINAL_CHECK_RULE_LABEL, headingLine, sessionBadgeText, sessionBarState } from '../../src/model/sessionBar';
+import { runBadgeText } from '../../src/model/run';
+import { CANCEL_STEP_TITLE, confirmationModel, exitCounts, FINAL_CHECK_RULE_LABEL, headingLine, runBadge, sessionBadgeText, sessionBarState } from '../../src/model/sessionBar';
 import { allAcceptedStage, AT, closed, confirmation, confirmingSession, firstQueue, hiddenPair, hiddenStage, IDS, OPEN, sessionRun, shownStage, stepSession } from '../shared/sessions';
 
 const T = 'Cynder would not be a good addition to the new Spyro game';
@@ -143,6 +144,24 @@ describe('the badge, the Exit dialog, the end confirmation', () => {
     expect(sessionBadgeText(applying, sessionRun(applying))).toBe('Edit session: applying · Spyro');
     expect(sessionBadgeText(hiddenStage(), null)).toBe('Edit session: review · Spyro');
     expect(sessionBadgeText(shownStage(), null)).toBe('Edit session: review · Spyro');
+  });
+
+  it('2k1 (D2-100 D2, D2-103): the header badge reads the session while its run has not ended, and as any ended run once it has ("Claude: discarded · Spyro")', () => {
+    const stage = hiddenStage();
+    expect(runBadge(sessionRun(stage), stage)).toBe('Edit session: review · Spyro');
+    // No view yet: the phase from the run.
+    expect(runBadge(sessionRun(confirmingSession()), null)).toBe('Edit session: confirming · Spyro');
+    // Ended, with or without a (stale) view: never the session's words.
+    expect(runBadge(sessionRun(stage, { state: 'discarded' }), stage)).toBe('Claude: discarded · Spyro');
+    expect(runBadge(sessionRun(stage, { state: 'discarded' }), null)).toBe('Claude: discarded · Spyro');
+    const applied = sessionRun(confirmingSession(), { state: 'accepted', accepted: { changedFiles: true } });
+    expect(runBadge(applied, null)).toBe(runBadgeText(applied));
+    expect(runBadge(applied, null)).toBe('Claude: accepted · Spyro');
+    for (const state of ['cancelled', 'failed'] as const) expect(runBadge(sessionRun(stage, { state }), stage)).toBe(runBadgeText(sessionRun(stage, { state })));
+    // A run that is no session: as before.
+    const plain = sessionRun(stage, { state: 'review' });
+    delete plain.session;
+    expect(runBadge(plain, null)).toBe(runBadgeText(plain));
   });
 
   it('the Exit dialog counts listed items only (a hidden Result is not one), and says when a step runs', () => {

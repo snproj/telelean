@@ -1,0 +1,2357 @@
+--- a/docs/project-report-files.md
++++ b/docs/project-report-files.md
+@@ -253,11 +253,11 @@
+ 
+ ## packages/runner (workspace, shadow, gate, run, proposal)
+ 
+-These five directories are the Node-side machinery of packages/runner behind one opted-in model root (M1) and behind M2's one-shot "These suffice" runs. None of them imports vscode. The extension (extension/src/vscode/runner.ts, host.ts, registry.ts) builds the objects, supplies a TextSource that reads open buffers first and a WorkspaceEdit-based EditApplier, sets runsDir to `<globalStorage>/runs`, and passes core's view types (TlGraph, RunView, ProposalView) on to the webview. All pure logic comes from @telelean/core, usually behind an injectable `core` test hook: block parsing, the project model, graphs, action planning, gate rules, normalisation, permitted axioms, finding wording, proposal labels, lifecycle edits and sidecar codecs. Lean runs only through lean/ (the runLean sandbox and the lake comparator) and semantic/ (refreshLeanFacts, the process-wide runExclusive queue and the memory guard). Claude is reached only through llm/ (LlmBackend, ClaudeCliBackend, tool schemas).
++These five directories are the Node-side machinery of packages/runner behind one opted-in model root (M1) and behind M2's one-shot "These suffice" runs. None of them imports vscode. The extension (extension/src/vscode/runner.ts, host.ts, registry.ts) builds the objects, supplies a TextSource that reads open buffers first and a WorkspaceEdit-based EditApplier, (since slice 2k2) leaves the runs folder to the RunManager, which keeps them in the model folder's `.telelean/runs`, and passes core's view types (TlGraph, RunView, ProposalView) on to the webview. All pure logic comes from @telelean/core, usually behind an injectable `core` test hook: block parsing, the project model, graphs, action planning, gate rules, normalisation, permitted axioms, finding wording, proposal labels, lifecycle edits and sidecar codecs. Lean runs only through lean/ (the runLean sandbox and the lake comparator) and semantic/ (refreshLeanFacts, the process-wide runExclusive queue and the memory guard). Claude is reached only through llm/ (LlmBackend, ClaudeCliBackend, tool schemas).
+ 
+ workspace/ (M1, extended for M2): ModelWorkspace scans and parses the model files and layout sidecars and builds subject graphs. It runs a debounced, coalesced Lean refresh: old facts are kept when a refresh fails and dropped when the board falls back to syntactic mode. It writes `.telelean/graph.json`. Every write (board actions, undo/redo, history revert, accepted proposals) goes through one queued path: base snapshots, the EditApplier with `before` checks, an in-memory undo entry, an action snapshot on private refs `refs/telelean/<rootKey>/...` (git plumbing only), re-read, refresh. initialize.ts implements "Initialize Model Here".
+ 
+-shadow/ (M2): each run gets `<runsDir>/<rootKey>/<runId>/` containing:
++shadow/ (M2): each run gets `<runsDir>/<runId>/` containing (slice 2k2: `runsDir` is the model folder's `.telelean/runs`, `runsDirOf(root)`, git-ignored by its own `.gitignore`; until 2k2 it was `<globalStorage>/runs/<rootKey>`):
+ - ws/: Claude's working directory. It holds only model and project files, and a symlink, special file or dot-entry makes it fail closed.
+ - build/: the Lean mirror, synced from ws/ by comparing contents.
+ - git/: a bare repository written with fast-import. Its commits are typed: base, freeze, adopt, normalise, gate-pass, revert, rebase, accept-base, checkpoint.
+@@ -294,7 +294,7 @@
+ - The header of gate/types.ts shows an older ghost-check shape and freeze order.
+ - AcceptRequest documents `facts` and `realFiles` for the re-gate path, but the RunManager passes neither.
+ 
+-Two unrelated functions are both named rootKeyOf: workspace/git.ts makes the git ref key and shadow/index.ts makes the run-directory key. Until turn 13 runs had only been exercised with the fake LLM backend. On 2026-11-10 the real-Claude path (run/backend.ts -> ClaudeCliBackend) ran four live sessions, all passing at the gate's first attempt (docs/m2-live-report.md); the retry loop, the revert, Feedback, Cancel and resume have still met only the FakeBackend.
++Two unrelated functions used to be named rootKeyOf: workspace/git.ts makes the git ref key, and shadow/index.ts made the run-directory key until slice 2k2 removed it. Until turn 13 runs had only been exercised with the fake LLM backend. On 2026-11-10 the real-Claude path (run/backend.ts -> ClaudeCliBackend) ran four live sessions, all passing at the gate's first attempt (docs/m2-live-report.md); the retry loop, the revert, Feedback, Cancel and resume have still met only the FakeBackend.
+ 
+ ### `packages/runner/src/workspace/`
+ 
+@@ -317,7 +317,7 @@
+ | File | Purpose | Key exports | Depends on |
+ |---|---|---|---|
+ | `git.ts` | ShadowGit: the run's private bare repository in `<runDir>/git/`, created with an empty template and driven by plumbing only in an isolated environment (every GIT_* variable dropped, GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM=1, no hooks, excludes, attributes or autocrlf). Each commit is a whole snapshot written in one `git fast-import` (deleteall plus inline blobs) on the single branch refs/heads/shadow; reads use log, ls-tree and cat-file --batch. | ShadowGit, SHADOW_REF, SHADOW_GIT_CONFIG, shadowGitEnvironment, fastImportPath, GitOutput | node:child_process; ./types.ts (ShadowLayoutError) |
+-| `index.ts` | Public API of the run shadow (frozen M2 contract). createRunShadow validates runId, library and paths, refuses symlinks or special files in the user's model tree, creates `<runsDir>/<rootKey>/<runId>/` with copies of the given texts in ws/ and build/, optionally seeds build/.lake under runExclusive, initialises the bare repo and commits `base`; if creation fails it removes the run directory again. It also provides openRunShadow (recovery), listRunDirs, and pruneRunDirs (keeps the newest N and deletes only runs that ended or whose run.json cannot be read). | createRunShadow, openRunShadow, listRunDirs, pruneRunDirs, rootKeyOf (folder name + sha1 of the absolute root; not the same as workspace/git.ts rootKeyOf), BASE_COMMIT_LABEL; re-exports the types, the path helpers, commitMessage, parseCommitMessage, scanTree, shadowPaths, SHADOW_COMMIT_KINDS and SHADOW_REF | ./git.ts, ./paths.ts, ./seed.ts, ./types.ts, ./workspace.ts; ../lean/leanNames.ts (isValidModuleName); ../semantic (runExclusive); @telelean/core (TERMINAL_RUN_STATES) |
++| `index.ts` | Public API of the run shadow (frozen M2 contract). createRunShadow validates runId, library and paths, refuses symlinks or special files in the user's model tree, creates `<runsDir>/<runId>/` (2k2: the runs folder made first by ensureRunsDir, with its `.gitignore`) with copies of the given texts in ws/ and build/, optionally seeds build/.lake under runExclusive, initialises the bare repo and commits `base`; if creation fails it removes the run directory again. It also provides openRunShadow (recovery), listRunDirs, and pruneRunDirs (keeps the newest N and deletes only run folders, with run.json or git/, that ended or whose run.json cannot be read). | createRunShadow, openRunShadow, listRunDirs, pruneRunDirs, runsDirOf, ensureRunsDir, RUNS_DIR, RUNS_GITIGNORE (2k2; rootKeyOf removed: it was folder name + sha1 of the absolute root; not the same as workspace/git.ts rootKeyOf), BASE_COMMIT_LABEL; re-exports the types, the path helpers, commitMessage, parseCommitMessage, scanTree, shadowPaths, SHADOW_COMMIT_KINDS and SHADOW_REF | ./git.ts, ./paths.ts, ./seed.ts, ./types.ts, ./workspace.ts; ../lean/leanNames.ts (isValidModuleName); ../semantic (runExclusive); @telelean/core (TERMINAL_RUN_STATES) |
+ | `paths.ts` | Rules for which paths may enter a shadow (D-24): safe root-relative POSIX paths (no dot segments, backslashes or control characters), Lean model files of the library, and the four project config files at the root. It also derives a module name from a model file path. | isSafeRelativePath, isLeanModelPath, isModelPath, moduleNameOf, PROJECT_CONFIG_FILES (re-export) | ../lean/leanNames.ts (isValidModuleName); ../lean/shadow.ts (PROJECT_CONFIG_FILES) |
+ | `seed.ts` | Optional seeding of a run's build mirror from the user's `.lake/build`, only when telelean.run.reuseLeanBuild is on (off by default). noteRefreshOutput runs inside the board's refresh job and records a stat listing (device, inode, size, mtime, ctime) only after an `ok` refresh with every module fresh, and only if the tree looks complete (outputs present, no artifact newer than its trace, no lock or recent temp file). seedFromRefreshOutput copies the tree only if it still matches that record before, during and after the copy; otherwise it seeds nothing and reports why. | noteRefreshOutput, seedFromRefreshOutput, artifactNewerThanTrace, STALE_TEMP_MS, SeedHooks | node:fs; ./types.ts (BuildSeedOutcome); @telelean/core (LeanFacts type). Called from workspace/modelWorkspace.ts and shadow/index.ts |
+ | `types.ts` | The frozen M2 contract of the shadow: the run-directory layout (ShadowPaths), the commit kinds and PASSING_COMMIT_KINDS (gate-pass, freeze and base mark 'the last state that passed'), CreateShadowOptions, the ShadowLayoutError codes, BuildSeedOutcome, the ShadowWorkspace interface and RunDirInfo. Its layout comment says git/ uses ws/ as its work tree and that scratch/ holds scratch Lean projects; in the code git/ is a bare fast-import repository, and scratch/ is created but never written. | ShadowPaths, ShadowCommitKind, PASSING_COMMIT_KINDS, ShadowCommit, CreateShadowOptions, ShadowErrorCode, ShadowLayoutError, BuildSeedOutcome, ShadowWorkspace, RunDirInfo | @telelean/core (FileChange) |
+@@ -340,7 +340,7 @@
+ | `backend.ts` | The Claude backend factory. It first applies the quota tripwire: with TELELEAN_NO_REAL_CLAUDE=1 it refuses before any lookup unless a test supplies both a scratch home and PATH. Otherwise it resolves the user's Claude Code binary (setting, then VS Code extension, PATH, ~/.local/bin, with a version check) and builds a ClaudeCliBackend with the guard script, hook runtime, client app and an absolute `setpriv --pdeathsig KILL --` launcher; this is the one code path in scope that touches the real CLI. It was walked through live on 2026-11-10 (turn 13): scripts/walkthrough-claude.mjs --live and the demo driver's --live runs both went through it, with Claude Code 2.1.322. | createClaudeBackendImpl, setprivLauncher, PDEATHSIG_ARGS | ../llm/binary.ts (resolveClaudeBinary), ../llm/claudeCli.ts (ClaudeCliBackend, realClaudeDisabled, NO_REAL_CLAUDE_ENV), ../llm/confinement.ts (defaultHookRuntime), ../llm/types.ts (LlmHarnessError), ../lean/systemd.ts (findSystemExecutable); ./types.ts |
+ | `index.ts` | Public entry point of the run module (frozen M2 contract). It defines DEFAULT_RUN_SETTINGS (model claude-opus-5-5, effort high, core's DEFAULT_RUN_CAPS of 80 turns, 25 checks, 20 agent minutes, 120 s per Lean job and 3 gate attempts, a 4G memory cap, a 2 GiB memory guard, contextScope subject, keepRuns 10, reuseLeanBuild false). It also provides thin wrappers createRunManager, createClaudeBackend, runPreflight, buildSystemPrompt and buildContextBundle, plus re-exports of helpers. | DEFAULT_RUN_SETTINGS, createRunManager, createClaudeBackend, runPreflight, buildSystemPrompt, buildContextBundle; re-exports adoptionTurn, budgetText, collapseWhitespace, feedbackTurn, NUDGE_TURN, resumeTurn, shortNames, condenseRateLimit, ENVIRONMENT_RETRY_MS, gateCheckOf, localTime, rateLimitNotice, validateAnswers, verdictOfStatus, missingWorkspaceMembers, PDEATHSIG_ARGS, setprivLauncher, readPersistedRun, scanRuns, ScannedRun and everything in ./types.ts | ./backend.ts, ./manager.ts, ./preflight.ts, ./prompts.ts, ./persist.ts, ./types.ts; @telelean/core (DEFAULT_RUN_CAPS) |
+ | `manager.ts` | RunManagerImpl: one per model root, with at most one active run. It owns: - the run state machine and the LLM session. - the AgentToolHost: check_lean, freeze_statements, ask_user, propose_assumption, finish. - the caps: turns counted from usage events, checks, the agent-active clock and gate attempts. - the A2 gate loop: a failed attempt is retried with the exact failures; after the last attempt it gives up and reverts to the last passing commit. An environment outcome is retried once after 30 s. - the end-of-round proposal, Feedback and ghost-adoption rounds. - Accept, including the rebase, re-freeze and re-gate when the user's files changed during the run. - Cancel, Discard, Dismiss and Resume. - the decisions and attempts sidecars, run.json and transcript persistence, recovery and dispose. It never runs Lean itself. It writes the user's files only through workspace.perform (set-premises) and ProposalService.apply. Turn 13: a failed re-check at Accept now ends 'Discard, or undo your edits since the run started and Accept again.' (it used to offer Feedback, which continues on the working copy and never rebases). | createRunManagerImpl, gateCheckOf, verdictOfStatus, condenseRateLimit, localTime, rateLimitNotice, validateAnswers, ENVIRONMENT_RETRY_MS | ./persist.ts, ./preflight.ts, ./prompts.ts, ./types.ts; ../gate/types.ts; ../shadow (createRunShadow, openRunShadow, pruneRunDirs, PASSING_COMMIT_KINDS); ../llm (types, toolSchemas renderAnswersAsUserTurn); ../lean/runLean.ts (cancelRun); @telelean/core (attemptNotice, describeFinding, planGhostAdoption, proposalLabel, decisionsInForce, parseLeanFile, buildProjectModel, run/attempt/decision types) |
+-| `persist.ts` | Run persistence: atomic run.json writes (temp file plus rename, async and sync), PersistedRun validation and reading, and scanRuns (a root's run directories whose run.json is readable and matches the root, newest first). RunFiles is the per-run writer that serialises run.json snapshots and transcript.jsonl lines; its close() makes the final write on dispose, first synchronously and then again after any write still in flight. | writeJsonAtomic, writeTextAtomic, writeTextAtomicSync, isPersistedRun, readPersistedRun, ScannedRun, scanRuns, nonTerminal, RunFiles | ../shadow/index.ts (rootKeyOf); ./types.ts; @telelean/core (isTerminalRunState) |
++| `persist.ts` | Run persistence: atomic run.json writes (temp file plus rename, async and sync), PersistedRun validation and reading, and scanRuns (the run directories of a runs folder whose run.json is readable, newest first; since 2k2 the RunManager holds one whose run.json names another root, a moved folder's, and offers only Stop). RunFiles is the per-run writer that serialises run.json snapshots and transcript.jsonl lines; its close() makes the final write on dispose, first synchronously and then again after any write still in flight. | writeJsonAtomic, writeTextAtomic, writeTextAtomicSync, isPersistedRun, readPersistedRun, ScannedRun, scanRuns, nonTerminal, RunFiles | ./types.ts; @telelean/core (isTerminalRunState) |
+ | `preflight.ts` | The checks that run before anything is created or sent, in this order: busy (another active run of the root); the subject loads; selection (the target is a GOAL or DERIVATION card of the subject, every premise is a card, the target is not a premise); the workspace has the M2 members; toolchain (pinned leanprover/lean4:v4.35.0, a lakefile, a manifest with no packages); the Lean sandbox is available (lean.checkSandboxSupport, then, since turn 13, lean.checkUserNamespaces: bwrap can create its namespaces, which AppArmor's userns restriction prevents outside the VS Code snap); the memory guard. Each refusal is one plain sentence. | preflight, missingWorkspaceMembers | ../lean/runLean.ts (checkSandboxSupport, checkUserNamespaces); ../semantic (readMemAvailableBytes); ../workspace/types.ts; ./types.ts; @telelean/core (PINNED_TOOLCHAIN_NAME) |
+ | `prompts.ts` | Pure renderers of what is sent to Claude apart from the system prompt. The first-turn context bundle lists the subject folder, TARGET, SELECTED PREMISES with their Lean and status, OTHER CARDS (the whole subject, or only the neighbourhood), VOCABULARY, EARLIER ANSWERS IN FORCE and BUDGET. The later turns are feedback, adoption, resume and the nudge to call finish. | renderContextBundle, feedbackTurn, adoptionTurn, AdoptedGhostTurnInput, resumeTurn, NUDGE_TURN, budgetText, minutesText, agentMinutes, collapseWhitespace, shortNames, SYSTEM_PROMPT (re-export) | ./systemPrompt.ts; ./types.ts (ContextBundleInput); @telelean/core (subjectDir, subjectRootFile, model and graph types) |
+ | `systemPrompt.ts` | The static system prompt of every run: section 5.1 of docs/m2-plan.md, verbatim (tests compare it with a fixture). It is byte-identical across runs so the CLI's prompt cache is reused. It explains the card markup, the workflow (ask_user, formalise, check_lean, freeze_statements, prove, finish or propose_assumption) and the rules the gate checks. Turn 13 changed four lines to match the gate: typed cards are in the subject's Inbox.lean; a selected GOAL or DERIVATION premise without Lean is formalised without `.holds` and proved after the freeze; the proof may go lower in the file; the vocabulary rule lists propositions `axiom P : Prop`, says the person confirms each new `T.exists`, and calls only *other* definitions and instances questions. | SYSTEM_PROMPT | none |
+@@ -370,9 +370,9 @@
+   - changeBatcher debounces events and recognises echoes of telelean's own writes.
+   - modelPaths keeps paths inside the root and refuses symlinks that point out of it.
+   - settings clamps the telelean.* values into the runner's settings.
+-  - runs holds the consent texts, the lazy Claude backend factory (which refuses in Test mode) and the busy check.
++  - runs holds the consent texts and (2k2) the consent file of a model folder, `.telelean/runs/consent.json`, the lazy Claude backend factory (which refuses in Test mode) and the busy check.
+ - **src/vscode/** holds the VS Code adapters.
+-  - host.ts: the commands, one BoardPanel per root, restore after reload, the consent modal (only a yes is remembered, per root, in globalState), RunManager construction, and the TeleleanApi with Test-mode hooks.
++  - host.ts: the commands, one BoardPanel per root, restore after reload, the consent modal (only a yes is remembered, per root, in the model folder's `.telelean/runs/consent.json` since 2k2), RunManager construction, and the TeleleanApi with Test-mode hooks.
+   - registry.ts: one ModelWorkspace and one RunManager per root, kept until the window closes. Typing, saves and file-watcher events become invalidate calls, plus Lean refreshes while the root's board is open.
+   - editor.ts: the WorkspaceEdit port and a TextSource that reads open buffers first.
+   - historyProvider.ts: read-only telelean-history: and telelean-proposal: multi-file diffs, opened beside the board.
+@@ -478,7 +478,7 @@
+ | `esbuild-options.mjs` | esbuild options shared by build.mjs and the bundle unit test. commonOptions: bundle, platform node, CommonJS, target node22, sourcemaps, tsconfig.json paths, `import.meta.url` defined as teleleanImportMetaUrl (injected from import-meta-url.mjs). extensionOptions: src/extension.ts -> dist/extension.js with vscode external. suiteOptions: test/suite/*.test.ts -> out/test/suite with vscode, mocha and playwright-core external. | IMPORT_META_URL_INJECT, commonOptions, extensionOptions, suiteOptions | ./import-meta-url.mjs, ../tsconfig.json |
+ | `import-meta-url.mjs` | esbuild inject module exporting teleleanImportMetaUrl = pathToFileURL(__filename).href. Bundled runner llm/ and path-guard modules that read import.meta.url get the bundle's file URL instead of undefined in CommonJS (m2-plan section 8.4, risk R2); the extension still passes the guard path explicitly. | teleleanImportMetaUrl | none |
+ | `smoke.mjs` | npm run test:smoke. Makes an isolated profile $TELELEAN_TEST_TMP/vscode-<pid>/ (refusing paths under the real HOME). In ws/ it puts two copies of mental_model/ (mental_model; second_model with an escape.lean symlink pointing outside it), plain_folder and empty_folder; three more copies sit outside ws/ (e2e/e2e_model, runs/runs_model, runs-e2e/runs_e2e_model; the header comment says 'two more'). It writes user settings that turn off AI features, telemetry, updates and trust, then runs `xvfb-run -a npx vscode-test` with core dumps off and TELELEAN_NO_REAL_CLAUDE=1. Afterwards it checks that the isolated user-data dir was used, that the real ~/.copilot, ~/.config/Code, ~/.config/google-chrome and Trash listings are unchanged, and that no process or telelean-* systemd unit is left (killing or stopping leftovers); it writes smoke-summary.json and exits 1 on any failure. Turn 13: options --snap (`npm run test:smoke:snap`: both instances in the user's snap VS Code, found by findSnap, with the snap's per-user folders made inside the isolated HOME), --snap-root=DIR (another revision) and --label=smoke\|e2e (one instance). It also watches the top level of ~/.vscode and, in snap mode, ~/snap/code with the mtimes and ctimes of its revision and common folders. It reports the AppArmor label and cgroup it runs under, and warns when it is unconfined on a kernel with apparmor_restrict_unprivileged_userns=1 (every Lean check would fail). It notes what the host-environment suite recorded (host-env.json; in snap mode its absence is a failure), and removes a Chromium /dev/shm file its instance created if no process uses it (a warning). The summary records the VS Code used and the confinement. | none (script) | ./smoke-units.mjs, ./snap-env.mjs (findSnap, DEFAULT_SNAP_ROOT), ../.vscode-test.mjs, mental_model/, xvfb-run, systemctl --user, pgrep |
+-| `smoke-units.mjs` | Plain helpers (unit-tested in test/unit/smokeUnits.test.ts) that decide whether a leftover telelean-<run id>-<n>.scope systemd unit belongs to this smoke run. Run ids are tlws<pid>_<w>_<k> (workspace refreshes), p<pid> (runLean default) or Claude run ids, matched against extension-host pids and run ids found in the instance's logs and globalStorage run dirs. leftoverAction returns 'fail' (a live process of this run inside), 'stop' (this run's but empty, a regression of the scope-leak fix) or 'keep' (another builder's). | SCOPE_UNIT, idsInLog, collectOwners, unitOwner, leftoverAction | node:fs (reads the instance's user-data logs and runs dirs) |
++| `smoke-units.mjs` | Plain helpers (unit-tested in test/unit/smokeUnits.test.ts) that decide whether a leftover telelean-<run id>-<n>.scope systemd unit belongs to this smoke run. Run ids are tlws<pid>_<w>_<k> (workspace refreshes), p<pid> (runLean default) or Claude run ids, matched against extension-host pids and run ids found in the instance's logs and (2k2) the run dirs of the smoke run's model folders. leftoverAction returns 'fail' (a live process of this run inside), 'stop' (this run's but empty, a regression of the scope-leak fix) or 'keep' (another builder's). | SCOPE_UNIT, idsInLog, collectOwners, unitOwner, leftoverAction | node:fs (reads the instance's user-data logs and runs dirs) |
+ | `snap-env.mjs` | Turn 13. How a test or demo instance runs the user's own snap VS Code the way the snap starts it, so the extension host sees the same environment as the user's window. findSnap reads the installed snap (/snap/code/current: meta/snap.yaml, classic confinement, electron-launch, the Electron binary, VS Code's version). snapRunEnv gives the SNAP_* variables `snap run` would set, with SNAP_USER_DATA and SNAP_USER_COMMON inside a given home. snapTestEnv builds the instance's environment layer: the caller's snap variables and electron-launch's recomputed ones removed, then snap run's plus the CLI's VSCODE_CLI=1 and ELECTRON_NO_ATTACH_CONSOLE=1, with a placeholder SNAP_COOKIE. snapLaunch gives the executable (electron-launch) and the prefix arguments (the Electron binary, --force-user-env). snapLeakNames lists which snap variables reached a process. `snap run` itself is avoided: it always uses the real ~/snap/code (snapd takes the home folder from the password database), and the CLI detaches VS Code. The AppArmor label is inherited, not set: run from a terminal of the snap VS Code to get snap.code.code. Unit-tested in test/unit/snapEnv.test.ts. | DEFAULT_SNAP_ROOT, ELECTRON_LAUNCH_VARIABLES, PLACEHOLDER_COOKIE, findSnap, snapRunEnv, snapTestEnv, snapLaunch, snapLeakNames | node:fs, node:path (reads /snap/code) |
+ 
+ ### `packages/extension/src/`
+@@ -520,7 +520,7 @@
+ |---|---|---|---|
+ | `editor.ts` | VS Code adapters for reading and writing model files. VscodeWorkspaceEditPort opens documents before the check, applies a batch as one WorkspaceEdit (createFile without overwrite, deleteFile, replace) and saves; vscodeEditApplier wraps it in a CheckedEditApplier with an unsaved-file warning toast. vscodeTextSource reads open buffers first; editorGroups maps tab groups to GroupInfo. | openDocument, editorGroups, vscodeTextSource, VscodeWorkspaceEditPort, unsavedWarning, vscodeEditApplier | vscode; ../logic/editApplier, ../logic/groups, ../logic/textSource; runner workspace (TextSource type) |
+ | `historyProvider.ts` | Read-only multi-file diffs beside the board. DiffPreviews registers a TextDocumentContentProvider for a scheme backed by a PreviewStore, focuses the group beside the board and runs vscode.changes; provider documents cannot be edited or saved, so a preview never writes anything. HistoryPreviews (telelean-history:) shows what a history entry changed and ProposalPreviews (telelean-proposal:) shows a proposal's raw Lean diff. | DiffPreviews, HistoryPreviews, ProposalPreviews | vscode; ../logic/groups, ../logic/historyPreview, ../logic/proposalPreview; ./editor |
+-| `host.ts` | TeleleanHost, the extension controller. It registers the three commands and the board serializer, finds model roots in file workspace folders (depth 6), keeps one BoardPanel per root titled 'telelean: <folder>', attaches a BoardSession once the root's workspace loads (then requests an 'open' refresh), restores panels after a reload from workspaceState records, and runs Initialize (runInitialize with input box and modals) and Refresh. For M2 it builds each root's RunManager (runsDir globalStorage/runs, telelean.* run settings, lazy backend factory, Lean check engine, proposal service, sidecar store), asks the per-root consent (only a yes is stored, as telelean.claudeConsent.<rootKey> in globalState), shows proposal diffs, disposes run managers first on shutdown, and exposes the TeleleanApi (with `testing`, where an unanswered modal counts as no, only in ExtensionMode.Test). | TeleleanHost (register, openBoardCommand, initializeCommand, refreshCommand, openBoard, restoreBoard, shutdown, api, dispose), TeleleanHostOptions, SAMPLE_TITLE ('telelean: sample') | vscode; @telelean/core; runner shadow (rootKeyOf), run/types, workspace types; ../api; ../board/BoardPanel; ../logic/{boardSession, groups, initialize, modelPaths, restore, roots, runs, settings}; ./editor, ./historyProvider, ./registry, ./runner |
++| `host.ts` | TeleleanHost, the extension controller. It registers the three commands and the board serializer, finds model roots in file workspace folders (depth 6), keeps one BoardPanel per root titled 'telelean: <folder>', attaches a BoardSession once the root's workspace loads (then requests an 'open' refresh), restores panels after a reload from workspaceState records, and runs Initialize (runInitialize with input box and modals) and Refresh. For M2 it builds each root's RunManager (its runs in the model folder since 2k2, telelean.* run settings, lazy backend factory, Lean check engine, proposal service, sidecar store), asks the per-root consent (only a yes is stored, since 2k2 as `.telelean/runs/consent.json` in the model folder), shows proposal diffs, disposes run managers first on shutdown, and exposes the TeleleanApi (with `testing`, where an unanswered modal counts as no, only in ExtensionMode.Test). | TeleleanHost (register, openBoardCommand, initializeCommand, refreshCommand, openBoard, restoreBoard, shutdown, api, dispose), TeleleanHostOptions, SAMPLE_TITLE ('telelean: sample') | vscode; @telelean/core; runner shadow (rootKeyOf), run/types, workspace types; ../api; ../board/BoardPanel; ../logic/{boardSession, groups, initialize, modelPaths, restore, roots, runs, settings}; ./editor, ./historyProvider, ./registry, ./runner |
+ | `registry.ts` | WorkspaceRegistry keeps one runner ModelWorkspace per root: created on first use and loaded once, with a self-write-recording vscodeEditApplier, and kept until the window closes so in-memory Undo survives closing the board. Since M2 it also creates the root's RunManager after load, starts recover() once, and disposes the manager before the workspace (shutdownRuns waits at most 4 s); if runs cannot be created the board still works. Typing is batched for 200 ms and then invalidates; a save invalidates and refreshes; watcher events on **/*.lean, .telelean/**, lakefile.toml, lean-toolchain and lake-manifest.json are batched for 300 ms and refresh for Lean or project files. Echoes, handled saves and changes under dirty editors are ignored, and Lean refreshes run only while the root's board is open. | WorkspaceRegistry (get, peek, runs, peekRunManager, roots, forget, shutdownRuns, dispose), RegistryDeps, Log, TYPING_DEBOUNCE_MS (200), RUNS_SHUTDOWN_MS (4000) | vscode; runner run/types, workspace types; ../logic/{changeBatcher, modelPaths, runs, settings, textSource}; ./editor; ./runner |
+ | `runner.ts` | One replaceable record (RunnerFunctions, default DEFAULT_RUNNER) of the runner factories the extension calls. Tests swap it via testing.useRunner in Test mode or TeleleanHostOptions.runner in unit tests. It imports only runner subpaths, never the package root. | RunnerFunctions, DEFAULT_RUNNER (createModelWorkspace, findModelRoots, inspectFolder, planInitialize, createRunManager, createClaudeBackend, createLeanCheckEngine, createProposalService, createRunSidecarStore, defaultHookRuntime) | @telelean/runner/workspace, run, gate, proposal, llm/confinement |
+ 
+--- a/docs/project-report.md
++++ b/docs/project-report.md
+@@ -51,10 +51,10 @@
+           └─ setpriv → claude -p --input-format stream-json …  (cwd = the run's ws/) ─────────────┘
+                  └─ PreToolUse hook: node telelean-path-guard.mjs (before every file-tool call)
+ 
+-Model folder (opt-in: has .telelean/config.json)     VS Code extension storage
+-  Model.lean, Model/<S>.lean, Model/<S>/*.lean         globalStorage/telelean.telelean/runs/<folder>-<hash>/<run>/
++Model folder (opt-in: has .telelean/config.json)     Its runs (slice 2k2; git-ignored, in the model folder)
++  Model.lean, Model/<S>.lean, Model/<S>/*.lean         .telelean/runs/<run>/
+   .telelean/: config, layout, attic, attempts,           ws/  build/  git/  session/  frozen/  gate/  run.json …
+-              decisions, graph.json;   .lake/
++              decisions, graph.json;   .lake/          .telelean/runs/consent.json, .telelean/runs/.gitignore (*)
+ ```
+ 
+ ## 1.2 Processes
+@@ -248,7 +248,7 @@
+ 
+ ### 1.4.3 A run, end to end
+ 
+-1. **Start.** The tray sends `startRun`, which goes to BoardSession's run queue (separate from edits). Then come the busy check and the consent modal. Only a yes is remembered, per root, in `globalState`.
++1. **Start.** The tray sends `startRun`, which goes to BoardSession's run queue (separate from edits). Then come the busy check and the consent modal. Only a yes is remembered, per root, in the model folder (`.telelean/runs/consent.json`, slice 2k2; before, in `globalState`).
+ 2. **Preflight.** `RunManager.start` checks, in order:
+    - busy;
+    - the selection;
+@@ -310,13 +310,14 @@
+ | `.telelean/subjects/<S>/attempts.jsonl`, `decisions.json` | run rounds and their resolutions; your answers to Claude | `DiskSidecarStore`, directly (temp file, then rename) | not in history, never undone |
+ | `.telelean/graph.json` | export of the whole project (format 1.1) | the runner, directly | gitignored |
+ | `.lake/` | the in-place Lake build | Lean jobs | gitignored |
+-| `.telelean/frozen/`, `.telelean/sessions/` | nothing | (Initialize adds their `.gitignore` lines) | unused: runs live in extension storage |
++| `.telelean/frozen/`, `.telelean/sessions/` | nothing | (Initialize adds their `.gitignore` lines) | unused |
++| `.telelean/runs/<runId>/` (slice 2k2) | see below the table | shadow, engine, RunManager | git-ignored (`.telelean/runs/.gitignore` is `*`; Initialize adds `/.telelean/runs/`); the newest 10 finished runs are kept; a run whose run.json names another folder is only offered Stop |
++| `.telelean/runs/consent.json` (slice 2k2) | the Claude consent of this folder | host | only a yes is stored |
+ | The model folder's git repository: `refs/telelean/<rootKey>/subjects/<S>`, `…/project` | history snapshots | git plumbing; temporary files under `<gitDir>/telelean-tmp-*` | `<rootKey>` = the folder's path in the repository plus a short hash (`root` at the top level). Your branches, index, HEAD, remotes and hooks are never touched |
+ | Extension-host memory | undo stacks (100 per subject), parse cache, current facts | runner | lost on window reload |
+-| VS Code `globalState` | consent per root (`telelean.claudeConsent.<rootKey>`) | host | only a yes is stored |
+ | VS Code `workspaceState` | board restore records (title, root, subject) | host | |
+ | Webview state, per panel | subject, Vocabulary-group collapsed, request counter, run-panel size | webview | |
+-| `~/.config/Code/User/globalStorage/telelean.telelean/runs/<folder>-<hash>/<runId>/` | see below the table | shadow, engine, RunManager | the newest 10 finished runs per folder are kept |
++| `~/.config/Code/User/globalStorage/telelean.telelean/runs/…`, VS Code `globalState` `telelean.claudeConsent.*` | runs and consents of telelean before slice 2k2 | (nothing any more) | never read or deleted; the user guide says how to delete them |
+ | `~/.claude/projects/` | Claude Code's own session transcripts | the CLI | used by `--resume`; never read by telelean |
+ 
+ **Contents of a run directory:**
+@@ -844,10 +845,10 @@
+ All of it goes to Anthropic through your Claude Code login: your claude.ai subscription, no API key.
+ 
+ **The answers:**
+-- **Run with Claude** is remembered per folder path, in VS Code's global state.
++- **Run with Claude** is remembered in the model folder, `.telelean/runs/consent.json` (git-ignored; slice 2k2: before, per folder path in VS Code's global state). A copied or cloned folder does not carry it, and a folder recreated at the same path is asked again.
+ - **Cancel** starts nothing, declares nothing and is not remembered. A toast says: 'Not started: telelean sends nothing to Claude until you allow it ("Run with Claude").'
+ 
+-There is no command to withdraw a consent once given.
++There is no command to withdraw a consent once given; deleting `.telelean/runs/consent.json` does it.
+ 
+ ### 2.4.3 What happens at the start
+ 
+@@ -867,7 +868,7 @@
+ 
+    Each candidate must answer `--version` (which contacts nobody) with 2.1.295 or newer.
+ 4. **The premises declaration** (2.3.5). It is skipped when nothing would change, and for Self-evident?.
+-5. **The private copy**, at `~/.config/Code/User/globalStorage/telelean.telelean/runs/<folder>-<hash>/<run id>/`:
++5. **The private copy**, at `<model folder>/.telelean/runs/<run id>/` (slice 2k2; git-ignored, invisible to the board's file watcher, History and the scans; before 2k2, `~/.config/Code/User/globalStorage/telelean.telelean/runs/<folder>-<hash>/<run id>/`):
+    - `ws/`, Claude's working directory: only the model and project files as the board sees them (open buffers included), no dot-entries;
+    - `build/`, the Lean mirror with the run's own build. It is built from scratch, unless `telelean.run.reuseLeanBuild` is on and the board's last check recorded a complete build that nothing has touched since;
+    - `git/`, the copy's own history;
+@@ -907,7 +908,7 @@
+ - Claude Code's own telemetry and error reports, as in your other sessions. They are off only if VS Code was started with `DISABLE_TELEMETRY`, `DISABLE_ERROR_REPORTING` or `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`; telelean passes these through.
+ 
+ **What stays on the machine.**
+-- The run directories: the newest `telelean.run.keepRuns` (10) finished runs per folder; older ones are pruned when a run ends.
++- The run directories, in the model folder's `.telelean/runs/`: the newest `telelean.run.keepRuns` (10) finished runs; older ones are pruned when a run ends (only run folders: never `consent.json` or `.gitignore`).
+ - Claude Code's session transcripts under `~/.claude/projects/`, which `--resume` uses and telelean never reads.
+ 
+ ### 2.4.5 The run panel
+--- a/docs/slice2-plan.md
++++ b/docs/slice2-plan.md
+@@ -88,9 +88,11 @@
+ | 2j1 | Follow-up from turn 25 (the user's demo; D2-76): an item to be redone counts as finished for the review (it no longer keeps the results hidden or blocks Submit), has no Back to review, comes back by itself when what took it down comes back, and says why; Submit's closed reason is shown as text in the session bar (core, runner, webview) | RV-3 (amended, D2-76), RV-5, RV-6, DO-0, UN-4 | 2i |
+ | 2j2 | Follow-up from turn 25: notes on every decline, a note on items to be redone, and an overall comment at Submit | RV-3, DO-3, RV-12 | 2j1 |
+ | 2k1 | Follow-up from turn 27 (D2-100, the Exit/Apply fix): once a session's run has ended, by any path, the runner sends no review view, and the board shows the ended run's line with Dismiss and never the review panel or the session bar for it (runner, one core text, webview, docs) | EN-1–EN-4, ES-8 | 2j2 |
++| 2k2 | Follow-up from turn 27 (D2-107, a model's data in its own folder): every run in `<model>/.telelean/runs/<runId>/`, git-ignored; the consent in that folder; a run recorded at another path can only be ended (runner, extension, docs) | ES-6, D-23, D-24 | 2k1 |
+ 
+ - **2j1 and 2j2 are follow-ups the user asked for in turn 25 (2026-11-22),** after trying slice 2 in a demo. They come after 2i, one after the other, and both change core sources (§0). 2j1 builds the user's decision D2-76 (§7.2); 2j2 builds notes on every decline, a note on items to be redone, and an overall comment at Submit.
+ - **2k1 is the first of two follow-ups the user asked for in turn 27 (2026-11-23),** on the 2j work as committed (4640902): after Exit, confirmed, the board kept the review panel, and a second Exit was refused. 2k1 builds the user's decision D2-100 (§7.2). It changes one core source (a text), so nothing runs beside it (§0).
++- **2k2 is the second follow-up of turn 27,** after 2k1: the user's decision D2-107 (§7.2) moves everything telelean keeps for a model into the model folder, except the Claude CLI's own conversation files and the shared Lean fact extractor (§2.10). It changes no core source.
+ - **A session cannot be reviewed on the board until 2g lands.** From 2d on, Formalize starts a session, which the old stepper does not show. The user's installed extension is not affected: `dist` is rebuilt only at the verified slice end (AP-8).
+ - **2a2, 2c2, 2b3, 2d and 2g are the largest.** If a builder reports running out of room:
+   - 2a2 splits after the reveal rule (2a2a: classify, deps and `resultsState`; 2a2b: reconcile and the reducer);
+@@ -249,6 +251,17 @@
+ - `docs/user-guide.md` 10.13; this plan: §1, §1.1, §2.5, §3.10, §5.2, §5.8, §5.9, §6.1, §7.2 (D2-100–D2-106), §8.
+ - Tests: §6.1's 2k1 list. Scope: this entry only (2k2 follows).
+ 
++**2k2:** a model's data in its own folder, the user's decision of turn 27 (D2-107; §2.10, new). Runner, extension, docs; no core source, no message, no run.json version.
++- **Runs.** `shadow/index.ts` `runsDirOf(root)` is `<root>/.telelean/runs`; a run's folder is `<runsDir>/<runId>/` with today's layout inside (no `<rootKey>` level). `RunManagerOptions` has no `runsDir` any more: the manager derives it from its root, so it creates, recovers and prunes runs only there (D2-108). `ensureRunsDir` writes `.telelean/runs/.gitignore` (`*`) whenever telelean creates or uses the folder, and Initialize adds `/.telelean/runs/` to `.gitignore` (`GITIGNORE_LINES`; D2-109).
++- **Consent** is `<root>/.telelean/runs/consent.json` (extension `logic/runs.ts`), asked once per folder with the same dialog; VS Code's `globalState` is neither read nor written for it any more (D2-110).
++- **A run recorded at another path** (run.json's `root` is not this folder: the folder was moved, renamed or copied) is recovered as interrupted with a notice, nothing replayed or judged; Stop, or a session's Exit, ends it and records nothing in this folder; every other action is refused (D2-111).
++- **Pruning** deletes only run folders: never the active run, `consent.json`, `.gitignore` or a directory that holds neither `run.json` nor a shadow's `git/` (D2-112).
++- **Nothing of a run looks like a model change** (R2): the host's file events under `.telelean/runs/` are ignored (`logic/modelPaths.ts` `classifyModelPath`); the runner's scans, History's scopes and `findModelRoots` already skip it (tests pin it).
++- **Confinement** (R3): the path guard's hidden-segment rule is tested on paths relative to ws/ at its new place; the board's in-place Lean build masks `.telelean/runs` as it masks `.git` (D2-115). The Claude CLI runs with `GIT_CEILING_DIRECTORIES` set to the run folder, so git finds no repository above ws/ (R4, D2-113); CLAUDE.md and `.claude/` above ws/ stay unread as M0 verified (D2-114).
++- **Kept outside the folder** (R6, D2-116): the board-restore records and the webview's panel state (VS Code's lists of open boards), the CLI's conversation files, History's refs in the git repository that holds the folder. **Not migrated** (U5): runs and consents in VS Code's storage stay where they are; the user guide says how to delete them.
++- `docs/user-guide.md`, `docs/project-report.md`, `docs/project-report-files.md`; this plan: §1, §1.1, §2.10, §6.1, §7.2 (D2-107–D2-117), §8. `docs/m2-plan.md` §4.2 and §8 and the architecture document's §8.4 stay as history, superseded here.
++- Tests: §6.1's 2k2 list. Scope: this entry only.
++
+ ## 2. Contracts (integrator's; builders implement them as written)
+ 
+ ### 2.1 Facts: `DeclFacts.typeConsts` (the field in 2a1; the probe in 2b3, isolated in 2b3a; its core half in 2b2)
+@@ -1543,6 +1556,16 @@
+   | { kind: 'queue-start'; by: SealBy; steps: string[] };
+ ```
+ 
++### 2.10 Where a model's data lives (2k2, D2-107)
++Supersedes `docs/m2-plan.md` §4.2's `<runsDir>/<rootKey>/<runId>/` with `runsDir = <globalStorage>/runs`, §8.2's consent in `globalState` (`telelean.claudeConsent.<rootKey>`), §8.4's `runsDir` and the architecture document's §8.4 shadow path.
++- (2k2, D2-108) **Runs:** `<model>/.telelean/runs/<runId>/{ws, build, git, session, frozen/<n>, gate/<n>, scratch, run.json, …}`, the layout of `shadow/types.ts` unchanged inside. `runsDirOf(root)` names the folder; `CreateShadowOptions.runsDir` is that folder, `listRunDirs(runsDir)` and `pruneRunDirs(runsDir, keep, protect)` read it, and `RunManagerOptions` has no `runsDir`. `rootKeyOf` of `shadow/` is gone (History's `rootKeyOf` in `workspace/git.ts` stays).
++- (2k2, D2-109) **Ignored by git:** `.telelean/runs/.gitignore` holds `*` (written by `ensureRunsDir` when absent), and `/.telelean/runs/` is one of Initialize's `.gitignore` lines. History's snapshots, Apply's writes, `graph.json` and the model's file listing never include anything under it.
++- (2k2, D2-110) **Consent:** `.telelean/runs/consent.json`, `{ "format": "telelean-consent", "version": 1, "claude": true }`, written on a yes; only that exact content counts. A copied or cloned model never carries it (git-ignored); a recreated folder starts without it.
++- (2k2, D2-111) **A run recorded at another path** (U4): `recover()` compares run.json's `root` with this folder. Such a run is held, not recovered: no write in flight replayed, no judge, no Lean job, run.json untouched (moved back, it continues). `current()` shows it `interrupted`, not resumable, without the session's view, with the notice "This run was started in another folder (‹path›), so it cannot continue here. Stop ends it: your files are not changed and nothing is recorded." Stop (`cancel`) and a session's Exit (`end` exit) end it, `discarded` for a session, `cancelled` otherwise, writing only its own run.json (no attempt record, no other file). Every other action is refused with "This run was started in another folder, so it can only be stopped."
++- (2k2, D2-112) **Pruning** (`telelean.run.keepRuns`) lists only directories named like a run id that hold `run.json` or a `git/` directory, and keeps the active run.
++- (2k2, D2-113) **The CLI's git:** `GIT_CEILING_DIRECTORIES` = the run folder (real path), in the CLI's environment and so its hooks'; the tool server runs in the host. The shadow's own git keeps its explicit `GIT_DIR`.
++- (2k2, D2-116) **History's refs** live in the git repository that holds the model folder: its own `.git` (Initialize), or, for a model inside a larger repository, that repository.
++
+ ## 3. The session engine (runner; 2d–2f)
+ 
+ ### 3.1 Invariants
+@@ -2751,6 +2774,17 @@
+ - **VS Code end to end** (`test/suite/e2e-runs.test.ts`, over the DevTools protocol, the FakeBackend's normative script, real Lean): a session started on the board reaches its first stage; Exit on the session bar, confirmed, leaves the plain panel with the exited line and Dismiss, no session bar, no review panel, the files unchanged and the attempt resolved discarded; Dismiss removes it. Written to typecheck; not run by the builder (§0).
+ - **Mutation checks** for each key rule (`session()` null after each kind of end, the end's session change, the board's defence, no Exit for an ended run), each restored byte for byte (§8).
+ 
++**2k2:** (runner unit tests with the fake engine and real git; the extension's vitest; the VS Code suites and the smoke script written to typecheck and match, run only by the integrator)
++- **Runs location** (`shadow.test.ts`, `manager.lifecycle.test.ts`, `session.reload.test.ts`, the harness): a run's folder is `<root>/.telelean/runs/<runId>/`; `.telelean/runs/.gitignore` holds `*`; recovery reads only that folder (a run in another root's folder is never recovered); a recreated folder at the same path has no run and no consent.
++- **Moved runs** (`manager.lifecycle.test.ts`): a session and a v1 run whose run.json names another root come back `interrupted`, not resumable, with the notice, run.json unchanged; decide, resume and submit are refused; Stop and Exit end it (`discarded` / `cancelled`) with no attempt record and no other write.
++- **Pruning** (`shadow.test.ts`): `consent.json`, `.gitignore`, a non-run directory and the active run survive.
++- **Git and History** (`initialize.test.ts`, `history.test.ts` or `files.test.ts`): `GITIGNORE_LINES` has `/.telelean/runs/`; `scopesOf` and `listScopeFiles` ignore run files; `findModelRoots` and `inspectFolder` skip `.telelean/runs`; with a real repository, `git status` shows nothing under `.telelean/runs/` after a run folder is made (the self-ignoring file).
++- **Watcher** (`modelPaths.test.ts`): `classifyModelPath` ignores `.telelean/runs/**`, `.lean` files and run.json included.
++- **Confinement** (`confinement.test.ts` or the guard's tests, `profile-shadow.test.ts`/`guards.test.ts`): ws/ under `<model>/.telelean/runs/<id>/ws`: in-ws paths, Grep and Glob allowed; `..`, absolute paths to `Model/…`, `.telelean/…`, `.git/…`, a symlink out of ws/ and a grep root above ws/ denied; the board's build masks `.telelean/runs`.
++- **The CLI's environment** (`argvEnv.test.ts`): `GIT_CEILING_DIRECTORIES` is the run folder; `git rev-parse` from ws/ with that environment, inside a scratch repository, finds no repository.
++- **Extension** (`hostRuns.test.ts`, `realRuns.test.ts`): the RunManager gets the root, no runs dir; consent is written to and read from `consent.json`, never `globalState`; `reset()` deletes the consent of the roots it resets; real runs land in the model folder.
++- **Mutation checks** of the runs location, the git-ignore line and the self-ignoring file, the watcher exclusion, the hidden-segment rule relative to ws/, `GIT_CEILING_DIRECTORIES`, the per-folder consent, the moved-run rule and pruning that spares the consent file (§8).
++
+ ### 6.2 Cheat scenarios
+ Each is a FakeBackend script in `packages/runner/test/run/fixtures/sessions/`, and the same state is built by hand in `core/test/review/cheats.test.ts`.
+ - **S1:**
+@@ -2976,6 +3010,23 @@
+ 104. **D2-104** AUTOPILOT DECISION (2k1): D3's place is the store, not RunPanel's selector: `applyRun` clears the session view of a run that has ended (as `session: null` does: the review UI, the Proposed view, a session dialog), and `receive` reads a view that arrives for the run the store holds as ended as `session: null`. One rule then covers the review panel, the session bar, the Proposed overlay, the session's Undo scope and the session dialogs. A view of another run, or one that arrives with no run in the store, is kept as before. *Alternative:* RunPanel's `session` selector (and the session bar's and the badge's), which would leave a stale view in the store for the Proposed view, Undo's scope and the dialogs.
+ 105. **D2-105** AUTOPILOT DECISION (2k1): the Exit line is one text, core's `REVIEW_TEXTS.exited`, which the runner's notice and the board's line both use, as `REVIEW_TEXTS.applied` already was for Apply; `END_TEXTS.exited` goes. *Alternative:* a copy of the runner's text in the webview, two copies to keep equal.
+ 106. **D2-106** AUTOPILOT DECISION (2k1): one VS Code scenario, Exit (D6's minimum): an Apply scenario would have to decide every item, show the results, submit and wait for the final check through the board or the testing API, a long script that nobody can run before the integrator; Apply's ended outcome is covered by the runner's tests, the store's and Playwright's. *Alternative:* a second scenario for Apply.
++107. **D2-107** USER DECISION (turn 27, 2026-11-23; built by 2k2): "make everything except the CLI's own conversation files and the fact extractor local to the project folder", as the orchestrator described it in turn 26, after the user deleted a model folder with an open session, made a new one at the same path, and found the old session's items, its consent, and on Exit its attempt record in the new folder (same `rootKey`).
++    - **U1.** Everything telelean keeps for a model lives inside the model folder, except the Claude CLI's own conversation files (`~/.claude/projects/…`) and the shared Lean fact extractor. Deleting the folder deletes the rest; a folder recreated at the same path starts clean.
++    - **U2.** Runs in `<model>/.telelean/runs/<runId>/`, today's layout inside; `/.telelean/runs/` in Initialize's `.gitignore` lines, and `.telelean/runs/.gitignore` with `*` when telelean creates the folder.
++    - **U3.** Consent in the model folder, inside the git-ignored runs folder, asked once per folder with the same dialog.
++    - **U4.** A moved, renamed or copied folder takes its runs along; a run recorded at another path cannot continue: only Exit (a session) or Stop (any other run), changing no model file.
++    - **U5.** No migration: runs and consents in VS Code's storage are neither read nor deleted; the user guide says where they are.
++    - **Requirements (orchestrator):** R1 git never sees run data; R2 run activity never looks like a model change (watcher, scans); R3 confinement holds with ws/ inside the model folder (the hidden-segment rule relative to ws/; the Lean sandbox never binds the model folder writable); R4 the CLI sees nothing more of the model folder (`GIT_CEILING_DIRECTORIES`; CLAUDE.md and `.claude/`); R5 recovery and pruning per folder; R6 an inventory of other per-model state; R7 hidden results stay hidden from the board; R8 tests move to the new layout.
++108. **D2-108** AUTOPILOT DECISION (2k2): the runs folder is derived from the root (`runsDirOf`), and `RunManagerOptions.runsDir` goes, so no caller can make a manager recover or prune elsewhere (R5); the run folder loses the `<rootKey>` level, which only told roots apart in a shared folder. `CreateShadowOptions.runsDir` stays (now the runs folder itself), so the shadow's own tests keep a scratch folder. *Alternative:* keep `runsDir` as an option that the host sets to `runsDirOf(root)`, leaving the rule to each caller.
++109. **D2-109** AUTOPILOT DECISION (2k2): `ensureRunsDir` writes `.gitignore` (`*`) only when it is absent, at each run's creation and at the consent's write, so a folder made by an older build or by hand is covered; a `.gitignore` the user changed is left alone. *Alternative:* write it only when the folder is created, which would leave a folder created before 2k2 (or by hand) unignored.
++110. **D2-110** AUTOPILOT DECISION (2k2): the consent file holds a small JSON record, and only its exact form counts; only a yes is written, as before (a no is asked again). *Alternative:* an empty marker file, which any stray file of that name would satisfy.
++111. **D2-111** AUTOPILOT DECISION (2k2), U4: a run recorded at another path is held without its session layer, shown as an interrupted run with one Stop button and the notice, and its end records nothing in this folder (the safe default U4 names); a session's Exit is accepted too and does the same. run.json stays untouched until the user ends it, so a folder moved back lets the run go on. **FOR THE USER:** the board offers that run "Stop", not "Exit session", because the review panel (where Exit lives) needs the session view, which would mean judging and replaying the run in a folder it did not start in; the Outcome's line is the plain panel's interrupted line, with the notice above it. *Alternative:* recover it through the session layer with the review panel, and refuse everything but Exit (a webview change, and judges and replays run for a run that cannot continue); or end it at once on recovery, which U4 does not ask for.
++112. **D2-112** AUTOPILOT DECISION (2k2): pruning deletes a directory only when it is a run folder (a run-id name, and `run.json` or a shadow `git/` inside); files and other directories in `.telelean/runs/` are never deleted. *Alternative:* today's rule, which deleted any run-id-named directory whose run.json was missing, harmless in telelean's own storage but not in a folder the user can see and write.
++113. **D2-113** AUTOPILOT DECISION (2k2): `GIT_CEILING_DIRECTORIES` is the run folder's real path, so git from ws/ (or below) looks only at ws/ itself (which never holds `.git`) and never at the run folder or above; it is set in `prepare()` on top of the sanitised environment, so the guard's self-test, the CLI and its hooks all get it. The CLI has no Bash tool; this is a second layer for anything it runs itself. *Alternative:* `GIT_DIR=/dev/null`, which would make every git call fail instead of finding nothing.
++114. **D2-114** AUTOPILOT DECISION (2k2), **FOR THE USER to confirm:** no new guard against CLAUDE.md or `.claude/` in the directories above ws/. M0 established in the CLI binary that `--setting-sources=` loads no user, project or local settings and that `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1` loads no CLAUDE.md (bundle 2's M0 report; both pinned in `argvEnv.test.ts`), and skills, commands and agents are out of reach (`--tools` lists only the five file tools; Agent is disallowed). The home directory's files were already above the old run folder. *Alternative:* the preflight refuses to start when a CLAUDE.md or `.claude/` exists between ws/ and the filesystem root (the home login folder excepted), which would refuse every model kept inside a project with its own CLAUDE.md.
++115. **D2-115** AUTOPILOT DECISION (2k2): the board's in-place Lean build (`semantic/refresh.ts`) masks `<root>/.telelean/runs` with a tmpfs as it masks `.git`, so the model's own Lean code sees no run data, as before, when runs lived under the masked home. A run's own Lean jobs bind only that run's build folder, as before (no bind covers the model folder). *Alternative:* leave the runs folder readable to the board's build (read-only).
++116. **D2-116** AUTOPILOT DECISION (2k2), R6: the board-restore records (workspaceState: each open board's title, root and subject) and the webview's panel state (VS Code's, per panel: subject, panel sizes, the review's current item for the same run id only) stay where VS Code keeps them: they describe the window, not the model, and name no run file. Test mode's `reset()` deletes `consent.json` of the roots it resets and no longer touches `globalState` (U5). *Alternative:* keep them in the folder, which would make a window's layout travel with a copied model.
++117. **D2-117** AUTOPILOT DECISION (2k2), **FOR THE USER:** the CLI's own deny rules (the second layer behind the path guard) are written only for a root path of `[A-Za-z0-9._/-]` (`cliDenyRules`); ws/ now sits under the model folder, so a model folder whose path has a space or another character gets the guard alone, as the rule syntax for such paths was never verified (the CLI may not be run to check it). The guard, which the backend self-tests before every start, is unchanged. *Alternative:* refuse runs in such folders, or quote the paths in the rules without a check against the CLI.
+ 
+ ### 7.3 Carried in from slice 1 (for the integrator)
+ - **Leaks the designs found in slice 1's code.** The review-UI and checks designs found that the 1d Proposed view shows the outcome before the reveal:
+@@ -4104,6 +4155,7 @@
+   - **Fixed:** A-F2 (the Exit during a running step asserts `session()` null and the end's change), A-F3 (a runner test pins D2-101: `session()` reads `run.saved`, not `run.ended`; with run.json's end write held, `session()` is still the live view and `current()` still active), A-F4 (the VS Code scenario asserts only that the last attempt record is `discarded`, not the older scenarios' whole list, which has not run since 2h), F-F2 (the Playwright test's title says what it checks: the store clears the view when the ended run arrives, and drops a late view).
+   - **Not fixed, decided (alternatives in each):** F-F1: `applyRun` calls `set(patch)` and then `receive(null)` in one synchronous tick, so no render sees the ended run with the session view (the store notifies, React reads the snapshot when it renders, after both); a second check in RunPanel's selector could not be tested, because the store always clears first (alternative: add it untested). A-F1: after an Apply, or an Exit after Show results, the line is also the last notice in the folded "Earlier notices": cosmetic, and the same text the runner records in run.json for any reader of the notices (alternative: filter a notice equal to `endedText(run)` out of the plain panel).
+   - **Mutation checks:** A3 (`session()` tests `run.ended`) fails only the new D2-101 test; A2 (`session()` null for every end but a discarded one) fails the Exit during a running step and 3 other tests; both restored byte for byte (`cmp`).
++- builder 2k2 (2026-11-23): the plan update for sub-slice 2k2, the user's decision of turn 27 (D2-107, §7.2), before any code: §1 (the 2k2 row and its note), §1.1's 2k2 entry, §2.10 (new: where a model's data lives), §6.1's 2k2 list, §7.2 (D2-107, and D2-108–D2-117, each with its alternative). Each changed sentence is tagged "(2k2, D2-n)". Superseded: `docs/m2-plan.md` §4.2 (`runsDir = <globalStorage>/runs`, the `<rootKey>` level), §8.2 (consent in `globalState`), §8.4 (`runsDir`), and the architecture document's §8.4 shadow path.
+ 
+ ## 9. Baseline numbers (filled in as measured)
+ 
+--- a/docs/user-guide.md
++++ b/docs/user-guide.md
+@@ -248,7 +248,11 @@
+ 
+ What is sent, through your Claude Code login: a fixed system prompt (the same text every run), the first message (the target, the selected premises and the subject's other cards with their sentences, reasons and Lean; the vocabulary; your earlier answers that are in force; the run's budget), every model file Claude reads in its copy (all subjects of the project are in the copy, so imports work), and every tool result (Lean check results, your answers, the check verdicts). Your Feedback text and your answers go as messages. telelean sends nothing else from your machine. Claude Code itself may also send its own usage telemetry and error reports, as it does in your other sessions: the switches that turn those off (`DISABLE_TELEMETRY`, `DISABLE_ERROR_REPORTING`, or `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` for all non-essential traffic) are passed on to telelean's runs when VS Code was started with them.
+ 
+-What stays on your machine: each run's directory in VS Code's storage for telelean (`~/.config/Code/User/globalStorage/telelean.telelean/runs/…`: Claude's working copy, its Lean build, its git history, `run.json` and `session/transcript.jsonl`, the exact text of every message and tool call). The newest `telelean.run.keepRuns` (10) finished runs per model folder are kept. Claude Code also keeps its own transcript of each session under `~/.claude/projects/` (that is how a session is resumed); telelean never reads it.
++What stays on your machine, all of it inside your model folder: each run's directory, `.telelean/runs/<run id>/` (Claude's working copy, its Lean build, its git history, `run.json` and `session/transcript.jsonl`, the exact text of every message and tool call), and your consent, `.telelean/runs/consent.json`. The runs folder is ignored by git (it holds a `.gitignore` of its own, and Initialize adds `/.telelean/runs/` to the model's `.gitignore`), so it is never committed, shared or copied with a clone, and telelean never reacts to what changes in it. The newest `telelean.run.keepRuns` (10) finished runs are kept. Delete the model folder and all of it goes too; a new folder at the same path starts with no session and asks for your consent again. Outside the model folder: Claude Code's own transcript of each session under `~/.claude/projects/` (that is how a session is resumed; telelean never reads it), and VS Code's list of the boards a window had open.
++
++If you move, rename or copy a model folder, its runs go with it. A run that was open in the folder's old place cannot go on in the new one: the board shows it as interrupted, with a notice naming the folder it was started in, and offers only **Stop**, which ends it without changing your files or recording anything in this folder. Moved back, it can go on.
++
++Runs and consents of telelean versions before this one were kept in VS Code's storage, `~/.config/Code/User/globalStorage/telelean.telelean/runs/` (and the consents in VS Code's own state). telelean no longer reads or deletes them: delete that `runs` folder by hand when no older telelean is running.
+ 
+ ### 10.4 The run panel, and the board during a run
+ 
+@@ -415,4 +419,4 @@
+ - **telelean's commands are missing from the Command Palette**: the folder is open in Restricted Mode. Run **Workspaces: Manage Workspace Trust** and trust it.
+ - **Apply disabled, "Your files changed since the session started"**: undo the edits in the editor (the message names the files) and Apply again, or exit the session.
+ - **Ctrl+Z does nothing on the Current view during a session**: the board's Undo is locked then (10.14); switch to Proposed (or click into the review panel) to undo your review steps.
+-- **To free disk space**: lower `telelean.run.keepRuns`, or delete old run folders under `~/.config/Code/User/globalStorage/telelean.telelean/runs/` while no run is active.
++- **To free disk space**: lower `telelean.run.keepRuns`, or delete old run folders under the model folder's `.telelean/runs/` while no run is active (keep `consent.json` there if you do not want to be asked again). Runs left by telelean versions before this one are in `~/.config/Code/User/globalStorage/telelean.telelean/runs/`, which you can delete as a whole.
+--- a/packages/extension/scripts/demo-driver.mjs
++++ b/packages/extension/scripts/demo-driver.mjs
+@@ -212,19 +212,16 @@
+ /** The instance's profile, once made (main). */
+ const profileRef = { current: undefined };
+ 
+-/** Every run.json of this instance: { runId, dir, run } newest first. */
++/** Every run.json of the demo folder (2k2: `<folder>/.telelean/runs/<runId>/`): { runId, dir, run } newest first. */
+ function listRuns() {
+-  if (!profileRef.current) return [];
+-  const base = runsDirOf(profileRef.current);
++  const base = runsDirOf(folder);
+   const out = [];
+-  for (const rootKey of safeReaddir(base)) {
+-    for (const runId of safeReaddir(path.join(base, rootKey))) {
+-      const file = path.join(base, rootKey, runId, 'run.json');
+-      try {
+-        out.push({ runId, dir: path.dirname(file), run: JSON.parse(readFileSync(file, 'utf8')) });
+-      } catch {
+-        // not written yet, or being replaced
+-      }
++  for (const runId of safeReaddir(base)) {
++    const file = path.join(base, runId, 'run.json');
++    try {
++      out.push({ runId, dir: path.dirname(file), run: JSON.parse(readFileSync(file, 'utf8')) });
++    } catch {
++      // not written yet, or being replaced (or the folder's .gitignore and consent.json)
+     }
+   }
+   return out.sort((a, b) => (Date.parse(b.run.view?.updatedAt ?? '') || 0) - (Date.parse(a.run.view?.updatedAt ?? '') || 0));
+--- a/packages/extension/scripts/demo-vscode.mjs
++++ b/packages/extension/scripts/demo-vscode.mjs
+@@ -84,9 +84,9 @@
+   return file;
+ }
+ 
+-/** `<user-data>/User/globalStorage/telelean.telelean/runs`: the RunManager's run directories (run.json, transcript). */
+-export function runsDirOf(profile) {
+-  return path.join(profile.userData, 'User', 'globalStorage', EXTENSION_ID, 'runs');
++/** 2k2: `<model folder>/.telelean/runs`, the RunManager's run directories (run.json, transcript) of that model. */
++export function runsDirOf(modelFolder) {
++  return path.join(modelFolder, '.telelean', 'runs');
+ }
+ 
+ /** The extension's own log files ("telelean" output channel) under the instance's logs. */
+--- a/packages/extension/scripts/smoke-units.mjs
++++ b/packages/extension/scripts/smoke-units.mjs
+@@ -9,8 +9,8 @@
+ // The test instance writes its logs into the smoke run's own user-data dir (<user-data>/logs/<session>/...), and they
+ // name its extension hosts ("Started local extension host with pid N." in renderer.log, "Extension host with pid N
+ // started" in exthost.log, "Extension host with pid N exited ..." in main.log) and, in the extension's own log, its
+-// Claude runs ("runId":"…"). A run also has a directory <user-data>/User/globalStorage/telelean.telelean/runs/<root
+-// key>/<run id>/ unless a test deleted it.
++// Claude runs ("runId":"…"). A run also has a directory in its model folder, <model>/.telelean/runs/<run id>/ (2k2;
++// until then <user-data>/User/globalStorage/telelean.telelean/runs/<root key>/<run id>/), unless a test deleted it.
+ //
+ // A unit named after one of these is this smoke run's even when no process is left in it. That is how a scope used to
+ // be left behind: when runLean SIGKILLed systemd-run while systemd-run was still waiting for its scope to be created (a
+@@ -45,11 +45,13 @@
+ 
+ /**
+  * This smoke run's extension host pids and Claude run ids, from the test instance's user-data dir: every `*.log`
+- * under <user-data>/logs (down to 5 levels) and the run directories under the extension's global storage.
++ * under <user-data>/logs (down to 5 levels), and (2k2) the run directories in the runs folder of each model folder the
++ * run used (<model>/.telelean/runs/<run id>/).
+  * @param {string} userData the smoke run's <profile>/user-data
++ * @param {readonly string[]} [modelRoots] the model folders of the smoke run
+  * @returns {Promise<{ hostPids: Set<number>, runIds: Set<string> }>}
+  */
+-export async function collectOwners(userData) {
++export async function collectOwners(userData, modelRoots = []) {
+   const hostPids = new Set();
+   const runIds = new Set();
+   async function walk(abs, level) {
+@@ -70,10 +72,8 @@
+     }
+   }
+   await walk(path.join(userData, 'logs'), 1);
+-  const runsDir = path.join(userData, 'User', 'globalStorage', 'telelean.telelean', 'runs');
+-  for (const root of await readdir(runsDir, { withFileTypes: true }).catch(() => [])) {
+-    if (!root.isDirectory()) continue;
+-    for (const run of await readdir(path.join(runsDir, root.name), { withFileTypes: true }).catch(() => [])) {
++  for (const root of modelRoots) {
++    for (const run of await readdir(path.join(root, '.telelean', 'runs'), { withFileTypes: true }).catch(() => [])) {
+       if (run.isDirectory() && RUN_ID.test(run.name)) runIds.add(run.name);
+     }
+   }
+--- a/packages/extension/scripts/smoke.mjs
++++ b/packages/extension/scripts/smoke.mjs
+@@ -420,7 +420,8 @@
+   spawnSync('systemctl', ['--user', 'stop', unit], { stdio: 'ignore' });
+   spawnSync('systemctl', ['--user', 'reset-failed', unit], { stdio: 'ignore' });
+ }
+-const owners = await collectOwners(path.join(dir, 'user-data'));
++// 2k2: each run's directory lives in its model folder.
++const owners = await collectOwners(path.join(dir, 'user-data'), [path.join(ws, 'mental_model'), path.join(ws, 'second_model'), e2eRoot, runsRoot]);
+ notes.push(
+   `this run's extension hosts (from its logs): ${owners.hostPids.size ? `pids ${[...owners.hostPids].join(', ')}` : 'none found'}; Claude run ids of this run: ${owners.runIds.size}`,
+ );
+--- a/packages/extension/src/logic/modelPaths.ts
++++ b/packages/extension/src/logic/modelPaths.ts
+@@ -84,9 +84,10 @@
+ const IGNORED_DIRS = new Set(['.lake', '.git', 'node_modules']);
+ /**
+  * Gitignored telelean outputs: writing them must not trigger anything (graph.json is rewritten after each refresh;
+- * `.telelean/*.tmp` are the temp files of atomic writes).
++ * `.telelean/*.tmp` are the temp files of atomic writes; 2k2, D2-107 R2: `.telelean/runs/` holds every run, whose
++ * working copy's `.lean` files and Lean builds must never reload, re-check or snapshot the model).
+  */
+-const IGNORED_SIDECARS = ['.telelean/graph.json', '.telelean/frozen/', '.telelean/sessions/'];
++const IGNORED_SIDECARS = ['.telelean/graph.json', '.telelean/frozen/', '.telelean/sessions/', '.telelean/runs/'];
+ const PROJECT_FILES = new Set(['lakefile.toml', 'lakefile.lean', 'lean-toolchain', 'lake-manifest.json']);
+ 
+ /**
+--- a/packages/extension/src/logic/runs.ts
++++ b/packages/extension/src/logic/runs.ts
+@@ -1,7 +1,8 @@
+ /**
+  * M2 Claude runs on the host side, without the vscode API (docs/m2-plan.md section 8):
+  *
+- *   egress consent      asked once per model root before its first run (8.2), remembered by the host (globalState)
++ *   egress consent      asked once per model root before its first run (8.2); a yes is remembered in the model folder,
++ *                       `.telelean/runs/consent.json` (2k2, docs/slice2-plan.md 2.10, D2-110)
+  *   the Claude backend  built lazily, by a factory the root's RunManager calls at the first start that passed
+  *                       preflight (8.4): the explicit guard script path in dist/bin, the hook runtime, the client
+  *                       app, the `setpriv --pdeathsig KILL` launcher, and the folder of the Claude Code extension VS
+@@ -10,10 +11,12 @@
+  *                       calls createClaudeBackend; only a backend a test installs (`testing.useRunBackend`) runs
+  *   busy check          at most one active run per root: a start while one is active is refused (`conflict`)
+  */
++import { readFile, rm, writeFile } from 'node:fs/promises';
+ import * as path from 'node:path';
+ 
+ import { isTerminalRunState, RUN_MESSAGE_TYPES, type RunView, type WebviewToHostMessage } from '@telelean/core';
+ import type { ResolvedBinary } from '@telelean/runner/llm/binary.js';
++import { ensureRunsDir, runsDirOf } from '@telelean/runner/shadow/index.js';
+ import type { HookRuntime } from '@telelean/runner/llm/confinement.js';
+ import type { LlmBackend } from '@telelean/runner/llm/types.js';
+ import type { ClaudeBackendSettings, RunManager } from '@telelean/runner/run/types.js';
+@@ -47,11 +50,39 @@
+ // ---------------------------------------------------------------------------------------------
+ // Egress consent (docs/m2-plan.md section 8.2)
+ 
+-export const CONSENT_KEY_PREFIX = 'telelean.claudeConsent.';
+-/** The globalState key that remembers the consent for one model root (`shadow.rootKeyOf(root)`). */
+-export function consentKey(rootKey: string): string {
+-  return `${CONSENT_KEY_PREFIX}${rootKey}`;
++/**
++ * 2k2 (D2-110, U3): the consent of one model folder lives in it, inside its git-ignored runs folder, so a copied or cloned
++ * model never carries it and a folder recreated at the same path starts without it. Only a yes is written. (Until 2k2
++ * it was VS Code's `globalState` key `telelean.claudeConsent.<rootKey>`, which is never read or removed now, U5.)
++ */
++export const CONSENT_FILE = 'consent.json';
++/** The consent file's exact text: nothing else counts as a yes. */
++export const CONSENT_TEXT = `${JSON.stringify({ format: 'telelean-consent', version: 1, claude: true })}\n`;
++
++export function consentPath(root: string): string {
++  return path.join(runsDirOf(root), CONSENT_FILE);
++}
++
++/** Whether the model folder `root` holds a yes (never throws: an unreadable or different file is a no). */
++export async function hasConsent(root: string): Promise<boolean> {
++  try {
++    return (await readFile(consentPath(root), 'utf8')) === CONSENT_TEXT;
++  } catch {
++    return false;
++  }
+ }
++
++/** Remembers a yes in the model folder (the runs folder and its `.gitignore` made first, D2-109). */
++export async function rememberConsent(root: string): Promise<void> {
++  await ensureRunsDir(runsDirOf(root));
++  await writeFile(consentPath(root), CONSENT_TEXT, { encoding: 'utf8', mode: 0o600 });
++}
++
++/** Test mode's reset: forgets the consent of `root` (nothing else in its runs folder). */
++export async function forgetConsent(root: string): Promise<void> {
++  await rm(consentPath(root), { force: true });
++}
++
+ /** The modal's message and detail: together exactly the text of docs/m2-plan.md section 8.2. */
+ export const CONSENT_MESSAGE = 'Run Claude on this model?';
+ export const CONSENT_DETAIL =
+--- a/packages/extension/src/vscode/host.ts
++++ b/packages/extension/src/vscode/host.ts
+@@ -11,9 +11,9 @@
+  * A folder without `.telelean/config.json` never gets a workspace, so nothing runs Lean there (D-28 opt-in).
+  *
+  * M2 (docs/m2-plan.md section 8): each root's RunManager lives with its workspace in the registry, with the run
+- * directories under VS Code's global storage (`<globalStorage>/runs`) and a lazy Claude backend (logic/runs.ts: built
+- * at the first start that passed preflight; refused in Test mode unless a test installed one). The board asks for
+- * the egress consent once per root (remembered in globalState) and shows a proposal's raw Lean diff beside it.
++ * directories in the model folder (2k2, docs/slice2-plan.md 2.10: `<root>/.telelean/runs`) and a lazy Claude backend
++ * (logic/runs.ts: built at the first start that passed preflight; refused in Test mode unless a test installed one).
++ * The board asks for the egress consent once per root (remembered in that folder) and shows a raw Lean diff beside it.
+  * Deactivation disposes the run managers first (an active run is persisted and its session closed).
+  */
+ import { access } from 'node:fs/promises';
+@@ -30,7 +30,6 @@
+   type WebviewToHostMessage,
+ } from '@telelean/core';
+ import type { RunManager } from '@telelean/runner/run/types.js';
+-import { rootKeyOf } from '@telelean/runner/shadow/index.js';
+ import type { ModelWorkspace, WorkspaceChange } from '@telelean/runner/workspace/index.js';
+ 
+ import type {
+@@ -56,10 +55,11 @@
+   CLAUDE_EXTENSION_ID,
+   claudeBackendSettings,
+   CONSENT_DETAIL,
+-  CONSENT_KEY_PREFIX,
+   CONSENT_MESSAGE,
+   CONSENT_YES,
+-  consentKey,
++  forgetConsent,
++  hasConsent,
++  rememberConsent,
+   runBackendFactory,
+   type RunBackendOverride,
+ } from '../logic/runs';
+@@ -458,14 +458,12 @@
+    * Claude binary. Throws when runs are unavailable (no storage folder, or the runner's run functions are missing).
+    */
+   private createRunManager(root: string, workspace: ModelWorkspace): RunManager {
+-    const storage = (this.context.globalStorageUri as vscode.Uri | undefined)?.fsPath;
+-    if (!storage) throw new Error('VS Code gave telelean no global storage folder for its run directories');
++    // 2k2 (D2-108): the root's runs live in its own folder (`<root>/.telelean/runs`), which the manager derives.
+     const runner = this.runner;
+     const name = path.basename(root);
+     const log: Log = (level, message) => this.logAt(level, `[${name}] ${message}`);
+     return runner.createRunManager({
+       root,
+-      runsDir: path.join(storage, 'runs'),
+       workspace,
+       settings: this.settingsFor(root).run,
+       services: {
+@@ -495,14 +493,13 @@
+ 
+   /**
+    * Egress consent (docs/m2-plan.md section 8.2), once per model root: a modal naming exactly what leaves the machine;
+-   * a yes is remembered in globalState (`telelean.claudeConsent.<rootKey>`). A no starts nothing and is not
+-   * remembered, so the next start asks again. In Test mode the testing API answers it.
++   * a yes is remembered in the model folder (2k2, D2-110: `.telelean/runs/consent.json`, git-ignored). A no starts
++   * nothing and is not remembered, so the next start asks again. In Test mode the testing API answers it.
+    */
+   private async claudeConsent(root: string): Promise<boolean> {
+-    const key = consentKey(rootKeyOf(root));
+-    if (this.context.globalState.get<unknown>(key) === true) return true;
++    if (await hasConsent(root)) return true;
+     const yes = await this.confirm('claudeConsent', CONSENT_MESSAGE, CONSENT_DETAIL, CONSENT_YES);
+-    if (yes) await this.context.globalState.update(key, true);
++    if (yes) await rememberConsent(root);
+     this.log.info(`[${path.basename(root)}] Claude consent: ${yes ? 'allowed (remembered for this model folder)' : 'declined'}`);
+     return yes;
+   }
+@@ -624,14 +621,14 @@
+         host.registry.forget(root);
+       },
+       reset: async () => {
++        const resetRoots = new Set([...host.boards.keys(), ...host.registry.roots()]);
+         for (const board of [...host.boards.values(), ...host.orphans, ...(host.sample ? [host.sample] : [])]) board.dispose();
+         for (const root of host.registry.roots()) host.registry.forget(root);
+         host.promptAnswers = {};
+         host.runBackend = undefined;
+         await host.context.workspaceState.update(RECORDS_KEY, undefined);
+-        for (const key of host.context.globalState.keys()) {
+-          if (key.startsWith(CONSENT_KEY_PREFIX)) await host.context.globalState.update(key, undefined);
+-        }
++        // 2k2 (D2-116): the consent of each root it resets, in that folder (VS Code's globalState is not touched, U5).
++        for (const root of resetRoots) await forgetConsent(root).catch(() => undefined);
+       },
+     };
+     return {
+--- a/packages/extension/test/suite/fakeWorkspace.ts
++++ b/packages/extension/test/suite/fakeWorkspace.ts
+@@ -381,7 +381,7 @@
+     created('lakefile.toml', 'name = "Model"\ndefaultTargets = ["Model"]\n\n[leanOptions]\nautoImplicit = false\nrelaxedAutoImplicit = false\n\n[[lean_lib]]\nname = "Model"\n'),
+     created('lean-toolchain', 'leanprover/lean4:v4.35.0\n'),
+     created('lake-manifest.json', '{"version": "1.1.0",\n "packagesDir": ".lake/packages",\n "packages": [],\n "name": "Model",\n "lakeDir": ".lake"}\n'),
+-    created('.gitignore', '/.lake/\n/.telelean/graph.json\n/.telelean/frozen/\n/.telelean/sessions/\n/.telelean/*.tmp\n'),
++    created('.gitignore', '/.lake/\n/.telelean/graph.json\n/.telelean/frozen/\n/.telelean/sessions/\n/.telelean/*.tmp\n/.telelean/runs/\n'),
+     created('Model.lean', `import Model.${options.subject}\n`),
+     ...subjectScaffold(options.subject, 'Model').map((f) => created(f.path, f.text)),
+     created('.telelean/config.json', serializeProjectConfig(defaultProjectConfig())),
+--- a/packages/extension/test/suite/runs.test.ts
++++ b/packages/extension/test/suite/runs.test.ts
+@@ -262,9 +262,13 @@
+     const [question] = latestRun.pendingQuestions.questions;
+     assert.equal(question?.phenomenon, 'modality');
+     assert.equal('claudesGuess' in (question ?? {}), false, "Claude's guess must not reach the board before the answer (D-20)");
+-    // The run directories live in the isolated profile's global storage, never in the user's.
+-    const runs = path.join(process.env.TELELEAN_SMOKE_DIR ?? '', 'user-data', 'User', 'globalStorage', 'telelean.telelean', 'runs');
+-    assert.ok(existsSync(runs), `${runs} does not exist`);
++    // 2k2 (docs/slice2-plan.md 2.10): the run's directory lives in the model folder (the suite's copy), git-ignored by
++    // its runs folder's own .gitignore, and nothing is put in VS Code's storage.
++    const runs = path.join(root, '.telelean', 'runs');
++    assert.ok(existsSync(path.join(runs, runId, 'run.json')), `${runs}/${runId}/run.json does not exist`);
++    assert.equal(readFileSync(path.join(runs, '.gitignore'), 'utf8'), '*\n');
++    const storage = path.join(process.env.TELELEAN_SMOKE_DIR ?? '', 'user-data', 'User', 'globalStorage', 'telelean.telelean', 'runs');
++    assert.equal(existsSync(storage), false, `${storage} exists`);
+   });
+ 
+   test('the answer goes through the board; the gate passes and the edit session’s first stage arrives; the real files are untouched', async function () {
+--- a/packages/extension/test/unit/hostRuns.test.ts
++++ b/packages/extension/test/unit/hostRuns.test.ts
+@@ -15,10 +15,10 @@
+ import { FakeBackend } from '@telelean/runner/llm/fake.js';
+ import type { ClaudeCliBackend } from '@telelean/runner/llm/claudeCli.js';
+ import type { ClaudeBackendSettings, RunManagerOptions } from '@telelean/runner/run/types.js';
+-import { rootKeyOf } from '@telelean/runner/shadow/index.js';
+ import type { LeanCheckEngine } from '@telelean/runner/gate/types.js';
+ import type { ProposalService, RunSidecarStore } from '@telelean/runner/proposal/types.js';
+-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
++import { existsSync } from 'node:fs';
++import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+ import { tmpdir } from 'node:os';
+ import * as path from 'node:path';
+ import type * as vscode from 'vscode';
+@@ -26,7 +26,7 @@
+ 
+ import type { TeleleanApi } from '../../src/api';
+ import { activate, deactivate } from '../../src/extension';
+-import { CONSENT_DECLINED, CONSENT_DETAIL, CONSENT_MESSAGE, consentKey, TEST_MODE_NO_CLAUDE } from '../../src/logic/runs';
++import { CONSENT_DECLINED, CONSENT_DETAIL, CONSENT_MESSAGE, CONSENT_TEXT, consentPath, TEST_MODE_NO_CLAUDE } from '../../src/logic/runs';
+ import { TeleleanHost } from '../../src/vscode/host';
+ import type { RunnerFunctions } from '../../src/vscode/runner';
+ import { FakeRunManager, FakeWorkspace, sampleRun } from './fakes';
+@@ -154,7 +154,8 @@
+     if (!manager?.options) throw new Error('no RunManager');
+     const { options } = manager;
+     expect(options.root).toBe(rootA);
+-    expect(options.runsDir).toBe(path.join(storage, 'runs'));
++    // 2k2 (D2-108): no runs dir; the manager keeps the root's runs in `<root>/.telelean/runs`.
++    expect('runsDir' in options).toBe(false);
+     expect(options.workspace).toBe(api.workspaceFor(rootA));
+     expect(options.settings).toEqual(DEFAULT_RUN_SETTINGS); // the stub's configuration has no user values
+     expect(options.services.engine).toBe(ENGINE);
+@@ -205,13 +206,32 @@
+     expect((last?.payload.run as { subject: string }).subject).toBe('Other');
+   });
+ 
+-  it('without a storage folder runs are unavailable: the board still works and a start says why', async () => {
++  it('2k2 (D2-108): without a storage folder runs are still available, since they live in the model folder', async () => {
+     const { host, api } = newHost(stub.ExtensionMode.Test, false);
+     await host.openBoardCommand({ root: rootA });
+-    expect(managers).toEqual([]);
++    expect(managers).toHaveLength(1);
++    expect(managers[0]?.options?.root).toBe(rootA);
+     api.testing?.answerPrompts({ claudeConsent: true });
+-    const outcome = await request(api, rootA, 'formalize', { inferences: [START], requestId: 's1' });
+-    expect(outcome).toEqual({ ok: false, code: 'not-yet', error: 'Claude runs are not available: VS Code gave telelean no global storage folder for its run directories' });
++    api.testing?.useRunBackend(() => new FakeBackend([]));
++    expect(await request(api, rootA, 'formalize', { inferences: [START], requestId: 's1' })).toMatchObject({ ok: true });
++  });
++
++  it('2k2 (D2-107 R2): file events under .telelean/runs/ never reach the model workspace; a model file\'s does', async () => {
++    const { host } = newHost(stub.ExtensionMode.Test);
++    await host.openBoardCommand({ root: rootA });
++    const workspace = workspaces[0];
++    if (!workspace) throw new Error('no workspace');
++    const watcher = stub.watchers.at(-1);
++    if (!watcher) throw new Error('no watcher');
++    const run = path.join(rootA, '.telelean', 'runs', 'r1');
++    for (const rel of ['ws/Model/Spyro/Main.lean', 'ws/Model.lean', 'ws/lakefile.toml', 'build/Model/Spyro/Main.lean', 'run.json']) {
++      watcher.fire('create', stub.Uri.file(path.join(run, rel)));
++      watcher.fire('change', stub.Uri.file(path.join(run, rel)));
++    }
++    watcher.fire('change', stub.Uri.file(path.join(rootA, '.telelean', 'runs', 'consent.json')));
++    watcher.fire('change', stub.Uri.file(path.join(rootA, 'Model', 'Spyro', 'Main.lean')));
++    await sleep(500); // the file events' debounce (300 ms)
++    expect(workspace.invalidated.flat()).toEqual(['Model/Spyro/Main.lean']);
+   });
+ });
+ 
+@@ -274,7 +294,11 @@
+     expect(stub.shown).toEqual([
+       { level: 'info', message: CONSENT_MESSAGE, options: { modal: true, detail: CONSENT_DETAIL }, items: ['Run with Claude'], answer: 'Run with Claude' },
+     ]);
+-    expect(globalState.get(consentKey(rootKeyOf(rootA)))).toBe(true);
++    // 2k2 (D2-110): remembered in the model folder, git-ignored; VS Code's globalState is not used.
++    expect(await readFile(consentPath(rootA), 'utf8')).toBe(CONSENT_TEXT);
++    expect(consentPath(rootA)).toBe(path.join(rootA, '.telelean', 'runs', 'consent.json'));
++    expect(await readFile(path.join(rootA, '.telelean', 'runs', '.gitignore'), 'utf8')).toBe('*\n');
++    expect(globalState.size).toBe(0);
+     expect(managers[0]?.callsOf('formalize')).toEqual([[{ subject: 'Spyro', inferences: [START] }]]);
+ 
+     // The same root again: no question (the run ended in the meantime).
+@@ -289,7 +313,7 @@
+     expect(stub.shown).toHaveLength(2);
+     expect(managers[1]?.calls.filter((c) => c.method === 'formalize')).toEqual([]);
+     expect(workspaces[1]?.performed).toEqual([]);
+-    expect(globalState.has(consentKey(rootKeyOf(rootB)))).toBe(false);
++    expect(existsSync(consentPath(rootB))).toBe(false);
+     stub.messageAnswers.push('Run with Claude');
+     expect(await request(api, rootB, 'formalize', { inferences: [START], requestId: 'b2' })).toMatchObject({ ok: true });
+     expect(stub.shown).toHaveLength(3);
+@@ -303,21 +327,45 @@
+     expect(stub.shown).toEqual([]);
+   });
+ 
+-  it('Test mode: the testing API answers the consent; reset() forgets the remembered consents and the run backend', async () => {
++  it('Test mode: the testing API answers the consent; reset() forgets the consents of its roots (in their folders) and the run backend', async () => {
++    // A consent an older build kept in globalState is neither read nor removed (2k2, U5).
++    globalState.set('telelean.claudeConsent.model_a-12345678', true);
+     const { host, api } = newHost(stub.ExtensionMode.Test);
+     await host.openBoardCommand({ root: rootA });
+     expect(await request(api, rootA, 'formalize', { inferences: [START], requestId: 't1' })).toEqual({ ok: false, code: 'not-yet', error: CONSENT_DECLINED }); // unanswered = no
+     api.testing?.answerPrompts({ claudeConsent: true });
+     api.testing?.useRunBackend(() => new FakeBackend([]));
+     expect(await request(api, rootA, 'formalize', { inferences: [START], requestId: 't2' })).toMatchObject({ ok: true });
+-    expect(globalState.get(consentKey(rootKeyOf(rootA)))).toBe(true);
++    expect(await readFile(consentPath(rootA), 'utf8')).toBe(CONSENT_TEXT);
+     expect(stub.shown).toEqual([]); // never a real modal in Test mode
+     await api.testing?.reset();
+-    expect(globalState.size).toBe(0);
++    expect(existsSync(consentPath(rootA))).toBe(false);
++    expect(existsSync(path.join(rootA, '.telelean', 'runs', '.gitignore'))).toBe(true); // only the consent goes
++    expect([...globalState.entries()]).toEqual([['telelean.claudeConsent.model_a-12345678', true]]);
+     await host.openBoardCommand({ root: rootA });
+     api.testing?.answerPrompts({ claudeConsent: true });
+     expect(await request(api, rootA, 'formalize', { inferences: [START], requestId: 't3' })).toEqual({ ok: false, code: 'not-yet', error: TEST_MODE_NO_CLAUDE });
+   });
++
++  it('2k2 (U1, U3): a folder recreated at the same path has no consent; only the exact consent file counts', async () => {
++    const { host, api } = newHost(stub.ExtensionMode.Production);
++    await host.openBoardCommand({ root: rootA });
++    stub.messageAnswers.push('Run with Claude');
++    expect(await request(api, rootA, 'formalize', { inferences: [START], requestId: 'a1' })).toMatchObject({ ok: true });
++    expect(stub.shown).toHaveLength(1);
++    await api.testing?.disposeWorkspace(rootA);
++    await rm(rootA, { recursive: true, force: true });
++    await mkdir(path.join(rootA, '.telelean'), { recursive: true });
++    await writeFile(path.join(rootA, '.telelean', 'config.json'), '{"format":"telelean-config","version":1,"library":"Model"}\n');
++    await host.openBoardCommand({ root: rootA });
++    expect(await request(api, rootA, 'formalize', { inferences: [START], requestId: 'a2' })).toEqual({ ok: false, code: 'not-yet', error: CONSENT_DECLINED });
++    expect(stub.shown).toHaveLength(2); // asked again
++    // A file of that name with other content is no consent.
++    await mkdir(path.dirname(consentPath(rootA)), { recursive: true });
++    await writeFile(consentPath(rootA), '{"claude":true}\n');
++    expect(await request(api, rootA, 'formalize', { inferences: [START], requestId: 'a3' })).toEqual({ ok: false, code: 'not-yet', error: CONSENT_DECLINED });
++    expect(stub.shown).toHaveLength(3);
++  });
+ });
+ 
+ describe('the raw Lean diff (AT5.6; since 2h only a session\'s, openSessionDiff)', () => {
+--- a/packages/extension/test/unit/modelPaths.test.ts
++++ b/packages/extension/test/unit/modelPaths.test.ts
+@@ -67,6 +67,14 @@
+       '/w/m/.telelean/graph.json',
+       '/w/m/.telelean/sessions/run1/x.lean',
+       '/w/m/.telelean/frozen/a.json',
++      // 2k2 (D2-107 R2): a run's working copy, its Lean build, its records and the consent never reach the workspace.
++      '/w/m/.telelean/runs/r1/ws/Model/Spyro.lean',
++      '/w/m/.telelean/runs/r1/ws/Model.lean',
++      '/w/m/.telelean/runs/r1/ws/lakefile.toml',
++      '/w/m/.telelean/runs/r1/build/Model/Spyro.lean',
++      '/w/m/.telelean/runs/r1/run.json',
++      '/w/m/.telelean/runs/consent.json',
++      '/w/m/.telelean/runs/.gitignore',
+       '/w/m/.telelean/graph.json.4242-7.tmp',
+       '/w/m/.telelean/Main.lean.4242-8.tmp',
+       '/w/m/.lake/build/lib/lean/Model.ilean',
+--- a/packages/extension/test/unit/realRuns.test.ts
++++ b/packages/extension/test/unit/realRuns.test.ts
+@@ -12,7 +12,6 @@
+ import type { CheckReport, LeanCheckEngine } from '@telelean/runner/gate/types.js';
+ import type { BackendCaps, LlmBackend, LlmEvent, LlmSession, SessionConfig } from '@telelean/runner/llm/types.js';
+ import { createRunManager } from '@telelean/runner/run/index.js';
+-import { rootKeyOf } from '@telelean/runner/shadow/index.js';
+ import { createModelWorkspace } from '@telelean/runner/workspace/index.js';
+ import { randomUUID } from 'node:crypto';
+ import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
+@@ -223,8 +222,10 @@
+       expect(result?.payload.outcome).toMatchObject({ ok: false, code: 'not-yet' });
+       expect(result?.payload.outcome?.error).toContain(TEST_MODE_NO_CLAUDE);
+       expect(window.api.runsFor(root)?.current()).toBeNull(); // no run was created
+-      const runsOfRoot = path.join(storage, 'runs', rootKeyOf(root));
+-      expect(existsSync(runsOfRoot) ? readdirSync(runsOfRoot) : []).toEqual([]); // no run directory, no shadow
++      // 2k2 (D2-108): the runs folder is the model's own; it holds the consent and its .gitignore, and no run directory.
++      const runsOfRoot = path.join(root, '.telelean', 'runs');
++      expect(existsSync(runsOfRoot) ? readdirSync(runsOfRoot).sort() : []).toEqual(['.gitignore', 'consent.json']); // no run directory, no shadow
++      expect(existsSync(path.join(storage, 'runs'))).toBe(false); // nothing in VS Code's storage
+     } finally {
+       window.host.dispose();
+     }
+@@ -253,7 +254,7 @@
+       expect(manager.current()?.state).toBe('working');
+       expect(backend.sessions).toHaveLength(1);
+       runId = manager.current()?.runId ?? '';
+-      runJson = path.join(storage, 'runs', rootKeyOf(root), runId, 'run.json');
++      runJson = path.join(root, '.telelean', 'runs', runId, 'run.json'); // 2k2: in the model folder
+ 
+       await first.host.shutdown(); // what extension.ts deactivate() does, before VS Code disposes the rest
+ 
+@@ -308,7 +309,7 @@
+       for (let i = 0; i < 200 && manager.current()?.state !== 'working'; i++) await sleep(25);
+       expect(manager.current()?.state).toBe('working');
+       runId = manager.current()?.runId ?? '';
+-      runJson = path.join(storage, 'runs', rootKeyOf(root), runId, 'run.json');
++      runJson = path.join(root, '.telelean', 'runs', runId, 'run.json'); // 2k2: in the model folder
+       await window.host.shutdown();
+       await settled(runJson);
+       expect(readRun().view, 'run.json after every pending write has landed').toMatchObject({ runId, state: 'interrupted', canResume: true });
+--- a/packages/extension/test/unit/runBackend.test.ts
++++ b/packages/extension/test/unit/runBackend.test.ts
+@@ -18,7 +18,8 @@
+   CONSENT_DETAIL,
+   CONSENT_MESSAGE,
+   CONSENT_YES,
+-  consentKey,
++  CONSENT_TEXT,
++  consentPath,
+   expandHome,
+   guardScriptPath,
+   runBackendFactory,
+@@ -137,12 +138,14 @@
+ });
+ 
+ describe('egress consent text (docs/m2-plan.md section 8.2)', () => {
+-  it('message + detail are exactly the plan\'s text; the button is "Run with Claude"; one key per model root', () => {
++  it('message + detail are exactly the plan\'s text; the button is "Run with Claude"; one consent file per model folder', () => {
+     expect(`${CONSENT_MESSAGE} ${CONSENT_DETAIL}`).toBe(
+       "Run Claude on this model? telelean sends this subject's cards (sentences, reasons, Lean statements), its vocabulary and your recorded answers, plus any model file Claude reads, to Anthropic through your Claude Code login (your claude.ai subscription; no API key).",
+     );
+     expect(CONSENT_YES).toBe('Run with Claude');
+-    expect(consentKey('mental_model-1a2b3c4d')).toBe('telelean.claudeConsent.mental_model-1a2b3c4d');
++    // 2k2 (D2-110): one consent file per model folder, in its git-ignored runs folder.
++    expect(consentPath('/w/mental_model')).toBe('/w/mental_model/.telelean/runs/consent.json');
++    expect(JSON.parse(CONSENT_TEXT)).toEqual({ format: 'telelean-consent', version: 1, claude: true });
+   });
+ });
+ 
+--- a/packages/extension/test/unit/smokeUnits.test.ts
++++ b/packages/extension/test/unit/smokeUnits.test.ts
+@@ -18,7 +18,7 @@
+   runIds: Set<string>;
+ }
+ const ownerOf = unitOwner as (unit: string, owners: Owners) => string | undefined;
+-const collect = collectOwners as (userData: string) => Promise<Owners>;
++const collect = collectOwners as (userData: string, modelRoots?: readonly string[]) => Promise<Owners>;
+ const ids = idsInLog as (text: string) => { hostPids: number[]; runIds: string[] };
+ const action = leftoverAction as (unit: { ownProcess: boolean; owner: string | undefined; populated: boolean }) => 'fail' | 'stop' | 'keep';
+ 
+@@ -46,7 +46,7 @@
+     expect(ids('no pids here; pid 42 alone is not an extension host')).toEqual({ hostPids: [], runIds: [] });
+   });
+ 
+-  it("collects them from the instance's user-data dir: its logs at any depth and its run directories", async () => {
++  it("collects them from the instance's user-data dir: its logs at any depth and the run directories of its model folders", async () => {
+     const userData = path.join(scratch, 'user-data');
+     const session = path.join(userData, 'logs', '20261102T025012');
+     await mkdir(path.join(session, 'window1', 'exthost', 'telelean.telelean'), { recursive: true });
+@@ -55,11 +55,16 @@
+     await writeFile(path.join(session, 'window1', 'exthost', 'exthost.log'), '[info] Extension host with pid 222 started\n');
+     await writeFile(path.join(session, 'window1', 'exthost', 'telelean.telelean', 'telelean.log'), '[info] run: delivered {"run":{"runId":"rlogged1"}}\n');
+     await writeFile(path.join(session, 'window1', 'exthost', 'notes.txt'), 'Extension host with pid 333 started (not a .log file)\n');
+-    const runs = path.join(userData, 'User', 'globalStorage', 'telelean.telelean', 'runs');
+-    await mkdir(path.join(runs, 'runs_model-dd89ba1b', 'rdir1'), { recursive: true });
+-    await mkdir(path.join(runs, 'runs_model-dd89ba1b', 'not a run id'), { recursive: true });
+-    await writeFile(path.join(runs, 'runs_model-dd89ba1b', 'rfile'), 'a file, not a run directory\n');
+-    const owners = await collect(userData);
++    // 2k2: a run's directory is in its model folder, <model>/.telelean/runs/<run id>/.
++    const model = path.join(scratch, 'ws', 'runs_model');
++    const runs = path.join(model, '.telelean', 'runs');
++    await mkdir(path.join(runs, 'rdir1'), { recursive: true });
++    await mkdir(path.join(runs, 'not a run id'), { recursive: true });
++    await writeFile(path.join(runs, 'rfile'), 'a file, not a run directory\n');
++    await writeFile(path.join(runs, 'consent.json'), '{}\n');
++    // VS Code's storage is not read any more.
++    await mkdir(path.join(userData, 'User', 'globalStorage', 'telelean.telelean', 'runs', 'runs_model-dd89ba1b', 'rold1'), { recursive: true });
++    const owners = await collect(userData, [model, path.join(scratch, 'missing-model')]);
+     expect([...owners.hostPids].sort()).toEqual([111, 222]);
+     expect([...owners.runIds].sort()).toEqual(['rdir1', 'rlogged1']);
+     // A profile without logs or runs owns nothing (and reading it does not throw).
+--- a/packages/extension/test/unit/vscodeStub.ts
++++ b/packages/extension/test/unit/vscodeStub.ts
+@@ -179,9 +179,27 @@
+     return { dispose: () => void providers.delete(scheme) };
+   },
+   getConfiguration: () => ({ get: <T>(_key: string, fallback: T): T => fallback }),
+-  createFileSystemWatcher: () => ({ onDidCreate: () => noop, onDidChange: () => noop, onDidDelete: () => noop, dispose() {} }),
++  /** 2k2: each watcher is recorded (`watchers`), so a host test can deliver file events through it. */
++  createFileSystemWatcher: (pattern?: unknown) => {
++    const handlers: Record<WatchEvent, Array<(uri: Uri) => void>> = { create: [], change: [], delete: [] };
++    const on = (kind: WatchEvent) => (listener: (uri: Uri) => void) => {
++      handlers[kind].push(listener);
++      return noop;
++    };
++    const watcher: FakeWatcher = { pattern, fire: (kind, uri) => handlers[kind].forEach((l) => l(uri)) };
++    watchers.push(watcher);
++    return { onDidCreate: on('create'), onDidChange: on('change'), onDidDelete: on('delete'), dispose() {} };
++  },
+ };
+ 
++export type WatchEvent = 'create' | 'change' | 'delete';
++export interface FakeWatcher {
++  pattern: unknown;
++  fire(kind: WatchEvent, uri: Uri): void;
++}
++/** Every file-system watcher created since the last resetStub(). */
++export const watchers: FakeWatcher[] = [];
++
+ export const window = {
+   tabGroups: { all: [] as unknown[] },
+   createWebviewPanel: (viewType: string, title: string) => {
+@@ -219,4 +237,5 @@
+   executed.length = 0;
+   providers.clear();
+   installedExtensions.clear();
++  watchers.length = 0;
+ }
+--- a/packages/runner/src/llm/claudeCli.ts
++++ b/packages/runner/src/llm/claudeCli.ts
+@@ -26,7 +26,7 @@
+   type HookRuntime,
+   type HookVerification,
+ } from './confinement.js';
+-import { sanitizeClaudeEnv } from './env.js';
++import { gitCeilingEnv, sanitizeClaudeEnv } from './env.js';
+ import { LineSplitter, StreamNormalizer, type StreamItem } from './streamJson.js';
+ import { startToolServer, type ToolServer, type ToolServerOptions } from './toolServer.js';
+ import { MCP_TOOL_PREFIX } from './toolSchemas.js';
+@@ -302,8 +302,9 @@
+       includeHookEvents: o.includeHookEvents ?? true,
+       permissionPromptsNone: o.permissionPromptsNone ?? true,
+     });
+-    const sanitizeOpts: Parameters<typeof sanitizeClaudeEnv>[1] = {};
+-    if (o.envSet !== undefined) sanitizeOpts.set = o.envSet;
++    // 2k2 (D2-113): git from ws/ finds no repository above the run folder (the model's own included); set last, so no
++    // caller's envSet can lift it.
++    const sanitizeOpts: Parameters<typeof sanitizeClaudeEnv>[1] = { set: { ...(o.envSet ?? {}), ...gitCeilingEnv(confinement.rootReal) } };
+     if (o.clientApp !== undefined) sanitizeOpts.clientApp = o.clientApp;
+     const sanitized = sanitizeClaudeEnv(o.baseEnv ?? process.env, sanitizeOpts);
+     const command = o.launcher?.command ?? o.binary.path;
+--- a/packages/runner/src/llm/env.ts
++++ b/packages/runner/src/llm/env.ts
+@@ -10,6 +10,8 @@
+ //    automatic backgrounding, long tool-call timeouts for ask_user).
+ // Only variable NAMES are ever reported; values may be secrets.
+ 
++import path from 'node:path';
++
+ /** Removed when the name starts with one of these. */
+ export const STRIP_PREFIXES: readonly string[] = [
+   'ANTHROPIC_', // API keys, auth tokens, base URLs, Bedrock/Vertex/Foundry/AWS/Google settings, models
+@@ -29,6 +31,9 @@
+   'GTK_',
+   'GDK_',
+   'GIO_',
++  // 2k2 (D2-113): GIT_DIR, GIT_WORK_TREE and the like from the host would point git anywhere; telelean sets its own
++  // GIT_CEILING_DIRECTORIES (gitCeilingEnv).
++  'GIT_',
+ ];
+ 
+ /** Removed by exact name. */
+@@ -51,6 +56,15 @@
+   'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC', // the user's single switch for all of the above (and other non-essential traffic)
+ ];
+ 
++/**
++ * 2k2 (docs/slice2-plan.md 2.10, D2-113): ws/ now lies inside the model folder, and so inside the model's git repository.
++ * With the run folder (ws/'s parent) as the ceiling, git started in ws/ or below looks at ws/ alone (which never holds a
++ * `.git`) and never at the run folder or above: it finds no repository. `wsReal` is ws/'s real path.
++ */
++export function gitCeilingEnv(wsReal: string): Record<string, string> {
++  return { GIT_CEILING_DIRECTORIES: path.dirname(wsReal) };
++}
++
+ /** One day: ask_user may wait for a long time (the CLI default idle timeout for HTTP servers is 5 min). */
+ export const TOOL_CALL_TIMEOUT_MS = 24 * 60 * 60 * 1000;
+ 
+--- a/packages/runner/src/run/manager.ts
++++ b/packages/runner/src/run/manager.ts
+@@ -24,11 +24,11 @@
+ 
+ import { cancelRun as leanCancelRun } from '../lean/runLean.js';
+ import { renderAnswersAsUserTurn } from '../llm/toolSchemas.js';
+-import { openRunShadow } from '../shadow/index.js';
++import { openRunShadow, runsDirOf } from '../shadow/index.js';
+ import { PASSING_COMMIT_KINDS, type ShadowWorkspace } from '../shadow/types.js';
+ import type { Disposable } from '../workspace/types.js';
+ import { legacySession } from './legacy.js';
+-import { nonTerminal, scanRuns, writeJsonAtomic } from './persist.js';
++import { nonTerminal, scanRuns, writeJsonAtomic, type ScannedRun } from './persist.js';
+ import { resumeTurn } from './prompts.js';
+ import { EndRunner } from './sessionEnd.js';
+ import { ActiveRun, argsOfAnswered, errorText, okOutcome, refused } from './step.js';
+@@ -40,6 +40,13 @@
+ /** Slice 2: a session action on a run of version 1. */
+ const NOT_A_SESSION = 'This run is not an edit session.';
+ 
++/** 2k2 (D2-111): the notice of a run recorded at another path (the folder was moved, renamed or copied). */
++export function movedRunNotice(from: string): string {
++  return `This run was started in another folder (${from}), so it cannot continue here. Stop ends it: your files are not changed and nothing is recorded.`;
++}
++/** 2k2 (D2-111): every other action on such a run. */
++export const MOVED_RUN_REFUSAL = 'This run was started in another folder, so it can only be stopped.';
++
+ // ---------------------------------------------------------------------------------------------
+ // The manager
+ 
+@@ -53,6 +60,7 @@
+   current(): RunView | null {
+     const run = this.run;
+     if (run === undefined) return null;
++    if (run.movedFrom !== undefined && !run.ended) return this.movedView(run, run.movedFrom);
+     if (run.saved !== undefined) {
+       // Slice 2 (§3.12): a session's RunView follows its SessionView.
+       if (run.saved.session !== undefined) return this.sessionRunView(run.saved, run.live?.view ?? null, run.live?.viewError);
+@@ -65,6 +73,7 @@
+ 
+   session(): SessionView | null {
+     const run = this.run;
++    if (run?.movedFrom !== undefined && !run.ended) return null;
+     if (run?.saved?.session === undefined) return null;
+     // 2k1 (D2-100 D1, D2-101): once the run as last written has ended, by any path, no review view (the board shows the
+     // ended run instead). Read from `saved`, as current() is, so both turn with the run.json write that ends the run,
+@@ -91,6 +100,7 @@
+     if (request.runId !== undefined || request.stage !== undefined) {
+       const run = request.runId !== undefined ? this.runFor(request.runId) : undefined;
+       if (run === undefined) return refused('not-found', 'That run is not active any more.');
++      if (run.movedFrom !== undefined) return refused('conflict', MOVED_RUN_REFUSAL);
+       if (run.p.session === undefined) return refused('conflict', NOT_A_SESSION);
+       return this.exclusive('formalizing', () => this.formalizeInStage(run, request));
+     }
+@@ -159,6 +169,7 @@
+     if (run === undefined) return refused('not-found', 'That run is not active any more.');
+     if (run.ended || isTerminalRunState(run.view.state)) return refused('conflict', 'This run has already ended.');
+     if (run.stopping) return refused('conflict', 'This run is already being cancelled.');
++    if (run.movedFrom !== undefined) return this.endMoved(run);
+     // Slice 2 (§2.5): in a session, Cancel is Cancel step; it never ends the session (a start not yet working does).
+     if (run.p.session !== undefined && run.view.state !== 'starting') return this.cancelStep(run);
+     const inReview = run.view.state === 'review';
+@@ -192,6 +203,7 @@
+   protected async resumeNow(runId: string): Promise<ActionOutcome> {
+     const run = this.runFor(runId);
+     if (run === undefined) return refused('not-found', 'That run is not active any more.');
++    if (run.movedFrom !== undefined) return refused('conflict', MOVED_RUN_REFUSAL);
+     if (run.view.state !== 'interrupted') return refused('conflict', 'Only an interrupted run can be resumed.');
+     // Slice 2 (§3.11): a queue waiting between two steps starts its next step.
+     if (run.p.session !== undefined && this.activeStep(run.p.session) === undefined) return this.resumeBetweenSteps(run);
+@@ -229,7 +241,8 @@
+ 
+   async recover(): Promise<void> {
+     if (this.disposed || this.activeRun() !== undefined) return;
+-    const scanned = await scanRuns(this.o.runsDir, this.o.root);
++    // 2k2 (D2-108): only this root's own runs folder.
++    const scanned = await scanRuns(runsDirOf(this.o.root));
+     const active = scanned.filter((s) => nonTerminal(s.run.view.state));
+     const [newest, ...older] = active;
+     for (const old of older) {
+@@ -251,6 +264,11 @@
+     }
+     if (newest === undefined) return;
+     const p = newest.run;
++    // 2k2 (D2-111, U4): a run recorded at another path is held, never continued.
++    if (path.resolve(p.root) !== path.resolve(this.o.root)) {
++      await this.holdMoved(newest);
++      return;
++    }
+     // A proposal saved by a build before spec v4 (three kinds, lifecycle items) is read in the two kinds (slice 1a fixer):
+     // since 2h no board shows a proposal, and a v1 run in review is converted into a session below (2d), which reads the
+     // shadow's commits, never the proposal; the upgrade stays so that run.json is never left in the old kinds.
+@@ -311,6 +329,8 @@
+     if (this.disposed) return Promise.resolve();
+     const run = this.run;
+     let written: Promise<void> = Promise.resolve();
++    // A held run (D2-111) is left as it is on disk: nothing of it ran here.
++    if (run?.movedFrom !== undefined) run.ended = true;
+     if (run !== undefined && !run.ended) {
+       this.stopClock(run);
+       const v = run.view;
+@@ -344,6 +364,56 @@
+   }
+ 
+   /**
++   * 2k2 (D2-111, U4): a run whose run.json names another root (its folder was moved, renamed or copied here) is shown,
++   * not recovered: no write in flight is replayed, no judge or Lean job runs, and run.json stays as it is until Stop or
++   * Exit ends it (moved back to where it started, the run goes on).
++   */
++  protected async holdMoved(found: ScannedRun): Promise<void> {
++    const p = found.run;
++    let shadow: ShadowWorkspace;
++    try {
++      shadow = await (this.o.services.openShadow ?? openRunShadow)(found.runDir, { root: this.o.root, library: p.library });
++    } catch (e) {
++      this.log('warn', `run ${p.view.runId} was started in ${p.root} and its working copy could not be opened here: ${errorText(e)}`);
++      return;
++    }
++    if (this.disposed || this.activeRun() !== undefined) return;
++    const run = this.makeRun(p, shadow);
++    run.movedFrom = p.root;
++    this.run = run;
++    this.log('info', `run ${p.view.runId} was started in ${p.root}: it is held (only Stop ends it)`);
++    this.emit({ run: true, proposal: true, session: true });
++  }
++
++  /** The RunView of a held run: interrupted, not resumable, no session view, the notice last (D2-111). */
++  protected movedView(run: ActiveRun, from: string): RunView {
++    const v = run.p.session !== undefined ? this.sessionRunView(structuredClone(run.p), null) : structuredClone(run.p.view);
++    delete v.session;
++    delete v.pendingQuestions;
++    delete v.proposalId;
++    v.canResume = undefined;
++    v.state = 'interrupted';
++    v.notices = [...v.notices, { id: `${run.runId}-moved`, at: v.updatedAt, level: 'warning', kind: 'interrupted', text: movedRunNotice(from) }];
++    return v;
++  }
++
++  /**
++   * Stop, or a session's Exit, on a held run (D2-111): it ends `discarded` (a session) or `cancelled`, its own run.json
++   * written; no attempt record and nothing else is written into this folder, which the run did not start in.
++   */
++  protected async endMoved(run: ActiveRun): Promise<ActionOutcome> {
++    if (run.ended || run.stopping) return refused('conflict', 'This run has already ended.');
++    run.stopping = true;
++    const session = run.p.session !== undefined;
++    delete run.p.pendingAsk;
++    delete run.p.sessionId;
++    delete run.p.undeliveredTurn;
++    this.notice(run, 'info', 'info', session ? REVIEW_TEXTS.exited : 'You stopped the run. Your files were not changed.');
++    await this.endRun(run, session ? 'discarded' : 'cancelled', session ? {} : { verdict: 'cancelled' });
++    return okOutcome(session ? 'Session ended' : 'Run cancelled');
++  }
++
++  /**
+    * §3.11 (D2-16): a v1 run left in review becomes a session with one passed step: its selection the inference, the
+    * ledger from the v1 run, its pending ghosts Add premise drafts, its adopted ghosts written Add premise items in
+    * review; a fresh judge then makes the items (stage 1). If the conversion fails, only Exit (Discard) is offered.
+@@ -386,6 +456,7 @@
+   protected sessionRun(runId: string): ActiveRun | ActionOutcome {
+     const run = this.runFor(runId);
+     if (run === undefined || run.ended) return refused('not-found', 'That run is not active any more.');
++    if (run.movedFrom !== undefined) return refused('conflict', MOVED_RUN_REFUSAL);
+     if (run.p.session === undefined) return refused('conflict', NOT_A_SESSION);
+     return run;
+   }
+@@ -439,6 +510,8 @@
+    */
+   async end(runId: string, decision: 'apply' | 'exit' | 'back', stage?: number, check?: string): Promise<ActionOutcome> {
+     if (this.disposed) return refused('conflict', 'telelean is shutting down.');
++    const held = this.runFor(runId);
++    if (decision === 'exit' && held !== undefined && held.movedFrom !== undefined && !held.ended) return this.endMoved(held);
+     const run = this.sessionRun(runId);
+     if (!(run instanceof ActiveRun)) return run;
+     try {
+@@ -479,6 +552,5 @@
+ 
+ export function createRunManagerImpl(options: RunManagerOptions): RunManager {
+   if (!path.isAbsolute(options.root)) throw new TypeError(`createRunManager: root must be absolute, got ${JSON.stringify(options.root)}`);
+-  if (!path.isAbsolute(options.runsDir)) throw new TypeError(`createRunManager: runsDir must be absolute, got ${JSON.stringify(options.runsDir)}`);
+   return new RunManagerImpl(options);
+ }
+--- a/packages/runner/src/run/persist.ts
++++ b/packages/runner/src/run/persist.ts
+@@ -10,7 +10,6 @@
+ 
+ import { isTerminalRunState, type RunState } from '@telelean/core';
+ 
+-import { rootKeyOf } from '../shadow/index.js';
+ import { PERSISTED_RUN_FORMAT, PERSISTED_SESSION_FORMAT, type PersistedRun } from './types.js';
+ 
+ let tempCounter = 0;
+@@ -71,9 +70,12 @@
+   run: PersistedRun;
+ }
+ 
+-/** The run directories of `root` under `runsDir` whose run.json is readable, newest first (by `view.updatedAt`). */
+-export async function scanRuns(runsDir: string, root: string): Promise<ScannedRun[]> {
+-  const base = path.join(runsDir, rootKeyOf(root));
++/**
++ * The run directories of a runs folder (2k2: one root's, `runsDirOf(root)`) whose run.json is readable, newest first
++ * (by `view.updatedAt`), whatever root run.json names: the caller tells a run recorded at another path apart (D2-111).
++ */
++export async function scanRuns(runsDir: string): Promise<ScannedRun[]> {
++  const base = runsDir;
+   let entries: string[];
+   try {
+     entries = await readdir(base);
+@@ -85,7 +87,7 @@
+     const runDir = path.join(base, name);
+     const stateFile = path.join(runDir, 'run.json');
+     const run = await readPersistedRun(stateFile);
+-    if (run !== undefined && path.resolve(run.root) === path.resolve(root)) out.push({ runDir, stateFile, run });
++    if (run !== undefined) out.push({ runDir, stateFile, run });
+   }
+   const time = (r: ScannedRun): number => Date.parse(r.run.view.updatedAt) || Date.parse(r.run.view.startedAt) || 0;
+   return out.sort((a, b) => time(b) - time(a));
+--- a/packages/runner/src/run/session.ts
++++ b/packages/runner/src/run/session.ts
+@@ -80,7 +80,7 @@
+ import type { Adoption, ArrowProposal, ProposeArrowArgs, ProposeAssumptionArgs } from '../llm/types.js';
+ import { sha256Text } from '../semantic/project.js';
+ import { isLeanModelPath } from '../shadow/paths.js';
+-import { createRunShadow } from '../shadow/index.js';
++import { createRunShadow, runsDirOf } from '../shadow/index.js';
+ import type { ShadowCommit, ShadowWorkspace } from '../shadow/types.js';
+ import { writeTextAtomic } from './persist.js';
+ import { preflight as defaultPreflight } from './preflight.js';
+@@ -660,7 +660,7 @@
+     const cliVersion = backendCliVersion(backend);
+     let shadow: ShadowWorkspace;
+     try {
+-      shadow = await (services.createShadow ?? createRunShadow)({ root, runsDir: this.o.runsDir, runId, library, files, now: () => this.now(), copyBuild: settings.reuseLeanBuild === true });
++      shadow = await (services.createShadow ?? createRunShadow)({ root, runsDir: runsDirOf(root), runId, library, files, now: () => this.now(), copyBuild: settings.reuseLeanBuild === true });
+     } catch (e) {
+       return refused('not-yet', `telelean could not make the run's working copy: ${errorText(e)}`);
+     }
+--- a/packages/runner/src/run/step.ts
++++ b/packages/runner/src/run/step.ts
+@@ -84,7 +84,7 @@
+   TokenUsage,
+   ToolCallContext,
+ } from '../llm/types.js';
+-import { pruneRunDirs } from '../shadow/index.js';
++import { pruneRunDirs, runsDirOf } from '../shadow/index.js';
+ import { PASSING_COMMIT_KINDS, type ShadowCommit, type ShadowWorkspace } from '../shadow/types.js';
+ import { nonTerminal, RunFiles } from './persist.js';
+ import { collapseWhitespace, minutesText, NUDGE_TURN, SYSTEM_PROMPT } from './prompts.js';
+@@ -363,6 +363,11 @@
+   roundLoop: Promise<void> | undefined;
+   /** Slice 2: an edit session's in-memory state (session.ts); undefined for a run of version 1. */
+   live: SessionRuntime | undefined;
++  /**
++   * 2k2 (D2-111, U4): the root run.json names, when it is not this manager's (the folder was moved, renamed or copied):
++   * the run is held, never continued; only Stop or Exit end it, recording nothing (manager.ts `endMoved`).
++   */
++  movedFrom: string | undefined;
+ 
+   constructor(
+     public p: PersistedRun,
+@@ -1048,7 +1053,7 @@
+ 
+   protected async prune(run: ActiveRun): Promise<void> {
+     try {
+-      await pruneRunDirs(this.o.runsDir, this.o.root, this.o.settings.keepRuns, [run.runId]);
++      await pruneRunDirs(runsDirOf(this.o.root), this.o.settings.keepRuns, [run.runId]);
+     } catch (e) {
+       if (!(e instanceof NotImplementedError)) this.log('warn', `old runs could not be pruned: ${errorText(e)}`);
+     }
+@@ -1063,6 +1068,8 @@
+   protected async answerNow(runId: string, setId: string, answers: readonly QuestionAnswer[]): Promise<ActionOutcome> {
+     const run = this.runFor(runId);
+     if (run === undefined) return refused('not-found', 'That run is not active any more.');
++    // 2k2 (D2-111): a run recorded at another path is never continued (manager.ts MOVED_RUN_REFUSAL's words).
++    if (run.movedFrom !== undefined) return refused('conflict', 'This run was started in another folder, so it can only be stopped.');
+     if (run.view.state !== 'waiting-for-answer' || run.p.pendingAsk === undefined) return refused('conflict', 'No question of this run is waiting.');
+     const pending = run.p.pendingAsk;
+     if (pending.setId !== setId) return refused('not-found', 'Those questions are no longer waiting.');
+--- a/packages/runner/src/run/types.ts
++++ b/packages/runner/src/run/types.ts
+@@ -137,8 +137,8 @@
+ export interface RunManagerOptions {
+   /** Absolute model root. */
+   root: string;
+-  /** Where run directories live (extension: `<globalStorage>/runs`; tests: scratch). */
+-  runsDir: string;
++  // 2k2 (docs/slice2-plan.md 2.10, D2-108): no `runsDir`. A root's runs live in its own folder, `runsDirOf(root)`
++  // (`<root>/.telelean/runs`), where the manager creates, recovers and prunes them.
+   /** Must implement the M2 members (applyChanges, readText, modelFiles, library, projectModel, reloadAttempts). */
+   workspace: ModelWorkspace;
+   services: RunServices;
+--- a/packages/runner/src/semantic/refresh.ts
++++ b/packages/runner/src/semantic/refresh.ts
+@@ -154,14 +154,21 @@
+   return items.length > DETAIL_ITEMS ? `${shown}; … (${items.length - DETAIL_ITEMS} more)` : shown;
+ }
+ 
+-/** `[root/.git]` when it is a real directory (bwrap can only cover a directory with a tmpfs), else `[]`. */
++/**
++ * What the in-place build covers with an empty tmpfs: `root/.git`, and (2k2, D2-115) `root/.telelean/runs`, the model's
++ * runs, so the model's Lean code sees no run's files (Claude's working copies, results still hidden), as when runs lived
++ * under the masked home. Each only when it is a real directory (bwrap can only cover a directory with a tmpfs).
++ */
+ export function gitMaskPaths(root: string): string[] {
+-  const git = path.join(root, '.git');
+-  try {
+-    return lstatSync(git).isDirectory() ? [git] : [];
+-  } catch {
+-    return [];
++  const out: string[] = [];
++  for (const dir of [path.join(root, '.git'), path.join(root, '.telelean', 'runs')]) {
++    try {
++      if (lstatSync(dir).isDirectory()) out.push(dir);
++    } catch {
++      // absent
++    }
+   }
++  return out;
+ }
+ 
+ /** The runLean options of the in-place build (the check reuses them with its own argv, stdin, timeout and cap). */
+--- a/packages/runner/src/shadow/index.ts
++++ b/packages/runner/src/shadow/index.ts
+@@ -5,7 +5,6 @@
+  * Implementation: ./workspace.ts (the ShadowWorkspace of one run directory), ./git.ts (the shadow's own history,
+  * plumbing only, isolated configuration), ./paths.ts (which paths may enter the shadow).
+  */
+-import { createHash } from 'node:crypto';
+ import { lstat, mkdir, readdir, readFile, rm, stat, utimes, writeFile } from 'node:fs/promises';
+ import path from 'node:path';
+ 
+@@ -30,13 +29,32 @@
+ export const BASE_COMMIT_LABEL = 'Your files at the start of the run';
+ 
+ /**
+- * The directory name of a model root under `runsDir`: its folder name (characters outside `[A-Za-z0-9._-]` -> `_`)
+- * plus `-` and the first 8 hex digits of sha1(the root's absolute path). Implemented with the contract.
++ * 2k2 (docs/slice2-plan.md 2.10, D2-107, D2-108): a model's runs live in its own folder, `<root>/.telelean/runs/`, one
++ * folder per run (`<runId>/`, the layout of ./types.ts), next to the egress consent (`consent.json`, the extension's).
++ * The folder is ignored by git: it holds a `.gitignore` of `*` (D2-109), and Initialize adds `/.telelean/runs/` to the
++ * model's `.gitignore`. (Until 2k2 runs lived in VS Code's storage, `<globalStorage>/runs/<rootKey>/<runId>/`.)
+  */
+-export function rootKeyOf(root: string): string {
+-  const abs = path.resolve(root);
+-  const base = path.basename(abs).replace(/[^A-Za-z0-9._-]/g, '_') || 'root';
+-  return `${base}-${createHash('sha1').update(abs).digest('hex').slice(0, 8)}`;
++export const RUNS_DIR = '.telelean/runs';
++/** The runs folder's own `.gitignore`: everything in it, itself included. */
++export const RUNS_GITIGNORE = '*\n';
++
++/** `<root>/.telelean/runs`, the runs folder of the model root `root`. */
++export function runsDirOf(root: string): string {
++  return path.join(path.resolve(root), ...RUNS_DIR.split('/'));
++}
++
++/**
++ * Creates the runs folder when it is missing, and writes its `.gitignore` (`*`) when that is missing (D2-109: at every
++ * use, so a folder made by an older build or by hand is covered; a `.gitignore` already there is left as it is).
++ */
++export async function ensureRunsDir(runsDir: string): Promise<void> {
++  const dir = path.resolve(runsDir);
++  await mkdir(dir, { recursive: true });
++  try {
++    await writeFile(path.join(dir, '.gitignore'), RUNS_GITIGNORE, { encoding: 'utf8', flag: 'wx' });
++  } catch (error) {
++    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
++  }
+ }
+ 
+ async function lstatOrUndefined(p: string): Promise<Awaited<ReturnType<typeof lstat>> | undefined> {
+@@ -90,6 +108,12 @@
+   }
+ }
+ 
++/** 2k2 (D2-112): a run folder holds run.json (a regular file) or the shadow's own `git/` directory. */
++async function isRunFolder(runDir: string): Promise<boolean> {
++  const state = await lstatOrUndefined(path.join(runDir, 'run.json'));
++  return (state !== undefined && state.isFile()) || (await isRealDirectory(path.join(runDir, 'git')));
++}
++
+ function validateRunId(runId: unknown): asserts runId is string {
+   if (typeof runId !== 'string' || !RUN_ID_PATTERN.test(runId)) throw new TypeError(`runId must match ${RUN_ID_PATTERN.source}, got ${JSON.stringify(runId)}`);
+ }
+@@ -101,7 +125,7 @@
+ }
+ 
+ /**
+- * Creates `<runsDir>/<rootKeyOf(root)>/<runId>/` (fails if it exists): writes `options.files` into ws/ and build/
++ * Creates `<runsDir>/<runId>/` (fails if it exists; `runsDir` is the root's runs folder, `runsDirOf(root)`, 2k2): writes `options.files` into ws/ and build/
+  * (refusing any path that is not a model or project file, D-24), `git init` in git/ and commits the base. Every
+  * refusal happens before anything is created; a failure while creating removes the run directory again.
+  *
+@@ -129,7 +153,7 @@
+ 
+   await checkSourceTree(root, library, paths);
+ 
+-  const runDir = path.join(path.resolve(options.runsDir), rootKeyOf(root), options.runId);
++  const runDir = path.join(path.resolve(options.runsDir), options.runId);
+   if ((await lstatOrUndefined(runDir)) !== undefined) throw new ShadowLayoutError('io', `the run directory ${runDir} already exists`, [runDir]);
+   const layout = shadowPaths(runDir);
+   const failed = async (error: unknown): Promise<never> => {
+@@ -137,7 +161,7 @@
+     if (error instanceof ShadowLayoutError || error instanceof TypeError) throw error;
+     throw new ShadowLayoutError('io', `cannot create the shadow: ${(error as Error).message}`, [runDir]);
+   };
+-  await mkdir(path.dirname(runDir), { recursive: true });
++  await ensureRunsDir(options.runsDir);
+   try {
+     await mkdir(runDir);
+   } catch (error) {
+@@ -200,9 +224,9 @@
+   }
+ }
+ 
+-/** The run directories of one root, newest first (by run.json `updatedAt`, else directory mtime). */
+-export async function listRunDirs(runsDir: string, root: string): Promise<RunDirInfo[]> {
+-  const dir = path.join(path.resolve(runsDir), rootKeyOf(root));
++/** The run directories in a runs folder (2k2: one model root's, `runsDirOf(root)`), newest first (by run.json `updatedAt`, else directory mtime). */
++export async function listRunDirs(runsDir: string): Promise<RunDirInfo[]> {
++  const dir = path.resolve(runsDir);
+   let entries;
+   try {
+     entries = await readdir(dir, { withFileTypes: true });
+@@ -224,19 +248,21 @@
+ }
+ 
+ /**
+- * Keeps the newest `keep` run directories of the root (03 section 8.4: the last 10) and deletes older ones whose
++ * Keeps the newest `keep` run directories of the runs folder (03 section 8.4: the last 10) and deletes older ones whose
+  * state is terminal (accepted, discarded, cancelled, failed) or unreadable. Never deletes `protect`ed run ids or a
+- * non-terminal run. Returns the deleted run ids.
++ * non-terminal run, and (2k2, D2-112) only run folders: a directory with `run.json` or a shadow's `git/` inside; files
++ * (`consent.json`, `.gitignore`) and other directories stay. Returns the deleted run ids.
+  */
+-export async function pruneRunDirs(runsDir: string, root: string, keep: number, protect: readonly string[] = []): Promise<string[]> {
++export async function pruneRunDirs(runsDir: string, keep: number, protect: readonly string[] = []): Promise<string[]> {
+   if (!Number.isInteger(keep) || keep < 0) throw new TypeError('keep must be a non-negative integer');
+   const terminal = new Set<string>(TERMINAL_RUN_STATES);
+   const deleted: string[] = [];
+-  for (const run of (await listRunDirs(runsDir, root)).slice(keep)) {
++  for (const run of (await listRunDirs(runsDir)).slice(keep)) {
+     if (protect.includes(run.runId)) continue;
+     if (run.state !== undefined && !terminal.has(run.state)) continue;
+     const st = await lstatOrUndefined(run.runDir);
+     if (st === undefined || !st.isDirectory() || st.isSymbolicLink()) continue;
++    if (!(await isRunFolder(run.runDir))) continue;
+     await rm(run.runDir, { recursive: true, force: true });
+     deleted.push(run.runId);
+   }
+--- a/packages/runner/src/shadow/types.ts
++++ b/packages/runner/src/shadow/types.ts
+@@ -1,7 +1,7 @@
+ /**
+  * The run's shadow workspace (03 section 8.4 "Shadow", D-24, m0-report lesson 4; docs/m2-plan.md section 4.2).
+  *
+- *   <runsDir>/<rootKey>/<runId>/
++ *   <runsDir>/<runId>/   (2k2, docs/slice2-plan.md 2.10: runsDir = `<model root>/.telelean/runs`, git-ignored)
+  *     ws/          the agent's root (Claude's cwd and the path guard's root). ONLY model files, all regular files:
+  *                  lakefile.toml | lakefile.lean, lean-toolchain, lake-manifest.json, <library>.lean,
+  *                  <library>/**.lean. No dot-entry at any depth (no .lake, .telelean, .git, .gitignore), so the guard
+@@ -28,7 +28,7 @@
+ import type { FileChange } from '@telelean/core';
+ 
+ export interface ShadowPaths {
+-  /** `<runsDir>/<rootKey>/<runId>` */
++  /** `<runsDir>/<runId>` (2k2: `<root>/.telelean/runs/<runId>`) */
+   runDir: string;
+   ws: string;
+   build: string;
+@@ -89,7 +89,10 @@
+ export interface CreateShadowOptions {
+   /** Absolute path of the model root (holds `.telelean/config.json`). */
+   root: string;
+-  /** Where runs live (the extension: `<globalStorage>/runs`; tests: a scratch dir). Created if missing. */
++  /**
++   * The runs folder the run directory goes in: the RunManager passes the root's own, `runsDirOf(root)` (2k2, D2-108);
++   * the shadow's own tests may pass a scratch dir. Created if missing, with its `.gitignore` (`ensureRunsDir`).
++   */
+   runsDir: string;
+   /** `[A-Za-z0-9_]{1,64}`. */
+   runId: string;
+--- a/packages/runner/src/shadow/workspace.ts
++++ b/packages/runner/src/shadow/workspace.ts
+@@ -40,7 +40,7 @@
+ const KIND_SET: ReadonlySet<string> = new Set(SHADOW_COMMIT_KINDS);
+ const COMMIT_ID = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/u;
+ 
+-/** The fixed layout of `<runsDir>/<rootKey>/<runId>/`. */
++/** The fixed layout of `<runsDir>/<runId>/` (2k2: `<root>/.telelean/runs/<runId>/`). */
+ export function shadowPaths(runDir: string): ShadowPaths {
+   const dir = path.resolve(runDir);
+   return {
+--- a/packages/runner/src/workspace/initialize.ts
++++ b/packages/runner/src/workspace/initialize.ts
+@@ -36,7 +36,8 @@
+ export const SCAFFOLD_LEAN_TOOLCHAIN = `${PINNED_TOOLCHAIN_NAME}\n`;
+ 
+ /** The `.gitignore` lines telelean needs (build output and the unshared sidecars). */
+-export const GITIGNORE_LINES: readonly string[] = ['/.lake/', '/.telelean/graph.json', '/.telelean/frozen/', '/.telelean/sessions/', '/.telelean/*.tmp'];
++/** (2k2, D2-109) `/.telelean/runs/`: the model's runs and its Claude consent, never shared (the folder also ignores itself). */
++export const GITIGNORE_LINES: readonly string[] = ['/.lake/', '/.telelean/graph.json', '/.telelean/frozen/', '/.telelean/sessions/', '/.telelean/*.tmp', '/.telelean/runs/'];
+ 
+ const LIBRARY_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+ 
+--- a/packages/runner/test/integration/m2flow.test.ts
++++ b/packages/runner/test/integration/m2flow.test.ts
+@@ -37,7 +37,7 @@
+ import type { BackendCaps, LlmBackend, LlmSession, SessionConfig } from '../../src/llm/types.js';
+ import { createProposalService, createRunSidecarStore } from '../../src/proposal/index.js';
+ import { createRunManager, DEFAULT_RUN_SETTINGS, type PersistedRun, type RunManager } from '../../src/run/index.js';
+-import { listRunDirs, openRunShadow } from '../../src/shadow/index.js';
++import { listRunDirs, openRunShadow, runsDirOf } from '../../src/shadow/index.js';
+ import { createModelWorkspace, fsEditApplier, fsTextSource, type ModelWorkspace } from '../../src/workspace/index.js';
+ import { cleanup, makeTempDir, MENTAL_MODEL } from '../run/helpers/env.js';
+ import { acceptEverything, applyEverything, confirm } from '../run/helpers/apply.js';
+@@ -143,15 +143,14 @@
+   await workspace.load();
+   await workspace.refreshNow();
+   const backend = new RecordingFake(playFakeScript(turns));
+-  const runsDir = path.join(tmp, 'runs');
++  const runsDir = runsDirOf(root); // 2k2: in the model folder
+   const manager = newManager(root, runsDir, workspace, backend);
+   return { tmp, repo, root, runsDir, workspace, backend, manager, before, runIds: [] };
+ }
+ 
+-function newManager(root: string, runsDir: string, workspace: ModelWorkspace, backend: LlmBackend): RunManager {
++function newManager(root: string, _runsDir: string, workspace: ModelWorkspace, backend: LlmBackend): RunManager {
+   return createRunManager({
+     root,
+-    runsDir,
+     workspace,
+     services: { backend, engine: createLeanCheckEngine(), proposals: createProposalService(), sidecars: createRunSidecarStore() },
+     settings: DEFAULT_RUN_SETTINGS,
+@@ -172,7 +171,7 @@
+ }
+ 
+ async function runDirOf(f: Flow, runId: string): Promise<string> {
+-  const found = (await listRunDirs(f.runsDir, f.root)).find((d) => d.runId === runId);
++  const found = (await listRunDirs(f.runsDir)).find((d) => d.runId === runId);
+   if (found === undefined) throw new Error(`no run directory for ${runId}`);
+   return found.runDir;
+ }
+@@ -345,12 +344,12 @@
+     expect(await f.manager.end(review.runId, 'exit')).toMatchObject({ ok: true });
+ 
+     // Preflight refuses an axiom as the target: nothing is declared, no run directory is made.
+-    const runDirsBefore = (await listRunDirs(f.runsDir, f.root)).length;
++    const runDirsBefore = (await listRunDirs(f.runsDir)).length;
+     const refused = await f.manager.start({ subject: 'Spyro', target: 'cynder-dark-past', premises: ['new-spyro-pg'] });
+     expect(refused).toMatchObject({ ok: false, code: 'not-yet' });
+     expect(read(f, MAIN)).toBe(main);
+     expect((await f.workspace.listHistory('Spyro')).entries).toHaveLength(historyBefore);
+-    expect(await listRunDirs(f.runsDir, f.root)).toHaveLength(runDirsBefore);
++    expect(await listRunDirs(f.runsDir)).toHaveLength(runDirsBefore);
+     expect(f.backend.sessions).toHaveLength(1);
+     await finishFlow(f);
+   });
+--- a/packages/runner/test/lean/profile-shadow.test.ts
++++ b/packages/runner/test/lean/profile-shadow.test.ts
+@@ -45,6 +45,22 @@
+     expect(args.filter((a, i) => (args[i - 1] === '--ro-bind' || args[i - 1] === '--bind') && (a === '/' || a === '/run' || a === '/home'))).toEqual([]);
+   });
+ 
++  it("2k2 (D2-107 R3): with the run folder inside the model folder, nothing binds the model folder, its .git or an ancestor of the run; only the run's build/.lake is writable", () => {
++    const model = '/home/u/models/doorclose';
++    const run = `${model}/.telelean/runs/r1`;
++    const inRun = buildBwrapArgs({ ...profile, shadowDir: `${run}/build`, roBinds: [`${run}/gate/1`, `${run}/frozen/1`] }, ['lake', 'build']);
++    const sources = inRun.filter((_a, i) => inRun[i - 1] === '--ro-bind' || inRun[i - 1] === '--bind');
++    const writable = inRun.filter((_a, i) => inRun[i - 1] === '--bind');
++    expect(writable).toEqual([`${run}/build/.lake`]);
++    for (const p of sources) {
++      if (p === '/usr' || p === '/etc' || p === profile.elanHome) continue;
++      expect(p === run || p.startsWith(`${run}/`), p).toBe(true);
++    }
++    expect(sources.some((p) => p === model || p === `${model}/.git` || p === `${model}/.telelean` || p === `${model}/.telelean/runs`)).toBe(false);
++    // The model folder lies under the masked home: the tmpfs comes before the run's binds.
++    expect(indexOfSeq(inRun, ['--tmpfs', '/home/u'])).toBeLessThan(indexOfSeq(inRun, ['--ro-bind', `${run}/build`, `${run}/build`]));
++  });
++
+   it('isolates namespaces, clears the environment and ends with the command', () => {
+     for (const flag of ['--unshare-all', '--die-with-parent', '--new-session', '--clearenv']) expect(args).toContain(flag);
+     expect(indexOfSeq(args, ['--setenv', 'HOME', '/home/u'])).toBeGreaterThan(args.indexOf('--clearenv'));
+--- a/packages/runner/test/llm/argvEnv.test.ts
++++ b/packages/runner/test/llm/argvEnv.test.ts
+@@ -1,12 +1,19 @@
++import { spawnSync } from 'node:child_process';
++import { mkdir, realpath, writeFile } from 'node:fs/promises';
++import path from 'node:path';
+ import { describe, expect, it } from 'vitest';
+ import {
+   BUILTIN_TOOLS,
+   buildClaudeArgs,
+   classifyAuth,
++  ClaudeCliBackend,
+   type ClaudeArgsInput,
+ } from '../../src/llm/claudeCli.js';
+-import { buildClaudeSettings, cliDenyRules, verifyHooksListing } from '../../src/llm/confinement.js';
+-import { sanitizeClaudeEnv } from '../../src/llm/env.js';
++import { buildClaudeSettings, cliDenyRules, defaultGuardScriptPath, verifyHooksListing } from '../../src/llm/confinement.js';
++import { gitCeilingEnv, sanitizeClaudeEnv } from '../../src/llm/env.js';
++import type { ToolServer } from '../../src/llm/toolServer.js';
++import type { AgentToolHost } from '../../src/llm/types.js';
++import { makeTempDir, removeDir } from './helpers.js';
+ 
+ const base: ClaudeArgsInput = {
+   model: 'claude-haiku-5-5',
+@@ -295,3 +302,53 @@
+     expect(classifyAuth({ apiProvider: 'firstParty', subscriptionType: 'pro' }, 'ANTHROPIC_API_KEY').verdict).toBe('api-key');
+   });
+ });
++
++describe('2k2 (docs/slice2-plan.md 2.10, D2-113): git run by the CLI from ws/ finds no repository above the run folder', () => {
++  it("strips the host's GIT_* variables and sets GIT_CEILING_DIRECTORIES to the run folder", () => {
++    const { env, removed } = sanitizeClaudeEnv({ PATH: '/usr/bin', GIT_DIR: '/elsewhere/.git', GIT_WORK_TREE: '/elsewhere', GIT_CEILING_DIRECTORIES: '/' });
++    expect(env.GIT_DIR).toBeUndefined();
++    expect(env.GIT_WORK_TREE).toBeUndefined();
++    expect(env.GIT_CEILING_DIRECTORIES).toBeUndefined();
++    expect(removed).toEqual(expect.arrayContaining(['GIT_DIR', 'GIT_WORK_TREE', 'GIT_CEILING_DIRECTORIES']));
++    expect(gitCeilingEnv('/m/.telelean/runs/r1/ws')).toEqual({ GIT_CEILING_DIRECTORIES: '/m/.telelean/runs/r1' });
++  });
++
++  it("prepare(): the CLI's environment has the ceiling (no envSet lifts it), and git rev-parse from ws/ inside the model's repository finds none", async () => {
++    const base = await makeTempDir('telelean-ceiling-');
++    try {
++      const model = path.join(base, 'model');
++      const run = path.join(model, '.telelean', 'runs', 'r1');
++      const ws = path.join(run, 'ws');
++      await mkdir(path.join(ws, 'Model'), { recursive: true });
++      await mkdir(path.join(run, 'session'), { recursive: true });
++      await writeFile(path.join(ws, 'Model.lean'), 'import Model.Spyro\n');
++      const isolated = { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_TERMINAL_PROMPT: '0' };
++      const init = spawnSync('git', ['-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', 'init', '--quiet', model], { env: { PATH: process.env.PATH ?? '/usr/bin:/bin', HOME: base, ...isolated }, encoding: 'utf8' });
++      expect(init.status, init.stderr).toBe(0);
++      const backend = new ClaudeCliBackend({
++        binary: { path: '/nonexistent/claude' },
++        baseEnv: { PATH: process.env.PATH ?? '/usr/bin:/bin', HOME: base, GIT_DIR: path.join(model, '.git') },
++        envSet: { GIT_CEILING_DIRECTORIES: '' },
++        hookRuntime: { command: process.execPath, args: [] },
++        guardScriptPath: defaultGuardScriptPath(),
++      });
++      const server = { mcpConfigDocument: () => ({ mcpServers: {} }) } as unknown as ToolServer;
++      const launch = await backend.prepare({ cwd: ws, runDir: path.join(run, 'session'), systemPrompt: 'x', model: 'm', toolHost: {} as AgentToolHost }, server);
++      const runReal = await realpath(run);
++      expect(launch.cwd).toBe(await realpath(ws));
++      expect(launch.env.GIT_CEILING_DIRECTORIES).toBe(runReal);
++      expect(launch.env.GIT_DIR).toBeUndefined();
++      const revParse = (cwd: string, env: Record<string, string>) => spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd, env: { ...env, ...isolated }, encoding: 'utf8' });
++      for (const cwd of [ws, path.join(ws, 'Model')]) {
++        const r = revParse(cwd, launch.env);
++        expect(r.status, cwd).not.toBe(0);
++        expect(r.stderr).toMatch(/not a git repository/);
++      }
++      // Without the ceiling the same git finds the model's repository: what the ceiling keeps out of reach.
++      const { GIT_CEILING_DIRECTORIES: _ceiling, ...without } = launch.env;
++      expect(revParse(ws, without).stdout.trim()).toBe(await realpath(model));
++    } finally {
++      await removeDir(base);
++    }
++  });
++});
+--- a/packages/runner/test/llm/pathGuard.test.ts
++++ b/packages/runner/test/llm/pathGuard.test.ts
+@@ -5,7 +5,7 @@
+ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+ import { decide, grepGlobTokens, hookOutputFor, type GuardPolicy, type HookInput } from '../../bin/telelean-path-guard.mjs';
+ import { buildClaudeSettings, buildGuardPolicy, defaultGuardScriptPath, selfTestGuard } from '../../src/llm/confinement.js';
+-import { makeCleanShadow, makeShadow, removeDir, type ShadowFixture } from './helpers.js';
++import { makeCleanShadow, makeShadow, makeTempDir, removeDir, type ShadowFixture } from './helpers.js';
+ 
+ let fx: ShadowFixture;
+ let clean: ShadowFixture;
+@@ -311,3 +311,72 @@
+     expect(runHook({ tool_name: 'Read', tool_input: { file_path: p('Model.lean') } }, policyPath).status).toBe(2);
+   });
+ });
++
++describe('path guard: ws/ inside the model folder (2k2, docs/slice2-plan.md 2.10, D2-107 R3)', () => {
++  // The run folder is <model>/.telelean/runs/<id>/, so every path of ws/ passes through a hidden segment
++  // (.telelean) of the model folder. The hidden-segment rule applies to the path relative to ws/, so ws/ itself is
++  // usable and nothing of the model folder is reachable.
++  let base: string;
++  let model: string;
++  let ws: string;
++  let pol: GuardPolicy;
++  const at = (tool: string, toolInput: Record<string, unknown>) => decide({ hook_event_name: 'PreToolUse', tool_name: tool, tool_input: toolInput, cwd: ws }, pol);
++
++  beforeAll(async () => {
++    base = await makeTempDir();
++    model = path.join(base, 'model');
++    const run = path.join(model, '.telelean', 'runs', 'r1');
++    ws = path.join(run, 'ws');
++    for (const dir of [path.join(model, 'Model', 'Spyro'), path.join(model, '.git'), path.join(ws, 'Model', 'Spyro'), path.join(run, 'session'), path.join(run, 'build')]) await mkdir(dir, { recursive: true });
++    await writeFile(path.join(model, 'Model', 'Spyro', 'Main.lean'), 'the user model\n');
++    await writeFile(path.join(model, '.telelean', 'config.json'), '{}\n');
++    await writeFile(path.join(model, '.telelean', 'runs', 'consent.json'), '{}\n');
++    await writeFile(path.join(model, '.git', 'HEAD'), 'ref: refs/heads/main\n');
++    await writeFile(path.join(run, 'run.json'), '{}\n');
++    await writeFile(path.join(ws, 'Model.lean'), 'import Model.Spyro.Main\n');
++    await writeFile(path.join(ws, 'Model', 'Spyro', 'Main.lean'), 'namespace Spyro\nend Spyro\n');
++    await writeFile(path.join(ws, 'lakefile.toml'), 'name = "Model"\n');
++    await symlink(path.join(model, 'Model', 'Spyro', 'Main.lean'), path.join(ws, 'Model', 'Spyro', 'Up.lean'));
++    await symlink(model, path.join(ws, 'up'));
++    pol = buildGuardPolicy(ws, path.join(run, 'session', 'guard-log.jsonl'));
++  });
++  afterAll(async () => {
++    await removeDir(base);
++  });
++
++  it('allows the working copy: reads, edits and new files by relative and absolute path, and Grep and Glob over all of ws/', () => {
++    expect(at('Read', { file_path: 'Model/Spyro/Main.lean' }).kind).toBe('pass');
++    expect(at('Read', { file_path: path.join(ws, 'Model.lean') }).kind).toBe('pass');
++    expect(at('Edit', { file_path: path.join(ws, 'Model', 'Spyro', 'Main.lean'), old_string: 'a', new_string: 'b' }).kind).toBe('pass');
++    expect(at('Write', { file_path: 'Model/Spyro/New.lean', content: 'x' }).kind).toBe('pass');
++    // ws/ holds two symlinks (below), which the scan does not follow, and no hidden entry.
++    expect(at('Glob', { pattern: '**/*.lean', path: path.join(ws, 'Model') }).kind).toBe('pass');
++    expect(at('Grep', { pattern: 'theorem', path: 'Model' }).kind).toBe('pass');
++    expect(at('Grep', { pattern: 'theorem' }).kind).toBe('pass'); // the session's cwd, ws/ itself
++    expect(at('Glob', { pattern: '**/*.lean' }).kind).toBe('pass');
++  });
++
++  it("denies everything of the model folder: '..' escapes, absolute paths to its files, its .telelean and .git, the run's own files, symlinks and search roots above ws/", () => {
++    for (const file of [
++      path.join(model, 'Model', 'Spyro', 'Main.lean'),
++      path.join(model, '.telelean', 'config.json'),
++      path.join(model, '.telelean', 'runs', 'consent.json'),
++      path.join(model, '.telelean', 'runs', 'r1', 'run.json'),
++      path.join(model, '.git', 'HEAD'),
++    ]) {
++      expect(at('Read', { file_path: file }).kind, file).toBe('deny');
++      expect(at('Write', { file_path: file, content: 'x' }).kind, file).toBe('deny');
++    }
++    expect(at('Read', { file_path: '../run.json' }).reason).toMatch(/'\.\.'/);
++    expect(at('Read', { file_path: '../../../../Model/Spyro/Main.lean' }).kind).toBe('deny');
++    expect(at('Read', { file_path: `${ws}/../../consent.json` }).kind).toBe('deny');
++    expect(at('Read', { file_path: 'Model/Spyro/Up.lean' }).reason).toMatch(/resolves outside the workspace copy/);
++    expect(at('Read', { file_path: 'up/Model/Spyro/Main.lean' }).kind).toBe('deny');
++    for (const root of [model, path.join(model, '.telelean'), path.join(model, '.telelean', 'runs', 'r1'), 'up', '..']) {
++      expect(at('Grep', { pattern: 'x', path: root }).kind, root).toBe('deny');
++      expect(at('Glob', { pattern: '*', path: root }).kind, root).toBe('deny');
++    }
++    expect(at('Glob', { pattern: '../*' }).kind).toBe('deny');
++    expect(at('Glob', { pattern: `${model}/**` }).kind).toBe('deny');
++  });
++});
+--- a/packages/runner/test/run/fresh.e2e.test.ts
++++ b/packages/runner/test/run/fresh.e2e.test.ts
+@@ -51,7 +51,7 @@
+ import type { LlmEvent } from '../../src/llm/types.js';
+ import { createProposalService, createRunSidecarStore } from '../../src/proposal/index.js';
+ import { createRunManager, DEFAULT_RUN_SETTINGS, type PersistedRun, type RunManager } from '../../src/run/index.js';
+-import { listRunDirs } from '../../src/shadow/index.js';
++import { listRunDirs, runsDirOf } from '../../src/shadow/index.js';
+ import { createModelWorkspace, fsEditApplier, fsTextSource, inspectFolder, planInitialize, type ModelWorkspace } from '../../src/workspace/index.js';
+ import { cleanup, makeTempDir, REPO_ROOT } from './helpers/env.js';
+ import { acceptEverything, applyEverything, confirm } from './helpers/apply.js';
+@@ -150,7 +150,7 @@
+   await workspace.load();
+   if (git) expect(await workspace.initGit()).toMatchObject({ state: 'ready' });
+   expect(await workspace.refreshNow()).toMatchObject({ state: 'fresh' });
+-  return { root, runsDir: path.join(dir, 'runs'), workspace, managers: [], runIds: [] };
++  return { root, runsDir: runsDirOf(root), workspace, managers: [], runIds: [] };
+ }
+ 
+ /** A script's kind name as the board sends it (spec v4: the old names read as aliases). */
+@@ -175,7 +175,6 @@
+   const play = playFakeScript(script);
+   const manager = createRunManager({
+     root: f.root,
+-    runsDir: f.runsDir,
+     workspace: f.workspace,
+     services: { backend: new FakeBackend(play.script), engine: createLeanCheckEngine(), proposals: createProposalService(), sidecars: createRunSidecarStore() },
+     settings: DEFAULT_RUN_SETTINGS,
+@@ -223,7 +222,7 @@
+ 
+ /** run.json of a run as written now. */
+ async function rawRunOf(f: Fresh, runId: string): Promise<PersistedRun> {
+-  const found = (await listRunDirs(f.runsDir, f.root)).find((d) => d.runId === runId);
++  const found = (await listRunDirs(f.runsDir)).find((d) => d.runId === runId);
+   if (found === undefined) throw new Error(`no run directory for ${runId}`);
+   return JSON.parse(readFileSync(path.join(found.runDir, 'run.json'), 'utf8')) as PersistedRun;
+ }
+@@ -240,7 +239,7 @@
+ 
+ /** Every tool result of the run so far, from its transcript. */
+ async function toolResults(f: Fresh, runId: string): Promise<string[]> {
+-  const found = (await listRunDirs(f.runsDir, f.root)).find((d) => d.runId === runId);
++  const found = (await listRunDirs(f.runsDir)).find((d) => d.runId === runId);
+   if (found === undefined) throw new Error(`no run directory for ${runId}`);
+   return readFileSync(path.join(found.runDir, 'session', 'transcript.jsonl'), 'utf8')
+     .trim()
+--- a/packages/runner/test/run/helpers/fakeShadow.ts
++++ b/packages/runner/test/run/helpers/fakeShadow.ts
+@@ -1,6 +1,6 @@
+ /**
+  * A disk-backed stand-in for WP2's ShadowWorkspace, for the RunManager's own tests while `createRunShadow` is a
+- * stub: the same directory layout (`<runsDir>/<rootKey>/<runId>/{ws,build,git,session,...}`), real files in ws/ (the
++ * stub: the same directory layout (`<runsDir>/<runId>/{ws,build,git,session,...}`, 2k2), real files in ws/ (the
+  * FakeBackend edits them through the path guard), and commits kept as whole-file snapshots in `git/commits.json`
+  * (so `openFakeShadow` re-opens a run after a "reload"). No git, no Lean.
+  */
+@@ -10,7 +10,7 @@
+ 
+ import type { FileChange } from '@telelean/core';
+ 
+-import { rootKeyOf } from '../../../src/shadow/index.js';
++import { ensureRunsDir } from '../../../src/shadow/index.js';
+ import {
+   PASSING_COMMIT_KINDS,
+   ShadowLayoutError,
+@@ -203,13 +203,14 @@
+ export const createdShadows: FakeShadow[] = [];
+ 
+ export async function createFakeShadow(options: CreateShadowOptions): Promise<FakeShadow> {
+-  const runDir = path.join(options.runsDir, rootKeyOf(options.root), options.runId);
++  const runDir = path.join(options.runsDir, options.runId);
+   try {
+     await lstat(runDir);
+     throw new ShadowLayoutError('io', `the run directory exists already: ${runDir}`);
+   } catch (e) {
+     if (e instanceof ShadowLayoutError) throw e;
+   }
++  await ensureRunsDir(options.runsDir); // as createRunShadow (2k2, D2-109)
+   const shadow = new FakeShadow(options.runId, options.root, options.library, runDir, options.now ?? (() => new Date()));
+   for (const dir of Object.values(shadow.paths)) if (!dir.endsWith('.json')) await mkdir(dir, { recursive: true });
+   for (const [rel, text] of options.files) {
+--- a/packages/runner/test/run/helpers/harness.ts
++++ b/packages/runner/test/run/helpers/harness.ts
+@@ -13,6 +13,7 @@
+ import type { AskUserArgs, LlmBackend, LlmSession, SessionConfig } from '../../../src/llm/types.js';
+ import { createRunManager, DEFAULT_RUN_SETTINGS, runPreflight } from '../../../src/run/index.js';
+ import type { PersistedRun, PersistedStep, PreflightInput, PreflightOutcome, RunCore, RunManager, RunServices, RunSettings } from '../../../src/run/types.js';
++import { runsDirOf } from '../../../src/shadow/index.js';
+ import type { CreateShadowOptions } from '../../../src/shadow/types.js';
+ import { cleanup, makeTempDir, realClearTimeout, realSetTimeout, WALKTHROUGH_FIXTURES } from './env.js';
+ import { FakeEngine } from './fakeEngine.js';
+@@ -78,8 +79,8 @@
+   core?: Partial<RunCore>;
+   preflight?: (input: PreflightInput) => Promise<PreflightOutcome>;
+   withFacts?: boolean;
+-  /** Share the root and runs dir of an earlier harness (recovery tests). */
+-  reuse?: { dir: string; root: string; runsDir: string; workspace?: FakeWorkspace };
++  /** Share the root (and so its runs folder) of an earlier harness (recovery tests); `runsDir` is ignored (2k2). */
++  reuse?: { dir: string; root: string; runsDir?: string; workspace?: FakeWorkspace };
+   log?: string[];
+   cancelLean?: (runId: string) => Promise<unknown>;
+   /** Slice 2d: the model folder the workspace reads (default the Spyro fixture). */
+@@ -114,7 +115,8 @@
+ export function makeHarness(options: HarnessOptions = {}): Harness {
+   const dir = options.reuse?.dir ?? makeTempDir('mgr');
+   const root = options.reuse?.root ?? path.join(dir, 'model');
+-  const runsDir = options.reuse?.runsDir ?? path.join(dir, 'runs');
++  // 2k2 (D2-108): the runs live in the model folder; the manager derives the folder from its root.
++  const runsDir = runsDirOf(root);
+   mkdirSync(root, { recursive: true });
+   const log = options.log ?? [];
+   const workspace = options.reuse?.workspace ?? new FakeWorkspace(root, { withFacts: options.withFacts ?? true, log, ...(options.source !== undefined ? { source: options.source } : {}) });
+@@ -171,7 +173,7 @@
+     ...(options.now !== undefined ? { now: options.now } : {}),
+     ...(options.newRunId !== undefined ? { newRunId: options.newRunId } : {}),
+   };
+-  const manager = createRunManager({ root, runsDir, workspace, services, settings });
++  const manager = createRunManager({ root, workspace, services, settings });
+   const views: RunView[] = [];
+   manager.onDidChange((c) => {
+     if (c.run) {
+--- a/packages/runner/test/run/manager.lifecycle.test.ts
++++ b/packages/runner/test/run/manager.lifecycle.test.ts
+@@ -9,7 +9,7 @@
+  * notices while a step runs and while the results are hidden (run.json holds them). A v1 run in review is converted
+  * into a session when it is recovered (§3.11, session.reload.test.ts); M2's legacy-proposal test was deleted in 2h.
+  */
+-import { cpSync, readFileSync, writeFileSync } from 'node:fs';
++import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+ import path from 'node:path';
+ 
+ import { columnOrder } from '@telelean/core';
+@@ -17,7 +17,9 @@
+ 
+ import { renderAnswersAsUserTurn } from '../../src/llm/toolSchemas.js';
+ import { condenseRateLimit, localTime, rateLimitNotice } from '../../src/run/index.js';
++import { MOVED_RUN_REFUSAL, movedRunNotice } from '../../src/run/manager.js';
+ import type { PersistedRun } from '../../src/run/types.js';
++import { runsDirOf } from '../../src/shadow/index.js';
+ import { cleanup } from './helpers/env.js';
+ import { okReport } from './helpers/fakeEngine.js';
+ import { ASK_MODALITY, makeHarness, rawRun, rawStep, readJson, round1, START, state, step, waitForRun, waitForStage, type Harness } from './helpers/harness.js';
+@@ -261,3 +263,112 @@
+     expect(condenseRateLimit({ status: 'allowed', rateLimitType: 'seven_day_opus' }).detail).toBe('seven-day opus window');
+   });
+ });
++
++describe("2k2 (docs/slice2-plan.md 2.10, D2-107): a model's runs in its own folder", () => {
++  it('a run lives in <root>/.telelean/runs/<runId>/ beside a .gitignore of *; another root never recovers it; a folder recreated at the same path starts with no run', async () => {
++    const a = makeHarness({ script: [round1(step.ask())] });
++    toDispose.push(() => cleanup(a.dir));
++    await a.manager.start(START);
++    const waiting = await waitForRun(a.manager, state('waiting-for-answer'));
++    expect(a.runsDir).toBe(path.join(a.root, '.telelean', 'runs'));
++    expect(a.shadow().paths.runDir).toBe(path.join(a.root, '.telelean', 'runs', waiting.runId));
++    expect(readFileSync(path.join(runsDirOf(a.root), '.gitignore'), 'utf8')).toBe('*\n');
++    a.manager.dispose();
++
++    // Another model folder next to it recovers nothing of it.
++    const other = makeHarness({ reuse: { dir: a.dir, root: path.join(a.dir, 'other-model') } });
++    toDispose.push(() => other.dispose());
++    await other.manager.recover();
++    expect(other.manager.current()).toBeNull();
++
++    // The same root recovers it.
++    const b = makeHarness({ reuse: { dir: a.dir, root: a.root, workspace: a.workspace } });
++    await b.manager.recover();
++    expect(b.manager.current()).toMatchObject({ runId: waiting.runId, state: 'waiting-for-answer' });
++    b.manager.dispose();
++
++    // The folder deleted and made again at the same path: no run, no runs folder (the deleted folder took them along).
++    rmSync(a.root, { recursive: true, force: true });
++    mkdirSync(a.root, { recursive: true });
++    const c = makeHarness({ reuse: { dir: a.dir, root: a.root } });
++    toDispose.push(() => c.dispose());
++    await c.manager.recover();
++    expect(c.manager.current()).toBeNull();
++    expect(c.manager.session()).toBeNull();
++    expect(existsSync(runsDirOf(a.root))).toBe(false);
++  });
++
++  it('D2-111: a session recorded at another path (the folder moved or copied) is held: interrupted, no view, the notice; nothing replayed or written; only Exit and Stop end it, recording nothing', async () => {
++    const a = makeHarness({ script: [round1(step.freeze(), step.edit(TARGET_LINE, TARGET_LINE + PROOF), step.finish(), step.result())] });
++    toDispose.push(() => cleanup(a.dir));
++    await a.manager.start(START);
++    const stage = await waitForStage(a.manager, 1);
++    const runId = stage.runId;
++    a.manager.dispose();
++    const moved = path.join(a.dir, 'moved-model');
++    cpSync(a.root, moved, { recursive: true });
++    const runJson = path.join(runsDirOf(moved), runId, 'run.json');
++    const original = readFileSync(runJson, 'utf8');
++
++    const b = makeHarness({ reuse: { dir: a.dir, root: moved } });
++    toDispose.push(() => b.dispose());
++    await b.manager.recover();
++    const held = b.manager.current();
++    expect(held).toMatchObject({ runId, state: 'interrupted' });
++    expect(held?.canResume).toBeUndefined();
++    expect(held?.session).toBeUndefined();
++    expect(held?.notices.at(-1)?.text).toBe(movedRunNotice(a.root));
++    expect(b.manager.session()).toBeNull();
++    expect(b.engine.calls).toEqual([]); // no judge, no Lean job
++    expect(readFileSync(runJson, 'utf8')).toBe(original); // untouched: moved back, the run would go on
++    const refusal = { ok: false, code: 'conflict', error: MOVED_RUN_REFUSAL };
++    expect(await b.manager.decide(runId, 1, false, [], false)).toMatchObject(refusal);
++    expect(await b.manager.reveal(runId, 1, 'show-result')).toMatchObject(refusal);
++    expect(await b.manager.submit(runId, 1)).toMatchObject(refusal);
++    expect(await b.manager.resume(runId)).toMatchObject(refusal);
++    expect(await b.manager.retry(runId)).toMatchObject(refusal);
++    expect(await b.manager.end(runId, 'apply', 1, 'x')).toMatchObject(refusal);
++    expect(await b.manager.formalize({ subject: 'Spyro', inferences: [{ target: START.target, premises: START.premises }], runId, stage: 1 })).toMatchObject(refusal);
++    expect(await b.manager.start(START)).toMatchObject({ ok: false, code: 'conflict' }); // it still holds the folder's one run
++
++    expect(await b.manager.end(runId, 'exit')).toMatchObject({ ok: true, label: 'Session ended' });
++    expect(b.manager.current()).toMatchObject({ runId, state: 'discarded' });
++    expect(b.manager.session()).toBeNull();
++    expect(b.sidecars.attempts).toEqual([]); // nothing recorded in a folder the run did not start in
++    expect(b.sidecars.resolutions).toEqual([]);
++    expect(b.sidecars.decisions).toEqual([]);
++    expect(b.workspace.appliedChanges).toEqual([]);
++    expect(readJson<PersistedRun>(runJson).view.state).toBe('discarded');
++    // The folder it started in is not touched.
++    expect(readJson<PersistedRun>(path.join(runsDirOf(a.root), runId, 'run.json')).view.state).toBe('review');
++  });
++
++  it('D2-111: Stop ends a held run that is no session (a v1 run) as cancelled; an answer is refused', async () => {
++    const a = makeHarness({ script: [round1(step.ask())] });
++    toDispose.push(() => cleanup(a.dir));
++    await a.manager.start(START);
++    const waiting = await waitForRun(a.manager, state('waiting-for-answer'));
++    a.manager.dispose();
++    const moved = path.join(a.dir, 'copied-model');
++    cpSync(a.root, moved, { recursive: true });
++    const runJson = path.join(runsDirOf(moved), waiting.runId, 'run.json');
++    const v1 = readJson<PersistedRun>(runJson);
++    v1.version = 1;
++    delete v1.session;
++    writeFileSync(runJson, JSON.stringify(v1));
++
++    const b = makeHarness({ reuse: { dir: a.dir, root: moved } });
++    toDispose.push(() => b.dispose());
++    await b.manager.recover();
++    const held = b.manager.current();
++    expect(held).toMatchObject({ runId: waiting.runId, state: 'interrupted' });
++    expect(held?.pendingQuestions).toBeUndefined();
++    const answers = [{ question: 0, choice: { kind: 'free-text' as const, text: 'a rule' }, scope: 'run' as const }];
++    expect(await b.manager.answer(waiting.runId, 'q1', answers)).toMatchObject({ ok: false, error: MOVED_RUN_REFUSAL });
++    expect(b.backend?.sessions).toHaveLength(0);
++    expect(await b.manager.cancel(waiting.runId)).toMatchObject({ ok: true, label: 'Run cancelled' });
++    expect(b.manager.current()).toMatchObject({ state: 'cancelled' });
++    expect(b.sidecars.attempts).toEqual([]);
++    expect(b.sidecars.resolutions).toEqual([]);
++  });
++});
+--- a/packages/runner/test/run/manager.start.test.ts
++++ b/packages/runner/test/run/manager.start.test.ts
+@@ -27,7 +27,8 @@
+ 
+ function runDirs(harness: Harness): string[] {
+   if (!existsSync(harness.runsDir)) return [];
+-  return readdirSync(harness.runsDir).flatMap((key) => readdirSync(`${harness.runsDir}/${key}`));
++  // 2k2 (D2-108): `<root>/.telelean/runs/<runId>/`, beside its .gitignore (and the extension's consent).
++  return readdirSync(harness.runsDir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
+ }
+ 
+ /** Slice 2d: Cancel step, then the session ends (2h: Exit; Discard is retired), so the root has no active run any more. */
+--- a/packages/runner/test/run/walkthrough.e2e.test.ts
++++ b/packages/runner/test/run/walkthrough.e2e.test.ts
+@@ -37,7 +37,7 @@
+ import type { LlmEvent } from '../../src/llm/types.js';
+ import { createProposalService, createRunSidecarStore } from '../../src/proposal/index.js';
+ import { createRunManager, DEFAULT_RUN_SETTINGS, gateCheckOf, type PersistedRun, type PersistedStep, type RunManager } from '../../src/run/index.js';
+-import { listRunDirs } from '../../src/shadow/index.js';
++import { listRunDirs, runsDirOf } from '../../src/shadow/index.js';
+ import { createModelWorkspace, fsEditApplier, fsTextSource, type ModelWorkspace } from '../../src/workspace/index.js';
+ import { cleanup, makeTempDir, MENTAL_MODEL } from './helpers/env.js';
+ import { applyEverything } from './helpers/apply.js';
+@@ -101,10 +101,9 @@
+   await workspace.load();
+   await workspace.refreshNow();
+   const play = playFakeScript(file);
+-  const runsDir = path.join(dir, 'runs');
++  const runsDir = runsDirOf(root); // 2k2: in the model folder
+   const manager = createRunManager({
+     root,
+-    runsDir,
+     workspace,
+     services: { backend: new FakeBackend(play.script), engine: createLeanCheckEngine(), proposals: createProposalService(), sidecars: createRunSidecarStore() },
+     settings: DEFAULT_RUN_SETTINGS,
+@@ -153,7 +152,7 @@
+ }
+ 
+ async function runDirOf(w: Walk, runId: string): Promise<string> {
+-  const listed = await listRunDirs(w.runsDir, w.root);
++  const listed = await listRunDirs(w.runsDir);
+   const found = listed.find((d) => d.runId === runId);
+   if (found === undefined) throw new Error(`no run dir for ${runId}`);
+   return found.runDir;
+--- a/packages/runner/test/semantic/guards.test.ts
++++ b/packages/runner/test/semantic/guards.test.ts
+@@ -143,6 +143,25 @@
+   const masksGit = (argv: readonly string[], root: string): boolean =>
+     argv.some((a, i) => a === '--tmpfs' && argv[i + 1] === path.join(root, '.git'));
+ 
++  it("2k2 (D2-115): masks the model's runs folder, .telelean/runs, as it masks .git; the run folders are never bound", async () => {
++    const root = spyroCopy(tmp, 'with-runs');
++    mkdirSync(path.join(root, '.git'));
++    mkdirSync(path.join(root, '.telelean', 'runs', 'r1', 'ws'), { recursive: true });
++    writeFileSync(path.join(root, '.telelean', 'runs', 'r1', 'run.json'), '{}\n');
++    const runs = path.join(root, '.telelean', 'runs');
++    expect(gitMaskPaths(root)).toEqual([path.join(root, '.git'), runs]);
++    const argv = await buildArgv(root, 'runs');
++    expect(argv.some((a, i) => a === '--tmpfs' && argv[i + 1] === runs)).toBe(true);
++    // The tmpfs comes after the root's read-only bind, so it covers it; nothing under the runs folder is bound.
++    const roBind = argv.findIndex((a, i) => a === '--ro-bind' && argv[i + 1] === root);
++    const cover = argv.findIndex((a, i) => a === '--tmpfs' && argv[i + 1] === runs);
++    expect(roBind).toBeGreaterThanOrEqual(0);
++    expect(cover).toBeGreaterThan(roBind);
++    expect(argv.filter((a, i) => (argv[i - 1] === '--bind' || argv[i - 1] === '--ro-bind') && a.startsWith(`${runs}/`))).toEqual([]);
++    const noRuns = spyroCopy(tmp, 'no-runs');
++    expect(gitMaskPaths(noRuns)).toEqual([]);
++  });
++
+   it('masks .git only when it is a directory', async () => {
+     const withGit = spyroCopy(tmp, 'with-git');
+     mkdirSync(path.join(withGit, '.git'));
+--- a/packages/runner/test/shadow/shadow.test.ts
++++ b/packages/runner/test/shadow/shadow.test.ts
+@@ -12,12 +12,14 @@
+ import {
+   BASE_COMMIT_LABEL,
+   createRunShadow,
++  ensureRunsDir,
+   isModelPath,
+   listRunDirs,
+   openRunShadow,
+   PASSING_COMMIT_KINDS,
+   pruneRunDirs,
+-  rootKeyOf,
++  RUNS_GITIGNORE,
++  runsDirOf,
+   ShadowLayoutError,
+   type ShadowWorkspace,
+ } from '../../src/shadow/index.js';
+@@ -74,7 +76,9 @@
+     const shadow = await createRunShadow({ root, runsDir, runId: 'r_layout', library: 'Model', files });
+ 
+     expect(shadow.runId).toBe('r_layout');
+-    expect(shadow.paths.runDir).toBe(path.join(runsDir, rootKeyOf(root), 'r_layout'));
++    // 2k2 (D2-108): `<runsDir>/<runId>/`, no root key; the runs folder ignores itself (D2-109).
++    expect(shadow.paths.runDir).toBe(path.join(runsDir, 'r_layout'));
++    expect(readFileSync(path.join(runsDir, '.gitignore'), 'utf8')).toBe('*\n');
+     // ws/: exactly the given files, nothing hidden anywhere (so the guard allows Grep/Glob on the whole root).
+     expect(filesBelow(shadow.paths.ws)).toEqual([...files.keys()].sort());
+     expect(entries(shadow.paths.ws).filter((p) => p.split('/').some((s) => s.startsWith('.')))).toEqual([]);
+@@ -442,10 +446,22 @@
+   });
+   afterAll(() => cleanupTempRoot(tmp));
+ 
+-  it('lists newest first and prunes to the newest 10, never deleting non-terminal or protected runs', async () => {
+-    const runsDir = path.join(tmp, 'runs');
++  it('2k2 (D2-107, D2-108): a root\'s runs folder is <root>/.telelean/runs; ensureRunsDir writes its .gitignore once and keeps one already there', async () => {
++    const root = path.join(tmp, 'layout-model');
++    expect(runsDirOf(root)).toBe(path.join(root, '.telelean', 'runs'));
++    expect(runsDirOf(`${root}/`)).toBe(path.join(root, '.telelean', 'runs'));
++    expect(RUNS_GITIGNORE).toBe('*\n');
++    await ensureRunsDir(runsDirOf(root));
++    expect(readFileSync(path.join(runsDirOf(root), '.gitignore'), 'utf8')).toBe('*\n');
++    writeFileSync(path.join(runsDirOf(root), '.gitignore'), '*\n# mine\n');
++    await ensureRunsDir(runsDirOf(root));
++    expect(readFileSync(path.join(runsDirOf(root), '.gitignore'), 'utf8')).toBe('*\n# mine\n');
++  });
++
++  it('lists newest first and prunes to the newest 10, never deleting non-terminal or protected runs, nor anything that is not a run folder (2k2, D2-112)', async () => {
+     const root = path.join(tmp, 'model');
+-    const dir = path.join(runsDir, rootKeyOf(root));
++    const runsDir = runsDirOf(root);
++    const dir = runsDir;
+     // 15 runs, r00 oldest .. r14 newest. Older than the newest 10: r00..r04.
+     const states: Record<string, string | undefined> = {
+       r00: 'accepted',
+@@ -465,20 +481,33 @@
+     // r03 has no readable updatedAt: its directory mtime decides (oldest).
+     utimesSync(path.join(dir, 'r03'), new Date('2020-01-01T00:00:00Z'), new Date('2020-01-01T00:00:00Z'));
+     mkdirSync(path.join(dir, 'not a run id'), { recursive: true });
+-    const other = path.join(runsDir, rootKeyOf(path.join(tmp, 'other-model')), 'r99');
++    // 2k2: the consent, the folder's .gitignore and a directory named like a run id without run.json or git/ stay.
++    writeFileSync(path.join(dir, 'consent.json'), '{"format":"telelean-consent","version":1,"claude":true}\n');
++    writeFileSync(path.join(dir, '.gitignore'), '*\n');
++    mkdirSync(path.join(dir, 'notes'), { recursive: true });
++    writeFileSync(path.join(dir, 'notes', 'mine.txt'), 'x\n');
++    utimesSync(path.join(dir, 'notes'), new Date('2019-01-01T00:00:00Z'), new Date('2019-01-01T00:00:00Z'));
++    // A run folder with a shadow's git/ but no run.json yet (a start that died at once) is a run folder.
++    mkdirSync(path.join(dir, 'rgitonly', 'git'), { recursive: true });
++    utimesSync(path.join(dir, 'rgitonly'), new Date('2019-06-01T00:00:00Z'), new Date('2019-06-01T00:00:00Z'));
++    // Another model's runs folder is never touched.
++    const other = path.join(runsDirOf(path.join(tmp, 'other-model')), 'r99');
+     mkdirSync(other, { recursive: true });
+ 
+-    const listed = await listRunDirs(runsDir, root);
+-    expect(listed.map((r) => r.runId)).toEqual(['r14', 'r13', 'r12', 'r11', 'r10', 'r09', 'r08', 'r07', 'r06', 'r05', 'r04', 'r02', 'r01', 'r00', 'r03']);
++    const listed = await listRunDirs(runsDir);
++    expect(listed.map((r) => r.runId)).toEqual(['r14', 'r13', 'r12', 'r11', 'r10', 'r09', 'r08', 'r07', 'r06', 'r05', 'r04', 'r02', 'r01', 'r00', 'r03', 'rgitonly', 'notes']);
+     expect(listed[0]).toMatchObject({ runId: 'r14', state: 'review', updatedAt: '2026-11-01T00:14:00.000Z', runDir: path.join(dir, 'r14') });
+     expect(listed.find((r) => r.runId === 'r03')?.state).toBeUndefined();
+ 
+-    const deleted = await pruneRunDirs(runsDir, root, 10, ['r02']);
+-    expect(deleted.sort()).toEqual(['r00', 'r03', 'r04']);
+-    expect((await listRunDirs(runsDir, root)).map((r) => r.runId)).toEqual(['r14', 'r13', 'r12', 'r11', 'r10', 'r09', 'r08', 'r07', 'r06', 'r05', 'r02', 'r01']);
++    const deleted = await pruneRunDirs(runsDir, 10, ['r02']);
++    expect(deleted.sort()).toEqual(['r00', 'r03', 'r04', 'rgitonly']);
++    expect((await listRunDirs(runsDir)).map((r) => r.runId)).toEqual(['r14', 'r13', 'r12', 'r11', 'r10', 'r09', 'r08', 'r07', 'r06', 'r05', 'r02', 'r01', 'notes']);
+     expect(existsSync(other)).toBe(true);
+     expect(existsSync(path.join(dir, 'not a run id'))).toBe(true);
+-    expect(await pruneRunDirs(runsDir, root, 10, ['r02'])).toEqual([]);
+-    expect(await listRunDirs(path.join(tmp, 'nothing-here'), root)).toEqual([]);
++    expect(readFileSync(path.join(dir, 'consent.json'), 'utf8')).toContain('telelean-consent');
++    expect(readFileSync(path.join(dir, '.gitignore'), 'utf8')).toBe('*\n');
++    expect(readFileSync(path.join(dir, 'notes', 'mine.txt'), 'utf8')).toBe('x\n');
++    expect(await pruneRunDirs(runsDir, 10, ['r02'])).toEqual([]);
++    expect(await listRunDirs(path.join(tmp, 'nothing-here'))).toEqual([]);
+   });
+ });
+--- a/packages/runner/test/workspace/initialize.test.ts
++++ b/packages/runner/test/workspace/initialize.test.ts
+@@ -11,6 +11,8 @@
+ 
+ import { runLean } from '../../src/lean/runLean.js';
+ import { resolveToolchain, toolchainExe } from '../../src/lean/toolchain.js';
++import { ensureRunsDir, runsDirOf } from '../../src/shadow/index.js';
++import { isModelFile, isModelOrProjectFile, listModelFiles, listScopeFiles, scopesOf } from '../../src/workspace/files.js';
+ import { readLakefileToml } from '../../src/workspace/initialize.js';
+ import {
+   DEFAULT_EXCLUDED_DIRS,
+@@ -135,17 +137,24 @@
+     expect(text('lake-manifest.json')).toBe(fixture('lake-manifest.json'));
+     expect(text('lean-toolchain')).toBe('leanprover/lean4:v4.35.0\n');
+     expect(text('lean-toolchain')).toBe(fixture('lean-toolchain'));
+-    expect(text('.gitignore')).toBe('/.lake/\n/.telelean/graph.json\n/.telelean/frozen/\n/.telelean/sessions/\n/.telelean/*.tmp\n');
++    expect(text('.gitignore')).toBe('/.lake/\n/.telelean/graph.json\n/.telelean/frozen/\n/.telelean/sessions/\n/.telelean/*.tmp\n/.telelean/runs/\n');
+     expect(text('Model.lean')).toBe('import Model.Spyro\n');
+     for (const file of scaffold) expect(text(file.path), file.path).toBe(file.text);
+     expect(text('.telelean/config.json')).toBe(serializeProjectConfig(defaultProjectConfig()));
+     expect(text('.telelean/subjects/Spyro/layout.json')).toBe(serializeLayout(emptyLayout()));
+   });
+ 
++  it('2k2 (D2-109): /.telelean/runs/ is one of the lines; a .gitignore of the lines before 2k2 gets just that one', () => {
++    expect(GITIGNORE_LINES).toContain('/.telelean/runs/');
++    const before2k2 = '/.lake/\n/.telelean/graph.json\n/.telelean/frozen/\n/.telelean/sessions/\n/.telelean/*.tmp\n';
++    const change = planInitialize({ subject: '', inspection: { kind: 'lake-project', library: 'Model', subjects: [], gitignore: before2k2 } }).find((c) => c.path === '.gitignore');
++    expect(change?.after).toBe(`${before2k2}/.telelean/runs/\n`);
++  });
++
+   it('an existing .gitignore gets only the missing lines (before = its text)', () => {
+     const existing = 'node_modules/\n/.lake\n';
+     const change = planInitialize({ subject: 'Spyro', inspection: { kind: 'empty', gitignore: existing } }).find((c) => c.path === '.gitignore');
+-    expect(change).toEqual({ path: '.gitignore', before: existing, after: `${existing}/.telelean/graph.json\n/.telelean/frozen/\n/.telelean/sessions/\n/.telelean/*.tmp\n` });
++    expect(change).toEqual({ path: '.gitignore', before: existing, after: `${existing}/.telelean/graph.json\n/.telelean/frozen/\n/.telelean/sessions/\n/.telelean/*.tmp\n/.telelean/runs/\n` });
+     const noNewline = planInitialize({ subject: 'Spyro', inspection: { kind: 'empty', gitignore: 'dist' } }).find((c) => c.path === '.gitignore');
+     expect(noNewline?.after).toBe(`dist\n${GITIGNORE}`);
+     const complete = planInitialize({ subject: 'Spyro', inspection: { kind: 'empty', gitignore: `# mine\n${GITIGNORE}` } });
+@@ -156,7 +165,7 @@
+     const changes = planInitialize({ subject: '', inspection: { kind: 'lake-project', library: 'Notes', subjects: ['Delta', 'Alpha'], gitignore: '/.lake/\n' } });
+     expect(changes).toEqual([
+       { path: '.telelean/config.json', before: null, after: serializeProjectConfig({ format: 'telelean-config', version: 1, library: 'Notes' }) },
+-      { path: '.gitignore', before: '/.lake/\n', after: '/.lake/\n/.telelean/graph.json\n/.telelean/frozen/\n/.telelean/sessions/\n/.telelean/*.tmp\n' },
++      { path: '.gitignore', before: '/.lake/\n', after: '/.lake/\n/.telelean/graph.json\n/.telelean/frozen/\n/.telelean/sessions/\n/.telelean/*.tmp\n/.telelean/runs/\n' },
+       { path: '.telelean/subjects/Alpha/layout.json', before: null, after: serializeLayout(emptyLayout()) },
+       { path: '.telelean/subjects/Delta/layout.json', before: null, after: serializeLayout(emptyLayout()) },
+     ]);
+@@ -252,3 +261,57 @@
+     expect(await findModelRoots(path.join(tmp, 'missing'))).toEqual([]);
+   });
+ });
++
++describe("2k2 (docs/slice2-plan.md 2.10, D2-107 R1, R2): a model's runs folder is invisible to git, History and the scans", () => {
++  let tmp: string;
++  beforeAll(() => {
++    tmp = makeTempDir('runs2k2');
++  });
++  afterAll(() => cleanup(tmp));
++
++  /** A run folder as a run leaves it: ws/ and build/ with model files, run.json, the transcript, the consent. */
++  async function addRun(root: string): Promise<void> {
++    await ensureRunsDir(runsDirOf(root));
++    for (const rel of ['ws/Model.lean', 'ws/Model/Spyro/Main.lean', 'ws/lakefile.toml', 'build/Model/Spyro/Main.lean', 'build/.lake/build/x.olean', 'run.json', 'session/transcript.jsonl']) {
++      write(root, `.telelean/runs/r1/${rel}`, 'x\n');
++    }
++    write(root, '.telelean/runs/consent.json', '{}\n');
++  }
++
++  it('git status lists nothing under .telelean/runs/, with or without the .gitignore line (the folder ignores itself)', async () => {
++    for (const [name, gitignore] of [['with-line', `${GITIGNORE_LINES.join('\n')}\n`], ['without-line', '/.lake/\n']] as const) {
++      const root = path.join(tmp, name);
++      mkdirSync(root, { recursive: true });
++      write(root, '.gitignore', gitignore);
++      write(root, 'Model/Spyro/Main.lean', 'namespace Spyro\nend Spyro\n');
++      await initGitRepository(root);
++      await addRun(root);
++      const status = userGit(root, 'status', '--porcelain', '--untracked-files=all', '--ignored=no');
++      expect(status.split('\n').filter((l) => l.includes('.telelean/runs')), name).toEqual([]);
++      expect(status).toContain('Model/Spyro/Main.lean'); // the model's own files are still seen
++      expect(userGit(root, 'check-ignore', '.telelean/runs/r1/ws/Model.lean').trim(), name).toBe('.telelean/runs/r1/ws/Model.lean');
++    }
++  });
++
++  it("History's scopes and listings, the model file rules, findModelRoots and inspectFolder never include a run's files", async () => {
++    const root = path.join(tmp, 'model');
++    write(root, '.telelean/config.json', '{"format":"telelean-config","version":1,"library":"Model"}\n');
++    write(root, 'Model/Spyro/Main.lean', 'namespace Spyro\nend Spyro\n');
++    write(root, 'lakefile.toml', 'name = "Model"\n');
++    await addRun(root);
++    // Even a run folder that looked like a model root (it never does: ws/ holds no dot-entry) is not found.
++    write(root, '.telelean/runs/r1/ws/.telelean/config.json', '{"format":"telelean-config","version":1,"library":"Model"}\n');
++    const runFiles = ['.telelean/runs/r1/ws/Model/Spyro/Main.lean', '.telelean/runs/r1/ws/Model.lean', '.telelean/runs/r1/run.json', '.telelean/runs/consent.json'];
++    expect(scopesOf(runFiles, 'Model')).toEqual([]);
++    expect(runFiles.some((rel) => isModelOrProjectFile(rel, 'Model') || isModelFile(rel, 'Model'))).toBe(false);
++    const listed = [...(await listScopeFiles(root, { kind: 'subject', subject: 'Spyro' }, 'Model')), ...(await listScopeFiles(root, { kind: 'project' }, 'Model'))];
++    expect(listed.filter((rel) => rel.includes('runs'))).toEqual([]);
++    expect(listed).toContain('Model/Spyro/Main.lean');
++    expect(await listModelFiles(root, 'Model')).toEqual(['Model/Spyro/Main.lean']);
++    expect(await findModelRoots(tmp, { maxDepth: 10 })).toEqual([root]);
++    // A folder that holds only a runs folder (its model files gone) is empty to Initialize.
++    const left = path.join(tmp, 'left-over');
++    await addRun(left);
++    expect(await inspectFolder(left)).toMatchObject({ kind: 'empty' });
++  });
++});
+--- a/packages/runner/test/workspace/sample.test.ts
++++ b/packages/runner/test/workspace/sample.test.ts
+@@ -13,6 +13,7 @@
+ import { runLean } from '../../src/lean/runLean.js';
+ import { resolveToolchain, toolchainExe } from '../../src/lean/toolchain.js';
+ import { findModelRoots, GITIGNORE_LINES, inspectFolder } from '../../src/workspace/index.js';
++import { gitignoreWithTeleleanLines } from '../../src/workspace/initialize.js';
+ import { fakeParseLeanFile } from './fakeCore.js';
+ import { cleanup, copyMentalModel, exists, listFiles, makeTempDir, MENTAL_MODEL, read, REPO_ROOT, SPYRO_FIXTURE, TEST_RUN_ID, waitForMemory } from './helpers.js';
+ 
+@@ -44,7 +45,9 @@
+     for (const rel of ['lakefile.toml', 'lake-manifest.json', 'lean-toolchain']) {
+       expect(bytes(path.join(MENTAL_MODEL, rel)).equals(bytes(path.join(SPYRO_FIXTURE, rel))), rel).toBe(true);
+     }
+-    expect(read(MENTAL_MODEL, '.gitignore')).toBe(`${GITIGNORE_LINES.join('\n')}\n`);
++    // 2k2 (D2-109): mental_model/ (outside the builders' write area) still has the lines of before 2k2; Initialize would
++    // add only `/.telelean/runs/` (and its runs folder ignores itself, `.telelean/runs/.gitignore`).
++    expect(gitignoreWithTeleleanLines(read(MENTAL_MODEL, '.gitignore'))).toBe(`${GITIGNORE_LINES.join('\n')}\n`);
+     expect(read(MENTAL_MODEL, 'Model.lean')).toBe('import Model.Spyro\n');
+     expect(read(MENTAL_MODEL, '.telelean/config.json')).toBe(serializeProjectConfig(defaultProjectConfig()));
+     // Spec v4 (docs/slice1-plan.md 2.3): the sample was written with the column keys of before v4, which read as the
+--- a/packages/webview/src/model/run.ts
++++ b/packages/webview/src/model/run.ts
+@@ -19,6 +19,7 @@
+   type RunUsage,
+   type RunVerdict,
+   type RunView,
++  type SessionView,
+   type TlNode,
+ } from '@telelean/core';
+ import { formatTime } from './format';
+@@ -337,6 +338,30 @@
+   return { upfront: notices.filter((n) => keep.has(n.id)), later: notices.filter((n) => !keep.has(n.id)) };
+ }
+ 
++/**
++ * The plain run panel's notices (carry-over A-F1 of 2k1, fixed in 2k2): `placeNotices`, without the notice that says what
++ * the panel's ended line already says. After an Apply, or an Exit after Show results, the runner's end notice is
++ * `REVIEW_TEXTS.applied` or `REVIEW_TEXTS.exited`, the very text `endedText` prints, so it is not listed again under
++ * "Earlier notices". run.json keeps it.
++ */
++export function panelNotices(run: Pick<RunView, 'runId' | 'state' | 'verdict' | 'notices' | 'accepted' | 'session'>): NoticePlaces {
++  const placed = placeNotices(run);
++  const line = endedText(run);
++  if (line === null) return placed;
++  return { upfront: placed.upfront.filter((n) => n.text !== line), later: placed.later.filter((n) => n.text !== line) };
++}
++
++/**
++ * The session view the run panel shows (carry-over F-F1 of 2k1, fixed in 2k2): the board's run's own view, on its
++ * subject, while that run has not ended. A second layer behind the store's D2-104 (which clears the view when the ended
++ * run arrives): no store state, however briefly held, draws the review panel for an ended run.
++ */
++export function panelSession(s: { run: RunView | null; session: SessionView | null; subject: string }): SessionView | null {
++  const { run, session } = s;
++  if (session === null || run === null || session.runId !== run.runId || session.subject !== s.subject) return null;
++  return isTerminalRunState(run.state) ? null : session;
++}
++
+ /** The checks' steps in plain words (the gate of docs/m2-plan.md section 3); the step's name stays in the tooltip. */
+ export const CHECK_STEP: Readonly<Record<GateStepId, { label: string; title: string }>> = {
+   G0: { label: 'allowed Lean only', title: 'Check G0: no forbidden command or token, and files only where they belong (before Lean runs)' },
+--- a/packages/webview/src/run/RunPanel.tsx
++++ b/packages/webview/src/run/RunPanel.tsx
+@@ -30,7 +30,7 @@
+ import { useNow } from '../common/useNow';
+ import { NOTICE_ICON } from '../labels';
+ import { listControls, partsText, stepRunning } from '../model/review';
+-import { clockRuns, endedOutcome, endedText, formatClock, placeNotices, runStateLabel, runStatusParts } from '../model/run';
++import { clockRuns, endedOutcome, endedText, formatClock, panelNotices, panelSession, placeNotices, runStateLabel, runStatusParts } from '../model/run';
+ import { sessionBarState } from '../model/sessionBar';
+ import { useBoard, useBoardActions } from '../state/context';
+ import { clampSplit, type RunPanelLayout } from '../state/store';
+@@ -426,7 +426,8 @@
+   const busy = useBoard((s) => s.runBusy?.action ?? null);
+   const cancelling = useBoard((s) => s.runBusy?.action === 'cancel');
+   // Slice 2g: the run's edit session, when the host posted one for it (the panel is then the review panel).
+-  const session = useBoard((s) => (s.session && s.run && s.session.runId === s.run.runId && s.session.subject === s.subject ? s.session : null));
++  // (2k2, carry-over F-F1: never for a run that has ended, a second layer behind the store's D2-104.)
++  const session = useBoard(panelSession);
+   const layout: RunPanelLayout = useNarrow() ? 'narrow' : 'wide';
+   const split = useBoard((s) => s.runSplit[layout]);
+   const actions = useBoardActions();
+@@ -443,7 +444,8 @@
+   const ended = run.state === 'accepted' || run.state === 'discarded' || run.state === 'cancelled' || run.state === 'failed';
+   const cancellable = !ended && run.state !== 'review' && run.state !== 'interrupted';
+   const reviewing = run.state === 'review';
+-  const notices = placeNotices(run);
++  // (2k2, carry-over A-F1) the ended line is not listed again among the notices.
++  const notices = panelNotices(run);
+   if (session !== null) {
+     return (
+       <aside
+--- a/packages/webview/test/unit/run.test.ts
++++ b/packages/webview/test/unit/run.test.ts
+@@ -15,6 +15,8 @@
+   isActiveRun,
+   isRunOutcomeVerdict,
+   newVocabularyCount,
++  panelNotices,
++  panelSession,
+   placeNotices,
+   rateLimitView,
+   runBadgeText,
+@@ -25,6 +27,7 @@
+   missingArrowHints,
+ } from '../../src/model/run';
+ import { RESULT_CHIP_KEYS } from '../../src/model/sessionBoard';
++import { sessionView } from '../shared/sessions';
+ import { ACCEPTED_NOTICE, GENERIC_QUESTION, MODALITY_QUESTION, RECORDED_NOTICE, RUN_ID, runView, UPDATED } from '../shared/runs';
+ 
+ const NOW = Date.parse(UPDATED);
+@@ -158,6 +161,33 @@
+     expect(REVIEW_TEXTS.exited).toBe("You exited the edit session: your files were not changed. Your answers to Claude's questions stay recorded.");
+   });
+ 
++  it('2k2 carry-over A-F1: the plain panel does not list the ended line again among its notices; other notices stay', () => {
++    const session = { stage: 1, phase: 'stage' as const };
++    const notice = (id: string, text: string): RunNotice => ({ id, at: UPDATED, level: 'info', kind: 'info', text });
++    const other = notice('n1', 'Claude resumed the step.');
++    const applied = runView({ state: 'accepted', session, accepted: { changedFiles: true }, notices: [other, notice('n2', REVIEW_TEXTS.applied)] });
++    expect(placeNotices(applied).later.map((n) => n.id)).toEqual(['n1', 'n2']);
++    expect(panelNotices(applied)).toEqual({ upfront: [], later: [other] });
++    const exited = runView({ state: 'discarded', session, notices: [notice('n3', REVIEW_TEXTS.exited), other] });
++    expect(panelNotices(exited).later).toEqual([other]);
++    // A run that has not ended keeps every notice, the same text included.
++    const working = runView({ state: 'working', session, notices: [notice('n4', REVIEW_TEXTS.exited)] });
++    expect(panelNotices(working)).toEqual(placeNotices(working));
++  });
++
++  it('2k2 carry-over F-F1: the run panel draws a session view only for the board\'s run while it has not ended', () => {
++    const view = sessionView();
++    const run = runView({ runId: view.runId, subject: view.subject, state: 'review', session: { stage: 1, phase: 'stage' } });
++    expect(panelSession({ run, session: view, subject: view.subject })).toBe(view);
++    for (const state of ['accepted', 'discarded', 'cancelled', 'failed'] as const) {
++      expect(panelSession({ run: { ...run, state }, session: view, subject: view.subject }), state).toBeNull();
++    }
++    expect(panelSession({ run: { ...run, runId: 'other' }, session: view, subject: view.subject })).toBeNull();
++    expect(panelSession({ run, session: view, subject: 'Other' })).toBeNull();
++    expect(panelSession({ run: null, session: view, subject: view.subject })).toBeNull();
++    expect(panelSession({ run, session: null, subject: view.subject })).toBeNull();
++  });
++
+   it('a statement in the review is the proposition alone, without Lean’s #print header', () => {
+     expect(statementBody('@[reducible] def Spyro.pg_no_dark_past : Prop :=\n∀ (g : Spyro.Game), Spyro.IsPG g')).toBe('∀ (g : Spyro.Game), Spyro.IsPG g');
+     expect(statementBody('@[reducible, simp] noncomputable def Spyro.«pg rule» : Prop := True')).toBe('True');

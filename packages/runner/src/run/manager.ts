@@ -66,6 +66,10 @@ class RunManagerImpl extends EndRunner implements RunManager {
   session(): SessionView | null {
     const run = this.run;
     if (run?.saved?.session === undefined) return null;
+    // 2k1 (D2-100 D1, D2-101): once the run as last written has ended, by any path, no review view (the board shows the
+    // ended run instead). Read from `saved`, as current() is, so both turn with the run.json write that ends the run,
+    // whose change names the session (endRun); the runtime's view stays for current() (§3.12, D2-102).
+    if (isTerminalRunState(run.saved.view.state)) return null;
     const view = run.live?.view ?? null;
     return view !== null ? structuredClone(view) : null;
   }

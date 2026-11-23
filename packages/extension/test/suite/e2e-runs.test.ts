@@ -33,13 +33,17 @@
  * the setup drives that review, so they are skipped for later (builder 2h), to be rewritten for the session's panel,
  * session bar and Apply; their scenarios stay here for that rewrite. The session's flows are covered meanwhile by the
  * runner's session suites (session.*.test.ts) and the board's s2-review and s2-board specs.
+ *
+ *   exit       (2k1, D2-100) a session started on the board reaches its first stage; Exit on the session bar,
+ *              confirmed: the run panel of an ended run with the exited line and Dismiss, no session bar and no review
+ *              panel; the files unchanged, the step's attempt resolved discarded; Dismiss removes it
  */
 import * as assert from 'node:assert/strict';
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 
-import type { ProposalView, RunView, TlGraph, WorkspaceState } from '@telelean/core';
+import { REVIEW_TEXTS, type ProposalView, type RunView, type SessionView, type TlGraph, type WorkspaceState } from '@telelean/core';
 import { FakeBackend } from '@telelean/runner/llm/fake.js';
 import { playFakeScript, validateFakeScriptFile, type FakeScriptFile, type FakeScriptPlayer, type FakeScriptTurn } from '@telelean/runner/llm/fakeScripts.js';
 import type { BackendCaps, LlmBackend, LlmSession, SessionConfig } from '@telelean/runner/llm/types.js';
@@ -150,6 +154,8 @@ suite('M2 end to end: "Formalize for dependencies" through the board UI (FakeBac
   let latestState: WorkspaceState | undefined;
   let latestRun: RunView | null | undefined;
   let latestProposal: ProposalView | null | undefined;
+  /** 2k1: the edit session as last posted (`session`). */
+  let latestSession: SessionView | null | undefined;
   let restoreBackend: (() => void) | undefined;
   let pristine: Record<string, string> = {};
   const claude = new ScriptedClaude();
@@ -160,6 +166,7 @@ suite('M2 end to end: "Formalize for dependencies" through the board UI (FakeBac
   /** The run and proposal as last posted (functions, so narrowing never survives an await). */
   const run = (): RunView | null | undefined => latestRun;
   const proposal = (): ProposalView | null | undefined => latestProposal;
+  const session = (): SessionView | null | undefined => latestSession;
   const fresh = () => latestGraph?.subject === 'Spyro' && latestGraph.semantic.state === 'fresh';
   const frame = (): Promise<Frame> => {
     assert.ok(wb, 'not connected to the test instance');
@@ -285,6 +292,7 @@ suite('M2 end to end: "Formalize for dependencies" through the board UI (FakeBac
         if (m.type === 'graph') latestGraph = m.payload.graph;
         if (m.type === 'workspace') latestState = m.payload.state;
         if (m.type === 'run') latestRun = m.payload.run;
+        if (m.type === 'session') latestSession = m.payload.session;
       }),
     );
     wb = await connectWorkbench(CDP_PORT);
@@ -649,5 +657,55 @@ suite('M2 end to end: "Formalize for dependencies" through the board UI (FakeBac
     await dismissEnded('discarded');
     assert.deepEqual(files(), before);
     assert.deepEqual(files(), pristine, 'every run of this suite left the files as the copy was');
+  });
+
+  test('exit (2k1, D2-100): Exit on the session bar, confirmed, leaves the run panel of an ended run with the exited line and Dismiss; no session bar, no review panel; the files unchanged', async function () {
+    this.timeout(LEAN_TIMEOUT_MS * 3);
+    claude.use(fixture('normative').turns);
+    const before = files();
+    const runId = await startFormalize();
+    await answerOnBoard(0);
+    // The session's first stage: the review panel and the session bar.
+    await waitFor(
+      () => (session()?.runId === runId && session()?.phase === 'stage' && session()?.judging === false) || run()?.state === 'failed',
+      LEAN_TIMEOUT_MS,
+      `the session's first stage (run ${runText()})`,
+      250,
+    );
+    assert.equal(run()?.state, 'review', runText());
+    const f = await frame();
+    const bar = f.getByTestId('session-bar');
+    await bar.waitFor({ timeout: UI_TIMEOUT_MS });
+    const reviewPanel = f.locator('[data-testid="run-panel"][data-session]');
+    await reviewPanel.waitFor({ timeout: UI_TIMEOUT_MS });
+    assert.deepEqual(files(), before, "the user's files change only on Apply");
+
+    // Exit asks first; its "Exit session" ends the session.
+    await bar.getByTestId('session-exit').click();
+    const dialog = f.getByTestId('dialog-exit-session');
+    await dialog.waitFor({ timeout: UI_TIMEOUT_MS });
+    await dialog.getByTestId('exit-confirm').click();
+    await waitFor(() => run()?.state === 'discarded' && session() === null, LEAN_TIMEOUT_MS, `the run discarded and its session gone (now ${runText()}; session ${session() === null ? 'null' : 'still posted'})`, 100);
+
+    // D2: the run panel of an ended run, with the exited line and Dismiss; no review panel, no session bar, no Exit.
+    const ended = f.getByTestId('run-ended');
+    await ended.waitFor({ timeout: UI_TIMEOUT_MS });
+    assert.equal(await ended.getAttribute('data-outcome'), 'discarded');
+    assert.equal(((await ended.getByTestId('run-ended-text').textContent()) ?? '').trim(), REVIEW_TEXTS.exited);
+    assert.equal(await ended.getByTestId('dismiss-run').isVisible(), true, 'Dismiss is offered');
+    assert.equal(await reviewPanel.count(), 0, 'no review panel for an ended run');
+    assert.equal(await f.getByTestId('session-bar').count(), 0, 'no session bar for an ended run');
+    assert.equal(await f.getByTestId('session-exit').count(), 0, 'no Exit for an ended run');
+    assert.equal(((await f.getByTestId('run-badge').textContent()) ?? '').trim(), 'Claude: discarded · Spyro');
+    // D5: Exit changed no file; the step's attempt is recorded, and resolved discarded.
+    assert.deepEqual(files(), before);
+    // (Only the last record is asserted: the earlier ones follow the scenarios' older helpers, unrun since 2h.)
+    assert.equal(attemptsOf(runId).map((a) => a['resolution'] ?? a['verdict']).at(-1), 'discarded');
+
+    // D4: Dismiss removes it, as for any run.
+    await ended.getByTestId('dismiss-run').click();
+    await waitFor(() => run() === null, UI_TIMEOUT_MS, 'the dismissed run to leave the board');
+    await waitFor(async () => (await f.getByTestId('run-panel').count()) === 0, UI_TIMEOUT_MS, 'the run panel to close');
+    assert.deepEqual(files(), pristine, 'the session left the files as the copy was');
   });
 });

@@ -57,9 +57,8 @@ const SESSION_CHANGE = { run: true, proposal: false, session: true } as const;
 /** §3.9: how long the drift watcher waits after a change of the person's files before it reads them. */
 export const DRIFT_DEBOUNCE_MS = 300;
 
-/** Runner texts of the end (reported; no core text quotes them). */
+/** Runner texts of the end (reported; no core text quotes them). 2k1 (D2-105): Exit's is `REVIEW_TEXTS.exited`. */
 export const END_TEXTS = {
-  exited: 'You exited the edit session: your files were not changed. Your answers to Claude\'s questions stay recorded.',
   recorded: 'The session\'s outcome is recorded: nothing in your files changed.',
   noConfirmation: 'There is no end confirmation to apply: Submit review first.',
   driftUnknown: (error: string) => `telelean could not compare your files with the session's base (${error}): Apply waits until it can.`,
@@ -291,7 +290,7 @@ export abstract class EndRunner extends PremiseRunner {
     if (step !== undefined) this.closeStep(run, step, 'cancelled', 'cancelled');
     delete run.p.undeliveredTurn;
     await this.writeSessionAttempts(run, 'discarded');
-    this.notice(run, 'info', 'info', END_TEXTS.exited);
+    this.notice(run, 'info', 'info', REVIEW_TEXTS.exited);
     await this.endRun(run, 'discarded');
     return okOutcome('Session ended');
   }

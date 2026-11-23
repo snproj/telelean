@@ -343,6 +343,41 @@ describe('posting the run and the session (AT5.1; slice 2h: no proposal any more
     expect(runs.calls.filter((c) => c.method === 'cancel' || c.method === 'dispose')).toEqual([]);
   });
 
+  it('2k1 (D2-100 D1): the change that ends a session posts the ended run, then `session: null`; so does the republish after an Exit', async () => {
+    const view = { runId: 'r1', subject: 'Spyro', stage: 1, phase: 'stage', items: [], inferences: [], steps: [], board: { graph: { nodes: [], edges: [] } } } as unknown as NonNullable<FakeRunManager['currentSession']>;
+    const inSession = { session: { stage: 1, phase: 'stage' as const } };
+    runs.run = sampleRun({ state: 'review', ...inSession });
+    runs.currentSession = view;
+    await session.handle(message('ready', { lastVersion: null }));
+    expect(ports.of('session').map((m) => m.payload.session)).toEqual([view]);
+    // The runner's end: run.json says discarded and session() is null; its change names the run and the session.
+    ports.clear();
+    runs.run = sampleRun({ state: 'discarded', ...inSession });
+    runs.currentSession = null;
+    runs.fire({ run: true, proposal: true, session: true });
+    await sleep(5);
+    expect(ports.posts.map((p) => p.type)).toEqual(['run', 'session']);
+    expect(ports.of('run')[0]?.payload.run?.state).toBe('discarded');
+    expect(ports.of('session')[0]?.payload.session).toBeNull();
+    // Exit through the board: the RunManager ends the session, and the host's republish after it says the same.
+    runs.run = sampleRun({ state: 'review', ...inSession });
+    runs.currentSession = view;
+    runs.outcome = (method) => {
+      if (method === 'end') {
+        runs.run = sampleRun({ state: 'discarded', ...inSession });
+        runs.currentSession = null;
+      }
+      return { ok: true, label: 'Session ended', undoable: false };
+    };
+    ports.clear();
+    await session.handle(message('endSession', { runId: 'r1', decision: 'exit', requestId: 'x1' }));
+    expect(runs.callsOf('end')).toEqual([['r1', 'exit', undefined, undefined]]);
+    const order = ports.posts.map((p) => p.type).filter((t) => t === 'run' || t === 'session');
+    expect(order).toEqual(['run', 'session']);
+    expect(ports.of('run').at(-1)?.payload.run?.state).toBe('discarded');
+    expect(ports.of('session').at(-1)?.payload.session).toBeNull();
+  });
+
   it('a RunManager whose current() throws posts run null and logs it', async () => {
     runs.current = () => {
       throw new Error('broken state');

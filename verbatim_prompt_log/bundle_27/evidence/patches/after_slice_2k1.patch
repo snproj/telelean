@@ -1,0 +1,1101 @@
+diff --git a/docs/slice2-plan.md b/docs/slice2-plan.md
+index 7ecf7c6..86ba29d 100644
+--- a/docs/slice2-plan.md
++++ b/docs/slice2-plan.md
+@@ -87,8 +87,10 @@ Each sub-slice ends compiling, with the unit tests of every package it touched p
+ | 2i | Cleanup of built code found by the coverage audit (AP-29): the card-only Delete removed, an old axiom's declared premises named, the guide corrected | ES-9, S9, A19, BD-3 | 2h |
+ | 2j1 | Follow-up from turn 25 (the user's demo; D2-76): an item to be redone counts as finished for the review (it no longer keeps the results hidden or blocks Submit), has no Back to review, comes back by itself when what took it down comes back, and says why; Submit's closed reason is shown as text in the session bar (core, runner, webview) | RV-3 (amended, D2-76), RV-5, RV-6, DO-0, UN-4 | 2i |
+ | 2j2 | Follow-up from turn 25: notes on every decline, a note on items to be redone, and an overall comment at Submit | RV-3, DO-3, RV-12 | 2j1 |
++| 2k1 | Follow-up from turn 27 (D2-100, the Exit/Apply fix): once a session's run has ended, by any path, the runner sends no review view, and the board shows the ended run's line with Dismiss and never the review panel or the session bar for it (runner, one core text, webview, docs) | EN-1–EN-4, ES-8 | 2j2 |
+ 
+ - **2j1 and 2j2 are follow-ups the user asked for in turn 25 (2026-11-22),** after trying slice 2 in a demo. They come after 2i, one after the other, and both change core sources (§0). 2j1 builds the user's decision D2-76 (§7.2); 2j2 builds notes on every decline, a note on items to be redone, and an overall comment at Submit.
++- **2k1 is the first of two follow-ups the user asked for in turn 27 (2026-11-23),** on the 2j work as committed (4640902): after Exit, confirmed, the board kept the review panel, and a second Exit was refused. 2k1 builds the user's decision D2-100 (§7.2). It changes one core source (a text), so nothing runs beside it (§0).
+ - **A session cannot be reviewed on the board until 2g lands.** From 2d on, Formalize starts a session, which the old stepper does not show. The user's installed extension is not affected: `dist` is rebuilt only at the verified slice end (AP-8).
+ - **2a2, 2c2, 2b3, 2d and 2g are the largest.** If a builder reports running out of room:
+   - 2a2 splits after the reveal rule (2a2a: classify, deps and `resultsState`; 2a2b: reconcile and the reducer);
+@@ -237,6 +239,16 @@ The files named are where the work lands; builders may add helper files next to
+ - `docs/user-guide.md` (the decline menu, notes, Submit); this plan: §1.1, §2.2–§2.5, §2.8, §2.9, §3.7, §5.4, §5.6–§5.8, §5.12, §6.1, §7.2 (D2-92–D2-98), §8.
+ - Tests: §6.1's 2j2 list. Scope: this entry only.
+ 
++**2k1:** the end of a session on the board, the Exit/Apply fix the user asked for in turn 27 (D2-100). Runner, core (one text), webview, docs; no new message, no run.json version; one contract's meaning made exact (`session()`, §2.5).
++- **The bug (turn 26's diagnosis).** Exit ended the run (`sessionEnd.ts` `exitSession` → `step.ts` `endRun`: `discarded`, run.json written, the notice "You exited the edit session…"), but `RunManager.session()` kept returning the runtime's view, which the end's own run.json write had rebuilt (`session.ts` `onPersisted`). The host posted it with the ended run (`logic/boardSession.ts` `publishRuns`), and `run/RunPanel.tsx` draws the review panel whenever the store holds a session view of the run, whatever its state; so the panel stayed, and a second Exit got "That run is not active any more." (`manager.ts` `sessionRun`). Apply (`finishApplied`), a Cancel while the session starts (`cancel`), a failure (`failRun`) and an end on recovery (`recoverApply`, `recoverSession`) end the run through the same `endRun`.
++- **D1, the runner.** `run/manager.ts` `session()` is null once the run as last written (`run.saved`) has ended (`isTerminalRunState`), so from the run.json write that ends it, whatever the path (D2-101). That write's change already carries `session: true` (`endRun`), so the host posts `session: null` after the ended `run` (`publishRuns`, unchanged). The runtime's view is kept for `current()`, which keeps the ended state and D2-10's withholding (D2-102).
++- **D2, the board's line.** Core `review/texts.ts` gains `REVIEW_TEXTS.exited`, the runner's Exit notice, which `sessionEnd.ts` now takes from core (`END_TEXTS.exited` goes; D2-105). Webview `model/run.ts` `endedText(run)` words an ended run's line: a session's Exit `REVIEW_TEXTS.exited`, its Apply `REVIEW_TEXTS.applied`, or `ENDED_TEXT.recorded` when it changed no file (`endedOutcome`, unchanged); every other end its `ENDED_TEXT`. `run/RunPanel.tsx` `Outcome` shows it, with Dismiss. `model/sessionBar.ts` `runBadge(run, session)` and `run/RunBadge.tsx`: the badge and RunElsewhere of an ended session run read as any ended run's (D2-103).
++- **D3, defence in depth.** `state/store.ts` `applyRun` drops the session view of a run that has ended, and `state/session.ts` `receive` drops one that arrives for a run the store holds as ended; so the review panel, the session bar with its Exit, Submit and review controls, the Proposed view, the session's Undo scope and the session dialogs go with the run's end, even when a stale view is in the store or arrives late (D2-104).
++- **D4, Dismiss** of an ended session run is any run's (`manager.dismiss`, the store's `dismissRun`): unchanged, tested.
++- **D5, nothing else changes:** Exit changes no model file and records the attempts as discarded; Apply writes one history entry and one Undo step; the confirmation modal and its texts stay; a second Exit sent in a race still gets the runner's refusal.
++- `docs/user-guide.md` 10.13; this plan: §1, §1.1, §2.5, §3.10, §5.2, §5.8, §5.9, §6.1, §7.2 (D2-100–D2-106), §8.
++- Tests: §6.1's 2k1 list. Scope: this entry only (2k2 follows).
++
+ ## 2. Contracts (integrator's; builders implement them as written)
+ 
+ ### 2.1 Facts: `DeclFacts.typeConsts` (the field in 2a1; the probe in 2b3, isolated in 2b3a; its core half in 2b2)
+@@ -810,6 +822,7 @@ moveProposed(runId: string, positions: Readonly<Record<string, CanvasPosition>>)
+ - In a session, `cancel(runId)` is Cancel step. On a running or interrupted step it ends that step as cancelled (back to S₀), marks the rest of the queue `not-run`, puts them in `retry`, and opens the stage (§3.4, D2-55). It never ends the session.
+ - While a step runs, `decide`, `note` (2j2), `reveal`, `undoSession`, `redoSession`, `submit`, `retry`, `sessionDiff`, `moveProposed`, a mid-stage `formalize`, and `end` other than `exit` answer `refused` with D2-62's text.
+ - `answer`, `resume`, `dismiss`, `recover` and `dispose` keep their meaning. `answer` adds no seal: the seal at the queue's start already covers it (UN-5, D2-62).
++- (2k1, D2-100) `session()` is null once the session's run has ended, by any path (Exit, Apply, a Cancel while it starts, a failure, an end on recovery), from the run.json write that ends it; that write's change has `session: true`, so the host posts `session: null`. `current()` keeps the ended run until Dismiss.
+ - **When each call resolves** (D2-74). The host runs every run message except `cancelRun` through one queue (`enqueueRun`) and waits for each call, so no call may wait for Claude, a judge or a Lean job it starts:
+   - `formalize`, `submit` and `retry` resolve once their queue's first step is working, as `start` does; a `submit` that leads to the end confirmation, once the phase is `confirming` (its final check runs after);
+   - `decide`, `note` (2j2), `reveal`, `undoSession`, `redoSession` and `moveProposed` resolve after their write's step 4 (§2.6), never after the judge, the premise write or the completion they start;
+@@ -1794,6 +1807,7 @@ A re-asked target (§3.2) differs: a step that ends without a proof keeps its st
+ 
+    The files are untouched, and decisions.json keeps the answers (EN-4).
+ 7. **A reload during Apply:** the real files are compared with F (then it finishes as applied) and with B (then it goes back to confirming). Anything else gives a notice and drift. Nothing is re-applied blindly.
++8. **After the end** (2k1, D2-100 D1). Once the run has ended, by any path (Apply, Exit, a Cancel while it starts, a failure, an end on recovery), the runner sends no review view: `session()` is null from the run.json write that ends the run, and that write's change tells the host that the session changed, so it posts `session: null` after the ended run. `current()` keeps the ended state, with its notices as D2-10 lets them through (D2-102), until Dismiss; a reload does not bring an ended run back (`recover()` reads only runs that have not ended).
+ 
+ ### 3.11 Reload (ES-6) and old runs
+ - **`recover()` reads run.json v2:**
+@@ -2199,7 +2213,8 @@ The runner runs the full check on its own records when `formalize` arrives; the
+   - a new stage keeps `current` if that item still exists, else moves to the first item in review;
+   - selections that no longer exist are dropped;
+   - the first stage switches the board to Proposed, as today;
+-  - `session: null` clears it.
++  - `session: null` clears it;
++  - (2k1, D2-100 D3, D2-104) so does the end of its run: a `run` message whose run has ended clears the session view of that run, and a `session` message for a run the store holds as ended is read as `session: null`.
+ 
+ ### 5.3 The panel
+ RunPanel in session mode (aria-label "Edit session") shows, top to bottom:
+@@ -2322,6 +2337,7 @@ A `<details open>` block, summarised "Stage N · K targets · results shown · c
+   - (fixer 2c2 r1) the stage's problems (`SessionView.problems`), each with its text and a link to the items it names.
+ - **RunBadge**, never a verdict: "Edit session: Claude working · Spyro · 3/25 checks", "Edit session: review · Spyro".
+ - **RunElsewhere:** "An edit session is active on ‹subject›: the boards of this folder are read-only until it ends. [Show it]".
++- (2k1, D2-100 D2, D2-103) Once the run has ended, the badge and RunElsewhere read as any ended run's ("Claude: discarded · Spyro"; "Claude’s run on Spyro: discarded."), and the bar is gone (§5.9).
+ 
+ ### 5.9 The end confirmation and Exit
+ - **Phase confirming:** EndConfirmation replaces the list. It is not modal, so its links work. It holds:
+@@ -2340,6 +2356,7 @@ A `<details open>` block, summarised "Stage N · K targets · results shown · c
+   There is no freeze list and no keep tick in slice 2.
+ - **Exit:** a modal, "Exit the edit session? This discards N accepted items and M items in review[, and stops Claude's step]. Your files are not changed; your answers to Claude's questions stay recorded. Exit cannot be undone.", with [Exit session] and [Back].
+ - **After Apply:** "Applied: the session's changes are in your files. One Undo takes the whole session back."
++- **Once the run has ended** (2k1, D2-100 D2–D4), by any path: the panel is the run panel of any ended run, with its line and Dismiss: after Exit "You exited the edit session: your files were not changed. Your answers to Claude's questions stay recorded." (`REVIEW_TEXTS.exited`); after an Apply that changed files the line above, and the "Recorded" line (`ENDED_TEXT.recorded`) when it changed none; after a Cancel or a failure their usual lines. The session bar is gone, so no Exit, Submit or review control is offered for an ended run (a second Exit sent in a race still gets the runner's refusal). The board never draws the review panel or the session bar for an ended run, even from a stale view in its store or one that arrives late (§5.2, D2-104). Dismiss works as for any run.
+ 
+ ### 5.10 The Proposed view in a session (2h)
+ - **The overlay.** `sessionOverlay(board, current)` builds it from `SessionView.board` only: no GraphDiff and no `resultSignature` in session mode. This also ends slice 1's leaks (§7.3).
+@@ -2726,6 +2743,14 @@ No test calls real Claude: FakeBackend scripts, recorded streams and the fake en
+ - **Fixer 2j2 r1 (2026-11-22):** webview `runAction.test.ts` (the board's right-click Decline… opens the menu for an arrow item too); core `view.test.ts` (the comment after a failed Submit queue that Retry ended, a still-failing one, a later Submit without a comment); runner `prompts.test.ts` (`decidedSinceSeal` counts a note step; a second golden file, `submit-feedback-turn-notes.txt`, for the comment and every note), `session.notes.test.ts` (the queue-start write replayed after a crash keeps the comment; the first test's last assertions made exact); webview `store-session.test.ts` (a refused Submit gives its comment back; "Ask me instead"'s prefill goes with Shaky).
+ - **Mutation checks** for every rule above, each restored byte for byte (§8).
+ 
++**2k1:** (the runner's session tests with the fake engine; the extension's routing; webview unit tests; Playwright against a scratch build; one VS Code scenario, written to typecheck, run only by the integrator)
++- **D1 in the runner** (`session.end.test.ts`): `session()` is null after Exit (in a stage with the results hidden, and in the end confirmation), after an Apply that changed files, after the empty "Recorded" Apply, after a Cancel while the session starts, and after a failure (a session the backend refuses at its start); each time the change that ends the run has `session: true`, and when it is heard `current()` already reads the ended state while `session()` is null; `current()` keeps the ended state, `accepted.changedFiles`, the error of a failure, and the end's notice where D2-10 lets notices through (Apply; an Exit in the end confirmation, the results shown), none while the results stayed hidden (D2-102); after a reload (a new manager on the same runs folder) the ended run is gone (`current()` and `session()` null; after Exit, Apply, the Cancel and the failure), and an end on recovery (a reload during Apply whose files equal F; a reload before Claude had started) leaves `session()` null; Dismiss of an ended session run clears `current()` and `session()`, with `session: true` in its change. Fixer 2k1 r1: the Exit during a running step (the existing "stops a running step" test) now asserts the same (`session()` null, the end's change names the session); and `session()` turns with the run.json write, not before (D2-101): with that write held, the live view and the active state are still sent, and once it lands both read the end.
++- **D1 at the host** (`runRouting.test.ts`): the end's change posts the ended `run`, then `session: null`, in that order; so does the republish after an `endSession` exit.
++- **D2–D4 in the webview, unit:** `endedText` (a session's Exit, its Apply with and without changed files, Cancel and failure as any run's, a run that has not ended); `runBadge` (an active session's words, an ended session run's as any ended run's, a run with no session); the store (`store-session.test.ts`): an ended `run` (discarded, accepted, cancelled, failed) clears its session view and everything with it (the review UI, the selection, the Proposed view, a session dialog), a stale view that arrives after it is dropped, a view of another run, one with no run in the store and one whose run has not ended are kept, the Exit path end to end (Exit confirmed posts `endSession` exit; the ended run and `session: null` leave no session), Dismiss posts `dismissRun` with the run's id.
++- **D2–D4 in the browser** (`s2-review.spec.ts`): the full Exit path (open Exit, confirm "Exit session": `endSession` exit posted; the host posts the run ended and `session: null`: the panel shows `run-ended` with the exited line and Dismiss, the session bar and its Exit are gone, the badge reads as an ended run's); Apply's ended outcome (changed files, and "Recorded"); an ended run that arrives while the store holds its session view clears it, and a view of it arriving late is dropped, so neither draws the review panel or the session bar (no Exit); Dismiss posts `dismissRun` and the run's `null` clears the panel; another subject's session reads "An edit session is active…" in RunElsewhere while its run is active, and the line of any ended run once it has ended (D2-103).
++- **VS Code end to end** (`test/suite/e2e-runs.test.ts`, over the DevTools protocol, the FakeBackend's normative script, real Lean): a session started on the board reaches its first stage; Exit on the session bar, confirmed, leaves the plain panel with the exited line and Dismiss, no session bar, no review panel, the files unchanged and the attempt resolved discarded; Dismiss removes it. Written to typecheck; not run by the builder (§0).
++- **Mutation checks** for each key rule (`session()` null after each kind of end, the end's session change, the board's defence, no Exit for an ended run), each restored byte for byte (§8).
++
+ ### 6.2 Cheat scenarios
+ Each is a FakeBackend script in `packages/runner/test/run/fixtures/sessions/`, and the same state is built by hand in `core/test/review/cheats.test.ts`.
+ - **S1:**
+@@ -2937,6 +2962,20 @@ Each is a FakeBackend script in `packages/runner/test/run/fixtures/sessions/`, a
+ 97. **D2-97** AUTOPILOT DECISION (2j2): the decisions-since lines (§2.8) give each decide step its label, then each distinct note of its declines on its own line (`  The person's note: "…"`, straight quotes as SHAKY's note always was; fixer 2j2 r1, F-F5); a note step on an item to be redone gives its label and its note, or "  The person's note was cleared." The lines are the history of what the person did, so a note step on an item that has since left to be redone is still quoted, next to its "Back to review" line (fixer 2j2 r1, A-ADV-2j2-5: left as it is). *Alternative:* the labels alone, as before, so a mid-stage Formalize or Retry would never pass a note on.
+ 98. **D2-98** AUTOPILOT DECISION (2j2): Submit's confirmation is an inline panel under the session bar's first line (no modal): `submitSteps`' sentence, "Comment for Claude (optional)" (≤ `textLength`, Ctrl+Enter submits), Submit and Cancel. It closes on Cancel, Esc, a Submit sent, and whenever the session no longer offers `claude-steps` (the gate closed, another phase). *Alternative:* a modal dialog.
+ 99. **D2-99** AUTOPILOT DECISION (fixer 2j2 r1, F-F6, A-ADV-2j2-3, A-ADV-2j2-4): what the person typed is not lost to a refusal in the two surfaces 2j2 added. A refused Submit review (a stale stage, a conflict) puts its comment back in the panel while Submit still starts Claude's steps (`Pending.comment`). The note editor of an item to be redone stays open after Save until the host's view holds the note sent, so a refused note keeps its text and shows the error. The decline menu keeps its older behaviour (it closes when the decision is sent). "Ask me instead"'s prefilled sentence (telelean's, not the person's) is cleared when another option than Shaky is chosen while it is untouched (`DeclineMenuState.prefilled`). *Alternative:* leave all three as before; or restore the decline menu's note too.
++100. **D2-100** USER DECISION (turn 27, 2026-11-23; built by 2k1): "I would like the Exit/Apply fix", as the orchestrator described it in turn 26, after the user pressed Exit session, confirmed, and the board kept showing the review panel unchanged (a second Exit then got "That run is not active any more.").
++    - **D1. Once a session's run has ended, by any path** (Exit, Apply, Stop or Cancel, a failure, an end on recovery), the runner stops sending its review view: `session()` returns null for it, live and after a reload, and the change that ends the run tells the host that the session changed, so the host posts `session: null` to the board.
++    - **D2. The board then shows the ended run's message with Dismiss,** exactly as for a non-session run: "You exited the edit session: your files were not changed…" after Exit; "Applied: the session's changes are in your files. One Undo takes the whole session back." after an Apply that changed files (the "Recorded" wording when it changed none, as `endedOutcome` already decides); the existing ended texts for Stop and failures. The session bar no longer offers Exit, Submit or any review control for an ended run; it shows what a non-session ended run shows.
++    - **D3. Defence in depth on the board:** the webview never draws the review panel or the session bar's review controls for a run whose state is ended, even if a stale session view is still in its store or arrives late.
++    - **D4. Dismiss** on an ended session run works as for any run (`manager.dismiss`) and clears the panel.
++    - **D5. Nothing else changes:** Exit still changes no model file and records the attempts as discarded; Apply still writes one history entry and one Undo step; their confirmation modal and texts are unchanged; a second Exit sent in a race still gets the runner's refusal, but the board offers no Exit button for an ended run.
++    - **D6. Tests:** §6.1's 2k1 list, with mutation checks of every key rule.
++    - **D7.** This entry.
++101. **D2-101** AUTOPILOT DECISION (2k1): `session()` reads the run as last written (`run.saved`, as `current()` does): it is null from the run.json write that ends the run, the write whose change the host republishes on, so `current()` and `session()` never disagree about the end. The runtime's view stays (the end's write still rebuilds it), for `current()`'s question rule (AF5) and D2-10. *Alternative:* drop the runtime's view at the end, which would make `current()` read every ended session as one whose results are hidden (§3.12) and withhold an applied session's notices and activity; or read `run.ended`, which turns before that write lands, so the host could post the run still in review with no view ("Preparing the review…").
++102. **D2-102** AUTOPILOT DECISION (2k1): after the end, `current()` keeps D2-10 as it was. When the results were still hidden (an Exit before Show results, a Cancel while starting, a failure), the RunView withholds Claude's activity and every notice, the end's own included (run.json has it); the panel's line says how the session ended from the run's state (`REVIEW_TEXTS.exited`), so nothing on the board needs that notice. With the results shown (every Apply, an Exit after Show results), the end's notice is the RunView's last. *Alternative:* keep telelean's end notice in the RunView whatever the reveal; it tells nothing of the outcome, but the runner would have to tell it apart from a step's notices (by its text, or a new notice field), and the panel would show the line twice.
++103. **D2-103** AUTOPILOT DECISION (2k1): D2's "what a non-session ended run shows" covers the header too: the run badge and RunElsewhere of an ended session run read as any ended run's ("Claude: discarded · Spyro", "Claude’s run on Spyro: discarded."), not "Edit session: review · Spyro" or "An edit session is active on Spyro: the boards of this folder are read-only until it ends." *Alternative:* keep the session's words there, which would name a phase of a session that has ended and a lock that no longer holds.
++104. **D2-104** AUTOPILOT DECISION (2k1): D3's place is the store, not RunPanel's selector: `applyRun` clears the session view of a run that has ended (as `session: null` does: the review UI, the Proposed view, a session dialog), and `receive` reads a view that arrives for the run the store holds as ended as `session: null`. One rule then covers the review panel, the session bar, the Proposed overlay, the session's Undo scope and the session dialogs. A view of another run, or one that arrives with no run in the store, is kept as before. *Alternative:* RunPanel's `session` selector (and the session bar's and the badge's), which would leave a stale view in the store for the Proposed view, Undo's scope and the dialogs.
++105. **D2-105** AUTOPILOT DECISION (2k1): the Exit line is one text, core's `REVIEW_TEXTS.exited`, which the runner's notice and the board's line both use, as `REVIEW_TEXTS.applied` already was for Apply; `END_TEXTS.exited` goes. *Alternative:* a copy of the runner's text in the webview, two copies to keep equal.
++106. **D2-106** AUTOPILOT DECISION (2k1): one VS Code scenario, Exit (D6's minimum): an Apply scenario would have to decide every item, show the results, submit and wait for the final check through the board or the testing API, a long script that nobody can run before the integrator; Apply's ended outcome is covered by the runner's tests, the store's and Playwright's. *Alternative:* a second scenario for Apply.
+ 
+ ### 7.3 Carried in from slice 1 (for the integrator)
+ - **Leaks the designs found in slice 1's code.** The review-UI and checks designs found that the 1d Proposed view shows the outcome before the reveal:
+@@ -4046,6 +4085,26 @@ Each is a FakeBackend script in `packages/runner/test/run/fixtures/sessions/`, a
+   - **Tests changed for the old rule:** core `protocol.session.test.ts` (the note with Reject or an Accept refused: now with any decline option; `noteItem` in the message list), `protocol.m2.test.ts` (15 run messages), `review/view.test.ts` (the R1-1 text); webview `review.test.ts` (every option but Transform takes a note), `store-session.test.ts` (Reject now chooses, then confirms; a note goes with Reject; D then R then confirm); extension `runRouting.test.ts` and `fakes.ts` (`noteItem`, the comment). **Added:** core `review/notes.test.ts` (13), core view tests "2j2 …" (3), core protocol tests (2), runner `session.notes.test.ts` (5), runner prompts tests "2j2 …" (3), `session.queue.test.ts` (`note` refused while a step runs), webview store tests "2j2 …" (3), Playwright `s2-review.spec.ts` "2j2 (D2-92): …" (1). The golden file `submit-feedback-turn.txt` is unchanged (no note there but SHAKY's).
+   - **Mutation checks** (each restored byte for byte, checked with `cmp`, and the whole tree compared with the snapshot before them): 41 mutations over the rules (the note kept per option, in core, the protocol and the webview; the note action's gates, Undo, Redo and no-op; every `redo` rebuild's keep, the runner's take-out included; both sweeps; the comment in the protocol, the webview, the `queue-start` write, the seal, the feedback turn and the report; the panel only for `claude-steps`; the quoting in REJECTED, TO BE REDONE and the decisions-since lines; the view's note and hidden note steps; the extension's routing; R1-1). All caught; M5 (the status gate) only after a test of a declined record that keeps `redo` was added.
+ 
++- builder 2k1 (2026-11-23): the plan update for sub-slice 2k1, the user's decision of turn 27 (D2-100, §7.2), before any code: §1 (the 2k1 row and its note), §1.1's 2k1 entry, §2.5 (`session()` after the end), §3.10 step 8, §5.2 (the store's rule), §5.8 (the badge and RunElsewhere), §5.9 (once the run has ended), §6.1's 2k1 list, §7.2 (D2-100, and D2-101–D2-106, each with its alternative). Each changed sentence is tagged "(2k1, D2-100)".
++  - **Contract made exact (§0: the integrator's; no other sub-slice reads it differently):** RunManager `session()` (§2.5) is null once the session's run has ended. No message, validator, view or run.json field changes.
++- builder 2k1 (2026-11-23): built §1.1's 2k1 entry (D2-100; D2-101–D2-106).
++  - **The bug, confirmed first:** the new runner tests ran on the unchanged code, and 7 failed, each at `session()` right after the end: Exit in a stage, Exit in the end confirmation, an Apply that changed files, the "Recorded" Apply, a Cancel while the session starts, a failure at its start, and a reload during Apply that finished it. The eighth, a reload before Claude had started, passed already (its runtime has no base model, so no view was built).
++  - **Runner:** `run/manager.ts` (`session()` is null once `run.saved`'s state has ended), `run/sessionEnd.ts` (Exit's notice is core's `REVIEW_TEXTS.exited`; `END_TEXTS.exited` removed), `run/types.ts` (the contract's comment). `endRun` is unchanged: its change already names the session.
++  - **Core:** `review/texts.ts` (`REVIEW_TEXTS.exited`).
++  - **Webview:** `model/run.ts` (`endedText`), `model/sessionBar.ts` (`runBadge`), `run/RunPanel.tsx` (the ended line from `endedText`, with `data-testid="run-ended-text"`), `run/RunBadge.tsx` (the badge from `runBadge`; RunElsewhere's session line only while the run has not ended), `state/store.ts` (`applyRun` clears the session view of a run that has ended), `state/session.ts` (`receive` reads a view of the ended run as `session: null`).
++  - **Extension:** no source change (`publishRuns` already posts `session` after `run` when a change names both); one routing test.
++  - **Docs:** `docs/user-guide.md` 10.13 (a bullet: once the session has ended, the panel's line and Dismiss, the session bar gone); this plan.
++  - builder 2k1 decided: D2-101–D2-106 (§7.2), each with its alternative.
++  - **Contracts:** `session()` (§2.5) is null after the end; `REVIEW_TEXTS.exited` is new; `END_TEXTS.exited` is gone (only `session.end.test.ts` read it). No message, view, validator or run.json field changed.
++  - **Tests added:** runner `session.end.test.ts`, the describe "after the end, by any path, the runner sends no review view" (7: Exit with the results hidden, Exit in the end confirmation with Dismiss, an Apply that changed files, the "Recorded" Apply, a Cancel while starting, a failure at the start, a reload before Claude had started) and the reload-during-Apply test "the real files equal F" extended (`session()` null, the end's change); extension `runRouting.test.ts` +1 (the end's change and Exit's republish post the ended run, then `session: null`); webview `run.test.ts` +1 (`endedText`), `sessionBar.test.ts` +1 (`runBadge`), `store-session.test.ts` +3 (the Exit path with Dismiss; D3's clearing at four ends; the stale view, another run's, one with no run, one whose run has not ended), `s2-review.spec.ts` +4 (the Exit path, Apply's ended outcome, the stale view with no Exit, RunElsewhere); VS Code `test/suite/e2e-runs.test.ts` +1, "exit (2k1, D2-100)", written to typecheck and not run (the VS Code suites are the integrator's). **Updated:** runner `session.end.test.ts` "in a stage: no model file is written…" reads the Exit notice as `REVIEW_TEXTS.exited` (the text moved to core). None skipped or deleted.
++  - **Not changed (reported):** after an Exit with the results hidden, the plain panel's Activity reads "Activity (0) · Nothing yet." (D2-10 still withholds Claude's activity, D2-102); `docs/DEMO.md` and the demo scripts still drive M2's review (as 2h reported).
++  - **Mutation checks** (each file kept, mutated, tested, restored and compared with `cmp`; the 2k1 files' hashes checked after the run): 13 mutants, all killed. Runner: R1 `session()` without its ended check (7 of the 2k1 tests fail, one per kind of end and the recovery's Apply), R3 `endRun`'s change without `session` (8 fail), R4 `current()` reading no view once ended (3 fail: the end's notice after Apply, the "Recorded" Apply, Exit in the confirmation). Webview: W1 `applyRun` without the clearing (1 store test), W2 `receive` without the drop (1), W8 `applyRun` clearing a run that has not ended (1), W9 `receive` dropping a view whose run has not ended (8, across the store suites), W3 `endedText` without the Exit line (1), W4 `runBadge` without the ended check (1); through a scratch build and `s2-review.spec.ts`: W5 RunElsewhere's session line after the end (the RunElsewhere test), W6 the panel's line without the session's words (3 tests), W7 both store rules dropped (the stale-view test, at "no Exit": `session-exit` found once; run twice, before and after that assertion was moved first). Extension: E1 `publishRuns` not posting `session` with a change that names the run too (6 routing tests, the 2k1 one included).
++  - **Verification:** tsc `--noEmit` clean for core and runner (`tsconfig.test.json`), webview (`tsconfig.json`, `tsconfig.node.json`) and extension (`tsconfig.json`, which includes `test/`). vitest: core 1193 passed (78 files), webview 449 (25), extension 217 (22, `--no-cache`); runner, the 15 fake-engine files that read `session()` or end sessions 133 + 120 passed, and with real Lean `integration/m2flow` 5 (205 s), `run/walkthrough.e2e` 24 (722 s), `run/fresh.e2e` 9 (372 s). One webview build into the builder's scratch dir (never `dist`), then Playwright one spec at a time: `s2-review` 18, `m2-run` 5, `s1-session` 3, `s2-board` 8, all passed; the home guard reported no change. The VS Code scenario was not run.
++- fixer 2k1 r1 (2026-11-23): findings of the round-1 review.
++  - **Fixed:** A-F2 (the Exit during a running step asserts `session()` null and the end's change), A-F3 (a runner test pins D2-101: `session()` reads `run.saved`, not `run.ended`; with run.json's end write held, `session()` is still the live view and `current()` still active), A-F4 (the VS Code scenario asserts only that the last attempt record is `discarded`, not the older scenarios' whole list, which has not run since 2h), F-F2 (the Playwright test's title says what it checks: the store clears the view when the ended run arrives, and drops a late view).
++  - **Not fixed, decided (alternatives in each):** F-F1: `applyRun` calls `set(patch)` and then `receive(null)` in one synchronous tick, so no render sees the ended run with the session view (the store notifies, React reads the snapshot when it renders, after both); a second check in RunPanel's selector could not be tested, because the store always clears first (alternative: add it untested). A-F1: after an Apply, or an Exit after Show results, the line is also the last notice in the folded "Earlier notices": cosmetic, and the same text the runner records in run.json for any reader of the notices (alternative: filter a notice equal to `endedText(run)` out of the plain panel).
++  - **Mutation checks:** A3 (`session()` tests `run.ended`) fails only the new D2-101 test; A2 (`session()` null for every end but a discarded one) fails the Exit during a running step and 3 other tests; both restored byte for byte (`cmp`).
++
+ ## 9. Baseline numbers (filled in as measured)
+ 
+ - Before 2a1, after slice 1's last fixer: to be measured (tsc in every package, and the vitest counts of core, webview, extension and the runner).
+diff --git a/docs/user-guide.md b/docs/user-guide.md
+index edb3c12..b51b5ca 100644
+--- a/docs/user-guide.md
++++ b/docs/user-guide.md
+@@ -350,6 +350,7 @@ In the Proposed view, with the results shown, **Formalize for dependencies** ask
+ - **Apply** writes the session's changes to your files as **one history entry and one Undo step** ("Applied: the session's changes are in your files. One Undo takes the whole session back."); a session that changes no file only records its outcome. Lean then checks your files and the board shows the real statuses.
+ - **If your files changed since the session started** (an edit in the editor, a git checkout), Apply stays disabled until they match again (undo those edits in the editor), or you exit. telelean never merges such changes (ES-7): the base never moves.
+ - **Exit session…** asks first: "Exit the edit session? This discards N accepted items and M items in review. Your files are not changed; your answers to Claude's questions stay recorded. Exit cannot be undone." Exit works at any time, also while Claude's step runs (it stops it).
++- **Once the session has ended** (Apply or Exit), the run panel says how, as for any run that has ended, with **Dismiss**: the Apply line above ("Recorded: nothing in your files changed; …" when nothing in your files changed), or "You exited the edit session: your files were not changed. Your answers to Claude's questions stay recorded." The session bar and the review are gone, and the board shows your files again.
+ 
+ Each step is recorded in `.telelean/subjects/<S>/attempts.jsonl` (verdict, premises, footprint, Claude's summary, usage), with what became of it; the expanded card lists its attempts. Like `decisions.json` it is written directly, never undone and not part of history snapshots or reverts.
+ 
+diff --git a/packages/core/src/review/texts.ts b/packages/core/src/review/texts.ts
+index 1c92366..0aa00aa 100644
+--- a/packages/core/src/review/texts.ts
++++ b/packages/core/src/review/texts.ts
+@@ -408,6 +408,8 @@ export const REVIEW_TEXTS = {
+   exitSession: 'Exit session',
+   back: 'Back',
+   applied: "Applied: the session's changes are in your files. One Undo takes the whole session back.",
++  /** 2k1 (D2-100 D2, D2-105): the runner's Exit notice, and the run panel's line once a session ended by Exit. */
++  exited: "You exited the edit session: your files were not changed. Your answers to Claude's questions stay recorded.",
+   /** §3.10, D2-67: Apply's history label (M2's kind `accept-proposal`). */
+   applyLabel: (targets: readonly string[]) => `Apply: Formalize for dependencies → ${joined(targets)}`,
+   /** §3.10 step 4 (coverage audit G1; builder 2f): History's entry for an Apply, the heading of Claude's arrows it wrote. */
+diff --git a/packages/extension/test/suite/e2e-runs.test.ts b/packages/extension/test/suite/e2e-runs.test.ts
+index 775242c..fdc3123 100644
+--- a/packages/extension/test/suite/e2e-runs.test.ts
++++ b/packages/extension/test/suite/e2e-runs.test.ts
+@@ -33,13 +33,17 @@
+  * the setup drives that review, so they are skipped for later (builder 2h), to be rewritten for the session's panel,
+  * session bar and Apply; their scenarios stay here for that rewrite. The session's flows are covered meanwhile by the
+  * runner's session suites (session.*.test.ts) and the board's s2-review and s2-board specs.
++ *
++ *   exit       (2k1, D2-100) a session started on the board reaches its first stage; Exit on the session bar,
++ *              confirmed: the run panel of an ended run with the exited line and Dismiss, no session bar and no review
++ *              panel; the files unchanged, the step's attempt resolved discarded; Dismiss removes it
+  */
+ import * as assert from 'node:assert/strict';
+ import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+ import * as path from 'node:path';
+ import * as vscode from 'vscode';
+ 
+-import type { ProposalView, RunView, TlGraph, WorkspaceState } from '@telelean/core';
++import { REVIEW_TEXTS, type ProposalView, type RunView, type SessionView, type TlGraph, type WorkspaceState } from '@telelean/core';
+ import { FakeBackend } from '@telelean/runner/llm/fake.js';
+ import { playFakeScript, validateFakeScriptFile, type FakeScriptFile, type FakeScriptPlayer, type FakeScriptTurn } from '@telelean/runner/llm/fakeScripts.js';
+ import type { BackendCaps, LlmBackend, LlmSession, SessionConfig } from '@telelean/runner/llm/types.js';
+@@ -150,6 +154,8 @@ suite('M2 end to end: "Formalize for dependencies" through the board UI (FakeBac
+   let latestState: WorkspaceState | undefined;
+   let latestRun: RunView | null | undefined;
+   let latestProposal: ProposalView | null | undefined;
++  /** 2k1: the edit session as last posted (`session`). */
++  let latestSession: SessionView | null | undefined;
+   let restoreBackend: (() => void) | undefined;
+   let pristine: Record<string, string> = {};
+   const claude = new ScriptedClaude();
+@@ -160,6 +166,7 @@ suite('M2 end to end: "Formalize for dependencies" through the board UI (FakeBac
+   /** The run and proposal as last posted (functions, so narrowing never survives an await). */
+   const run = (): RunView | null | undefined => latestRun;
+   const proposal = (): ProposalView | null | undefined => latestProposal;
++  const session = (): SessionView | null | undefined => latestSession;
+   const fresh = () => latestGraph?.subject === 'Spyro' && latestGraph.semantic.state === 'fresh';
+   const frame = (): Promise<Frame> => {
+     assert.ok(wb, 'not connected to the test instance');
+@@ -285,6 +292,7 @@ suite('M2 end to end: "Formalize for dependencies" through the board UI (FakeBac
+         if (m.type === 'graph') latestGraph = m.payload.graph;
+         if (m.type === 'workspace') latestState = m.payload.state;
+         if (m.type === 'run') latestRun = m.payload.run;
++        if (m.type === 'session') latestSession = m.payload.session;
+       }),
+     );
+     wb = await connectWorkbench(CDP_PORT);
+@@ -650,4 +658,54 @@ suite('M2 end to end: "Formalize for dependencies" through the board UI (FakeBac
+     assert.deepEqual(files(), before);
+     assert.deepEqual(files(), pristine, 'every run of this suite left the files as the copy was');
+   });
++
++  test('exit (2k1, D2-100): Exit on the session bar, confirmed, leaves the run panel of an ended run with the exited line and Dismiss; no session bar, no review panel; the files unchanged', async function () {
++    this.timeout(LEAN_TIMEOUT_MS * 3);
++    claude.use(fixture('normative').turns);
++    const before = files();
++    const runId = await startFormalize();
++    await answerOnBoard(0);
++    // The session's first stage: the review panel and the session bar.
++    await waitFor(
++      () => (session()?.runId === runId && session()?.phase === 'stage' && session()?.judging === false) || run()?.state === 'failed',
++      LEAN_TIMEOUT_MS,
++      `the session's first stage (run ${runText()})`,
++      250,
++    );
++    assert.equal(run()?.state, 'review', runText());
++    const f = await frame();
++    const bar = f.getByTestId('session-bar');
++    await bar.waitFor({ timeout: UI_TIMEOUT_MS });
++    const reviewPanel = f.locator('[data-testid="run-panel"][data-session]');
++    await reviewPanel.waitFor({ timeout: UI_TIMEOUT_MS });
++    assert.deepEqual(files(), before, "the user's files change only on Apply");
++
++    // Exit asks first; its "Exit session" ends the session.
++    await bar.getByTestId('session-exit').click();
++    const dialog = f.getByTestId('dialog-exit-session');
++    await dialog.waitFor({ timeout: UI_TIMEOUT_MS });
++    await dialog.getByTestId('exit-confirm').click();
++    await waitFor(() => run()?.state === 'discarded' && session() === null, LEAN_TIMEOUT_MS, `the run discarded and its session gone (now ${runText()}; session ${session() === null ? 'null' : 'still posted'})`, 100);
++
++    // D2: the run panel of an ended run, with the exited line and Dismiss; no review panel, no session bar, no Exit.
++    const ended = f.getByTestId('run-ended');
++    await ended.waitFor({ timeout: UI_TIMEOUT_MS });
++    assert.equal(await ended.getAttribute('data-outcome'), 'discarded');
++    assert.equal(((await ended.getByTestId('run-ended-text').textContent()) ?? '').trim(), REVIEW_TEXTS.exited);
++    assert.equal(await ended.getByTestId('dismiss-run').isVisible(), true, 'Dismiss is offered');
++    assert.equal(await reviewPanel.count(), 0, 'no review panel for an ended run');
++    assert.equal(await f.getByTestId('session-bar').count(), 0, 'no session bar for an ended run');
++    assert.equal(await f.getByTestId('session-exit').count(), 0, 'no Exit for an ended run');
++    assert.equal(((await f.getByTestId('run-badge').textContent()) ?? '').trim(), 'Claude: discarded · Spyro');
++    // D5: Exit changed no file; the step's attempt is recorded, and resolved discarded.
++    assert.deepEqual(files(), before);
++    // (Only the last record is asserted: the earlier ones follow the scenarios' older helpers, unrun since 2h.)
++    assert.equal(attemptsOf(runId).map((a) => a['resolution'] ?? a['verdict']).at(-1), 'discarded');
++
++    // D4: Dismiss removes it, as for any run.
++    await ended.getByTestId('dismiss-run').click();
++    await waitFor(() => run() === null, UI_TIMEOUT_MS, 'the dismissed run to leave the board');
++    await waitFor(async () => (await f.getByTestId('run-panel').count()) === 0, UI_TIMEOUT_MS, 'the run panel to close');
++    assert.deepEqual(files(), pristine, 'the session left the files as the copy was');
++  });
+ });
+diff --git a/packages/extension/test/unit/runRouting.test.ts b/packages/extension/test/unit/runRouting.test.ts
+index 8dba837..aa9ec36 100644
+--- a/packages/extension/test/unit/runRouting.test.ts
++++ b/packages/extension/test/unit/runRouting.test.ts
+@@ -343,6 +343,41 @@ describe('posting the run and the session (AT5.1; slice 2h: no proposal any more
+     expect(runs.calls.filter((c) => c.method === 'cancel' || c.method === 'dispose')).toEqual([]);
+   });
+ 
++  it('2k1 (D2-100 D1): the change that ends a session posts the ended run, then `session: null`; so does the republish after an Exit', async () => {
++    const view = { runId: 'r1', subject: 'Spyro', stage: 1, phase: 'stage', items: [], inferences: [], steps: [], board: { graph: { nodes: [], edges: [] } } } as unknown as NonNullable<FakeRunManager['currentSession']>;
++    const inSession = { session: { stage: 1, phase: 'stage' as const } };
++    runs.run = sampleRun({ state: 'review', ...inSession });
++    runs.currentSession = view;
++    await session.handle(message('ready', { lastVersion: null }));
++    expect(ports.of('session').map((m) => m.payload.session)).toEqual([view]);
++    // The runner's end: run.json says discarded and session() is null; its change names the run and the session.
++    ports.clear();
++    runs.run = sampleRun({ state: 'discarded', ...inSession });
++    runs.currentSession = null;
++    runs.fire({ run: true, proposal: true, session: true });
++    await sleep(5);
++    expect(ports.posts.map((p) => p.type)).toEqual(['run', 'session']);
++    expect(ports.of('run')[0]?.payload.run?.state).toBe('discarded');
++    expect(ports.of('session')[0]?.payload.session).toBeNull();
++    // Exit through the board: the RunManager ends the session, and the host's republish after it says the same.
++    runs.run = sampleRun({ state: 'review', ...inSession });
++    runs.currentSession = view;
++    runs.outcome = (method) => {
++      if (method === 'end') {
++        runs.run = sampleRun({ state: 'discarded', ...inSession });
++        runs.currentSession = null;
++      }
++      return { ok: true, label: 'Session ended', undoable: false };
++    };
++    ports.clear();
++    await session.handle(message('endSession', { runId: 'r1', decision: 'exit', requestId: 'x1' }));
++    expect(runs.callsOf('end')).toEqual([['r1', 'exit', undefined, undefined]]);
++    const order = ports.posts.map((p) => p.type).filter((t) => t === 'run' || t === 'session');
++    expect(order).toEqual(['run', 'session']);
++    expect(ports.of('run').at(-1)?.payload.run?.state).toBe('discarded');
++    expect(ports.of('session').at(-1)?.payload.session).toBeNull();
++  });
++
+   it('a RunManager whose current() throws posts run null and logs it', async () => {
+     runs.current = () => {
+       throw new Error('broken state');
+diff --git a/packages/runner/src/run/manager.ts b/packages/runner/src/run/manager.ts
+index 6e9d0e6..6c1d206 100644
+--- a/packages/runner/src/run/manager.ts
++++ b/packages/runner/src/run/manager.ts
+@@ -66,6 +66,10 @@ class RunManagerImpl extends EndRunner implements RunManager {
+   session(): SessionView | null {
+     const run = this.run;
+     if (run?.saved?.session === undefined) return null;
++    // 2k1 (D2-100 D1, D2-101): once the run as last written has ended, by any path, no review view (the board shows the
++    // ended run instead). Read from `saved`, as current() is, so both turn with the run.json write that ends the run,
++    // whose change names the session (endRun); the runtime's view stays for current() (§3.12, D2-102).
++    if (isTerminalRunState(run.saved.view.state)) return null;
+     const view = run.live?.view ?? null;
+     return view !== null ? structuredClone(view) : null;
+   }
+diff --git a/packages/runner/src/run/sessionEnd.ts b/packages/runner/src/run/sessionEnd.ts
+index 6970f5f..897c87c 100644
+--- a/packages/runner/src/run/sessionEnd.ts
++++ b/packages/runner/src/run/sessionEnd.ts
+@@ -57,9 +57,8 @@ const SESSION_CHANGE = { run: true, proposal: false, session: true } as const;
+ /** §3.9: how long the drift watcher waits after a change of the person's files before it reads them. */
+ export const DRIFT_DEBOUNCE_MS = 300;
+ 
+-/** Runner texts of the end (reported; no core text quotes them). */
++/** Runner texts of the end (reported; no core text quotes them). 2k1 (D2-105): Exit's is `REVIEW_TEXTS.exited`. */
+ export const END_TEXTS = {
+-  exited: 'You exited the edit session: your files were not changed. Your answers to Claude\'s questions stay recorded.',
+   recorded: 'The session\'s outcome is recorded: nothing in your files changed.',
+   noConfirmation: 'There is no end confirmation to apply: Submit review first.',
+   driftUnknown: (error: string) => `telelean could not compare your files with the session's base (${error}): Apply waits until it can.`,
+@@ -291,7 +290,7 @@ export abstract class EndRunner extends PremiseRunner {
+     if (step !== undefined) this.closeStep(run, step, 'cancelled', 'cancelled');
+     delete run.p.undeliveredTurn;
+     await this.writeSessionAttempts(run, 'discarded');
+-    this.notice(run, 'info', 'info', END_TEXTS.exited);
++    this.notice(run, 'info', 'info', REVIEW_TEXTS.exited);
+     await this.endRun(run, 'discarded');
+     return okOutcome('Session ended');
+   }
+diff --git a/packages/runner/src/run/types.ts b/packages/runner/src/run/types.ts
+index db74c5d..ae0e606 100644
+--- a/packages/runner/src/run/types.ts
++++ b/packages/runner/src/run/types.ts
+@@ -216,7 +216,10 @@ export interface RunManager extends Disposable {
+   // Cancel step in a session: it never ends the session. When each call resolves (D2-74): formalize, submit and retry
+   // once their queue's first step is working; decide, reveal, the Undo and Redo and moves after their write's step 4.
+ 
+-  /** The root's current session view (masked while the results are hidden), or null when the run is no session. */
++  /**
++   * The root's current session view (masked while the results are hidden), or null when the run is no session. 2k1
++   * (D2-100 D1): null too once the session's run has ended, by any path, from the run.json write that ends it.
++   */
+   session(): SessionView | null;
+   /** ES-1, RV-9: starts a session (no `runId`), or queues a mid-stage Formalize of the current stage (`runId`, `stage`). */
+   formalize(request: FormalizeRequest): Promise<ActionOutcome>;
+diff --git a/packages/runner/test/run/session.end.test.ts b/packages/runner/test/run/session.end.test.ts
+index 59cc794..155beba 100644
+--- a/packages/runner/test/run/session.end.test.ts
++++ b/packages/runner/test/run/session.end.test.ts
+@@ -3,6 +3,8 @@
+  * records", "Provenance", an empty Apply, an interrupted Apply): the end of an edit session, with the FakeBackend and
+  * the fake engine (its final check is core's `judgeState('final')` and backstop on fake facts; `planApply` is the real
+  * service's, a comparison of files), and the fake workspace, whose `applyChanges` records every change set (the spy).
++ * 2k1 (D2-100 D1, 6.1's 2k1 list): after the end, by any path (Exit, Apply, a Cancel while starting, a failure, an end
++ * on recovery), `session()` is null from the write that ends the run, whose change names the session.
+  */
+ import { cpSync, mkdirSync, writeFileSync } from 'node:fs';
+ import path from 'node:path';
+@@ -13,6 +15,7 @@ import {
+   applyBackstop as coreApplyBackstop,
+   endorsementHash,
+   endorsementsPath,
++  isTerminalRunState,
+   layoutPath,
+   parseEndorsements,
+   parseLayout,
+@@ -20,15 +23,19 @@ import {
+   serializeEndorsements,
+   serializeLayout,
+   type ActionOutcome,
++  type RunView,
++  type SessionView,
+   type StateJudgement,
+ } from '@telelean/core';
+ 
+ import type { FinalCheckReport } from '../../src/gate/types.js';
++import type { LlmSession } from '../../src/llm/types.js';
++import { RunFiles } from '../../src/run/persist.js';
+ import { END_TEXTS } from '../../src/run/sessionEnd.js';
+ import { sentenceShort } from '../../src/run/step.js';
+-import type { PersistedSession } from '../../src/run/types.js';
++import type { PersistedSession, RunChange } from '../../src/run/types.js';
+ import { fakeFinalCheck, fakeModel } from './helpers/fakeEngine.js';
+-import { fakeCore, makeHarness, rawRun, round1, START, step, waitForRun, waitForStage, type Harness } from './helpers/harness.js';
++import { fakeCore, makeHarness, rawRun, round1, START, step, TrackingBackend, waitForRun, waitForStage, type Harness } from './helpers/harness.js';
+ import { acceptEverything } from './helpers/apply.js';
+ import { acceptPremise, auxModel, confirmedStage, PREMISE_KEY, premiseRecord, proposeArrow, proposePremise, scriptEnd } from './helpers/premises.js';
+ import { decision, GOAL_LINE, GOAL_PROOF, GOAL_PROOF_AXIOMS, main, PG, PG_BLOCK_END, PG_FORMALISED, pgScript, record, RESULT, session, settled, T } from './helpers/review.js';
+@@ -91,6 +98,27 @@ async function confirmed(
+ 
+ const T_SENTENCE = 'Cynder would not be a good addition to the new Spyro game';
+ 
++/** 2k1: every change the manager emits from now on, with what `current()` and `session()` return when it is heard. */
++type Heard = Array<{ change: RunChange; state: RunView['state'] | undefined; session: SessionView | null }>;
++function heard(h: Harness): Heard {
++  const out: Heard = [];
++  const sub = h.manager.onDidChange((change) => out.push({ change, state: h.manager.current()?.state, session: h.manager.session() }));
++  toDispose.unshift(() => sub.dispose());
++  return out;
++}
++
++/** 2k1: the change that ended the run (the first heard with an ended state). */
++const endOf = (changes: Heard) => changes.find((c) => c.state !== undefined && isTerminalRunState(c.state));
++
++/** 2k1: every item rejected, so Apply changes no file (D2-39's "Recorded" end). */
++async function rejectAll(x: Harness, id: string): Promise<void> {
++  ok(await x.manager.reveal(id, 1, 'show-result'));
++  ok(await x.manager.decide(id, 1, true, [decision(x, PG, 'declined', { option: 'reject' })], true));
++  await settled(x);
++  if (record(x, RESULT).status !== 'declined') ok(await x.manager.decide(id, 1, true, [decision(x, RESULT, 'declined', { option: 'reject' })], true));
++  await settled(x);
++}
++
+ describe('Apply (§3.10 step 4, EN-3, D2-67, UN-2)', () => {
+   it('writes exactly F in one applyChanges call (kind accept-proposal, the Apply label) only at Apply, across the session, the review and the end; the attempt records are resolved accepted; the run ends accepted', async () => {
+     const { h, runId, checkId } = await confirmed();
+@@ -441,14 +469,19 @@ describe('Exit (§3.10 step 6, ES-8, EN-4)', () => {
+     expect(h.sidecars.attempts.map((a) => a.round)).toEqual([1]);
+     expect(h.sidecars.resolutions.map((r) => r.resolution)).toEqual(['discarded']);
+     expect(rawRun(h).view.state).toBe('discarded');
+-    expect(rawRun(h).view.notices.at(-1)?.text).toBe(END_TEXTS.exited);
++    expect(rawRun(h).view.notices.at(-1)?.text).toBe(REVIEW_TEXTS.exited);
+   });
+ 
+   it('stops a running step (Claude\'s process and the run\'s Lean jobs, as Cancel step does), whose attempt is recorded cancelled, then discarded', async () => {
+     const h = harness({ script: [round1(step.check(), { kind: 'sleep', ms: 60_000 })] });
+     expect(await h.manager.start(START)).toMatchObject({ ok: true });
+     const working = await waitForRun(h.manager, (v) => v.state === 'working' && v.counters.checks === 1);
++    const changes = heard(h);
+     expect(await h.manager.end(working.runId, 'exit')).toMatchObject({ ok: true });
++    // 2k1 (D2-100 D1): the Exit most likely pressed, in the middle of a step (it closes the step before the end): the
++    // review view goes with the end, and the change that ends the run names the session.
++    expect(h.manager.session()).toBeNull();
++    expect(endOf(changes)).toEqual({ change: { run: true, proposal: true, session: true }, state: 'discarded', session: null });
+     expect(h.backend?.interrupts.length).toBeGreaterThan(0);
+     expect(h.cancelled).toContain(working.runId);
+     expect(rawRun(h).view.state).toBe('discarded');
+@@ -718,11 +751,15 @@ describe('a reload in the end confirmation and during Apply (§3.10 step 7, §3.
+   it('the real files equal F: Apply had finished, so the session ends as applied', async () => {
+     const { h, F } = await applying();
+     h.workspace.texts.set(MAIN, F);
+-    const b = await reload(h);
++    let changes: Heard = [];
++    const b = await reload(h, (x) => (changes = heard(x)));
+     const v = await waitForRun(b.manager, (x) => x.state === 'accepted');
+     expect(v.accepted).toEqual({ changedFiles: true });
+     expect(b.sidecars.resolutions.map((r) => r.resolution)).toEqual(['accepted']);
+     expect(b.workspace.appliedChanges).toEqual([]);
++    // 2k1 (D2-100 D1): an end on recovery sends no review view either, and tells the host that the session changed.
++    expect(b.manager.session()).toBeNull();
++    expect(endOf(changes)).toEqual({ change: { run: true, proposal: true, session: true }, state: 'accepted', session: null });
+   });
+ 
+   it('the real files equal B: nothing was written, so back to the end confirmation, whose check runs again', async () => {
+@@ -872,3 +909,180 @@ describe('a presupposition\'s helper instance (RV-1; found by builder 2f with re
+     expect(h.workspace.texts.get(VOCAB)).toContain('instance : Nonempty Dragon := Dragon.exists');
+   });
+ });
++
++describe('after the end, by any path, the runner sends no review view (2k1, D2-100 D1, D2-101, D2-102)', () => {
++  const ENDED = { run: true, proposal: true, session: true };
++
++  /** A new manager on the same runs folder (the window reloaded): `recover()` reads only runs that have not ended. */
++  async function reloadAfterEnd(a: Harness): Promise<Harness> {
++    await a.manager.dispose();
++    const b = makeHarness({ reuse: { dir: a.dir, root: a.root, runsDir: a.runsDir, workspace: a.workspace } });
++    toDispose.unshift(() => b.dispose());
++    scriptEnd(b);
++    await b.manager.recover();
++    return b;
++  }
++
++  /** The session's start held where Claude's process starts (its base model is loaded by then); `refuse` lets it go. */
++  function holdClaudesStart(h: Harness): { started: Promise<void>; refuse: (e: Error) => void } {
++    const backend = h.backend as TrackingBackend;
++    let refuse!: (e: Error) => void;
++    let called!: () => void;
++    const started = new Promise<void>((r) => (called = r));
++    backend.startSession = () => {
++      called();
++      return new Promise<LlmSession>((_, reject) => (refuse = reject));
++    };
++    return { started, refuse: (e) => refuse(e) };
++  }
++
++  it('Exit in a stage whose results are hidden: session() is null from the write that ends the run, whose change names the session; current() keeps the ended state and, the results hidden, every notice withheld (D2-102); a second Exit is refused; a reload does not bring it back', async () => {
++    const h = harness({ script: [pgScript('proved')] });
++    expect(await h.manager.start(START)).toMatchObject({ ok: true });
++    const { runId } = await waitForStage(h.manager, 1);
++    await settled(h);
++    expect(h.manager.session()?.results.shown).toBe(false);
++    const changes = heard(h);
++    ok(await h.manager.end(runId, 'exit'));
++    expect(h.manager.session()).toBeNull();
++    // When the host hears the end, current() already reads it and session() is null: it posts `session: null`.
++    expect(endOf(changes)).toEqual({ change: ENDED, state: 'discarded', session: null });
++    const v = h.manager.current();
++    expect(v).toMatchObject({ runId, state: 'discarded', session: { stage: 1 } });
++    expect(v?.endedAt).toBeDefined();
++    expect(v?.notices).toEqual([]);
++    expect(v?.activity).toEqual([]);
++    expect(rawRun(h).view.notices.at(-1)?.text).toBe(REVIEW_TEXTS.exited);
++    // D5: a second Exit sent in a race still gets the runner's refusal; no file changed.
++    expect(await h.manager.end(runId, 'exit')).toMatchObject({ ok: false, code: 'not-found' });
++    expect(h.workspace.appliedChanges).toEqual([]);
++    expect(h.manager.session()).toBeNull();
++    const b = await reloadAfterEnd(h);
++    expect(b.manager.current()).toBeNull();
++    expect(b.manager.session()).toBeNull();
++  });
++
++  it('Exit in the end confirmation (the results shown): session() is null; the end\'s notice is the RunView\'s last; Dismiss clears the run, with the session in its change (D4)', async () => {
++    const { h, runId } = await confirmed();
++    expect(h.manager.session()?.results.shown).toBe(true);
++    const changes = heard(h);
++    ok(await h.manager.end(runId, 'exit'));
++    expect(h.manager.session()).toBeNull();
++    expect(endOf(changes)).toEqual({ change: ENDED, state: 'discarded', session: null });
++    expect(h.manager.current()?.state).toBe('discarded');
++    expect(h.manager.current()?.notices.at(-1)?.text).toBe(REVIEW_TEXTS.exited);
++    ok(await h.manager.dismiss(runId));
++    expect(changes.at(-1)).toEqual({ change: ENDED, state: undefined, session: null });
++    expect(h.manager.current()).toBeNull();
++    expect(h.manager.session()).toBeNull();
++  });
++
++  it('session() turns with the run.json write that ends the run, as current() does, not before it (D2-101): while that write is held the live view and the active state are still sent; once it lands, both read the end', async () => {
++    const { h, runId } = await confirmed();
++    const real = RunFiles.prototype.writeState;
++    let reached!: () => void;
++    const atEnd = new Promise<void>((r) => (reached = r));
++    let release!: () => void;
++    const held = new Promise<void>((r) => (release = r));
++    vi.spyOn(RunFiles.prototype, 'writeState').mockImplementation(async function (this: RunFiles, text: string) {
++      if ((JSON.parse(text) as { view: { state: string } }).view.state === 'discarded') {
++        reached();
++        await held;
++      }
++      return real.call(this, text);
++    });
++    const changes = heard(h);
++    const exiting = h.manager.end(runId, 'exit');
++    await atEnd;
++    // endRun has set the state in memory (the run is ended), but run.json does not hold it yet.
++    expect(h.manager.session()).not.toBeNull();
++    expect(h.manager.current()?.state).toBe('review');
++    expect(endOf(changes)).toBeUndefined();
++    release();
++    ok(await exiting);
++    vi.restoreAllMocks();
++    expect(h.manager.session()).toBeNull();
++    expect(h.manager.current()?.state).toBe('discarded');
++    expect(endOf(changes)).toEqual({ change: ENDED, state: 'discarded', session: null });
++  });
++
++  it('an Apply that changed the files: session() is null; current() reads accepted, changedFiles and the Apply notice; a reload does not bring it back', async () => {
++    const { h, runId, checkId } = await confirmed();
++    const changes = heard(h);
++    ok(await h.manager.end(runId, 'apply', 1, checkId));
++    expect(h.manager.session()).toBeNull();
++    expect(endOf(changes)).toEqual({ change: ENDED, state: 'accepted', session: null });
++    const v = h.manager.current();
++    expect(v).toMatchObject({ state: 'accepted', accepted: { changedFiles: true } });
++    expect(v?.notices.at(-1)?.text).toBe(REVIEW_TEXTS.applied);
++    expect(h.workspace.appliedChanges).toHaveLength(1);
++    const b = await reloadAfterEnd(h);
++    expect(b.manager.current()).toBeNull();
++    expect(b.manager.session()).toBeNull();
++  });
++
++  it('an Apply that changed no file ("Recorded", D2-39): session() is null; current() reads accepted with changedFiles false and the recorded notice', async () => {
++    const { h, runId, checkId } = await confirmed({}, rejectAll);
++    const changes = heard(h);
++    ok(await h.manager.end(runId, 'apply', 1, checkId));
++    expect(h.manager.session()).toBeNull();
++    expect(endOf(changes)).toEqual({ change: ENDED, state: 'accepted', session: null });
++    const v = h.manager.current();
++    expect(v).toMatchObject({ state: 'accepted', accepted: { changedFiles: false } });
++    expect(v?.notices.at(-1)?.text).toBe(END_TEXTS.recorded);
++    expect(h.workspace.appliedChanges).toEqual([]);
++  });
++
++  it('a Cancel while the session starts (its Stop): session() is null; current() reads cancelled; a reload does not bring it back', async () => {
++    const h = harness({ script: [pgScript('proved')] });
++    const hold = holdClaudesStart(h);
++    const start = h.manager.start(START);
++    await hold.started;
++    const runId = h.manager.current()?.runId ?? '';
++    expect(h.manager.current()?.state).toBe('starting');
++    const changes = heard(h);
++    ok(await h.manager.cancel(runId));
++    hold.refuse(new Error('closed'));
++    expect(await start).toMatchObject({ ok: false });
++    expect(h.manager.session()).toBeNull();
++    expect(endOf(changes)).toEqual({ change: ENDED, state: 'cancelled', session: null });
++    expect(h.manager.current()).toMatchObject({ runId, state: 'cancelled' });
++    const b = await reloadAfterEnd(h);
++    expect(b.manager.current()).toBeNull();
++    expect(b.manager.session()).toBeNull();
++  });
++
++  it('a failure (Claude refused at the session\'s start, after its base model was read): session() is null; current() reads failed with the error', async () => {
++    const h = harness({ script: [round1(step.result())] });
++    const backend = h.backend as TrackingBackend;
++    const refusal = 'Refusing to run: the Claude CLI is not on a claude.ai subscription login (verdict=api-key).';
++    backend.startSession = async () => {
++      throw new Error(refusal);
++    };
++    const changes = heard(h);
++    expect(await h.manager.start(START)).toMatchObject({ ok: false, code: 'not-yet' });
++    expect(h.manager.session()).toBeNull();
++    expect(endOf(changes)).toEqual({ change: ENDED, state: 'failed', session: null });
++    expect(h.manager.current()).toMatchObject({ state: 'failed', error: refusal });
++    const b = await reloadAfterEnd(h);
++    expect(b.manager.current()).toBeNull();
++    expect(b.manager.session()).toBeNull();
++  });
++
++  it('an end on recovery: a reload before Claude had started ends the session failed, and session() is null', async () => {
++    const a = makeHarness({ script: [pgScript('proved')] });
++    toDispose.push(() => a.dispose());
++    const hold = holdClaudesStart(a);
++    void a.manager.start(START);
++    await hold.started;
++    await a.manager.dispose();
++    hold.refuse(new Error('closed'));
++    const b = makeHarness({ reuse: { dir: a.dir, root: a.root, runsDir: a.runsDir, workspace: a.workspace } });
++    toDispose.unshift(() => b.dispose());
++    const changes = heard(b);
++    await b.manager.recover();
++    expect(b.manager.current()).toMatchObject({ state: 'failed', error: 'the editor reloaded before Claude had started' });
++    expect(b.manager.session()).toBeNull();
++    expect(endOf(changes)).toEqual({ change: ENDED, state: 'failed', session: null });
++  });
++});
+diff --git a/packages/webview/src/model/run.ts b/packages/webview/src/model/run.ts
+index 60a4dda..5fdd092 100644
+--- a/packages/webview/src/model/run.ts
++++ b/packages/webview/src/model/run.ts
+@@ -7,6 +7,7 @@
+ import {
+   isTerminalRunState,
+   LIMITS,
++  REVIEW_TEXTS,
+   type AnswerChoiceView,
+   type DecisionScope,
+   type GateStepId,
+@@ -296,6 +297,19 @@ export function endedOutcome(run: Pick<RunView, 'runId' | 'state' | 'accepted'>,
+   }
+ }
+ 
++/**
++ * The run panel's line for an ended run (null while it has not ended). Slice 2g and 2k1 (D2-100 D2, §5.9): an edit
++ * session's Apply that changed files and its Exit in the session's words (core `REVIEW_TEXTS.applied`, `exited`); an
++ * Apply that changed none is "Recorded" (`endedOutcome`), and every other end has its `ENDED_TEXT`, as for any run.
++ */
++export function endedText(run: Pick<RunView, 'runId' | 'state' | 'accepted' | 'session'>): string | null {
++  const ended = endedOutcome(run, null);
++  if (ended === null) return null;
++  if (run.session !== undefined && ended === 'accepted') return REVIEW_TEXTS.applied;
++  if (run.session !== undefined && ended === 'discarded') return REVIEW_TEXTS.exited;
++  return ENDED_TEXT[ended];
++}
++
+ /** Where the run panel puts each notice (A2): above the questions and the review, or folded below the review. */
+ export interface NoticePlaces {
+   upfront: RunNotice[];
+diff --git a/packages/webview/src/model/sessionBar.ts b/packages/webview/src/model/sessionBar.ts
+index 0a66d53..4024edb 100644
+--- a/packages/webview/src/model/sessionBar.ts
++++ b/packages/webview/src/model/sessionBar.ts
+@@ -5,8 +5,9 @@
+  * host's (`submit.gate`, `heading.retry`, `confirmation.apply`); the bar only says why, and closes Apply also on its
+  * own when the check has not passed or the files drift (EN-2, ES-7), whatever the gate says. Never a verdict.
+  */
+-import { REVIEW_TEXTS, type EndConfirmationView, type FinalCheckRule, type RunView, type SessionView, type StepView } from '@telelean/core';
++import { isTerminalRunState, REVIEW_TEXTS, type EndConfirmationView, type FinalCheckRule, type RunView, type SessionView, type StepView } from '@telelean/core';
+ import { readOnlyReason, stepRunning, wordsIn, type LabelPart } from './review';
++import { runBadgeText } from './run';
+ 
+ export { readOnlyReason, stepRunning };
+ 
+@@ -165,6 +166,18 @@ export function sessionBadgeText(session: Pick<SessionView, 'subject' | 'phase'>
+   return REVIEW_TEXTS.badgeReview(session.subject);
+ }
+ 
++/**
++ * The header's run badge (§5.8): while a session's run has not ended, the session's words (never a verdict), its phase
++ * from the session view, or from the run while no view came yet; any other run's badge otherwise. 2k1 (D2-100 D2,
++ * D2-103): a session's run that has ended reads as any ended run ("Claude: discarded · Spyro").
++ */
++export function runBadge(run: RunView, session: Pick<SessionView, 'subject' | 'phase'> | null): string {
++  if (isTerminalRunState(run.state)) return runBadgeText(run);
++  if (session !== null) return sessionBadgeText(session, run);
++  if (run.session !== undefined) return sessionBadgeText({ subject: run.subject, phase: run.session.phase }, run);
++  return runBadgeText(run);
++}
++
+ /** §5.9: the Exit dialog's counts, listed items only (a hidden Result is never counted, §2.3). */
+ export function exitCounts(session: Pick<SessionView, 'counts' | 'phase'>): { accepted: number; inReview: number; stepRunning: boolean } {
+   return { accepted: session.counts.accepted, inReview: session.counts.inReview, stepRunning: stepRunning(session) };
+diff --git a/packages/webview/src/run/RunBadge.tsx b/packages/webview/src/run/RunBadge.tsx
+index 4b5a318..367f3c6 100644
+--- a/packages/webview/src/run/RunBadge.tsx
++++ b/packages/webview/src/run/RunBadge.tsx
+@@ -5,11 +5,12 @@
+  *
+  * Slice 2g (docs/slice2-plan.md 5.8): during an edit session the badge never says a verdict ("Edit session: Claude
+  * working · Spyro · 3/25 checks", "Edit session: review · Spyro"), and another subject's session reads "An edit session
+- * is active on ‹subject›: the boards of this folder are read-only until it ends. [Show it]".
++ * is active on ‹subject›: the boards of this folder are read-only until it ends. [Show it]". 2k1 (D2-103): once the
++ * session's run has ended, both read as any ended run's.
+  */
+-import { REVIEW_TEXTS } from '@telelean/core';
+-import { runBadgeText, runNeedsUser, runStateLabel } from '../model/run';
+-import { sessionBadgeText } from '../model/sessionBar';
++import { isTerminalRunState, REVIEW_TEXTS } from '@telelean/core';
++import { runNeedsUser, runStateLabel } from '../model/run';
++import { runBadge } from '../model/sessionBar';
+ import { useBoard, useBoardActions } from '../state/context';
+ 
+ export function RunBadge() {
+@@ -20,8 +21,9 @@ export function RunBadge() {
+   const actions = useBoardActions();
+   if (!run) return null;
+   const here = run.subject === subject;
+-  // A session's run: never a verdict; the phase phrase from the session (or from the run while no view came yet).
+-  const text = session !== null ? sessionBadgeText(session, run) : run.session !== undefined ? sessionBadgeText({ subject: run.subject, phase: run.session.phase }, run) : runBadgeText(run);
++  // A session's run: never a verdict; the phase phrase from the session (or from the run while no view came yet). 2k1
++  // (D2-103): once it has ended, as any ended run.
++  const text = runBadge(run, session);
+   return (
+     <button
+       type="button"
+@@ -44,7 +46,8 @@ export function RunElsewhere() {
+   const run = useBoard((s) => (s.run && s.subject !== '' && s.run.subject !== s.subject ? s.run : null));
+   const actions = useBoardActions();
+   if (!run) return null;
+-  if (run.session !== undefined) {
++  // 2k1 (D2-100 D2, D2-103): an ended session's run is no longer active: the line of any ended run.
++  if (run.session !== undefined && !isTerminalRunState(run.state)) {
+     return (
+       <div className="tl-banner tl-run-elsewhere" data-testid="run-elsewhere" data-session="true" role="status">
+         <span className="codicon codicon-lock" aria-hidden="true" />
+diff --git a/packages/webview/src/run/RunPanel.tsx b/packages/webview/src/run/RunPanel.tsx
+index 9da5127..f0fddca 100644
+--- a/packages/webview/src/run/RunPanel.tsx
++++ b/packages/webview/src/run/RunPanel.tsx
+@@ -30,7 +30,7 @@ import { InlineCode } from '../common/InlineCode';
+ import { useNow } from '../common/useNow';
+ import { NOTICE_ICON } from '../labels';
+ import { listControls, partsText, stepRunning } from '../model/review';
+-import { clockRuns, endedOutcome, ENDED_TEXT, formatClock, placeNotices, runStateLabel, runStatusParts } from '../model/run';
++import { clockRuns, endedOutcome, endedText, formatClock, placeNotices, runStateLabel, runStatusParts } from '../model/run';
+ import { sessionBarState } from '../model/sessionBar';
+ import { useBoard, useBoardActions } from '../state/context';
+ import { clampSplit, type RunPanelLayout } from '../state/store';
+@@ -347,8 +347,8 @@ function Outcome({ run }: { run: RunView }) {
+     case 'failed':
+       return (
+         <div className="tl-run__outcome" data-testid="run-ended" data-outcome={ended ?? run.state} data-tone={run.state === 'failed' ? 'error' : undefined}>
+-          {/* Slice 2g (§5.9): after a session's Apply that changed the files. */}
+-          <p>{run.session !== undefined && ended === 'accepted' ? REVIEW_TEXTS.applied : ENDED_TEXT[ended ?? run.state]}</p>
++          {/* Slice 2g, 2k1 (§5.9, D2-100 D2): a session's Apply and Exit in the session's words. */}
++          <p data-testid="run-ended-text">{endedText(run)}</p>
+           {run.error ? (
+             <p className="tl-run__error" data-testid="run-error">
+               <span className="codicon codicon-error" aria-hidden="true" /> <InlineCode text={run.error} />
+diff --git a/packages/webview/src/state/session.ts b/packages/webview/src/state/session.ts
+index 6475f0e..0804e13 100644
+--- a/packages/webview/src/state/session.ts
++++ b/packages/webview/src/state/session.ts
+@@ -22,6 +22,7 @@
+  * D2-33, one session-stack step; shown at once, rolled back if refused) and the Context Menu's group Accept here.
+  */
+ import {
++  isTerminalRunState,
+   LIMITS,
+   REVIEW_TEXTS,
+   webviewMessage,
+@@ -867,9 +868,13 @@ export function createSessionSlice(ctx: SessionSliceContext): SessionWiring {
+     },
+   };
+ 
+-  /** §5.2: when a `session` message arrives. */
+-  const receive = (next: SessionView | null) => {
++  /**
++   * §5.2: when a `session` message arrives. 2k1 (D2-100 D3, D2-104): a view of a run the store holds as ended is read
++   * as `session: null`, so a stale view that arrives late never brings the review back.
++   */
++  const receive = (incoming: SessionView | null) => {
+     const s = get();
++    const next = incoming !== null && s.run !== null && s.run.runId === incoming.runId && isTerminalRunState(s.run.state) ? null : incoming;
+     const prev = s.session;
+     if (next === null) {
+       if (prev === null && s.sessionReview === null) return;
+diff --git a/packages/webview/src/state/store.ts b/packages/webview/src/state/store.ts
+index 0db381b..38c0a9b 100644
+--- a/packages/webview/src/state/store.ts
++++ b/packages/webview/src/state/store.ts
+@@ -1540,6 +1540,9 @@ export function createBoardStore(post: Post, options: StoreOptions = {}): BoardS
+       // earlier window left): an inline edit, a drag or an edit dialog under way ends, as the host would refuse it.
+       if (runLocksBoard(run) && editLock(s) === null) Object.assign(patch, { editing: null, drag: null, dropKind: null, overAxioms: null, dialog: null });
+       set(patch);
++      // 2k1 (D2-100 D3, D2-104): the run has ended, so no session view of it stays, even before the host's `session:
++      // null` (the review panel, the session bar, the Proposed view and the session's dialogs go with it).
++      if (isTerminalRunState(run.state) && get().session?.runId === run.runId) sessionWiring.receive(null);
+     };
+ 
+     return {
+diff --git a/packages/webview/test/e2e/s2-review.spec.ts b/packages/webview/test/e2e/s2-review.spec.ts
+index c68de9a..e5e0a0b 100644
+--- a/packages/webview/test/e2e/s2-review.spec.ts
++++ b/packages/webview/test/e2e/s2-review.spec.ts
+@@ -7,12 +7,15 @@
+  *    neutral row), the detail; Accept posts one `decideItems`, `own: true`; Claude's words in Claude's style;
+  *  - an Add premise asks how it is held; a cascade asks first;
+  *  - read-only while a step runs (D2-62); the end confirmation; Exit's dialog;
+- *  - the twin pair: the same panel and bar text whatever the hidden outcome.
++ *  - the twin pair: the same panel and bar text whatever the hidden outcome;
++ *  - 2k1 (D2-100): once the session's run has ended (Exit, Apply), the run panel of any ended run with its line and
++ *    Dismiss, no session bar; a stale view of the ended run never brings the review back.
+  */
+ import { expect, test, type Page } from '@playwright/test';
+ import { hostMessage, REVIEW_TEXTS, spyroGraph, type RunView, type SessionView } from '@telelean/core';
+ import { workspaceState } from '../shared/graphs';
+-import { confirmingSession, hiddenPair, hiddenStage, IDS, OPEN, sessionRun, shownStage, stepSession } from '../shared/sessions';
++import { ENDED_TEXT } from '../../src/model/run';
++import { AT, confirmingSession, hiddenPair, hiddenStage, IDS, OPEN, sessionRun, shownStage, stepSession } from '../shared/sessions';
+ import { openBoard, postedOfType, send, shotPath, type OpenedBoard } from './helpers';
+ 
+ let board: OpenedBoard | undefined;
+@@ -382,3 +385,94 @@ test('the twin pair: the same panel and bar text whatever the hidden outcome (§
+   await expect(panel.getByTestId('run-stats')).not.toHaveText(stats);
+   expect(await text()).toEqual(a);
+ });
++
++test('2k1 (D2-100): Exit, confirmed, posts `endSession` exit; the host’s ended run and `session: null` leave the panel of an ended run, with the exited line and Dismiss; no session bar, no Exit, no review panel; Dismiss posts `dismissRun`', async ({ page }) => {
++  const view = hiddenStage();
++  const run = sessionRun(view);
++  const panel = await openSession(page, view, run);
++  await expect(panel).toHaveAttribute('aria-label', REVIEW_TEXTS.panelLabel);
++  await page.getByTestId('session-exit').click();
++  await expect(page.getByTestId('exit-text')).toHaveText(REVIEW_TEXTS.exitConfirm(0, 3, false));
++  await page.getByTestId('exit-confirm').click();
++  const exits = (await postedOfType(page, 'endSession')).filter((m) => m.payload.decision === 'exit');
++  expect(exits.map((m) => ({ ...m.payload, requestId: undefined }))).toEqual([{ runId: view.runId, decision: 'exit', requestId: undefined }]);
++  // The host (the harness answered the request): the run ended, then no session (D1).
++  await send(page, hostMessage('run', { run: { ...run, state: 'discarded', endedAt: AT } }));
++  await send(page, hostMessage('session', { session: null }));
++  const ended = panel.getByTestId('run-ended');
++  await expect(ended).toHaveAttribute('data-outcome', 'discarded');
++  await expect(ended.getByTestId('run-ended-text')).toHaveText(REVIEW_TEXTS.exited);
++  await expect(ended.getByTestId('dismiss-run')).toBeVisible();
++  await expect(panel).toHaveAttribute('aria-label', 'Claude run');
++  await expect(panel.getByTestId('review-list')).toHaveCount(0);
++  await expect(page.getByTestId('session-bar')).toHaveCount(0);
++  await expect(page.getByTestId('session-exit')).toHaveCount(0);
++  await expect(page.getByTestId('session-submit')).toHaveCount(0);
++  await expect(page.getByTestId('run-badge')).toHaveText('Claude: discarded · Spyro');
++  // The board is the Current view again (no session, no Proposed view).
++  await expect(page.locator('.tl-board[data-view="proposed"]')).toHaveCount(0);
++  await page.screenshot({ path: shotPath('s2-review-exited.png') });
++  // D4: Dismiss as for any run.
++  await ended.getByTestId('dismiss-run').click();
++  expect((await postedOfType(page, 'dismissRun')).map((m) => m.payload)).toEqual([{ runId: view.runId }]);
++  await send(page, hostMessage('run', { run: null }));
++  await expect(page.getByTestId('run-panel')).toHaveCount(0);
++});
++
++test('2k1 (D2-100): after Apply the panel shows the ended run’s line with Dismiss, "Applied: …" when it changed files and "Recorded: …" when it changed none; the end confirmation and the session bar are gone', async ({ page }) => {
++  const view = confirmingSession();
++  const run = sessionRun(view);
++  const panel = await openSession(page, view, run);
++  await panel.getByTestId('confirmation-apply').click();
++  expect((await postedOfType(page, 'endSession'))[0]?.payload).toMatchObject({ decision: 'apply', stage: 1, check: 'chk-1' });
++  await send(page, hostMessage('run', { run: { ...run, state: 'accepted', endedAt: AT, accepted: { changedFiles: true } } }));
++  await send(page, hostMessage('session', { session: null }));
++  const ended = panel.getByTestId('run-ended');
++  await expect(ended).toHaveAttribute('data-outcome', 'accepted');
++  await expect(ended.getByTestId('run-ended-text')).toHaveText(REVIEW_TEXTS.applied);
++  await expect(ended.getByTestId('dismiss-run')).toBeVisible();
++  await expect(panel.getByTestId('end-confirmation')).toHaveCount(0);
++  await expect(page.getByTestId('session-bar')).toHaveCount(0);
++  await expect(page.getByTestId('run-badge')).toHaveText('Claude: accepted · Spyro');
++  // An Apply that changed no file (every item rejected): the "Recorded" line, without the Undo hint.
++  await send(page, hostMessage('run', { run: { ...run, state: 'accepted', endedAt: AT, accepted: { changedFiles: false } } }));
++  await expect(ended).toHaveAttribute('data-outcome', 'recorded');
++  await expect(ended.getByTestId('run-ended-text')).toHaveText(ENDED_TEXT.recorded);
++});
++
++test('2k1 (D2-100 D3): an ended run that arrives while the store holds its session view clears it, and a view of it arriving late is dropped: neither draws the review panel or the session bar', async ({ page }) => {
++  const view = shownStage();
++  const run = sessionRun(view);
++  const panel = await openSession(page, view, run);
++  await expect(page.getByTestId('session-bar')).toBeVisible();
++  // The ended run arrives while the store still holds the session's view (no `session: null` yet): no Exit is offered.
++  await send(page, hostMessage('run', { run: { ...run, state: 'discarded', endedAt: AT } }));
++  await expect(page.getByTestId('session-exit')).toHaveCount(0);
++  await expect(panel.getByTestId('run-ended')).toBeVisible();
++  await expect(panel.getByTestId('review-list')).toHaveCount(0);
++  await expect(page.getByTestId('session-bar')).toHaveCount(0);
++  // The view again, late: still the ended run's panel.
++  await send(page, hostMessage('session', { session: view }));
++  await expect(panel.getByTestId('run-ended-text')).toHaveText(REVIEW_TEXTS.exited);
++  await expect(panel).toHaveAttribute('aria-label', 'Claude run');
++  await expect(panel.getByTestId('review-list')).toHaveCount(0);
++  await expect(page.getByTestId('session-bar')).toHaveCount(0);
++  await expect(page.getByTestId('session-exit')).toHaveCount(0);
++  await expect(page.locator('.tl-board[data-view="proposed"]')).toHaveCount(0);
++});
++
++test('2k1 (D2-103): another subject’s session reads "An edit session is active…" while its run is active, and the line of any ended run once it has ended', async ({ page }) => {
++  const view = hiddenStage({ subject: 'Bayonetta' });
++  const run = sessionRun(view, { subject: 'Bayonetta' });
++  board = await openBoard(page, spyroGraph(), 'dark', { workspace: workspaceState() });
++  await send(page, hostMessage('run', { run }));
++  await send(page, hostMessage('session', { session: view }));
++  const line = page.getByTestId('run-elsewhere');
++  await expect(line).toHaveAttribute('data-session', 'true');
++  await expect(line).toContainText(REVIEW_TEXTS.runElsewhere('Bayonetta'));
++  await send(page, hostMessage('run', { run: { ...run, state: 'discarded', endedAt: AT } }));
++  await send(page, hostMessage('session', { session: null }));
++  await expect(line).not.toHaveAttribute('data-session', 'true');
++  await expect(line).toHaveText(/Claude’s run on Bayonetta: discarded\.\s*Show/);
++  await expect(page.getByTestId('run-badge')).toHaveText('Claude: discarded · Bayonetta');
++});
+diff --git a/packages/webview/test/unit/run.test.ts b/packages/webview/test/unit/run.test.ts
+index 3327654..e61d3f3 100644
+--- a/packages/webview/test/unit/run.test.ts
++++ b/packages/webview/test/unit/run.test.ts
+@@ -1,4 +1,4 @@
+-import { DEFAULT_RUN_CAPS, spyroGraph, type QuestionView, type RunNotice, type TlNode } from '@telelean/core';
++import { DEFAULT_RUN_CAPS, REVIEW_TEXTS, spyroGraph, type QuestionView, type RunNotice, type TlNode } from '@telelean/core';
+ import { describe, expect, it } from 'vitest';
+ import {
+   acceptChangedFiles,
+@@ -8,6 +8,7 @@ import {
+   emptyDraft,
+   ENDED_TEXT,
+   endedOutcome,
++  endedText,
+   formatCost,
+   formatDuration,
+   formatTokens,
+@@ -142,6 +143,21 @@ describe('the status line', () => {
+     expect(ENDED_TEXT.accepted).toMatch(/Undo \(Ctrl\+Z\) or History reverts them/);
+   });
+ 
++  it('2k1 (D2-100 D2): an ended run\'s line; an edit session\'s Exit and Apply in the session\'s words, "Recorded" for an Apply that changed no file, every other end as any run\'s', () => {
++    const session = { stage: 1, phase: 'stage' as const };
++    expect(endedText(runView({ state: 'discarded', session }))).toBe(REVIEW_TEXTS.exited);
++    expect(endedText(runView({ state: 'accepted', session, accepted: { changedFiles: true } }))).toBe(REVIEW_TEXTS.applied);
++    expect(endedText(runView({ state: 'accepted', session, accepted: { changedFiles: false } }))).toBe(ENDED_TEXT.recorded);
++    expect(endedText(runView({ state: 'cancelled', session }))).toBe(ENDED_TEXT.cancelled);
++    expect(endedText(runView({ state: 'failed', session }))).toBe(ENDED_TEXT.failed);
++    // A run with no session (a v1 run that could not be converted) keeps the plain words.
++    expect(endedText(runView({ state: 'discarded' }))).toBe(ENDED_TEXT.discarded);
++    expect(endedText(runView({ state: 'accepted', accepted: { changedFiles: true } }))).toBe(ENDED_TEXT.accepted);
++    // Not ended: no line.
++    for (const state of ['starting', 'working', 'review', 'interrupted'] as const) expect(endedText(runView({ state, session }))).toBeNull();
++    expect(REVIEW_TEXTS.exited).toBe("You exited the edit session: your files were not changed. Your answers to Claude's questions stay recorded.");
++  });
++
+   it('a statement in the review is the proposition alone, without Lean’s #print header', () => {
+     expect(statementBody('@[reducible] def Spyro.pg_no_dark_past : Prop :=\n∀ (g : Spyro.Game), Spyro.IsPG g')).toBe('∀ (g : Spyro.Game), Spyro.IsPG g');
+     expect(statementBody('@[reducible, simp] noncomputable def Spyro.«pg rule» : Prop := True')).toBe('True');
+diff --git a/packages/webview/test/unit/sessionBar.test.ts b/packages/webview/test/unit/sessionBar.test.ts
+index a172353..75e07dc 100644
+--- a/packages/webview/test/unit/sessionBar.test.ts
++++ b/packages/webview/test/unit/sessionBar.test.ts
+@@ -6,7 +6,8 @@
+ import { REVIEW_TEXTS, type SessionView } from '@telelean/core';
+ import { describe, expect, it } from 'vitest';
+ import { partsText } from '../../src/model/review';
+-import { CANCEL_STEP_TITLE, confirmationModel, exitCounts, FINAL_CHECK_RULE_LABEL, headingLine, sessionBadgeText, sessionBarState } from '../../src/model/sessionBar';
++import { runBadgeText } from '../../src/model/run';
++import { CANCEL_STEP_TITLE, confirmationModel, exitCounts, FINAL_CHECK_RULE_LABEL, headingLine, runBadge, sessionBadgeText, sessionBarState } from '../../src/model/sessionBar';
+ import { allAcceptedStage, AT, closed, confirmation, confirmingSession, firstQueue, hiddenPair, hiddenStage, IDS, OPEN, sessionRun, shownStage, stepSession } from '../shared/sessions';
+ 
+ const T = 'Cynder would not be a good addition to the new Spyro game';
+@@ -145,6 +146,24 @@ describe('the badge, the Exit dialog, the end confirmation', () => {
+     expect(sessionBadgeText(shownStage(), null)).toBe('Edit session: review · Spyro');
+   });
+ 
++  it('2k1 (D2-100 D2, D2-103): the header badge reads the session while its run has not ended, and as any ended run once it has ("Claude: discarded · Spyro")', () => {
++    const stage = hiddenStage();
++    expect(runBadge(sessionRun(stage), stage)).toBe('Edit session: review · Spyro');
++    // No view yet: the phase from the run.
++    expect(runBadge(sessionRun(confirmingSession()), null)).toBe('Edit session: confirming · Spyro');
++    // Ended, with or without a (stale) view: never the session's words.
++    expect(runBadge(sessionRun(stage, { state: 'discarded' }), stage)).toBe('Claude: discarded · Spyro');
++    expect(runBadge(sessionRun(stage, { state: 'discarded' }), null)).toBe('Claude: discarded · Spyro');
++    const applied = sessionRun(confirmingSession(), { state: 'accepted', accepted: { changedFiles: true } });
++    expect(runBadge(applied, null)).toBe(runBadgeText(applied));
++    expect(runBadge(applied, null)).toBe('Claude: accepted · Spyro');
++    for (const state of ['cancelled', 'failed'] as const) expect(runBadge(sessionRun(stage, { state }), stage)).toBe(runBadgeText(sessionRun(stage, { state })));
++    // A run that is no session: as before.
++    const plain = sessionRun(stage, { state: 'review' });
++    delete plain.session;
++    expect(runBadge(plain, null)).toBe(runBadgeText(plain));
++  });
++
+   it('the Exit dialog counts listed items only (a hidden Result is not one), and says when a step runs', () => {
+     expect(exitCounts(hiddenStage())).toEqual({ accepted: 0, inReview: 3, stepRunning: false });
+     expect(exitCounts(allAcceptedStage())).toEqual({ accepted: 6, inReview: 0, stepRunning: false });
+diff --git a/packages/webview/test/unit/store-session.test.ts b/packages/webview/test/unit/store-session.test.ts
+index 4227017..10af5f4 100644
+--- a/packages/webview/test/unit/store-session.test.ts
++++ b/packages/webview/test/unit/store-session.test.ts
+@@ -971,3 +971,69 @@ describe('2j2 (D2-92, D2-95, D2-98): the note on an item to be redone, and Submi
+     expect(state().declineMenu?.note).toBe(REVIEW_TEXTS.askMeAbout('“cannot have” read as a rule'));
+   });
+ });
++
++describe('2k1 (D2-100 D2–D4, D2-104): once the session’s run has ended, no review is left on the board', () => {
++  const ended = (session: SessionView, state: RunView['state'] = 'discarded', patch: Partial<RunView> = {}) => sessionRun(session, { state, endedAt: AT, ...patch });
++
++  it('the Exit path: Exit confirmed posts `endSession` exit; the host’s ended run, then `session: null`, leave no session, Proposed view or session dialog; the run stays for its line and Dismiss', () => {
++    const { state, session, run, ofType, result, lastId } = setup();
++    const view = hiddenStage();
++    run(sessionRun(view));
++    session(view);
++    expect(state().proposedView).toBe(true);
++    state().openExitSession();
++    expect(state().confirmExitSession()).toBe(true);
++    expect(ofType('endSession').at(-1)?.payload).toEqual({ runId: SESSION_RUN, decision: 'exit', requestId: expect.any(String) });
++    const exit = lastId();
++    run(ended(view));
++    session(null);
++    result(exit, OK);
++    expect(state()).toMatchObject({ session: null, sessionReview: null, selectedItems: [], sessionBusy: null, declineMenu: null, submitPanel: null, dialog: null, overlay: null, proposedView: false });
++    expect(state().run).toMatchObject({ runId: SESSION_RUN, state: 'discarded' });
++    expect(state().runPanelOpen).toBe(true);
++    expect(proposedOverlay(state())).toBeNull();
++    // D4: Dismiss as for any run.
++    state().dismissRun();
++    expect(ofType('dismissRun')).toEqual([expect.objectContaining({ payload: { runId: SESSION_RUN } })]);
++    run(null);
++    expect(state().run).toBeNull();
++  });
++
++  it('D3: an ended run clears its session view at once, before the host’s `session: null` (an Exit dialog open, items selected, the Proposed view on screen); Apply’s end the same', () => {
++    for (const [stateOf, view] of [['discarded', hiddenStage()], ['accepted', confirmingSession()], ['cancelled', stepSession()], ['failed', shownStage()]] as const) {
++      const { state, session, run } = setup();
++      run(sessionRun(view));
++      session(view);
++      if (view.phase === 'stage') state().toggleItemSelected(IDS.vocab);
++      if (view.phase !== 'applying') state().openExitSession();
++      run(ended(view, stateOf, stateOf === 'accepted' ? { accepted: { changedFiles: true } } : {}));
++      expect(state(), stateOf).toMatchObject({ session: null, sessionReview: null, selectedItems: [], dialog: null, overlay: null, proposedView: false });
++      expect(state().run?.state).toBe(stateOf);
++    }
++  });
++
++  it('D3: a stale view of the ended run that arrives late is dropped; a view of another run, or one with no run in the store, is kept', () => {
++    const { state, session, run } = setup();
++    const view = shownStage();
++    run(sessionRun(view));
++    session(view);
++    run(ended(view));
++    session(view);
++    expect(state().session).toBeNull();
++    expect(state().overlay).toBeNull();
++    expect(state().proposedView).toBe(false);
++    // The run is not the view's: the view is another run's session (the host's order: run, then session).
++    session(hiddenStage({ runId: 'run_next' }));
++    expect(state().session?.runId).toBe('run_next');
++    // No run in the store: nothing tells that the view's run ended.
++    const fresh = setup();
++    fresh.session(view);
++    expect(fresh.state().session?.runId).toBe(SESSION_RUN);
++    // A run that has not ended keeps its view.
++    const live = setup();
++    live.run(sessionRun(view));
++    live.session(view);
++    live.run(sessionRun(view, { state: 'interrupted' }));
++    expect(live.state().session?.runId).toBe(SESSION_RUN);
++  });
++});

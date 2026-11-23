@@ -7,12 +7,15 @@
  *    neutral row), the detail; Accept posts one `decideItems`, `own: true`; Claude's words in Claude's style;
  *  - an Add premise asks how it is held; a cascade asks first;
  *  - read-only while a step runs (D2-62); the end confirmation; Exit's dialog;
- *  - the twin pair: the same panel and bar text whatever the hidden outcome.
+ *  - the twin pair: the same panel and bar text whatever the hidden outcome;
+ *  - 2k1 (D2-100): once the session's run has ended (Exit, Apply), the run panel of any ended run with its line and
+ *    Dismiss, no session bar; a stale view of the ended run never brings the review back.
  */
 import { expect, test, type Page } from '@playwright/test';
 import { hostMessage, REVIEW_TEXTS, spyroGraph, type RunView, type SessionView } from '@telelean/core';
 import { workspaceState } from '../shared/graphs';
-import { confirmingSession, hiddenPair, hiddenStage, IDS, OPEN, sessionRun, shownStage, stepSession } from '../shared/sessions';
+import { ENDED_TEXT } from '../../src/model/run';
+import { AT, confirmingSession, hiddenPair, hiddenStage, IDS, OPEN, sessionRun, shownStage, stepSession } from '../shared/sessions';
 import { openBoard, postedOfType, send, shotPath, type OpenedBoard } from './helpers';
 
 let board: OpenedBoard | undefined;
@@ -381,4 +384,95 @@ test('the twin pair: the same panel and bar text whatever the hidden outcome (§
   // The residuals do differ (the proved twin used more checks), and nothing else does.
   await expect(panel.getByTestId('run-stats')).not.toHaveText(stats);
   expect(await text()).toEqual(a);
+});
+
+test('2k1 (D2-100): Exit, confirmed, posts `endSession` exit; the host’s ended run and `session: null` leave the panel of an ended run, with the exited line and Dismiss; no session bar, no Exit, no review panel; Dismiss posts `dismissRun`', async ({ page }) => {
+  const view = hiddenStage();
+  const run = sessionRun(view);
+  const panel = await openSession(page, view, run);
+  await expect(panel).toHaveAttribute('aria-label', REVIEW_TEXTS.panelLabel);
+  await page.getByTestId('session-exit').click();
+  await expect(page.getByTestId('exit-text')).toHaveText(REVIEW_TEXTS.exitConfirm(0, 3, false));
+  await page.getByTestId('exit-confirm').click();
+  const exits = (await postedOfType(page, 'endSession')).filter((m) => m.payload.decision === 'exit');
+  expect(exits.map((m) => ({ ...m.payload, requestId: undefined }))).toEqual([{ runId: view.runId, decision: 'exit', requestId: undefined }]);
+  // The host (the harness answered the request): the run ended, then no session (D1).
+  await send(page, hostMessage('run', { run: { ...run, state: 'discarded', endedAt: AT } }));
+  await send(page, hostMessage('session', { session: null }));
+  const ended = panel.getByTestId('run-ended');
+  await expect(ended).toHaveAttribute('data-outcome', 'discarded');
+  await expect(ended.getByTestId('run-ended-text')).toHaveText(REVIEW_TEXTS.exited);
+  await expect(ended.getByTestId('dismiss-run')).toBeVisible();
+  await expect(panel).toHaveAttribute('aria-label', 'Claude run');
+  await expect(panel.getByTestId('review-list')).toHaveCount(0);
+  await expect(page.getByTestId('session-bar')).toHaveCount(0);
+  await expect(page.getByTestId('session-exit')).toHaveCount(0);
+  await expect(page.getByTestId('session-submit')).toHaveCount(0);
+  await expect(page.getByTestId('run-badge')).toHaveText('Claude: discarded · Spyro');
+  // The board is the Current view again (no session, no Proposed view).
+  await expect(page.locator('.tl-board[data-view="proposed"]')).toHaveCount(0);
+  await page.screenshot({ path: shotPath('s2-review-exited.png') });
+  // D4: Dismiss as for any run.
+  await ended.getByTestId('dismiss-run').click();
+  expect((await postedOfType(page, 'dismissRun')).map((m) => m.payload)).toEqual([{ runId: view.runId }]);
+  await send(page, hostMessage('run', { run: null }));
+  await expect(page.getByTestId('run-panel')).toHaveCount(0);
+});
+
+test('2k1 (D2-100): after Apply the panel shows the ended run’s line with Dismiss, "Applied: …" when it changed files and "Recorded: …" when it changed none; the end confirmation and the session bar are gone', async ({ page }) => {
+  const view = confirmingSession();
+  const run = sessionRun(view);
+  const panel = await openSession(page, view, run);
+  await panel.getByTestId('confirmation-apply').click();
+  expect((await postedOfType(page, 'endSession'))[0]?.payload).toMatchObject({ decision: 'apply', stage: 1, check: 'chk-1' });
+  await send(page, hostMessage('run', { run: { ...run, state: 'accepted', endedAt: AT, accepted: { changedFiles: true } } }));
+  await send(page, hostMessage('session', { session: null }));
+  const ended = panel.getByTestId('run-ended');
+  await expect(ended).toHaveAttribute('data-outcome', 'accepted');
+  await expect(ended.getByTestId('run-ended-text')).toHaveText(REVIEW_TEXTS.applied);
+  await expect(ended.getByTestId('dismiss-run')).toBeVisible();
+  await expect(panel.getByTestId('end-confirmation')).toHaveCount(0);
+  await expect(page.getByTestId('session-bar')).toHaveCount(0);
+  await expect(page.getByTestId('run-badge')).toHaveText('Claude: accepted · Spyro');
+  // An Apply that changed no file (every item rejected): the "Recorded" line, without the Undo hint.
+  await send(page, hostMessage('run', { run: { ...run, state: 'accepted', endedAt: AT, accepted: { changedFiles: false } } }));
+  await expect(ended).toHaveAttribute('data-outcome', 'recorded');
+  await expect(ended.getByTestId('run-ended-text')).toHaveText(ENDED_TEXT.recorded);
+});
+
+test('2k1 (D2-100 D3): an ended run that arrives while the store holds its session view clears it, and a view of it arriving late is dropped: neither draws the review panel or the session bar', async ({ page }) => {
+  const view = shownStage();
+  const run = sessionRun(view);
+  const panel = await openSession(page, view, run);
+  await expect(page.getByTestId('session-bar')).toBeVisible();
+  // The ended run arrives while the store still holds the session's view (no `session: null` yet): no Exit is offered.
+  await send(page, hostMessage('run', { run: { ...run, state: 'discarded', endedAt: AT } }));
+  await expect(page.getByTestId('session-exit')).toHaveCount(0);
+  await expect(panel.getByTestId('run-ended')).toBeVisible();
+  await expect(panel.getByTestId('review-list')).toHaveCount(0);
+  await expect(page.getByTestId('session-bar')).toHaveCount(0);
+  // The view again, late: still the ended run's panel.
+  await send(page, hostMessage('session', { session: view }));
+  await expect(panel.getByTestId('run-ended-text')).toHaveText(REVIEW_TEXTS.exited);
+  await expect(panel).toHaveAttribute('aria-label', 'Claude run');
+  await expect(panel.getByTestId('review-list')).toHaveCount(0);
+  await expect(page.getByTestId('session-bar')).toHaveCount(0);
+  await expect(page.getByTestId('session-exit')).toHaveCount(0);
+  await expect(page.locator('.tl-board[data-view="proposed"]')).toHaveCount(0);
+});
+
+test('2k1 (D2-103): another subject’s session reads "An edit session is active…" while its run is active, and the line of any ended run once it has ended', async ({ page }) => {
+  const view = hiddenStage({ subject: 'Bayonetta' });
+  const run = sessionRun(view, { subject: 'Bayonetta' });
+  board = await openBoard(page, spyroGraph(), 'dark', { workspace: workspaceState() });
+  await send(page, hostMessage('run', { run }));
+  await send(page, hostMessage('session', { session: view }));
+  const line = page.getByTestId('run-elsewhere');
+  await expect(line).toHaveAttribute('data-session', 'true');
+  await expect(line).toContainText(REVIEW_TEXTS.runElsewhere('Bayonetta'));
+  await send(page, hostMessage('run', { run: { ...run, state: 'discarded', endedAt: AT } }));
+  await send(page, hostMessage('session', { session: null }));
+  await expect(line).not.toHaveAttribute('data-session', 'true');
+  await expect(line).toHaveText(/Claude’s run on Bayonetta: discarded\.\s*Show/);
+  await expect(page.getByTestId('run-badge')).toHaveText('Claude: discarded · Bayonetta');
 });

@@ -5,11 +5,12 @@
  *
  * Slice 2g (docs/slice2-plan.md 5.8): during an edit session the badge never says a verdict ("Edit session: Claude
  * working · Spyro · 3/25 checks", "Edit session: review · Spyro"), and another subject's session reads "An edit session
- * is active on ‹subject›: the boards of this folder are read-only until it ends. [Show it]".
+ * is active on ‹subject›: the boards of this folder are read-only until it ends. [Show it]". 2k1 (D2-103): once the
+ * session's run has ended, both read as any ended run's.
  */
-import { REVIEW_TEXTS } from '@telelean/core';
-import { runBadgeText, runNeedsUser, runStateLabel } from '../model/run';
-import { sessionBadgeText } from '../model/sessionBar';
+import { isTerminalRunState, REVIEW_TEXTS } from '@telelean/core';
+import { runNeedsUser, runStateLabel } from '../model/run';
+import { runBadge } from '../model/sessionBar';
 import { useBoard, useBoardActions } from '../state/context';
 
 export function RunBadge() {
@@ -20,8 +21,9 @@ export function RunBadge() {
   const actions = useBoardActions();
   if (!run) return null;
   const here = run.subject === subject;
-  // A session's run: never a verdict; the phase phrase from the session (or from the run while no view came yet).
-  const text = session !== null ? sessionBadgeText(session, run) : run.session !== undefined ? sessionBadgeText({ subject: run.subject, phase: run.session.phase }, run) : runBadgeText(run);
+  // A session's run: never a verdict; the phase phrase from the session (or from the run while no view came yet). 2k1
+  // (D2-103): once it has ended, as any ended run.
+  const text = runBadge(run, session);
   return (
     <button
       type="button"
@@ -44,7 +46,8 @@ export function RunElsewhere() {
   const run = useBoard((s) => (s.run && s.subject !== '' && s.run.subject !== s.subject ? s.run : null));
   const actions = useBoardActions();
   if (!run) return null;
-  if (run.session !== undefined) {
+  // 2k1 (D2-100 D2, D2-103): an ended session's run is no longer active: the line of any ended run.
+  if (run.session !== undefined && !isTerminalRunState(run.state)) {
     return (
       <div className="tl-banner tl-run-elsewhere" data-testid="run-elsewhere" data-session="true" role="status">
         <span className="codicon codicon-lock" aria-hidden="true" />

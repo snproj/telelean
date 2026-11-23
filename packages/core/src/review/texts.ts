@@ -408,6 +408,8 @@ export const REVIEW_TEXTS = {
   exitSession: 'Exit session',
   back: 'Back',
   applied: "Applied: the session's changes are in your files. One Undo takes the whole session back.",
+  /** 2k1 (D2-100 D2, D2-105): the runner's Exit notice, and the run panel's line once a session ended by Exit. */
+  exited: "You exited the edit session: your files were not changed. Your answers to Claude's questions stay recorded.",
   /** §3.10, D2-67: Apply's history label (M2's kind `accept-proposal`). */
   applyLabel: (targets: readonly string[]) => `Apply: Formalize for dependencies → ${joined(targets)}`,
   /** §3.10 step 4 (coverage audit G1; builder 2f): History's entry for an Apply, the heading of Claude's arrows it wrote. */

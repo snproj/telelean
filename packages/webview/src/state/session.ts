@@ -22,6 +22,7 @@
  * D2-33, one session-stack step; shown at once, rolled back if refused) and the Context Menu's group Accept here.
  */
 import {
+  isTerminalRunState,
   LIMITS,
   REVIEW_TEXTS,
   webviewMessage,
@@ -867,9 +868,13 @@ export function createSessionSlice(ctx: SessionSliceContext): SessionWiring {
     },
   };
 
-  /** §5.2: when a `session` message arrives. */
-  const receive = (next: SessionView | null) => {
+  /**
+   * §5.2: when a `session` message arrives. 2k1 (D2-100 D3, D2-104): a view of a run the store holds as ended is read
+   * as `session: null`, so a stale view that arrives late never brings the review back.
+   */
+  const receive = (incoming: SessionView | null) => {
     const s = get();
+    const next = incoming !== null && s.run !== null && s.run.runId === incoming.runId && isTerminalRunState(s.run.state) ? null : incoming;
     const prev = s.session;
     if (next === null) {
       if (prev === null && s.sessionReview === null) return;

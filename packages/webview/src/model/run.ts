@@ -7,6 +7,7 @@
 import {
   isTerminalRunState,
   LIMITS,
+  REVIEW_TEXTS,
   type AnswerChoiceView,
   type DecisionScope,
   type GateStepId,
@@ -294,6 +295,19 @@ export function endedOutcome(run: Pick<RunView, 'runId' | 'state' | 'accepted'>,
     default:
       return null;
   }
+}
+
+/**
+ * The run panel's line for an ended run (null while it has not ended). Slice 2g and 2k1 (D2-100 D2, §5.9): an edit
+ * session's Apply that changed files and its Exit in the session's words (core `REVIEW_TEXTS.applied`, `exited`); an
+ * Apply that changed none is "Recorded" (`endedOutcome`), and every other end has its `ENDED_TEXT`, as for any run.
+ */
+export function endedText(run: Pick<RunView, 'runId' | 'state' | 'accepted' | 'session'>): string | null {
+  const ended = endedOutcome(run, null);
+  if (ended === null) return null;
+  if (run.session !== undefined && ended === 'accepted') return REVIEW_TEXTS.applied;
+  if (run.session !== undefined && ended === 'discarded') return REVIEW_TEXTS.exited;
+  return ENDED_TEXT[ended];
 }
 
 /** Where the run panel puts each notice (A2): above the questions and the review, or folded below the review. */
