@@ -4,8 +4,8 @@
  *
  * A meaning item is a statement item (Formalize, Change, Add) or a belief item that is neither a Result nor a Result's
  * part; its belief is always read from `classesBeforeReveal`, which no Result's part affects, so showing the results
- * never changes what they wait for (F1). It is undecided while it is in review, or to be redone with its content still
- * in ws/ (`redo.reverted` false, AF4). Results' statuses are never read, so the rule tells nothing about them.
+ * never changes what they wait for (F1). It is undecided while it is in review (2j1, D2-76: one to be redone, its content
+ * kept or not, is finished for the review). Results' statuses are never read, so the rule tells nothing about them.
  *
  * Pure TypeScript: no Node or vscode APIs (the webview bundles core).
  */
@@ -30,8 +30,8 @@ export function isMeaningItem(r: Pick<ItemRecord, 'kind' | 'partOf' | 'key'>, cl
 
 /**
  * §4.7 (2a2): the stage reveal. `meaning`: the statement and belief items that are not Results' parts (belief read
- * from `classesBeforeReveal`, by item key); `waitingFor`: those that are undecided, in review or to be redone with
- * their content in ws/ (`redo.reverted` false, AF4). Both in the records' order, by item id.
+ * from `classesBeforeReveal`, by item key); `waitingFor`: those that are undecided, in review (2j1, D2-76). Both in
+ * the records' order, by item id.
  */
 export function resultsState(i: {
   items: readonly ItemRecord[];

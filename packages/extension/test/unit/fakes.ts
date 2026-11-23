@@ -277,7 +277,9 @@ export type RunMethod =
   | 'end'
   | 'retry'
   | 'sessionDiff'
-  | 'moveProposed';
+  | 'moveProposed'
+  // Slice 2j2
+  | 'note';
 
 /**
  * A recording RunManager. Like the real one (WP3), `start` obtains the backend from `options.services.backend` when
@@ -386,8 +388,11 @@ export class FakeRunManager implements RunManager {
   redoSession(runId: string, step: number, confirmed: boolean): Promise<ActionOutcome> {
     return this.resolve('redoSession', [runId, step, confirmed]);
   }
-  submit(runId: string, stage: number): Promise<ActionOutcome> {
-    return this.resolve('submit', [runId, stage]);
+  submit(runId: string, stage: number, comment?: string): Promise<ActionOutcome> {
+    return this.resolve('submit', comment === undefined ? [runId, stage] : [runId, stage, comment]);
+  }
+  note(runId: string, stage: number, item: string, rev: number, note: string): Promise<ActionOutcome> {
+    return this.resolve('note', [runId, stage, item, rev, note]);
   }
   end(runId: string, decision: 'apply' | 'exit' | 'back', stage?: number, check?: string): Promise<ActionOutcome> {
     return this.resolve('end', [runId, decision, stage, check]);

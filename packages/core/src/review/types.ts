@@ -35,6 +35,13 @@ export type ItemKind =
 /** For `declaration` items. Structures, inductives, classes, abbrevs and opaques count as `definition`. */
 export type DeclKind = 'definition' | 'instance' | 'coercion' | 'presupposition' | 'vocabulary-change';
 export type ItemStatus = 'in-review' | 'accepted' | 'declined' | 'to-be-redone' | 'withdrawn';
+/**
+ * (2j1, D2-76, D2-77) Who made an item to be redone (`ItemRecord.redo.kind`): `cascade`, a decline's cascade (Reject,
+ * plain, Shaky), the only kind that comes back by itself when what took it down is set back to review; `question`, DO-0
+ * took a source out of the Result's question (D2-59, D2-81); `judge`, the judge's reverts, the dependents they take
+ * down, and premise re-checks (§3.5, §3.6); `take-out`, Submit's take-out (D2-57); `queue`, RV-3 at a queue's end.
+ */
+export type RedoKind = 'cascade' | 'question' | 'judge' | 'take-out' | 'queue';
 /** `plain`: arrow items only (DO-0). `transform` is refused until slice 4. */
 export type DeclineOption = 'plain' | 'reject' | 'shaky' | 'transform';
 export type ItemMarker =
@@ -112,6 +119,7 @@ export interface ItemRecord {
    */
   partOf?: string;
   status: ItemStatus;
+  /** `note` (2j2, D2-92): the person's note for Claude, with any option (D2-13 kept it only with Shaky). */
   decline?: { option: DeclineOption; note?: string; at: string; commit?: string };
   /**
    * `result`: a Result's verdict and Rests on when it was accepted; the backstop compares them on F (§4.10).
@@ -129,7 +137,14 @@ export interface ItemRecord {
     holdAs?: 'axiom' | 'pending';
     rationale?: string;
   };
-  redo?: { because: string[]; reverted: boolean };
+  /**
+   * To be redone: `because`, the items whose decline or removal took it down; `reverted`, its content was taken out
+   * of ws/. `kind` (2j1, D2-76, D2-77; additive): who set it (`RedoKind`). A record saved before 2j1 has none: it
+   * never comes back by itself. `note` (2j2, D2-92, D2-93; additive): the person's note for Claude while it is to be
+   * redone (the `note` action): kept while it stays so, whatever rebuilds `redo` (`copyRedo`); gone when it leaves that
+   * status (`dropStaleRedoNotes`).
+   */
+  redo?: { because: string[]; reverted: boolean; kind?: RedoKind; note?: string };
   markers: ItemMarker[];
   /** Content key of the current version (§4.3). */
   fingerprint: string;
@@ -272,7 +287,14 @@ export type SessionAction = { id: number } & (
       commits: string[];
     }
   | { kind: 'move'; label: string; before: Record<string, CanvasPosition | null>; after: Record<string, CanvasPosition>; at: string }
-  | { kind: 'seal'; by: SealBy; at: string }
+  /**
+   * (2j2, D2-92, D2-95) A note for Claude on an item to be redone, "Note for Claude: ‹label›": the note it replaced
+   * (`before`) and the one it left (`after`; absent: cleared), at the item's `rev`. Undo puts `before` back; Redo sends
+   * `after` again through the rules. A records-only step: no ws/ change.
+   */
+  | { kind: 'note'; label: string; item: string; rev: number; before?: string; after?: string; at: string }
+  /** `comment` (2j2, D2-92, D2-96; additive): Submit review's overall comment for Claude, and the stage it submitted. */
+  | { kind: 'seal'; by: SealBy; at: string; comment?: { text: string; stage: number } }
 );
 /**
  * UN-5's sealing actions: Submit review that queues steps, a mid-stage Formalize, Retry step. Every queue of Claude
@@ -292,7 +314,7 @@ export interface ItemDecision {
   to: 'accepted' | 'declined' | 'in-review';
   /** Required with `declined`, and only there. */
   option?: DeclineOption;
-  /** Only with `shaky`: the person's note for Claude (D2-13). */
+  /** Only with `declined`, any option: the person's note for Claude (2j2, D2-92; D2-13 allowed it only with `shaky`). */
   note?: string;
   /**
    * Only with `accepted`, on an add-premise item. One already written (an adopted ghost of a converted v1 run, §3.11)
@@ -561,7 +583,9 @@ export type ReviewAction =
   | { kind: 'move'; before: Readonly<Record<string, CanvasPosition | null>>; after: Readonly<Record<string, CanvasPosition>> }
   /** `step`: the SessionAction id the user saw; a different top of the stack gives `conflict`. */
   | { kind: 'undo' | 'redo'; step: number; confirmed: boolean }
-  | { kind: 'seal'; by: SealBy };
+  | { kind: 'seal'; by: SealBy }
+  /** (2j2, D2-92, D2-95) Sets, replaces or (blank) clears the note of a listed item to be redone. */
+  | { kind: 'note'; item: string; rev: number; note: string };
 /** `needs-option` (fixer 2a, V2A-N2; additive): a group's plain decline of an item that is no arrow item (DO-0). */
 export type GroupLeftReason = 'own-accept' | 'depends' | 'hidden-result' | 'blocked' | 'not-in-review' | 'needs-option';
 export type ReviewOutcome =

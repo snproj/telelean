@@ -4,12 +4,13 @@
  *  - the stage report (RV-10), a `<details open>`: while the results are hidden only "result after the review" per
  *    target and Show results; once shown, the verdicts, bands, Rests on, Not needed, What is missing (with "Select these
  *    arrows"), each step's words with "Assumed without asking" and Ask me instead, "proposed nothing", the steps'
- *    outcomes in telelean's words and the notes; always "Consistency unchecked"; the withdrawn items;
+ *    outcomes in telelean's words and the notes; always "Consistency unchecked"; the withdrawn items; (2j2, D2-92) the
+ *    person's comment at the Submit review that started the stage;
  *  - the events box: "Since your last action: …", with links to the items;
  *  - "Rejected in this session": the current rejects with Un-reject, superseded versions view only.
  */
 import { DECLINE_OPTION_TEXTS, ITEM_STATUS_TEXTS, REVIEW_TEXTS, type SessionView } from '@telelean/core';
-import { AgentText } from '../../common/AgentText';
+import { AgentText, UserText } from '../../common/AgentText';
 import { formatClock } from '../../model/run';
 import { askMeControl, inferenceLines, listControls, reportSummary, reportTargets, unrejectControl } from '../../model/review';
 import { useBoard, useBoardActions } from '../../state/context';
@@ -232,6 +233,11 @@ export function StageReport({ session }: { session: SessionView }) {
             ))}
           </ul>
         </div>
+      ) : null}
+      {session.report.comment !== undefined ? (
+        <p className="tl-report__note" data-testid="report-comment">
+          {REVIEW_TEXTS.reportComment(session.report.comment.stage)} <UserText text={session.report.comment.text} />
+        </p>
       ) : null}
     </details>
   );

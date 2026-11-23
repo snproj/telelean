@@ -1,0 +1,15 @@
+# Subagent report: qa-note:draft (agent a4798e31a10026c73, workflow wf_93090c56-47b)
+
+Meta: {"agentType": "workflow-subagent", "isBuiltIn": true, "description": "qa-note:draft", "workflowPhase": "Design note", "spawnDepth": 1, "requestShape": "foreground", "requestNonInteractive": true, "model": "claude-opus-5-5", "pickedEffortModel": "claude-opus-5-5", "inWorkflowRun": true}
+
+Verbatim return value:
+
+````
+/home/zhengyew/telelean/verbatim_prompt_log/bundle_25/user_requested_documents/01_live_qa_design_note.md
+
+1. **No effects:** each question gets its own Claude CLI process with nothing to call: `--tools=`, every built-in tool disallowed, `--strict-mcp-config` with no servers, `--permission-mode dontAsk`, `--max-turns 1`, `--no-session-persistence`, an empty working folder and a hook that refuses every tool. telelean kills the process if its first event lists any tool or server, or if a tool call or refused permission appears. Output is kept as plain text, marked as Claude's words and logged; it is never parsed or sent to later steps. `--tools=` and `--no-session-persistence` still need checking against `claude --help`. Today bwrap wraps only Lean, not the CLI; I deferred wrapping the CLI as hardening.
+2. **Recommends Option A:** a fresh Claude whose context is built only from the masked view the panel already gets, so the existing twins tests extend to it. Option B, a no-tools copy of the step conversation via `--fork-session`, knows the outcome, so asking counts as Show results (seen early). It also costs several times more, and changing the tool list defeats the prompt cache and may trip the API's check on Claude's earlier hidden reasoning (unverified). Answers reach later steps only through text the user types into a note.
+3. **Cost and persistence:** one request on the user's plan per question, about 3–5 k tokens. At API list prices that is roughly 4–6 US cents, about a third of the live Socrates demo run. Consent is asked once per model folder; there is a Stop button and a per-question `--max-budget-usd` limit. The thread lives in `session/qa.jsonl` plus `qa-…` transcript lines, never in run.json.
+4. **UI, tests, effort:** a folded "Ask Claude (answers only)" section under the list and item detail, with "Ask about this item", streaming, and the box disabled while a step runs. Tests: an exact command-line pin, fake-CLI tool-attempt cases, a FakeBackend no-effects check, twins byte-identity, and one paid live check only with the user's OK. Effort: Q1 ≈ 1.0–1.2 M, Q2 ≈ 0.7–1.0 M and integration ≈ 0.3–0.5 M, about 2–2.7 M in all; B would add 0.5–1 M.
+5. **Six questions for the user:** A or B; asking while a step runs; whether answers ever reach later steps; "does it prove it?" questions while results are hidden; effort for answers; consent. The note is about 2,000 words, over the 1.5-page target, because all ten sections and the file:line citations are kept; it can be cut further. Only this file was written; nothing was built or tested, and the repo is otherwise untouched (HEAD c557f06, no diff).
+````

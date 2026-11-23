@@ -77,7 +77,7 @@ export interface PersistedSessionReview {
   filter: ReviewFilter;
 }
 
-export type SessionBusyAction = 'decide' | 'reveal' | 'undo' | 'redo' | 'submit' | 'end' | 'retry' | 'diff' | 'formalize' | 'move';
+export type SessionBusyAction = 'decide' | 'reveal' | 'undo' | 'redo' | 'submit' | 'end' | 'retry' | 'diff' | 'formalize' | 'move' | 'note';
 
 export interface SessionBusy {
   action: SessionBusyAction;
@@ -93,11 +93,16 @@ export interface SessionBusy {
 export interface DeclineMenuState {
   items: readonly string[];
   origin: 'item' | 'group' | 'report' | 'context';
-  /** Shaky chosen: its note field and its Decline button show. */
-  option: 'shaky' | null;
+  /**
+   * The option chosen: its note field and its Decline button show (2j2, D2-92, D2-94: every option but Transform; an
+   * arrow-only menu opens with its Decline chosen). Before 2j2, Shaky only.
+   */
+  option: Exclude<DeclineOption, 'transform'> | null;
   note: string;
   /** For `report`: the report entry it came from (`step:index`). */
   key?: string;
+  /** "Ask me instead" (2j2, fixer r1, A-ADV-2j2-4): the sentence telelean put in the note; dropped with another option. */
+  prefilled?: string;
 }
 
 /** A request the cascade dialog may send again, `confirmed` (§3.6, §5.12). */
@@ -135,6 +140,11 @@ export function isSessionDialog(dialog: DialogState | null): dialog is SessionDi
   return dialog !== null && SESSION_DIALOG_KINDS.has(dialog.kind);
 }
 
+/** 2j2 (D2-92, D2-98): Submit review's panel, open when Submit starts Claude's steps: the comment typed so far. */
+export interface SubmitPanelState {
+  comment: string;
+}
+
 export interface SessionUi {
   /** The root's session as the host last posted it (null: none). */
   session: SessionView | null;
@@ -143,6 +153,7 @@ export interface SessionUi {
   selectedItems: readonly string[];
   sessionBusy: SessionBusy | null;
   declineMenu: DeclineMenuState | null;
+  submitPanel: SubmitPanelState | null;
 }
 
 export interface SessionActions {
@@ -173,11 +184,13 @@ export interface SessionActions {
   acceptSelected(): boolean;
   declineSelected(option: DeclineOption, note?: string): boolean;
   openDeclineMenu(items: readonly string[], origin: DeclineMenuState['origin']): void;
-  /** The menu's entries: Reject (and an arrow's Decline) decline at once; Shaky shows its note and its Decline button. */
+  /** The menu's entries (2j2, D2-94): any option but Transform shows its note field and its Decline button. */
   chooseDeclineOption(option: DeclineOption): void;
   setDeclineNote(note: string): void;
-  /** The menu's Decline button (Shaky with its note). */
+  /** The menu's Decline button: the chosen option, with its note. */
   confirmDeclineMenu(): boolean;
+  /** 2j2 (D2-92, D2-95): the note for Claude on an item to be redone (`noteItem`); a blank one clears it. */
+  noteItem(id: string, note: string): boolean;
   closeDeclineMenu(): void;
   /** RV-10, D2-13: the decline menu on the items that rely on the choice, Shaky, "Ask me about: ‹choice›" prefilled. */
   askMeInstead(step: string, index: number): void;
@@ -188,7 +201,15 @@ export interface SessionActions {
   /** Show results, Raw Lean diff… while hidden, Show Claude's activity: the reveal dialog first. */
   openReveal(via: 'show-result' | 'raw-diff' | 'activity', file?: string): void;
   confirmReveal(): void;
+  /**
+   * Submit review: at once when it leads to the end confirmation; when it starts Claude's steps, it opens Submit's panel
+   * first (2j2, D2-92, D2-98), whose Submit sends the comment.
+   */
   submitReview(): boolean;
+  setSubmitComment(comment: string): void;
+  /** Submit's panel's Submit: `submitReview` with the comment (dropped when blank). */
+  confirmSubmit(): boolean;
+  closeSubmitPanel(): void;
   openExitSession(): void;
   confirmExitSession(): boolean;
   /** The end confirmation's Apply (with the check id) and Back to review. */
@@ -249,7 +270,7 @@ function leadOf(resend: SessionResend): string {
   return REVIEW_TEXTS.cascadeBackToReview;
 }
 
-/** A Shaky note as the protocol takes it: trimmed, dropped when blank, at most `LIMITS.textLength` (it may span lines). */
+/** A note for Claude (a decline's, an item's to be redone, Submit's comment) as the protocol takes it: trimmed, dropped when blank, at most `LIMITS.textLength` (it may span lines). */
 function noteOf(note: string | undefined): string | undefined {
   const trimmed = (note ?? '').trim();
   return trimmed === '' ? undefined : trimmed.slice(0, LIMITS.textLength);
@@ -260,6 +281,8 @@ interface Pending {
   resend?: SessionResend;
   confirmed: boolean;
   file?: string;
+  /** 2j2 (fixer r1, F-F6): the comment a Submit review carried, put back in its panel when the host refuses it. */
+  comment?: string;
 }
 
 /** Slice 2h: a move shown at once on the Proposed view, put back if the host refuses it. */
@@ -387,8 +410,9 @@ export function createSessionSlice(ctx: SessionSliceContext): SessionWiring {
     return true;
   };
 
+  // 2j2 (D2-92): every option takes its note (D2-13 kept it for Shaky only).
   const declineDecision = (item: ItemView, option: DeclineOption, note?: string): ItemDecision => {
-    const kept = option === 'shaky' ? noteOf(note) : undefined;
+    const kept = noteOf(note);
     return { item: item.id, rev: item.rev, to: 'declined', option, ...(kept !== undefined ? { note: kept } : {}) };
   };
 
@@ -424,6 +448,7 @@ export function createSessionSlice(ctx: SessionSliceContext): SessionWiring {
     selectedItems: [],
     sessionBusy: null,
     declineMenu: null,
+    submitPanel: null,
 
     focusItem(id) {
       if (itemOf(id) === undefined) return;
@@ -551,20 +576,23 @@ export function createSessionSlice(ctx: SessionSliceContext): SessionWiring {
 
     openDeclineMenu(items, origin) {
       if (blocked() || items.length === 0) return;
-      set({ declineMenu: { items: [...items], origin, option: null, note: '' } });
+      // 2j2 (D2-94): an arrow-only menu has one option, its Decline, chosen at once so its note field shows.
+      const arrows = items.every((id) => {
+        const item = itemOf(id);
+        return item !== undefined && (item.kind === 'add-arrow' || item.kind === 'remove-arrow');
+      });
+      set({ declineMenu: { items: [...items], origin, option: arrows ? 'plain' : null, note: '' } });
     },
 
     chooseDeclineOption(option) {
       const menu = get().declineMenu;
       if (menu === null) return;
-      if (option === 'shaky') {
-        set({ declineMenu: { ...menu, option: 'shaky' } });
-        return;
-      }
-      if (option === 'transform') return; // D2-14: disabled until a later slice
-      const only = menu.origin === 'item' && menu.items.length === 1 ? menu.items[0] : undefined;
-      if (only !== undefined) get().declineItem(only, option);
-      else declineMany(menu.items, option, undefined, menu.origin === 'report');
+      if (option === 'transform') return; // D2-14: disabled until a later slice (its note comes with its window)
+      // 2j2 (D2-94): every other option shows its note field and its Decline button (Shaky's flow until 2j2).
+      // Fixer r1 (A-ADV-2j2-4): "Ask me instead" prefills telelean's own sentence for Shaky; it is not the person's note on
+      // a Reject or a plain decline, so leaving Shaky with it untouched clears it.
+      const untouched = option !== 'shaky' && menu.prefilled !== undefined && menu.note === menu.prefilled;
+      set({ declineMenu: { ...menu, option, ...(untouched ? { note: '' } : {}) } });
     },
 
     setDeclineNote(note) {
@@ -574,10 +602,21 @@ export function createSessionSlice(ctx: SessionSliceContext): SessionWiring {
 
     confirmDeclineMenu() {
       const menu = get().declineMenu;
-      if (menu === null || menu.option !== 'shaky') return false;
+      if (menu === null || menu.option === null) return false;
       const only = menu.origin === 'item' && menu.items.length === 1 ? menu.items[0] : undefined;
-      if (only !== undefined) return get().declineItem(only, 'shaky', menu.note);
-      return declineMany(menu.items, 'shaky', menu.note, menu.origin === 'report');
+      if (only !== undefined) return get().declineItem(only, menu.option, menu.note);
+      return declineMany(menu.items, menu.option, menu.note, menu.origin === 'report');
+    },
+
+    noteItem(id, note) {
+      const v = view();
+      const item = itemOf(id);
+      if (v === null || item === undefined || blocked() || item.status !== 'to-be-redone' || item.redo === undefined) return false;
+      const text = (note ?? '').trim().slice(0, LIMITS.textLength);
+      if (text === (item.redo.note ?? '')) return false;
+      const requestId = track({ action: 'note', confirmed: false });
+      post(webviewMessage('noteItem', { runId: v.runId, stage: v.stage, item: id, rev: item.rev, note: text, requestId }));
+      return true;
     },
 
     closeDeclineMenu() {
@@ -591,7 +630,8 @@ export function createSessionSlice(ctx: SessionSliceContext): SessionWiring {
       if (entry === undefined) return;
       const items = askMeItems(v, step, entry.items);
       if (items.length === 0) return;
-      set({ declineMenu: { items, origin: 'report', option: 'shaky', note: REVIEW_TEXTS.askMeAbout(entry.text), key: `${step}:${index}` } });
+      const prefilled = REVIEW_TEXTS.askMeAbout(entry.text);
+      set({ declineMenu: { items, origin: 'report', option: 'shaky', note: prefilled, prefilled, key: `${step}:${index}` } });
     },
 
     selectReportArrows(target, extra) {
@@ -647,9 +687,33 @@ export function createSessionSlice(ctx: SessionSliceContext): SessionWiring {
     submitReview() {
       const v = view();
       if (v === null || blocked() || v.phase !== 'stage' || !v.submit.gate.ok) return false;
+      // 2j2 (D2-92, D2-98): Submit that starts Claude's steps asks first, with a comment for Claude.
+      if (v.submit.next === 'claude-steps') {
+        if (get().submitPanel === null) set({ submitPanel: { comment: '' } });
+        return true;
+      }
       const requestId = track({ action: 'submit', confirmed: false });
       post(webviewMessage('submitReview', { runId: v.runId, stage: v.stage, requestId }));
       return true;
+    },
+
+    setSubmitComment(comment) {
+      if (get().submitPanel !== null) set({ submitPanel: { comment } });
+    },
+
+    confirmSubmit() {
+      const v = view();
+      const panel = get().submitPanel;
+      if (v === null || panel === null || blocked() || v.phase !== 'stage' || !v.submit.gate.ok || v.submit.next !== 'claude-steps') return false;
+      const comment = noteOf(panel.comment);
+      set({ submitPanel: null });
+      const requestId = track({ action: 'submit', confirmed: false, ...(comment !== undefined ? { comment } : {}) });
+      post(webviewMessage('submitReview', { runId: v.runId, stage: v.stage, ...(comment !== undefined ? { comment } : {}), requestId }));
+      return true;
+    },
+
+    closeSubmitPanel() {
+      if (get().submitPanel !== null) set({ submitPanel: null });
     },
 
     openExitSession() {
@@ -789,6 +853,7 @@ export function createSessionSlice(ctx: SessionSliceContext): SessionWiring {
           return true;
         case 'escape':
           if (s.declineMenu !== null) s.closeDeclineMenu();
+          else if (s.submitPanel !== null) s.closeSubmitPanel();
           else if (s.selectedItems.length > 0) s.clearItemSelection();
           else return false;
           return true;
@@ -816,6 +881,7 @@ export function createSessionSlice(ctx: SessionSliceContext): SessionWiring {
         selectedItems: [],
         sessionBusy: null,
         declineMenu: null,
+        submitPanel: null,
         ...(isSessionDialog(s.dialog) ? { dialog: null } : {}),
         overlay: null,
         proposedView: false,
@@ -865,11 +931,14 @@ export function createSessionSlice(ctx: SessionSliceContext): SessionWiring {
       ? s.selectedArrows.filter((a) => built.nodes[a.target]?.premises.includes(a.source) === true && built.nodes[a.source] !== undefined && !focusesItem(built.proposed.get(`${a.source}->${a.target}`)))
       : s.selectedArrows;
     const marks = onProposed ? s.selectedMarks.filter((id) => built.nodes[id]?.fromNothing === true) : s.selectedMarks;
+    // 2j2 (D2-98): Submit's panel stays only while Submit still starts Claude's steps, in the same run.
+    const submitPanel = s.submitPanel !== null && !newRun && !readOnly && next.phase === 'stage' && next.submit.gate.ok && next.submit.next === 'claude-steps' ? s.submitPanel : null;
     set({
       session: next,
       sessionReview: nextReview,
       selectedItems: newRun ? [] : s.selectedItems.filter(selectable),
       declineMenu: menu,
+      submitPanel,
       dialog,
       overlay: shown,
       ...(arrows.length !== s.selectedArrows.length ? { selectedArrows: arrows } : {}),
@@ -924,6 +993,11 @@ export function createSessionSlice(ctx: SessionSliceContext): SessionWiring {
     }
     // Refused (D2-62), a conflict ("“‹item›” changed since you looked at it: look again."), or anything else.
     if (resend?.kind === 'decide' && resend.back !== undefined && itemOf(resend.back) !== undefined) setUi({ current: resend.back });
+    // 2j2 (F-F6, A-ADV-2j2-3): a refused Submit gives its comment back, in the panel, if Submit still starts Claude's steps.
+    if (entry.action === 'submit' && entry.comment !== undefined) {
+      const v = view();
+      if (v !== null && get().submitPanel === null && !blocked() && v.phase === 'stage' && v.submit.gate.ok && v.submit.next === 'claude-steps') set({ submitPanel: { comment: entry.comment } });
+    }
     errorToast(outcome);
     return true;
   };

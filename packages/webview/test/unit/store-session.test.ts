@@ -4,7 +4,7 @@
  * optimistic; a cascade asks first; the reveal, Submit, the end, Exit, Retry and the raw diff carry their fields; one
  * request at a time; nothing that decides is sent while Claude's step runs (D2-62); the review UI follows the session.
  */
-import { hostMessage, parseHostToWebview, REVIEW_TEXTS, spyroGraph, type ActionOutcome, type HostToWebviewMessage, type RunView, type SessionView, type WebviewToHostMessage } from '@telelean/core';
+import { hostMessage, LIMITS, parseHostToWebview, REVIEW_TEXTS, spyroGraph, type ActionOutcome, type HostToWebviewMessage, type RunView, type SessionView, type WebviewToHostMessage } from '@telelean/core';
 import { describe, expect, it } from 'vitest';
 import { countsText, inferenceLines, itemControls, listControls, reportSummary, reportTargets, reviewRows, statusOf } from '../../src/model/review';
 import { exitCounts, sessionBadgeText, sessionBarState } from '../../src/model/sessionBar';
@@ -187,7 +187,7 @@ describe('decisions (§5.5-5.7): one message, what the user saw, not optimistic'
     expect(ofType('decideItems')[0]?.payload.decisions).toEqual([{ item: IDS.premise, rev: 1, to: 'accepted', holdAs: 'axiom' }]);
   });
 
-  it('arrow items decline plain (DO-0), whatever the menu was asked; others Reject, or Shaky with its note; Transform sends nothing', () => {
+  it('arrow items decline plain (DO-0), whatever the menu was asked; others Reject or Shaky, each with its note (2j2, D2-94); Transform sends nothing', () => {
     const { state, session, ofType, result, lastId } = setup();
     session(shownStage());
     state().declineItem(IDS.arrow, 'reject');
@@ -203,11 +203,54 @@ describe('decisions (§5.5-5.7): one message, what the user saw, not optimistic'
     expect(ofType('decideItems')[1]?.payload.decisions).toEqual([{ item: IDS.formalize, rev: 1, to: 'declined', option: 'shaky', note: 'try the literal reading' }]);
     expect(state().declineMenu).toBeNull();
     result(lastId(), OK);
-    // The plain decline is no option for any other item; Reject sends at once from the menu.
+    // The plain decline is no option for any other item. 2j2 (D2-94): Reject shows its note and its Decline button too
+    // (it declined at once from the menu before), and sends the note with it.
     expect(state().declineItem(IDS.formalize, 'plain')).toBe(false);
     state().openDeclineMenu([IDS.definition], 'item');
+    expect(state().declineMenu).toMatchObject({ option: null });
     state().chooseDeclineOption('reject');
-    expect(ofType('decideItems')[2]?.payload.decisions).toEqual([{ item: IDS.definition, rev: 1, to: 'declined', option: 'reject' }]);
+    expect(ofType('decideItems')).toHaveLength(2);
+    expect(state().declineMenu).toMatchObject({ option: 'reject' });
+    state().setDeclineNote('Too strong.\nNot every game.');
+    expect(state().confirmDeclineMenu()).toBe(true);
+    expect(ofType('decideItems')[2]?.payload.decisions).toEqual([{ item: IDS.definition, rev: 1, to: 'declined', option: 'reject', note: 'Too strong.\nNot every game.' }]);
+    result(lastId(), OK);
+    // An arrow item's menu opens with its one Decline chosen, its note sent with the plain decline.
+    state().openDeclineMenu([IDS.arrow], 'item');
+    expect(state().declineMenu).toMatchObject({ option: 'plain' });
+    state().setDeclineNote('Not this premise.');
+    expect(state().confirmDeclineMenu()).toBe(true);
+    expect(ofType('decideItems')[3]?.payload.decisions).toEqual([{ item: IDS.arrow, rev: 1, to: 'declined', option: 'plain', note: 'Not this premise.' }]);
+    result(lastId(), OK);
+    // A blank note is dropped; a group shares one note, an arrow-only group's menu opens with its Decline chosen.
+    state().openDeclineMenu([IDS.definition, IDS.formalize], 'group');
+    expect(state().declineMenu).toMatchObject({ option: null });
+    state().chooseDeclineOption('reject');
+    state().setDeclineNote('   ');
+    expect(state().confirmDeclineMenu()).toBe(true);
+    expect(ofType('decideItems')[4]?.payload.decisions).toEqual([
+      { item: IDS.definition, rev: 1, to: 'declined', option: 'reject' },
+      { item: IDS.formalize, rev: 1, to: 'declined', option: 'reject' },
+    ]);
+    result(lastId(), OK);
+    state().openDeclineMenu([IDS.definition, IDS.formalize], 'group');
+    state().chooseDeclineOption('shaky');
+    state().setDeclineNote('one note for both');
+    expect(state().confirmDeclineMenu()).toBe(true);
+    expect(ofType('decideItems')[5]?.payload.decisions).toEqual([
+      { item: IDS.definition, rev: 1, to: 'declined', option: 'shaky', note: 'one note for both' },
+      { item: IDS.formalize, rev: 1, to: 'declined', option: 'shaky', note: 'one note for both' },
+    ]);
+    result(lastId(), OK);
+    state().openDeclineMenu([IDS.arrow], 'group');
+    expect(state().declineMenu).toMatchObject({ option: 'plain' });
+    state().closeDeclineMenu();
+    // At the limit it is sent whole; longer, cut to the limit (the field's maxLength holds it there already).
+    state().openDeclineMenu([IDS.definition], 'item');
+    state().chooseDeclineOption('reject');
+    state().setDeclineNote('n'.repeat(LIMITS.textLength + 5));
+    state().confirmDeclineMenu();
+    expect((ofType('decideItems')[6]?.payload.decisions[0] as { note?: string }).note).toBe('n'.repeat(LIMITS.textLength));
   });
 
   it('needs-confirmation opens the cascade dialog (with the hidden-results sentence when hiddenResults); Continue sends it confirmed; Cancel sends nothing', () => {
@@ -269,7 +312,7 @@ describe('decisions (§5.5-5.7): one message, what the user saw, not optimistic'
     expect(ofType('decideItems')).toHaveLength(2);
   });
 
-  it('nothing is sent for an Accept its gate closes, a hidden Result in a group, or a note with Reject (the protocol takes it only with Shaky)', () => {
+  it('nothing is sent for an Accept its gate closes or a hidden Result in a group; a note goes with Reject too (2j2, D2-92)', () => {
     const { store, state, session, ofType, result, lastId } = setup();
     session(shownStage());
     // The Formalize's own Accept waits for its vocabulary term (its gate names it).
@@ -282,7 +325,7 @@ describe('decisions (§5.5-5.7): one message, what the user saw, not optimistic'
     expect(ofType('decideItems')[0]?.payload.decisions).toEqual([{ item: IDS.vocab, rev: 1, to: 'accepted' }]);
     result(lastId(), OK);
     expect(state().declineItem(IDS.definition, 'reject', 'my note')).toBe(true);
-    expect(ofType('decideItems')[1]?.payload.decisions).toEqual([{ item: IDS.definition, rev: 1, to: 'declined', option: 'reject' }]);
+    expect(ofType('decideItems')[1]?.payload.decisions).toEqual([{ item: IDS.definition, rev: 1, to: 'declined', option: 'reject', note: 'my note' }]);
   });
 
   it('the hold-as dialog closes when its item leaves review (or Claude’s step starts)', () => {
@@ -321,7 +364,7 @@ describe('decisions (§5.5-5.7): one message, what the user saw, not optimistic'
     const { state, session, ofType } = setup();
     session(shownStage());
     state().askMeInstead('s1', 0);
-    expect(state().declineMenu).toEqual({ items: [IDS.formalize], origin: 'report', option: 'shaky', note: REVIEW_TEXTS.askMeAbout('“cannot have” read as a rule'), key: 's1:0' });
+    expect(state().declineMenu).toEqual({ items: [IDS.formalize], origin: 'report', option: 'shaky', note: REVIEW_TEXTS.askMeAbout('“cannot have” read as a rule'), prefilled: REVIEW_TEXTS.askMeAbout('“cannot have” read as a rule'), key: 's1:0' });
     expect(ofType('decideItems')).toHaveLength(0);
     state().confirmDeclineMenu();
     expect(ofType('decideItems')[0]?.payload.decisions).toEqual([{ item: IDS.formalize, rev: 1, to: 'declined', option: 'shaky', note: 'Ask me about: “cannot have” read as a rule' }]);
@@ -563,6 +606,9 @@ describe('read-only while Claude’s step runs (D2-62)', () => {
     expect(state().declineMenu).toBeNull();
     state().pressReviewKey({ key: 'd' });
     state().pressReviewKey({ key: 'r' });
+    // 2j2 (D2-94): R chooses Reject, its note field shows; its Decline button sends it.
+    expect(state().declineMenu).toMatchObject({ option: 'reject' });
+    expect(state().confirmDeclineMenu()).toBe(true);
     expect(ofType('decideItems')[2]?.payload.decisions).toEqual([{ item: IDS.definition, rev: 1, to: 'declined', option: 'reject' }]);
     result(lastId(), OK);
     state().focusItem(IDS.vocab);
@@ -794,5 +840,134 @@ describe('builder 2g r1: stale dialogs and menus, the selection helpers, one req
     b.result(exit, refused('no'));
     expect(b.state().sessionBusy).toBeNull();
     expect(b.state().acceptItem(IDS.definition)).toBe(true);
+  });
+});
+
+describe('2j2 (D2-92, D2-95, D2-98): the note on an item to be redone, and Submit’s comment', () => {
+  const CLAUDE_STEPS = { submit: { gate: OPEN, next: 'claude-steps' as const, work: { shaky: 1, redo: 1, steps: 1 } } };
+  /** The shown stage with the definition to be redone (and its note, if given), Submit open for Claude's steps. */
+  const redoStage = (note?: string, patch: Partial<SessionView> = CLAUDE_STEPS): SessionView => {
+    const s = shownStage({ definition: 'to-be-redone' }, patch);
+    return { ...s, items: s.items.map((i) => (i.id === IDS.definition ? { ...i, redo: { because: [], why: ['↻ to be redone: …'], ...(note !== undefined ? { note } : {}) } } : i)) };
+  };
+
+  it('noteItem sends the note (trimmed, cut to the limit, a blank one clearing it) with the rev the user saw; nothing for an item not to be redone, the same note, or while a step runs', () => {
+    const { state, session, ofType, result, lastId } = setup();
+    session(redoStage());
+    expect(state().noteItem(IDS.definition, '  Prove it from the rule.\nNo detour.  ')).toBe(true);
+    expect(ofType('noteItem')[0]?.payload).toEqual({ runId: SESSION_RUN, stage: 1, item: IDS.definition, rev: 1, note: 'Prove it from the rule.\nNo detour.', requestId: lastId() });
+    expect(state().sessionBusy).toMatchObject({ action: 'note' });
+    // One request at a time.
+    expect(state().noteItem(IDS.definition, 'again')).toBe(false);
+    result(lastId(), OK);
+    session(redoStage('Prove it from the rule.\nNo detour.'));
+    expect(state().noteItem(IDS.definition, 'Prove it from the rule.\nNo detour.')).toBe(false);
+    expect(state().noteItem(IDS.definition, '   ')).toBe(true);
+    expect(ofType('noteItem')[1]?.payload.note).toBe('');
+    result(lastId(), OK);
+    expect(state().noteItem(IDS.definition, 'n'.repeat(LIMITS.textLength + 3))).toBe(true);
+    expect(ofType('noteItem')[2]?.payload.note).toBe('n'.repeat(LIMITS.textLength));
+    result(lastId(), OK);
+    // Not to be redone: nothing is sent.
+    expect(state().noteItem(IDS.formalize, 'x')).toBe(false);
+    session(stepSession());
+    expect(state().noteItem(IDS.definition, 'x')).toBe(false);
+    expect(ofType('noteItem')).toHaveLength(3);
+  });
+
+  it('Submit review that starts Claude’s steps opens the panel first; its Submit sends the comment (a blank one dropped); Cancel and Esc send nothing', () => {
+    const { state, session, ofType, result, lastId } = setup();
+    session(redoStage());
+    expect(state().submitReview()).toBe(true);
+    expect(ofType('submitReview')).toHaveLength(0);
+    expect(state().submitPanel).toEqual({ comment: '' });
+    state().setSubmitComment('Keep the names.\nPrefer the rule reading.');
+    state().closeSubmitPanel();
+    expect(state().submitPanel).toBeNull();
+    expect(ofType('submitReview')).toHaveLength(0);
+    state().submitReview();
+    state().setSubmitComment('  Keep the names.\nPrefer the rule reading. ');
+    expect(state().confirmSubmit()).toBe(true);
+    expect(ofType('submitReview')[0]?.payload).toEqual({ runId: SESSION_RUN, stage: 1, comment: 'Keep the names.\nPrefer the rule reading.', requestId: lastId() });
+    expect(state().submitPanel).toBeNull();
+    result(lastId(), OK);
+    state().submitReview();
+    state().setSubmitComment('   ');
+    state().confirmSubmit();
+    expect(ofType('submitReview')[1]?.payload).toEqual({ runId: SESSION_RUN, stage: 1, requestId: lastId() });
+    result(lastId(), OK);
+    // Esc from the list's keys closes it too.
+    state().submitReview();
+    state().focusItem(IDS.vocab);
+    expect(state().pressReviewKey({ key: 'Escape' })).toBe(true);
+    expect(state().submitPanel).toBeNull();
+    expect(ofType('submitReview')).toHaveLength(2);
+  });
+
+  it('Submit that leads to the end confirmation sends at once, with no panel and no comment; the panel closes when Submit no longer starts Claude’s steps', () => {
+    const { state, session, ofType, result, lastId } = setup();
+    session(allAcceptedStage());
+    expect(state().submitReview()).toBe(true);
+    expect(state().submitPanel).toBeNull();
+    expect(ofType('submitReview')[0]?.payload).toEqual({ runId: SESSION_RUN, stage: 1, requestId: lastId() });
+    result(lastId(), OK);
+    session(redoStage());
+    state().submitReview();
+    expect(state().submitPanel).not.toBeNull();
+    // The gate closes (something back in review), or the phase changes: the panel goes, and its Submit sends nothing.
+    session(redoStage(undefined, { submit: { gate: closed('one in review') } }));
+    expect(state().submitPanel).toBeNull();
+    expect(state().confirmSubmit()).toBe(false);
+    session(redoStage());
+    state().submitReview();
+    session(stepSession());
+    expect(state().submitPanel).toBeNull();
+    expect(ofType('submitReview')).toHaveLength(1);
+  });
+
+  it('a refused Submit gives its comment back in the panel (only while Submit still starts Claude’s steps); an accepted one does not (fixer r1, F-F6)', () => {
+    const { state, session, result, lastId } = setup();
+    session(redoStage());
+    state().submitReview();
+    state().setSubmitComment('Keep the names.');
+    state().confirmSubmit();
+    expect(state().submitPanel).toBeNull();
+    result(lastId(), refused('the stage changed'));
+    expect(state().submitPanel).toEqual({ comment: 'Keep the names.' });
+    expect(state().toasts.at(-1)?.text).toBe('the stage changed');
+    state().confirmSubmit();
+    result(lastId(), OK);
+    expect(state().submitPanel).toBeNull();
+    // Refused after the view no longer offers Claude's steps: no panel comes back.
+    state().submitReview();
+    state().setSubmitComment('Again.');
+    state().confirmSubmit();
+    session(redoStage(undefined, { submit: { gate: closed('one in review') } }));
+    result(lastId(), refused('one in review'));
+    expect(state().submitPanel).toBeNull();
+    // A Submit without a comment has nothing to give back.
+    session(redoStage());
+    state().submitReview();
+    state().confirmSubmit();
+    result(lastId(), refused('no'));
+    expect(state().submitPanel).toBeNull();
+  });
+
+  it('"Ask me instead" prefills telelean’s sentence for Shaky only: another option clears it while untouched; the person’s own edit stays (fixer r1, A-ADV-2j2-4)', () => {
+    const { state, session } = setup();
+    session(shownStage());
+    state().askMeInstead('s1', 0);
+    state().chooseDeclineOption('reject');
+    expect(state().declineMenu).toMatchObject({ option: 'reject', note: '' });
+    state().closeDeclineMenu();
+    state().askMeInstead('s1', 0);
+    state().setDeclineNote(`${REVIEW_TEXTS.askMeAbout('“cannot have” read as a rule')} Mine.`);
+    state().chooseDeclineOption('plain');
+    expect(state().declineMenu?.note).toBe(`${REVIEW_TEXTS.askMeAbout('“cannot have” read as a rule')} Mine.`);
+    // Back on Shaky it is still Shaky's: nothing is cleared.
+    state().closeDeclineMenu();
+    state().askMeInstead('s1', 0);
+    state().chooseDeclineOption('shaky');
+    expect(state().declineMenu?.note).toBe(REVIEW_TEXTS.askMeAbout('“cannot have” read as a rule'));
   });
 });

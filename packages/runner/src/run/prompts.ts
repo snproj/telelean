@@ -127,6 +127,16 @@ function quoted(sentence: string): string {
   return `"${sentence}"`;
 }
 
+/** 2j2 (D2-92): a note for Claude, quoted as the feedback turn quotes every note (SHAKY's since 2e). */
+export function personNote(note: string): string {
+  return `  The person's note: ${quoted(note)}`;
+}
+
+/** 2j2 (D2-92): the overall comment at Submit review, right after the feedback turn's first line. */
+export function overallComment(comment: string): string {
+  return `The person's overall comment: ${quoted(comment)}`;
+}
+
 // ---------------------------------------------------------------------------------------------
 // The context bundle (section 5.2)
 
@@ -332,8 +342,11 @@ export interface StepTurnInput {
 export interface FeedbackItem {
   label: string;
   lean: string;
-  /** SHAKY: the person's note for Claude (D2-13). */
+  /** The person's note for Claude on its decline (SHAKY since D2-13; REJECTED too since 2j2, D2-92), or, for an item to
+   *  be redone (TO BE REDONE), its note while to be redone (`redo.note`). */
   note?: string;
+  /** (2j2, D2-92) SHAKY: a Shaky item that is to be redone (Submit's take-out) and has a note of its own as such. */
+  redoNote?: string;
   /** TO BE REDONE: what it relied on (the items that took it down), or why telelean took it out; SHAKY: the items whose
    *  rework Submit's take-out made it wait for (D2-57). */
   reliedOn?: readonly string[];
@@ -348,6 +361,8 @@ export interface SubmitFeedbackInput {
   redo: readonly FeedbackItem[];
   /** The Submit steps, in the order they run (D2-57): each its inference's target and sentence. */
   steps: ReadonlyArray<{ id: string; sentence: string }>;
+  /** (2j2, D2-92) The person's overall comment at Submit review. */
+  comment?: string;
 }
 
 /**
@@ -357,7 +372,7 @@ export interface SubmitFeedbackInput {
  * REDONE (what each relied on) and STEPS PLANNED. Its first line is fixed (core `CLAUDE_SESSION_TEXTS.reviewSubmitted`).
  */
 export function submitFeedbackTurn(i: SubmitFeedbackInput): string {
-  const lines = [CLAUDE_SESSION_TEXTS.reviewSubmitted(i.stage), ''];
+  const lines = [CLAUDE_SESSION_TEXTS.reviewSubmitted(i.stage), ...(i.comment !== undefined && i.comment.trim() !== '' ? [overallComment(i.comment)] : []), ''];
   const leanLines = (lean: string) => (lean.trim() === '' ? [] : lean.trim().split('\n').map((l) => `    ${l}`));
   const section = (title: string, items: readonly FeedbackItem[], tail: (x: FeedbackItem) => string[] = () => []) => {
     lines.push(title);
@@ -365,15 +380,17 @@ export function submitFeedbackTurn(i: SubmitFeedbackInput): string {
     for (const x of items) lines.push(`- ${x.label}`, ...leanLines(x.lean), ...tail(x));
     lines.push('');
   };
+  // 2j2 (D2-92): every section but ACCEPTED quotes the person's notes, as SHAKY did.
+  const notes = (x: FeedbackItem) => [...(x.note !== undefined ? [personNote(x.note)] : []), ...(x.redoNote !== undefined ? [personNote(x.redoNote)] : [])];
   section('ACCEPTED: keep them exactly as they are.', i.accepted);
-  section('REJECTED: they were removed; never propose these exact versions again.', i.rejected);
+  section('REJECTED: they were removed; never propose these exact versions again.', i.rejected, notes);
   const relied = (x: FeedbackItem) => (x.reliedOn !== undefined && x.reliedOn.length > 0 ? [`  It relied on: ${x.reliedOn.join('; ')}`] : []);
   section(
     'SHAKY: propose a different arrangement for these together. Any single one may come back unchanged, but not the whole set; if there is none, finish with no_alternative: true.',
     i.shaky,
-    (x) => [...(x.note !== undefined ? [`  The person's note: ${quoted(x.note)}`] : []), ...relied(x)],
+    (x) => [...notes(x), ...relied(x)],
   );
-  section('TO BE REDONE: propose them again; what each relied on:', i.redo, relied);
+  section('TO BE REDONE: propose them again; what each relied on:', i.redo, (x) => [...notes(x), ...relied(x)]);
   lines.push('STEPS PLANNED (one step per target, in this order):');
   i.steps.forEach((s, k) => lines.push(`${k + 1}. ${s.id}: ${quoted(s.sentence)}`));
   return `${lines.join('\n')}\n`;

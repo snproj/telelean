@@ -24,7 +24,8 @@ const decide = (decisions: unknown[], extra: Record<string, unknown> = {}) => ra
 
 describe('the session messages: types and limits', () => {
   it('every one is a run message (the ES-9 lock never refuses it), after M2’s, and every one parses', () => {
-    expect([...SESSION_MESSAGE_TYPES]).toEqual(['formalize', 'decideItems', 'revealResult', 'sessionUndo', 'sessionRedo', 'submitReview', 'endSession', 'retryStep', 'openSessionDiff', 'moveProposed']);
+    // 2j2 (D2-92): `noteItem`, the note on an item to be redone, joins them.
+    expect([...SESSION_MESSAGE_TYPES]).toEqual(['formalize', 'decideItems', 'revealResult', 'sessionUndo', 'sessionRedo', 'submitReview', 'endSession', 'retryStep', 'openSessionDiff', 'moveProposed', 'noteItem']);
     expect(RUN_MESSAGE_TYPES.slice(-SESSION_MESSAGE_TYPES.length)).toEqual([...SESSION_MESSAGE_TYPES]);
     for (const type of SESSION_MESSAGE_TYPES) {
       const r = parseWebviewToHost(raw(type, {}));
@@ -130,8 +131,11 @@ describe('webview -> host: each malformed case of §2.4 is refused', () => {
     bad(decide([{ item: ITEM, rev: 0, to: 'declined', option: 'maybe' }]), 'option');
     bad(decide([{ item: ITEM, rev: 0, to: 'accepted', option: 'reject' }]), 'only for a decline');
     bad(decide([{ item: ITEM, rev: 0, to: 'in-review', option: 'plain' }]), 'only for a decline');
-    bad(decide([{ item: ITEM, rev: 0, to: 'declined', option: 'reject', note: 'why' }]), 'only for a Shaky decline');
-    bad(decide([{ item: ITEM, rev: 0, to: 'accepted', note: 'why' }]), 'only for a Shaky decline');
+    // 2j2 (D2-92): a note goes with every decline option, and only with a decline (it was Shaky only, D2-13).
+    bad(decide([{ item: ITEM, rev: 0, to: 'accepted', note: 'why' }]), 'only for a decline');
+    bad(decide([{ item: ITEM, rev: 0, to: 'in-review', note: 'why' }]), 'only for a decline');
+    bad(decide([{ item: ITEM, rev: 0, to: 'declined', option: 'reject', note: 'x'.repeat(LIMITS.textLength + 1) }]), 'longer than');
+    bad(decide([{ item: ITEM, rev: 0, to: 'declined', option: 'plain', note: 7 }]), 'must be a string');
     bad(decide([{ item: ITEM, rev: 0, to: 'declined', option: 'shaky', note: 'x'.repeat(LIMITS.textLength + 1) }]), 'longer than');
     bad(decide([{ item: ITEM, rev: 0, to: 'declined', option: 'shaky', holdAs: 'axiom' }]), 'only for an Accept');
     bad(decide([{ item: ITEM, rev: 0, to: 'accepted', holdAs: 'lemma' }]), 'holdAs');
@@ -162,6 +166,51 @@ describe('webview -> host: each malformed case of §2.4 is refused', () => {
     expect((parsed('decideItems', { runId: 'r1', stage: 1, own: true, decisions: [{ item: ITEM, rev: 0, to: 'accepted', holdAs: 'pending', rationale: '  mine  ' }] }) as { decisions: unknown }).decisions).toEqual([
       { item: ITEM, rev: 0, to: 'accepted', holdAs: 'pending', rationale: 'mine' },
     ]);
+  });
+
+  it('2j2 (D2-92): a decline of every option keeps its note, at the limit and over several lines; a blank one is dropped', () => {
+    for (const option of ['reject', 'shaky', 'plain', 'transform'] as const) {
+      const note = `Line one for ${option}.\nLine two.`;
+      expect((parsed('decideItems', { runId: 'r1', stage: 1, own: false, decisions: [{ item: ITEM, rev: 0, to: 'declined', option, note }] }) as { decisions: unknown }).decisions).toEqual([
+        { item: ITEM, rev: 0, to: 'declined', option, note },
+      ]);
+      expect((parsed('decideItems', { runId: 'r1', stage: 1, own: false, decisions: [{ item: ITEM, rev: 0, to: 'declined', option, note: ' \n\t ' }] }) as { decisions: unknown }).decisions).toEqual([
+        { item: ITEM, rev: 0, to: 'declined', option },
+      ]);
+    }
+    const full = 'x'.repeat(LIMITS.textLength);
+    expect((parsed('decideItems', { runId: 'r1', stage: 1, own: false, decisions: [{ item: ITEM, rev: 0, to: 'declined', option: 'reject', note: full }] }) as { decisions: Array<{ note?: string }> }).decisions[0]?.note).toBe(full);
+    // A group decline shares one note: each decision carries it.
+    ok(
+      webviewMessage('decideItems', {
+        runId: 'r1',
+        stage: 1,
+        own: false,
+        decisions: [
+          { item: 'ita', rev: 0, to: 'declined', option: 'reject', note: 'shared' },
+          { item: 'itb', rev: 0, to: 'declined', option: 'plain', note: 'shared' },
+        ],
+      }),
+    );
+  });
+
+  it('2j2 (D2-92): submitReview takes an optional comment (multi-line, at the limit, a blank one dropped); noteItem', () => {
+    ok(webviewMessage('submitReview', { runId: 'r1', stage: 1, comment: 'Prefer the rule reading.\nKeep the names.', requestId: 's1' }));
+    expect(parsed('submitReview', { runId: 'r1', stage: 1, comment: '  \n ' })).toEqual({ runId: 'r1', stage: 1 });
+    const full = 'c'.repeat(LIMITS.textLength);
+    expect(parsed('submitReview', { runId: 'r1', stage: 2, comment: full })).toEqual({ runId: 'r1', stage: 2, comment: full });
+    bad(raw('submitReview', { runId: 'r1', stage: 1, comment: 'c'.repeat(LIMITS.textLength + 1) }), 'longer than');
+    bad(raw('submitReview', { runId: 'r1', stage: 1, comment: 3 }), 'payload.comment');
+    // noteItem: the item's note for Claude while it is to be redone; a blank one clears it (kept as sent).
+    ok(webviewMessage('noteItem', { runId: 'r1', stage: 1, item: ITEM, rev: 2, note: 'Keep it as a rule.\nNot a fact.', requestId: 'n1' }));
+    ok(webviewMessage('noteItem', { runId: 'r1', stage: 1, item: ITEM, rev: 2, note: '' }));
+    expect(parsed('noteItem', { runId: 'r1', stage: 1, item: ITEM, rev: 2, note: full.slice(1) + 'n', extra: 1 })).toEqual({ runId: 'r1', stage: 1, item: ITEM, rev: 2, note: full.slice(1) + 'n' });
+    bad(raw('noteItem', { runId: 'r1', stage: 1, item: ITEM, rev: 2, note: 'n'.repeat(LIMITS.textLength + 1) }), 'longer than');
+    bad(raw('noteItem', { runId: 'r1', stage: 1, item: ITEM, rev: 2 }), 'payload.note');
+    bad(raw('noteItem', { runId: 'r1', stage: 1, item: 'it 1', rev: 2, note: 'n' }), 'payload.item');
+    bad(raw('noteItem', { runId: 'r1', stage: 1, item: ITEM, rev: -1, note: 'n' }), 'payload.rev');
+    bad(raw('noteItem', { runId: 'r1', item: ITEM, rev: 1, note: 'n' }), 'payload.stage');
+    bad(raw('noteItem', { stage: 1, item: ITEM, rev: 1, note: 'n' }), 'payload.runId');
   });
 
   it('revealResult, sessionUndo, sessionRedo, submitReview, retryStep', () => {

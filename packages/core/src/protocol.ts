@@ -241,8 +241,16 @@ export type RevealResultMessage = Envelope<'revealResult', { runId: string; stag
 /** Undo and Redo on the session stack (UN-4): `step` is the SessionAction id the user saw (`SessionView.undo.step`). */
 export type SessionUndoMessage = Envelope<'sessionUndo', { runId: string; step: number; confirmed?: boolean; requestId?: string }>;
 export type SessionRedoMessage = Envelope<'sessionRedo', { runId: string; step: number; confirmed?: boolean; requestId?: string }>;
-/** Submit review (RV-12). */
-export type SubmitReviewMessage = Envelope<'submitReview', { runId: string; stage: number; requestId?: string }>;
+/**
+ * Submit review (RV-12). `comment` (2j2, D2-92): the person's overall comment for Claude's next steps (≤ textLength, may
+ * span lines, dropped when blank); the runner drops it too when Submit leads to the end confirmation (D2-96).
+ */
+export type SubmitReviewMessage = Envelope<'submitReview', { runId: string; stage: number; comment?: string; requestId?: string }>;
+/**
+ * 2j2 (D2-92, D2-95): sets, replaces or (blank) clears the note for Claude on an item to be redone; `rev` the version the
+ * user saw. One session-stack step.
+ */
+export type NoteItemMessage = Envelope<'noteItem', { runId: string; stage: number; item: string; rev: number; note: string; requestId?: string }>;
 /** The end (EN-1-EN-4): `apply` with the stage and the final check's id it shows; `back` to review with the stage; `exit`. */
 export type EndSessionMessage = Envelope<'endSession', { runId: string; decision: 'apply' | 'exit' | 'back'; stage?: number; check?: string; requestId?: string }>;
 /** Retry step (ES-4): runs the cancelled or failed step and the steps its queue dropped. */
@@ -292,6 +300,7 @@ export type WebviewToHostMessage =
   | SessionUndoMessage
   | SessionRedoMessage
   | SubmitReviewMessage
+  | NoteItemMessage
   | EndSessionMessage
   | RetryStepMessage
   | OpenSessionDiffMessage
@@ -312,6 +321,7 @@ export const SESSION_MESSAGE_TYPES = [
   'retryStep',
   'openSessionDiff',
   'moveProposed',
+  'noteItem',
 ] as const;
 
 /** M2: the webview messages that act on a run (the extension routes them to the root's RunManager); slice 2's too. */
@@ -624,8 +634,8 @@ function inferenceList(value: unknown, what: string): Array<{ target: string; pr
 }
 
 /**
- * One decision (ItemDecision, §2.4): `option` required with `declined`, and only there; `note` only with `shaky` (may span
- * lines, dropped when blank); `holdAs` only with `accepted`; `rationale` only with `holdAs` (one line, dropped when blank).
+ * One decision (ItemDecision, §2.4): `option` required with `declined`, and only there; `note` only with `declined`, any
+ * option (2j2, D2-92; D2-13 took it only with `shaky`; may span lines, dropped when blank); `holdAs` only with `accepted`; `rationale` only with `holdAs` (one line, dropped when blank).
  */
 function decision(value: unknown, what: string): ItemDecision {
   const d = record(value, what);
@@ -640,7 +650,7 @@ function decision(value: unknown, what: string): ItemDecision {
   } else if (d.option !== undefined) fail(`${what}.option is only for a decline`);
   let note: string | undefined;
   if (d.note !== undefined) {
-    if (option !== 'shaky') fail(`${what}.note is only for a Shaky decline`);
+    if (to !== 'declined') fail(`${what}.note is only for a decline`);
     const text = str(d.note, `${what}.note`, LIMITS.textLength, true);
     if (text.trim() !== '') note = text;
   }
@@ -918,8 +928,26 @@ export function parseWebviewToHost(raw: unknown): ParseResult<WebviewToHostMessa
         return webviewMessage('sessionUndo', { runId: runId(p.runId, 'payload.runId'), step: int(p.step, 'payload.step', 0, LIMITS.revision), ...confirmedFlag(p.confirmed), ...requestId(p.requestId) });
       case 'sessionRedo':
         return webviewMessage('sessionRedo', { runId: runId(p.runId, 'payload.runId'), step: int(p.step, 'payload.step', 0, LIMITS.revision), ...confirmedFlag(p.confirmed), ...requestId(p.requestId) });
-      case 'submitReview':
-        return webviewMessage('submitReview', { runId: runId(p.runId, 'payload.runId'), stage: stageOf(p.stage, 'payload.stage'), ...requestId(p.requestId) });
+      case 'submitReview': {
+        // 2j2 (D2-92): the overall comment, as a decline's note: may span lines, dropped when blank.
+        const comment = p.comment === undefined ? '' : str(p.comment, 'payload.comment', LIMITS.textLength, true);
+        return webviewMessage('submitReview', {
+          runId: runId(p.runId, 'payload.runId'),
+          stage: stageOf(p.stage, 'payload.stage'),
+          ...(comment.trim() !== '' ? { comment } : {}),
+          ...requestId(p.requestId),
+        });
+      }
+      case 'noteItem':
+        // 2j2 (D2-92, D2-95): a blank note clears it.
+        return webviewMessage('noteItem', {
+          runId: runId(p.runId, 'payload.runId'),
+          stage: stageOf(p.stage, 'payload.stage'),
+          item: token(p.item, 'payload.item'),
+          rev: int(p.rev, 'payload.rev', 0, LIMITS.revision),
+          note: str(p.note, 'payload.note', LIMITS.textLength, true),
+          ...requestId(p.requestId),
+        });
       case 'endSession': {
         const decision = p.decision;
         if (decision !== 'apply' && decision !== 'exit' && decision !== 'back') fail('payload.decision must be "apply", "exit" or "back"');

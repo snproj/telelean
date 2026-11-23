@@ -17,9 +17,47 @@ export const isArrowKind = (kind: ItemKind): boolean => kind === 'add-arrow' || 
 /** A cascade or the judge took the item's content out of ws/ (`redo.reverted`), whatever its status now. */
 export const isReverted = (r: { redo?: ItemRecord['redo'] }): boolean => r.redo?.reverted === true;
 
-/** §4.7 (AF4): undecided: in review, or to be redone with its content still in ws/. */
+/**
+ * §4.7 (2j1, D2-76): undecided: in review. An item to be redone, its content kept or taken out, is finished for the
+ * review (RV-3 as amended), so it keeps no result hidden and blocks no Submit (AF4's clause, which counted one with its
+ * content in ws/, is superseded).
+ */
 export function isUndecided(r: StatusPart): boolean {
-  return r.status === 'in-review' || (r.status === 'to-be-redone' && !isReverted(r));
+  return r.status === 'in-review';
+}
+
+/**
+ * A record's `redo`, copied; `kind` only when set (a record saved before 2j1 has none, D2-77); `note` only when set
+ * (2j2, D2-93: every rule that rebuilds `redo` from a copy keeps the person's note).
+ */
+export function copyRedo(redo: NonNullable<ItemRecord['redo']>): NonNullable<ItemRecord['redo']> {
+  return {
+    because: [...redo.because],
+    reverted: redo.reverted,
+    ...(redo.kind !== undefined ? { kind: redo.kind } : {}),
+    ...(redo.note !== undefined ? { note: redo.note } : {}),
+  };
+}
+
+/** 2j2 (D2-93): the note a rule that rebuilds `redo` keeps, as a spread (`{ ...keepNote(x.redo) }`). */
+export function keepNote(redo: ItemRecord['redo']): { note?: string } {
+  return redo?.note !== undefined ? { note: redo.note } : {};
+}
+
+/**
+ * 2j2 (D2-93): an item's note for Claude lives only while it is to be redone. Every record that left that status (a
+ * decline, an Accept, the automatic return, reconcile's new proposal; a declined one keeps `redo` when a cascade took its
+ * content out first, D2-60) loses it, in place. Returns the ids it changed.
+ */
+export function dropStaleRedoNotes(items: readonly ItemRecord[], before?: (id: string) => void): string[] {
+  const out: string[] = [];
+  for (const r of items) {
+    if (r.status === 'to-be-redone' || r.redo?.note === undefined) continue;
+    before?.(r.id);
+    delete r.redo.note;
+    out.push(r.id);
+  }
+  return out;
 }
 
 /** Declined by Reject, a plain decline or Transform: the content is out of ws/ (§3.1). */
@@ -54,7 +92,7 @@ export function itemStateOf(r: ItemRecord): ItemState {
     ...(r.accepted !== undefined
       ? { accepted: { ...r.accepted, ...(r.accepted.result ? { result: { ...r.accepted.result, restsOn: [...r.accepted.result.restsOn] } } : {}) } }
       : {}),
-    ...(r.redo !== undefined ? { redo: { because: [...r.redo.because], reverted: r.redo.reverted } } : {}),
+    ...(r.redo !== undefined ? { redo: copyRedo(r.redo) } : {}),
     markers: [...r.markers],
     rejectedFingerprints: [...r.rejectedFingerprints],
     rejectedRevs: r.versions.filter((v) => v.rejected === true).map((v) => v.rev),
@@ -68,7 +106,7 @@ export function applyItemState(r: ItemRecord, s: ItemState): void {
   else delete r.decline;
   if (s.accepted !== undefined) r.accepted = { ...s.accepted };
   else delete r.accepted;
-  if (s.redo !== undefined) r.redo = { because: [...s.redo.because], reverted: s.redo.reverted };
+  if (s.redo !== undefined) r.redo = copyRedo(s.redo);
   else delete r.redo;
   r.markers = [...s.markers];
   r.rejectedFingerprints = [...s.rejectedFingerprints];

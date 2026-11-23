@@ -1,0 +1,37 @@
+Review submitted (stage 1)
+The person's overall comment: "Prefer the rule reading.
+Keep the names."
+
+ACCEPTED: keep them exactly as they are.
+- Formalize “A”
+    abbrev a : Prop := True
+
+REJECTED: they were removed; never propose these exact versions again.
+- Formalize “B”
+    abbrev b : Prop := True
+  The person's note: "Too strong:
+not every PG game."
+- Add arrow “s” → “t”
+    s → t
+  The person's note: "Not this premise."
+- Formalize “C”
+    abbrev c : Prop := True
+
+SHAKY: propose a different arrangement for these together. Any single one may come back unchanged, but not the whole set; if there is none, finish with no_alternative: true.
+- Formalize “S”
+    abbrev s : Prop := True
+  The person's note: "Shaky note."
+  The person's note: "Redo note."
+  It relied on: Result “D”
+
+TO BE REDONE: propose them again; what each relied on:
+- Result “D”
+    theorem d : True := trivial
+  The person's note: "Prove it directly."
+  It relied on: Formalize “S”
+- Result “E”
+    theorem e : True := trivial
+
+STEPS PLANNED (one step per target, in this order):
+1. d: "D"
+2. e: "E"

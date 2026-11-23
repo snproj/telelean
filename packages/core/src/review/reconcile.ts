@@ -30,10 +30,13 @@
  *    draft's step, fixer 2a, V2A-C1);
  *  - the judge's reverts (§3.6): items owning declarations that no longer build ("no longer builds") and Results whose
  *    inference fails B.1, B.2 or its footprint (a Shaky Result, or one to be redone without revert, stays: D2-48) become
- *    to be redone, reverted, with every dependent their content takes down (D2-28);
+ *    to be redone, reverted, with every dependent their content takes down (D2-28); a dependent taken out already gets
+ *    the reverted item in its `because` (2j1, D2-80);
  *  - premise re-checks (§3.8): their facts are replaced; one that no longer closes the gap is to be redone, marked so;
  *  - RV-3 (A1): a new or updated item in review that depends on a Shaky or to-be-redone item is to be redone at once,
  *    not reverted, as if that decision had just been made (its dependents in review follow);
+ *  - (2j1, D2-76, D2-77) the reverts and re-checks write `redo.kind` `judge`, RV-3 `queue`: neither comes back by itself
+ *    when what took it down is set back to review (only a decline's cascade does, in the reducer);
  *  - RV-7 (D2-23): the classes in force (`classes` while the results are shown, else `classesBeforeReveal`); an accepted
  *    item whose badges grew returns to review, with its accepted dependents;
  *  - RV-5, defensively: an accepted item with a dependency outside its SCC that is not accepted returns to review;
@@ -54,6 +57,8 @@ import { reviewItemId } from './hash.js';
 import { premiseKey, proofKey } from './keys.js';
 import {
   cloneRecord,
+  copyRedo,
+  dropStaleRedoNotes,
   fallbackLabel,
   inferenceOf,
   inWorkingCopy,
@@ -62,6 +67,7 @@ import {
   isShaky,
   isUndecided,
   itemStateOf,
+  keepNote,
   resultTargetOf,
 } from './records.js';
 import { isMeaningItem, isResultOrPart, resultsState } from './reveal.js';
@@ -358,21 +364,27 @@ export function reconcile(i: { runId: string; records: SessionRecords; judgement
   }
 
   // ---- 4. the judge's reverts (§3.6), with the content they take down (D2-28)
+  // 2j1 (D2-76, D2-77): what the judge takes out, and what that takes down, is of kind `judge`: it never comes back by
+  // itself. A dependent taken out already records the reverted item too, so no return reads it as free (D2-80).
   const takeOut = (r: ItemRecord, list: string[], marker?: ItemMarker) => {
     r.status = 'to-be-redone';
     delete r.accepted;
     if (r.decline?.option !== 'shaky') delete r.decline;
-    r.redo = { because: r.redo?.because ?? [], reverted: true };
+    r.redo = { because: r.redo?.because ?? [], reverted: true, kind: 'judge', ...keepNote(r.redo) };
     if (marker !== undefined) addMarker(r, marker);
     list.push(r.id);
     for (const id of dependentsOf(r.id)) {
       const x = byId.get(id) as ItemRecord;
       const goes = x.status === 'in-review' || x.status === 'accepted' || x.status === 'to-be-redone' || (x.status === 'declined' && x.decline?.option === 'shaky');
-      if (!goes || isReverted(x)) continue;
+      if (!goes) continue;
+      if (isReverted(x)) {
+        if (x.redo !== undefined && !x.redo.because.includes(r.id)) x.redo = { ...copyRedo(x.redo), because: union(x.redo.because, [r.id]) };
+        continue;
+      }
       x.status = 'to-be-redone';
       delete x.accepted;
       if (x.decline?.option !== 'shaky') delete x.decline;
-      x.redo = { because: union(x.redo?.because ?? [], [r.id]), reverted: true };
+      x.redo = { because: union(x.redo?.because ?? [], [r.id]), reverted: true, kind: 'judge', ...keepNote(x.redo) };
       redoneWith.push(id);
     }
   };
@@ -401,7 +413,7 @@ export function reconcile(i: { runId: string; records: SessionRecords; judgement
     r.status = 'to-be-redone';
     delete r.accepted;
     delete r.decline;
-    r.redo = { because: [], reverted: true };
+    r.redo = { because: [], reverted: true, kind: 'judge', ...keepNote(r.redo) };
     addMarker(r, 'no-longer-closes-gap');
     gapNotClosed.push(r.id);
   }
@@ -419,7 +431,8 @@ export function reconcile(i: { runId: string; records: SessionRecords; judgement
     if (marked.has(r.id)) return;
     marked.add(r.id);
     r.status = 'to-be-redone';
-    r.redo = { because, reverted: false };
+    // 2j1 (D2-77): RV-3 at a queue's end never comes back by itself.
+    r.redo = { because, reverted: false, kind: 'queue' };
     redoneAtOnce.push(r.id);
     for (const id of dependentsOf(r.id)) {
       const x = byId.get(id) as ItemRecord;
@@ -541,6 +554,8 @@ export function reconcile(i: { runId: string; records: SessionRecords; judgement
   );
   event(REVIEW_TEXTS.eventDependencyNotAccepted, dependencyNotAccepted);
 
+  // 2j2 (D2-93): a note for Claude lives only while its item is to be redone (a new proposal, a withdrawal end it).
+  dropStaleRedoNotes(items);
   const records: SessionRecords = { ...i.records, items, premises };
   if (forced !== undefined) records.forced = forced;
   else delete records.forced;

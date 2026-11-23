@@ -41,6 +41,9 @@ describe('the session bar, phase by phase (§5.8, §5.13)', () => {
     // Submit is off while a step runs (D2-62), even with a gate the host left open; no Raw diff, no Resume.
     expect(state.submit).toMatchObject({ shown: true, enabled: false, title: REVIEW_TEXTS.stepRunning });
     expect(bar(stepSession({ submit: { gate: OPEN, next: 'confirm' } })).submit).toMatchObject({ enabled: false, title: REVIEW_TEXTS.stepRunning });
+    // 2j1 (D2-85): no visible reason while a step runs, whatever the gate says: the phase line says why.
+    expect(state.submit.reason).toBeNull();
+    expect(bar(stepSession({ submit: { gate: closed(REVIEW_TEXTS.submitInReview(2), [IDS.vocab]) } })).submit.reason).toBeNull();
     expect(state.rawDiff.shown).toBe(false);
     expect(state.resume.shown).toBe(false);
     expect(state.exit.shown).toBe(true);
@@ -59,12 +62,23 @@ describe('the session bar, phase by phase (§5.8, §5.13)', () => {
     const hidden = bar(hiddenStage());
     expect(hidden.rawDiff).toEqual({ shown: true, enabled: true, title: REVIEW_TEXTS.rawDiffReveals, asks: true });
     expect(bar(shownStage()).rawDiff).toMatchObject({ asks: false, title: REVIEW_TEXTS.rawDiff });
-    expect(hidden.submit).toEqual({ shown: true, enabled: false, title: REVIEW_TEXTS.submitInReview(3), missing: [IDS.vocab, IDS.formalize, IDS.definition] });
+    // 2j1 (D2-76 D5): the reason is visible text too, not only the button's title.
+    expect(hidden.submit).toEqual({
+      shown: true,
+      enabled: false,
+      title: REVIEW_TEXTS.submitInReview(3),
+      missing: [IDS.vocab, IDS.formalize, IDS.definition],
+      reason: REVIEW_TEXTS.submitInReview(3),
+    });
+    // Any closed gate's reason, a cycle partly accepted or a judge running included.
+    for (const reason of [REVIEW_TEXTS.acceptOrRejectTogether(['A', 'B']), REVIEW_TEXTS.judging]) {
+      expect(bar(shownStage({}, { submit: { gate: closed(reason) } })).submit).toMatchObject({ enabled: false, reason, missing: [] });
+    }
     expect(hidden.cancelStep.shown).toBe(false);
   });
 
   it('the Submit texts: to the end confirmation (no Claude step), or Claude’s next steps for N Shaky and M to be redone', () => {
-    expect(bar(allAcceptedStage()).submit).toEqual({ shown: true, enabled: true, title: REVIEW_TEXTS.submitToConfirm, missing: [] });
+    expect(bar(allAcceptedStage()).submit).toEqual({ shown: true, enabled: true, title: REVIEW_TEXTS.submitToConfirm, missing: [], reason: null });
     const steps = shownStage({}, { submit: { gate: OPEN, next: 'claude-steps', work: { shaky: 2, redo: 1, steps: 1 } } });
     expect(bar(steps).submit.title).toBe(REVIEW_TEXTS.submitSteps(2, 1));
     expect(bar(steps).submit.title).toBe("Starts Claude's next steps for 2 Shaky items and 1 to be redone; accepted items carry over");
@@ -74,6 +88,7 @@ describe('the session bar, phase by phase (§5.8, §5.13)', () => {
     const confirming = bar(confirmingSession());
     expect(partsText(confirming.phase)).toBe(REVIEW_TEXTS.confirmingPhase);
     expect(confirming.submit.shown).toBe(false);
+    expect(confirming.submit.reason).toBeNull();
     expect(confirming.rawDiff.shown).toBe(false);
     expect(confirming.exit.shown).toBe(true);
     const applying = bar(confirmingSession({}, { phase: 'applying' }));

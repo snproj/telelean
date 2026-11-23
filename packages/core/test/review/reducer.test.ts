@@ -232,7 +232,7 @@ describe('cascades and confirmations (§3.6, D2-28, D2-64)', () => {
     const s = stateOf(scene);
     const rejected = ok(decline(s, 'vocab:V', 'reject'));
     expect(statuses(rejected)).toEqual({ 'vocab:V': 'declined', 'decl:D1': 'to-be-redone', 'decl:D2': 'to-be-redone', 'decl:D3': 'to-be-redone' });
-    for (const key of ['decl:D1', 'decl:D2', 'decl:D3']) expect(item(rejected, key).redo).toEqual({ because: [idOf('vocab:V')], reverted: true });
+    for (const key of ['decl:D1', 'decl:D2', 'decl:D3']) expect(item(rejected, key).redo).toEqual({ because: [idOf('vocab:V')], reverted: true, kind: 'cascade' });
     expect(item(rejected, 'decl:D3').decline).toEqual({ option: 'shaky', note: 'too strong', at: AT });
     expect(item(rejected, 'vocab:V').rejectedFingerprints).toEqual(['fp:vocab:V']);
     expect(rejected.write).toEqual({ action: 1, revert: ['vocab:V', 'decl:D1', 'decl:D2', 'decl:D3'].map(idOf), reapply: [], premises: { write: [], takeOut: [] } });
@@ -240,7 +240,7 @@ describe('cascades and confirmations (§3.6, D2-28, D2-64)', () => {
 
     const shaky = ok(decline(s, 'vocab:V', 'shaky', false, 'not sure'));
     expect(statuses(shaky)).toEqual({ 'vocab:V': 'declined', 'decl:D1': 'to-be-redone', 'decl:D2': 'to-be-redone', 'decl:D3': 'declined' });
-    expect(item(shaky, 'decl:D2').redo).toEqual({ because: [idOf('vocab:V')], reverted: false });
+    expect(item(shaky, 'decl:D2').redo).toEqual({ because: [idOf('vocab:V')], reverted: false, kind: 'cascade' });
     expect(item(shaky, 'vocab:V').decline).toEqual({ option: 'shaky', note: 'not sure', at: AT });
     expect(item(shaky, 'vocab:V').rejectedFingerprints).toEqual([]);
     expect(shaky.write).toBeNull();
@@ -335,25 +335,30 @@ describe('D2-23: an action that shows the results applies `classes`', () => {
   });
 });
 
-describe('back to review, un-reject, to be redone (§4.6, D2-60)', () => {
+describe('back to review, un-reject, to be redone (§4.6, D2-60; 2j1, D2-76)', () => {
   const scene: Scene = {
     items: [record('vocab:V', 'vocabulary-term'), record('decl:D1', 'declaration'), record('decl:D2', 'declaration', { status: 'accepted', accepted: accepted() })],
     deps: { 'decl:D1': ['vocab:V'] },
   };
 
-  it('un-reject brings the content back, and the dependents its decline took out as to be redone without revert', () => {
+  it('un-reject brings the content back, and the dependents its decline took out back in review with it (2j1, D2-76 D3; D2-60 left them to be redone)', () => {
     let s = stateOf(scene);
     s = next(s, ok(decline(s, 'vocab:V', 'reject')));
-    expect(item(s, 'decl:D1').redo).toEqual({ because: [idOf('vocab:V')], reverted: true });
+    expect(item(s, 'decl:D1').redo).toEqual({ because: [idOf('vocab:V')], reverted: true, kind: 'cascade' });
     const back = ok(review(s, 'vocab:V'));
     expect(item(back, 'vocab:V')).toMatchObject({ status: 'in-review', rejectedFingerprints: [] });
     expect(item(back, 'vocab:V').decline).toBeUndefined();
-    expect(item(back, 'decl:D1')).toMatchObject({ status: 'to-be-redone', redo: { because: [idOf('vocab:V')], reverted: false } });
+    expect(item(back, 'decl:D1')).toMatchObject({ status: 'in-review' });
+    expect(item(back, 'decl:D1').redo).toBeUndefined();
+    expect(item(back, 'decl:D1').accepted).toBeUndefined();
+    // Its content comes back with the merge (`reapply`); the notice lists it.
     expect(back.write).toEqual({ action: 2, revert: [], reapply: [idOf('vocab:V'), idOf('decl:D1')], premises: { write: [], takeOut: [] } });
+    expect(back.cascade).toEqual([{ item: idOf('decl:D1'), to: 'in-review', why: 'it depends on Vocabulary term V' }]);
+    expect(back.events).toEqual([{ text: REVIEW_TEXTS.eventBackWith, items: [idOf('decl:D1')] }]);
     expect(back.label).toBe('Back to review: Vocabulary term V');
   });
 
-  it('un-reject is refused when Claude proposed a newer version; an item to be redone comes back only with its content in ws/', () => {
+  it('un-reject is refused when Claude proposed a newer version; an item to be redone never comes back by hand, its content kept or taken out (2j1, D2-76 D2)', () => {
     let s = stateOf(scene);
     s = next(s, ok(decline(s, 'vocab:V', 'reject')));
     // Claude's reworded repeat: the rejected version is superseded (rev 1), the new one in review (rev 2).
@@ -365,13 +370,16 @@ describe('back to review, un-reject, to be redone (§4.6, D2-60)', () => {
     });
     const stale = reduceReview(newer, { kind: 'decide', decisions: [{ item: idOf('vocab:V'), rev: 1, to: 'in-review' }], own: false, confirmed: false }, AT);
     expect(error(stale)).toBe(`refused: ${REVIEW_TEXTS.unrejectNewer}`);
-    expect(error(review(s, 'decl:D1'))).toBe(`refused: ${REVIEW_TEXTS.contentTakenOut}`);
+    expect(review(s, 'decl:D1')).toEqual({ ok: false, code: 'refused', error: REVIEW_TEXTS.redoneByClaude, item: idOf('decl:D1') });
     const kept = set(s, 'decl:D1', { redo: { because: ['x'], reverted: false } });
-    expect(item(ok(review(kept, 'decl:D1')), 'decl:D1')).toMatchObject({ status: 'in-review' });
-    expect(item(ok(review(kept, 'decl:D1')), 'decl:D1').redo).toBeUndefined();
+    expect(review(kept, 'decl:D1')).toEqual({ ok: false, code: 'refused', error: REVIEW_TEXTS.redoneByClaude, item: idOf('decl:D1') });
+    expect(REVIEW_TEXTS.redoneByClaude).toBe('Claude redoes it at Submit review. To review it yourself now, set back to review what it depends on, or use Undo.');
+    // Accept stays refused (in review only); Decline stays allowed (RV-3).
+    expect(error(accept(kept, 'decl:D1'))).toBe(`refused: ${REVIEW_TEXTS.leftNotInReview('Definition D1')}`);
+    expect(ok(decline(kept, 'decl:D1', 'shaky')).items.find((r) => r.key === 'decl:D1')?.status).toBe('declined');
     // A Reject of an item whose content a cascade took out keeps `redo`: un-reject returns it to be redone.
     const rejectedOut = next(s, ok(decline(s, 'decl:D1', 'reject')));
-    expect(item(rejectedOut, 'decl:D1').redo).toEqual({ because: [idOf('vocab:V')], reverted: true });
+    expect(item(rejectedOut, 'decl:D1').redo).toEqual({ because: [idOf('vocab:V')], reverted: true, kind: 'cascade' });
     const unrejected = ok(review(rejectedOut, 'decl:D1'));
     expect(item(unrejected, 'decl:D1')).toMatchObject({ status: 'to-be-redone', rejectedFingerprints: [], redo: { reverted: true } });
     expect(unrejected.write).toBeNull();
@@ -389,7 +397,8 @@ describe('back to review, un-reject, to be redone (§4.6, D2-60)', () => {
     expect(item(s, 'proof:t').status).toBe('to-be-redone');
     const back = ok(review(s, 'premise:t:p'));
     expect(item(back, 'premise:t:p').status).toBe('in-review');
-    expect(item(back, 'proof:t').redo).toEqual({ because: [idOf('premise:t:p')], reverted: true });
+    // 2j1 (D2-79): back in review, the premise is outside ws/: it holds nothing up, so its dependents stay as they were.
+    expect(item(back, 'proof:t').redo).toEqual({ because: [idOf('premise:t:p')], reverted: true, kind: 'cascade' });
     expect(back.write).toBeNull();
   });
 });
@@ -1146,23 +1155,28 @@ describe('un-reject brings back what its decision commit took out (fixer 2a, V2A
     let s = stateOf(scene);
     s = next(s, ok(decline(s, 'vocab:V', 'reject')));
     s = next(s, ok(decline(s, 'vocab:W', 'reject')));
-    expect(item(s, 'decl:x').redo).toEqual({ because: [idOf('vocab:V'), idOf('vocab:W')], reverted: true });
+    expect(item(s, 'decl:x').redo).toEqual({ because: [idOf('vocab:V'), idOf('vocab:W')], reverted: true, kind: 'cascade' });
     // V's commit took x out: its merge brings x back, and W still keeps it out, so the write takes it out again.
     const v = ok(review(s, 'vocab:V'));
     expect(item(v, 'decl:x')).toMatchObject({ status: 'to-be-redone', redo: { because: [idOf('vocab:W')], reverted: true } });
     expect(v.write).toEqual({ action: 3, revert: [idOf('decl:x')], reapply: [idOf('vocab:V')], premises: { write: [], takeOut: [] } });
-    // W's commit never took x out (it was out already): its merge leaves x out, for Claude to redo at Submit review.
+    // W's commit never took x out (it was out already): its merge leaves x out, for Claude to redo at Submit review
+    // (2j1, D2-78: nothing keeps it down any more, but its content cannot come back with this merge; W leaves `because`).
     const w = ok(review(next(s, v), 'vocab:W'));
-    expect(item(w, 'decl:x')).toMatchObject({ status: 'to-be-redone', redo: { reverted: true } });
+    expect(item(w, 'decl:x')).toMatchObject({ status: 'to-be-redone', redo: { because: [], reverted: true, kind: 'cascade' } });
     expect(w.write).toEqual({ action: 4, revert: [], reapply: [idOf('vocab:W')], premises: { write: [], takeOut: [] } });
+    expect(w.events).toEqual([]);
     // The other way round, x comes back with V's merge, once W is back.
     let t = stateOf(scene);
     t = next(t, ok(decline(t, 'vocab:V', 'reject')));
     t = next(t, ok(decline(t, 'vocab:W', 'reject')));
     const w1 = ok(review(t, 'vocab:W'));
     expect(w1.write).toEqual({ action: 3, revert: [], reapply: [idOf('vocab:W')], premises: { write: [], takeOut: [] } });
+    expect(item(next(t, w1), 'decl:x').redo).toEqual({ because: [idOf('vocab:V')], reverted: true, kind: 'cascade' });
     const v1 = ok(review(next(t, w1), 'vocab:V'));
-    expect(item(v1, 'decl:x')).toMatchObject({ status: 'to-be-redone', redo: { reverted: false } });
+    // 2j1 (D2-76 D3): nothing keeps it down now, and V's merge brings its content back: back in review.
+    expect(item(v1, 'decl:x')).toMatchObject({ status: 'in-review' });
+    expect(item(v1, 'decl:x').redo).toBeUndefined();
     expect(v1.write).toEqual({ action: 4, revert: [], reapply: [idOf('vocab:V'), idOf('decl:x')], premises: { write: [], takeOut: [] } });
   });
 
@@ -1208,7 +1222,7 @@ describe('un-reject brings back what its decision commit took out (fixer 2a, V2A
     expect(back.write).toEqual({ action: 2, revert: [idOf('decl:X')], reapply: [], premises: { write: [], takeOut: [] } });
   });
 
-  it('a written premise its decision commit took out comes back written, with its card and written key; the next judge sees no change (carry-over R1-1)', () => {
+  it('a written premise its decision commit took out comes back with it in review, never accepted (2j1, D2-76 D3): the card the merge brings back goes again, and the next judge sees no change (carry-over R1-1)', () => {
     let s = stateOf({
       items: [record('vocab:V', 'vocabulary-term', { status: 'accepted', accepted: accepted() }), writtenPremise('p'), record('proof:t', 'result')],
       deps: { 'premise:t:p': ['vocab:V'] },
@@ -1218,15 +1232,21 @@ describe('un-reject brings back what its decision commit took out (fixer 2a, V2A
     expect(rejected.write).toEqual({ action: 1, revert: [idOf('vocab:V')], reapply: [], premises: { write: [], takeOut: [idOf('premise:t:p')] } });
     s = stepFour(next(s, rejected), 'c1', ['p']);
     expect(item(s, 'premise:t:p')).toMatchObject({ status: 'to-be-redone', redo: { reverted: true }, fingerprint: 'fp:draft-p' });
-    // Un-reject: the inverse merge of c1 brings the premise's card back with V; its record is the written premise again.
+    // Un-reject: the inverse merge of c1 brings the premise's card back with V. Nothing else keeps the premise down, so
+    // it comes back with V, to in review (its Accept gone: RV-5 accepts nothing as a side effect); in review, Claude's
+    // premise is outside ws/, so its record holds the card only for the take-out after the merge, and its draft key.
     const back = ok(review(s, 'vocab:V'));
-    expect(item(back, 'premise:t:p')).toMatchObject({ status: 'to-be-redone', redo: { because: [idOf('vocab:V')], reverted: false }, card: 'p-card', fingerprint: 'fp:written-p' });
-    expect(back.write).toEqual({ action: 2, revert: [], reapply: [idOf('vocab:V'), idOf('premise:t:p')], premises: { write: [], takeOut: [] } });
-    // The next judge computes it from ws/ with its ledger entries back (the written key): nothing changes, nothing goes.
+    expect(item(back, 'premise:t:p')).toMatchObject({ status: 'in-review', card: 'p-card', fingerprint: 'fp:draft-p' });
+    expect(item(back, 'premise:t:p').redo).toBeUndefined();
+    expect(item(back, 'premise:t:p').accepted).toBeUndefined();
+    expect(back.write).toEqual({ action: 2, revert: [], reapply: [idOf('vocab:V')], premises: { write: [], takeOut: [idOf('premise:t:p')] } });
+    expect(back.events).toEqual([{ text: REVIEW_TEXTS.eventBackWith, items: [idOf('premise:t:p')] }]);
+    // Step 4 of that take-out clears the card; the next judge computes it from its draft: nothing changes, nothing goes.
+    const taken = set({ ...s, items: back.items }, 'premise:t:p', { card: undefined });
     const judged = reconcile({
       runId: RUN,
-      records: recordsOf(back.items),
-      judgement: judgementOf([draft('vocab:V', 'vocabulary-term'), draft('premise:t:p', 'add-premise', { contentKey: 'fp:written-p', partOfResult: 't' }), draft('proof:t', 'result')], {
+      records: recordsOf([...taken.items]),
+      judgement: judgementOf([draft('vocab:V', 'vocabulary-term'), draft('premise:t:p', 'add-premise', { contentKey: 'fp:draft-p', partOfResult: 't' }), draft('proof:t', 'result')], {
         classes: { 'vocab:V': PLAIN, 'premise:t:p': BELIEF, 'proof:t': PLAIN },
         deps: { 'premise:t:p': ['vocab:V'], 'vocab:V': [], 'proof:t': [] },
       }),
@@ -1234,7 +1254,7 @@ describe('un-reject brings back what its decision commit took out (fixer 2a, V2A
     });
     expect(judged.reverts).toEqual([]);
     expect(judged.events).toEqual([]);
-    expect(item(judged.records, 'premise:t:p')).toEqual(item(back, 'premise:t:p'));
+    expect(item(judged.records, 'premise:t:p')).toEqual(item(taken, 'premise:t:p'));
   });
 
   it('a written premise the merge brings back that something keeps out is taken out again after it, its card on its record for that take-out (carry-over R1-1)', () => {
@@ -1254,19 +1274,20 @@ describe('un-reject brings back what its decision commit took out (fixer 2a, V2A
     let s = stateOf(scene);
     s = stepFour(next(s, ok(decline(s, 'vocab:V', 'reject', true))), 'c1', ['p', 'q']);
     s = next(s, ok(decline(s, 'vocab:W', 'reject', true)));
-    expect(item(s, 'premise:t:p').redo).toEqual({ because: [idOf('vocab:V'), idOf('vocab:W')], reverted: true });
+    expect(item(s, 'premise:t:p').redo).toEqual({ because: [idOf('vocab:V'), idOf('vocab:W')], reverted: true, kind: 'cascade' });
     s = next(s, ok(decline(s, 'premise:t:q', 'reject')));
     const v = ok(review(s, 'vocab:V'));
     expect(item(v, 'premise:t:p')).toMatchObject({ status: 'to-be-redone', redo: { because: [idOf('vocab:W')], reverted: true }, card: 'p-card', fingerprint: 'fp:draft-p' });
     expect(item(v, 'premise:t:q')).toMatchObject({ status: 'declined', card: 'q-card', fingerprint: 'fp:draft-q' });
     expect(v.write).toEqual({ action: 4, revert: [], reapply: [idOf('vocab:V')], premises: { write: [], takeOut: [idOf('premise:t:p'), idOf('premise:t:q')] } });
-    // The other way round: W's un-reject brings nothing of P back (its commit took none of it); V's then writes P again.
+    // The other way round: W's un-reject brings nothing of P back (its commit took none of it); V's then brings P back
+    // with it, to in review (2j1, D2-76 D3), so the card its merge brings back goes again.
     const w = next(s, ok(review(s, 'vocab:W')));
-    expect(item(w, 'premise:t:p')).toMatchObject({ status: 'to-be-redone', redo: { reverted: true } });
+    expect(item(w, 'premise:t:p')).toMatchObject({ status: 'to-be-redone', redo: { because: [idOf('vocab:V')], reverted: true } });
     expect(item(w, 'premise:t:p').card).toBeUndefined();
     const vw = ok(review(w, 'vocab:V'));
-    expect(item(vw, 'premise:t:p')).toMatchObject({ status: 'to-be-redone', redo: { reverted: false }, card: 'p-card', fingerprint: 'fp:written-p' });
-    expect(vw.write).toEqual({ action: 5, revert: [], reapply: [idOf('vocab:V'), idOf('premise:t:p')], premises: { write: [], takeOut: [idOf('premise:t:q')] } });
+    expect(item(vw, 'premise:t:p')).toMatchObject({ status: 'in-review', card: 'p-card', fingerprint: 'fp:draft-p' });
+    expect(vw.write).toEqual({ action: 5, revert: [], reapply: [idOf('vocab:V')], premises: { write: [], takeOut: [idOf('premise:t:p'), idOf('premise:t:q')] } });
   });
 
   it('a premise written again since the decision commit took it out keeps its new card: the un-reject leaves it as it is (carry-over R1-1)', () => {
@@ -1514,20 +1535,25 @@ describe('an un-reject in a mixed request: what its merge brings back goes where
     }
   });
 
-  it('[un-reject V, reject p] rejects p’s draft key, never its written one, and takes p out again; X, which nothing keeps out, stays back', () => {
+  it('[un-reject V, reject p] rejects p’s draft key, never its written one, and takes p out again; X, which nothing keeps down, comes back in review (2j1)', () => {
     const out = ok(mixed(rejectedV(), [['vocab:V', 'in-review'], ['premise:t:p', 'declined']]));
     expect(out.write).toEqual({ action: 2, revert: [], reapply: [V, X], premises: { write: [], takeOut: [P] } });
     expect(item(out, 'premise:t:p')).toMatchObject({ status: 'declined', card: 'p-card', fingerprint: 'fp:draft-p', rejectedFingerprints: ['fp:draft-p'] });
-    expect(item(out, 'premise:t:p').redo).toBeUndefined();
-    expect(item(out, 'decl:X')).toMatchObject({ status: 'to-be-redone', redo: { reverted: false } });
+    // 2j1: what comes back is decided once the whole request is applied, in either order (as R1-F1 settles the merges):
+    // p was taken out before its Reject, so its record keeps that `redo` (D2-60), whatever the order.
+    expect(item(out, 'premise:t:p').redo).toEqual({ because: [V], reverted: true, kind: 'cascade' });
+    expect(item(ok(mixed(rejectedV(), [['premise:t:p', 'declined'], ['vocab:V', 'in-review']])), 'premise:t:p')).toEqual(item(out, 'premise:t:p'));
+    expect(item(out, 'decl:X')).toMatchObject({ status: 'in-review' });
+    expect(item(out, 'decl:X').redo).toBeUndefined();
     // Its Undo restores the records the request started from; nothing of p is written again.
     const back = ok(undo(set(stepFour(next(rejectedV(), out), 'c2'), 'premise:t:p', { card: undefined })));
     expect(item(back, 'premise:t:p')).toEqual(item(rejectedV(), 'premise:t:p'));
     expect(back.write).toEqual({ action: 2, revert: [V, X], reapply: [], premises: { write: [], takeOut: [] } });
   });
 
-  it('[un-reject V, back to review p]: a premise the merge brings back and the request leaves in review is taken out again (in review, Claude’s premise is outside ws/)', () => {
-    const out = ok(mixed(rejectedV(), [['vocab:V', 'in-review'], ['premise:t:p', 'in-review']]));
+  it('[un-reject V, back to review p] is refused, p being to be redone (2j1, D2-76 D2); V’s un-reject alone brings p back in review, so the card its merge brings back is taken out again (in review, Claude’s premise is outside ws/)', () => {
+    expect(mixed(rejectedV(), [['vocab:V', 'in-review'], ['premise:t:p', 'in-review']])).toEqual({ ok: false, code: 'refused', error: REVIEW_TEXTS.redoneByClaude, item: P });
+    const out = ok(mixed(rejectedV(), [['vocab:V', 'in-review']]));
     expect(out.write).toEqual({ action: 2, revert: [], reapply: [V, X], premises: { write: [], takeOut: [P] } });
     expect(item(out, 'premise:t:p')).toMatchObject({ status: 'in-review', card: 'p-card', fingerprint: 'fp:draft-p' });
     expect(item(out, 'premise:t:p').redo).toBeUndefined();
@@ -1552,15 +1578,17 @@ describe('an un-reject in a mixed request: what its merge brings back goes where
   it('two un-rejects in one request bring back what the first one alone would keep out: [un-reject V, un-reject W] after a group Reject', () => {
     let s = stateOf(SCENE_VW);
     s = stepFour(next(s, ok(mixed(s, [['vocab:V', 'declined'], ['vocab:W', 'declined']]))), 'c1', ['p']);
-    expect(item(s, 'premise:t:p').redo).toEqual({ because: [V, W], reverted: true });
+    expect(item(s, 'premise:t:p').redo).toEqual({ because: [V, W], reverted: true, kind: 'cascade' });
     for (const order of [
       ['vocab:V', 'vocab:W'],
       ['vocab:W', 'vocab:V'],
     ]) {
       const out = ok(mixed(s, order.map((key) => [key, 'in-review'] as [string, ItemDecision['to']])));
-      expect(out.write, order.join(', ')).toEqual({ action: 2, revert: [], reapply: [V, W, X, P], premises: { write: [], takeOut: [] } });
-      expect(item(out, 'premise:t:p'), order.join(', ')).toMatchObject({ status: 'to-be-redone', redo: { reverted: false }, card: 'p-card', fingerprint: 'fp:written-p' });
-      expect(item(out, 'decl:X').redo?.reverted, order.join(', ')).toBe(false);
+      // 2j1 (D2-76 D3): both causes come back in the same request, so X and p come back with them, in review; p, in
+      // review, is outside ws/, so the card the merge brings back goes again.
+      expect(out.write, order.join(', ')).toEqual({ action: 2, revert: [], reapply: [V, W, X], premises: { write: [], takeOut: [P] } });
+      expect(item(out, 'premise:t:p'), order.join(', ')).toMatchObject({ status: 'in-review', card: 'p-card', fingerprint: 'fp:draft-p' });
+      expect(statuses(out), order.join(', ')).toMatchObject({ 'decl:X': 'in-review', 'premise:t:p': 'in-review' });
     }
   });
 });
@@ -1626,7 +1654,8 @@ describe('the properties of §4.6 on random sequences', () => {
   const hiddenNow = (s: ReviewState, id: string) => {
     const r = s.items.find((x) => x.id === id);
     if (r === undefined || (r.kind !== 'result' && r.partOf === undefined)) return false;
-    const undecided = s.items.some((x) => (x.kind === 'formalize' || (s.classesBeforeReveal[x.key]?.belief ?? true)) && x.kind !== 'result' && x.partOf === undefined && (x.status === 'in-review' || (x.status === 'to-be-redone' && x.redo?.reverted !== true)));
+    // 2j1 (D2-76): a meaning item is undecided only while it is in review (one to be redone is finished for the review).
+    const undecided = s.items.some((x) => (x.kind === 'formalize' || (s.classesBeforeReveal[x.key]?.belief ?? true)) && x.kind !== 'result' && x.partOf === undefined && x.status === 'in-review');
     return undecided && s.forced === null;
   };
   const strip = (items: readonly ItemRecord[]) => JSON.stringify(items.map((r) => ({ ...r, markers: r.markers.filter((m) => m !== 'seen-early') })));

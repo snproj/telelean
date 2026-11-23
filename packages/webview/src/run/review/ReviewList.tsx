@@ -116,6 +116,7 @@ function Group({ group, current, selected, busyItems }: { group: ReviewGroup; cu
             data-item={row.id}
             data-status={row.status}
             data-current={row.id === current || undefined}
+            title={row.title}
             onClick={() => actions.focusItem(row.id)}
           >
             <input

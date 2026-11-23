@@ -1,27 +1,31 @@
 /**
  * Slice 2g (docs/slice2-plan.md 5.7): the decline menu, inline where it was opened (the detail's Decline ▾, the list's
- * Decline…, a report's Ask me instead). Reject (and an arrow item's one Decline) declines at once; Shaky shows its
- * "Note for Claude (optional)" field and its own Decline button; Transform… is listed, disabled, with why (D2-14).
- * R and S choose Reject and Shaky from the keyboard while it is open; Esc closes it.
+ * Decline…, a report's Ask me instead). 2j2 (D2-92, D2-94): choosing any option but Transform (Reject, Shaky, an arrow
+ * item's one Decline) shows the "Note for Claude (optional)" field and its own Decline button, "Decline (Reject)",
+ * "Decline (Shaky)" or "Decline" (until 2j2, Shaky's flow only; Reject declined at once); an arrow-only menu opens with
+ * its Decline chosen. Transform… is listed, disabled, with why (D2-14). R and S choose Reject and Shaky from the keyboard
+ * while it is open; Ctrl+Enter in the note confirms; Esc closes it.
  */
 import { DECLINE_OPTION_TEXTS, LIMITS, REVIEW_TEXTS } from '@telelean/core';
 import { useLayoutEffect, useRef } from 'react';
 import type { DeclineEntry } from '../../model/review';
 import { useBoard, useBoardActions } from '../../state/context';
 
-/** Builder 2g: the Shaky note's own Decline button. */
-export const DECLINE_SHAKY = `${DECLINE_OPTION_TEXTS.plain} (${DECLINE_OPTION_TEXTS.shaky})`;
+/** Builder 2g: the Shaky note's own Decline button (2j2: core's `declineConfirm`, which words every option's). */
+export const DECLINE_SHAKY = REVIEW_TEXTS.declineConfirm('shaky');
 
 export function DeclineMenu({ entries, testId = 'decline-menu' }: { entries: readonly DeclineEntry[]; testId?: string }) {
   const menu = useBoard((s) => s.declineMenu);
   const actions = useBoardActions();
   const note = useRef<HTMLTextAreaElement>(null);
   const first = useRef<HTMLButtonElement>(null);
-  const shaky = menu?.option === 'shaky';
+  // 2j2 (D2-94): the chosen option's note field and Decline button show (every option that takes a note).
+  const chosen = menu?.option ?? null;
+  const noting = chosen !== null && entries.some((e) => e.option === chosen && e.note && e.disabled === undefined);
   useLayoutEffect(() => {
-    if (shaky) note.current?.focus();
+    if (noting) note.current?.focus();
     else first.current?.focus();
-  }, [shaky]);
+  }, [noting, chosen]);
   if (menu === null) return null;
   return (
     <div
@@ -47,10 +51,10 @@ export function DeclineMenu({ entries, testId = 'decline-menu' }: { entries: rea
             <button
               ref={i === 0 ? first : undefined}
               type="button"
-              className={`tl-button tl-button--small${entry.option === 'shaky' && shaky ? '' : ' tl-button--secondary'}`}
+              className={`tl-button tl-button--small${noting && entry.option === chosen ? '' : ' tl-button--secondary'}`}
               data-testid={`decline-${entry.option}`}
               disabled={entry.disabled !== undefined}
-              aria-pressed={entry.note ? shaky : undefined}
+              aria-pressed={entry.note ? noting && entry.option === chosen : undefined}
               title={entry.disabled ?? entry.description ?? entry.label}
               onClick={() => actions.chooseDeclineOption(entry.option)}
             >
@@ -61,7 +65,7 @@ export function DeclineMenu({ entries, testId = 'decline-menu' }: { entries: rea
           </div>
         ))}
       </div>
-      {shaky ? (
+      {noting && chosen !== null ? (
         <div className="tl-decline__note">
           <label className="tl-decline__label" htmlFor="tl-decline-note">
             {REVIEW_TEXTS.noteForClaude}
@@ -84,7 +88,7 @@ export function DeclineMenu({ entries, testId = 'decline-menu' }: { entries: rea
           />
           <div className="tl-decline__buttons">
             <button type="button" className="tl-button tl-button--small" data-testid="decline-confirm" onClick={() => actions.confirmDeclineMenu()}>
-              {DECLINE_SHAKY}
+              {REVIEW_TEXTS.declineConfirm(chosen)}
             </button>
             <button type="button" className="tl-button tl-button--secondary tl-button--small" onClick={() => actions.closeDeclineMenu()}>
               Cancel

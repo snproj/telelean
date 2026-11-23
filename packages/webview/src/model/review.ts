@@ -222,6 +222,8 @@ export interface ReviewRow {
   markers: string[];
   /** A group decision may take it (a hidden Result may not). */
   selectable: boolean;
+  /** (2j1, D2-76 D4) An item to be redone: why, as the row's tooltip (core's lines, `ItemView.redo.why`). */
+  title?: string;
 }
 
 export interface ReviewGroup {
@@ -253,7 +255,13 @@ export function rowOf(item: ItemView): ReviewRow {
     badges: itemBadges(item),
     markers: itemMarkers(item),
     selectable: !isHiddenResult(item),
+    ...(redoLines(item).length > 0 ? { title: redoLines(item).join('\n') } : {}),
   };
+}
+
+/** 2j1 (D2-76 D4): why an item is to be redone, in core's words (one line per cause); none for any other item. */
+export function redoLines(item: Pick<ItemView, 'status' | 'redo'>): string[] {
+  return item.status === 'to-be-redone' ? [...(item.redo?.why ?? [])] : [];
 }
 
 /**
@@ -407,7 +415,7 @@ export interface DeclineEntry {
   label: string;
   /** What it does (an arrow's Decline; a Result's Reject and Shaky). */
   description?: string;
-  /** Shaky takes an optional note for Claude (D2-13). */
+  /** It takes an optional note for Claude: every option but Transform (2j2, D2-92; until then Shaky only, D2-13). */
   note: boolean;
   /** Why it is not offered now (Transform until a later slice, D2-14). */
   disabled?: string;
@@ -423,7 +431,8 @@ const describe = (item: Pick<ItemView, 'kind'>, option: DeclineOption): string |
 
 /**
  * One item's menu, from the options the host offers it (`ItemView.decline.options`): an arrow item's one "Decline"
- * (DO-0); a Result's Reject and Shaky; any other kind's Reject, Shaky (with its note) and "Transform…", disabled.
+ * (DO-0); a Result's Reject and Shaky; any other kind's Reject, Shaky and "Transform…", disabled. Each but Transform
+ * takes a note for Claude (2j2, D2-92).
  */
 export function declineEntries(item: Pick<ItemView, 'kind' | 'decline'>): DeclineEntry[] {
   return item.decline.options.map((o) => {
@@ -432,21 +441,22 @@ export function declineEntries(item: Pick<ItemView, 'kind' | 'decline'>): Declin
       option: o.option,
       label: DECLINE_OPTION_TEXTS[o.option],
       ...(description !== undefined ? { description } : {}),
-      note: o.option === 'shaky',
+      note: o.option !== 'transform',
       ...(o.disabled !== undefined ? { disabled: o.disabled } : {}),
     };
   });
 }
 
 /**
- * A group's menu (RV-8): only arrow items selected, their one plain "Decline"; else Reject, Shaky with its note, and
- * "Transform…" disabled (the plain decline still goes to the arrow items among them).
+ * A group's menu (RV-8): only arrow items selected, their one plain "Decline"; else Reject, Shaky and "Transform…"
+ * disabled (the plain decline still goes to the arrow items among them). One note for Claude, shared by the group, with
+ * every option but Transform (2j2, D2-92).
  */
 export function groupDeclineEntries(items: readonly ItemView[], selected: readonly string[]): DeclineEntry[] {
   const chosen = items.filter((i) => selected.includes(i.id));
-  if (chosen.length > 0 && chosen.every(isArrow)) return [{ option: 'plain', label: DECLINE_OPTION_TEXTS.plain, description: REVIEW_TEXTS.declineArrow, note: false }];
+  if (chosen.length > 0 && chosen.every(isArrow)) return [{ option: 'plain', label: DECLINE_OPTION_TEXTS.plain, description: REVIEW_TEXTS.declineArrow, note: true }];
   return [
-    { option: 'reject', label: DECLINE_OPTION_TEXTS.reject, note: false },
+    { option: 'reject', label: DECLINE_OPTION_TEXTS.reject, note: true },
     { option: 'shaky', label: DECLINE_OPTION_TEXTS.shaky, note: true },
     { option: 'transform', label: DECLINE_OPTION_TEXTS.transform, note: false, disabled: REVIEW_TEXTS.transformLater },
   ];

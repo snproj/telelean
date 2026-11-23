@@ -415,12 +415,17 @@ class RunManagerImpl extends EndRunner implements RunManager {
     return this.review(runId, (run) => this.reviewNow(run, { kind: 'redo', step, confirmed }));
   }
 
+  /** 2j2 (D2-92, D2-95): a note for Claude on an item to be redone, as every review action (refused while a step runs). */
+  note(runId: string, stage: number, item: string, rev: number, note: string): Promise<ActionOutcome> {
+    return this.review(runId, (run) => this.reviewNow(run, { kind: 'note', item, rev, note }, stage));
+  }
+
   /** RV-12: one user action at a time (it waits while the session judges, AF3), as Retry step. */
-  async submit(runId: string, stage: number): Promise<ActionOutcome> {
+  async submit(runId: string, stage: number, comment?: string): Promise<ActionOutcome> {
     const run = this.sessionRun(runId);
     if (!(run instanceof ActiveRun)) return run;
     if (this.stepRunning(this.sessionOf(run))) return refused('refused', REVIEW_TEXTS.stepRunning);
-    return this.exclusive('submitting the review', () => this.submitNow(run, stage));
+    return this.exclusive('submitting the review', () => this.submitNow(run, stage, comment));
   }
 
   /**

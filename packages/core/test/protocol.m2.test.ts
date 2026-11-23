@@ -27,7 +27,8 @@ describe('M2 webview -> host messages', () => {
     ok(webviewMessage('kindChange', { id: 'a', from: 'PROPOSITION', to: 'AXIOM', beforeId: null, dependents: 'rewrite', confirmedDependents: ['g', 'Spyro.lemma1'] }));
     // Slice 2 (2c1) appends the session's messages (docs/slice2-plan.md 2.4); since 2h M2's four kept ones come first.
     expect(RUN_MESSAGE_TYPES.slice(0, 4)).toEqual(['answerQuestions', 'cancelRun', 'resumeRun', 'dismissRun']);
-    expect(RUN_MESSAGE_TYPES.length).toBe(14);
+    // 2j2 (D2-92): `noteItem` is the fifteenth.
+    expect(RUN_MESSAGE_TYPES.length).toBe(15);
   });
 
   it('refuses malformed run messages', () => {

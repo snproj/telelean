@@ -6,7 +6,7 @@
  * the runner carries out through the write queue (`ItemWrite`). The runner calls it only in a stage: while a step runs,
  * every action is refused before it (D2-62).
  *
- * The rules (the table of §4.6, §3.6, D2-28, D2-48, D2-59, D2-60, D2-64, D2-73):
+ * The rules (the table of §4.6, §3.6, D2-28, D2-48, D2-59, D2-60, D2-64, D2-73, D2-76–D2-82):
  *  - Accept: from in review only; every dependency outside the item's SCC accepted (a dependency on a hidden Result's
  *    part makes it wait for the results); an RV-7 item only by its own Accept (`own`, never inferred from a count); a
  *    Result or a Result's part only while the results are shown; never under the "did not pass" heading, never while
@@ -15,14 +15,20 @@
  *  - Reject and the plain decline (arrow items: DO-0): the content goes, with every dependent, transitively, that is in
  *    review, to be redone, declined Shaky or accepted: to be redone, reverted. Its key joins `rejectedFingerprints` (a
  *    premise's draft key too), an arrow's ends `rejectedArrows`; DO-0 also takes the arrow's source out of every question
- *    that selected it (`questionArrows`) and makes that Result to be redone. (DO-0's "a card Claude added at either end
- *    is declined with its items" waits for slice 3: no slice-2 step adds a card.) Shaky: nothing leaves ws/; dependents
- *    in review or accepted become to be redone, not reverted. Transform is refused until slice 4.
+ *    that selected it (`questionArrows`) and makes that Result to be redone, of kind `question` (D2-81). (DO-0's "a card
+ *    Claude added at either end is declined with its items" waits for slice 3: no slice-2 step adds a card.) Shaky:
+ *    nothing leaves ws/; dependents in review or accepted become to be redone, not reverted. Every cascade writes
+ *    `redo.kind` `cascade` and adds its cause to dependents already to be redone (D2-77, D2-80). Transform is refused
+ *    until slice 4.
  *  - Back to review: an accepted item, with its accepted dependents; a Shaky one; un-reject (the inverse merge of the
- *    decision commit brings back everything it took out: the dependents come back to be redone without revert when
- *    nothing else keeps them out, and what must stay out is taken out again after the merge, V2A-C2; a premise's
- *    un-reject merges nothing); an item to be redone only while its content is in ws/. An item whose content a cascade
- *    took out before it was declined keeps `redo` (reverted), and comes back to be redone, not in review.
+ *    decision commit brings back everything it took out, and what must stay out is taken out again after the merge,
+ *    V2A-C2; a premise's un-reject merges nothing). Never an item to be redone, its content kept or taken out (2j1,
+ *    D2-76: `redoneByClaude`). An item whose content a cascade took out before it was declined keeps `redo` (reverted),
+ *    and comes back to be redone, not in review.
+ *  - The automatic return (2j1, D2-76 D3, D2-78–D2-82): once every decline and back to review of a request is applied,
+ *    the items to be redone because of an item it set back to review (kind `cascade`, its id in `because`), transitively,
+ *    come back to review (a Shaky one to declined Shaky) when nothing else keeps them down and their content is in ws/
+ *    or comes back with the request's merges; the others lose the returning ids from `because`.
  *  - Taking an Accept away asks first (`needs-confirmation`): while the results are shown, when accepted dependents lose
  *    theirs; while they are hidden, always, reading only listed statuses (D2-64).
  *  - An action that shows the results applies D2-23 with `classes`; when its returns would hide them again, telelean's
@@ -31,6 +37,9 @@
  *  - A hidden item's rev and state never change an answer (D2-64, V2A-S2): a request naming one is refused with "show
  *    them first" whatever rev it carries, and an Undo leaves a hidden item that a judge changed since, or whose
  *    restored Accept the rules now refuse, as it is, silently.
+ *  - Notes for Claude (2j2, D2-92–D2-95): a decline keeps its note with any option; `note` sets, replaces or clears the
+ *    note of a listed item to be redone (`redo.note`), one stack step; every rule that rebuilds `redo` while the item
+ *    stays to be redone keeps it, and it goes when the item leaves that status (`dropStaleRedoNotes`).
  *  - Undo restores the effects its action recorded once the listed items' revs and decisions are still what it left
  *    (else `conflict`) and the restored statuses pass the rules (RV-5, RV-7's own Accept whatever its kind, D2-8, "did
  *    not pass"); taking an Accept away gets RV-5's list as by hand. Redo sends the recorded request again through the
@@ -49,11 +58,14 @@ import {
   decisionKey,
   fallbackLabel,
   inWorkingCopy,
+  copyRedo,
+  dropStaleRedoNotes,
   isArrowKind,
   isDeclinedOut,
   isReverted,
   isUndecided,
   itemStateOf,
+  keepNote,
   resultTargetOf,
 } from './records.js';
 import { isMeaningItem, isResultOrPart, resultsState } from './reveal.js';
@@ -125,6 +137,16 @@ class Work {
    * it ends with: a decline later in the same request may keep it out.
    */
   readonly mergedBack = new Map<string, { written?: TakenOut; back: boolean }>();
+  /**
+   * 2j1 (D2-76 D3): the items the request set back to review from declined (`unDeclined`), whose dependents to be
+   * redone `releaseReturned` brings back; the items whose content the request's inverse merges bring back into ws/
+   * (`merging`: what the declining commit of an un-rejected item that ends in review took out, V2A-C2); and the items
+   * that came back, to in review (`back`) or to declined Shaky (`backShaky`), for the events (D2-82).
+   */
+  readonly unDeclined: string[] = [];
+  readonly merging = new Set<string>();
+  readonly back: string[] = [];
+  readonly backShaky: string[] = [];
   /** ADV-3: some class of the stage judgement lacks its facts: no badge comparison reads the classes (D2-23). */
   readonly partialClasses: boolean;
   private readonly dependentsOf = new Map<string, string[]>();
@@ -354,6 +376,14 @@ function leftText(w: Work, id: string, reason: GroupLeftReason, shown: boolean):
   }
 }
 
+/**
+ * 2j1 (D2-77): the kind an item to be redone keeps when a cascade reaches it: `cascade` for one it takes down now; the
+ * kind it has for one already to be redone, so another cause never makes it come back by itself; none for a record
+ * saved before 2j1 (it never comes back by itself).
+ */
+const cascadeKind = (redo: ItemRecord['redo']): Pick<NonNullable<ItemRecord['redo']>, 'kind'> =>
+  redo === undefined ? { kind: 'cascade' } : redo.kind !== undefined ? { kind: redo.kind } : {};
+
 /** Reject, plain decline, a judge's revert: the dependents, transitively, that the content takes down (D2-28). */
 function cascadeOut(w: Work, from: string): void {
   for (const id of w.dependents(from)) {
@@ -365,20 +395,29 @@ function cascadeOut(w: Work, from: string): void {
     delete x.accepted;
     // A Shaky dependent keeps its decline and note: it is still quoted under SHAKY at Submit review (§3.7).
     if (x.decline?.option !== 'shaky') delete x.decline;
-    x.redo = { because: union(x.redo?.because ?? [], [from]), reverted: true };
+    x.redo = { because: union(x.redo?.because ?? [], [from]), reverted: true, ...cascadeKind(x.redo), ...keepNote(x.redo) };
     if (!w.why.has(id)) w.why.set(id, REVIEW_TEXTS.cascadeWhy(w.label(from)));
   }
 }
 
-/** Shaky (D2-48): dependents in review or accepted become to be redone, their content kept. */
+/**
+ * Shaky (D2-48): dependents in review or accepted become to be redone, their content kept. 2j1 (D2-80): a dependent
+ * already to be redone records this cause too, so a later return reads every decline that still holds it.
+ */
 function cascadeShaky(w: Work, from: string): void {
   for (const id of w.dependents(from)) {
     const x = w.byId.get(id) as ItemRecord;
+    if (x.status === 'to-be-redone' && x.redo !== undefined) {
+      if (x.redo.because.includes(from)) continue;
+      w.touch(id);
+      x.redo = { ...copyRedo(x.redo), because: union(x.redo.because, [from]) };
+      continue;
+    }
     if (x.status !== 'in-review' && x.status !== 'accepted') continue;
     w.touch(id);
     x.status = 'to-be-redone';
     delete x.accepted;
-    x.redo = { because: [from], reverted: false };
+    x.redo = { because: [from], reverted: false, kind: 'cascade' };
     if (!w.why.has(id)) w.why.set(id, REVIEW_TEXTS.cascadeWhy(w.label(from)));
   }
 }
@@ -479,7 +518,9 @@ function decline(w: Work, d: ItemDecision, shown: boolean, at: string): ReviewOu
   w.touch(r.id);
   const reverted = isReverted(r);
   r.status = 'declined';
-  const note = chosen === 'shaky' && d.note !== undefined && d.note.trim() !== '' ? d.note : undefined;
+  // 2j2 (D2-92): every option keeps its note, a blank one dropped. (Transform, refused above until slice 4, will take its
+  // note with the transform window.)
+  const note = d.note !== undefined && d.note.trim() !== '' ? d.note : undefined;
   r.decline = { option: chosen, ...(note !== undefined ? { note } : {}), at };
   delete r.accepted;
   // Content a cascade took out stays out: the record keeps `redo`, so un-reject returns it to be redone (D2-60).
@@ -514,8 +555,15 @@ function decline(w: Work, d: ItemDecision, shown: boolean, at: string): ReviewOu
       result.status = 'to-be-redone';
       delete result.accepted;
       if (result.decline?.option !== 'shaky') delete result.decline;
-      result.redo = { because: [r.id], reverted: false };
+      // 2j1 (D2-81): its question changed, so Claude must redo it: it never comes back by itself.
+      result.redo = { because: [r.id], reverted: false, kind: 'question' };
       w.why.set(result.id, REVIEW_TEXTS.leftQuestion(ends.source, inference.target));
+      cascadeShaky(w, result.id);
+    } else if (result.status === 'to-be-redone' && result.redo !== undefined) {
+      // 2j1 (D2-81): to be redone already (the cascade above took it when its proof used the arrow, or an earlier
+      // cause): its question changed too, so it does not come back with the arrow, and what rests on it lists it.
+      w.touch(result.id);
+      result.redo = { because: union(result.redo.because, [r.id]), reverted: result.redo.reverted, kind: 'question', ...keepNote(result.redo) };
       cascadeShaky(w, result.id);
     }
   }
@@ -533,12 +581,9 @@ function backToReview(w: Work, d: ItemDecision, shown: boolean): ReviewOutcome |
     case 'withdrawn':
       return refused(REVIEW_TEXTS.withdrawnStays(label), r.id);
     case 'to-be-redone':
-      if (isReverted(r)) return refused(REVIEW_TEXTS.contentTakenOut, r.id);
-      w.touch(r.id);
-      r.status = 'in-review';
-      delete r.redo;
-      delete r.decline;
-      return undefined;
+      // 2j1 (D2-76 D2, D2-84): never by hand, its content kept or taken out. It comes back by itself with what took it
+      // down (`releaseReturned`), or by Undo.
+      return refused(REVIEW_TEXTS.redoneByClaude, r.id);
     case 'accepted':
       w.touch(r.id);
       r.status = 'in-review';
@@ -551,6 +596,9 @@ function backToReview(w: Work, d: ItemDecision, shown: boolean): ReviewOutcome |
       delete r.decline;
       // Content a cascade took out before the decline stays out: back to be redone, not in review (D2-60).
       r.status = isReverted(r) ? 'to-be-redone' : 'in-review';
+      // 2j1 (D2-76 D3): what is to be redone because of it may come back with it, decided once the whole request is
+      // applied (`releaseReturned`).
+      w.unDeclined.push(r.id);
       if (!unreject) return undefined;
       const keys = new Set(rejectedKeysOf(r));
       r.rejectedFingerprints = r.rejectedFingerprints.filter((k) => !keys.has(k));
@@ -561,17 +609,18 @@ function backToReview(w: Work, d: ItemDecision, shown: boolean): ReviewOutcome |
       }
       // An Add premise's un-reject merges nothing: in review, it is outside ws/ (AF2).
       if (r.kind === 'add-premise') return undefined;
-      // V2A-C2: the inverse merge brings back everything the decision commit took out. A dependent comes back to be
-      // redone without revert (D2-60) when this item comes back and no other item that took it out is still out;
-      // everything else it brings back that must stay out is taken out again after the merge (`ItemWrite.revert`).
-      // Without the declining action on the stack, nothing is brought back but this item (fail closed).
+      // V2A-C2: the inverse merge brings back everything the decision commit took out; what must stay out is taken out
+      // again after the merge (`ItemWrite.revert`). Without the declining action on the stack, nothing is brought back
+      // but this item (fail closed).
       const merged = mergedBackBy(w, r);
       // Fixer 2b1b r1 (S-F5): the decision that declined it also un-rejected another item (a mixed request, which no
       // client sends, §5.7): inverting its whole commit would take that item's merged-back content out again while its
       // record keeps it in ws/. Refused (fail closed); Undo of that decision undoes both together.
       if (merged?.mixed === true) return refused(REVIEW_TEXTS.unrejectMixed(label), r.id);
       const candidates = merged?.items ?? new Set(w.items.filter((x) => isReverted(x) && (x.redo?.because ?? []).includes(r.id)).map((x) => x.id));
-      const back = r.status === 'in-review';
+      // The runner merges the declining commit only when the item ends in ws/ (in review): then, and only with the
+      // declining action known, the commit's content comes back (2j1, D2-78: what may come back with it).
+      const merging = merged !== undefined && r.status === 'in-review';
       for (const x of w.items) {
         if (x.id === r.id || !candidates.has(x.id)) continue;
         // R1-1: a written Add premise the decision commit took out comes back with the merge too: its card, arrow and
@@ -580,29 +629,133 @@ function backToReview(w: Work, d: ItemDecision, shown: boolean): ReviewOutcome |
         // or meets the new write's lines, a merge conflict that refuses the un-reject (§3.6).
         const written = x.card === undefined ? merged?.premises.get(x.id) : undefined;
         if (written !== undefined) w.touch(x.id);
-        let cameBack = false;
-        if (merged !== undefined && back && x.status === 'to-be-redone' && isReverted(x)) {
-          const rest = (x.redo?.because ?? []).filter((id) => id !== r.id);
-          const stillOut = rest.some((id) => {
-            const taker = w.byId.get(id);
-            return taker !== undefined && (isDeclinedOut(taker) || isReverted(taker));
-          });
-          w.touch(x.id);
-          if (!stillOut) {
-            x.redo = { because: x.redo?.because ?? [r.id], reverted: false };
-            if (!w.why.has(x.id)) w.why.set(x.id, REVIEW_TEXTS.cascadeWhy(label));
-            cameBack = true;
-          } else x.redo = { because: rest, reverted: true };
-        }
+        if (merging) w.merging.add(x.id);
         // Builder 2b1b (carry-over R1-F1): whether the merge's content stays or goes again is decided only once every
-        // decline and back to review of the request is applied (`settleMergedBack`), from the status the item ends
-        // with: a Reject later in the same request may take back out what this merge brings back.
+        // decline and back to review of the request is applied (`releaseReturned`, then `settleMergedBack`), from the
+        // status the item ends with: a Reject later in the same request may take back out what this merge brings back.
         const known = w.mergedBack.get(x.id);
         const entry = written ?? known?.written;
-        w.mergedBack.set(x.id, { ...(entry !== undefined ? { written: entry } : {}), back: cameBack || known?.back === true });
+        w.mergedBack.set(x.id, { ...(entry !== undefined ? { written: entry } : {}), back: known?.back === true });
       }
       return undefined;
     }
+  }
+}
+
+/** 2j1 (D2-78): a cause that no longer keeps anything down: in review or accepted, its content in ws/. */
+function holdsUp(c: ItemRecord): boolean {
+  return (c.status === 'in-review' || c.status === 'accepted') && inWorkingCopy(c.kind, c, c.card);
+}
+
+/**
+ * 2j1 (D2-76 D3; D2-78–D2-82): the automatic return, once every decline and back to review of the request is applied
+ * (`decide` calls it before `settleMergedBack`). An item the request set back to review from declined that holds up now
+ * (in review, its content in ws/: an Add premise in review is outside ws/, and an item back to be redone holds nothing up,
+ * D2-79) releases the items to be redone because of it: of kind `cascade`, its id in `because`; transitively, an item
+ * that comes back releasing those because of it. A candidate comes back unless something else keeps it down (a greatest
+ * fixpoint, so a cycle comes back together): another id in its `because` that does not hold up, an RV-5 dependency that
+ * is declined or to be redone, or its content out of ws/ with no merge of the request bringing it back. It comes back to
+ * in review, never to accepted (RV-5); one that kept a Shaky decline (a Reject cascade took it out) to declined Shaky,
+ * with its note. A candidate that stays loses the returning ids from `because` and gains the dependencies that keep it
+ * down (D2-80); when the merges bring its content back and nothing keeps it out, it stays in ws/ (`reverted: false`, as
+ * D2-60 did). A record of another kind, or with none (saved before 2j1), is never a candidate (D2-77).
+ */
+function releaseReturned(w: Work): void {
+  const sources = new Set(
+    w.unDeclined.filter((id) => {
+      const r = w.byId.get(id) as ItemRecord;
+      // From declined, a written Add premise back in review is taken out (§3.8): it holds nothing up (AF2).
+      return r.status === 'in-review' && inWorkingCopy(r.kind, r, r.card, w.start.get(id)?.state);
+    }),
+  );
+  if (sources.size === 0) return;
+  const candidate = (x: ItemRecord) => x.status === 'to-be-redone' && x.redo?.kind === 'cascade';
+  // Every candidate reachable through `because` from the sources (a least fixpoint).
+  const reached = new Set<string>();
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const x of w.items) {
+      if (reached.has(x.id) || !candidate(x)) continue;
+      if (!(x.redo?.because ?? []).some((id) => sources.has(id) || reached.has(id))) continue;
+      reached.add(x.id);
+      grew = true;
+    }
+  }
+  if (reached.size === 0) return;
+  // Those that come back (a greatest fixpoint within them): drop one that something else keeps down, until none drops.
+  const back = new Set(reached);
+  // A returner that keeps its Shaky decline goes to declined Shaky: it still holds its own dependents down (cascadeShaky,
+  // D2-48), so it does not count as up for them (Fixer 2j1 r1, F-F1/ADV-1).
+  const up = (id: string) => sources.has(id) || (back.has(id) && (w.byId.get(id) as ItemRecord).decline?.option !== 'shaky');
+  const down = (id: string) => {
+    const c = w.byId.get(id);
+    return c !== undefined && !up(id) && !holdsUp(c);
+  };
+  const holding = (id: string) =>
+    w.deps(id).filter((d) => {
+      const dep = w.byId.get(d);
+      return dep !== undefined && !up(d) && (dep.status === 'declined' || dep.status === 'to-be-redone');
+    });
+  for (let dropped = true; dropped; ) {
+    dropped = false;
+    for (const id of [...back]) {
+      const x = w.byId.get(id) as ItemRecord;
+      const because = x.redo?.because ?? [];
+      // (No separate check that it still lists a returning item: one it was reached through that drops is to be redone,
+      // so it never holds up, and `down` already counts it.)
+      const kept = because.some(down) || holding(id).length > 0 || (isReverted(x) && !w.merging.has(id));
+      if (!kept) continue;
+      back.delete(id);
+      dropped = true;
+    }
+  }
+  for (const x of w.items) {
+    if (!reached.has(x.id)) continue;
+    const redo = x.redo as NonNullable<ItemRecord['redo']>;
+    const cause = redo.because.find(up) ?? redo.because[0] ?? '';
+    w.touch(x.id);
+    const merged = w.mergedBack.get(x.id);
+    if (back.has(x.id)) {
+      x.status = x.decline?.option === 'shaky' ? 'declined' : 'in-review';
+      delete x.redo;
+      (x.status === 'declined' ? w.backShaky : w.back).push(x.id);
+      if (!w.why.has(x.id)) w.why.set(x.id, REVIEW_TEXTS.cascadeWhy(w.label(cause)));
+      if (merged !== undefined && isReverted({ redo })) w.mergedBack.set(x.id, { ...merged, back: true });
+      continue;
+    }
+    // It stays to be redone: the returning ids leave `because`, the dependencies that keep it down join it (D2-80).
+    const because = union(
+      redo.because.filter((id) => !up(id)),
+      holding(x.id),
+    );
+    // The merges bring its content back: it stays in ws/ unless something it rests on is out of ws/ (D2-78).
+    const out = because.some((id) => {
+      const c = w.byId.get(id);
+      return c !== undefined && !inWorkingCopy(c.kind, c, c.card);
+    });
+    const reverted = redo.reverted && !(w.merging.has(x.id) && !out);
+    if (redo.reverted && !reverted && merged !== undefined) w.mergedBack.set(x.id, { ...merged, back: true });
+    x.redo = { because, reverted, kind: 'cascade', ...keepNote(redo) };
+  }
+}
+
+/**
+ * Fixer 2j1 r1 (A-ADV-2): an item this request un-declined into to be redone (it was a cascade casualty that the person
+ * then rejected, and its cause came back first) lists no cause that holds up again: such an id would read "it depends on
+ * ‹cause›, in review". The item stays to be redone (its content is still out of ws/, so only Claude can bring it back,
+ * D2-78); with no cause left it reads "telelean took it out: it depended on something that was declined" (builder 2j2, R1-1).
+ */
+function dropHeldUp(w: Work): void {
+  for (const id of w.unDeclined) {
+    const x = w.byId.get(id) as ItemRecord;
+    if (x.status !== 'to-be-redone' || x.redo?.kind !== 'cascade') continue;
+    const because = x.redo.because.filter((c) => {
+      const cause = w.byId.get(c);
+      return cause === undefined || !holdsUp(cause);
+    });
+    if (because.length === x.redo.because.length) continue;
+    w.touch(x.id);
+    x.redo = { ...x.redo, because };
   }
 }
 
@@ -800,6 +953,11 @@ function actionEvents(w: Work, ids: readonly string[], decided: ReadonlySet<stri
   });
   const events: Ok['events'] = [];
   if (redone.length > 0) events.push({ text: REVIEW_TEXTS.eventRedoneWith, items: redone });
+  // 2j1 (D2-82): the automatic return's notice, listed items only (a hidden Result comes back silently, D2-64).
+  const back = w.back.filter((id) => ids.includes(id) && listed(id));
+  if (back.length > 0) events.push({ text: REVIEW_TEXTS.eventBackWith, items: back });
+  const backShaky = w.backShaky.filter((id) => ids.includes(id) && listed(id));
+  if (backShaky.length > 0) events.push({ text: REVIEW_TEXTS.eventBackShakyWith, items: backShaky });
   const returned = w.grew.filter(listed);
   if (returned.length > 0) events.push({ text: REVIEW_TEXTS.eventBadgesGrew, items: returned });
   return events;
@@ -901,7 +1059,10 @@ function decide(state: ReviewState, request: DecideRequest, at: string, redo: { 
     if (refusal !== undefined) return refusal;
     decided.add(d.item);
   }
-  // What the un-rejects' merges bring back goes where the statuses the request leaves say (carry-over R1-F1).
+  // 2j1 (D2-76 D3): what is to be redone because of an item set back to review comes back with it; then what the
+  // un-rejects' merges bring back goes where the statuses the request leaves say (carry-over R1-F1).
+  releaseReturned(w);
+  dropHeldUp(w);
   settleMergedBack(w);
   const accepts = decisions.filter((d) => d.to === 'accepted');
   let left: Ok['left'] = [];
@@ -913,7 +1074,11 @@ function decide(state: ReviewState, request: DecideRequest, at: string, redo: { 
     accept(w, r, d, 'own', shown, at);
     decided.add(r.id);
   } else if (accepts.length > 0) {
-    const items = w.items.map((r) => groupItemOf(w, r, shown));
+    // 2j1 (D2-87): an item the automatic return brought back in this request was to be redone when the person sent it
+    // (maybe with the results shown): its Accept waits for a request of its own, so the group leaves it as not in
+    // review. (An own Accept is a request of one decision, which sets nothing back to review.)
+    const returned = new Set(w.back);
+    const items = w.items.map((r) => (returned.has(r.id) ? { ...groupItemOf(w, r, shown), status: 'to-be-redone' as const } : groupItemOf(w, r, shown)));
     const plan = planGroupAccept(
       items,
       accepts.map((d) => d.item),
@@ -943,6 +1108,8 @@ function decide(state: ReviewState, request: DecideRequest, at: string, redo: { 
     w.forced = null;
   }
   const startedForce = !shown && w.reveal().shown ? showResults(w, at) : undefined;
+  // 2j2 (D2-93): a note for Claude lives only while its item is to be redone.
+  dropStaleRedoNotes(w.items, (id) => w.touch(id));
 
   const ids = w.changed();
   if (ids.length === 0 && w.questions.length === 0 && w.arrowsAdded.length === 0 && w.arrowsRemoved.length === 0) return unchanged(state, left);
@@ -1047,6 +1214,52 @@ function move(
   return { ...out, stack: { done: [...state.stack.done, action], undone: redo !== undefined ? [...redo.undone] : [] }, nextAction: id + 1, label };
 }
 
+/** A copy of `redo` with `note` set, or without one (undefined). */
+function withNote(redo: NonNullable<ItemRecord['redo']>, note: string | undefined): NonNullable<ItemRecord['redo']> {
+  const out = copyRedo(redo);
+  if (note === undefined) delete out.note;
+  else out.note = note;
+  return out;
+}
+
+/**
+ * 2j2 (D2-92, D2-95): a note for Claude on a listed item to be redone (`redo.note`): set, replaced or, blank, cleared.
+ * Refused on a hidden item (D2-8's text, never naming it), on any other status, and for a stale rev. The same note
+ * again changes nothing (no stack step). One stack step, records only: no ws/ change, no judge.
+ */
+function noteItem(state: ReviewState, item: string, rev: number, note: string, at: string, redo: { undone: readonly SessionAction[] } | undefined): ReviewOutcome {
+  const w = new Work(state);
+  const shown = w.reveal().shown;
+  const r = w.byId.get(item);
+  if (r === undefined) return conflict(REVIEW_TEXTS.conflict(item), item);
+  if (hiddenIn(shown)(r)) return refused(REVIEW_TEXTS.showResultsFirst);
+  if (rev !== r.rev) return conflict(REVIEW_TEXTS.conflictLabel(w.label(r.id)), r.id);
+  if (r.status !== 'to-be-redone' || r.redo === undefined) return refused(REVIEW_TEXTS.noteOnlyRedo, r.id);
+  const after = note.trim() === '' ? undefined : note;
+  const before = r.redo.note;
+  if (after === before) return unchanged(state);
+  w.touch(r.id);
+  r.redo = withNote(r.redo, after);
+  const id = state.nextAction;
+  const label = REVIEW_TEXTS.undoNote(w.label(r.id));
+  const action: SessionAction = { id, kind: 'note', label, item: r.id, rev: r.rev, ...(before !== undefined ? { before } : {}), ...(after !== undefined ? { after } : {}), at };
+  const out = unchanged(state) as Ok;
+  return { ...out, items: w.items, stack: { done: [...state.stack.done, action], undone: redo !== undefined ? [...redo.undone] : [] }, nextAction: id + 1, label };
+}
+
+/** Undo of a note step (2j2, D2-95): the item still to be redone, at the same rev, with the note the step left. */
+function undoNote(state: ReviewState, top: Extract<SessionAction, { kind: 'note' }>, stack: ReviewState['stack']): ReviewOutcome {
+  const w = new Work(state);
+  const r = w.byId.get(top.item);
+  if (r === undefined) return conflict(REVIEW_TEXTS.historyChanged);
+  if (hiddenIn(w.reveal().shown)(r)) return refused(REVIEW_TEXTS.showResultsFirst);
+  if (r.rev !== top.rev || r.status !== 'to-be-redone' || r.redo === undefined || r.redo.note !== top.after) return conflict(REVIEW_TEXTS.conflictLabel(w.label(r.id)), r.id);
+  w.touch(r.id);
+  r.redo = withNote(r.redo, top.before);
+  const out = unchanged(state) as Ok;
+  return { ...out, items: w.items, stack, label: top.label };
+}
+
 /**
  * A seal (UN-5): every queue of Claude steps after the session's first starts with exactly one (the first has none,
  * `SealBy`); Undo stops at it, and it clears Redo.
@@ -1120,6 +1333,7 @@ function undo(state: ReviewState, step: number, confirmed: boolean, at: string):
   if (top.kind === 'seal') return refused(REVIEW_TEXTS.sealed);
   const stack = { done: done.slice(0, -1), undone: [...state.stack.undone, top] };
   if (top.kind === 'move') return { ...(unchanged(state) as Ok), stack, label: top.label };
+  if (top.kind === 'note') return undoNote(state, top, stack);
   const w = new Work(state);
   const shown = w.reveal().shown;
   const hidden = hiddenIn(shown);
@@ -1266,6 +1480,8 @@ function redoAction(state: ReviewState, step: number, confirmed: boolean, at: st
       return reveal(base, top.force.via, at, rest);
     case 'move':
       return move(base, top.before, top.after, at, rest);
+    case 'note':
+      return noteItem(base, top.item, top.rev, top.after ?? '', at, rest);
   }
 }
 
@@ -1284,6 +1500,8 @@ export function reduceReview(state: ReviewState, action: ReviewAction, at: strin
       return redoAction(state, action.step, action.confirmed, at);
     case 'seal':
       return seal(state, action.by, at);
+    case 'note':
+      return noteItem(state, action.item, action.rev, action.note, at, undefined);
   }
 }
 
@@ -1358,7 +1576,8 @@ export function itemGates(state: ReviewState): Map<string, { accept: AcceptGateR
       case 'withdrawn':
         return REVIEW_TEXTS.withdrawnStays(w.label(r.id));
       case 'to-be-redone':
-        return isReverted(r) ? REVIEW_TEXTS.contentTakenOut : undefined;
+        // 2j1 (D2-76 D2): never by hand, its content kept or taken out.
+        return REVIEW_TEXTS.redoneByClaude;
       case 'accepted':
         return undefined;
       case 'declined':

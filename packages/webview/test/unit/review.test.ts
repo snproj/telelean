@@ -31,11 +31,13 @@ import {
   paneModeFor,
   partsText,
   positionOf,
+  redoLines,
   reportSummary,
   reportTargets,
   reviewKey,
   reviewRows,
   rowIds,
+  rowOf,
   SPLIT_MIN_WIDTH,
   statusOf,
   STEP_CHIP_INTERRUPTED,
@@ -158,6 +160,21 @@ describe('statuses, badges, markers and labels (§5.5, provenance)', () => {
     expect(statusOf({ status: 'declined', declined: { option: 'plain' } }).word).toBe('declined');
     expect(statusOf({ ...base, status: 'to-be-redone' })).toMatchObject({ glyph: '↻', word: 'to be redone' });
     expect(statusOf({ ...base, status: 'withdrawn' })).toMatchObject({ glyph: '–', word: 'withdrawn' });
+  });
+
+  it('2j1 (D2-76 D4): an item to be redone has core’s lines as its row’s tooltip, one per line; any other item none', () => {
+    const one = REVIEW_TEXTS.redoLine(REVIEW_TEXTS.redoDependsOn('Definition Spyro.IsEvil', 'declined Shaky'));
+    const two = REVIEW_TEXTS.redoLine(REVIEW_TEXTS.redoTookOut(REVIEW_TEXTS.redoReasonQueue));
+    const vocab = (patch: Partial<ItemView>) => itemView({ id: IDS.vocab, kind: 'vocabulary-term', detail: { kind: 'vocabulary-term', name: 'Spyro.InGame', vocabKind: 'predicate', code: '' }, ...patch });
+    // None, one and many lines.
+    expect(rowOf(vocab({ status: 'to-be-redone', redo: { because: [], why: [] } })).title).toBeUndefined();
+    expect(rowOf(vocab({ status: 'to-be-redone', redo: { because: [IDS.definition], why: [one] } })).title).toBe(one);
+    expect(rowOf(vocab({ status: 'to-be-redone', redo: { because: [IDS.definition], why: [one, two] } })).title).toBe(`${one}\n${two}`);
+    expect(redoLines(vocab({ status: 'to-be-redone', redo: { because: [IDS.definition], why: [one, two] } }))).toEqual([one, two]);
+    // An item not to be redone has none, even if a `redo` came with it; a host that sent no `redo` gives none.
+    expect(rowOf(vocab({ status: 'accepted', redo: { because: [], why: [one] } })).title).toBeUndefined();
+    expect(redoLines(vocab({ status: 'to-be-redone' }))).toEqual([]);
+    for (const [name, session] of FIXTURES) for (const item of session.items) if (item.status !== 'to-be-redone') expect(rowOf(item).title, name).toBeUndefined();
   });
 
   it('badges: belief, changes what is proved, depends on N; markers in core’s words', () => {
@@ -314,25 +331,27 @@ describe('group decisions (RV-8): previews with core’s planners, the note on w
     );
   });
 
-  it('the decline menu (§5.7): an arrow’s one Decline; a Result’s Reject and Shaky; others Reject, Shaky with its note, Transform disabled', () => {
+  it('the decline menu (§5.7): an arrow’s one Decline; a Result’s Reject and Shaky; others Reject, Shaky, Transform disabled; every option but Transform takes a note (2j2, D2-92)', () => {
     const items = shownStage().items;
     const by = (id: string) => items.find((i) => i.id === id) as ItemView;
-    expect(declineEntries(by(IDS.arrow))).toEqual([{ option: 'plain', label: 'Decline', description: REVIEW_TEXTS.declineArrow, note: false }]);
+    expect(declineEntries(by(IDS.arrow))).toEqual([{ option: 'plain', label: 'Decline', description: REVIEW_TEXTS.declineArrow, note: true }]);
     expect(declineEntries(by(IDS.result))).toEqual([
-      { option: 'reject', label: 'Reject', description: REVIEW_TEXTS.rejectResult, note: false },
+      { option: 'reject', label: 'Reject', description: REVIEW_TEXTS.rejectResult, note: true },
       { option: 'shaky', label: 'Shaky', description: REVIEW_TEXTS.shakyResult, note: true },
     ]);
     expect(declineEntries(by(IDS.formalize))).toEqual([
-      { option: 'reject', label: 'Reject', note: false },
+      { option: 'reject', label: 'Reject', note: true },
       { option: 'shaky', label: 'Shaky', note: true },
       { option: 'transform', label: 'Transform…', note: false, disabled: REVIEW_TEXTS.transformLater },
     ]);
-    expect(groupDeclineEntries(items, [IDS.arrow]).map((e) => e.option)).toEqual(['plain']);
-    expect(groupDeclineEntries(items, [IDS.arrow, IDS.formalize]).map((e) => [e.option, e.disabled !== undefined])).toEqual([
-      ['reject', false],
-      ['shaky', false],
-      ['transform', true],
+    expect(groupDeclineEntries(items, [IDS.arrow])).toEqual([{ option: 'plain', label: 'Decline', description: REVIEW_TEXTS.declineArrow, note: true }]);
+    expect(groupDeclineEntries(items, [IDS.arrow, IDS.formalize]).map((e) => [e.option, e.disabled !== undefined, e.note])).toEqual([
+      ['reject', false, true],
+      ['shaky', false, true],
+      ['transform', true, false],
     ]);
+    // The confirm button's words, one per option.
+    expect(['reject', 'shaky', 'plain'].map((o) => REVIEW_TEXTS.declineConfirm(o as 'reject'))).toEqual(['Decline (Reject)', 'Decline (Shaky)', 'Decline']);
   });
 });
 

@@ -1,6 +1,7 @@
 /**
  * Slice 2a2 (docs/slice2-plan.md 4.7, 6.1): the stage reveal rule (`resultsState`), and how the reducer and reconcile
- * move it: the force of Show results, AF4's undecided items to be redone, and F1's case on real models.
+ * move it: the force of Show results, items to be redone (2j1, D2-76: finished for the review, no longer AF4's
+ * undecided ones), and F1's case on real models.
  */
 import { describe, expect, it } from 'vitest';
 import { classify } from '../../src/review/classify.js';
@@ -28,7 +29,7 @@ describe('resultsState (§4.7)', () => {
       record('card:a', 'formalize', { status: 'accepted', accepted }),
       record('decl:D', 'declaration', { status: 'declined', decline: { option: 'reject', at: AT } }),
       record('proof:t', 'result'),
-      // Results' parts, plain vocabulary, and items to be redone whose content was taken out never count.
+      // Results' parts, plain vocabulary, and items to be redone never count.
       record('arrow:x>t', 'add-arrow', { partOf: 't' }),
       record('premise:t:p', 'add-premise', { partOf: 't' }),
       record('decl:L', 'declaration', { partOf: 't' }),
@@ -42,14 +43,17 @@ describe('resultsState (§4.7)', () => {
     // A belief item counts; an item the judgement gave no class counts as one (fail closed).
     expect(reveal([...items, record('decl:B', 'declaration')], { ...classes, 'decl:B': BELIEF }).waitingFor).toEqual([idOf('decl:B')]);
     expect(reveal([...items, record('decl:N', 'declaration')], classes).waitingFor).toEqual([idOf('decl:N')]);
-    // A statement to be redone with its content still in ws/ is undecided (AF4).
-    expect(reveal([...items, record('card:k', 'formalize', { status: 'to-be-redone', redo: { because: ['x'], reverted: false } })], classes).shown).toBe(false);
+    // 2j1 (D2-76): a statement to be redone with its content still in ws/ is finished for the review (AF4 counted it).
+    const kept = record('card:k', 'formalize', { status: 'to-be-redone', redo: { because: ['x'], reverted: false, kind: 'cascade' } });
+    expect(reveal([...items, kept], classes)).toEqual({ shown: true, meaning: ['card:a', 'decl:D', 'card:r', 'card:k'].map(idOf), waitingFor: [] });
+    // A record saved before 2j1 (no `kind`) reads the same.
+    expect(reveal([...items, { ...kept, redo: { because: ['x'], reverted: false } }], classes).shown).toBe(true);
     // Show results forces them while something is undecided.
     expect(reveal(inReview, classes, { via: 'show-result', at: AT }).shown).toBe(true);
   });
 });
 
-describe('the force, and AF4’s statements to be redone with their content kept', () => {
+describe('the force, and items to be redone (2j1, D2-76: finished for the review)', () => {
   it('Show results forces them, marking every Result seen early, until a statement or belief item becomes undecided', () => {
     let s = stateOf({ items: [record('card:a', 'formalize'), record('card:b', 'formalize', { status: 'accepted', accepted }), record('proof:t', 'result'), record('proof:u', 'result')] });
     const shown = ok(reduceReview(s, { kind: 'reveal', via: 'show-result' }, AT));
@@ -80,7 +84,7 @@ describe('the force, and AF4’s statements to be redone with their content kept
     expect(resultsState({ items: undone.items, classesBeforeReveal: s.classesBeforeReveal, forced: undone.forced }).shown).toBe(false);
   });
 
-  it('a Shaky decline’s cascade makes an accepted statement undecided: the results are hidden again', () => {
+  it('a Shaky decline’s cascade makes an accepted statement to be redone, finished for the review: the results stay shown; un-Shaky brings it back in review, which hides them (2j1)', () => {
     const scene: Scene = {
       items: [record('decl:D', 'declaration', { status: 'accepted', accepted: { ...accepted, belief: true } }), record('card:s', 'formalize', { status: 'accepted', accepted }), record('proof:t', 'result')],
       deps: { 'card:s': ['decl:D'] },
@@ -89,21 +93,25 @@ describe('the force, and AF4’s statements to be redone with their content kept
     const s = stateOf(scene);
     expect(resultsState({ items: s.items, classesBeforeReveal: s.classesBeforeReveal, forced: null }).shown).toBe(true);
     const shaky = ok(reduceReview(s, { kind: 'decide', decisions: [{ item: idOf('decl:D'), rev: 1, to: 'declined', option: 'shaky' }], own: false, confirmed: true }, AT));
-    expect(item(shaky, 'card:s')).toMatchObject({ status: 'to-be-redone', redo: { reverted: false } });
-    expect(resultsState({ items: shaky.items, classesBeforeReveal: s.classesBeforeReveal, forced: null })).toMatchObject({ shown: false, waitingFor: [idOf('card:s')] });
+    expect(item(shaky, 'card:s')).toMatchObject({ status: 'to-be-redone', redo: { reverted: false, kind: 'cascade' } });
+    expect(resultsState({ items: shaky.items, classesBeforeReveal: s.classesBeforeReveal, forced: null })).toMatchObject({ shown: true, waitingFor: [] });
+    // Un-Shaky: card:s comes back with D, in review (D3): both undecided, so the results are hidden.
+    const back = ok(reduceReview(next(s, shaky), { kind: 'decide', decisions: [{ item: idOf('decl:D'), rev: 1, to: 'in-review' }], own: false, confirmed: true }, AT));
+    expect(item(back, 'card:s').status).toBe('in-review');
+    expect(resultsState({ items: back.items, classesBeforeReveal: s.classesBeforeReveal, forced: null })).toMatchObject({ shown: false, waitingFor: [idOf('decl:D'), idOf('card:s')] });
   });
 
-  it('RV-3 at a queue’s end: a new statement that uses a vocabulary item declined as Shaky is to be redone, and keeps them hidden', () => {
+  it('RV-3 at a queue’s end: a new statement that uses a vocabulary item declined as Shaky is to be redone, of kind `queue`, and the results show (2j1)', () => {
     const records = recordsOf([record('vocab:V', 'vocabulary-term', { status: 'declined', decline: { option: 'shaky', at: AT } }), record('proof:t', 'result', { status: 'accepted', accepted })]);
     const judgement = judgementOf([draft('vocab:V', 'vocabulary-term'), draft('card:s', 'formalize'), draft('proof:t', 'result')], {
       deps: { 'card:s': ['vocab:V'], 'vocab:V': [], 'proof:t': [] },
     });
     const out = reconcile({ runId: RUN, records, judgement, queueSteps: ['s2'], at: AT });
-    expect(item(out.records, 'card:s')).toMatchObject({ status: 'to-be-redone', redo: { because: [idOf('vocab:V')], reverted: false } });
-    expect(resultsState({ items: out.records.items, classesBeforeReveal: judgement.classesBeforeReveal, forced: null })).toMatchObject({ shown: false, waitingFor: [idOf('card:s')] });
+    expect(item(out.records, 'card:s')).toMatchObject({ status: 'to-be-redone', redo: { because: [idOf('vocab:V')], reverted: false, kind: 'queue' } });
+    expect(resultsState({ items: out.records.items, classesBeforeReveal: judgement.classesBeforeReveal, forced: null })).toMatchObject({ shown: true, waitingFor: [] });
   });
 
-  it('un-reject: the statements it brings back are undecided again, which ends the force', () => {
+  it('un-reject: the statements it brings back come back in review (2j1, D3), undecided again, which ends the force', () => {
     const scene: Scene = {
       items: [record('vocab:V', 'vocabulary-term'), record('card:s', 'formalize'), record('card:b', 'formalize'), record('proof:t', 'result')],
       deps: { 'card:s': ['vocab:V'] },
@@ -115,7 +123,8 @@ describe('the force, and AF4’s statements to be redone with their content kept
     expect(item(s, 'card:s')).toMatchObject({ status: 'to-be-redone', redo: { reverted: true } });
     expect(s.forced).toEqual({ via: 'show-result', at: AT });
     const back = ok(reduceReview(s, { kind: 'decide', decisions: [{ item: idOf('vocab:V'), rev: 1, to: 'in-review' }], own: false, confirmed: false }, AT));
-    expect(item(back, 'card:s')).toMatchObject({ status: 'to-be-redone', redo: { reverted: false } });
+    expect(item(back, 'card:s')).toMatchObject({ status: 'in-review' });
+    expect(back.stack.done.at(-1)).toMatchObject({ kind: 'decide', endedForce: { via: 'show-result', at: AT } });
     expect(back.forced).toBeNull();
     expect(resultsState({ items: back.items, classesBeforeReveal: s.classesBeforeReveal, forced: back.forced }).waitingFor).toEqual([idOf('card:s'), idOf('card:b')]);
   });

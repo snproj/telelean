@@ -2,13 +2,16 @@
  * Slice 2g (docs/slice2-plan.md 5.6): the item detail. The header (the label, status, badges and markers, "4 of 12"
  * with Back/Next, Show on board), the body by kind (the host's `ItemDetailView`: a hidden Result shows only what it
  * waits for, with Show results), "Previous proposal" for an updated item, and the footer: Accept, Accept & next and
- * Decline ▾ in review; "✓ Accepted · Back to review" or "✗ Declined (Reject) · Back to review" once decided; a disabled
- * Accept says why, with Select them; while Claude's step runs, D2-62's text instead of the buttons.
+ * Decline ▾ in review; "✓ Accepted · Back to review" or "✗ Declined (Reject) · Back to review" once decided; to be
+ * redone, why (core's lines) and core's refusal instead of the link (2j1, D2-76), then its note for Claude and "Note for
+ * Claude…", edited in place (2j2, D2-92, D2-95); a declined item's note, whatever its option (2j2); a disabled Accept
+ * says why, with Select them; while Claude's step runs, D2-62's text instead of the buttons.
  */
 import {
   DECL_KIND_LABELS,
   DECLINE_OPTION_TEXTS,
   ITEM_MARKER_TEXTS,
+  LIMITS,
   REVIEW_TEXTS,
   type ItemDetailView,
   type ItemView,
@@ -16,10 +19,11 @@ import {
   type SessionView,
   type VocabKind,
 } from '@telelean/core';
+import { useEffect, useState } from 'react';
 import { AgentText, UserText } from '../../common/AgentText';
 import { VOCAB_KIND_NOUN } from '../../labels';
 import { statementBody, missingArrowHints } from '../../model/run';
-import { declineEntries, flagTexts, itemBadges, itemControls, itemLabelParts, itemMarkers, labelOf, namedCard, positionOf, readOnlyReason, statusOf, verdictText, wordsIn } from '../../model/review';
+import { declineEntries, flagTexts, itemBadges, itemControls, itemLabelParts, itemMarkers, labelOf, namedCard, positionOf, readOnlyReason, redoLines, statusOf, verdictText, wordsIn } from '../../model/review';
 import { useBoard, useBoardActions } from '../../state/context';
 import { DeclineMenu } from './DeclineMenu';
 import { Badges, CardWords, Label, Marked, NamedCardWords, Spinner, StatusMark, usePhrases } from './parts';
@@ -400,6 +404,31 @@ function Footer({ item, session }: { item: ItemView; session: SessionView }) {
       </div>
     );
   }
+  // 2j1 (D2-76 D2, D4): an item to be redone says why (core's lines), then core's refusal in place of the Back to
+  // review link; no Decline button (core still allows one, RV-3).
+  if (item.status === 'to-be-redone') {
+    const lines = redoLines(item);
+    const sentence = item.review.ok ? REVIEW_TEXTS.redoneByClaude : item.review.reason;
+    return (
+      <div className="tl-review-footer" data-testid="detail-footer" data-redo="true">
+        {lines.length > 0 ? (
+          <ul className="tl-review-redo" data-testid="detail-redo-why">
+            {lines.map((text, i) => (
+              <li key={i} className="tl-review-decided" data-testid="detail-redo-line">
+                <Marked text={text} phrases={phrases} />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="tl-review-decided" data-testid="detail-decided">{`${statusOf(item).glyph} ${statusOf(item).word}`}</p>
+        )}
+        <p className="tl-run__hint" data-testid="detail-redo-refusal">
+          <Marked text={sentence} phrases={phrases} />
+        </p>
+        <RedoNote item={item} busy={busy} />
+      </div>
+    );
+  }
   // "✓ Accepted · Back to review", "✗ Declined (Reject) · Back to review" (§5.6): core's words, the link ours.
   const tail = ` · ${REVIEW_TEXTS.backToReview}`;
   const option = item.declined?.option;
@@ -425,10 +454,81 @@ function Footer({ item, session }: { item: ItemView; session: SessionView }) {
         </p>
       ) : null}
       {item.declined?.note !== undefined ? (
-        <p className="tl-review-note">
-          {REVIEW_TEXTS.noteForClaude.replace(' (optional)', '')}: <UserText text={item.declined.note} />
+        <p className="tl-review-note" data-testid="detail-decline-note">
+          {REVIEW_TEXTS.noteLabel}: <UserText text={item.declined.note} />
         </p>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * 2j2 (D2-92, D2-95): the note for Claude on an item to be redone: shown, and "Note for Claude…" edits it in place; Save
+ * sends `noteItem` (a blank note clears it), Cancel and Esc drop the edit; Ctrl+Enter saves.
+ */
+function RedoNote({ item, busy }: { item: ItemView; busy: boolean }) {
+  const actions = useBoardActions();
+  // `sent`: the text Save sent. The editor stays open until the host's view holds that note (fixer 2j2 r1, F-F6): a
+  // refused note (a conflict, a step started) keeps what was typed, with the error toast.
+  const [editing, setEditing] = useState<{ item: string; text: string; sent?: string } | null>(null);
+  const note = item.redo?.note;
+  const open = editing !== null && editing.item === item.id ? editing : null;
+  const sentText = open?.sent;
+  useEffect(() => {
+    if (sentText !== undefined && (note ?? '') === sentText) setEditing(null);
+  }, [sentText, note]);
+  const save = () => {
+    if (open === null) return;
+    const text = open.text.trim().slice(0, LIMITS.textLength);
+    if (text === (note ?? '')) setEditing(null);
+    else if (actions.noteItem(item.id, open.text)) setEditing({ ...open, sent: text });
+  };
+  return (
+    <div className="tl-review-redo-note" data-testid="detail-redo-note">
+      {note !== undefined && open === null ? (
+        <p className="tl-review-note" data-testid="detail-redo-note-text">
+          {REVIEW_TEXTS.noteLabel}: <UserText text={note} />
+        </p>
+      ) : null}
+      {open === null ? (
+        <button type="button" className="tl-link" data-testid="detail-redo-note-edit" disabled={busy} onClick={() => setEditing({ item: item.id, text: note ?? '' })}>
+          {REVIEW_TEXTS.noteForClaudeEdit}
+        </button>
+      ) : (
+        <div className="tl-decline__note">
+          <label className="tl-decline__label" htmlFor="tl-redo-note">
+            {REVIEW_TEXTS.noteForClaude}
+          </label>
+          <textarea
+            id="tl-redo-note"
+            className="tl-input tl-decline__text"
+            data-testid="detail-redo-note-input"
+            rows={3}
+            maxLength={LIMITS.textLength}
+            autoFocus
+            value={open.text}
+            onChange={(event) => setEditing({ item: item.id, text: event.target.value })}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                event.preventDefault();
+                save();
+              } else if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                setEditing(null);
+              }
+            }}
+          />
+          <div className="tl-decline__buttons">
+            <button type="button" className="tl-button tl-button--small" data-testid="detail-redo-note-save" disabled={busy} onClick={save}>
+              {REVIEW_TEXTS.noteSave}
+            </button>
+            <button type="button" className="tl-button tl-button--secondary tl-button--small" data-testid="detail-redo-note-cancel" onClick={() => setEditing(null)}>
+              {REVIEW_TEXTS.noteCancel}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

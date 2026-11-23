@@ -323,7 +323,12 @@ describe('while the results are hidden (§4.7, §6.1)', () => {
     const waits = view.items.find((i) => i.id === W.id) as ItemView;
     expect(waits.dependsOn).toEqual([]);
     expect(waits.accept).toEqual({ ok: false, reason: REVIEW_TEXTS.acceptWaitsForResults('Vocabulary term Spyro.Waits') });
-    expect((view.items.find((i) => i.id === Z.id) as ItemView).redo).toEqual({ because: [X.id] });
+    // 2j1 (D4): Z, a record saved before 2j1 (no `kind`), names its listed cause with its state; the hidden one, never.
+    expect((view.items.find((i) => i.id === Z.id) as ItemView).redo).toEqual({
+      because: [X.id],
+      why: [REVIEW_TEXTS.redoLine(REVIEW_TEXTS.redoDependsOn('Definition Spyro.Other', 'rejected'))],
+    });
+    expect(REVIEW_TEXTS.redoLine(REVIEW_TEXTS.redoDependsOn('Definition Spyro.Other', 'rejected'))).toBe('↻ to be redone: it depends on Definition Spyro.Other, rejected');
     for (const hiddenId of [A.id, P.id, D.id]) expect(json(view)).not.toContain(hiddenId);
     expect(json(view)).not.toContain('Helper');
     expect(json(view)).not.toContain('cynder_is_evil');
@@ -340,7 +345,13 @@ describe('while the results are hidden (§4.7, §6.1)', () => {
     expect(shown.board.marks[T]).toEqual([{ item: R.id, kind: 'result', status: 'in-review' }]);
     expect(shown.board.arrows).toEqual([{ item: A.id, change: 'add', source: 'new-spyro-pg', target: T, status: 'declined', used: false }]);
     expect((shown.items.find((i) => i.id === W.id) as ItemView).dependsOn).toEqual([D.id]);
-    expect((shown.items.find((i) => i.id === Z.id) as ItemView).redo).toEqual({ because: [D.id, X.id] });
+    expect((shown.items.find((i) => i.id === Z.id) as ItemView).redo).toEqual({
+      because: [D.id, X.id],
+      why: [
+        REVIEW_TEXTS.redoLine(REVIEW_TEXTS.redoDependsOn('Definition Spyro.Helper', 'in review')),
+        REVIEW_TEXTS.redoLine(REVIEW_TEXTS.redoDependsOn('Definition Spyro.Other', 'rejected')),
+      ],
+    });
   });
 
   it('each InferenceView asks its latest ended step’s question while the results are hidden, the record’s once shown; `result` once a step ended', () => {
@@ -446,16 +457,26 @@ describe('while the results are hidden (§4.7, §6.1)', () => {
     expect(shown.inferences[0]?.question.at(-1)).toEqual({ id: 'cynder-is-evil', type: 'AXIOM', sentence: 'Cynder is evil', wordedBy: 'user' });
   });
 
-  it('AF4: a statement to be redone with its content kept keeps the results hidden, and Submit’s gate names it', () => {
-    const items = [formalize({ status: 'to-be-redone', redo: { because: [], reverted: false } }), result()];
-    const view = buildSessionView(synth({ items }));
-    expect(view.results).toEqual({ shown: false, forced: false, waitingFor: [items[0]?.id] });
-    expect(view.submit).toEqual({ gate: { ok: false, reason: REVIEW_TEXTS.submitResultsHidden, missing: [items[0]?.id] } });
-    // Taken out (reverted), it no longer waits: the results are shown and Submit's plan is read.
-    const out = buildSessionView(synth({ items: [formalize({ status: 'to-be-redone', redo: { because: [], reverted: true } }), result({ status: 'accepted' })] }));
-    expect(out.results.shown).toBe(true);
-    expect(out.submit.gate).toEqual({ ok: true });
-    expect(out.submit.next).toBe('claude-steps');
+  it('2j1 (D2-76 D1): a statement to be redone, its content kept or taken out, keeps no result hidden, and Submit’s gate opens (AF4’s clause superseded)', () => {
+    for (const redo of [
+      { because: [], reverted: false, kind: 'cascade' as const },
+      { because: [], reverted: true, kind: 'cascade' as const },
+      { because: [], reverted: false },
+    ]) {
+      const items = [formalize({ status: 'to-be-redone', redo }), result({ status: 'accepted' })];
+      const view = buildSessionView(synth({ items }));
+      expect(view.results, JSON.stringify(redo)).toEqual({ shown: true, forced: false, waitingFor: [] });
+      expect(view.submit.gate, JSON.stringify(redo)).toEqual({ ok: true });
+      expect(view.submit.next).toBe('claude-steps');
+      expect(view.submit.work).toEqual({ shaky: 0, redo: 1, steps: 1 });
+      // The Result is listed, with its real status: nothing waits for the statement.
+      expect(view.items.find((i) => i.kind === 'result')?.status).toBe('accepted');
+    }
+    // The gate's text for hidden results is gone (D5): an item in review is what keeps them hidden, and closes it.
+    const waiting = buildSessionView(synth({ items: [formalize(), result()] }));
+    expect(waiting.results.shown).toBe(false);
+    expect(waiting.submit.gate).toEqual({ ok: false, reason: REVIEW_TEXTS.submitInReview(1), missing: [waiting.items[0]?.id] });
+    expect('submitResultsHidden' in REVIEW_TEXTS).toBe(false);
   });
 
   it('the hidden board has no source position, no time, duration, detail or stale files; its version is viewVersion and its error count the masked one (F17)', () => {
@@ -658,7 +679,7 @@ describe('every gate text (§2.3, §5.13; D2-62, D2-65, D2-27)', () => {
     expect(sealed.sealed).toEqual({ by: 'formalize', at: AT });
   });
 
-  it('decline and back to review: declined already, withdrawn, taken out (D2-60), an un-reject after a mixed request (S-F5), a superseded rejected version', () => {
+  it('decline and back to review: declined already, withdrawn, to be redone (2j1, D2-76 D2), an un-reject after a mixed request (S-F5), a superseded rejected version', () => {
     const declined = record('decl:Spyro.Gone', 'declaration', { declKind: 'definition', status: 'declined', decline: { option: 'reject', at: AT }, rev: 2, versions: [{ rev: 1, stage: 1, fingerprint: 'fp-old', content: { decls: [] }, rejected: true }] });
     const withdrawn = record('vocab:Spyro.Shadow', 'vocabulary-term', { status: 'withdrawn' });
     const takenOut = record('vocab:Spyro.Out', 'vocabulary-term', { status: 'to-be-redone', redo: { because: [], reverted: true } });
@@ -686,9 +707,11 @@ describe('every gate text (§2.3, §5.13; D2-62, D2-65, D2-27)', () => {
     expect(of(declined.id).declined).toEqual({ option: 'reject' });
     expect(of(withdrawn.id).decline).toMatchObject({ ok: false, reason: REVIEW_TEXTS.withdrawnStays('Vocabulary term Spyro.Shadow') });
     expect(of(withdrawn.id).review).toEqual({ ok: false, reason: REVIEW_TEXTS.withdrawnStays('Vocabulary term Spyro.Shadow') });
-    expect(of(takenOut.id).review).toEqual({ ok: false, reason: REVIEW_TEXTS.contentTakenOut });
+    expect(of(takenOut.id).review).toEqual({ ok: false, reason: REVIEW_TEXTS.redoneByClaude });
     expect(of(takenOut.id).decline).toMatchObject({ ok: true });
-    expect(of(kept.id).review).toEqual({ ok: true });
+    expect(of(kept.id).review).toEqual({ ok: false, reason: REVIEW_TEXTS.redoneByClaude });
+    expect(of(kept.id).decline).toMatchObject({ ok: true });
+    expect(of(kept.id).accept).toEqual({ ok: false, reason: REVIEW_TEXTS.leftNotInReview('Vocabulary term Spyro.Kept') });
     expect(view.rejected).toEqual([
       { item: declined.id, label: 'Definition Spyro.Gone', rev: 2, at: AT, unreject: { ok: false, reason: REVIEW_TEXTS.unrejectMixed('Definition Spyro.Gone') }, superseded: false },
       { item: declined.id, label: 'Definition Spyro.Gone', rev: 1, at: '', unreject: { ok: false, reason: REVIEW_TEXTS.unrejectNewer }, superseded: true },
@@ -1211,7 +1234,7 @@ describe('what is shown only with the results, whatever the records hold', () =>
 });
 
 describe('itemGates (reducer, builder 2c2): every item’s gates on one Work, as reduceReview reads one decision', () => {
-  it('per status: accept is acceptGate’s own Accept; decline closed when declined or withdrawn; back to review closed in review, withdrawn, taken out', () => {
+  it('per status: accept is acceptGate’s own Accept; decline closed when declined or withdrawn; back to review closed in review, withdrawn, to be redone (2j1)', () => {
     const accepted = { how: 'own' as const, fingerprint: 'fp', belief: false, changesProved: false, at: AT };
     const items = [
       record('vocab:Spyro.A', 'vocabulary-term'),
@@ -1244,8 +1267,8 @@ describe('itemGates (reducer, builder 2c2): every item’s gates on one Work, as
       'ok',
       'ok',
       'ok',
-      'ok',
-      REVIEW_TEXTS.contentTakenOut,
+      REVIEW_TEXTS.redoneByClaude,
+      REVIEW_TEXTS.redoneByClaude,
       REVIEW_TEXTS.withdrawnStays(label(6)),
       'ok',
     ]);
@@ -2118,5 +2141,178 @@ describe('non-interference: byte-identical views while the results are hidden', 
     // The sequences reach every kind of answer: each action carried out, and others refused, stale or asked to confirm.
     for (const what of ['accepted:ok', 'reject:ok', 'shaky:ok', 'in-review:ok', 'undo:ok', 'redo:ok']) expect(seen.get(what) ?? 0, what).toBeGreaterThan(0);
     for (const code of ['needs-confirmation', 'refused', 'conflict']) expect([...seen].some(([what, n]) => what.endsWith(`:${code}`) && n > 0), code).toBe(true);
+  });
+});
+
+describe('2j1 (D2-76 D4, D2-83): why an item is to be redone (`ItemView.redo.why`)', () => {
+  const line = (why: string) => REVIEW_TEXTS.redoLine(why);
+  const dependsOn = (label: string, state: string) => line(REVIEW_TEXTS.redoDependsOn(label, state));
+  const tookOut = (reason: string) => line(REVIEW_TEXTS.redoTookOut(reason));
+  const redoOf = (view: SessionView, key: string) => view.items.find((i) => i.id === record(key, 'declaration').id)?.redo;
+  const down = (kind: ItemRecord['kind'], key: string, over: Partial<ItemRecord>) => record(key, kind, over);
+
+  it('a cascade names each listed cause with its state, one line each (none, one, several), and a record saved before 2j1 reads alike', () => {
+    const X1 = down('declaration', 'decl:Spyro.X1', { status: 'declined', decline: { option: 'shaky', at: AT } });
+    const X2 = down('declaration', 'decl:Spyro.X2', { status: 'declined', decline: { option: 'reject', at: AT } });
+    const X3 = down('declaration', 'decl:Spyro.X3', { status: 'to-be-redone', redo: { because: [X1.id], reverted: false, kind: 'cascade' } });
+    const X4 = down('declaration', 'decl:Spyro.X4', { status: 'accepted', accepted: { how: 'own', fingerprint: 'fp', belief: false, changesProved: false, at: AT } });
+    const one = down('vocabulary-term', 'vocab:Spyro.One', { status: 'to-be-redone', redo: { because: [X1.id], reverted: false, kind: 'cascade' } });
+    const many = down('vocabulary-term', 'vocab:Spyro.Many', { status: 'to-be-redone', redo: { because: [X1.id, X2.id, X3.id, X4.id], reverted: true, kind: 'cascade' } });
+    const old = down('vocabulary-term', 'vocab:Spyro.Old', { status: 'to-be-redone', redo: { because: [X2.id], reverted: true } });
+    const none = down('vocabulary-term', 'vocab:Spyro.None', { status: 'to-be-redone', redo: { because: [], reverted: true, kind: 'cascade' } });
+    const view = buildSessionView(synth({ items: [formalize(), X1, X2, X3, X4, one, many, old, none, result()], records: { forced: SHOW } }));
+    const of = (r: ItemRecord) => view.items.find((i) => i.id === r.id)?.redo;
+    expect(of(one)).toEqual({ because: [X1.id], why: [dependsOn('Definition Spyro.X1', 'declined Shaky')] });
+    expect(of(one)?.why).toEqual(['↻ to be redone: it depends on Definition Spyro.X1, declined Shaky']);
+    expect(of(many)?.why).toEqual([
+      dependsOn('Definition Spyro.X1', 'declined Shaky'),
+      dependsOn('Definition Spyro.X2', 'rejected'),
+      dependsOn('Definition Spyro.X3', 'to be redone'),
+      dependsOn('Definition Spyro.X4', 'accepted'),
+    ]);
+    expect(of(old)?.why).toEqual([dependsOn('Definition Spyro.X2', 'rejected')]);
+    expect(of(none)?.why).toEqual([tookOut(REVIEW_TEXTS.redoReasonDeclined)]);
+    expect(of(none)?.why).toEqual(['↻ to be redone: telelean took it out: it depended on something that was declined']);
+    // An item that is not to be redone has no `redo`.
+    for (const r of [X1, X2, X4]) expect(of(r)).toBeUndefined();
+    // An arrow's plain decline reads "declined".
+    expect(REVIEW_TEXTS.redoCauseState('declined', 'plain')).toBe('declined');
+    expect(REVIEW_TEXTS.redoCauseState('in-review')).toBe('in review');
+  });
+
+  it('a judge’s record that a decline joined names the declined cause first, then the judge’s reason (Fixer 2j1 r1, F-F4)', () => {
+    const X = down('declaration', 'decl:Spyro.X', { status: 'declined', decline: { option: 'shaky', at: AT } });
+    const B = down('vocabulary-term', 'vocab:Spyro.B', { status: 'to-be-redone', redo: { because: [], reverted: true, kind: 'judge' } });
+    const J = down('vocabulary-term', 'vocab:Spyro.J', { status: 'to-be-redone', markers: ['no-longer-builds'], redo: { because: [X.id, B.id], reverted: true, kind: 'judge' } });
+    const view = buildSessionView(synth({ items: [formalize(), X, B, J, result()], records: { forced: SHOW } }));
+    const of = (r: ItemRecord) => view.items.find((i) => i.id === r.id)?.redo?.why;
+    // Only the declined cause is named; the to-be-redone one is the judge's own chain.
+    expect(of(J)).toEqual([dependsOn('Definition Spyro.X', 'declined Shaky'), tookOut(REVIEW_TEXTS.redoReasonBuilds)]);
+    expect(of(B)).toEqual([tookOut(REVIEW_TEXTS.redoReasonChecks)]);
+  });
+
+  it('the other kinds give telelean’s reason: the judge’s (by its marker), Submit’s take-out, a queue’s end, DO-0’s question change', () => {
+    const X = down('declaration', 'decl:Spyro.X', { status: 'declined', decline: { option: 'shaky', at: AT } });
+    const judged = (key: string, over: Partial<ItemRecord>) => down('vocabulary-term', key, over);
+    const builds = judged('vocab:Spyro.Builds', { status: 'to-be-redone', markers: ['no-longer-builds'], redo: { because: [], reverted: true, kind: 'judge' } });
+    const gap = judged('vocab:Spyro.Gap', { status: 'to-be-redone', markers: ['no-longer-closes-gap'], redo: { because: [], reverted: true, kind: 'judge' } });
+    const checks = judged('vocab:Spyro.Checks', { status: 'to-be-redone', redo: { because: [], reverted: true, kind: 'judge' } });
+    const dependent = judged('vocab:Spyro.Dependent', { status: 'to-be-redone', redo: { because: [builds.id], reverted: true, kind: 'judge' } });
+    const takeOut = judged('vocab:Spyro.TakeOut', { status: 'to-be-redone', redo: { because: [X.id], reverted: true, kind: 'take-out' } });
+    const queue = judged('vocab:Spyro.Queue', { status: 'to-be-redone', redo: { because: [X.id], reverted: false, kind: 'queue' } });
+    const arrow = record(`arrow:new-spyro-pg>${T}`, 'add-arrow', { partOf: T, status: 'declined', decline: { option: 'plain', at: AT }, content: { decls: [], arrow: { source: 'new-spyro-pg', target: T } } });
+    const R = result({ status: 'to-be-redone', redo: { because: [arrow.id], reverted: false, kind: 'question' } });
+    const view = buildSessionView(synth({ items: [formalize(), X, builds, gap, checks, dependent, takeOut, queue, arrow, R], records: { forced: SHOW } }));
+    const of = (r: ItemRecord) => view.items.find((i) => i.id === r.id)?.redo?.why;
+    expect(of(builds)).toEqual([tookOut(REVIEW_TEXTS.redoReasonBuilds)]);
+    expect(of(gap)).toEqual([tookOut(REVIEW_TEXTS.redoReasonGap)]);
+    expect(of(checks)).toEqual([tookOut(REVIEW_TEXTS.redoReasonChecks)]);
+    expect(of(dependent)).toEqual([tookOut(REVIEW_TEXTS.redoReasonJudged)]);
+    expect(of(takeOut)).toEqual([tookOut(REVIEW_TEXTS.redoReasonTakeOut)]);
+    expect(of(queue)).toEqual([tookOut(REVIEW_TEXTS.redoReasonQueue)]);
+    const source = view.board.graph.nodes.find((n) => n.id === 'new-spyro-pg')?.naturalName as string;
+    expect(source.length).toBeGreaterThan(0);
+    expect(of(R)).toEqual([tookOut(REVIEW_TEXTS.redoReasonQuestion(source))]);
+    expect(of(R)?.[0]).toBe(`↻ to be redone: telelean took it out: “${source}” left its question when you declined its arrow`);
+  });
+
+  it('a hidden cause is never named: with every cause hidden, it says so; with one listed, only that one (D2-64)', () => {
+    const helper = record('decl:Spyro.Helper', 'declaration', { declKind: 'definition', partOf: T, status: 'declined', decline: { option: 'reject', at: AT } });
+    const X = down('declaration', 'decl:Spyro.Seen', { status: 'declined', decline: { option: 'shaky', at: AT } });
+    const hiddenOnly = down('vocabulary-term', 'vocab:Spyro.HiddenOnly', { status: 'to-be-redone', redo: { because: [helper.id], reverted: true, kind: 'cascade' } });
+    const mixed = down('vocabulary-term', 'vocab:Spyro.Mixed', { status: 'to-be-redone', redo: { because: [helper.id, X.id], reverted: true, kind: 'cascade' } });
+    // card:pg-no-dark-past in review keeps the results hidden.
+    const view = buildSessionView(synth({ items: [formalize(), helper, X, hiddenOnly, mixed, result()] }));
+    expect(view.results.shown).toBe(false);
+    const of = (r: ItemRecord) => view.items.find((i) => i.id === r.id)?.redo;
+    expect(of(hiddenOnly)).toEqual({ because: [], why: [tookOut(REVIEW_TEXTS.redoReasonHidden)] });
+    expect(of(mixed)).toEqual({ because: [X.id], why: [dependsOn('Definition Spyro.Seen', 'declined Shaky')] });
+    expect(json(view)).not.toContain('Helper');
+    expect(json(view)).not.toContain(helper.id);
+    // Shown, it is named.
+    const shown = buildSessionView(synth({ items: [formalize(), helper, X, hiddenOnly, mixed, result()], records: { forced: SHOW } }));
+    expect(shown.items.find((i) => i.id === hiddenOnly.id)?.redo?.why).toEqual([dependsOn('Definition Spyro.Helper', 'rejected')]);
+  });
+
+  it('every listed item to be redone has its why; a hidden Result to be redone shows none (a neutral row)', () => {
+    const view = buildSessionView(synth({ items: [formalize(), result({ status: 'to-be-redone', redo: { because: [], reverted: true, kind: 'judge' } })] }));
+    expect(view.results.shown).toBe(false);
+    const row = view.items.find((i) => i.kind === 'result');
+    expect(row?.status).toBeNull();
+    expect(row?.redo).toBeUndefined();
+    expect(redoOf(view, 'decl:none')).toBeUndefined();
+  });
+});
+
+describe('2j2 (D2-92, D2-95, D2-96): notes in the view', () => {
+  const Z = () => record('vocab:Spyro.Z', 'vocabulary-term', { status: 'to-be-redone', redo: { because: [], reverted: true, kind: 'judge', note: 'Keep it as a rule.\nNot a fact.' } });
+  const noteStep = (item: string): SessionAction => ({ id: 4, kind: 'note', label: 'Note for Claude: Vocabulary term Spyro.Z', item, rev: 1, after: 'n', at: AT });
+
+  it('`redo.note` of an item to be redone; a declined item’s note whatever its option; none on others', () => {
+    const declined = record('decl:Spyro.D', 'declaration', { status: 'declined', decline: { option: 'reject', note: 'Too strong.', at: AT } });
+    const plain = record(`arrow:new-spyro-pg>${T}`, 'add-arrow', { partOf: T, status: 'declined', decline: { option: 'plain', note: 'Not this one.', at: AT }, content: { decls: [], arrow: { source: 'new-spyro-pg', target: T } } });
+    const z = Z();
+    const view = buildSessionView(synth({ items: [formalize(), declined, plain, z, result()], records: { forced: SHOW } }));
+    const of = (r: ItemRecord) => view.items.find((i) => i.id === r.id);
+    expect(of(z)?.redo).toEqual({ because: [], why: [REVIEW_TEXTS.redoLine(REVIEW_TEXTS.redoTookOut(REVIEW_TEXTS.redoReasonChecks))], note: 'Keep it as a rule.\nNot a fact.' });
+    expect(of(declined)?.declined).toEqual({ option: 'reject', note: 'Too strong.' });
+    expect(of(plain)?.declined).toEqual({ option: 'plain', note: 'Not this one.' });
+    expect(Object.hasOwn(of(formalize()) ?? {}, 'redo')).toBe(false);
+    // Without a note, `redo` has none.
+    const bare = record('vocab:Spyro.Bare', 'vocabulary-term', { status: 'to-be-redone', redo: { because: [], reverted: true, kind: 'judge' } });
+    const view2 = buildSessionView(synth({ items: [formalize(), bare, result()], records: { forced: SHOW } }));
+    expect(Object.hasOwn(view2.items.find((i) => i.id === bare.id)?.redo ?? {}, 'note')).toBe(false);
+  });
+
+  it('a note step is Undo’s and Redo’s label; on an item hidden now neither is offered (its label would name it)', () => {
+    const z = Z();
+    const shown = buildSessionView(synth({ items: [formalize(), z, result()], records: { forced: SHOW, stack: { done: [noteStep(z.id)], undone: [] }, nextAction: 5 } }));
+    expect(shown.undo).toEqual({ step: 4, label: 'Note for Claude: Vocabulary term Spyro.Z' });
+    const redoable = buildSessionView(synth({ items: [formalize(), z, result()], records: { forced: SHOW, stack: { done: [], undone: [noteStep(z.id)] }, nextAction: 5 } }));
+    expect(redoable.redo).toEqual({ step: 4, label: 'Note for Claude: Vocabulary term Spyro.Z' });
+    // The Result to be redone, its note made while shown, is hidden now: no Undo, no Redo, nothing names it.
+    const R = result({ status: 'to-be-redone', redo: { because: [], reverted: true, kind: 'judge', note: 'Prove it directly.' } });
+    const hidden = buildSessionView(synth({ items: [formalize(), R], records: { stack: { done: [noteStep(R.id)], undone: [] }, nextAction: 5 } }));
+    expect(hidden.results.shown).toBe(false);
+    expect(hidden.undo).toBeNull();
+    expect(json(hidden)).not.toContain('Prove it directly.');
+    const hiddenRedo = buildSessionView(synth({ items: [formalize(), R], records: { stack: { done: [], undone: [noteStep(R.id)] }, nextAction: 5 } }));
+    expect(hiddenRedo.redo).toBeNull();
+  });
+
+  it('the report of the stage after a Submit review shows its comment; not in the stage it submitted, nor after a later Submit without one', () => {
+    const seal = (stage: number, text?: string): SessionAction => ({ id: stage, kind: 'seal', by: 'submit', at: AT, ...(text !== undefined ? { comment: { text, stage } } : {}) });
+    const at = (stage: number, done: SessionAction[]) => buildSessionView(synth({ items: [formalize(), result()], records: { stage, stack: { done, undone: [] }, nextAction: 9 } })).report;
+    expect(at(2, [seal(1, 'Prefer the rule reading.\nKeep names.')]).comment).toEqual({ stage: 1, text: 'Prefer the rule reading.\nKeep names.' });
+    // Hidden or shown, it shows (it is the person's own text).
+    expect(buildSessionView(synth({ items: [formalize(), result()], records: { stage: 2, forced: SHOW, stack: { done: [seal(1, 'c')], undone: [] } } })).report.comment).toEqual({ stage: 1, text: 'c' });
+    // A Submit queue that failed leaves the stage as it was: its comment is not this stage's.
+    expect(at(1, [seal(1, 'c')]).comment).toBeUndefined();
+    // A later Submit without a comment: none (the older one was for an older stage).
+    expect(at(3, [seal(1, 'old'), seal(2)]).comment).toBeUndefined();
+    // A mid-stage Formalize's seal after it keeps the stage's comment.
+    expect(at(2, [seal(1, 'kept'), { id: 5, kind: 'seal', by: 'formalize', at: AT }]).comment).toEqual({ stage: 1, text: 'kept' });
+    expect(Object.hasOwn(at(2, []), 'comment')).toBe(false);
+  });
+
+  it('a Submit queue that failed and was retried to its end: the stage kept, its comment shows (A-ADV-2j2-2); while it still fails, or after a Formalize, it does not; a later Submit without a comment keeps the older stage’s', () => {
+    const seal = (id: number, by: 'submit' | 'retry' | 'formalize', comment?: { text: string; stage: number }): SessionAction => ({ id, kind: 'seal', by, at: AT, ...(comment !== undefined ? { comment } : {}) });
+    const failedHeading = { kind: 'failed' as const, text: 'Step failed: x', firstStep: false, retry: { ok: true as const } };
+    const at = (stage: number, done: SessionAction[], failing = false) =>
+      buildSessionView(synth({ items: [formalize(), result()], records: { stage, stack: { done, undone: [] }, nextAction: 9, ...(failing ? { heading: failedHeading } : {}) } })).report.comment;
+    const submit = seal(1, 'submit', { text: 'c', stage: 1 });
+    // Retried to its end: the stage is still 1, nothing failed now.
+    expect(at(1, [submit, seal(2, 'retry')])).toEqual({ stage: 1, text: 'c' });
+    // Still failing (the retry failed too), or no retry yet: not the stage's.
+    expect(at(1, [submit, seal(2, 'retry')], true)).toBeUndefined();
+    expect(at(1, [submit], true)).toBeUndefined();
+    // A mid-stage Formalize after it: a later queue, not the Submit's stage start.
+    expect(at(1, [submit, seal(2, 'retry'), seal(3, 'formalize')])).toBeUndefined();
+    // A Submit with no comment that failed at stage 2 does not hide stage 1's comment from stage 2's report; one that
+    // carries a comment and still fails does not either.
+    const first = seal(1, 'submit', { text: 'one', stage: 1 });
+    expect(at(2, [first, seal(2, 'submit')], true)).toEqual({ stage: 1, text: 'one' });
+    expect(at(2, [first, seal(2, 'submit', { text: 'two', stage: 2 })], true)).toEqual({ stage: 1, text: 'one' });
+    expect(at(2, [first, seal(2, 'submit', { text: 'two', stage: 2 }), seal(3, 'retry')])).toEqual({ stage: 2, text: 'two' });
   });
 });

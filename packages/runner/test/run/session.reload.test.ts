@@ -20,7 +20,7 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { buildProjectModel, parseLeanFile, planGhostAdoption, premiseDraftKey, premiseKey, REVIEW_TEXTS, type StateJudgement } from '@telelean/core';
+import { buildProjectModel, parseLeanFile, planGhostAdoption, premiseDraftKey, premiseKey, REVIEW_TEXTS, type ActionOutcome, type ItemRecord, type ItemState, type SessionAction, type StateJudgement } from '@telelean/core';
 
 import { RunFiles, isPersistedRun } from '../../src/run/persist.js';
 import { JUDGED_FACTS_FILE } from '../../src/run/session.js';
@@ -32,7 +32,7 @@ import type { LlmBackend, LlmSession, SessionConfig } from '../../src/llm/types.
 import { cleanup } from './helpers/env.js';
 import { fakeStageJudge, finding, SPYRO_PERMITTED } from './helpers/fakeEngine.js';
 import { createFakeShadow, type FakeShadow } from './helpers/fakeShadow.js';
-import { decision, pgScript, PG, RESULT } from './helpers/review.js';
+import { decision, pgScript, PG, record, RESULT, session, settled } from './helpers/review.js';
 import { makeHarness, rawRun, rawStep, readJson, round1, START, state, step, waitForRun, waitForStage, type Harness } from './helpers/harness.js';
 import { CHAIN, chainModel, formalise, MAIN, proveGoal, proveLinkOne, proveLinkTwo, stepMatch, stepTurnScript } from './helpers/sessions.js';
 
@@ -1256,7 +1256,8 @@ describe('a queue-start replayed after a crash (§2.6, fixer 2d r1, A-F7)', () =
     const raw = rawRun(b).session;
     expect(raw?.phase).toBe('stage');
     expect(raw?.steps).toHaveLength(3);
-    expect(raw?.items.find((r) => r.key === 'proof:cynder-not-good')).toMatchObject({ status: 'to-be-redone', redo: { reverted: true, because: [id('proof:link-two')?.id] } });
+    // 2j1 (D2-77): Submit's take-out writes the kind that never comes back by itself.
+    expect(raw?.items.find((r) => r.key === 'proof:cynder-not-good')).toMatchObject({ status: 'to-be-redone', redo: { reverted: true, because: [id('proof:link-two')?.id], kind: 'take-out' } });
     expect((await b.shadow().currentFiles()).get(MAIN)).not.toContain('theorem cynder_not_good.holds');
     expect(await b.manager.submit(v.runId, 1)).toMatchObject({ ok: true });
     await waitForStage(b.manager, 2);
@@ -1516,5 +1517,147 @@ describe('a decision\'s judge and a reload (fixer 2e r1: A-F1, A-F7, F-FC-1)', (
     expect((await b.shadow().currentFiles()).get(MAIN)).toContain('pg_no_dark_past');
     expect(v.runId).toBe(b.manager.current()?.runId);
     await consistent(b);
+  });
+});
+
+describe('2j1: items to be redone across a reload, and a session saved before 2j1 (D2-76 D3, D7)', () => {
+  const AT = '2026-11-22T00:00:00.000Z';
+  const D_KEY = 'decl:Spyro.bad_past';
+  const P_KEYS = ['card:link-one', 'card:link-two'];
+  const okay = (o: ActionOutcome) => expect(o).toMatchObject({ ok: true });
+  /** D, a definition written before the freeze; P1 and P2, two statements that use it; both proved (2e's AF4 scene). */
+  function definitionScript(): FakeScriptTurn[] {
+    const D = 'def bad_past (c : Character) : Prop := HasDarkPast c\n';
+    const P1 = '/-- Cynder has a past that PG games exclude -/\nabbrev link_one : Prop := bad_past cynder\n';
+    const P2 = '/-- The new Spyro game excludes Cynder -/\nabbrev link_two : Prop := bad_past cynder ∧ IsPG newSpyro\n';
+    const block = (premises: string) => `premises: ${premises}\nasserted: 2026-11-01\n-/\n`;
+    return [
+      {
+        match: stepMatch(1, 2, 'link-one'),
+        steps: [
+          step.edit('namespace Spyro\n', `namespace Spyro\n\n${D}`),
+          step.edit(block('cynder-dark-past'), `${block('cynder-dark-past')}${P1}`),
+          step.freeze('link-one'),
+          step.edit(P1, `${P1}theorem link_one.holds : link_one := cynder_dark_past.holds\n`),
+          step.finish('proved', 'link-one proved'),
+          step.result(),
+        ],
+      },
+      {
+        match: stepMatch(2, 2, 'link-two'),
+        steps: [
+          step.edit(block('link-one, new-spyro-pg'), `${block('link-one, new-spyro-pg')}${P2}`),
+          step.freeze('link-two'),
+          step.edit(P2, `${P2}theorem link_two.holds : link_two := ⟨link_one.holds, new_spyro_pg.holds⟩\n`),
+          step.finish('proved', 'link-two proved'),
+          step.result(),
+        ],
+      },
+    ];
+  }
+  /** Stage 1 of that scene, with D declined as Shaky: P1, P2 and the Results resting on them are to be redone, kept. */
+  async function shakyStage(): Promise<{ a: Harness; runId: string }> {
+    const a = first(definitionScript(), { source: chainModel(), withFacts: false });
+    expect(await a.manager.formalize({ subject: 'Spyro', inferences: CHAIN.slice(0, 2) })).toMatchObject({ ok: true });
+    const v = await waitForStage(a.manager, 1);
+    await settled(a);
+    okay(await a.manager.decide(v.runId, 1, true, [decision(a, D_KEY, 'declined', { option: 'shaky' })], false));
+    await settled(a);
+    for (const key of P_KEYS) expect(record(a, key)).toMatchObject({ status: 'to-be-redone', redo: { because: [record(a, D_KEY).id], reverted: false, kind: 'cascade' } });
+    return { a, runId: v.runId };
+  }
+
+  it('a reload between a Shaky decline and its un-Shaky keeps the records and their kind, and the un-Shaky then brings them back; a reload before its Undo, and the Undo restores them', async () => {
+    const { a, runId } = await shakyStage();
+    const down = structuredClone(session(a).items);
+    await a.manager.dispose();
+    const b = second(a);
+    await b.manager.recover();
+    await waitForStage(b.manager, 1);
+    await settled(b);
+    expect(session(b).items).toEqual(down);
+    okay(await b.manager.decide(runId, 1, true, [decision(b, D_KEY, 'in-review')], false));
+    await settled(b);
+    for (const key of [D_KEY, ...P_KEYS]) expect(record(b, key).status, key).toBe('in-review');
+    const back = structuredClone(session(b).items);
+    await b.manager.dispose();
+    const c = second(a);
+    await c.manager.recover();
+    await waitForStage(c.manager, 1);
+    await settled(c);
+    expect(session(c).items).toEqual(back);
+    okay(await c.manager.undoSession(runId, c.manager.session()?.undo?.step ?? -1, true));
+    await settled(c);
+    expect(session(c).items).toEqual(down);
+  });
+
+  it('D7: a session saved before 2j1 loads unchanged: its items to be redone (no `kind`, their cause accepted since) keep no result hidden, stay to be redone, refuse Back to review, and come back by Undo', async () => {
+    const { a, runId } = await shakyStage();
+    const dView = a.manager.session()?.items.find((i) => i.id === record(a, D_KEY).id);
+    await a.manager.dispose();
+    // What a build before 2j1 saved after "Back to review" and then "Accept" of D by hand: D2-60 left its dependents to
+    // be redone, and no record or stack action has a `kind`.
+    const file = a.shadow().paths.stateFile;
+    const run = readJson<PersistedRun>(file);
+    const s = run.session as PersistedSession;
+    const strip = (value: unknown): void => {
+      if (Array.isArray(value)) value.forEach(strip);
+      else if (value !== null && typeof value === 'object') {
+        const o = value as Record<string, unknown>;
+        if (o['redo'] !== null && typeof o['redo'] === 'object') delete (o['redo'] as Record<string, unknown>)['kind'];
+        Object.values(o).forEach(strip);
+      }
+    };
+    strip(s);
+    expect(JSON.stringify(s)).not.toContain('"kind":"cascade"');
+    const d = s.items.find((r) => r.key === D_KEY) as ItemRecord;
+    const shakyState: ItemState = { status: d.status, ...(d.decline !== undefined ? { decline: { ...d.decline } } : {}), markers: [...d.markers], rejectedFingerprints: [...d.rejectedFingerprints], rejectedRevs: [] };
+    const reviewState: ItemState = { status: 'in-review', markers: [...d.markers], rejectedFingerprints: [...d.rejectedFingerprints], rejectedRevs: [] };
+    const accepted = { how: 'own' as const, fingerprint: d.fingerprint, belief: dView?.classes?.belief ?? true, changesProved: dView?.classes?.changesProved ?? false, at: AT };
+    const acceptedState: ItemState = { ...reviewState, status: 'accepted', accepted };
+    const old = (id: number, label: string, to: 'in-review' | 'accepted', before: ItemState, after: ItemState): SessionAction => ({
+      id,
+      kind: 'decide',
+      label,
+      request: { decisions: [{ item: d.id, rev: d.rev, to }], own: to === 'accepted' },
+      changes: [{ item: d.id, rev: d.rev, before, after }],
+      takenOut: [],
+      rejectedArrows: { added: [], removed: [] },
+      questions: [],
+      commits: [],
+      at: AT,
+    });
+    s.stack.done.push(old(s.nextAction, 'Back to review: D', 'in-review', shakyState, reviewState), old(s.nextAction + 1, 'Accept: D', 'accepted', reviewState, acceptedState));
+    s.nextAction += 2;
+    d.status = 'accepted';
+    delete d.decline;
+    d.accepted = accepted;
+    writeFileSync(file, JSON.stringify(run));
+    const b = second(a);
+    await b.manager.recover();
+    await waitForStage(b.manager, 1);
+    await settled(b);
+    // It loads as saved: the dependents to be redone, with no kind; D accepted.
+    expect(record(b, D_KEY).status).toBe('accepted');
+    for (const key of P_KEYS) {
+      expect(record(b, key), key).toMatchObject({ status: 'to-be-redone', redo: { because: [d.id], reverted: false } });
+      expect(record(b, key).redo, key).not.toHaveProperty('kind');
+    }
+    // They keep no result hidden (D1): nothing is in review, so the results show and Submit opens.
+    const view = b.manager.session();
+    expect(view?.results).toMatchObject({ shown: true, waitingFor: [] });
+    expect(view?.submit.gate).toEqual({ ok: true });
+    // They say why, as a cascade's record (D2-77, D2-83): D, accepted now.
+    const p1 = view?.items.find((i) => i.id === record(b, 'card:link-one').id);
+    expect(p1?.redo?.why).toHaveLength(1);
+    expect(p1?.redo?.why[0]).toMatch(/^↻ to be redone: it depends on .*bad_past.*, accepted$/);
+    // Back to review is refused (D2), and nothing else brings them back by itself.
+    expect(await b.manager.decide(runId, 1, true, [decision(b, 'card:link-one', 'in-review')], false)).toEqual({ ok: false, code: 'refused', error: REVIEW_TEXTS.redoneByClaude });
+    // Undo does: the Accept, the Back to review, then the Shaky decline.
+    for (let k = 0; k < 3; k++) {
+      okay(await b.manager.undoSession(runId, b.manager.session()?.undo?.step ?? -1, true));
+      await settled(b);
+    }
+    for (const key of [D_KEY, ...P_KEYS]) expect(record(b, key).status, key).toBe('in-review');
   });
 });

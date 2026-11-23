@@ -39,6 +39,8 @@ test('the session bar and the panel of a stage whose results are hidden', async 
   await expect(bar.getByTestId('session-phase')).toHaveText('Review: 3 in review · 0 accepted · results after the review');
   await expect(bar.getByTestId('session-submit')).toBeDisabled();
   await expect(bar.getByTestId('session-submit')).toHaveAttribute('title', REVIEW_TEXTS.submitInReview(3));
+  // 2j1 (D2-76 D5): the reason is text next to Submit, not only its title.
+  await expect(bar.getByTestId('session-submit-reason')).toHaveText(REVIEW_TEXTS.submitInReview(3));
   await expect(page.getByTestId('run-badge')).toHaveText('Edit session: review · Spyro');
   await expect(panel).toHaveAttribute('aria-label', 'Edit session');
   await expect(panel.getByTestId('step-chip')).toHaveText('ended');
@@ -226,6 +228,131 @@ test('"Select them" selects the items a closed Accept waits for; "Go to the firs
   await panel.locator(`[data-testid="review-row"][data-item="${IDS.definition}"]`).click();
   await page.getByTestId('session-go-first').click();
   await expect(panel.locator(`[data-testid="review-row"][data-item="${IDS.vocab}"]`)).toHaveAttribute('data-current', 'true');
+});
+
+test('2j1 (D2-76): an item to be redone says why, in its detail and as its row’s tooltip, and offers core’s refusal instead of Back to review; Submit’s closed reason is text', async ({ page }) => {
+  const why = [
+    REVIEW_TEXTS.redoLine(REVIEW_TEXTS.redoDependsOn('Vocabulary term Spyro.InGame', 'declined Shaky')),
+    REVIEW_TEXTS.redoLine(REVIEW_TEXTS.redoTookOut(REVIEW_TEXTS.redoReasonQueue)),
+  ];
+  const base = shownStage({ vocab: 'declined', definition: 'to-be-redone' });
+  const session: SessionView = {
+    ...base,
+    items: base.items.map((i) => (i.id === IDS.definition ? { ...i, redo: { because: [IDS.vocab], why }, review: { ok: false, reason: REVIEW_TEXTS.redoneByClaude } } : i)),
+  };
+  const panel = await openSession(page, session);
+  const row = panel.locator(`[data-testid="review-row"][data-item="${IDS.definition}"]`);
+  await expect(row.getByTestId('item-status')).toHaveText('↻ to be redone');
+  await expect(row).toHaveAttribute('title', why.join('\n'));
+  // Rows not to be redone carry no such tooltip.
+  await expect(panel.locator(`[data-testid="review-row"][data-item="${IDS.formalize}"]`)).not.toHaveAttribute('title', /.+/);
+  await row.click();
+  const detail = panel.getByTestId('item-detail');
+  await expect(detail).toHaveAttribute('data-item', IDS.definition);
+  await expect(detail.getByTestId('detail-redo-line')).toHaveText(why);
+  await expect(detail.getByTestId('detail-redo-refusal')).toHaveText(REVIEW_TEXTS.redoneByClaude);
+  await expect(detail.getByTestId('detail-back-to-review')).toHaveCount(0);
+  await expect(detail.getByTestId('detail-decline')).toHaveCount(0);
+  await expect(detail.getByTestId('detail-accept')).toHaveCount(0);
+  await page.screenshot({ path: shotPath('s2-review-redo.png') });
+  // A decided item keeps its Back to review link.
+  await panel.locator(`[data-testid="review-row"][data-item="${IDS.vocab}"]`).click();
+  await expect(panel.getByTestId('item-detail').getByTestId('detail-back-to-review')).toHaveCount(1);
+  // Submit's closed reason is text beside it, with "Go to the first one".
+  const bar = page.getByTestId('session-bar');
+  await expect(bar.getByTestId('session-submit-reason')).toHaveText(REVIEW_TEXTS.submitInReview(session.counts.inReview));
+  await expect(bar.getByTestId('session-go-first')).toBeVisible();
+  // An open Submit shows no reason.
+  await send(page, hostMessage('session', { session: { ...session, submit: { gate: OPEN, next: 'claude-steps', work: { shaky: 0, redo: 1, steps: 1 } } } }));
+  await expect(bar.getByTestId('session-submit')).toBeEnabled();
+  await expect(bar.getByTestId('session-submit-reason')).toHaveCount(0);
+});
+
+test('2j2 (D2-92): every decline takes a note; an item to be redone takes a note in place; Submit asks first, with a comment; the report shows it', async ({ page }) => {
+  const panel = await openSession(page, shownStage());
+  // Reject shows the note field and its own button (D2-94); the note goes with it.
+  await panel.locator(`[data-testid="review-row"][data-item="${IDS.definition}"]`).click();
+  await panel.getByTestId('detail-decline').click();
+  await expect(panel.getByTestId('decline-note')).toHaveCount(0);
+  await panel.getByTestId('decline-reject').click();
+  await expect(panel.getByTestId('decline-note')).toBeFocused();
+  await expect(panel.getByTestId('decline-confirm')).toHaveText('Decline (Reject)');
+  await panel.getByTestId('decline-note').fill('Too strong.\nNot every game.');
+  await panel.getByTestId('decline-confirm').click();
+  expect((await postedOfType(page, 'decideItems'))[0]?.payload.decisions).toEqual([{ item: IDS.definition, rev: 1, to: 'declined', option: 'reject', note: 'Too strong.\nNot every game.' }]);
+  await send(page, hostMessage('actionResult', { requestId: (await postedOfType(page, 'decideItems'))[0]?.payload.requestId ?? '', outcome: { ok: true, label: 'x', undoable: false } }));
+  // An arrow item's menu opens with its one Decline chosen, the note field shown.
+  await panel.locator(`[data-testid="review-row"][data-item="${IDS.arrow}"]`).click();
+  await panel.getByTestId('detail-decline').click();
+  await expect(panel.getByTestId('decline-note')).toBeVisible();
+  await expect(panel.getByTestId('decline-confirm')).toHaveText('Decline');
+  await panel.getByTestId('decline-note').fill('Not this premise.');
+  await panel.getByTestId('decline-confirm').click();
+  expect((await postedOfType(page, 'decideItems'))[1]?.payload.decisions).toEqual([{ item: IDS.arrow, rev: 1, to: 'declined', option: 'plain', note: 'Not this premise.' }]);
+  await send(page, hostMessage('actionResult', { requestId: (await postedOfType(page, 'decideItems'))[1]?.payload.requestId ?? '', outcome: { ok: true, label: 'x', undoable: false } }));
+
+  // The host's next view: the definition declined with its note, the Formalize to be redone, Submit open for Claude's steps.
+  const base = shownStage({ definition: 'declined', formalize: 'to-be-redone' });
+  const why = [REVIEW_TEXTS.redoLine(REVIEW_TEXTS.redoDependsOn('Definition Spyro.IsEvil', 'rejected'))];
+  const withNote = (note?: string): SessionView => ({
+    ...base,
+    items: base.items.map((i) =>
+      i.id === IDS.definition
+        ? { ...i, declined: { option: 'reject', note: 'Too strong.\nNot every game.' } }
+        : i.id === IDS.formalize
+          ? { ...i, redo: { because: [IDS.definition], why, ...(note !== undefined ? { note } : {}) }, review: { ok: false, reason: REVIEW_TEXTS.redoneByClaude } }
+          : i,
+    ),
+    submit: { gate: OPEN, next: 'claude-steps', work: { shaky: 0, redo: 1, steps: 1 } },
+  });
+  await send(page, hostMessage('session', { session: withNote() }));
+  await panel.locator(`[data-testid="review-row"][data-item="${IDS.definition}"]`).click();
+  await expect(panel.getByTestId('detail-decline-note')).toHaveText('Note for Claude: Too strong.\nNot every game.');
+  await panel.locator(`[data-testid="review-row"][data-item="${IDS.formalize}"]`).click();
+  const detail = panel.getByTestId('item-detail');
+  await expect(detail.getByTestId('detail-redo-note-text')).toHaveCount(0);
+  await detail.getByTestId('detail-redo-note-edit').click();
+  await expect(detail.getByTestId('detail-redo-note-input')).toBeFocused();
+  await detail.getByTestId('detail-redo-note-input').fill('Read it as a rule.');
+  // Cancel sends nothing; Save sends `noteItem`.
+  await detail.getByTestId('detail-redo-note-cancel').click();
+  expect(await postedOfType(page, 'noteItem')).toHaveLength(0);
+  await detail.getByTestId('detail-redo-note-edit').click();
+  await detail.getByTestId('detail-redo-note-input').fill('Read it as a rule.');
+  await detail.getByTestId('detail-redo-note-save').click();
+  const notes = await postedOfType(page, 'noteItem');
+  expect(notes.map((m) => ({ ...m.payload, requestId: undefined }))).toEqual([{ runId: base.runId, stage: 1, item: IDS.formalize, rev: 1, note: 'Read it as a rule.', requestId: undefined }]);
+  await send(page, hostMessage('actionResult', { requestId: notes[0]?.payload.requestId ?? '', outcome: { ok: true, label: 'x', undoable: false } }));
+  await send(page, hostMessage('session', { session: withNote('Read it as a rule.') }));
+  await expect(detail.getByTestId('detail-redo-note-text')).toHaveText('Note for Claude: Read it as a rule.');
+  await page.screenshot({ path: shotPath('s2-review-notes.png') });
+
+  // Submit review asks first: what it does, the comment, Submit and Cancel.
+  const bar = page.getByTestId('session-bar');
+  await bar.getByTestId('session-submit').click();
+  expect(await postedOfType(page, 'submitReview')).toHaveLength(0);
+  const submitPanel = bar.getByTestId('session-submit-panel');
+  await expect(submitPanel.getByTestId('session-submit-what')).toHaveText(REVIEW_TEXTS.submitSteps(0, 1));
+  await expect(submitPanel.getByTestId('session-submit-comment')).toBeFocused();
+  await submitPanel.getByTestId('session-submit-cancel').click();
+  await expect(bar.getByTestId('session-submit-panel')).toHaveCount(0);
+  await bar.getByTestId('session-submit').click();
+  await bar.getByTestId('session-submit-comment').fill('Keep the names.\nPrefer the rule reading.');
+  await page.screenshot({ path: shotPath('s2-review-submit-panel.png') });
+  await bar.getByTestId('session-submit-confirm').click();
+  const submitted = await postedOfType(page, 'submitReview');
+  expect(submitted.map((m) => ({ ...m.payload, requestId: undefined }))).toEqual([{ runId: base.runId, stage: 1, comment: 'Keep the names.\nPrefer the rule reading.', requestId: undefined }]);
+  await expect(bar.getByTestId('session-submit-panel')).toHaveCount(0);
+  await send(page, hostMessage('actionResult', { requestId: submitted[0]?.payload.requestId ?? '', outcome: { ok: true, label: 'x', undoable: false } }));
+  // The next stage's report shows the comment.
+  const stage2 = shownStage({}, { stage: 2 });
+  await send(page, hostMessage('session', { session: { ...stage2, report: { ...stage2.report, stage: 2, comment: { stage: 1, text: 'Keep the names.\nPrefer the rule reading.' } } } }));
+  await expect(panel.getByTestId('report-comment')).toHaveText(`${REVIEW_TEXTS.reportComment(1)} Keep the names.\nPrefer the rule reading.`);
+  // With nothing for Claude to do, Submit goes straight to the end confirmation: no panel.
+  await send(page, hostMessage('session', { session: { ...stage2, submit: { gate: OPEN, next: 'confirm', work: { shaky: 0, redo: 0, steps: 0 } } } }));
+  await bar.getByTestId('session-submit').click();
+  await expect(bar.getByTestId('session-submit-panel')).toHaveCount(0);
+  expect((await postedOfType(page, 'submitReview')).map((m) => ({ ...m.payload, requestId: undefined }))[1]).toEqual({ runId: base.runId, stage: 2, requestId: undefined });
 });
 
 test('the events box shows what is newer than the last dismissal', async ({ page }) => {

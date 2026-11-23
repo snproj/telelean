@@ -1,0 +1,25 @@
+# Model and session metadata for response 25 (turn 25), written in turn 26
+
+- **Session and timing:** session `c398a83b-d60f-46a4-ad9a-8d926e6fdd1b`. Turn 25 began at about 2026-11-22T11:15Z (19:15 SGT). The context was compacted once, while the workflow ran. The work ended at about 16:10Z, with status replies afterwards.
+- **Models:**
+  - the main loop: Opus 5.5 (`claude-opus-5-5`);
+  - the workflow `wf_93090c56-47b`: Opus builders; Sonnet verifiers, fixers and re-verifiers; a Haiku integrator; an Opus drafter and a Sonnet fact-checker for the design note.
+  - The harness is Claude Code in the VS Code extension, on Linux. Ultracode was on at the start of the turn and reported off after the compaction.
+- **Subagents:** 13 agents, 963 tool uses, ≈ 2.81 M subagent tokens, ≈ 262 min (`wf_usage.py`). Their verbatim returns are in `subagent_reports/01–13`.
+- **Main loop:** 48 API messages after 11:15Z, deduplicated by message id, with ≈ 0.085 M output tokens and ≈ 6.8 M cache reads. These figures were measured before the last few status replies.
+- **Telelean's own Claude runs:** none. The tests ran with `TELELEAN_NO_REAL_CLAUDE=1`.
+- **Checks I ran after the chain:**
+  - the scratch webview build;
+  - Playwright, 21 spec files (120 passed);
+  - the AP-8 rebuild of `packages/extension/dist` and `out`;
+  - the VS Code suites in snap VS Code with an isolated profile: 39 passing and 1 pending, then 14 passing and 7 pending, with 0 isolation failures.
+- **Ledger** (downloads, installs and writes outside the repo):
+  - **Installs and downloads:** none. A scan of the subagents' 894 shell commands found no npx, npm install, pip, curl, wget or git-changing command.
+  - **Outside the repo, the scratch dir and the logs**, written by tools rather than by me: the Playwright transform cache and the Node compile cache in `/tmp`, as in earlier turns.
+  - Claude Code wrote its own housekeeping files under `~/.claude`: backups, sessions, file history and the session transcript. I didn't read the credentials file; it appeared in the change scan only by name.
+  - **The user's telelean run folders and `~/telelean-demos`:** nothing written by this turn's work. The later changes there came from the user's own use (see turn 26).
+  - **Git:** HEAD is c557f06, with nothing staged.
+- **Interim messages:** the short status lines between tool calls are in the session transcript. Four replies were cut off by Anthropic's safety filter (`reasoning_extraction`), and the user's follow-ups are in `prompt25_midturn.md`. The mid-turn progress reply is in `response25_midturn_reply.md`.
+- **Honest gaps:**
+  - `response25_interim.md` was not built this time; the interims are in the transcript only.
+  - The cut-off replies' text is not logged, because it was withheld.

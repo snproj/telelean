@@ -8370,7 +8370,8 @@ var SESSION_MESSAGE_TYPES = [
   "endSession",
   "retryStep",
   "openSessionDiff",
-  "moveProposed"
+  "moveProposed",
+  "noteItem"
 ];
 var RUN_MESSAGE_TYPES = ["answerQuestions", "cancelRun", "resumeRun", "dismissRun", ...SESSION_MESSAGE_TYPES];
 function webviewMessage(type, payload) {
@@ -8614,7 +8615,7 @@ function decision(value, what) {
   } else if (d.option !== void 0) fail(`${what}.option is only for a decline`);
   let note;
   if (d.note !== void 0) {
-    if (option2 !== "shaky") fail(`${what}.note is only for a Shaky decline`);
+    if (to !== "declined") fail(`${what}.note is only for a decline`);
     const text = str(d.note, `${what}.note`, LIMITS.textLength, true);
     if (text.trim() !== "") note = text;
   }
@@ -8883,8 +8884,24 @@ function parseWebviewToHost(raw) {
         return webviewMessage("sessionUndo", { runId: runId(p.runId, "payload.runId"), step: int(p.step, "payload.step", 0, LIMITS.revision), ...confirmedFlag(p.confirmed), ...requestId(p.requestId) });
       case "sessionRedo":
         return webviewMessage("sessionRedo", { runId: runId(p.runId, "payload.runId"), step: int(p.step, "payload.step", 0, LIMITS.revision), ...confirmedFlag(p.confirmed), ...requestId(p.requestId) });
-      case "submitReview":
-        return webviewMessage("submitReview", { runId: runId(p.runId, "payload.runId"), stage: stageOf(p.stage, "payload.stage"), ...requestId(p.requestId) });
+      case "submitReview": {
+        const comment = p.comment === void 0 ? "" : str(p.comment, "payload.comment", LIMITS.textLength, true);
+        return webviewMessage("submitReview", {
+          runId: runId(p.runId, "payload.runId"),
+          stage: stageOf(p.stage, "payload.stage"),
+          ...comment.trim() !== "" ? { comment } : {},
+          ...requestId(p.requestId)
+        });
+      }
+      case "noteItem":
+        return webviewMessage("noteItem", {
+          runId: runId(p.runId, "payload.runId"),
+          stage: stageOf(p.stage, "payload.stage"),
+          item: token(p.item, "payload.item"),
+          rev: int(p.rev, "payload.rev", 0, LIMITS.revision),
+          note: str(p.note, "payload.note", LIMITS.textLength, true),
+          ...requestId(p.requestId)
+        });
       case "endSession": {
         const decision2 = p.decision;
         if (decision2 !== "apply" && decision2 !== "exit" && decision2 !== "back") fail('payload.decision must be "apply", "exit" or "back"');
@@ -17098,6 +17115,13 @@ var DECL_KIND_LABELS = {
   presupposition: "Presupposition",
   "vocabulary-change": "Vocabulary change"
 };
+var ITEM_STATUS_TEXTS = {
+  "in-review": { glyph: "\u25CF", word: "in review" },
+  accepted: { glyph: "\u2713", word: "accepted" },
+  declined: { glyph: "\u2717", word: "declined" },
+  "to-be-redone": { glyph: "\u21BB", word: "to be redone" },
+  withdrawn: { glyph: "\u2013", word: "withdrawn" }
+};
 var DECLINE_OPTION_TEXTS = {
   plain: "Decline",
   reject: "Reject",
@@ -17120,8 +17144,11 @@ var REVIEW_TEXTS = {
   unrejectConflict: (file2) => `This version can't be restored any more: ${file2}.`,
   /** §3.6: un-reject of a Result or a Result's part while the results are hidden. */
   showResultsFirst: "The results are not shown yet: show them first.",
-  /** §4.6, D2-60: to be redone -> in review, refused when its content was taken out. */
-  contentTakenOut: "Its content was taken out: un-reject what took it out, or let Claude redo it at Submit review.",
+  /**
+   * §4.6 (2j1, D2-76, D2-84; it replaces D2-60's `contentTakenOut`): to be redone -> in review by hand, refused, its
+   * content kept or taken out. The item comes back by itself with what took it down, or by Undo.
+   */
+  redoneByClaude: "Claude redoes it at Submit review. To review it yourself now, set back to review what it depends on, or use Undo.",
   /**
    * §4.6 (fixer 2b1b r1, S-F5): un-reject of an item declined by a decision that also un-rejected another item. Its
    * inverse merge would take that other item's content out too, so it is refused: Undo undoes the whole decision.
@@ -17334,15 +17361,32 @@ var REVIEW_TEXTS = {
   rejectResult: "keeps the previous proof; Claude may not offer this exact proof again",
   shakyResult: "Claude tries again at Submit review",
   noteForClaude: "Note for Claude (optional)",
+  /**
+   * 2j2 (D2-92, D2-94): the decline menu's confirm button once an option is chosen: "Decline (Reject)", "Decline
+   * (Shaky)", and an arrow item's "Decline".
+   */
+  declineConfirm: (option2) => option2 === "plain" ? DECLINE_OPTION_TEXTS.plain : `${DECLINE_OPTION_TEXTS.plain} (${DECLINE_OPTION_TEXTS[option2].replace("\u2026", "")})`,
+  /** 2j2 (D2-92): a decided item's note in the detail: "Note for Claude: ‹note›" (the label before the note). */
+  noteLabel: "Note for Claude",
+  /** 2j2 (D2-92, D2-95): the footer of an item to be redone: its note's button, and the editor's buttons. */
+  noteForClaudeEdit: "Note for Claude\u2026",
+  noteSave: "Save",
+  noteCancel: "Cancel",
+  /** 2j2 (D2-95): the `note` action on an item that is not to be redone. */
+  noteOnlyRedo: "Only an item to be redone takes a note here; a decline takes its note in the decline menu.",
   reviewItems: (n) => `${n} review item${n === 1 ? "" : "s"}`,
   // ---- Submit review (§3.7, §5.8)
   submitReview: "Submit review",
-  /** AF4: the results are hidden by statements to be redone with their content kept. */
-  submitResultsHidden: "The results are not shown yet: decide these statements to be redone (declined as Shaky, Claude redoes them), or show the results, first.",
   /** §3.7: a cycle whose members are partly accepted. */
   acceptOrRejectTogether: (items) => `Accept or reject all of ${joined(items)} together.`,
   submitToConfirm: "Leads to the end confirmation: every item is accepted or rejected (no Claude step)",
   submitSteps: (shaky, redo) => `Starts Claude's next steps for ${shaky} Shaky items and ${redo} to be redone; accepted items carry over`,
+  /** 2j2 (D2-92, D2-98): Submit's panel when it starts Claude's steps: the comment field, and its buttons. */
+  commentForClaude: "Comment for Claude (optional)",
+  submitPanelSubmit: "Submit",
+  submitPanelCancel: "Cancel",
+  /** 2j2 (D2-92, D2-96): the stage report's line for the comment given at the Submit review that started the stage. */
+  reportComment: (stage) => `Your comment at Submit review (stage ${stage}):`,
   goToFirst: "Go to the first one",
   // ---- the session bar (§5.8), the badge and RunElsewhere
   sessionTitle: (targets) => targets.length === 1 ? `Edit session \xB7 Formalize for dependencies: \u201C${targets[0]}\u201D` : `Edit session \xB7 Formalize for dependencies \xB7 ${targets.length} targets`,
@@ -17409,6 +17453,8 @@ var REVIEW_TEXTS = {
   /** "Accept: Add premise ‹card› (as an axiom)"; builder 2a1: "(pending proof)" for the other hold-as choice. */
   undoAcceptPremise: (card, holdAs) => `Accept: Add premise ${card} (${holdAs === "axiom" ? "as an axiom" : "pending proof"})`,
   undoMove: (card) => `Move: ${card}`,
+  /** 2j2 (D2-92, D2-95): a note on an item to be redone, set, replaced or cleared. */
+  undoNote: (label3) => `Note for Claude: ${label3}`,
   /** UN-1, D2-38: the board's Undo during a session. */
   boardUndoLocked: "Your files can't change during an edit session; Undo in the Proposed view undoes your review steps.",
   // ---- builder 2a2's wording (the plan quotes no text for these; docs/slice2-plan.md section 8, builder 2a2)
@@ -17497,7 +17543,42 @@ var REVIEW_TEXTS = {
   /** §5.4 "What is missing": a card the proof uses whose arrow into the target is not drawn. */
   drawTooHint: (card, target) => `draw ${card} \u2192 ${target}, then select it too`,
   /** §2.3 ItemView `classes.reasons`: a class that is incomplete (D2-25). */
-  classIncomplete: "telelean could not see everything it relies on, so it counts as a belief"
+  classIncomplete: "telelean could not see everything it relies on, so it counts as a belief",
+  // ---- 2j1 (D2-76, the user's decision of turn 25; builder 2j1's wording where the decision gives an example, D2-82,
+  // D2-83): the automatic return's events and why an item is to be redone (`ItemView.redo.why`)
+  /** §4.6's automatic return (D2-82): items back in review with what took them down. */
+  eventBackWith: "Back in review with it, since they depend on it:",
+  /** The same, for items that kept a Shaky decline while a Reject cascade took them out: back to declined Shaky. */
+  eventBackShakyWith: "Back to Shaky with it, since they depend on it:",
+  /** D4: one line of `ItemView.redo.why`: "↻ to be redone: ‹why›". */
+  redoLine: (why) => `${ITEM_STATUS_TEXTS["to-be-redone"].glyph} ${ITEM_STATUS_TEXTS["to-be-redone"].word}: ${why}`,
+  /** D4: one listed cause, "it depends on ‹label›, ‹state›" (`redoCauseState`). */
+  redoDependsOn: (label3, state) => `it depends on ${label3}, ${state}`,
+  /** D4: the cause's state: "declined Shaky", "rejected", "declined" (an arrow's plain decline), else its status word. */
+  redoCauseState: (status, option2) => status === "declined" ? option2 === "shaky" ? "declined Shaky" : option2 === "reject" ? "rejected" : "declined" : ITEM_STATUS_TEXTS[status].word,
+  /** D4: when no listed item caused it, "telelean took it out: ‹reason›" (the reasons below). */
+  redoTookOut: (reason) => `telelean took it out: ${reason}`,
+  /** The judge's reverts (§3.6): its declarations no longer build ("no longer builds" marker). */
+  redoReasonBuilds: "it no longer builds",
+  /** A premise re-check (§3.8): "no longer closes the gap" marker. */
+  redoReasonGap: "it no longer closes the gap",
+  /** The judge's reverts (§3.6): a Result whose inference fails B.1, B.2 or its footprint. */
+  redoReasonChecks: "it no longer passes its checks",
+  /** The judge's reverts (§3.6): a dependent of what the judge took out. */
+  redoReasonJudged: "something it depends on no longer builds or passes its checks",
+  /** Submit's take-out (D2-57). */
+  redoReasonTakeOut: "another step of Submit review reworks what it depends on",
+  /** RV-3 at a queue's end (§3.5). */
+  redoReasonQueue: "it depends on items that are Shaky or to be redone",
+  /** DO-0's question change (D2-59, D2-81): ‹source›, the arrow's source card. */
+  redoReasonQuestion: (source) => `\u201C${source}\u201D left its question when you declined its arrow`,
+  /** A cascade whose listed causes are all hidden while the results are (D2-64): none is named. */
+  redoReasonHidden: "it depends on items that are shown with the results",
+  /**
+   * A cascade (or a record saved before 2j1) with no cause left in `because`. Past tense (builder 2j2, carry-over R1-1):
+   * the cause may be back in review now (D2-89), so the line says what took it out, not what holds it now.
+   */
+  redoReasonDeclined: "it depended on something that was declined"
 };
 var CLASS_REASON_TEXTS = {
   b1: (_name, cards) => cards !== void 0 ? `belief: it adds an axiom card or a premise (${cards})` : "belief: it adds an axiom card or a premise",
@@ -18673,7 +18754,28 @@ init_import_meta_url();
 var isArrowKind = (kind) => kind === "add-arrow" || kind === "remove-arrow";
 var isReverted = (r) => r.redo?.reverted === true;
 function isUndecided(r) {
-  return r.status === "in-review" || r.status === "to-be-redone" && !isReverted(r);
+  return r.status === "in-review";
+}
+function copyRedo(redo) {
+  return {
+    because: [...redo.because],
+    reverted: redo.reverted,
+    ...redo.kind !== void 0 ? { kind: redo.kind } : {},
+    ...redo.note !== void 0 ? { note: redo.note } : {}
+  };
+}
+function keepNote(redo) {
+  return redo?.note !== void 0 ? { note: redo.note } : {};
+}
+function dropStaleRedoNotes(items, before) {
+  const out = [];
+  for (const r of items) {
+    if (r.status === "to-be-redone" || r.redo?.note === void 0) continue;
+    before?.(r.id);
+    delete r.redo.note;
+    out.push(r.id);
+  }
+  return out;
 }
 var isDeclinedOut = (r) => r.status === "declined" && r.decline?.option !== "shaky";
 var isShaky = (r) => r.decline?.option === "shaky" && (r.status === "declined" || r.status === "to-be-redone");
@@ -18691,7 +18793,7 @@ function itemStateOf(r) {
     status: r.status,
     ...r.decline !== void 0 ? { decline: { ...r.decline } } : {},
     ...r.accepted !== void 0 ? { accepted: { ...r.accepted, ...r.accepted.result ? { result: { ...r.accepted.result, restsOn: [...r.accepted.result.restsOn] } } : {} } } : {},
-    ...r.redo !== void 0 ? { redo: { because: [...r.redo.because], reverted: r.redo.reverted } } : {},
+    ...r.redo !== void 0 ? { redo: copyRedo(r.redo) } : {},
     markers: [...r.markers],
     rejectedFingerprints: [...r.rejectedFingerprints],
     rejectedRevs: r.versions.filter((v) => v.rejected === true).map((v) => v.rev)
@@ -18703,7 +18805,7 @@ function applyItemState(r, s) {
   else delete r.decline;
   if (s.accepted !== void 0) r.accepted = { ...s.accepted };
   else delete r.accepted;
-  if (s.redo !== void 0) r.redo = { because: [...s.redo.because], reverted: s.redo.reverted };
+  if (s.redo !== void 0) r.redo = copyRedo(s.redo);
   else delete r.redo;
   r.markers = [...s.markers];
   r.rejectedFingerprints = [...s.rejectedFingerprints];
@@ -18843,6 +18945,16 @@ var Work = class {
    * it ends with: a decline later in the same request may keep it out.
    */
   mergedBack = /* @__PURE__ */ new Map();
+  /**
+   * 2j1 (D2-76 D3): the items the request set back to review from declined (`unDeclined`), whose dependents to be
+   * redone `releaseReturned` brings back; the items whose content the request's inverse merges bring back into ws/
+   * (`merging`: what the declining commit of an un-rejected item that ends in review took out, V2A-C2); and the items
+   * that came back, to in review (`back`) or to declined Shaky (`backShaky`), for the events (D2-82).
+   */
+  unDeclined = [];
+  merging = /* @__PURE__ */ new Set();
+  back = [];
+  backShaky = [];
   /** ADV-3: some class of the stage judgement lacks its facts: no badge comparison reads the classes (D2-23). */
   partialClasses;
   dependentsOf = /* @__PURE__ */ new Map();
@@ -18989,6 +19101,7 @@ function leftText(w, id2, reason, shown2) {
       return REVIEW_TEXTS.leftNeedsOption(label3);
   }
 }
+var cascadeKind = (redo) => redo === void 0 ? { kind: "cascade" } : redo.kind !== void 0 ? { kind: redo.kind } : {};
 function cascadeOut(w, from) {
   for (const id2 of w.dependents(from)) {
     const x = w.byId.get(id2);
@@ -18998,18 +19111,24 @@ function cascadeOut(w, from) {
     x.status = "to-be-redone";
     delete x.accepted;
     if (x.decline?.option !== "shaky") delete x.decline;
-    x.redo = { because: union2(x.redo?.because ?? [], [from]), reverted: true };
+    x.redo = { because: union2(x.redo?.because ?? [], [from]), reverted: true, ...cascadeKind(x.redo), ...keepNote(x.redo) };
     if (!w.why.has(id2)) w.why.set(id2, REVIEW_TEXTS.cascadeWhy(w.label(from)));
   }
 }
 function cascadeShaky(w, from) {
   for (const id2 of w.dependents(from)) {
     const x = w.byId.get(id2);
+    if (x.status === "to-be-redone" && x.redo !== void 0) {
+      if (x.redo.because.includes(from)) continue;
+      w.touch(id2);
+      x.redo = { ...copyRedo(x.redo), because: union2(x.redo.because, [from]) };
+      continue;
+    }
     if (x.status !== "in-review" && x.status !== "accepted") continue;
     w.touch(id2);
     x.status = "to-be-redone";
     delete x.accepted;
-    x.redo = { because: [from], reverted: false };
+    x.redo = { because: [from], reverted: false, kind: "cascade" };
     if (!w.why.has(id2)) w.why.set(id2, REVIEW_TEXTS.cascadeWhy(w.label(from)));
   }
 }
@@ -19078,7 +19197,7 @@ function decline(w, d, shown2, at) {
   w.touch(r.id);
   const reverted = isReverted(r);
   r.status = "declined";
-  const note = chosen === "shaky" && d.note !== void 0 && d.note.trim() !== "" ? d.note : void 0;
+  const note = d.note !== void 0 && d.note.trim() !== "" ? d.note : void 0;
   r.decline = { option: chosen, ...note !== void 0 ? { note } : {}, at };
   delete r.accepted;
   if (!reverted) delete r.redo;
@@ -19109,8 +19228,12 @@ function decline(w, d, shown2, at) {
       result.status = "to-be-redone";
       delete result.accepted;
       if (result.decline?.option !== "shaky") delete result.decline;
-      result.redo = { because: [r.id], reverted: false };
+      result.redo = { because: [r.id], reverted: false, kind: "question" };
       w.why.set(result.id, REVIEW_TEXTS.leftQuestion(ends.source, inference.target));
+      cascadeShaky(w, result.id);
+    } else if (result.status === "to-be-redone" && result.redo !== void 0) {
+      w.touch(result.id);
+      result.redo = { because: union2(result.redo.because, [r.id]), reverted: result.redo.reverted, kind: "question", ...keepNote(result.redo) };
       cascadeShaky(w, result.id);
     }
   }
@@ -19126,12 +19249,7 @@ function backToReview(w, d, shown2) {
     case "withdrawn":
       return refused(REVIEW_TEXTS.withdrawnStays(label3), r.id);
     case "to-be-redone":
-      if (isReverted(r)) return refused(REVIEW_TEXTS.contentTakenOut, r.id);
-      w.touch(r.id);
-      r.status = "in-review";
-      delete r.redo;
-      delete r.decline;
-      return void 0;
+      return refused(REVIEW_TEXTS.redoneByClaude, r.id);
     case "accepted":
       w.touch(r.id);
       r.status = "in-review";
@@ -19143,6 +19261,7 @@ function backToReview(w, d, shown2) {
       const unreject = isDeclinedOut(r);
       delete r.decline;
       r.status = isReverted(r) ? "to-be-redone" : "in-review";
+      w.unDeclined.push(r.id);
       if (!unreject) return void 0;
       const keys = new Set(rejectedKeysOf(r));
       r.rejectedFingerprints = r.rejectedFingerprints.filter((k) => !keys.has(k));
@@ -19155,31 +19274,102 @@ function backToReview(w, d, shown2) {
       const merged = mergedBackBy(w, r);
       if (merged?.mixed === true) return refused(REVIEW_TEXTS.unrejectMixed(label3), r.id);
       const candidates = merged?.items ?? new Set(w.items.filter((x) => isReverted(x) && (x.redo?.because ?? []).includes(r.id)).map((x) => x.id));
-      const back = r.status === "in-review";
+      const merging = merged !== void 0 && r.status === "in-review";
       for (const x of w.items) {
         if (x.id === r.id || !candidates.has(x.id)) continue;
         const written = x.card === void 0 ? merged?.premises.get(x.id) : void 0;
         if (written !== void 0) w.touch(x.id);
-        let cameBack = false;
-        if (merged !== void 0 && back && x.status === "to-be-redone" && isReverted(x)) {
-          const rest = (x.redo?.because ?? []).filter((id2) => id2 !== r.id);
-          const stillOut = rest.some((id2) => {
-            const taker = w.byId.get(id2);
-            return taker !== void 0 && (isDeclinedOut(taker) || isReverted(taker));
-          });
-          w.touch(x.id);
-          if (!stillOut) {
-            x.redo = { because: x.redo?.because ?? [r.id], reverted: false };
-            if (!w.why.has(x.id)) w.why.set(x.id, REVIEW_TEXTS.cascadeWhy(label3));
-            cameBack = true;
-          } else x.redo = { because: rest, reverted: true };
-        }
+        if (merging) w.merging.add(x.id);
         const known = w.mergedBack.get(x.id);
         const entry = written ?? known?.written;
-        w.mergedBack.set(x.id, { ...entry !== void 0 ? { written: entry } : {}, back: cameBack || known?.back === true });
+        w.mergedBack.set(x.id, { ...entry !== void 0 ? { written: entry } : {}, back: known?.back === true });
       }
       return void 0;
     }
+  }
+}
+function holdsUp(c) {
+  return (c.status === "in-review" || c.status === "accepted") && inWorkingCopy(c.kind, c, c.card);
+}
+function releaseReturned(w) {
+  const sources = new Set(
+    w.unDeclined.filter((id2) => {
+      const r = w.byId.get(id2);
+      return r.status === "in-review" && inWorkingCopy(r.kind, r, r.card, w.start.get(id2)?.state);
+    })
+  );
+  if (sources.size === 0) return;
+  const candidate = (x) => x.status === "to-be-redone" && x.redo?.kind === "cascade";
+  const reached = /* @__PURE__ */ new Set();
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const x of w.items) {
+      if (reached.has(x.id) || !candidate(x)) continue;
+      if (!(x.redo?.because ?? []).some((id2) => sources.has(id2) || reached.has(id2))) continue;
+      reached.add(x.id);
+      grew = true;
+    }
+  }
+  if (reached.size === 0) return;
+  const back = new Set(reached);
+  const up = (id2) => sources.has(id2) || back.has(id2) && w.byId.get(id2).decline?.option !== "shaky";
+  const down = (id2) => {
+    const c = w.byId.get(id2);
+    return c !== void 0 && !up(id2) && !holdsUp(c);
+  };
+  const holding = (id2) => w.deps(id2).filter((d) => {
+    const dep = w.byId.get(d);
+    return dep !== void 0 && !up(d) && (dep.status === "declined" || dep.status === "to-be-redone");
+  });
+  for (let dropped = true; dropped; ) {
+    dropped = false;
+    for (const id2 of [...back]) {
+      const x = w.byId.get(id2);
+      const because = x.redo?.because ?? [];
+      const kept = because.some(down) || holding(id2).length > 0 || isReverted(x) && !w.merging.has(id2);
+      if (!kept) continue;
+      back.delete(id2);
+      dropped = true;
+    }
+  }
+  for (const x of w.items) {
+    if (!reached.has(x.id)) continue;
+    const redo = x.redo;
+    const cause = redo.because.find(up) ?? redo.because[0] ?? "";
+    w.touch(x.id);
+    const merged = w.mergedBack.get(x.id);
+    if (back.has(x.id)) {
+      x.status = x.decline?.option === "shaky" ? "declined" : "in-review";
+      delete x.redo;
+      (x.status === "declined" ? w.backShaky : w.back).push(x.id);
+      if (!w.why.has(x.id)) w.why.set(x.id, REVIEW_TEXTS.cascadeWhy(w.label(cause)));
+      if (merged !== void 0 && isReverted({ redo })) w.mergedBack.set(x.id, { ...merged, back: true });
+      continue;
+    }
+    const because = union2(
+      redo.because.filter((id2) => !up(id2)),
+      holding(x.id)
+    );
+    const out = because.some((id2) => {
+      const c = w.byId.get(id2);
+      return c !== void 0 && !inWorkingCopy(c.kind, c, c.card);
+    });
+    const reverted = redo.reverted && !(w.merging.has(x.id) && !out);
+    if (redo.reverted && !reverted && merged !== void 0) w.mergedBack.set(x.id, { ...merged, back: true });
+    x.redo = { because, reverted, kind: "cascade", ...keepNote(redo) };
+  }
+}
+function dropHeldUp(w) {
+  for (const id2 of w.unDeclined) {
+    const x = w.byId.get(id2);
+    if (x.status !== "to-be-redone" || x.redo?.kind !== "cascade") continue;
+    const because = x.redo.because.filter((c) => {
+      const cause = w.byId.get(c);
+      return cause === void 0 || !holdsUp(cause);
+    });
+    if (because.length === x.redo.because.length) continue;
+    w.touch(x.id);
+    x.redo = { ...x.redo, because };
   }
 }
 function settleMergedBack(w) {
@@ -19327,6 +19517,10 @@ function actionEvents(w, ids2, decided, shown2) {
   });
   const events = [];
   if (redone.length > 0) events.push({ text: REVIEW_TEXTS.eventRedoneWith, items: redone });
+  const back = w.back.filter((id2) => ids2.includes(id2) && listed2(id2));
+  if (back.length > 0) events.push({ text: REVIEW_TEXTS.eventBackWith, items: back });
+  const backShaky = w.backShaky.filter((id2) => ids2.includes(id2) && listed2(id2));
+  if (backShaky.length > 0) events.push({ text: REVIEW_TEXTS.eventBackShakyWith, items: backShaky });
   const returned = w.grew.filter(listed2);
   if (returned.length > 0) events.push({ text: REVIEW_TEXTS.eventBadgesGrew, items: returned });
   return events;
@@ -19407,6 +19601,8 @@ function decide(state, request, at, redo) {
     if (refusal2 !== void 0) return refusal2;
     decided.add(d.item);
   }
+  releaseReturned(w);
+  dropHeldUp(w);
   settleMergedBack(w);
   const accepts = decisions.filter((d) => d.to === "accepted");
   let left = [];
@@ -19418,7 +19614,8 @@ function decide(state, request, at, redo) {
     accept(w, r, d, "own", shown2, at);
     decided.add(r.id);
   } else if (accepts.length > 0) {
-    const items = w.items.map((r) => groupItemOf(w, r, shown2));
+    const returned = new Set(w.back);
+    const items = w.items.map((r) => returned.has(r.id) ? { ...groupItemOf(w, r, shown2), status: "to-be-redone" } : groupItemOf(w, r, shown2));
     const plan2 = planGroupAccept(
       items,
       accepts.map((d) => d.item)
@@ -19446,6 +19643,7 @@ function decide(state, request, at, redo) {
     w.forced = null;
   }
   const startedForce = !shown2 && w.reveal().shown ? showResults(w, at) : void 0;
+  dropStaleRedoNotes(w.items, (id3) => w.touch(id3));
   const ids2 = w.changed();
   if (ids2.length === 0 && w.questions.length === 0 && w.arrowsAdded.length === 0 && w.arrowsRemoved.length === 0) return unchanged(state, left);
   const taken = [...decided].filter((id3) => ids2.includes(id3));
@@ -19532,6 +19730,42 @@ function move(state, before, after, at, redo) {
   const out = unchanged(state);
   return { ...out, stack: { done: [...state.stack.done, action], undone: redo !== void 0 ? [...redo.undone] : [] }, nextAction: id2 + 1, label: label3 };
 }
+function withNote(redo, note) {
+  const out = copyRedo(redo);
+  if (note === void 0) delete out.note;
+  else out.note = note;
+  return out;
+}
+function noteItem(state, item, rev, note, at, redo) {
+  const w = new Work(state);
+  const shown2 = w.reveal().shown;
+  const r = w.byId.get(item);
+  if (r === void 0) return conflict(REVIEW_TEXTS.conflict(item), item);
+  if (hiddenIn(shown2)(r)) return refused(REVIEW_TEXTS.showResultsFirst);
+  if (rev !== r.rev) return conflict(REVIEW_TEXTS.conflictLabel(w.label(r.id)), r.id);
+  if (r.status !== "to-be-redone" || r.redo === void 0) return refused(REVIEW_TEXTS.noteOnlyRedo, r.id);
+  const after = note.trim() === "" ? void 0 : note;
+  const before = r.redo.note;
+  if (after === before) return unchanged(state);
+  w.touch(r.id);
+  r.redo = withNote(r.redo, after);
+  const id2 = state.nextAction;
+  const label3 = REVIEW_TEXTS.undoNote(w.label(r.id));
+  const action = { id: id2, kind: "note", label: label3, item: r.id, rev: r.rev, ...before !== void 0 ? { before } : {}, ...after !== void 0 ? { after } : {}, at };
+  const out = unchanged(state);
+  return { ...out, items: w.items, stack: { done: [...state.stack.done, action], undone: redo !== void 0 ? [...redo.undone] : [] }, nextAction: id2 + 1, label: label3 };
+}
+function undoNote(state, top, stack) {
+  const w = new Work(state);
+  const r = w.byId.get(top.item);
+  if (r === void 0) return conflict(REVIEW_TEXTS.historyChanged);
+  if (hiddenIn(w.reveal().shown)(r)) return refused(REVIEW_TEXTS.showResultsFirst);
+  if (r.rev !== top.rev || r.status !== "to-be-redone" || r.redo === void 0 || r.redo.note !== top.after) return conflict(REVIEW_TEXTS.conflictLabel(w.label(r.id)), r.id);
+  w.touch(r.id);
+  r.redo = withNote(r.redo, top.before);
+  const out = unchanged(state);
+  return { ...out, items: w.items, stack, label: top.label };
+}
 function seal(state, by, at) {
   const id2 = state.nextAction;
   const out = unchanged(state);
@@ -19581,6 +19815,7 @@ function undo(state, step, confirmed, at) {
   if (top.kind === "seal") return refused(REVIEW_TEXTS.sealed);
   const stack = { done: done.slice(0, -1), undone: [...state.stack.undone, top] };
   if (top.kind === "move") return { ...unchanged(state), stack, label: top.label };
+  if (top.kind === "note") return undoNote(state, top, stack);
   const w = new Work(state);
   const shown2 = w.reveal().shown;
   const hidden = hiddenIn(shown2);
@@ -19699,6 +19934,8 @@ function redoAction(state, step, confirmed, at) {
       return reveal(base, top.force.via, at, rest);
     case "move":
       return move(base, top.before, top.after, at, rest);
+    case "note":
+      return noteItem(base, top.item, top.rev, top.after ?? "", at, rest);
   }
 }
 function reduceReview(state, action, at) {
@@ -19715,6 +19952,8 @@ function reduceReview(state, action, at) {
       return redoAction(state, action.step, action.confirmed, at);
     case "seal":
       return seal(state, action.by, at);
+    case "note":
+      return noteItem(state, action.item, action.rev, action.note, at, void 0);
   }
 }
 function acceptGateIn(w, r, own4, shown2) {
@@ -19752,7 +19991,7 @@ function itemGates(state) {
       case "withdrawn":
         return REVIEW_TEXTS.withdrawnStays(w.label(r.id));
       case "to-be-redone":
-        return isReverted(r) ? REVIEW_TEXTS.contentTakenOut : void 0;
+        return REVIEW_TEXTS.redoneByClaude;
       case "accepted":
         return void 0;
       case "declined":
@@ -20497,6 +20736,34 @@ function buildSessionView(input2) {
       ...cls.complete ? [] : [REVIEW_TEXTS.classIncomplete]
     ]
   });
+  const redoReason = (r, redo2) => {
+    if (redo2.kind === "question") {
+      const arrow = redo2.because.map((id2) => byId.get(id2)).find((x) => x !== void 0 && isArrowKind(x.kind));
+      const parsed = arrow === void 0 ? void 0 : parseItemKey(arrow.key);
+      const source = arrow?.content.arrow?.source ?? (parsed?.kind === "arrow" ? parsed.arrow.source : void 0);
+      return source !== void 0 ? REVIEW_TEXTS.redoReasonQuestion(cutText(cardRef(source).sentence, 60)) : REVIEW_TEXTS.redoReasonDeclined;
+    }
+    if (r.markers.includes("no-longer-builds")) return REVIEW_TEXTS.redoReasonBuilds;
+    if (r.markers.includes("no-longer-closes-gap")) return REVIEW_TEXTS.redoReasonGap;
+    if (redo2.kind === "judge") return redo2.because.length > 0 ? REVIEW_TEXTS.redoReasonJudged : REVIEW_TEXTS.redoReasonChecks;
+    if (redo2.kind === "take-out") return REVIEW_TEXTS.redoReasonTakeOut;
+    if (redo2.kind === "queue") return REVIEW_TEXTS.redoReasonQueue;
+    return redo2.because.some((id2) => byId.has(id2)) ? REVIEW_TEXTS.redoReasonHidden : REVIEW_TEXTS.redoReasonDeclined;
+  };
+  const redoWhy = (r, redo2) => {
+    const listedCauses = redo2.because.filter(isListedId);
+    if ((redo2.kind === void 0 || redo2.kind === "cascade") && listedCauses.length > 0) {
+      return listedCauses.map((id2) => {
+        const c = byId.get(id2);
+        return REVIEW_TEXTS.redoLine(REVIEW_TEXTS.redoDependsOn(labels[id2] ?? labelOf(c), REVIEW_TEXTS.redoCauseState(c.status, c.decline?.option)));
+      });
+    }
+    const declinedCauses = redo2.kind === "judge" ? listedCauses.map((id2) => byId.get(id2)).filter((c) => c.status === "declined") : [];
+    return [
+      ...declinedCauses.map((c) => REVIEW_TEXTS.redoLine(REVIEW_TEXTS.redoDependsOn(labels[c.id] ?? labelOf(c), REVIEW_TEXTS.redoCauseState(c.status, c.decline?.option)))),
+      REVIEW_TEXTS.redoLine(REVIEW_TEXTS.redoTookOut(redoReason(r, redo2)))
+    ];
+  };
   const itemView = (r) => {
     const gate = gates.get(r.id);
     const accept2 = phaseGate(gate === void 0 || gate.accept.ok ? OPEN : closed(gate.accept.text, gate.accept.missing));
@@ -20538,7 +20805,7 @@ function buildSessionView(input2) {
       cards: base.cards,
       status: r.status,
       ...r.status === "declined" && r.decline !== void 0 ? { declined: compact({ option: r.decline.option, note: r.decline.note }) } : {},
-      ...r.status === "to-be-redone" && r.redo !== void 0 ? { redo: { because: r.redo.because.filter(isListedId) } } : {},
+      ...r.status === "to-be-redone" && r.redo !== void 0 ? { redo: { because: r.redo.because.filter(isListedId), why: redoWhy(r, r.redo), ...r.redo.note !== void 0 ? { note: r.redo.note } : {} } } : {},
       classes: classView(cls),
       markers: markersOf(r, cls),
       dependsOn: dependsOn(r),
@@ -20663,13 +20930,21 @@ function buildSessionView(input2) {
   const done = records.stack.done;
   const top = done[done.length - 1];
   const next = records.stack.undone[records.stack.undone.length - 1];
-  const decidesHidden = (action) => action?.kind === "decide" && decidedBy(action).some((id2) => {
+  const decidesHidden = (action) => (action?.kind === "decide" || action?.kind === "note") && (action.kind === "note" ? [action.item] : decidedBy(action)).some((id2) => {
     const r = byId.get(id2);
     return r !== void 0 && hidden(r);
   });
   const undo2 = phase === "stage" && top !== void 0 && top.kind !== "seal" && !decidesHidden(top) ? { step: top.id, label: top.label } : null;
   const redo = phase === "stage" && next !== void 0 && next.kind !== "seal" && !decidesHidden(next) ? { step: next.id, label: next.label } : null;
   const sealed = top?.kind === "seal" ? { by: top.by, at: top.at } : null;
+  const failing = records.heading !== void 0 && records.heading !== null;
+  const commented = done.flatMap((a, k) => a.kind === "seal" && a.by === "submit" && a.comment !== void 0 ? [{ at: k, comment: a.comment }] : []).reverse();
+  const retriedOnly = (from) => {
+    const later = done.slice(from + 1).filter((a) => a.kind === "seal");
+    return later.length > 0 && later.every((a) => a.kind === "seal" && a.by === "retry");
+  };
+  const shownComment = commented.find((c) => c.comment.stage === records.stage - 1 || c.comment.stage === records.stage && !failing && retriedOnly(c.at))?.comment;
+  const comment = shownComment !== void 0 ? { stage: shownComment.stage, text: shownComment.text } : void 0;
   const inReview = listed2.filter((r) => r.status === "in-review").map((r) => r.id);
   const waitingFor = [...reveal2.waitingFor].sort(byListOrder);
   const plan2 = shown2 && phase === "stage" && judgement !== null ? planSubmit({ records, judgement }) : void 0;
@@ -20677,7 +20952,7 @@ function buildSessionView(input2) {
   let submitGate;
   if (closure !== void 0) submitGate = closed(closure);
   else if (inReview.length > 0) submitGate = closed(REVIEW_TEXTS.submitInReview(inReview.length), inReview);
-  else if (!shown2) submitGate = closed(REVIEW_TEXTS.submitResultsHidden, waitingFor);
+  else if (!shown2) submitGate = closed(REVIEW_TEXTS.showResultsFirst);
   else if (input2.judging || plan2 === void 0) submitGate = closed(REVIEW_TEXTS.judging);
   else if (plan2.confirm && plan2.partlyAccepted.length > 0) {
     const cycle = [...plan2.partlyAccepted[0]].sort(byListOrder);
@@ -20762,7 +21037,8 @@ function buildSessionView(input2) {
       steps: reportSteps,
       notes,
       consistency: "unchecked",
-      withdrawn: listed2.filter((r) => r.status === "withdrawn").map((r) => ({ label: labelOf(r), at: withdrawnAt(r.id) }))
+      withdrawn: listed2.filter((r) => r.status === "withdrawn").map((r) => ({ label: labelOf(r), at: withdrawnAt(r.id) })),
+      ...comment !== void 0 ? { comment } : {}
     },
     rejected,
     board: {
@@ -21318,17 +21594,21 @@ function reconcile(i) {
     r.status = "to-be-redone";
     delete r.accepted;
     if (r.decline?.option !== "shaky") delete r.decline;
-    r.redo = { because: r.redo?.because ?? [], reverted: true };
+    r.redo = { because: r.redo?.because ?? [], reverted: true, kind: "judge", ...keepNote(r.redo) };
     if (marker !== void 0) addMarker(r, marker);
     list.push(r.id);
     for (const id2 of dependentsOf(r.id)) {
       const x = byId.get(id2);
       const goes = x.status === "in-review" || x.status === "accepted" || x.status === "to-be-redone" || x.status === "declined" && x.decline?.option === "shaky";
-      if (!goes || isReverted(x)) continue;
+      if (!goes) continue;
+      if (isReverted(x)) {
+        if (x.redo !== void 0 && !x.redo.because.includes(r.id)) x.redo = { ...copyRedo(x.redo), because: union3(x.redo.because, [r.id]) };
+        continue;
+      }
       x.status = "to-be-redone";
       delete x.accepted;
       if (x.decline?.option !== "shaky") delete x.decline;
-      x.redo = { because: union3(x.redo?.because ?? [], [r.id]), reverted: true };
+      x.redo = { because: union3(x.redo?.because ?? [], [r.id]), reverted: true, kind: "judge", ...keepNote(x.redo) };
       redoneWith.push(id2);
     }
   };
@@ -21353,7 +21633,7 @@ function reconcile(i) {
     r.status = "to-be-redone";
     delete r.accepted;
     delete r.decline;
-    r.redo = { because: [], reverted: true };
+    r.redo = { because: [], reverted: true, kind: "judge", ...keepNote(r.redo) };
     addMarker(r, "no-longer-closes-gap");
     gapNotClosed.push(r.id);
   }
@@ -21368,7 +21648,7 @@ function reconcile(i) {
     if (marked2.has(r.id)) return;
     marked2.add(r.id);
     r.status = "to-be-redone";
-    r.redo = { because, reverted: false };
+    r.redo = { because, reverted: false, kind: "queue" };
     redoneAtOnce.push(r.id);
     for (const id2 of dependentsOf(r.id)) {
       const x = byId.get(id2);
@@ -21469,6 +21749,7 @@ function reconcile(i) {
     withDependents.filter((id2) => byId.get(id2)?.status === "in-review")
   );
   event(REVIEW_TEXTS.eventDependencyNotAccepted, dependencyNotAccepted);
+  dropStaleRedoNotes(items);
   const records = { ...i.records, items, premises };
   if (forced !== void 0) records.forced = forced;
   else delete records.forced;
@@ -27292,7 +27573,12 @@ var BoardSession = class {
       case "sessionRedo":
         return manager.redoSession(message2.payload.runId, message2.payload.step, message2.payload.confirmed === true);
       case "submitReview":
-        return manager.submit(message2.payload.runId, message2.payload.stage);
+        return manager.submit(message2.payload.runId, message2.payload.stage, message2.payload.comment);
+      // Slice 2j2 (D2-92, D2-95): the note for Claude on an item to be redone, as every review action.
+      case "noteItem": {
+        const { runId: runId2, stage, item, rev, note } = message2.payload;
+        return manager.note(runId2, stage, item, rev, note);
+      }
       case "openSessionDiff":
         return this.openSessionDiff(manager, message2.payload);
       // Slice 2f (docs/slice2-plan.md 1.1, 2.4, 2.5): the end of a session (Apply with the check id, Exit, Back to review)
@@ -66837,6 +67123,12 @@ function premiseStatus(node2, statement) {
 function quoted2(sentence3) {
   return `"${sentence3}"`;
 }
+function personNote(note) {
+  return `  The person's note: ${quoted2(note)}`;
+}
+function overallComment(comment) {
+  return `The person's overall comment: ${quoted2(comment)}`;
+}
 function targetLines(model, node2, subject2) {
   const lines = [`- ${node2.id} (${node2.type}): ${quoted2(node2.naturalName)}`];
   const st = statementInfo(model, node2, subject2);
@@ -66961,7 +67253,7 @@ function formalizePlan(targets) {
   return lines.join("\n");
 }
 function submitFeedbackTurn(i) {
-  const lines = [CLAUDE_SESSION_TEXTS.reviewSubmitted(i.stage), ""];
+  const lines = [CLAUDE_SESSION_TEXTS.reviewSubmitted(i.stage), ...i.comment !== void 0 && i.comment.trim() !== "" ? [overallComment(i.comment)] : [], ""];
   const leanLines = (lean) => lean.trim() === "" ? [] : lean.trim().split("\n").map((l) => `    ${l}`);
   const section = (title, items, tail4 = () => []) => {
     lines.push(title);
@@ -66969,15 +67261,16 @@ function submitFeedbackTurn(i) {
     for (const x of items) lines.push(`- ${x.label}`, ...leanLines(x.lean), ...tail4(x));
     lines.push("");
   };
+  const notes = (x) => [...x.note !== void 0 ? [personNote(x.note)] : [], ...x.redoNote !== void 0 ? [personNote(x.redoNote)] : []];
   section("ACCEPTED: keep them exactly as they are.", i.accepted);
-  section("REJECTED: they were removed; never propose these exact versions again.", i.rejected);
+  section("REJECTED: they were removed; never propose these exact versions again.", i.rejected, notes);
   const relied = (x) => x.reliedOn !== void 0 && x.reliedOn.length > 0 ? [`  It relied on: ${x.reliedOn.join("; ")}`] : [];
   section(
     "SHAKY: propose a different arrangement for these together. Any single one may come back unchanged, but not the whole set; if there is none, finish with no_alternative: true.",
     i.shaky,
-    (x) => [...x.note !== void 0 ? [`  The person's note: ${quoted2(x.note)}`] : [], ...relied(x)]
+    (x) => [...notes(x), ...relied(x)]
   );
-  section("TO BE REDONE: propose them again; what each relied on:", i.redo, relied);
+  section("TO BE REDONE: propose them again; what each relied on:", i.redo, (x) => [...notes(x), ...relied(x)]);
   lines.push("STEPS PLANNED (one step per target, in this order):");
   i.steps.forEach((s, k) => lines.push(`${k + 1}. ${s.id}: ${quoted2(s.sentence)}`));
   return `${lines.join("\n")}
@@ -68452,11 +68745,25 @@ var stepOf = (s, id2) => {
   if (step === void 0) throw new Error(`the session has no step ${id2}`);
   return step;
 };
+var NOTE_CLEARED = "  The person's note was cleared.";
+function decisionsSince(s) {
+  const done = s.stack.done;
+  const seals = done.flatMap((a, k) => a.kind === "seal" ? [k] : []);
+  const last = seals.at(-1) ?? done.length;
+  const previous = seals.length >= 2 ? seals.at(-2) : -1;
+  return done.slice(previous + 1, last).flatMap((a) => {
+    if (a.kind === "reveal") return [a.label];
+    if (a.kind === "note") return [[a.label, a.after !== void 0 ? personNote(a.after) : NOTE_CLEARED].join("\n")];
+    if (a.kind !== "decide") return [];
+    const notes = [...new Set(a.request.decisions.flatMap((d) => d.to === "declined" && d.note !== void 0 && d.note.trim() !== "" ? [d.note] : []))];
+    return [[a.label, ...notes.map(personNote)].join("\n")];
+  });
+}
 var currentQueue = (s) => s.steps.reduce((m, x) => Math.max(m, x.queue ?? 1), 0);
 var decidedSinceSeal = (s) => {
   const done = s.stack.done;
   const seal2 = done.map((a) => a.kind).lastIndexOf("seal");
-  return done.slice(seal2 + 1).some((a) => a.kind === "decide" || a.kind === "reveal" || a.kind === "move");
+  return done.slice(seal2 + 1).some((a) => a.kind === "decide" || a.kind === "reveal" || a.kind === "move" || a.kind === "note");
 };
 function endedTargets(s) {
   return [...new Set(s.steps.filter((x) => ENDED_STATES.has(x.state)).map((x) => x.target))];
@@ -69042,13 +69349,9 @@ ${plan2}
   async replayWrite(_run, _write) {
     return false;
   }
-  /** The decide and Show results actions on the stack since the previous queue started (the labels the person saw). */
+  /** The decide and Show results actions on the stack since the previous queue started (`decisionsSince`). */
   decisionsSinceLastQueue(s) {
-    const done = s.stack.done;
-    const seals = done.flatMap((a, k) => a.kind === "seal" ? [k] : []);
-    const last = seals.at(-1) ?? done.length;
-    const previous = seals.length >= 2 ? seals.at(-2) : -1;
-    return done.slice(previous + 1, last).flatMap((a) => a.kind === "decide" || a.kind === "reveal" ? [a.label] : []);
+    return decisionsSince(s);
   }
   sessionCheckContext(run) {
     const s = run.p.session;
@@ -69543,7 +69846,8 @@ ${plan2}
     const q = currentQueue(s) + 1;
     const commit = await run.shadow.commit("step-start", `Queue ${q} starts: \u201C${steps[0]?.target ?? ""}\u201D`, Math.max(0, run.view.round));
     const next = structuredClone(s);
-    next.stack = { done: [...next.stack.done, { id: next.nextAction, kind: "seal", by: write.by, at: this.iso() }], undone: [] };
+    const comment = write.by === "submit" && write.comment !== void 0 && write.comment.trim() !== "" ? { comment: { text: write.comment, stage: next.stage } } : {};
+    next.stack = { done: [...next.stack.done, { id: next.nextAction, kind: "seal", by: write.by, at: this.iso(), ...comment }], undone: [] };
     next.nextAction += 1;
     for (const inf of write.inferences ?? []) {
       const question2 = { sources: [...inf.premises], fromNothing: inf.premises.length === 0 };
@@ -70665,9 +70969,10 @@ var ReviewRunner = class extends SessionRunner {
    * RV-12: waits while the session judges or writes (AF3: `asLastWrite`), then Submit's gate as the view has it: nothing
    * listed in review, the results shown. Nothing Shaky or to be redone: the end confirmation (a partly accepted cycle
    * refused). Otherwise the take-out and the queue of Submit steps, in one job of the write queue, so nothing comes
-   * between them.
+   * between them. `comment` (2j2, D2-92, D2-96): the person's overall comment, kept by the queue's seal and quoted in
+   * the feedback turn; dropped when Submit leads to the end confirmation (no Claude step reads it).
    */
-  async submitNow(run, stage) {
+  async submitNow(run, stage, comment) {
     const early = this.reviewRefusal(run, stage);
     if (early !== void 0) return early;
     let first;
@@ -70679,7 +70984,7 @@ var ReviewRunner = class extends SessionRunner {
       const shown2 = this.resultsShown(run);
       const inReview = s.items.filter((r) => r.status === "in-review" && (shown2 || !isResultOrPart(r)));
       if (inReview.length > 0) return refused2("refused", REVIEW_TEXTS.submitInReview(inReview.length));
-      if (!shown2) return refused2("refused", REVIEW_TEXTS.submitResultsHidden);
+      if (!shown2) return refused2("refused", REVIEW_TEXTS.showResultsFirst);
       const plan2 = planSubmit({ records: toSessionRecords(s), judgement });
       if (plan2.confirm) {
         const cycle = plan2.partlyAccepted[0];
@@ -70703,7 +71008,8 @@ var ReviewRunner = class extends SessionRunner {
         kind: "queue-start",
         by: "submit",
         steps: steps.map((x) => x.id),
-        submit: steps.map((x) => ({ target: x.target, openItems: [...x.scope.openItems], openProof: x.scope.openProof }))
+        submit: steps.map((x) => ({ target: x.target, openItems: [...x.scope.openItems], openProof: x.scope.openProof })),
+        ...comment !== void 0 && comment.trim() !== "" ? { comment } : {}
       };
       const at = this.sessionOf(run);
       at.inFlight = { action: write, parent: at.head };
@@ -70785,10 +71091,11 @@ var ReviewRunner = class extends SessionRunner {
           if (other !== void 0 && other !== own4 && id2 !== void 0) because.push(id2);
         }
       }
+      const note = r.status === "to-be-redone" ? r.redo?.note : void 0;
       r.status = "to-be-redone";
       delete r.accepted;
       if (r.decline?.option !== "shaky") delete r.decline;
-      r.redo = { because: [...new Set(because)].sort(), reverted: true };
+      r.redo = { because: [...new Set(because)].sort(), reverted: true, kind: "take-out", ...note !== void 0 ? { note } : {} };
     }
     const shadow = run.shadow;
     const headFiles = await shadow.filesAt(s.head);
@@ -70900,16 +71207,25 @@ var ReviewRunner = class extends SessionRunner {
       return r.redo?.reverted === true ? ["it no longer passed its checks"] : [];
     };
     const nodes = this.runtimeOf(run).judgedModel?.model.nodes;
+    const seal2 = [...s.stack.done].reverse().find((a) => a.kind === "seal");
+    const comment = seal2?.kind === "seal" && seal2.by === "submit" ? seal2.comment?.text : void 0;
+    const declineNote = (r) => r.decline?.note !== void 0 ? { note: r.decline.note } : {};
+    const redoNote = (r) => r.status === "to-be-redone" && r.redo?.note !== void 0 ? r.redo.note : void 0;
     return submitFeedbackTurn({
       stage: s.stage,
       accepted: s.items.filter((r) => r.status === "accepted").map((r) => row(r)),
-      rejected: s.items.filter((r) => isDeclinedOut2(r)).map((r) => row(r)),
+      rejected: s.items.filter((r) => isDeclinedOut2(r)).map((r) => row(r, declineNote(r))),
       shaky: s.items.filter((r) => isShaky2(r)).map((r) => {
         const taker = (r.redo?.because ?? []).flatMap((id2) => byId.get(id2) !== void 0 ? [label3(byId.get(id2))] : []);
-        return row(r, { ...r.decline?.note !== void 0 ? { note: r.decline.note } : {}, ...taker.length > 0 ? { reliedOn: taker } : {} });
+        const own4 = redoNote(r);
+        return row(r, { ...declineNote(r), ...own4 !== void 0 ? { redoNote: own4 } : {}, ...taker.length > 0 ? { reliedOn: taker } : {} });
       }),
-      redo: s.items.filter((r) => r.status === "to-be-redone" && !isShaky2(r)).map((r) => row(r, { reliedOn: reliedOn(r) })),
-      steps: steps.map((x) => ({ id: x.target, sentence: nodes?.get(x.target)?.node.naturalName ?? x.target }))
+      redo: s.items.filter((r) => r.status === "to-be-redone" && !isShaky2(r)).map((r) => {
+        const own4 = redoNote(r);
+        return row(r, { reliedOn: reliedOn(r), ...own4 !== void 0 ? { note: own4 } : {} });
+      }),
+      steps: steps.map((x) => ({ id: x.target, sentence: nodes?.get(x.target)?.node.naturalName ?? x.target })),
+      ...comment !== void 0 ? { comment } : {}
     });
   }
   // ---------------------------------------------------------------------------------------------
@@ -72139,12 +72455,16 @@ var RunManagerImpl = class extends EndRunner {
   redoSession(runId2, step, confirmed) {
     return this.review(runId2, (run) => this.reviewNow(run, { kind: "redo", step, confirmed }));
   }
+  /** 2j2 (D2-92, D2-95): a note for Claude on an item to be redone, as every review action (refused while a step runs). */
+  note(runId2, stage, item, rev, note) {
+    return this.review(runId2, (run) => this.reviewNow(run, { kind: "note", item, rev, note }, stage));
+  }
   /** RV-12: one user action at a time (it waits while the session judges, AF3), as Retry step. */
-  async submit(runId2, stage) {
+  async submit(runId2, stage, comment) {
     const run = this.sessionRun(runId2);
     if (!(run instanceof ActiveRun)) return run;
     if (this.stepRunning(this.sessionOf(run))) return refused2("refused", REVIEW_TEXTS.stepRunning);
-    return this.exclusive("submitting the review", () => this.submitNow(run, stage));
+    return this.exclusive("submitting the review", () => this.submitNow(run, stage, comment));
   }
   /**
    * EN-1-EN-4 (2f, §3.10; sessionEnd.ts). While a step runs only `exit` is not refused (D2-62). Exit is never locked out

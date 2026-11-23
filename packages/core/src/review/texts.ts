@@ -99,8 +99,11 @@ export const REVIEW_TEXTS = {
   unrejectConflict: (file: string) => `This version can't be restored any more: ${file}.`,
   /** §3.6: un-reject of a Result or a Result's part while the results are hidden. */
   showResultsFirst: 'The results are not shown yet: show them first.',
-  /** §4.6, D2-60: to be redone -> in review, refused when its content was taken out. */
-  contentTakenOut: 'Its content was taken out: un-reject what took it out, or let Claude redo it at Submit review.',
+  /**
+   * §4.6 (2j1, D2-76, D2-84; it replaces D2-60's `contentTakenOut`): to be redone -> in review by hand, refused, its
+   * content kept or taken out. The item comes back by itself with what took it down, or by Undo.
+   */
+  redoneByClaude: 'Claude redoes it at Submit review. To review it yourself now, set back to review what it depends on, or use Undo.',
   /**
    * §4.6 (fixer 2b1b r1, S-F5): un-reject of an item declined by a decision that also un-rejected another item. Its
    * inverse merge would take that other item's content out too, so it is refused: Undo undoes the whole decision.
@@ -331,17 +334,33 @@ export const REVIEW_TEXTS = {
   rejectResult: 'keeps the previous proof; Claude may not offer this exact proof again',
   shakyResult: 'Claude tries again at Submit review',
   noteForClaude: 'Note for Claude (optional)',
+  /**
+   * 2j2 (D2-92, D2-94): the decline menu's confirm button once an option is chosen: "Decline (Reject)", "Decline
+   * (Shaky)", and an arrow item's "Decline".
+   */
+  declineConfirm: (option: DeclineOption) => (option === 'plain' ? DECLINE_OPTION_TEXTS.plain : `${DECLINE_OPTION_TEXTS.plain} (${DECLINE_OPTION_TEXTS[option].replace('…', '')})`),
+  /** 2j2 (D2-92): a decided item's note in the detail: "Note for Claude: ‹note›" (the label before the note). */
+  noteLabel: 'Note for Claude',
+  /** 2j2 (D2-92, D2-95): the footer of an item to be redone: its note's button, and the editor's buttons. */
+  noteForClaudeEdit: 'Note for Claude…',
+  noteSave: 'Save',
+  noteCancel: 'Cancel',
+  /** 2j2 (D2-95): the `note` action on an item that is not to be redone. */
+  noteOnlyRedo: 'Only an item to be redone takes a note here; a decline takes its note in the decline menu.',
   reviewItems: (n: number) => `${n} review item${n === 1 ? '' : 's'}`,
 
   // ---- Submit review (§3.7, §5.8)
   submitReview: 'Submit review',
-  /** AF4: the results are hidden by statements to be redone with their content kept. */
-  submitResultsHidden:
-    'The results are not shown yet: decide these statements to be redone (declined as Shaky, Claude redoes them), or show the results, first.',
   /** §3.7: a cycle whose members are partly accepted. */
   acceptOrRejectTogether: (items: readonly string[]) => `Accept or reject all of ${joined(items)} together.`,
   submitToConfirm: 'Leads to the end confirmation: every item is accepted or rejected (no Claude step)',
   submitSteps: (shaky: number, redo: number) => `Starts Claude's next steps for ${shaky} Shaky items and ${redo} to be redone; accepted items carry over`,
+  /** 2j2 (D2-92, D2-98): Submit's panel when it starts Claude's steps: the comment field, and its buttons. */
+  commentForClaude: 'Comment for Claude (optional)',
+  submitPanelSubmit: 'Submit',
+  submitPanelCancel: 'Cancel',
+  /** 2j2 (D2-92, D2-96): the stage report's line for the comment given at the Submit review that started the stage. */
+  reportComment: (stage: number) => `Your comment at Submit review (stage ${stage}):`,
   goToFirst: 'Go to the first one',
 
   // ---- the session bar (§5.8), the badge and RunElsewhere
@@ -417,6 +436,8 @@ export const REVIEW_TEXTS = {
   /** "Accept: Add premise ‹card› (as an axiom)"; builder 2a1: "(pending proof)" for the other hold-as choice. */
   undoAcceptPremise: (card: string, holdAs: 'axiom' | 'pending') => `Accept: Add premise ${card} (${holdAs === 'axiom' ? 'as an axiom' : 'pending proof'})`,
   undoMove: (card: string) => `Move: ${card}`,
+  /** 2j2 (D2-92, D2-95): a note on an item to be redone, set, replaced or cleared. */
+  undoNote: (label: string) => `Note for Claude: ${label}`,
   /** UN-1, D2-38: the board's Undo during a session. */
   boardUndoLocked: "Your files can't change during an edit session; Undo in the Proposed view undoes your review steps.",
 
@@ -511,6 +532,43 @@ export const REVIEW_TEXTS = {
   drawTooHint: (card: string, target: string) => `draw ${card} → ${target}, then select it too`,
   /** §2.3 ItemView `classes.reasons`: a class that is incomplete (D2-25). */
   classIncomplete: 'telelean could not see everything it relies on, so it counts as a belief',
+
+  // ---- 2j1 (D2-76, the user's decision of turn 25; builder 2j1's wording where the decision gives an example, D2-82,
+  // D2-83): the automatic return's events and why an item is to be redone (`ItemView.redo.why`)
+  /** §4.6's automatic return (D2-82): items back in review with what took them down. */
+  eventBackWith: 'Back in review with it, since they depend on it:',
+  /** The same, for items that kept a Shaky decline while a Reject cascade took them out: back to declined Shaky. */
+  eventBackShakyWith: 'Back to Shaky with it, since they depend on it:',
+  /** D4: one line of `ItemView.redo.why`: "↻ to be redone: ‹why›". */
+  redoLine: (why: string) => `${ITEM_STATUS_TEXTS['to-be-redone'].glyph} ${ITEM_STATUS_TEXTS['to-be-redone'].word}: ${why}`,
+  /** D4: one listed cause, "it depends on ‹label›, ‹state›" (`redoCauseState`). */
+  redoDependsOn: (label: string, state: string) => `it depends on ${label}, ${state}`,
+  /** D4: the cause's state: "declined Shaky", "rejected", "declined" (an arrow's plain decline), else its status word. */
+  redoCauseState: (status: ItemStatus, option?: DeclineOption): string =>
+    status === 'declined' ? (option === 'shaky' ? 'declined Shaky' : option === 'reject' ? 'rejected' : 'declined') : ITEM_STATUS_TEXTS[status].word,
+  /** D4: when no listed item caused it, "telelean took it out: ‹reason›" (the reasons below). */
+  redoTookOut: (reason: string) => `telelean took it out: ${reason}`,
+  /** The judge's reverts (§3.6): its declarations no longer build ("no longer builds" marker). */
+  redoReasonBuilds: 'it no longer builds',
+  /** A premise re-check (§3.8): "no longer closes the gap" marker. */
+  redoReasonGap: 'it no longer closes the gap',
+  /** The judge's reverts (§3.6): a Result whose inference fails B.1, B.2 or its footprint. */
+  redoReasonChecks: 'it no longer passes its checks',
+  /** The judge's reverts (§3.6): a dependent of what the judge took out. */
+  redoReasonJudged: 'something it depends on no longer builds or passes its checks',
+  /** Submit's take-out (D2-57). */
+  redoReasonTakeOut: 'another step of Submit review reworks what it depends on',
+  /** RV-3 at a queue's end (§3.5). */
+  redoReasonQueue: 'it depends on items that are Shaky or to be redone',
+  /** DO-0's question change (D2-59, D2-81): ‹source›, the arrow's source card. */
+  redoReasonQuestion: (source: string) => `“${source}” left its question when you declined its arrow`,
+  /** A cascade whose listed causes are all hidden while the results are (D2-64): none is named. */
+  redoReasonHidden: 'it depends on items that are shown with the results',
+  /**
+   * A cascade (or a record saved before 2j1) with no cause left in `because`. Past tense (builder 2j2, carry-over R1-1):
+   * the cause may be back in review now (D2-89), so the line says what took it out, not what holds it now.
+   */
+  redoReasonDeclined: 'it depended on something that was declined',
 } as const;
 
 /**

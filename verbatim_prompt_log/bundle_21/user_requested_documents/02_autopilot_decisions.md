@@ -685,3 +685,32 @@ Each item below is a clause where v4.1 does not do literally what your turn-21 t
   - `docs/DEMO.md` and the automated demo driver (`scripts/demo-driver.mjs`, `demo-ui.mjs`) still walk through M2's review (Accept, Discard). 2h reported this and left them as they are. My report has a demo script for slice 2.
   - The 7 old VS Code review scenarios stay skipped until they are rewritten for sessions.
   - The core defect in AP-42 waits for your decision.
+
+### AP-44 · Your turn-25 follow-ups 2j1 and 2j2 built and checked (2026-11-22, session c398a83b)
+- **Your decisions, as given (turn 25):**
+  - **D2-76:** items to be redone count as decided; there is no Back to review on them; they return by themselves when their cause is un-declined. It amends RV-3 and supersedes AF4/D2-61's to-be-redone clause and D2-60.
+  - **D2-92:** a note for Claude on every decline, a note on items to be redone, and one overall comment at Submit review. Claude receives all of them. It supersedes D2-13.
+- **Builders' and fixers' decisions:** D2-77 to D2-91 (2j1) and D2-93 to D2-98 (2j2), each with its alternative, are in `docs/slice2-plan.md` §7.2, with the rest in §8. The main ones:
+  - Only a `cascade` cause returns by itself (D2-77). A record saved before 2j1 has no kind, so it never returns (D7).
+  - A returned item cannot be accepted in the same request (D2-87).
+  - The note while to be redone lives in `redo.note`, and is dropped when the item leaves that status (D2-93).
+  - The decline menu gives every option Shaky's note flow (D2-94).
+  - The note is its own undoable step (D2-95).
+  - The comment is kept on the Submit seal (D2-96).
+  - Submit's confirmation is an inline panel under the session bar (D2-98).
+- **Chain run `wf_93090c56-47b`:** 13 agents, ≈ 2.81 M subagent tokens, ≈ 262 min. Both sub-slices passed one fix round.
+  - The first reviews found 8 findings for 2j1, including 2 majors (one defect, found twice), and 12 for 2j2 with no major.
+  - Patches: `bundle_25/evidence/patches/after_slice_2j1.patch` and `after_slice_2j2.patch` (cumulative on c557f06).
+- **Tests after 2j2:** the integrator found every typecheck clean, the core, webview and extension unit tests passing, and the runner suite at 897 passed with the 1 expected skip.
+- **Open nits:**
+  - **R1-1:** fixed in 2j2.
+  - **A-ADV-2j2-5:** the decisions-since lines can still quote a note on an item that has since gone back to review. Claude sees a stale note line, which is harmless. Left for later.
+- **Final checks (Playwright, the AP-8 rebuild, the VS Code suites):** see AP-45.
+
+### AP-45 · 2j final checks passed; your extension rebuilt (2026-11-22 ~16:00Z, ~00:00 SGT)
+- **Scratch webview build and Playwright,** one spec at a time: 21 of 21 spec files passed, 120 tests, nothing skipped or failed. Logs: scratch `final_checks_2j/`.
+- **AP-8 rebuild:** `vite build` in packages/webview, then `node scripts/build.mjs` in packages/extension, both rc 0. `dist/` and `out/` are now modified in your working tree, for you to commit.
+- **The VS Code suites (snap VS Code, isolated profile):** smoke 39 passing and 1 pending; e2e 14 passing and 7 pending (the 7 old review scenarios, unchanged since AP-43). 0 isolation failures, 0 warnings.
+  - Order: the suites load the extension from `dist/`, so I ran them after the rebuild, as in AP-43.
+- **Audit:** the subagents ran 894 shell commands, with no npx, npm install, download or git-changing command. Nothing was written under your telelean run folders or `~/telelean-demos`. HEAD is c557f06, with nothing staged.
+- **Your doorclose session:** its old to-be-redone records have no `kind` (D7), so they do not come back by themselves. Undo the 4 steps back to before the Reject/Shaky decline, or let Claude redo them.

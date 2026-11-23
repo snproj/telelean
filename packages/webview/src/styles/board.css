@@ -2063,6 +2063,8 @@ body.vscode-high-contrast-light .tl-draw-hint { box-shadow: none; border-color: 
 .tl-session-bar[data-phase='stage'] .tl-session-bar__phase,
 .tl-session-bar[data-phase='confirming'] .tl-session-bar__phase { color: var(--vscode-foreground); }
 .tl-session-bar__go { font-size: 11.5px; }
+/* 2j1 (D2-76 D5): Submit's closed reason as text beside it. */
+.tl-session-bar__reason { font-size: 11.5px; color: var(--vscode-descriptionForeground); min-width: 0; overflow-wrap: anywhere; }
 .tl-session-bar__line { display: flex; align-items: flex-start; gap: 6px; margin: 0; padding-left: 22px; font-size: 11.5px; }
 .tl-session-bar__line[data-kind='heading'],
 .tl-session-bar__line[data-kind='drift'] { color: var(--vscode-foreground); }
@@ -2135,7 +2137,14 @@ body.vscode-high-contrast-light .tl-draw-hint { box-shadow: none; border-color: 
 .tl-review-footer[data-readonly] { color: var(--vscode-descriptionForeground); }
 .tl-review-reason { margin: 4px 0 0; font-size: 11.5px; color: var(--vscode-descriptionForeground); }
 .tl-review-decided { margin: 0; }
+/* 2j1 (D2-76 D4): why an item is to be redone, one line per cause. */
+.tl-review-redo { margin: 0 0 4px; padding: 0; list-style: none; }
 .tl-review-note { margin: 4px 0 0; font-size: 11.5px; }
+/* 2j2 (D2-92): a note or comment keeps its lines; the note of an item to be redone; Submit's panel (D2-98). */
+.tl-review-note .tl-user, .tl-report__note .tl-user { white-space: pre-wrap; overflow-wrap: anywhere; }
+.tl-review-redo-note { margin-top: 4px; }
+.tl-session-bar__submit { display: flex; flex-direction: column; gap: 4px; margin: 6px 0 2px; max-width: 640px; }
+.tl-session-bar__submit-text { margin: 0; font-size: 11.5px; }
 
 .tl-decline { margin-top: 6px; padding: 6px 8px; border: 1px solid var(--vscode-focusBorder); border-radius: 4px; background: var(--vscode-editorWidget-background); }
 .tl-decline__options { display: flex; flex-direction: column; gap: 4px; }

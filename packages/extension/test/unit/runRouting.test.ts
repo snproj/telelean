@@ -95,6 +95,8 @@ describe('routing run messages (AT5.1)', () => {
       ['sessionUndo', { runId: 'r1', step: 3, confirmed: true }],
       ['sessionRedo', { runId: 'r1', step: 4 }],
       ['submitReview', { runId: 'r1', stage: 1 }],
+      // 2j2 (D2-92): Submit's comment, passed on.
+      ['submitReview', { runId: 'r1', stage: 1, comment: 'Prefer the rule reading.\nKeep the names.' }],
       ['openSessionDiff', { runId: 'r1', stage: 1 }],
       ['openSessionDiff', { runId: 'r1', stage: 1, confirmed: true }],
     ];
@@ -108,6 +110,7 @@ describe('routing run messages (AT5.1)', () => {
       ['undoSession', ['r1', 3, true]],
       ['redoSession', ['r1', 4, false]],
       ['submit', ['r1', 1]],
+      ['submit', ['r1', 1, 'Prefer the rule reading.\nKeep the names.']],
       ['sessionDiff', ['r1', 1, false]],
       ['sessionDiff', ['r1', 1, true]],
     ]);
@@ -119,6 +122,8 @@ describe('routing run messages (AT5.1)', () => {
       ['endSession', { runId: 'r1', decision: 'back', stage: 2 }],
       ['endSession', { runId: 'r1', decision: 'exit' }],
       ['moveProposed', { runId: 'r1', positions: { 'cynder-not-good': { x: 10, y: 20 } } }],
+      // 2j2 (D2-92, D2-95): the note on an item to be redone.
+      ['noteItem', { runId: 'r1', stage: 2, item: 'it0123456789abcdef', rev: 3, note: 'Keep it as a rule.' }],
     ];
     expect(new Set([...routed.map(([type]) => type), ...later.map(([type]) => type)])).toEqual(new Set(SESSION_MESSAGE_TYPES.filter((t) => t !== 'formalize' && t !== 'retryStep')));
     for (const [type, payload] of later) await session.handle(message(type, { ...payload, requestId: `q-${type}-${String(payload['decision'] ?? '')}` }));
@@ -127,12 +132,14 @@ describe('routing run messages (AT5.1)', () => {
       ['end', ['r1', 'back', 2, undefined]],
       ['end', ['r1', 'exit', undefined, undefined]],
       ['moveProposed', ['r1', { 'cynder-not-good': { x: 10, y: 20 } }]],
+      ['note', ['r1', 2, 'it0123456789abcdef', 3, 'Keep it as a rule.']],
     ]);
     expect(ports.of('actionResult').map((m) => m.payload.outcome)).toEqual([
       { ok: true, label: 'did end', undoable: false },
       { ok: true, label: 'did end', undoable: false },
       { ok: true, label: 'did end', undoable: false },
       { ok: true, label: 'did moveProposed', undoable: false },
+      { ok: true, label: 'did note', undoable: false },
     ]);
     expect(ws.performed).toEqual([]);
   });

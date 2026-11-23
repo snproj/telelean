@@ -38,7 +38,11 @@ export interface SessionBarState {
   resume: BarControl;
   retry: BarControl;
   rawDiff: BarControl & { asks: boolean };
-  submit: BarControl & { missing: string[] };
+  /**
+   * `reason` (2j1, D2-76 D5, D2-85): the closed gate's reason as visible text next to Submit, in phase `stage` only
+   * (while a step runs the phase line says why); null when Submit is open or not shown.
+   */
+  submit: BarControl & { missing: string[]; reason: string | null };
   exit: BarControl;
   /** "Review (N)" when the panel is hidden. */
   review: BarControl & { text: string };
@@ -132,8 +136,14 @@ export function sessionBarState(
     rawDiff: session.phase === 'stage' ? { shown: true, enabled: true, title: session.results.shown ? REVIEW_TEXTS.rawDiff : REVIEW_TEXTS.rawDiffReveals, asks: !session.results.shown } : { ...hidden, asks: false },
     submit:
       session.phase === 'stage' || running
-        ? { shown: true, enabled: submitGate.ok && !running, title: running ? REVIEW_TEXTS.stepRunning : submitTitle, missing: submitGate.ok ? [] : [...(submitGate.missing ?? [])] }
-        : { ...hidden, missing: [] },
+        ? {
+            shown: true,
+            enabled: submitGate.ok && !running,
+            title: running ? REVIEW_TEXTS.stepRunning : submitTitle,
+            missing: submitGate.ok ? [] : [...(submitGate.missing ?? [])],
+            reason: !submitGate.ok && !running && session.phase === 'stage' ? submitGate.reason : null,
+          }
+        : { ...hidden, missing: [], reason: null },
     exit: session.phase !== 'applying' ? { shown: true, enabled: true, title: REVIEW_TEXTS.exitSessionEllipsis } : hidden,
     review: !panelOpen ? { shown: true, enabled: true, title: REVIEW_TEXTS.reviewN(session.counts.inReview), text: REVIEW_TEXTS.reviewN(session.counts.inReview) } : { ...hidden, text: '' },
     lines,

@@ -544,9 +544,10 @@ export abstract class ReviewRunner extends SessionRunner {
    * RV-12: waits while the session judges or writes (AF3: `asLastWrite`), then Submit's gate as the view has it: nothing
    * listed in review, the results shown. Nothing Shaky or to be redone: the end confirmation (a partly accepted cycle
    * refused). Otherwise the take-out and the queue of Submit steps, in one job of the write queue, so nothing comes
-   * between them.
+   * between them. `comment` (2j2, D2-92, D2-96): the person's overall comment, kept by the queue's seal and quoted in
+   * the feedback turn; dropped when Submit leads to the end confirmation (no Claude step reads it).
    */
-  protected async submitNow(run: ActiveRun, stage: number): Promise<ActionOutcome> {
+  protected async submitNow(run: ActiveRun, stage: number, comment?: string): Promise<ActionOutcome> {
     const early = this.reviewRefusal(run, stage);
     if (early !== undefined) return early;
     let first: PersistedStep | undefined;
@@ -558,7 +559,9 @@ export abstract class ReviewRunner extends SessionRunner {
       const shown = this.resultsShown(run);
       const inReview = s.items.filter((r) => r.status === 'in-review' && (shown || !isResultOrPart(r)));
       if (inReview.length > 0) return refused('refused', REVIEW_TEXTS.submitInReview(inReview.length));
-      if (!shown) return refused('refused', REVIEW_TEXTS.submitResultsHidden);
+      // 2j1 (D2-76, D2-86): unreachable now (every meaning item is listed, so a hidden stage has one in review, refused
+      // above); kept so the plan below never reads statuses the person cannot see.
+      if (!shown) return refused('refused', REVIEW_TEXTS.showResultsFirst);
       const plan = planSubmit({ records: toSessionRecords(s), judgement });
       if (plan.confirm) {
         const cycle = plan.partlyAccepted[0];
@@ -584,6 +587,7 @@ export abstract class ReviewRunner extends SessionRunner {
         by: 'submit',
         steps: steps.map((x) => x.id),
         submit: steps.map((x) => ({ target: x.target, openItems: [...x.scope.openItems], openProof: x.scope.openProof })),
+        ...(comment !== undefined && comment.trim() !== '' ? { comment } : {}),
       };
       const at = this.sessionOf(run);
       at.inFlight = { action: write, parent: at.head };
@@ -671,10 +675,13 @@ export abstract class ReviewRunner extends SessionRunner {
           if (other !== undefined && other !== own && id !== undefined) because.push(id);
         }
       }
+      // 2j2 (D2-93): an item already to be redone keeps its note for Claude.
+      const note = r.status === 'to-be-redone' ? r.redo?.note : undefined;
       r.status = 'to-be-redone';
       delete r.accepted;
       if (r.decline?.option !== 'shaky') delete r.decline;
-      r.redo = { because: [...new Set(because)].sort(), reverted: true };
+      // 2j1 (D2-76, D2-77): Submit's take-out never comes back by itself.
+      r.redo = { because: [...new Set(because)].sort(), reverted: true, kind: 'take-out', ...(note !== undefined ? { note } : {}) };
     }
     const shadow = run.shadow;
     const headFiles = await shadow.filesAt(s.head);
@@ -790,19 +797,32 @@ export abstract class ReviewRunner extends SessionRunner {
       return r.redo?.reverted === true ? ['it no longer passed its checks'] : [];
     };
     const nodes = this.runtimeOf(run).judgedModel?.model.nodes;
+    // 2j2 (D2-92, D2-96): the overall comment is the queue's seal's (the newest seal: the one this queue started with).
+    const seal = [...s.stack.done].reverse().find((a) => a.kind === 'seal');
+    const comment = seal?.kind === 'seal' && seal.by === 'submit' ? seal.comment?.text : undefined;
+    // 2j2 (D2-92): a decline's note in REJECTED and SHAKY, an item to be redone's in TO BE REDONE (a Shaky one, both).
+    const declineNote = (r: ItemRecord) => (r.decline?.note !== undefined ? { note: r.decline.note } : {});
+    const redoNote = (r: ItemRecord) => (r.status === 'to-be-redone' && r.redo?.note !== undefined ? r.redo.note : undefined);
     return submitFeedbackTurn({
       stage: s.stage,
       accepted: s.items.filter((r) => r.status === 'accepted').map((r) => row(r)),
-      rejected: s.items.filter((r) => isDeclinedOut(r)).map((r) => row(r)),
+      rejected: s.items.filter((r) => isDeclinedOut(r)).map((r) => row(r, declineNote(r))),
       shaky: s.items
         .filter((r) => isShaky(r))
         .map((r) => {
           // D2-57: a Shaky item Submit took out says which items' rework it rests on.
           const taker = (r.redo?.because ?? []).flatMap((id) => (byId.get(id) !== undefined ? [label(byId.get(id) as ItemRecord)] : []));
-          return row(r, { ...(r.decline?.note !== undefined ? { note: r.decline.note } : {}), ...(taker.length > 0 ? { reliedOn: taker } : {}) });
+          const own = redoNote(r);
+          return row(r, { ...declineNote(r), ...(own !== undefined ? { redoNote: own } : {}), ...(taker.length > 0 ? { reliedOn: taker } : {}) });
         }),
-      redo: s.items.filter((r) => r.status === 'to-be-redone' && !isShaky(r)).map((r) => row(r, { reliedOn: reliedOn(r) })),
+      redo: s.items
+        .filter((r) => r.status === 'to-be-redone' && !isShaky(r))
+        .map((r) => {
+          const own = redoNote(r);
+          return row(r, { reliedOn: reliedOn(r), ...(own !== undefined ? { note: own } : {}) });
+        }),
       steps: steps.map((x) => ({ id: x.target, sentence: nodes?.get(x.target)?.node.naturalName ?? x.target })),
+      ...(comment !== undefined ? { comment } : {}),
     });
   }
 

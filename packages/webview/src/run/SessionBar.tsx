@@ -5,9 +5,12 @@
  * Raw Lean diff… (it asks first while the results are hidden), Submit review (the primary button; disabled, its reason
  * with "Go to the first one"), Exit session…, and "Review (N)" while the panel is hidden. Second lines: the ES-4
  * heading, ES-7 drift, "Re-checking the working copy…", and the stage's problems with links to their items. Its state is
- * `sessionBarState` (model/sessionBar.ts); the gates are the host's.
+ * `sessionBarState` (model/sessionBar.ts); the gates are the host's. 2j2 (D2-92, D2-98): when Submit review starts
+ * Claude's steps, it opens Submit's panel under the first line: what Submit does, "Comment for Claude (optional)",
+ * Submit and Cancel.
  */
-import { REVIEW_TEXTS, type RunView, type SessionView } from '@telelean/core';
+import { LIMITS, REVIEW_TEXTS, type RunView, type SessionView } from '@telelean/core';
+import { useLayoutEffect, useRef } from 'react';
 import { sessionBarState } from '../model/sessionBar';
 import { useBoard, useBoardActions } from '../state/context';
 import { proposedOverlay } from '../state/store';
@@ -123,6 +126,11 @@ function Bar({
             {REVIEW_TEXTS.submitReview}
           </button>
         ) : null}
+        {state.submit.reason !== null ? (
+          <span className="tl-session-bar__reason" data-testid="session-submit-reason">
+            <Marked text={state.submit.reason} phrases={phrases} />
+          </span>
+        ) : null}
         {state.submit.shown && !state.submit.enabled && state.submit.missing[0] !== undefined ? (
           <button type="button" className="tl-link tl-session-bar__go" data-testid="session-go-first" onClick={() => goTo(state.submit.missing[0] as string)}>
             {REVIEW_TEXTS.goToFirst}
@@ -139,6 +147,7 @@ function Bar({
           </button>
         ) : null}
       </div>
+      {state.submit.shown ? <SubmitPanel session={session} sessionBusy={sessionBusy} /> : null}
       {state.lines.map((line, i) => (
         <p key={`${line.kind}-${i}`} className="tl-session-bar__line" data-testid={`session-line-${line.kind}`} data-kind={line.kind}>
           <span className={`codicon codicon-${line.kind === 'judging' ? 'loading codicon-modifier-spin' : line.kind === 'drift' || line.kind === 'problem' ? 'warning' : 'info'}`} aria-hidden="true" />{' '}
@@ -151,6 +160,64 @@ function Bar({
           ))}
         </p>
       ))}
+    </div>
+  );
+}
+
+/** 2j2 (D2-92, D2-98): Submit's panel, while Submit review starts Claude's steps and the panel is open. */
+function SubmitPanel({ session, sessionBusy }: { session: SessionView; sessionBusy: boolean }) {
+  const panel = useBoard((s) => s.submitPanel);
+  const actions = useBoardActions();
+  const box = useRef<HTMLTextAreaElement>(null);
+  const open = panel !== null;
+  useLayoutEffect(() => {
+    if (open) box.current?.focus();
+  }, [open]);
+  const work = session.submit.work;
+  if (panel === null || session.submit.next !== 'claude-steps' || work === undefined) return null;
+  return (
+    <div
+      className="tl-session-bar__submit"
+      data-testid="session-submit-panel"
+      role="group"
+      aria-label={REVIEW_TEXTS.submitReview}
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape') return;
+        event.preventDefault();
+        event.stopPropagation();
+        actions.closeSubmitPanel();
+      }}
+    >
+      <p className="tl-session-bar__submit-text" data-testid="session-submit-what">
+        {REVIEW_TEXTS.submitSteps(work.shaky, work.redo)}
+      </p>
+      <label className="tl-decline__label" htmlFor="tl-submit-comment">
+        {REVIEW_TEXTS.commentForClaude}
+      </label>
+      <textarea
+        id="tl-submit-comment"
+        ref={box}
+        className="tl-input tl-decline__text"
+        data-testid="session-submit-comment"
+        rows={3}
+        maxLength={LIMITS.textLength}
+        value={panel.comment}
+        onChange={(event) => actions.setSubmitComment(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+            event.preventDefault();
+            actions.confirmSubmit();
+          }
+        }}
+      />
+      <div className="tl-decline__buttons">
+        <button type="button" className="tl-button tl-button--small" data-testid="session-submit-confirm" disabled={sessionBusy || !session.submit.gate.ok} onClick={() => actions.confirmSubmit()}>
+          {REVIEW_TEXTS.submitPanelSubmit}
+        </button>
+        <button type="button" className="tl-button tl-button--secondary tl-button--small" data-testid="session-submit-cancel" onClick={() => actions.closeSubmitPanel()}>
+          {REVIEW_TEXTS.submitPanelCancel}
+        </button>
+      </div>
     </div>
   );
 }

@@ -234,7 +234,12 @@ export interface RunManager extends Disposable {
    * RV-12 (2e): waits while the session judges (AF3), then the end confirmation (phase `confirming`, no seal) or the
    * take-out and one queue of Submit steps; resolves once that queue's first step works, or once `confirming`.
    */
-  submit(runId: string, stage: number): Promise<ActionOutcome>;
+  submit(runId: string, stage: number, comment?: string): Promise<ActionOutcome>;
+  /**
+   * 2j2 (D2-92, D2-95): the note for Claude on an item to be redone (`rev` the version the user saw), set, replaced or
+   * (blank) cleared: core `reduceReview`'s `note`, one session-stack step, a records-only write.
+   */
+  note(runId: string, stage: number, item: string, rev: number, note: string): Promise<ActionOutcome>;
   /**
    * EN-1-EN-4 (2f, §3.10): Apply (the check id of a passed final check; drift and the backstop again, then exactly F with
    * the endorsements and the moved cards' positions, one history entry; the attempt records; the run ends `accepted`),
@@ -424,6 +429,8 @@ export type SessionWrite =
       steps: string[];
       inferences?: Array<{ target: string; premises: string[] }>;
       submit?: Array<{ target: string; openItems: string[]; openProof: boolean }>;
+      /** (2j2, D2-92, D2-96; additive) Submit review's overall comment, which its seal keeps. */
+      comment?: string;
     };
 
 /** One step of a session's queue (§2.6). Its round is the run's round while it runs (fresh caps per step). */

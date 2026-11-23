@@ -426,6 +426,8 @@ describe('while a step runs, the session takes no action (D2-62, §2.5)', () => 
     const m = h.manager;
     const refused = { ok: false, code: 'refused', error: REVIEW_TEXTS.stepRunning };
     expect(await m.decide(runId, 0, true, [{ item: 'x', rev: 1, to: 'accepted' }], false)).toEqual(refused);
+    // 2j2 (D2-92, D2-95): the note on an item to be redone, as every review action.
+    expect(await m.note(runId, 0, 'x', 1, 'a note')).toEqual(refused);
     expect(await m.reveal(runId, 0, 'show-result')).toEqual(refused);
     expect(await m.undoSession(runId, 1, false)).toEqual(refused);
     expect(await m.redoSession(runId, 1, false)).toEqual(refused);

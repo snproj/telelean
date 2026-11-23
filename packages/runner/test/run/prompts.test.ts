@@ -3,16 +3,17 @@
  * copy, and the plan itself while it exists); the context bundle quotes the cards verbatim with the vocabulary and
  * the decisions in force; `neighbourhood` omits unrelated cards; the later turns are section 5.3's texts.
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import type { DecisionRecord, TlGraph } from '@telelean/core';
+import type { DecisionRecord, SessionAction, TlGraph } from '@telelean/core';
 import { describe, expect, it } from 'vitest';
 
 import { CLAUDE_SESSION_TEXTS } from '@telelean/core';
 
 import { buildContextBundle, buildSystemPrompt, DEFAULT_RUN_SETTINGS, NUDGE_TURN, resumeTurn, shortNames } from '../../src/run/index.js';
 import { formalizePlan, stepTurn, submitFeedbackTurn, type StepTurnInput } from '../../src/run/prompts.js';
+import { decidedSinceSeal, decisionsSince, NOTE_CLEARED } from '../../src/run/session.js';
 import { REPO_ROOT } from './helpers/env.js';
 import { FakeWorkspace } from './helpers/fakeServices.js';
 
@@ -313,5 +314,108 @@ describe('Submit review\'s feedback turn (slice 2e, docs/slice2-plan.md 2.8, 3.7
     expect(turn).toContain('- S1\n    def x := 1\n    def y := 2\n  The person\'s note: "two\nlines"\n- S2\n    abbrev s2 : Prop := True\n  It relied on: Formalize “A”; Result “B”\n\n');
     expect(turn).toContain('- R1\n    r1\n- R2\n    r2\n\n');
     expect(turn).toContain('1. a: "A"\n2. b: "B"\n');
+  });
+});
+
+describe('2j2 (D2-92, D2-97): what Claude receives of the person\'s notes and comment', () => {
+  const STEP_BASE: StepTurnInput = {
+    index: 1,
+    of: 1,
+    kind: 'formalize',
+    target: { id: 'link-two', type: 'PROPOSITION', sentence: 'The new Spyro game excludes Cynder' },
+    question: { sources: [], fromNothing: true },
+    arrows: [],
+    fuzzyStatements: [],
+    openProof: true,
+    openArrows: false,
+    caps: DEFAULT_RUN_SETTINGS.caps,
+  };
+  const empty = { stage: 2, accepted: [], rejected: [], shaky: [], redo: [], steps: [] };
+
+  it('the overall comment comes right after the first line, multi-line, quoted; a blank one or none adds no line', () => {
+    const turn = submitFeedbackTurn({ ...empty, comment: 'Prefer the rule reading.\nKeep the names.' });
+    expect(turn.startsWith(`${CLAUDE_SESSION_TEXTS.reviewSubmitted(2)}\nThe person's overall comment: "Prefer the rule reading.\nKeep the names."\n\nACCEPTED:`)).toBe(true);
+    for (const comment of [undefined, '', '  \n ']) {
+      const plain = submitFeedbackTurn({ ...empty, ...(comment !== undefined ? { comment } : {}) });
+      expect(plain.startsWith(`${CLAUDE_SESSION_TEXTS.reviewSubmitted(2)}\n\nACCEPTED:`), String(comment)).toBe(true);
+      expect(plain).not.toContain('overall comment');
+    }
+  });
+
+  it('REJECTED and TO BE REDONE quote their notes as SHAKY does; a declined arrow’s where it is listed; a Shaky item to be redone quotes both', () => {
+    const turn = submitFeedbackTurn({
+      ...empty,
+      rejected: [
+        { label: 'Formalize “B”', lean: 'abbrev b : Prop := True', note: 'Too strong.' },
+        { label: 'Add arrow “s” → “t”', lean: 's → t', note: 'Not this premise.' },
+        { label: 'Formalize “C”', lean: 'abbrev c : Prop := True' },
+      ],
+      shaky: [{ label: 'Formalize “S”', lean: 'abbrev s : Prop := True', note: 'Shaky note.', redoNote: 'Redo note.', reliedOn: ['Result “D”'] }],
+      redo: [{ label: 'Result “D”', lean: '', note: 'Prove it directly.\nNo detour.', reliedOn: ['Formalize “S”'] }],
+    });
+    expect(turn).toContain(
+      'REJECTED: they were removed; never propose these exact versions again.\n- Formalize “B”\n    abbrev b : Prop := True\n  The person\'s note: "Too strong."\n- Add arrow “s” → “t”\n    s → t\n  The person\'s note: "Not this premise."\n- Formalize “C”\n    abbrev c : Prop := True\n\n',
+    );
+    expect(turn).toContain('- Formalize “S”\n    abbrev s : Prop := True\n  The person\'s note: "Shaky note."\n  The person\'s note: "Redo note."\n  It relied on: Result “D”\n\n');
+    expect(turn).toContain('TO BE REDONE: propose them again; what each relied on:\n- Result “D”\n  The person\'s note: "Prove it directly.\nNo detour."\n  It relied on: Formalize “S”\n\n');
+    // ACCEPTED never carries a note.
+    expect(submitFeedbackTurn({ ...empty, accepted: [{ label: 'A', lean: 'a', note: 'x' }] })).not.toContain("The person's note");
+  });
+
+  it('golden file: a feedback turn with the overall comment, a Reject’s and an arrow’s note, a Shaky item with both notes and a to-be-redone item’s note (fixer 2j2 r1, F-F4)', () => {
+    const golden = path.join(path.dirname(new URL(import.meta.url).pathname), 'fixtures', 'sessions', 'submit-feedback-turn-notes.txt');
+    const turn = submitFeedbackTurn({
+      stage: 1,
+      comment: 'Prefer the rule reading.\nKeep the names.',
+      accepted: [{ label: 'Formalize “A”', lean: 'abbrev a : Prop := True' }],
+      rejected: [
+        { label: 'Formalize “B”', lean: 'abbrev b : Prop := True', note: 'Too strong:\nnot every PG game.' },
+        { label: 'Add arrow “s” → “t”', lean: 's → t', note: 'Not this premise.' },
+        { label: 'Formalize “C”', lean: 'abbrev c : Prop := True' },
+      ],
+      shaky: [{ label: 'Formalize “S”', lean: 'abbrev s : Prop := True', note: 'Shaky note.', redoNote: 'Redo note.', reliedOn: ['Result “D”'] }],
+      redo: [
+        { label: 'Result “D”', lean: 'theorem d : True := trivial', note: 'Prove it directly.', reliedOn: ['Formalize “S”'] },
+        { label: 'Result “E”', lean: 'theorem e : True := trivial' },
+      ],
+      steps: [
+        { id: 'd', sentence: 'D' },
+        { id: 'e', sentence: 'E' },
+      ],
+    });
+    if (process.env['UPDATE_GOLDEN'] === '1') writeFileSync(golden, turn);
+    expect(turn).toBe(readFileSync(golden, 'utf8'));
+  });
+
+  it('the decisions-since lines: each decline’s distinct notes under its label, a note step with its note or that it was cleared; seals bound them', () => {
+    const decide = (id: number, label: string, notes: Array<string | undefined>): SessionAction => ({
+      id,
+      kind: 'decide',
+      label,
+      request: { decisions: notes.map((note, k) => ({ item: `it${id}${k}`, rev: 1, to: 'declined' as const, option: 'reject' as const, ...(note !== undefined ? { note } : {}) })), own: false },
+      changes: [],
+      takenOut: [],
+      rejectedArrows: { added: [], removed: [] },
+      questions: [],
+      commits: [],
+      at: 'x',
+    });
+    const note = (id: number, after?: string): SessionAction => ({ id, kind: 'note', label: `Note for Claude: Item ${id}`, item: `it${id}`, rev: 1, ...(after !== undefined ? { after } : {}), at: 'x' });
+    const seal = (id: number): SessionAction => ({ id, kind: 'seal', by: 'formalize', at: 'x' });
+    const done = [decide(1, 'Before the first queue', ['old']), seal(2), decide(3, 'Decline 2 items (Reject)', ['shared', 'shared', undefined]), decide(4, 'Decline: X (Reject)', [undefined]), note(5, 'Two\nlines.'), note(6), seal(7)];
+    const lines = decisionsSince({ stack: { done, undone: [] } });
+    expect(lines).toEqual(['Decline 2 items (Reject)\n  The person\'s note: "shared"', 'Decline: X (Reject)', 'Note for Claude: Item 5\n  The person\'s note: "Two\nlines."', `Note for Claude: Item 6\n${NOTE_CLEARED}`]);
+    expect(stepTurn({ ...STEP_BASE, decisions: lines })).toContain(`${CLAUDE_SESSION_TEXTS.decisionsSince}\n- Decline 2 items (Reject)\n  The person's note: "shared"\n- Decline: X (Reject)\n- Note for Claude: Item 5\n`);
+    expect(NOTE_CLEARED).toBe("  The person's note was cleared.");
+  });
+
+  it('a note step counts as a decision since the queue’s seal, as a move does (so a reload never applies the queue-end rules after it)', () => {
+    const at = 'x';
+    const seal: SessionAction = { id: 1, kind: 'seal', by: 'submit', at };
+    const note: SessionAction = { id: 2, kind: 'note', label: 'Note for Claude: Item', item: 'it', rev: 1, after: 'n', at };
+    expect(decidedSinceSeal({ stack: { done: [seal], undone: [] } })).toBe(false);
+    expect(decidedSinceSeal({ stack: { done: [seal, note], undone: [] } })).toBe(true);
+    // A note before the seal belongs to the queue it started.
+    expect(decidedSinceSeal({ stack: { done: [note, { ...seal, id: 3 }], undone: [] } })).toBe(false);
   });
 });

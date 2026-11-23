@@ -65,8 +65,8 @@ export interface SessionView {
   phase: SessionPhase;
   /**
    * The stage reveal (RV-6, §4.7): shown when no statement or belief item is undecided, or when Show results forced
-   * them. `waitingFor`: the undecided statement and belief items: in review, or to be redone with their content still
-   * in ws/ (AF4).
+   * them. `waitingFor`: the undecided statement and belief items: those in review (2j1, D2-76: one to be redone no
+   * longer waits).
    */
   results: { shown: boolean; forced: boolean; waitingFor: string[] };
   inferences: InferenceView[];
@@ -161,7 +161,13 @@ export interface ItemView {
   status: ItemStatus | null;
   /** The current decline, when declined. (`decline` below is the action's gate.) */
   declined?: { option: DeclineOption; note?: string };
-  redo?: { because: string[] };
+  /**
+   * To be redone: `because`, the listed items of `redo.because` (a hidden one is never named); `why` (2j1, D2-76 D4,
+   * D2-83; additive), why, in core's words, for the detail and the row's tooltip: "↻ to be redone: it depends on
+   * ‹label›, ‹state›", one line per listed cause, or one "↻ to be redone: telelean took it out: ‹reason›". `note` (2j2,
+   * D2-92; additive): the person's note for Claude on it (`ItemRecord.redo.note`).
+   */
+  redo?: { because: string[]; why: string[]; note?: string };
   /** null on a hidden Result: its class would tell whether a proof was found (D2-61). */
   classes: { belief: boolean; changesProved: boolean; reasons: string[] } | null;
   markers: ItemMarker[];
@@ -306,6 +312,8 @@ export interface StageReportView {
   consistency: 'unchecked';
   /** Results and their parts are left out while the results are hidden (F10). */
   withdrawn: Array<{ label: string; at: string }>;
+  /** (2j2, D2-92, D2-96; additive) The person's overall comment at the Submit review that started this stage. */
+  comment?: { stage: number; text: string };
 }
 
 export type FinalCheckRule =
@@ -1197,6 +1205,42 @@ export function buildSessionView(input: SessionViewInput): SessionView {
     ],
   });
 
+  /**
+   * 2j1 (D2-76 D4, D2-83): why an item is to be redone, in core's words (`ItemView.redo.why`). A cascade's record (and
+   * one saved before 2j1, with no `kind`) names each listed cause with its state; with none listed, and for every other
+   * kind, telelean's reason. A hidden cause is never named: it reads "it depends on items that are shown with the
+   * results", whatever it is (D2-64).
+   */
+  const redoReason = (r: ItemRecord, redo: NonNullable<ItemRecord['redo']>): string => {
+    if (redo.kind === 'question') {
+      const arrow = redo.because.map((id) => byId.get(id)).find((x): x is ItemRecord => x !== undefined && isArrowKind(x.kind));
+      const parsed = arrow === undefined ? undefined : parseItemKey(arrow.key);
+      const source = arrow?.content.arrow?.source ?? (parsed?.kind === 'arrow' ? parsed.arrow.source : undefined);
+      return source !== undefined ? REVIEW_TEXTS.redoReasonQuestion(cutText(cardRef(source).sentence, 60)) : REVIEW_TEXTS.redoReasonDeclined;
+    }
+    if (r.markers.includes('no-longer-builds')) return REVIEW_TEXTS.redoReasonBuilds;
+    if (r.markers.includes('no-longer-closes-gap')) return REVIEW_TEXTS.redoReasonGap;
+    if (redo.kind === 'judge') return redo.because.length > 0 ? REVIEW_TEXTS.redoReasonJudged : REVIEW_TEXTS.redoReasonChecks;
+    if (redo.kind === 'take-out') return REVIEW_TEXTS.redoReasonTakeOut;
+    if (redo.kind === 'queue') return REVIEW_TEXTS.redoReasonQueue;
+    return redo.because.some((id) => byId.has(id)) ? REVIEW_TEXTS.redoReasonHidden : REVIEW_TEXTS.redoReasonDeclined;
+  };
+  const redoWhy = (r: ItemRecord, redo: NonNullable<ItemRecord['redo']>): string[] => {
+    const listedCauses = redo.because.filter(isListedId);
+    if ((redo.kind === undefined || redo.kind === 'cascade') && listedCauses.length > 0) {
+      return listedCauses.map((id) => {
+        const c = byId.get(id) as ItemRecord;
+        return REVIEW_TEXTS.redoLine(REVIEW_TEXTS.redoDependsOn(labels[id] ?? labelOf(c), REVIEW_TEXTS.redoCauseState(c.status, c.decline?.option)));
+      });
+    }
+    // A judge's record that a Shaky or Reject decline joined (D2-80) names that cause first (Fixer 2j1 r1, F-F4): the judge's
+    // reason alone would be inaccurate for it.
+    const declinedCauses = redo.kind === 'judge' ? listedCauses.map((id) => byId.get(id) as ItemRecord).filter((c) => c.status === 'declined') : [];
+    return [
+      ...declinedCauses.map((c) => REVIEW_TEXTS.redoLine(REVIEW_TEXTS.redoDependsOn(labels[c.id] ?? labelOf(c), REVIEW_TEXTS.redoCauseState(c.status, c.decline?.option)))),
+      REVIEW_TEXTS.redoLine(REVIEW_TEXTS.redoTookOut(redoReason(r, redo))),
+    ];
+  };
   const itemView = (r: ItemRecord): ItemView => {
     const gate = gates.get(r.id);
     const accept = phaseGate(gate === undefined || gate.accept.ok ? OPEN : closed(gate.accept.text, gate.accept.missing));
@@ -1239,7 +1283,9 @@ export function buildSessionView(input: SessionViewInput): SessionView {
       cards: base.cards,
       status: r.status,
       ...(r.status === 'declined' && r.decline !== undefined ? { declined: compact({ option: r.decline.option, note: r.decline.note }) } : {}),
-      ...(r.status === 'to-be-redone' && r.redo !== undefined ? { redo: { because: r.redo.because.filter(isListedId) } } : {}),
+      ...(r.status === 'to-be-redone' && r.redo !== undefined
+        ? { redo: { because: r.redo.because.filter(isListedId), why: redoWhy(r, r.redo), ...(r.redo.note !== undefined ? { note: r.redo.note } : {}) } }
+        : {}),
       classes: classView(cls),
       markers: markersOf(r, cls),
       dependsOn: dependsOn(r),
@@ -1407,14 +1453,26 @@ export function buildSessionView(input: SessionViewInput): SessionView {
   // A decision on an item that is hidden now (made while the results were shown) can be neither undone nor redone until
   // they are shown again (D2-8: the reducer refuses it), and its label would name that item (fixer 2c2 r1, C-V2C2-C4).
   const decidesHidden = (action: SessionAction | undefined): boolean =>
-    action?.kind === 'decide' &&
-    decidedBy(action).some((id) => {
+    (action?.kind === 'decide' || action?.kind === 'note') &&
+    (action.kind === 'note' ? [action.item] : decidedBy(action)).some((id) => {
       const r = byId.get(id);
       return r !== undefined && hidden(r);
     });
   const undo = phase === 'stage' && top !== undefined && top.kind !== 'seal' && !decidesHidden(top) ? { step: top.id, label: top.label } : null;
   const redo = phase === 'stage' && next !== undefined && next.kind !== 'seal' && !decidesHidden(next) ? { step: next.id, label: next.label } : null;
   const sealed = top?.kind === 'seal' ? { by: top.by, at: top.at } : null;
+  // 2j2 (D2-96): the comment of the Submit review that started this stage: the newest commented Submit seal one stage
+  // below, or (fixer r1, A-ADV-2j2-2) of this very stage when its queue failed and Retry (which keeps the stage) has
+  // since ended it with no step failed or cancelled: a Retry's seal follows it, nothing else, and there is no failure heading.
+  // A Submit without a comment, or one still failing, never hides an older stage's comment from the report of its stage.
+  const failing = records.heading !== undefined && records.heading !== null;
+  const commented = done.flatMap((a, k) => (a.kind === 'seal' && a.by === 'submit' && a.comment !== undefined ? [{ at: k, comment: a.comment }] : [])).reverse();
+  const retriedOnly = (from: number): boolean => {
+    const later = done.slice(from + 1).filter((a) => a.kind === 'seal');
+    return later.length > 0 && later.every((a) => a.kind === 'seal' && a.by === 'retry');
+  };
+  const shownComment = commented.find((c) => c.comment.stage === records.stage - 1 || (c.comment.stage === records.stage && !failing && retriedOnly(c.at)))?.comment;
+  const comment = shownComment !== undefined ? { stage: shownComment.stage, text: shownComment.text } : undefined;
 
   // ---- Submit review (§3.7, RV-12): open only while the results are shown, so its plan reads real statuses
   const inReview = listed.filter((r) => r.status === 'in-review').map((r) => r.id);
@@ -1424,7 +1482,9 @@ export function buildSessionView(input: SessionViewInput): SessionView {
   let submitGate: Gate;
   if (closure !== undefined) submitGate = closed(closure);
   else if (inReview.length > 0) submitGate = closed(REVIEW_TEXTS.submitInReview(inReview.length), inReview);
-  else if (!shown) submitGate = closed(REVIEW_TEXTS.submitResultsHidden, waitingFor);
+  // 2j1 (D2-76, D2-86): every meaning item is listed, so a hidden stage always has an item in review (refused above):
+  // this stays only to fail closed, since the plan below reads real statuses.
+  else if (!shown) submitGate = closed(REVIEW_TEXTS.showResultsFirst);
   else if (input.judging || plan === undefined) submitGate = closed(REVIEW_TEXTS.judging);
   else if (plan.confirm && plan.partlyAccepted.length > 0) {
     const cycle = [...(plan.partlyAccepted[0] as string[])].sort(byListOrder);
@@ -1534,6 +1594,7 @@ export function buildSessionView(input: SessionViewInput): SessionView {
       notes,
       consistency: 'unchecked',
       withdrawn: listed.filter((r) => r.status === 'withdrawn').map((r) => ({ label: labelOf(r), at: withdrawnAt(r.id) })),
+      ...(comment !== undefined ? { comment } : {}),
     },
     rejected,
     board: {

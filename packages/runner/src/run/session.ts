@@ -84,7 +84,7 @@ import { createRunShadow } from '../shadow/index.js';
 import type { ShadowCommit, ShadowWorkspace } from '../shadow/types.js';
 import { writeTextAtomic } from './persist.js';
 import { preflight as defaultPreflight } from './preflight.js';
-import { formalizePlan, renderContextBundle, stepTurn } from './prompts.js';
+import { formalizePlan, personNote, renderContextBundle, stepTurn } from './prompts.js';
 import {
   ActiveRun,
   backendCliVersion,
@@ -219,17 +219,42 @@ const stepOf = (s: PersistedSession, id: string): PersistedStep => {
   return step;
 };
 
+/** 2j2 (D2-97): a note step that cleared its note, in the decisions-since lines. */
+export const NOTE_CLEARED = "  The person's note was cleared.";
+
+/**
+ * §2.8: the decide and Show results actions on the stack since the previous queue started (the labels the person saw),
+ * for the first step of a mid-stage Formalize or a Retry queue. 2j2 (D2-92, D2-97): under a decide action's label, each
+ * distinct note of its declines; a note on an item to be redone, its label and its note (or that it was cleared). Each
+ * entry is one `- ` line of the turn, its notes on the lines after it.
+ */
+export function decisionsSince(s: Pick<PersistedSession, 'stack'>): string[] {
+  const done = s.stack.done;
+  const seals = done.flatMap((a, k) => (a.kind === 'seal' ? [k] : []));
+  const last = seals.at(-1) ?? done.length;
+  const previous = seals.length >= 2 ? (seals.at(-2) as number) : -1;
+  return done.slice(previous + 1, last).flatMap((a) => {
+    if (a.kind === 'reveal') return [a.label];
+    if (a.kind === 'note') return [[a.label, a.after !== undefined ? personNote(a.after) : NOTE_CLEARED].join('\n')];
+    if (a.kind !== 'decide') return [];
+    const notes = [...new Set(a.request.decisions.flatMap((d) => (d.to === 'declined' && d.note !== undefined && d.note.trim() !== '' ? [d.note] : [])))];
+    return [[a.label, ...notes.map(personNote)].join('\n')];
+  });
+}
+
 /** The newest queue number of the session (1 for the start's queue). */
 const currentQueue = (s: PersistedSession): number => s.steps.reduce((m, x) => Math.max(m, x.queue ?? 1), 0);
 
 /**
  * (builder 2e, 2d's review R1-1) A decision (a decide, Show results or a move) is on the done stack after the newest
  * seal: the user acted on the stage since its queue started (the first queue has no seal: every action counts).
+ * 2j2 (builder decision 9; fixer r1, A-ADV-2j2-1): a note on an item to be redone counts, as a move does. Exported to
+ * be tested alone.
  */
-const decidedSinceSeal = (s: PersistedSession): boolean => {
+export const decidedSinceSeal = (s: Pick<PersistedSession, 'stack'>): boolean => {
   const done = s.stack.done;
   const seal = done.map((a) => a.kind).lastIndexOf('seal');
-  return done.slice(seal + 1).some((a) => a.kind === 'decide' || a.kind === 'reveal' || a.kind === 'move');
+  return done.slice(seal + 1).some((a) => a.kind === 'decide' || a.kind === 'reveal' || a.kind === 'move' || a.kind === 'note');
 };
 
 /** The targets whose step ended (each has a Result draft, §4.2). */
@@ -922,13 +947,9 @@ export abstract class SessionRunner extends StepRunner {
     return false;
   }
 
-  /** The decide and Show results actions on the stack since the previous queue started (the labels the person saw). */
+  /** The decide and Show results actions on the stack since the previous queue started (`decisionsSince`). */
   protected decisionsSinceLastQueue(s: PersistedSession): string[] {
-    const done = s.stack.done;
-    const seals = done.flatMap((a, k) => (a.kind === 'seal' ? [k] : []));
-    const last = seals.at(-1) ?? done.length;
-    const previous = seals.length >= 2 ? (seals.at(-2) as number) : -1;
-    return done.slice(previous + 1, last).flatMap((a) => (a.kind === 'decide' || a.kind === 'reveal' ? [a.label] : []));
+    return decisionsSince(s);
   }
 
   protected sessionCheckContext(run: ActiveRun): SessionCheckContext | undefined {
@@ -1476,7 +1497,9 @@ export abstract class SessionRunner extends StepRunner {
     const q = currentQueue(s) + 1;
     const commit = await run.shadow.commit('step-start', `Queue ${q} starts: “${steps[0]?.target ?? ''}”`, Math.max(0, run.view.round));
     const next: PersistedSession = structuredClone(s);
-    next.stack = { done: [...next.stack.done, { id: next.nextAction, kind: 'seal', by: write.by, at: this.iso() }], undone: [] };
+    // 2j2 (D2-92, D2-96): Submit review's comment stays with its seal, with the stage it submitted.
+    const comment = write.by === 'submit' && write.comment !== undefined && write.comment.trim() !== '' ? { comment: { text: write.comment, stage: next.stage } } : {};
+    next.stack = { done: [...next.stack.done, { id: next.nextAction, kind: 'seal', by: write.by, at: this.iso(), ...comment }], undone: [] };
     next.nextAction += 1;
     for (const inf of write.inferences ?? []) {
       const question = { sources: [...inf.premises], fromNothing: inf.premises.length === 0 };

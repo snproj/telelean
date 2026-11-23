@@ -564,7 +564,8 @@ var SESSION_MESSAGE_TYPES = [
   "endSession",
   "retryStep",
   "openSessionDiff",
-  "moveProposed"
+  "moveProposed",
+  "noteItem"
 ];
 var RUN_MESSAGE_TYPES = ["answerQuestions", "cancelRun", "resumeRun", "dismissRun", ...SESSION_MESSAGE_TYPES];
 

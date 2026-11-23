@@ -21,7 +21,7 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { REVIEW_TEXTS, type ActionOutcome, type LeanFacts, type StateJudgement } from '@telelean/core';
+import { REVIEW_TEXTS, sessionLabels, type ActionOutcome, type LeanFacts, type SessionView, type StateJudgement } from '@telelean/core';
 
 import { RunFiles } from '../../src/run/persist.js';
 import { DECIDED_DID_NOT_PASS, NO_JUDGEMENT } from '../../src/run/review.js';
@@ -121,16 +121,22 @@ describe('Reject and un-reject (§3.6, D2-28, D2-60, DO-1)', () => {
     expect(h.engine.methods().filter((m) => m === 'judge').length).toBe(judges + 1);
     expect(session(h).judged?.commit).toBe(decisionCommit?.id);
     await consistent(h);
-    // Un-reject: the inverse merge brings back what the commit took out; the dependents come back to be redone, their
-    // content in ws/ (D2-60).
+    for (const key of ['proof:link-one', 'proof:link-two', 'proof:cynder-not-good']) expect(record(h, key).redo).toMatchObject({ kind: 'cascade' });
+    // Un-reject: the inverse merge brings back what the commit took out; the dependents come back with it, in review
+    // (2j1, D2-76 D3; D2-60 left them to be redone), their content in ws/, and the judge keeps them so.
     ok(await h.manager.decide(runId, 1, true, [decision(h, 'card:link-one', 'in-review')], false));
     await settled(h);
     expect(await main(h)).toBe(before);
     expect(record(h, 'card:link-one')).toMatchObject({ status: 'in-review', rejectedFingerprints: [] });
     expect(record(h, 'card:link-one').decline).toBeUndefined();
     for (const key of ['proof:link-one', 'proof:link-two', 'proof:cynder-not-good']) {
-      expect(record(h, key)).toMatchObject({ status: 'to-be-redone', redo: { reverted: false } });
+      expect(record(h, key)).toMatchObject({ status: 'in-review' });
+      expect(record(h, key).redo).toBeUndefined();
     }
+    // The Results are hidden (link-one is in review): no event names them (D2-64).
+    const resultIds = ['proof:link-one', 'proof:link-two', 'proof:cynder-not-good'].map((key) => record(h, key).id);
+    expect(h.manager.session()?.results.shown).toBe(false);
+    expect(JSON.stringify(h.manager.session()?.events)).not.toMatch(new RegExp(resultIds.join('|')));
     await consistent(h);
   });
 
@@ -187,7 +193,7 @@ describe('Shaky (D2-48, AF4) and the cascades', () => {
     expect(view?.submit.gate).toEqual({ ok: true });
   });
 
-  it('AF4: a Shaky decline of a definition makes its dependents P1 and P2 to be redone with their content kept: the results stay hidden, Submit\'s gate names them; once both are declined as Shaky the results show and Submit runs', async () => {
+  it('2j1 (D2-76 D1; it supersedes AF4\'s test): a Shaky decline of a definition makes its dependents P1 and P2 to be redone with their content kept: they keep no result hidden, so the results show and Submit runs', async () => {
     // D: a definition written before the freeze; P1 and P2: two statements (Formalize items) that use it; both proved.
     const D = 'def bad_past (c : Character) : Prop := HasDarkPast c\n';
     const P1 = '/-- Cynder has a past that PG games exclude -/\nabbrev link_one : Prop := bad_past cynder\n';
@@ -235,15 +241,19 @@ describe('Shaky (D2-48, AF4) and the cascades', () => {
     const p1 = record(h, 'card:link-one');
     const p2 = record(h, 'card:link-two');
     for (const r of [p1, p2, record(h, 'proof:link-one'), record(h, 'proof:link-two')]) expect(r).toMatchObject({ status: 'to-be-redone', redo: { reverted: false } });
-    let view = h.manager.session();
-    expect(view?.results.shown).toBe(false);
-    expect(view?.submit.gate).toEqual({ ok: false, reason: REVIEW_TEXTS.submitResultsHidden, missing: [p1.id, p2.id] });
-    expect(await h.manager.submit(v.runId, 1)).toEqual({ ok: false, code: 'refused', error: REVIEW_TEXTS.submitResultsHidden });
-    ok(await h.manager.decide(v.runId, 1, false, [decision(h, 'card:link-one', 'declined', { option: 'shaky' }), decision(h, 'card:link-two', 'declined', { option: 'shaky' })], false));
-    await settled(h);
-    view = h.manager.session();
-    expect(view?.results.shown).toBe(true);
+    const view = h.manager.session();
+    expect(view?.results).toMatchObject({ shown: true, waitingFor: [] });
     expect(view?.submit.gate).toEqual({ ok: true });
+    expect(view?.submit.work).toMatchObject({ shaky: 1, redo: 4 });
+    // They cannot be set back to review by hand (D2): the refusal, and nothing changes.
+    const unchanged = rawRun(h).session;
+    expect(await h.manager.decide(v.runId, 1, true, [decision(h, 'card:link-one', 'in-review')], false)).toEqual({ ok: false, code: 'refused', error: REVIEW_TEXTS.redoneByClaude });
+    expect(rawRun(h).session).toEqual(unchanged);
+    expect(viewItem(h, 'card:link-one')?.review).toEqual({ ok: false, reason: REVIEW_TEXTS.redoneByClaude });
+    // It says why (D4): "↻ to be redone: it depends on ‹D›, declined Shaky".
+    const label = sessionLabels(view as SessionView)[record(h, 'decl:Spyro.bad_past').id] as string;
+    expect(label).toContain('bad_past');
+    expect(viewItem(h, 'card:link-one')?.redo?.why).toEqual([REVIEW_TEXTS.redoLine(REVIEW_TEXTS.redoDependsOn(label, 'declined Shaky'))]);
     // Submit runs: one step per affected inference, link-one's first (link-two's rests on what it opens).
     ok(await h.manager.submit(v.runId, 1));
     await waitForStage(h.manager, 2);
@@ -275,6 +285,42 @@ describe('Shaky (D2-48, AF4) and the cascades', () => {
     expect(out).not.toContain('link_two.holds');
     expect(record(h, 'proof:link-one')).toMatchObject({ status: 'to-be-redone', decline: { option: 'shaky' }, redo: { reverted: true } });
     expect(record(h, 'proof:link-two')).toMatchObject({ status: 'to-be-redone', redo: { reverted: true } });
+  });
+});
+
+describe('2j1: the automatic return (D2-76 D3)', () => {
+  const RESULTS = ['proof:link-one', 'proof:link-two', 'proof:cynder-not-good'];
+
+  it('un-Shaky brings back, with no write, what its Shaky decline made to be redone; Undo and Redo give back each state exactly; no event names a hidden Result', async () => {
+    const { h, runId } = await chainStage();
+    const before = await main(h);
+    ok(await h.manager.decide(runId, 1, true, [decision(h, 'card:link-one', 'declined', { option: 'shaky' })], false));
+    await settled(h);
+    for (const key of RESULTS) expect(record(h, key)).toMatchObject({ status: 'to-be-redone', redo: { because: [record(h, 'card:link-one').id], reverted: false, kind: 'cascade' } });
+    const down = structuredClone(session(h).items);
+    const commits = (await h.shadow().commits()).length;
+    ok(await h.manager.decide(runId, 1, true, [decision(h, 'card:link-one', 'in-review')], false));
+    await settled(h);
+    for (const key of RESULTS) {
+      expect(record(h, key)).toMatchObject({ status: 'in-review' });
+      expect(record(h, key).redo).toBeUndefined();
+    }
+    // Records only: no commit, ws/ unchanged; the Results are hidden (link-one is in review), so no event names them.
+    expect((await h.shadow().commits()).length).toBe(commits);
+    expect(await main(h)).toBe(before);
+    const view = h.manager.session();
+    expect(view?.results.shown).toBe(false);
+    const hiddenIds = RESULTS.map((key) => record(h, key).id);
+    expect(JSON.stringify(view?.events)).not.toMatch(new RegExp(hiddenIds.join('|')));
+    const back = structuredClone(session(h).items);
+    // Undo restores every record the un-Shaky touched; Redo does it again.
+    ok(await h.manager.undoSession(runId, view?.undo?.step ?? -1, true));
+    await settled(h);
+    expect(session(h).items).toEqual(down);
+    ok(await h.manager.redoSession(runId, h.manager.session()?.redo?.step ?? -1, true));
+    await settled(h);
+    expect(session(h).items.map((r) => [r.key, r.status, r.redo])).toEqual(back.map((r) => [r.key, r.status, r.redo]));
+    await consistent(h);
   });
 });
 

@@ -29,7 +29,10 @@
  *   decideItems, revealResult, sessionUndo, sessionRedo, submitReview
  *                                         -> slice 2e (docs/slice2-plan.md 1.1, 2.4): the RunManager's decide, reveal,
  *                                            undoSession, redoSession and submit, in the run queue (`confirmed`, when
- *                                            absent, is false); their `needs-confirmation` answers go back as they are
+ *                                            absent, is false); their `needs-confirmation` answers go back as they are;
+ *                                            2j2: submitReview's `comment` passed on
+ *   noteItem                              -> slice 2j2 (D2-92): runs.note (in the run queue), the note for Claude on an
+ *                                            item to be redone
  *   openSessionDiff                       -> slice 2e: runs.sessionDiff (in the run queue: with `confirmed` while the
  *                                            results are hidden it counts as Show results), then the read-only diff
  *                                            beside the board; `needs-confirmation` with `reveal` while hidden otherwise
@@ -391,7 +394,12 @@ export class BoardSession {
       case 'sessionRedo':
         return manager.redoSession(message.payload.runId, message.payload.step, message.payload.confirmed === true);
       case 'submitReview':
-        return manager.submit(message.payload.runId, message.payload.stage);
+        return manager.submit(message.payload.runId, message.payload.stage, message.payload.comment);
+      // Slice 2j2 (D2-92, D2-95): the note for Claude on an item to be redone, as every review action.
+      case 'noteItem': {
+        const { runId, stage, item, rev, note } = message.payload;
+        return manager.note(runId, stage, item, rev, note);
+      }
       case 'openSessionDiff':
         return this.openSessionDiff(manager, message.payload);
       // Slice 2f (docs/slice2-plan.md 1.1, 2.4, 2.5): the end of a session (Apply with the check id, Exit, Back to review)

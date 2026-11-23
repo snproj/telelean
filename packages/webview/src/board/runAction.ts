@@ -39,14 +39,11 @@ export function runBoardAction(action: ContextAction, thing: MenuThing | null, d
       if (item !== undefined) actions.acceptItem(item);
       return;
     case 'decline-item': {
-      // An arrow item's one decline (DO-0); any other item opens its decline menu in the review panel.
+      // Every decline takes an optional note for Claude (2j2, D2-92, D2-94): an arrow item's one "Decline" opens its
+      // arrow-only decline menu, with Decline already chosen, like any other item's menu (fixer 2j2 r1, F-F1).
       if (item === undefined) return;
-      const found = store.getState().session?.items.find((i) => i.id === item);
-      if (found?.kind === 'add-arrow' || found?.kind === 'remove-arrow') actions.declineItem(item, 'plain');
-      else {
-        actions.focusItem(item);
-        actions.openDeclineMenu([item], 'item');
-      }
+      actions.focusItem(item);
+      actions.openDeclineMenu([item], 'item');
       return;
     }
     case 'show-item':
