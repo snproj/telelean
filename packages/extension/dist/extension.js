@@ -17428,6 +17428,8 @@ var REVIEW_TEXTS = {
   exitSession: "Exit session",
   back: "Back",
   applied: "Applied: the session's changes are in your files. One Undo takes the whole session back.",
+  /** 2k1 (D2-100 D2, D2-105): the runner's Exit notice, and the run panel's line once a session ended by Exit. */
+  exited: "You exited the edit session: your files were not changed. Your answers to Claude's questions stay recorded.",
   /** §3.10, D2-67: Apply's history label (M2's kind `accept-proposal`). */
   applyLabel: (targets) => `Apply: Formalize for dependencies \u2192 ${joined(targets)}`,
   /** §3.10 step 4 (coverage audit G1; builder 2f): History's entry for an Apply, the heading of Claude's arrows it wrote. */
@@ -71645,7 +71647,6 @@ var PremiseRunner = class extends ReviewRunner {
 var SESSION_CHANGE3 = { run: true, proposal: false, session: true };
 var DRIFT_DEBOUNCE_MS = 300;
 var END_TEXTS = {
-  exited: "You exited the edit session: your files were not changed. Your answers to Claude's questions stay recorded.",
   recorded: "The session's outcome is recorded: nothing in your files changed.",
   noConfirmation: "There is no end confirmation to apply: Submit review first.",
   driftUnknown: (error62) => `telelean could not compare your files with the session's base (${error62}): Apply waits until it can.`,
@@ -71851,7 +71852,7 @@ var EndRunner = class extends PremiseRunner {
     if (step !== void 0) this.closeStep(run, step, "cancelled", "cancelled");
     delete run.p.undeliveredTurn;
     await this.writeSessionAttempts(run, "discarded");
-    this.notice(run, "info", "info", END_TEXTS.exited);
+    this.notice(run, "info", "info", REVIEW_TEXTS.exited);
     await this.endRun(run, "discarded");
     return okOutcome("Session ended");
   }
@@ -72148,6 +72149,7 @@ var RunManagerImpl = class extends EndRunner {
   session() {
     const run = this.run;
     if (run?.saved?.session === void 0) return null;
+    if (isTerminalRunState(run.saved.view.state)) return null;
     const view = run.live?.view ?? null;
     return view !== null ? structuredClone(view) : null;
   }
