@@ -1,0 +1,18 @@
+# Model info for turn 33 (2026-11-23)
+- **Model:** Claude Opus 5.5 (`claude-opus-5-5`), main loop. Session `3358448c-d9b7-4f38-afd0-3f73c08df70e` on SPRLS57U.
+- **Turn 33's prompt** ("Give me a quick progress update") arrived at about 17:55 SGT, while turn 32's chain was running. Its quick answer is `response33.md`. The chain finished during the turn; `response33_final.md` is the stop report for turns 32–33.
+- **Workflow `wf_3e2a0475-ada`:** 8 agents, 742 tool uses, ≈ 1.94 M subagent tokens (as the harness reports them), 142 min.
+  - Models: builder Opus (inherited); reviewers, fixers and re-reviewers Sonnet; integrator Haiku.
+  - Per-agent tokens (deduplicated, including cache reads): builder 89 M, the reviewers fc 19 M and adv 18.6 M, fixer r1 27.9 M, re-review r1 9.5 M, fixer r2 4.0 M, re-review r2 1.8 M, integrator about 0.1 M at 17:55 (it then ran to 18:04). Output: about 0.63 M by 17:55.
+- **Main loop since 07:38:41Z:** 52 API messages; ≈ 0.05 M output tokens, 7.33 M cache reads, 0.15 M cache writes. The summary was compacted once.
+- **The final checks,** run by me with `TELELEAN_NO_REAL_CLAUDE=1` under `capped.sh`. Logs are in the scratchpad's `final_checks_2k/`; turn 29's logs were moved to `turn29/`.
+  - The scratch webview build plus Playwright: 21 files, 124 passed.
+  - A scratch copy `k2copy/` (rsync of the working tree without node_modules/.git/logs, with node_modules symlinked), then `vite build` and `build.mjs` there (rc 0, "bundle loads").
+  - `smoke.mjs --snap` from the copy: "Loading development extension at …/k2copy/packages/extension". Smoke 39 + 1 pending, e2e 15 + 7 pending, 0 isolation failures, 87 s.
+  - The walkthrough patch, then `vitest test/run/walkthroughScript.test.ts`: 5 of 5.
+- **Ledger:**
+  - `ledger_disk.py` (by inode change time since 07:38:41Z) results are in the scratchpad's `ledger_disk_32.txt`. They are attributed in `response33_final.md`.
+  - The agents' tool calls were checked for `telelean-demos`/`bongo`: only text mentions, no commands.
+  - The other `/tmp/claude-1000/-home-zhengyew-telelean/<uuid>` folders from 15:51–15:54 belong to another Claude Code session (`ba34393e…`, 15:51–16:02). I did not read its transcript.
+- **Memory:** `telelean-project.md` CURRENT STATE and description; the `MEMORY.md` line.
+- **Stopped:** the RAM guard `btcurthfd`. Free RAM was ≈ 18–19 GB throughout.

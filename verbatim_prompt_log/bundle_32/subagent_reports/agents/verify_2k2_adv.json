@@ -1,0 +1,77 @@
+{
+  "summary": "Adversarial review of 2k2 (a model's data in its own folder). I found no blocker, and the plan's own decisions hold in the areas I traced. One real gap and a script break are major. In detail:\n\n- **Held-run machinery (D2-111).** `recover()` holds a run recorded at another path in `manager.ts` (the path comparison at :263, `holdMoved` at :366, `movedView`, `endMoved`). Every action but Stop and Exit is refused, and Stop writes only the run's own folder. This is sound.\n- **Confinement with ws/ inside the model folder.** The path guard applies the hidden-segment rule relative to ws/ and is unchanged. The new tests cover `..`, absolute paths, symlinks and grep roots above ws/.\n- **GIT_CEILING_DIRECTORIES.** The ceiling is set in `prepare()` after `envSet`, and the host's `GIT_*` variables are stripped. The new `argvEnv` tests pin the ceiling and the `:` fallback with real git.\n- **Lean sandbox binds.** No bind covers the model folder. The board's in-place build masks `.telelean/runs`.\n- **Watcher and scans.** `classifyModelPath` ignores `.telelean/runs/`. The runner's scans skip dot-directories.\n- **Pruning.** It counts and deletes run folders only, and the new test asserts that `consent.json` and `.gitignore` survive.\n- **Repo state.** HEAD is still 99cff93, nothing is staged, and `dist`/`out` are untouched.\n\nI confirmed the builder's D2-118 claim with the VS Code bundled ripgrep 15.0.0. A bare `*` in `.telelean/runs/.gitignore` hides all of ws/ from ripgrep, while `/*` does not.\n\nThe findings:\n\n1. **Major: a live session survives its folder being deleted and recreated.** This is the user's incident class again, and only the reload half is fixed. In the same window the registry keeps the old entry (nothing outside the testing API calls `forget`), and the stale RunManager still shows the old session. Exit then writes the old attempt records into the recreated folder.\n2. **Major: `scripts/walkthrough-claude.mjs:371` crashes at the end of a quota-spending run.** It calls the removed `runner.shadow.rootKeyOf`. The builder reported this to the orchestrator, but the script is still broken in the tree.\n3. **Minor: consent is not bound to its folder.** A plain folder copy (cp -r) carries it, which contradicts U3's stated purpose.\n4. **Minor: the same folder reached through a symlink is held as \"moved\".** A legitimate session would be forced to Stop.\n5. **Minor: one rule has no test.** Disposing a held run must leave run.json untouched.\n6. **Minor: the model's own `.gitignore` can hide ws files from Claude's Grep.**\n7. **Three nits** (the last item, 9, is a wording change):\n   - the ended view of a held version-1 run is unfiltered;\n   - the plain panel's interrupted text says \"the editor reloaded\" for a held run;\n   - the bare `.telelean/runs` directory event is classified as a sidecar.",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "major",
+      "where": "extension/src/vscode/registry.ts:100 (get) and :132 (forget, called only from host.ts:621,626, the testing API); extension/src/vscode/host.ts:231,234 (Initialize uses registry.get); runner/src/run/sessionEnd.ts:292 and runner/src/run/session.ts:2169 (writeSessionAttempts); runner/src/proposal/sidecarStore.ts:116-119,152 (mkdir recursive); extension/test/unit/hostRuns.test.ts:184,356 (the only 'recreated folder' tests call testing.disposeWorkspace first); docs/user-guide.md (\"Delete the model folder and all of it goes too; a new folder at the same path starts with no session\")",
+      "problem": "2k2 fixes only the reload path. A live RunManager whose model folder is deleted and recreated at the same path, with no window reload, keeps its old session. The registry never drops an entry when a root vanishes, and Initialize on that root gets the old entry back. Nothing checks that the run's own folder still exists. The board keeps showing the old review, and Exit or decide writes the old run's attempt records into the new folder, which is what U1 forbids (\"nothing written into it from an old run\"). The user guide's promise is false for this case.",
+      "evidence": "I verified it with a scratch vitest using the repo's harness (scratch dir v2k2-adv/live/live.test.ts): start a session, wait for stage 1, rmSync(root), mkdirSync(root), then end(runId,'exit'). Output: \"LIVE before exit: current = review session = true runDir exists = false\", then outcome {\"ok\":true,\"label\":\"Session ended\"}, then the recreated folder holds .telelean/subjects/Spyro/attempts.jsonl (written through the real sidecar store). The existing host test hides this because it calls api.testing.disposeWorkspace(rootA), which production never does.",
+      "fix": "Before any action or write on a session, test that the run's own folder still exists (existsSync(run.shadow.paths.runDir), or run.json once the first persist has happened) and, if it does not, treat the run as held. Set `movedFrom` (or an equivalent `orphaned` flag) lazily in `current()`, `runFor()`, `sessionRun()`, `cancel()` and `end()`, show the moved-run notice (worded for a deleted folder), and let Stop or Exit end it recording nothing. As a second layer, make registry.get() compare the root's identity (dev/ino of the folder, or the birth time of .telelean/config.json) with the entry's and call forget() when it changed. Tests to add: (a) the runner test above, expecting no attempts or decisions after Exit and the notice instead of the review; (b) a host test that deletes and recreates the root WITHOUT disposeWorkspace, then Initialize or openBoard, expecting current()===null and no .telelean/subjects."
+    },
+    {
+      "id": "F2",
+      "severity": "major",
+      "where": "scripts/walkthrough-claude.mjs:371 (and :262, the ignored runsDir)",
+      "problem": "The real-Claude walkthrough calls runner.shadow.rootKeyOf(root), which 2k2 removed. After a live run has spent subscription quota, `walk()` throws a TypeError before manager.dispose(), the final refresh and the summary are written, so the paid run's result is lost. No test reaches these lines. The script is outside the builder's write area; the builder flagged it.",
+      "evidence": "grep -n rootKeyOf scripts/walkthrough-claude.mjs gives line 371; shadow/index.ts no longer exports rootKeyOf (the only remaining rootKeyOf is workspace/git.ts, which the shadow does not use).",
+      "fix": "Replace line 371 with summary.transcript = path.join(root, '.telelean', 'runs', v.runId, 'session', 'transcript.jsonl'), and drop runsDir from the summary and the createRunManager call at :262. The orchestrator must apply this, because the builder's write area excludes scripts/."
+    },
+    {
+      "id": "F3",
+      "severity": "minor",
+      "where": "extension/src/logic/runs.ts:60-69 (CONSENT_TEXT, hasConsent); docs/slice2-plan.md D2-110 and §2.10 (\"A copied or cloned model never carries it\"); docs/user-guide.md",
+      "problem": "The consent file holds no folder identity, so any physical copy of the folder (cp -r, rsync, Explorer copy, an archive restore at another path) carries a valid consent, although U3 says a copied model never carries it. D2-111 itself says a copy takes the runs folder along, and consent.json sits in that folder. Only a git clone is excluded.",
+      "evidence": "hasConsent compares the file text to a constant that contains no path, so a copy at another path reads as yes.",
+      "fix": "Put the folder in the record, for example {format, version, claude:true, root: path.resolve(root)}, and make hasConsent require the equal root, so a copy or move asks again (consistent with U4). Add a hostRuns test that copies a consented folder to another path and expects the modal. If the behaviour is kept, correct the plan and user-guide sentences."
+    },
+    {
+      "id": "F4",
+      "severity": "minor",
+      "where": "runner/src/run/manager.ts:263 (path.resolve(p.root) !== path.resolve(this.o.root))",
+      "problem": "The moved-run test is purely lexical. The same folder reached through a symlink (or a different spelling of its path) looks like a moved folder, so a legitimate live session is held and the user is forced to Stop it. Stop discards the session's work.",
+      "evidence": "Scratch vitest alias.test.ts: start a session, dispose, symlink the model root to an alias, makeHarness({reuse:{root: alias}}).recover(). Result: \"ALIAS state = interrupted session view = false notice = This run was started in another folder (…/model), so it cannot continue here.\"",
+      "fix": "Compare realpaths of both roots (fall back to path.resolve when a realpath fails), and keep the lexical comparison as the fallback. Add a lifecycle test with a symlinked root expecting the session to be recovered normally, next to the existing copied-folder test."
+    },
+    {
+      "id": "F5",
+      "severity": "minor",
+      "where": "runner/src/run/manager.ts:328 (`if (run?.movedFrom !== undefined) run.ended = true;` in dispose()); runner/test/run/manager.lifecycle.test.ts (the D2-111 tests)",
+      "problem": "The rule 'run.json stays untouched until Stop' has no test for the window-closing path. Every D2-111 test asserts the file byte-for-byte only before dispose, and disposes in afterEach without checking. If the line at :328 were dropped, dispose() would take the normal path and rewrite the held run's run.json (new updatedAt, ghosts and agentMs). For a run saved as 'working' it would also turn it into 'interrupted' with canResume, in a folder the run did not start in. None of the 20 mutation checks covers this.",
+      "evidence": "By reading the tests: no assertion follows a dispose of a held run. The first D2-111 test compares runJson to `original` only before b.manager.end(). The v1 and Stop tests never compare after dispose.",
+      "fix": "Add a test: after recover() holds the run, call b.manager.dispose(), await it, and expect readFileSync(runJson) to equal `original` byte for byte. Use a run saved in 'working' state as a second case. Then re-run mutation 14b (remove line 328) and confirm it fails."
+    },
+    {
+      "id": "F6",
+      "severity": "minor",
+      "where": "runner/src/shadow/index.ts (RUNS_GITIGNORE, ensureRunsDir); not covered by D2-118",
+      "problem": "With ws/ inside the model's repository, ripgrep (Claude's Grep) also applies the model's own .gitignore, matched against paths below ws/. A user rule that matches model files, for example `Model/` or `Model/Scratch/`, silently hides those files from Claude's Grep, while Read and Glob still see them. Before 2k2 ws/ was outside any repository. D2-118 handles only the runs folder's own file.",
+      "evidence": "ripgrep 15.0.0 (the VS Code bundled binary), run from ws/: with `Model/` appended to the model's .gitignore, `rg --hidden theorem .` finds only ./Model.lean and not Model/A.lean. Adding `<runDir>/.ignore` containing `!*` restores ./Model/A.lean. A .ignore in the run folder is outside ws/, so the path guard's dot-entry rule does not see it.",
+      "fix": "Have createRunShadow write `<runDir>/.ignore` with `!*` (outside ws/), and add a test that pins the text. Check it with the CLI's own ripgrep only if the CLI may be run. If you prefer not to add it, state the limitation in D2-118 and the user guide."
+    },
+    {
+      "id": "F7",
+      "severity": "nit",
+      "where": "runner/src/run/manager.ts:60-65 (current()) with the v1 branch of endMoved",
+      "problem": "D2-119 hides Claude's work only while a v1 run is held. After Stop, current() returns structuredClone(run.saved.view) for a non-session run, which still carries its activity, ghosts and notices. The path is practically dead (2k2 creates only version-2 runs), and the test never looks at the ended view.",
+      "evidence": "endMoved calls endRun, which does not clear activity or ghosts. current() takes the `run.saved.view` branch once run.ended is true.",
+      "fix": "In endMoved, clear v.activity, v.ghosts and the non-moved notices of a non-session run before endRun, or apply movedView's filter to the ended view. Add `expect(b.manager.current()?.activity).toEqual([])` to the v1 Stop test."
+    },
+    {
+      "id": "F8",
+      "severity": "nit",
+      "where": "webview/src/run/RunPanel.tsx:327-331 (the 'interrupted' outcome)",
+      "problem": "A held run is shown with the generic text \"The session was interrupted (the editor reloaded) while Claude was working.\", which is wrong for a moved folder. The moved-run notice above it explains the real cause. There is no webview test for the held view.",
+      "evidence": "movedView sets state 'interrupted' and canResume undefined, so the unchanged interrupted branch renders.",
+      "fix": "Show the notice-only wording when the run's notice kind or an explicit flag marks it as moved, or drop the 'editor reloaded' clause when no step was running. Add a RunPanel test."
+    },
+    {
+      "id": "F9",
+      "severity": "nit",
+      "where": "extension/src/logic/modelPaths.ts:96-99 (IGNORED_SIDECARS)",
+      "problem": "The prefix check '.telelean/runs/' does not match the bare directory path '.telelean/runs' (the create or delete event of the runs folder itself, which the `.telelean/**` watcher glob delivers). That event is classified as a sidecar event and reaches workspace.invalidate. It is harmless today, because ModelWorkspace.reread ignores unknown paths, but it is fragile and untested.",
+      "evidence": "classifyModelPath('/w/m', '/w/m/.telelean/runs') returns {kind:'sidecar'} by reading the code; the new modelPaths and hostRuns tests list only paths below runs/.",
+      "fix": "Also ignore rel === '.telelean/runs' (and '.telelean/sessions', '.telelean/frozen' for consistency), and add the bare directory paths to the modelPaths test."
+    }
+  ]
+}

@@ -18,7 +18,7 @@ interface Owners {
   runIds: Set<string>;
 }
 const ownerOf = unitOwner as (unit: string, owners: Owners) => string | undefined;
-const collect = collectOwners as (userData: string) => Promise<Owners>;
+const collect = collectOwners as (userData: string, modelRoots?: readonly string[]) => Promise<Owners>;
 const ids = idsInLog as (text: string) => { hostPids: number[]; runIds: string[] };
 const action = leftoverAction as (unit: { ownProcess: boolean; owner: string | undefined; populated: boolean }) => 'fail' | 'stop' | 'keep';
 
@@ -46,7 +46,7 @@ describe('the run ids a smoke run owns', () => {
     expect(ids('no pids here; pid 42 alone is not an extension host')).toEqual({ hostPids: [], runIds: [] });
   });
 
-  it("collects them from the instance's user-data dir: its logs at any depth and its run directories", async () => {
+  it("collects them from the instance's user-data dir: its logs at any depth and the run directories of its model folders", async () => {
     const userData = path.join(scratch, 'user-data');
     const session = path.join(userData, 'logs', '20261102T025012');
     await mkdir(path.join(session, 'window1', 'exthost', 'telelean.telelean'), { recursive: true });
@@ -55,11 +55,16 @@ describe('the run ids a smoke run owns', () => {
     await writeFile(path.join(session, 'window1', 'exthost', 'exthost.log'), '[info] Extension host with pid 222 started\n');
     await writeFile(path.join(session, 'window1', 'exthost', 'telelean.telelean', 'telelean.log'), '[info] run: delivered {"run":{"runId":"rlogged1"}}\n');
     await writeFile(path.join(session, 'window1', 'exthost', 'notes.txt'), 'Extension host with pid 333 started (not a .log file)\n');
-    const runs = path.join(userData, 'User', 'globalStorage', 'telelean.telelean', 'runs');
-    await mkdir(path.join(runs, 'runs_model-dd89ba1b', 'rdir1'), { recursive: true });
-    await mkdir(path.join(runs, 'runs_model-dd89ba1b', 'not a run id'), { recursive: true });
-    await writeFile(path.join(runs, 'runs_model-dd89ba1b', 'rfile'), 'a file, not a run directory\n');
-    const owners = await collect(userData);
+    // 2k2: a run's directory is in its model folder, <model>/.telelean/runs/<run id>/.
+    const model = path.join(scratch, 'ws', 'runs_model');
+    const runs = path.join(model, '.telelean', 'runs');
+    await mkdir(path.join(runs, 'rdir1'), { recursive: true });
+    await mkdir(path.join(runs, 'not a run id'), { recursive: true });
+    await writeFile(path.join(runs, 'rfile'), 'a file, not a run directory\n');
+    await writeFile(path.join(runs, 'consent.json'), '{}\n');
+    // VS Code's storage is not read any more.
+    await mkdir(path.join(userData, 'User', 'globalStorage', 'telelean.telelean', 'runs', 'runs_model-dd89ba1b', 'rold1'), { recursive: true });
+    const owners = await collect(userData, [model, path.join(scratch, 'missing-model')]);
     expect([...owners.hostPids].sort()).toEqual([111, 222]);
     expect([...owners.runIds].sort()).toEqual(['rdir1', 'rlogged1']);
     // A profile without logs or runs owns nothing (and reading it does not throw).

@@ -4074,7 +4074,7 @@ function fakePlanInitialize(options) {
     created("lakefile.toml", 'name = "Model"\ndefaultTargets = ["Model"]\n\n[leanOptions]\nautoImplicit = false\nrelaxedAutoImplicit = false\n\n[[lean_lib]]\nname = "Model"\n'),
     created("lean-toolchain", "leanprover/lean4:v4.35.0\n"),
     created("lake-manifest.json", '{"version": "1.1.0",\n "packagesDir": ".lake/packages",\n "packages": [],\n "name": "Model",\n "lakeDir": ".lake"}\n'),
-    created(".gitignore", "/.lake/\n/.telelean/graph.json\n/.telelean/frozen/\n/.telelean/sessions/\n/.telelean/*.tmp\n"),
+    created(".gitignore", "/.lake/\n/.telelean/graph.json\n/.telelean/frozen/\n/.telelean/sessions/\n/.telelean/*.tmp\n/.telelean/runs/\n"),
     created("Model.lean", `import Model.${options.subject}
 `),
     ...subjectScaffold(options.subject, "Model").map((f) => created(f.path, f.text)),

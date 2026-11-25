@@ -12,17 +12,16 @@
 import type { CheckReport, LeanCheckEngine } from '@telelean/runner/gate/types.js';
 import type { BackendCaps, LlmBackend, LlmEvent, LlmSession, SessionConfig } from '@telelean/runner/llm/types.js';
 import { createRunManager } from '@telelean/runner/run/index.js';
-import { rootKeyOf } from '@telelean/runner/shadow/index.js';
 import { createModelWorkspace } from '@telelean/runner/workspace/index.js';
 import { randomUUID } from 'node:crypto';
-import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type * as vscode from 'vscode';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { TEST_MODE_NO_CLAUDE } from '../../src/logic/runs';
+import { hasConsent, TEST_MODE_NO_CLAUDE } from '../../src/logic/runs';
 import { TeleleanHost } from '../../src/vscode/host';
 import * as stub from './vscodeStub';
 
@@ -223,8 +222,10 @@ describe('deactivation with the real RunManager (AT5.9)', () => {
       expect(result?.payload.outcome).toMatchObject({ ok: false, code: 'not-yet' });
       expect(result?.payload.outcome?.error).toContain(TEST_MODE_NO_CLAUDE);
       expect(window.api.runsFor(root)?.current()).toBeNull(); // no run was created
-      const runsOfRoot = path.join(storage, 'runs', rootKeyOf(root));
-      expect(existsSync(runsOfRoot) ? readdirSync(runsOfRoot) : []).toEqual([]); // no run directory, no shadow
+      // 2k2 (D2-108): the runs folder is the model's own; it holds the consent and its .gitignore, and no run directory.
+      const runsOfRoot = path.join(root, '.telelean', 'runs');
+      expect(existsSync(runsOfRoot) ? readdirSync(runsOfRoot).sort() : []).toEqual(['.gitignore', 'consent.json']); // no run directory, no shadow
+      expect(existsSync(path.join(storage, 'runs'))).toBe(false); // nothing in VS Code's storage
     } finally {
       window.host.dispose();
     }
@@ -253,7 +254,7 @@ describe('deactivation with the real RunManager (AT5.9)', () => {
       expect(manager.current()?.state).toBe('working');
       expect(backend.sessions).toHaveLength(1);
       runId = manager.current()?.runId ?? '';
-      runJson = path.join(storage, 'runs', rootKeyOf(root), runId, 'run.json');
+      runJson = path.join(root, '.telelean', 'runs', runId, 'run.json'); // 2k2: in the model folder
 
       await first.host.shutdown(); // what extension.ts deactivate() does, before VS Code disposes the rest
 
@@ -308,10 +309,55 @@ describe('deactivation with the real RunManager (AT5.9)', () => {
       for (let i = 0; i < 200 && manager.current()?.state !== 'working'; i++) await sleep(25);
       expect(manager.current()?.state).toBe('working');
       runId = manager.current()?.runId ?? '';
-      runJson = path.join(storage, 'runs', rootKeyOf(root), runId, 'run.json');
+      runJson = path.join(root, '.telelean', 'runs', runId, 'run.json'); // 2k2: in the model folder
       await window.host.shutdown();
       await settled(runJson);
       expect(readRun().view, 'run.json after every pending write has landed').toMatchObject({ runId, state: 'interrupted', canResume: true });
+    } finally {
+      window.host.dispose();
+    }
+  }, 120_000);
+  it('A-F1 (D2-121, U1): the model folder deleted and made again at the same path while a run works, with no window reload: the run is held, Stop writes nothing into the new folder, and the consent did not come along', async () => {
+    const window = newWindow();
+    const backend = new HangingBackend();
+    try {
+      window.api.testing?.answerPrompts({ claudeConsent: true });
+      window.api.testing?.useRunBackend(() => backend);
+      await window.host.openBoardCommand({ root });
+      const manager = window.api.runsFor(root);
+      if (!manager) throw new Error('no RunManager');
+      // The earlier test's run comes back interrupted: Exit and dismiss it, as that test does, then start a new one.
+      for (let i = 0; i < 200 && manager.current()?.state !== 'interrupted'; i++) await sleep(25);
+      await window.api.simulateBoardMessage(root, { v: 1, type: 'endSession', payload: { runId: manager.current()?.runId ?? '', decision: 'exit', requestId: 'stop-earlier' } });
+      await window.api.simulateBoardMessage(root, { v: 1, type: 'dismissRun', payload: { runId: manager.current()?.runId ?? '' } });
+      await window.api.simulateBoardMessage(root, {
+        v: 1,
+        type: 'formalize',
+        payload: { inferences: [{ target: 'cynder-not-good', premises: ['cynder-dark-past', 'new-spyro-pg', 'pg-no-dark-past'] }], requestId: 'start-3' },
+      });
+      for (let i = 0; i < 200 && manager.current()?.state !== 'working'; i++) await sleep(25);
+      expect(manager.current()?.state).toBe('working');
+      const live = manager.current()?.runId ?? '';
+      expect(await hasConsent(root)).toBe(true);
+
+      // The user deletes the model folder and makes a new one at the same path (Initialize writes its config).
+      rmSync(root, { recursive: true, force: true });
+      mkdirSync(path.join(root, '.telelean'), { recursive: true });
+      writeFileSync(path.join(root, '.telelean', 'config.json'), '{"format":"telelean-config","version":1,"library":"Model"}\n');
+
+      expect(window.api.runsFor(root)).toBe(manager); // the registry still holds the old entry: the run itself must not
+      const held = manager.current();
+      expect(held).toMatchObject({ runId: live, state: 'interrupted' });
+      expect(held?.notices.map((n) => n.text).join('\n')).toContain('no longer exists');
+      expect(manager.session()).toBeNull();
+      for (let i = 0; i < 200 && !backend.sessions[0]?.closed; i++) await sleep(25);
+      expect(backend.sessions[0]?.closed).toBe(true); // Claude's process is stopped
+      expect(await hasConsent(root)).toBe(false); // the old folder's consent is gone with it
+
+      await window.api.simulateBoardMessage(root, { v: 1, type: 'endSession', payload: { runId: live, decision: 'exit', requestId: 'stop-3' } });
+      await sleep(400); // any write still on its way would have landed
+      expect(manager.current()).toMatchObject({ runId: live, state: 'discarded' });
+      expect(readdirSync(path.join(root, '.telelean')).sort()).toEqual(['config.json']); // no runs folder, no attempts, nothing of the old run
     } finally {
       window.host.dispose();
     }

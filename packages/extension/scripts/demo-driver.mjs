@@ -212,19 +212,16 @@ log(`${MODE}${LIVE ? ' (SPENDS SUBSCRIPTION QUOTA)' : ' (no Claude)'}; work dir 
 /** The instance's profile, once made (main). */
 const profileRef = { current: undefined };
 
-/** Every run.json of this instance: { runId, dir, run } newest first. */
+/** Every run.json of the demo folder (2k2: `<folder>/.telelean/runs/<runId>/`): { runId, dir, run } newest first. */
 function listRuns() {
-  if (!profileRef.current) return [];
-  const base = runsDirOf(profileRef.current);
+  const base = runsDirOf(folder);
   const out = [];
-  for (const rootKey of safeReaddir(base)) {
-    for (const runId of safeReaddir(path.join(base, rootKey))) {
-      const file = path.join(base, rootKey, runId, 'run.json');
-      try {
-        out.push({ runId, dir: path.dirname(file), run: JSON.parse(readFileSync(file, 'utf8')) });
-      } catch {
-        // not written yet, or being replaced
-      }
+  for (const runId of safeReaddir(base)) {
+    const file = path.join(base, runId, 'run.json');
+    try {
+      out.push({ runId, dir: path.dirname(file), run: JSON.parse(readFileSync(file, 'utf8')) });
+    } catch {
+      // not written yet, or being replaced (or the folder's .gitignore and consent.json)
     }
   }
   return out.sort((a, b) => (Date.parse(b.run.view?.updatedAt ?? '') || 0) - (Date.parse(a.run.view?.updatedAt ?? '') || 0));
@@ -400,7 +397,7 @@ async function shutdownOnce(reason) {
     await Promise.race([launched.exited, sleep(30_000)]);
   }
   summary.leftoverProcessesKilled = await stopInstance({ launched, profile, log });
-  summary.systemdUnits = await settleUnits({ before: unitsBefore, profile });
+  summary.systemdUnits = await settleUnits({ before: unitsBefore, profile, modelRoots: [folder] });
   const left = processesOf(work);
   if (left.length) summary.problems.push(`processes still running after the shutdown: ${left.map((p) => p.pid).join(', ')}`);
   if (DRY) {

@@ -15,6 +15,8 @@ import {
   isActiveRun,
   isRunOutcomeVerdict,
   newVocabularyCount,
+  panelNotices,
+  panelSession,
   placeNotices,
   rateLimitView,
   runBadgeText,
@@ -25,6 +27,7 @@ import {
   missingArrowHints,
 } from '../../src/model/run';
 import { RESULT_CHIP_KEYS } from '../../src/model/sessionBoard';
+import { sessionView } from '../shared/sessions';
 import { ACCEPTED_NOTICE, GENERIC_QUESTION, MODALITY_QUESTION, RECORDED_NOTICE, RUN_ID, runView, UPDATED } from '../shared/runs';
 
 const NOW = Date.parse(UPDATED);
@@ -156,6 +159,33 @@ describe('the status line', () => {
     // Not ended: no line.
     for (const state of ['starting', 'working', 'review', 'interrupted'] as const) expect(endedText(runView({ state, session }))).toBeNull();
     expect(REVIEW_TEXTS.exited).toBe("You exited the edit session: your files were not changed. Your answers to Claude's questions stay recorded.");
+  });
+
+  it('2k2 carry-over A-F1: the plain panel does not list the ended line again among its notices; other notices stay', () => {
+    const session = { stage: 1, phase: 'stage' as const };
+    const notice = (id: string, text: string): RunNotice => ({ id, at: UPDATED, level: 'info', kind: 'info', text });
+    const other = notice('n1', 'Claude resumed the step.');
+    const applied = runView({ state: 'accepted', session, accepted: { changedFiles: true }, notices: [other, notice('n2', REVIEW_TEXTS.applied)] });
+    expect(placeNotices(applied).later.map((n) => n.id)).toEqual(['n1', 'n2']);
+    expect(panelNotices(applied)).toEqual({ upfront: [], later: [other] });
+    const exited = runView({ state: 'discarded', session, notices: [notice('n3', REVIEW_TEXTS.exited), other] });
+    expect(panelNotices(exited).later).toEqual([other]);
+    // A run that has not ended keeps every notice, the same text included.
+    const working = runView({ state: 'working', session, notices: [notice('n4', REVIEW_TEXTS.exited)] });
+    expect(panelNotices(working)).toEqual(placeNotices(working));
+  });
+
+  it('2k2 carry-over F-F1: the run panel draws a session view only for the board\'s run while it has not ended', () => {
+    const view = sessionView();
+    const run = runView({ runId: view.runId, subject: view.subject, state: 'review', session: { stage: 1, phase: 'stage' } });
+    expect(panelSession({ run, session: view, subject: view.subject })).toBe(view);
+    for (const state of ['accepted', 'discarded', 'cancelled', 'failed'] as const) {
+      expect(panelSession({ run: { ...run, state }, session: view, subject: view.subject }), state).toBeNull();
+    }
+    expect(panelSession({ run: { ...run, runId: 'other' }, session: view, subject: view.subject })).toBeNull();
+    expect(panelSession({ run, session: view, subject: 'Other' })).toBeNull();
+    expect(panelSession({ run: null, session: view, subject: view.subject })).toBeNull();
+    expect(panelSession({ run, session: null, subject: view.subject })).toBeNull();
   });
 
   it('a statement in the review is the proposition alone, without Lean’s #print header', () => {

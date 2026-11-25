@@ -12,12 +12,16 @@ import { buildGuardPolicy } from '../../src/llm/confinement.js';
 import {
   BASE_COMMIT_LABEL,
   createRunShadow,
+  ensureRunsDir,
   isModelPath,
   listRunDirs,
   openRunShadow,
   PASSING_COMMIT_KINDS,
   pruneRunDirs,
-  rootKeyOf,
+  RUN_IGNORE,
+  RUN_IGNORE_FILE,
+  RUNS_GITIGNORE,
+  runsDirOf,
   ShadowLayoutError,
   type ShadowWorkspace,
 } from '../../src/shadow/index.js';
@@ -74,7 +78,14 @@ describe('createRunShadow: layout and refusals (AT2.1)', () => {
     const shadow = await createRunShadow({ root, runsDir, runId: 'r_layout', library: 'Model', files });
 
     expect(shadow.runId).toBe('r_layout');
-    expect(shadow.paths.runDir).toBe(path.join(runsDir, rootKeyOf(root), 'r_layout'));
+    // 2k2 (D2-108): `<runsDir>/<runId>/`, no root key; the runs folder ignores itself (D2-109).
+    expect(shadow.paths.runDir).toBe(path.join(runsDir, 'r_layout'));
+    expect(readFileSync(path.join(runsDir, '.gitignore'), 'utf8')).toBe('/*\n');
+    // A-F6 (D2-122): beside ws/, never inside it, a whitelist of everything for ripgrep, so the model's own .gitignore (the
+    // repository above the run folder) cannot hide files of ws/ from Claude's Grep.
+    expect(RUN_IGNORE_FILE).toBe('.ignore');
+    expect(readFileSync(path.join(shadow.paths.runDir, '.ignore'), 'utf8')).toBe('!*\n');
+    expect(RUN_IGNORE).toBe('!*\n');
     // ws/: exactly the given files, nothing hidden anywhere (so the guard allows Grep/Glob on the whole root).
     expect(filesBelow(shadow.paths.ws)).toEqual([...files.keys()].sort());
     expect(entries(shadow.paths.ws).filter((p) => p.split('/').some((s) => s.startsWith('.')))).toEqual([]);
@@ -442,10 +453,24 @@ describe('run directories (AT2.5)', () => {
   });
   afterAll(() => cleanupTempRoot(tmp));
 
-  it('lists newest first and prunes to the newest 10, never deleting non-terminal or protected runs', async () => {
-    const runsDir = path.join(tmp, 'runs');
+  it('2k2 (D2-107, D2-108): a root\'s runs folder is <root>/.telelean/runs; ensureRunsDir writes its .gitignore once and keeps one already there', async () => {
+    const root = path.join(tmp, 'layout-model');
+    expect(runsDirOf(root)).toBe(path.join(root, '.telelean', 'runs'));
+    expect(runsDirOf(`${root}/`)).toBe(path.join(root, '.telelean', 'runs'));
+    // D2-118: anchored, so it matches the runs folder's own entries and never a file below them (ripgrep, run by the
+    // CLI's Grep from a run's ws/, reads it inside a git repository; a bare `*` would hide every file of ws/ from Grep).
+    expect(RUNS_GITIGNORE).toBe('/*\n');
+    await ensureRunsDir(runsDirOf(root));
+    expect(readFileSync(path.join(runsDirOf(root), '.gitignore'), 'utf8')).toBe('/*\n');
+    writeFileSync(path.join(runsDirOf(root), '.gitignore'), '*\n# mine\n');
+    await ensureRunsDir(runsDirOf(root));
+    expect(readFileSync(path.join(runsDirOf(root), '.gitignore'), 'utf8')).toBe('*\n# mine\n');
+  });
+
+  it('lists newest first and prunes to the newest 10 run folders, never deleting non-terminal or protected runs, nor counting or deleting anything that is not a run folder (2k2, D2-112)', async () => {
     const root = path.join(tmp, 'model');
-    const dir = path.join(runsDir, rootKeyOf(root));
+    const runsDir = runsDirOf(root);
+    const dir = runsDir;
     // 15 runs, r00 oldest .. r14 newest. Older than the newest 10: r00..r04.
     const states: Record<string, string | undefined> = {
       r00: 'accepted',
@@ -465,20 +490,39 @@ describe('run directories (AT2.5)', () => {
     // r03 has no readable updatedAt: its directory mtime decides (oldest).
     utimesSync(path.join(dir, 'r03'), new Date('2020-01-01T00:00:00Z'), new Date('2020-01-01T00:00:00Z'));
     mkdirSync(path.join(dir, 'not a run id'), { recursive: true });
-    const other = path.join(runsDir, rootKeyOf(path.join(tmp, 'other-model')), 'r99');
+    // 2k2: the consent, the folder's .gitignore and a directory named like a run id without run.json or git/ stay. The
+    // newest entry is that directory: it takes none of the 10 places (r05, cancelled, is the 10th run and stays).
+    writeFileSync(path.join(dir, 'consent.json'), '{"format":"telelean-consent","version":1,"claude":true}\n');
+    writeFileSync(path.join(dir, '.gitignore'), RUNS_GITIGNORE);
+    mkdirSync(path.join(dir, 'notes'), { recursive: true });
+    writeFileSync(path.join(dir, 'notes', 'mine.txt'), 'x\n');
+    utimesSync(path.join(dir, 'notes'), new Date('2027-01-01T00:00:00Z'), new Date('2027-01-01T00:00:00Z'));
+    // And the oldest entry is another such directory: older than every run, it is still never deleted.
+    mkdirSync(path.join(dir, 'old_notes'), { recursive: true });
+    writeFileSync(path.join(dir, 'old_notes', 'mine.txt'), 'y\n');
+    utimesSync(path.join(dir, 'old_notes'), new Date('2018-01-01T00:00:00Z'), new Date('2018-01-01T00:00:00Z'));
+    // A run folder with a shadow's git/ but no run.json yet (a start that died at once) is a run folder.
+    mkdirSync(path.join(dir, 'rgitonly', 'git'), { recursive: true });
+    utimesSync(path.join(dir, 'rgitonly'), new Date('2019-06-01T00:00:00Z'), new Date('2019-06-01T00:00:00Z'));
+    // Another model's runs folder is never touched.
+    const other = path.join(runsDirOf(path.join(tmp, 'other-model')), 'r99');
     mkdirSync(other, { recursive: true });
 
-    const listed = await listRunDirs(runsDir, root);
-    expect(listed.map((r) => r.runId)).toEqual(['r14', 'r13', 'r12', 'r11', 'r10', 'r09', 'r08', 'r07', 'r06', 'r05', 'r04', 'r02', 'r01', 'r00', 'r03']);
-    expect(listed[0]).toMatchObject({ runId: 'r14', state: 'review', updatedAt: '2026-11-01T00:14:00.000Z', runDir: path.join(dir, 'r14') });
+    const listed = await listRunDirs(runsDir);
+    expect(listed.map((r) => r.runId)).toEqual(['notes', 'r14', 'r13', 'r12', 'r11', 'r10', 'r09', 'r08', 'r07', 'r06', 'r05', 'r04', 'r02', 'r01', 'r00', 'r03', 'rgitonly', 'old_notes']);
+    expect(listed[1]).toMatchObject({ runId: 'r14', state: 'review', updatedAt: '2026-11-01T00:14:00.000Z', runDir: path.join(dir, 'r14') });
     expect(listed.find((r) => r.runId === 'r03')?.state).toBeUndefined();
 
-    const deleted = await pruneRunDirs(runsDir, root, 10, ['r02']);
-    expect(deleted.sort()).toEqual(['r00', 'r03', 'r04']);
-    expect((await listRunDirs(runsDir, root)).map((r) => r.runId)).toEqual(['r14', 'r13', 'r12', 'r11', 'r10', 'r09', 'r08', 'r07', 'r06', 'r05', 'r02', 'r01']);
+    const deleted = await pruneRunDirs(runsDir, 10, ['r02']);
+    expect(deleted.sort()).toEqual(['r00', 'r03', 'r04', 'rgitonly']);
+    expect((await listRunDirs(runsDir)).map((r) => r.runId)).toEqual(['notes', 'r14', 'r13', 'r12', 'r11', 'r10', 'r09', 'r08', 'r07', 'r06', 'r05', 'r02', 'r01', 'old_notes']);
+    expect(readFileSync(path.join(dir, 'old_notes', 'mine.txt'), 'utf8')).toBe('y\n');
     expect(existsSync(other)).toBe(true);
     expect(existsSync(path.join(dir, 'not a run id'))).toBe(true);
-    expect(await pruneRunDirs(runsDir, root, 10, ['r02'])).toEqual([]);
-    expect(await listRunDirs(path.join(tmp, 'nothing-here'), root)).toEqual([]);
+    expect(readFileSync(path.join(dir, 'consent.json'), 'utf8')).toContain('telelean-consent');
+    expect(readFileSync(path.join(dir, '.gitignore'), 'utf8')).toBe(RUNS_GITIGNORE);
+    expect(readFileSync(path.join(dir, 'notes', 'mine.txt'), 'utf8')).toBe('x\n');
+    expect(await pruneRunDirs(runsDir, 10, ['r02'])).toEqual([]);
+    expect(await listRunDirs(path.join(tmp, 'nothing-here'))).toEqual([]);
   });
 });

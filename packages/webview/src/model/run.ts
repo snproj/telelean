@@ -19,6 +19,7 @@ import {
   type RunUsage,
   type RunVerdict,
   type RunView,
+  type SessionView,
   type TlNode,
 } from '@telelean/core';
 import { formatTime } from './format';
@@ -335,6 +336,30 @@ export function placeNotices(run: Pick<RunView, 'state' | 'verdict' | 'notices'>
     }
   }
   return { upfront: notices.filter((n) => keep.has(n.id)), later: notices.filter((n) => !keep.has(n.id)) };
+}
+
+/**
+ * The plain run panel's notices (carry-over A-F1 of 2k1, fixed in 2k2): `placeNotices`, without the notice that says what
+ * the panel's ended line already says. After an Apply, or an Exit after Show results, the runner's end notice is
+ * `REVIEW_TEXTS.applied` or `REVIEW_TEXTS.exited`, the very text `endedText` prints, so it is not listed again under
+ * "Earlier notices". run.json keeps it.
+ */
+export function panelNotices(run: Pick<RunView, 'runId' | 'state' | 'verdict' | 'notices' | 'accepted' | 'session'>): NoticePlaces {
+  const placed = placeNotices(run);
+  const line = endedText(run);
+  if (line === null) return placed;
+  return { upfront: placed.upfront.filter((n) => n.text !== line), later: placed.later.filter((n) => n.text !== line) };
+}
+
+/**
+ * The session view the run panel shows (carry-over F-F1 of 2k1, fixed in 2k2): the board's run's own view, on its
+ * subject, while that run has not ended. A second layer behind the store's D2-104 (which clears the view when the ended
+ * run arrives): no store state, however briefly held, draws the review panel for an ended run.
+ */
+export function panelSession(s: { run: RunView | null; session: SessionView | null; subject: string }): SessionView | null {
+  const { run, session } = s;
+  if (session === null || run === null || session.runId !== run.runId || session.subject !== s.subject) return null;
+  return isTerminalRunState(run.state) ? null : session;
 }
 
 /** The checks' steps in plain words (the gate of docs/m2-plan.md section 3); the step's name stays in the tooltip. */

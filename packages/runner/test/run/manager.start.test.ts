@@ -27,7 +27,8 @@ afterEach(() => {
 
 function runDirs(harness: Harness): string[] {
   if (!existsSync(harness.runsDir)) return [];
-  return readdirSync(harness.runsDir).flatMap((key) => readdirSync(`${harness.runsDir}/${key}`));
+  // 2k2 (D2-108): `<root>/.telelean/runs/<runId>/`, beside its .gitignore (and the extension's consent).
+  return readdirSync(harness.runsDir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
 }
 
 /** Slice 2d: Cancel step, then the session ends (2h: Exit; Discard is retired), so the root has no active run any more. */

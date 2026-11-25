@@ -163,7 +163,7 @@
           "minimum": 1,
           "maximum": 100,
           "scope": "machine",
-          "markdownDescription": "How many finished runs per model folder telelean keeps (their working copies and transcripts, in VS Code's storage for telelean). Takes effect after a window reload (Developer: Reload Window)."
+          "markdownDescription": "How many finished runs per model folder telelean keeps (their working copies and transcripts, in the model folder's `.telelean/runs/`). Takes effect after a window reload (Developer: Reload Window)."
         },
         "telelean.run.contextScope": {
           "type": "string",

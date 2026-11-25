@@ -37,7 +37,7 @@ import { playFakeScript, type FakeScriptPlayer, type FakeScriptTurn } from '../.
 import type { BackendCaps, LlmBackend, LlmSession, SessionConfig } from '../../src/llm/types.js';
 import { createProposalService, createRunSidecarStore } from '../../src/proposal/index.js';
 import { createRunManager, DEFAULT_RUN_SETTINGS, type PersistedRun, type RunManager } from '../../src/run/index.js';
-import { listRunDirs, openRunShadow } from '../../src/shadow/index.js';
+import { listRunDirs, openRunShadow, runsDirOf } from '../../src/shadow/index.js';
 import { createModelWorkspace, fsEditApplier, fsTextSource, type ModelWorkspace } from '../../src/workspace/index.js';
 import { cleanup, makeTempDir, MENTAL_MODEL } from '../run/helpers/env.js';
 import { acceptEverything, applyEverything, confirm } from '../run/helpers/apply.js';
@@ -143,15 +143,14 @@ async function setupFlow(label: string, turns: FakeScriptTurn[]): Promise<Flow> 
   await workspace.load();
   await workspace.refreshNow();
   const backend = new RecordingFake(playFakeScript(turns));
-  const runsDir = path.join(tmp, 'runs');
+  const runsDir = runsDirOf(root); // 2k2: in the model folder
   const manager = newManager(root, runsDir, workspace, backend);
   return { tmp, repo, root, runsDir, workspace, backend, manager, before, runIds: [] };
 }
 
-function newManager(root: string, runsDir: string, workspace: ModelWorkspace, backend: LlmBackend): RunManager {
+function newManager(root: string, _runsDir: string, workspace: ModelWorkspace, backend: LlmBackend): RunManager {
   return createRunManager({
     root,
-    runsDir,
     workspace,
     services: { backend, engine: createLeanCheckEngine(), proposals: createProposalService(), sidecars: createRunSidecarStore() },
     settings: DEFAULT_RUN_SETTINGS,
@@ -172,7 +171,7 @@ async function finishFlow(f: Flow): Promise<void> {
 }
 
 async function runDirOf(f: Flow, runId: string): Promise<string> {
-  const found = (await listRunDirs(f.runsDir, f.root)).find((d) => d.runId === runId);
+  const found = (await listRunDirs(f.runsDir)).find((d) => d.runId === runId);
   if (found === undefined) throw new Error(`no run directory for ${runId}`);
   return found.runDir;
 }
@@ -345,12 +344,12 @@ describe('M2 flows end to end (real workspace, engine, proposals, git; FakeBacke
     expect(await f.manager.end(review.runId, 'exit')).toMatchObject({ ok: true });
 
     // Preflight refuses an axiom as the target: nothing is declared, no run directory is made.
-    const runDirsBefore = (await listRunDirs(f.runsDir, f.root)).length;
+    const runDirsBefore = (await listRunDirs(f.runsDir)).length;
     const refused = await f.manager.start({ subject: 'Spyro', target: 'cynder-dark-past', premises: ['new-spyro-pg'] });
     expect(refused).toMatchObject({ ok: false, code: 'not-yet' });
     expect(read(f, MAIN)).toBe(main);
     expect((await f.workspace.listHistory('Spyro')).entries).toHaveLength(historyBefore);
-    expect(await listRunDirs(f.runsDir, f.root)).toHaveLength(runDirsBefore);
+    expect(await listRunDirs(f.runsDir)).toHaveLength(runDirsBefore);
     expect(f.backend.sessions).toHaveLength(1);
     await finishFlow(f);
   });

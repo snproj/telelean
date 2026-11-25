@@ -18,7 +18,8 @@ import {
   CONSENT_DETAIL,
   CONSENT_MESSAGE,
   CONSENT_YES,
-  consentKey,
+  consentPath,
+  consentText,
   expandHome,
   guardScriptPath,
   runBackendFactory,
@@ -137,12 +138,16 @@ describe('backend settings', () => {
 });
 
 describe('egress consent text (docs/m2-plan.md section 8.2)', () => {
-  it('message + detail are exactly the plan\'s text; the button is "Run with Claude"; one key per model root', () => {
+  it('message + detail are exactly the plan\'s text; the button is "Run with Claude"; one consent file per model folder, naming it', async () => {
     expect(`${CONSENT_MESSAGE} ${CONSENT_DETAIL}`).toBe(
       "Run Claude on this model? telelean sends this subject's cards (sentences, reasons, Lean statements), its vocabulary and your recorded answers, plus any model file Claude reads, to Anthropic through your Claude Code login (your claude.ai subscription; no API key).",
     );
     expect(CONSENT_YES).toBe('Run with Claude');
-    expect(consentKey('mental_model-1a2b3c4d')).toBe('telelean.claudeConsent.mental_model-1a2b3c4d');
+    // 2k2 (D2-110): one consent file per model folder, in its git-ignored runs folder.
+    expect(consentPath('/w/mental_model')).toBe('/w/mental_model/.telelean/runs/consent.json');
+    // D2-123: the record names the folder (its real path, else its resolved path: this one does not exist), so a copy never matches.
+    expect(JSON.parse(await consentText('/w/mental_model'))).toEqual({ format: 'telelean-consent', version: 1, claude: true, root: '/w/mental_model' });
+    expect(await consentText('/w/mental_model')).not.toBe(await consentText('/w/other_model'));
   });
 });
 

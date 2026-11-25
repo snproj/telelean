@@ -179,8 +179,26 @@ export const workspace = {
     return { dispose: () => void providers.delete(scheme) };
   },
   getConfiguration: () => ({ get: <T>(_key: string, fallback: T): T => fallback }),
-  createFileSystemWatcher: () => ({ onDidCreate: () => noop, onDidChange: () => noop, onDidDelete: () => noop, dispose() {} }),
+  /** 2k2: each watcher is recorded (`watchers`), so a host test can deliver file events through it. */
+  createFileSystemWatcher: (pattern?: unknown) => {
+    const handlers: Record<WatchEvent, Array<(uri: Uri) => void>> = { create: [], change: [], delete: [] };
+    const on = (kind: WatchEvent) => (listener: (uri: Uri) => void) => {
+      handlers[kind].push(listener);
+      return noop;
+    };
+    const watcher: FakeWatcher = { pattern, fire: (kind, uri) => handlers[kind].forEach((l) => l(uri)) };
+    watchers.push(watcher);
+    return { onDidCreate: on('create'), onDidChange: on('change'), onDidDelete: on('delete'), dispose() {} };
+  },
 };
+
+export type WatchEvent = 'create' | 'change' | 'delete';
+export interface FakeWatcher {
+  pattern: unknown;
+  fire(kind: WatchEvent, uri: Uri): void;
+}
+/** Every file-system watcher created since the last resetStub(). */
+export const watchers: FakeWatcher[] = [];
 
 export const window = {
   tabGroups: { all: [] as unknown[] },
@@ -219,4 +237,5 @@ export function resetStub(): void {
   executed.length = 0;
   providers.clear();
   installedExtensions.clear();
+  watchers.length = 0;
 }

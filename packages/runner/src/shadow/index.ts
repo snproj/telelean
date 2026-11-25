@@ -5,7 +5,6 @@
  * Implementation: ./workspace.ts (the ShadowWorkspace of one run directory), ./git.ts (the shadow's own history,
  * plumbing only, isolated configuration), ./paths.ts (which paths may enter the shadow).
  */
-import { createHash } from 'node:crypto';
 import { lstat, mkdir, readdir, readFile, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -30,13 +29,48 @@ const RUN_ID_PATTERN = /^[A-Za-z0-9_]{1,64}$/u;
 export const BASE_COMMIT_LABEL = 'Your files at the start of the run';
 
 /**
- * The directory name of a model root under `runsDir`: its folder name (characters outside `[A-Za-z0-9._-]` -> `_`)
- * plus `-` and the first 8 hex digits of sha1(the root's absolute path). Implemented with the contract.
+ * 2k2 (docs/slice2-plan.md 2.10, D2-107, D2-108): a model's runs live in its own folder, `<root>/.telelean/runs/`, one
+ * folder per run (`<runId>/`, the layout of ./types.ts), next to the egress consent (`consent.json`, the extension's).
+ * The folder is ignored by git: it holds a `.gitignore` of `/*` (D2-109, D2-118), and Initialize adds `/.telelean/runs/`
+ * to the model's `.gitignore`. (Until 2k2 runs lived in VS Code's storage, `<globalStorage>/runs/<rootKey>/<runId>/`.)
  */
-export function rootKeyOf(root: string): string {
-  const abs = path.resolve(root);
-  const base = path.basename(abs).replace(/[^A-Za-z0-9._-]/g, '_') || 'root';
-  return `${base}-${createHash('sha1').update(abs).digest('hex').slice(0, 8)}`;
+export const RUNS_DIR = '.telelean/runs';
+/**
+ * The runs folder's own `.gitignore`: every entry of the folder (each run's folder, `consent.json`, itself), so git
+ * looks into none of them. Anchored (`/*`, not `*`) on purpose (D2-118): ripgrep, which the Claude CLI's Grep runs from
+ * ws/ (`<runsDir>/<runId>/ws`), honours the `.gitignore` files above its search root inside a git repository, and a
+ * bare `*` there would match every file of ws/, so every Grep of Claude's would find nothing. `/*` matches only the
+ * folder's own entries, never a path below them.
+ */
+export const RUNS_GITIGNORE = '/*\n';
+
+/**
+ * Each run folder's own `.ignore` (A-F6 of the review, D2-122), outside ws/: a whitelist of everything. Inside the model's git
+ * repository, ripgrep (the Claude CLI's Grep and Glob run it from ws/) also applies the model's own `.gitignore`, and the
+ * user's global and `.git/info/exclude` rules, to paths below ws/: a rule such as `Model/` would hide those model files
+ * from Claude's Grep while Read still sees them, which is not what it saw when ws/ lay outside any repository. A `.ignore`
+ * in a folder between ws/ and the repository outranks the ignore files above it, so Grep sees all of ws/ as before.
+ */
+export const RUN_IGNORE_FILE = '.ignore';
+export const RUN_IGNORE = '!*\n';
+
+/** `<root>/.telelean/runs`, the runs folder of the model root `root`. */
+export function runsDirOf(root: string): string {
+  return path.join(path.resolve(root), ...RUNS_DIR.split('/'));
+}
+
+/**
+ * Creates the runs folder when it is missing, and writes its `.gitignore` (`/*`) when that is missing (D2-109: at every
+ * use, so a folder made by an older build or by hand is covered; a `.gitignore` already there is left as it is).
+ */
+export async function ensureRunsDir(runsDir: string): Promise<void> {
+  const dir = path.resolve(runsDir);
+  await mkdir(dir, { recursive: true });
+  try {
+    await writeFile(path.join(dir, '.gitignore'), RUNS_GITIGNORE, { encoding: 'utf8', flag: 'wx' });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+  }
 }
 
 async function lstatOrUndefined(p: string): Promise<Awaited<ReturnType<typeof lstat>> | undefined> {
@@ -90,6 +124,12 @@ async function checkSourceTree(root: string, library: string, files: readonly st
   }
 }
 
+/** 2k2 (D2-112): a run folder holds run.json (a regular file) or the shadow's own `git/` directory. */
+async function isRunFolder(runDir: string): Promise<boolean> {
+  const state = await lstatOrUndefined(path.join(runDir, 'run.json'));
+  return (state !== undefined && state.isFile()) || (await isRealDirectory(path.join(runDir, 'git')));
+}
+
 function validateRunId(runId: unknown): asserts runId is string {
   if (typeof runId !== 'string' || !RUN_ID_PATTERN.test(runId)) throw new TypeError(`runId must match ${RUN_ID_PATTERN.source}, got ${JSON.stringify(runId)}`);
 }
@@ -101,7 +141,7 @@ function validateLibrary(library: unknown): asserts library is string {
 }
 
 /**
- * Creates `<runsDir>/<rootKeyOf(root)>/<runId>/` (fails if it exists): writes `options.files` into ws/ and build/
+ * Creates `<runsDir>/<runId>/` (fails if it exists; `runsDir` is the root's runs folder, `runsDirOf(root)`, 2k2): writes `options.files` into ws/ and build/
  * (refusing any path that is not a model or project file, D-24), `git init` in git/ and commits the base. Every
  * refusal happens before anything is created; a failure while creating removes the run directory again.
  *
@@ -129,7 +169,7 @@ export async function createRunShadow(options: CreateShadowOptions): Promise<Sha
 
   await checkSourceTree(root, library, paths);
 
-  const runDir = path.join(path.resolve(options.runsDir), rootKeyOf(root), options.runId);
+  const runDir = path.join(path.resolve(options.runsDir), options.runId);
   if ((await lstatOrUndefined(runDir)) !== undefined) throw new ShadowLayoutError('io', `the run directory ${runDir} already exists`, [runDir]);
   const layout = shadowPaths(runDir);
   const failed = async (error: unknown): Promise<never> => {
@@ -137,7 +177,7 @@ export async function createRunShadow(options: CreateShadowOptions): Promise<Sha
     if (error instanceof ShadowLayoutError || error instanceof TypeError) throw error;
     throw new ShadowLayoutError('io', `cannot create the shadow: ${(error as Error).message}`, [runDir]);
   };
-  await mkdir(path.dirname(runDir), { recursive: true });
+  await ensureRunsDir(options.runsDir);
   try {
     await mkdir(runDir);
   } catch (error) {
@@ -145,6 +185,7 @@ export async function createRunShadow(options: CreateShadowOptions): Promise<Sha
   }
   try {
     for (const dir of [layout.ws, layout.build, layout.gitDir, layout.sessionDir, layout.frozenDir, layout.gateDir, layout.scratchDir]) await mkdir(dir);
+    await writeFile(path.join(runDir, RUN_IGNORE_FILE), RUN_IGNORE, { encoding: 'utf8', mode: 0o600 });
     for (const [rel, text] of [...options.files].sort(([a], [b]) => (a < b ? -1 : 1))) {
       for (const base of [layout.ws, layout.build]) {
         await mkdir(path.dirname(path.join(base, rel)), { recursive: true });
@@ -200,9 +241,9 @@ async function readRunState(stateFile: string): Promise<{ state?: string; update
   }
 }
 
-/** The run directories of one root, newest first (by run.json `updatedAt`, else directory mtime). */
-export async function listRunDirs(runsDir: string, root: string): Promise<RunDirInfo[]> {
-  const dir = path.join(path.resolve(runsDir), rootKeyOf(root));
+/** The run directories in a runs folder (2k2: one model root's, `runsDirOf(root)`), newest first (by run.json `updatedAt`, else directory mtime). */
+export async function listRunDirs(runsDir: string): Promise<RunDirInfo[]> {
+  const dir = path.resolve(runsDir);
   let entries;
   try {
     entries = await readdir(dir, { withFileTypes: true });
@@ -224,15 +265,19 @@ export async function listRunDirs(runsDir: string, root: string): Promise<RunDir
 }
 
 /**
- * Keeps the newest `keep` run directories of the root (03 section 8.4: the last 10) and deletes older ones whose
+ * Keeps the newest `keep` run folders of the runs folder (03 section 8.4: the last 10) and deletes older ones whose
  * state is terminal (accepted, discarded, cancelled, failed) or unreadable. Never deletes `protect`ed run ids or a
- * non-terminal run. Returns the deleted run ids.
+ * non-terminal run. (2k2, D2-112) Only run folders are counted and deleted: a directory with `run.json` or a shadow's
+ * `git/` inside; files (`consent.json`, `.gitignore`) and other directories are neither counted nor touched. Returns
+ * the deleted run ids.
  */
-export async function pruneRunDirs(runsDir: string, root: string, keep: number, protect: readonly string[] = []): Promise<string[]> {
+export async function pruneRunDirs(runsDir: string, keep: number, protect: readonly string[] = []): Promise<string[]> {
   if (!Number.isInteger(keep) || keep < 0) throw new TypeError('keep must be a non-negative integer');
   const terminal = new Set<string>(TERMINAL_RUN_STATES);
+  const runs: RunDirInfo[] = [];
+  for (const run of await listRunDirs(runsDir)) if (await isRunFolder(run.runDir)) runs.push(run);
   const deleted: string[] = [];
-  for (const run of (await listRunDirs(runsDir, root)).slice(keep)) {
+  for (const run of runs.slice(keep)) {
     if (protect.includes(run.runId)) continue;
     if (run.state !== undefined && !terminal.has(run.state)) continue;
     const st = await lstatOrUndefined(run.runDir);

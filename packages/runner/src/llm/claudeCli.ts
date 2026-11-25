@@ -26,7 +26,7 @@ import {
   type HookRuntime,
   type HookVerification,
 } from './confinement.js';
-import { sanitizeClaudeEnv } from './env.js';
+import { gitCeilingEnv, sanitizeClaudeEnv } from './env.js';
 import { LineSplitter, StreamNormalizer, type StreamItem } from './streamJson.js';
 import { startToolServer, type ToolServer, type ToolServerOptions } from './toolServer.js';
 import { MCP_TOOL_PREFIX } from './toolSchemas.js';
@@ -302,8 +302,9 @@ export class ClaudeCliBackend implements LlmBackend {
       includeHookEvents: o.includeHookEvents ?? true,
       permissionPromptsNone: o.permissionPromptsNone ?? true,
     });
-    const sanitizeOpts: Parameters<typeof sanitizeClaudeEnv>[1] = {};
-    if (o.envSet !== undefined) sanitizeOpts.set = o.envSet;
+    // 2k2 (D2-113): git from ws/ finds no repository above the run folder (the model's own included); set last, so no
+    // caller's envSet can lift it.
+    const sanitizeOpts: Parameters<typeof sanitizeClaudeEnv>[1] = { set: { ...(o.envSet ?? {}), ...gitCeilingEnv(confinement.rootReal) } };
     if (o.clientApp !== undefined) sanitizeOpts.clientApp = o.clientApp;
     const sanitized = sanitizeClaudeEnv(o.baseEnv ?? process.env, sanitizeOpts);
     const command = o.launcher?.command ?? o.binary.path;

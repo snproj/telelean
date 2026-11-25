@@ -228,7 +228,8 @@ function changedFiles(root) {
 async function walk(reading) {
   const started = Date.now();
   const root = path.join(work, `model-${reading}`);
-  const runsDir = path.join(work, `runs-${reading}`);
+  // 2k2 (D2-108): a model's runs live in its own folder; the manager derives it from the root.
+  const runsDir = path.join(root, '.telelean', 'runs');
   const summary = { reading, live: LIVE, model: argv.model, effort: argv.effort, caps: CAPS, root, runsDir, rounds: [], questions: [], ghosts: [], notices: [], definitions: [], passed: false };
   if (existsSync(root)) throw new Error(`${root} exists already: use a fresh --work-dir`);
   copyModel(root);
@@ -259,7 +260,6 @@ async function walk(reading) {
   }
   const manager = run.createRunManager({
     root,
-    runsDir,
     workspace,
     services: {
       backend,
@@ -368,7 +368,7 @@ async function walk(reading) {
   summary.wallMs = Date.now() - started;
   if (rateLimited) summary.rateLimited = rateLimited;
   if (player) summary.fakeTurnsPlayed = player.played.map((t) => ({ scripted: t.scripted, turn: t.turn.slice(0, 80) }));
-  if (v?.runId) summary.transcript = path.join(runsDir, runner.shadow.rootKeyOf(root), v.runId, 'session', 'transcript.jsonl');
+  if (v?.runId) summary.transcript = path.join(runsDir, v.runId, 'session', 'transcript.jsonl');
   manager.dispose();
   // The copy as the user would see it after Accept: refreshed, with its final statuses.
   try {

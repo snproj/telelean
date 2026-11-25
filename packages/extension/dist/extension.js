@@ -3024,7 +3024,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref2];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve3.call(this, root, ref2);
+      let _sch = resolve4.call(this, root, ref2);
       if (_sch === void 0) {
         const schema = (_a3 = root.localRefs) === null || _a3 === void 0 ? void 0 : _a3[ref2];
         const { schemaId } = this.opts;
@@ -3051,7 +3051,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve3(root, ref2) {
+    function resolve4(root, ref2) {
       let sch;
       while (typeof (sch = this.refs[ref2]) == "string")
         ref2 = sch;
@@ -3303,8 +3303,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path35) {
-      let input2 = path35;
+    function removeDotSegments(path36) {
+      let input2 = path36;
       const output2 = [];
       let nextSlash = -1;
       let len = 0;
@@ -3378,11 +3378,11 @@ var require_utils = __commonJS({
       }
       return output2.join("");
     }
-    function removeDotSegmentsRelative(path35) {
-      if (path35 === "" || path35[0] === "/") {
-        return removeDotSegments(path35);
+    function removeDotSegmentsRelative(path36) {
+      if (path36 === "" || path36[0] === "/") {
+        return removeDotSegments(path36);
       }
-      const segments2 = path35.split("/");
+      const segments2 = path36.split("/");
       const last = segments2.length - 1;
       const output2 = [];
       let trailingDirectory = false;
@@ -3746,8 +3746,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path35 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path35 && path35 !== "/" ? path35 : void 0;
+        const path36 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path36 && path36 !== "/" ? path36 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -3918,7 +3918,7 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve3(baseURI, relativeURI, options) {
+    function resolve4(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const {
         parsed: baseParsed,
@@ -4309,7 +4309,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve: resolve3,
+      resolve: resolve4,
       resolveComponent,
       equal,
       serialize,
@@ -7460,9 +7460,9 @@ var vscode6 = __toESM(require("vscode"));
 
 // src/vscode/host.ts
 init_import_meta_url();
-var import_promises20 = require("node:fs/promises");
+var import_promises22 = require("node:fs/promises");
 var os3 = __toESM(require("node:os"));
-var path34 = __toESM(require("node:path"));
+var path35 = __toESM(require("node:path"));
 var vscode5 = __toESM(require("vscode"));
 
 // ../core/src/index.ts
@@ -7857,15 +7857,15 @@ function serializeEndorsements(file2) {
   return `${JSON.stringify({ format: "telelean-endorsements", version: 1, endorsed }, null, 2)}
 `;
 }
-function moduleOfPath(path35) {
-  if (!path35.endsWith(".lean") || path35.startsWith("/") || path35.split("/").some((s) => s === "" || s === "." || s === "..")) return void 0;
-  return path35.slice(0, -".lean".length).split("/").join(".");
+function moduleOfPath(path36) {
+  if (!path36.endsWith(".lean") || path36.startsWith("/") || path36.split("/").some((s) => s === "" || s === "." || s === "..")) return void 0;
+  return path36.slice(0, -".lean".length).split("/").join(".");
 }
 function pathOfModule(module2) {
   return `${module2.split(".").join("/")}.lean`;
 }
-function subjectOfPath(path35, library = DEFAULT_LIBRARY) {
-  const parts = path35.split("/");
+function subjectOfPath(path36, library = DEFAULT_LIBRARY) {
+  const parts = path36.split("/");
   if (parts[0] !== library || parts.length < 2) return void 0;
   if (parts.length === 2) {
     const file2 = parts[1] ?? "";
@@ -7879,8 +7879,8 @@ function subjectSnapshotScope(subject2, library = DEFAULT_LIBRARY) {
 function projectSnapshotScope(library = DEFAULT_LIBRARY) {
   return [libraryRootFile(library), "lakefile.toml", "lean-toolchain", "lake-manifest.json", ".gitignore", CONFIG_PATH];
 }
-function inScope(path35, scope) {
-  return scope.some((entry) => entry.endsWith("/") ? path35.startsWith(entry) : path35 === entry);
+function inScope(path36, scope) {
+  return scope.some((entry) => entry.endsWith("/") ? path36.startsWith(entry) : path36 === entry);
 }
 
 // ../core/src/run.ts
@@ -8212,12 +8212,12 @@ function cycleThroughIn(next, id2) {
     const at = queue.shift();
     for (const to of next.get(at) ?? []) {
       if (to === id2) {
-        const path35 = [at];
+        const path36 = [at];
         for (let step = at; step !== id2; ) {
           step = parent.get(step);
-          path35.unshift(step);
+          path36.unshift(step);
         }
-        return [...path35, id2];
+        return [...path36, id2];
       }
       if (seen.has(to)) continue;
       seen.add(to);
@@ -8485,10 +8485,10 @@ function entryId(value, what) {
   return value;
 }
 function relativePath(value, what) {
-  const path35 = str(value, what, LIMITS.pathLength);
-  if (path35.startsWith("/") || /[\\\0]/.test(path35)) fail(`${what} must be a relative POSIX path`);
-  if (path35.split("/").some((segment) => segment === "" || segment === "." || segment === "..")) fail(`${what} must not contain empty, "." or ".." segments`);
-  return path35;
+  const path36 = str(value, what, LIMITS.pathLength);
+  if (path36.startsWith("/") || /[\\\0]/.test(path36)) fail(`${what} must be a relative POSIX path`);
+  if (path36.split("/").some((segment) => segment === "" || segment === "." || segment === "..")) fail(`${what} must not contain empty, "." or ".." segments`);
+  return path36;
 }
 function position(value, what) {
   const p = record(value, what);
@@ -10318,16 +10318,16 @@ function findFollowingDecl(text, end, scan, blockComments) {
     return blank ? { gap: index } : { adjacent: index };
   }
 }
-function parseLeanFile(path35, text) {
+function parseLeanFile(path36, text) {
   const eol = detectEol(text);
   const lines = new Lines(text);
   try {
-    return parse2(path35, text, eol, lines);
+    return parse2(path36, text, eol, lines);
   } catch (error62) {
     const detail = error62 instanceof Error ? error62.message : String(error62);
     const span2 = { start: 0, end: 0 };
     return {
-      path: path35,
+      path: path36,
       text,
       eol,
       blocks: [],
@@ -10337,7 +10337,7 @@ function parseLeanFile(path35, text) {
     };
   }
 }
-function parse2(path35, text, eol, lines) {
+function parse2(path36, text, eol, lines) {
   const lex = lexLean(text);
   const scan = scanDecls(text, lex, lines);
   const diags = new Diagnostics(lines);
@@ -10390,7 +10390,7 @@ function parse2(path35, text, eol, lines) {
     return block2;
   });
   diags.list.sort((a, b) => a.span.start - b.span.start);
-  return { path: path35, text, eol, blocks, decls: scan.decls, imports: scan.imports, diagnostics: diags.list };
+  return { path: path36, text, eol, blocks, decls: scan.decls, imports: scan.imports, diagnostics: diags.list };
 }
 function bindBlock(text, block2, scan, blockComments, diags) {
   const following = block2.span.end < text.length ? findFollowingDecl(text, block2.span.end, scan, blockComments) : {};
@@ -11239,11 +11239,11 @@ var FactsIndex = class {
   bySyntactic = /* @__PURE__ */ new Map();
   /** Facts decls of fresh files that no syntactic declaration matched (e.g. constructors), per file. */
   unmatched = /* @__PURE__ */ new Map();
-  stateOf(path35) {
-    return this.files.get(path35)?.state ?? "unchecked";
+  stateOf(path36) {
+    return this.files.get(path36)?.state ?? "unchecked";
   }
-  isFresh(path35) {
-    return this.stateOf(path35) === "fresh";
+  isFresh(path36) {
+    return this.stateOf(path36) === "fresh";
   }
   /** Usable facts for a syntactic declaration of a file. */
   factsFor(file2, decl) {
@@ -11253,7 +11253,7 @@ var FactsIndex = class {
   /** Files whose facts can be trusted fully (fresh). */
   freshFiles() {
     const out = /* @__PURE__ */ new Set();
-    for (const [path35, info] of this.files) if (info.state === "fresh") out.add(path35);
+    for (const [path36, info] of this.files) if (info.state === "fresh") out.add(path36);
     return out;
   }
 };
@@ -12018,9 +12018,9 @@ function buildProject(input2) {
       }
     } else {
       const namespace = namespaceOf2(draft.file, draft.block);
-      const resolve3 = (name) => known(name) ? name : resolveName2(name, namespace, known) ?? name;
-      if (statement) statement = resolve3(statement);
-      draft.extraPinned = (binding.pinned ?? []).slice(1).map(resolve3);
+      const resolve4 = (name) => known(name) ? name : resolveName2(name, namespace, known) ?? name;
+      if (statement) statement = resolve4(statement);
+      draft.extraPinned = (binding.pinned ?? []).slice(1).map(resolve4);
       if (statement) {
         const located = syntactic.get(statement);
         if (located) draft.statementDecl = located;
@@ -12107,18 +12107,18 @@ function buildProject(input2) {
     if (list.some((e) => e.name === item.name && e.textHash === hash2)) endorsed.add(item.name);
   }
   const needsEndorsement = (name) => vocab2.kindOf.get(name) === "definition" && !endorsed.has(name);
-  const trustworthy = (path35) => {
-    const info = factsIndex.files.get(path35);
+  const trustworthy = (path36) => {
+    const info = factsIndex.files.get(path36);
     return info !== void 0 && info.module !== void 0 && !info.hashDiffers;
   };
-  const containing = (path35, range3) => {
-    if (!range3 || !trustworthy(path35)) return {};
+  const containing = (path36, range3) => {
+    if (!range3 || !trustworthy(path36)) return {};
     for (const draft of drafts) {
       for (const located of [draft.statementDecl, draft.holdsDecl]) {
-        if (located && located.file.path === path35 && rangeContains(located.decl.range, range3.start)) return { nodeId: draft.id };
+        if (located && located.file.path === path36 && rangeContains(located.decl.range, range3.start)) return { nodeId: draft.id };
       }
     }
-    for (const item of vocab2.items) if (item.loc && item.loc.file === path35 && rangeContains(item.loc.range, range3.start)) return { vocab: item.name };
+    for (const item of vocab2.items) if (item.loc && item.loc.file === path36 && rangeContains(item.loc.range, range3.start)) return { vocab: item.name };
     return {};
   };
   for (const message2 of input2.facts?.build.messages ?? []) {
@@ -12541,10 +12541,10 @@ function buildProject(input2) {
     while (queue.length > 0) {
       const file2 = queue.shift();
       for (const module2 of file2.imports) {
-        const path35 = pathOfModule(module2);
-        const target = fileMap.get(path35);
-        if (target && !reached.has(path35)) {
-          reached.add(path35);
+        const path36 = pathOfModule(module2);
+        const target = fileMap.get(path36);
+        if (target && !reached.has(path36)) {
+          reached.add(path36);
           queue.push(target);
         }
       }
@@ -13042,9 +13042,9 @@ function planKind(model, request) {
     return dependents.every((d) => confirmed.has(d));
   };
   const lineMaps = /* @__PURE__ */ new Map();
-  const lineMap = (path35, text) => {
-    let map2 = lineMaps.get(path35);
-    if (!map2) lineMaps.set(path35, map2 = new LineMap(text));
+  const lineMap = (path36, text) => {
+    let map2 = lineMaps.get(path36);
+    if (!map2) lineMaps.set(path36, map2 = new LineMap(text));
     return map2;
   };
   if (hk === void 0) add3(statementFile, { op: "add-holds-axiom", statement });
@@ -13161,46 +13161,46 @@ var EditSession = class {
    * statement each must end bound to (undefined: none, code-less).
    */
   expected = /* @__PURE__ */ new Map();
-  state(path35) {
-    let state = this.states.get(path35);
+  state(path36) {
+    let state = this.states.get(path36);
     if (!state) {
-      const file2 = this.model.files.get(path35);
+      const file2 = this.model.files.get(path36);
       state = file2 ? { before: file2.text, text: file2.text, parsed: file2, batches: [] } : { before: null, text: null, batches: void 0 };
-      this.states.set(path35, state);
+      this.states.set(path36, state);
     }
     return state;
   }
-  exists(path35) {
-    return this.state(path35).text !== null;
+  exists(path36) {
+    return this.state(path36).text !== null;
   }
-  text(path35) {
-    return this.state(path35).text;
+  text(path36) {
+    return this.state(path36).text;
   }
-  parsed(path35) {
-    const state = this.state(path35);
-    if (state.text === null) throw new ActionError("internal", `${path35} does not exist.`);
-    if (!state.parsed) state.parsed = parseLeanFile(path35, state.text);
+  parsed(path36) {
+    const state = this.state(path36);
+    if (state.text === null) throw new ActionError("internal", `${path36} does not exist.`);
+    if (!state.parsed) state.parsed = parseLeanFile(path36, state.text);
     return state.parsed;
   }
   /** Creates a file that does not exist yet. */
-  create(path35, text) {
-    const state = this.state(path35);
-    if (state.text !== null) throw new ActionError("invalid", `${path35} exists already.`);
+  create(path36, text) {
+    const state = this.state(path36);
+    if (state.text !== null) throw new ActionError("invalid", `${path36} exists already.`);
     state.text = text;
     delete state.parsed;
     state.batches = void 0;
   }
-  apply(path35, edits) {
+  apply(path36, edits) {
     if (edits.length === 0) return;
-    const state = this.state(path35);
-    if (state.text === null) throw new ActionError("internal", `${path35} does not exist.`);
+    const state = this.state(path36);
+    if (state.text === null) throw new ActionError("internal", `${path36} does not exist.`);
     state.text = applyTextEdits(state.text, edits);
     delete state.parsed;
     state.batches?.push([...edits]);
   }
   /** Where an offset of the model's parse of `path` is now; undefined when an edit replaced it. */
-  mapOffset(path35, offset) {
-    const state = this.state(path35);
+  mapOffset(path36, offset) {
+    const state = this.state(path36);
     if (!state.batches) return void 0;
     let current2 = offset;
     for (const batch of state.batches) {
@@ -13214,10 +13214,10 @@ var EditSession = class {
     return current2;
   }
   /** The current parse of a block of the model. */
-  block(path35, original) {
-    const offset = this.mapOffset(path35, original.span.start);
-    const found = offset === void 0 ? void 0 : this.parsed(path35).blocks.find((b) => b.span.start === offset);
-    if (!found) throw new ActionError("unsafe", `The card's block in ${path35} could not be found again after the other edits of this action.`);
+  block(path36, original) {
+    const offset = this.mapOffset(path36, original.span.start);
+    const found = offset === void 0 ? void 0 : this.parsed(path36).blocks.find((b) => b.span.start === offset);
+    if (!found) throw new ActionError("unsafe", `The card's block in ${path36} could not be found again after the other edits of this action.`);
     return found;
   }
   /**
@@ -13225,18 +13225,18 @@ var EditSession = class {
    * Removing a field that the block repeats (TL005: only the first line counts) is refused: removing every line would
    * delete text the board never showed, removing the first would silently promote the hidden one.
    */
-  setField(path35, original, nodeId, key, value) {
-    const current2 = this.block(path35, original);
+  setField(path36, original, nodeId, key, value) {
+    const current2 = this.block(path36, original);
     const lines = current2.lines.filter((line) => line.key === key);
     if (value === null && lines.length > 1 && !LIST_FIELD_KEYS.has(key)) {
-      const parsed = this.parsed(path35);
+      const parsed = this.parsed(path36);
       const at = (offset) => parsed.text.slice(0, offset).split("\n").length;
       throw new ActionError(
         "unsafe",
-        `The card's block has ${lines.length} \`${key}:\` lines (${path35}, lines ${lines.map((l) => at(l.span.start)).join(" and ")}; only the first counts): remove the extra one by hand first.`
+        `The card's block has ${lines.length} \`${key}:\` lines (${path36}, lines ${lines.map((l) => at(l.span.start)).join(" and ")}; only the first counts): remove the extra one by hand first.`
       );
     }
-    this.apply(path35, setBlockField(this.parsed(path35), { ...current2, id: nodeId }, key, value));
+    this.apply(path36, setBlockField(this.parsed(path36), { ...current2, id: nodeId }, key, value));
   }
   /**
    * Slice 2 (2b2, planItemRevert: a card's statement taken out goes back to B's): `original`, a block of the model,
@@ -13246,60 +13246,60 @@ var EditSession = class {
   expectBinding(original, statement) {
     this.expected.set(original, statement);
   }
-  removeBlock(path35, original) {
-    const current2 = this.block(path35, original);
+  removeBlock(path36, original) {
+    const current2 = this.block(path36, original);
     this.removed.add(original);
-    this.apply(path35, removeBlockEdits(this.parsed(path35), current2));
+    this.apply(path36, removeBlockEdits(this.parsed(path36), current2));
   }
-  insertBlock(path35, blockText2, where2) {
-    this.apply(path35, insertBlockEdits(this.parsed(path35), blockText2, where2));
+  insertBlock(path36, blockText2, where2) {
+    this.apply(path36, insertBlockEdits(this.parsed(path36), blockText2, where2));
   }
   /**
    * Applies Lean operations to one file (all or nothing); refuses with `unsafe` when WP-markup reports problems, or
    * when the file is freshly checked and Lean's range of a declaration to remove or replace reaches beyond the
    * span telelean would cut (the text reading and Lean disagree about where it ends).
    */
-  leanOps(path35, ops) {
+  leanOps(path36, ops) {
     if (ops.length === 0) return [];
-    this.checkSpansAgainstLean(path35, ops);
-    const result = applyLeanOps(this.parsed(path35), ops);
+    this.checkSpansAgainstLean(path36, ops);
+    const result = applyLeanOps(this.parsed(path36), ops);
     if (result.problems.length > 0) throw new ActionError("unsafe", result.problems.join(" "));
-    this.apply(path35, result.edits);
+    this.apply(path36, result.edits);
     return result.archived;
   }
   /** Lean's full range (fresh facts) of each declaration an op removes or replaces must lie inside its syntactic span. */
-  checkSpansAgainstLean(path35, ops) {
-    const state = this.state(path35);
-    if (state.batches === void 0 || state.batches.length > 0 || !this.model.freshFiles.has(path35)) return;
-    const parsed = this.parsed(path35);
+  checkSpansAgainstLean(path36, ops) {
+    const state = this.state(path36);
+    if (state.batches === void 0 || state.batches.length > 0 || !this.model.freshFiles.has(path36)) return;
+    const parsed = this.parsed(path36);
     let map2;
     for (const op of ops) {
       const name = op.op === "remove-decl" || op.op === "replace-decl" ? op.name : op.op === "remove-holds" || op.op === "holds-theorem-to-axiom" ? holdsName(op.statement) : void 0;
       if (name === void 0) continue;
       const decl = findDecl(parsed, name);
       const facts = this.model.declFacts.get(name);
-      if (!decl || !facts || facts.file !== path35) continue;
+      if (!decl || !facts || facts.file !== path36) continue;
       map2 ??= new LineMap(parsed.text);
       const leanEnd = map2.offsetAt(facts.range.end);
       if (leanEnd > decl.span.end) {
         const ours = map2.positionAt(decl.span.end).line + 1;
         throw new ActionError(
           "unsafe",
-          `${name} ends on line ${facts.range.end.line + 1} of ${path35} for Lean, but telelean reads it as ending on line ${ours}: edit it by hand.`
+          `${name} ends on line ${facts.range.end.line + 1} of ${path36} for Lean, but telelean reads it as ending on line ${ours}: edit it by hand.`
         );
       }
     }
   }
   /** Adds `import <module>` to `path` (creating the file with just that line when it does not exist). */
-  addImport(path35, module2) {
-    if (!this.exists(path35)) {
-      this.create(path35, `import ${module2}
+  addImport(path36, module2) {
+    if (!this.exists(path36)) {
+      this.create(path36, `import ${module2}
 `);
       return;
     }
-    const text = this.text(path35) ?? "";
+    const text = this.text(path36) ?? "";
     const edit = importEdit(text, module2, text.includes("\r\n") ? "\r\n" : "\n");
-    if (edit) this.apply(path35, [edit]);
+    if (edit) this.apply(path36, [edit]);
   }
   /**
    * Keeps every other card's binding: a code-less block that the edits left directly above a declaration (e.g. the
@@ -13307,16 +13307,16 @@ var EditSession = class {
    * silently bind to that declaration; any other change of another block's statement is refused.
    */
   keepOtherBindings() {
-    for (const [path35, state] of this.states) {
-      const original = this.model.files.get(path35);
+    for (const [path36, state] of this.states) {
+      const original = this.model.files.get(path36);
       if (!original || state.text === null || state.text === state.before || state.batches === void 0) continue;
       for (let pass = 0; pass <= original.blocks.length; pass++) {
-        const now = this.parsed(path35);
+        const now = this.parsed(path36);
         const byStart = new Map(now.blocks.map((b) => [b.span.start, b]));
         let separated = false;
         for (const block2 of original.blocks) {
           if (this.removed.has(block2)) continue;
-          const offset = this.mapOffset(path35, block2.span.start);
+          const offset = this.mapOffset(path36, block2.span.start);
           const current2 = offset === void 0 ? void 0 : byStart.get(offset);
           if (!current2) continue;
           const expected = this.expected.has(block2);
@@ -13328,13 +13328,13 @@ var EditSession = class {
             const newline = now.text.indexOf("\n", current2.span.end);
             if (newline < 0) continue;
             const at = newline > 0 && now.text.charCodeAt(newline - 1) === 13 ? newline - 1 : newline;
-            this.apply(path35, [{ span: { start: at, end: at }, newText: now.eol }]);
+            this.apply(path36, [{ span: { start: at, end: at }, newText: now.eol }]);
             separated = true;
             break;
           }
           throw new ActionError(
             "unsafe",
-            `This edit would change what the card "${current2.id}" is bound to (${before || "nothing"} \u2192 ${after || "nothing"}): edit ${path35} by hand.`
+            `This edit would change what the card "${current2.id}" is bound to (${before || "nothing"} \u2192 ${after || "nothing"}): edit ${path36} by hand.`
           );
         }
         if (!separated) break;
@@ -13345,7 +13345,7 @@ var EditSession = class {
   changes() {
     this.keepOtherBindings();
     const out = [];
-    for (const [path35, state] of this.states) if (state.text !== state.before) out.push({ path: path35, before: state.before, after: state.text });
+    for (const [path36, state] of this.states) if (state.text !== state.before) out.push({ path: path36, before: state.before, after: state.text });
     return out.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
   }
 };
@@ -13377,12 +13377,12 @@ function pathBetween(next, from, to) {
   while (queue.length > 0) {
     const id2 = queue.shift();
     if (id2 === to) {
-      const path35 = [to];
+      const path36 = [to];
       for (let at = to; at !== from; ) {
         at = parent.get(at);
-        path35.unshift(at);
+        path36.unshift(at);
       }
-      return path35;
+      return path36;
     }
     for (const target of next.get(id2) ?? []) {
       if (seen.has(target)) continue;
@@ -14673,39 +14673,39 @@ function scanForbiddenText(file2, text, ctx, baseText) {
 }
 var PROJECT_FILES = /* @__PURE__ */ new Set(["lakefile.toml", "lakefile.lean", "lean-toolchain", "lake-manifest.json"]);
 var MODULE_COMPONENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
-function inSubjectScope(path35, library, subject2) {
-  return path35 === `${library}/${subject2}.lean` || path35.startsWith(`${library}/${subject2}/`);
+function inSubjectScope(path36, library, subject2) {
+  return path36 === `${library}/${subject2}.lean` || path36.startsWith(`${library}/${subject2}/`);
 }
-function isSubjectModulePath(path35, library, subject2) {
-  if (path35 === `${library}/${subject2}.lean`) return true;
+function isSubjectModulePath(path36, library, subject2) {
+  if (path36 === `${library}/${subject2}.lean`) return true;
   const prefix = `${library}/${subject2}/`;
-  if (!path35.startsWith(prefix) || !path35.endsWith(".lean")) return false;
-  const parts = path35.slice(prefix.length, -".lean".length).split("/");
+  if (!path36.startsWith(prefix) || !path36.endsWith(".lean")) return false;
+  const parts = path36.slice(prefix.length, -".lean".length).split("/");
   return parts.length > 0 && parts.every((part) => MODULE_COMPONENT.test(part));
 }
 function checkChangeSet(base, current2, ctx) {
   const out = [];
   const scope = `${ctx.library}/${ctx.subject}/\u2026 and ${ctx.library}/${ctx.subject}.lean`;
   const paths = [.../* @__PURE__ */ new Set([...base.keys(), ...current2.keys()])].sort();
-  for (const path35 of paths) {
-    const before = base.get(path35);
-    const after = current2.get(path35);
+  for (const path36 of paths) {
+    const before = base.get(path36);
+    const after = current2.get(path36);
     if (before === after) continue;
     const verb = before === void 0 ? "was added" : after === void 0 ? "was deleted" : "was changed";
-    const finding = (code2, advice) => ({ step: "G0", code: code2, message: `${path35} ${verb}: ${advice}.`, file: path35, token: path35 });
-    if (PROJECT_FILES.has(path35)) {
+    const finding = (code2, advice) => ({ step: "G0", code: code2, message: `${path36} ${verb}: ${advice}.`, file: path36, token: path36 });
+    if (PROJECT_FILES.has(path36)) {
       out.push(finding("project-file", "the project files (lakefile, lean-toolchain, lake-manifest.json) must stay exactly as they were; undo it"));
       continue;
     }
     if (after === void 0) out.push(finding("deleted-file", "model files may not be deleted; restore it"));
-    else if (!inSubjectScope(path35, ctx.library, ctx.subject)) {
+    else if (!inSubjectScope(path36, ctx.library, ctx.subject)) {
       out.push(finding("outside-subject", `only the files of the subject ${ctx.subject} (${scope}) may change; ${before === void 0 ? "remove it" : "undo the change"}`));
-    } else if (before === void 0 && !isSubjectModulePath(path35, ctx.library, ctx.subject)) {
+    } else if (before === void 0 && !isSubjectModulePath(path36, ctx.library, ctx.subject)) {
       out.push(
         finding("bad-path", `it is not a Lean module of the subject (expected ${ctx.library}/${ctx.subject}/<Module>.lean with letters, digits and "_" only); remove it`)
       );
     }
-    if (after !== void 0 && path35.endsWith(".lean")) out.push(...scanForbiddenText(path35, after, ctx, before ?? null));
+    if (after !== void 0 && path36.endsWith(".lean")) out.push(...scanForbiddenText(path36, after, ctx, before ?? null));
   }
   return out;
 }
@@ -14871,9 +14871,9 @@ function adoptionPlan(model, request) {
   if (rationale !== void 0 && /[\r\n]/.test(rationale)) throw new ActionError("invalid", "The reason must be one line.");
   if (!DATE2.test(request.today)) throw new ActionError("invalid", `"${request.today}" is not a date (YYYY-MM-DD).`);
   if (!SESSION.test(request.session)) throw new ActionError("invalid", `"${request.session}" cannot be written as a session id.`);
-  const path35 = target.file;
-  const file2 = model.files.get(path35);
-  if (!file2) throw new ActionError("not-found", `The target's file ${path35} is not in the model.`);
+  const path36 = target.file;
+  const file2 = model.files.get(path36);
+  if (!file2) throw new ActionError("not-found", `The target's file ${path36} is not in the model.`);
   const namespace = target.block.namespace ?? [];
   const prefix = namespace.length > 0 ? `${namespace.join(".")}.` : "";
   const used = /* @__PURE__ */ new Set();
@@ -14913,7 +14913,7 @@ function adoptionPlan(model, request) {
     eol
   );
   const code2 = [`/-- ${escapeBodyText(sentence3)} -/`, `abbrev ${name} : Prop := ${statement}`, `axiom ${name}.holds : ${name}`].join(eol);
-  const forbidden = scanForbiddenText(path35, code2, { library: model.library, subject: request.subject, projectModules: /* @__PURE__ */ new Set() });
+  const forbidden = scanForbiddenText(path36, code2, { library: model.library, subject: request.subject, projectModules: /* @__PURE__ */ new Set() });
   if (forbidden.length > 0) throw new ActionError("invalid", `The suggested statement cannot be written: ${forbidden.map((f) => f.message).join(" ")}`);
   const lines = new Lines(file2.text);
   const offset = lines.start(lines.lineOf(target.block.span.start));
@@ -14924,15 +14924,15 @@ function adoptionPlan(model, request) {
     ...dropsMark ? [{ key: "follows_from", value: null }] : []
   ]);
   const after = applyTextEdits(file2.text, [insertionEdit(file2.text, eol, offset, `${blockText2}${eol}${code2}`, lines), ...declare]);
-  const parsed = parseLeanFile(path35, after);
+  const parsed = parseLeanFile(path36, after);
   const added = parsed.blocks.filter((b) => b.id === nodeId);
   const block2 = added[0];
   const ok = added.length === 1 && block2 !== void 0 && block2.idWritten && block2.fields.type === type && block2.fields.naturalName === sentence3 && block2.fields.wordedBy === "agent" && block2.fields.origin === "agent" && block2.fields.session === request.session && block2.binding.mode === "pinned" && block2.binding.statement === qualified && parsed.decls.some((d) => d.fullName === qualified && d.keyword === "abbrev") && parsed.decls.some((d) => d.fullName === holdsName(qualified) && d.keyword === "axiom") && parsed.blocks.length === file2.blocks.length + 1 && JSON.stringify(parsed.blocks.find((b) => b !== block2 && b.id === request.target)?.fields.premises) === JSON.stringify(premises) && !parsed.blocks.some((b) => b !== block2 && b.id === request.target && b.lines.some((line) => line.key === "follows_from")) && file2.blocks.every((b) => {
     const now = parsed.blocks.find((x) => x.id === b.id && x !== block2);
     return now !== void 0 && now.binding.mode === b.binding.mode && now.binding.statement === b.binding.statement;
   });
-  if (!ok) throw new ActionError("unsafe", `telelean could not insert the suggested axiom into ${path35} without changing other cards; nothing was written.`);
-  const change = { path: path35, before: file2.text, after };
+  if (!ok) throw new ActionError("unsafe", `telelean could not insert the suggested axiom into ${path36} without changing other cards; nothing was written.`);
+  const change = { path: path36, before: file2.text, after };
   return { changes: [change], nodeId, leanName: qualified };
 }
 
@@ -15537,7 +15537,7 @@ function ruleContext(input2) {
   const addedOrChanged = /* @__PURE__ */ new Set([...added, ...changed]);
   const inBase = (name) => B.known.has(name);
   const changedFiles = /* @__PURE__ */ new Set();
-  for (const [path35, file2] of current2.files) if (base.files.get(path35)?.text !== file2.text) changedFiles.add(path35);
+  for (const [path36, file2] of current2.files) if (base.files.get(path36)?.text !== file2.text) changedFiles.add(path36);
   let factsOnlyCache;
   const factsOnly = () => {
     if (factsOnlyCache) return factsOnlyCache;
@@ -16420,7 +16420,7 @@ function markupFindings(input2, chosen, sentence3) {
         continue;
       }
       matched.add(sBlock);
-      const path35 = bFile.path;
+      const path36 = bFile.path;
       for (const field of COMPARED_FIELDS) {
         const was = raws(bBlock, field);
         const now = raws(sBlock, field);
@@ -16432,20 +16432,20 @@ function markupFindings(input2, chosen, sentence3) {
         out.push(
           finding(
             sBlock,
-            path35,
+            path36,
             key,
             field,
             `${label3} changed its \`${field}:\` (${show(was)} \u2192 ${show(now)}): ${words ? "the person's words are the specification and stay byte-identical" : "never change any field of a block"}; restore it.`
           )
         );
       }
-      if (bBlock.version !== sBlock.version) out.push(finding(sBlock, path35, key, "version", `${label3} changed its markup version: restore \`@@ telelean v${bBlock.version}\`.`));
-      if (JSON.stringify(bBlock.extensions) !== JSON.stringify(sBlock.extensions)) out.push(finding(sBlock, path35, key, "extension", `${label3} changed its extension fields: restore them.`));
-      if ((bBlock.body ?? "") !== (sBlock.body ?? "")) out.push(finding(sBlock, path35, key, "body", `${label3} changed its notes (after \`---\`): restore them.`));
+      if (bBlock.version !== sBlock.version) out.push(finding(sBlock, path36, key, "version", `${label3} changed its markup version: restore \`@@ telelean v${bBlock.version}\`.`));
+      if (JSON.stringify(bBlock.extensions) !== JSON.stringify(sBlock.extensions)) out.push(finding(sBlock, path36, key, "extension", `${label3} changed its extension fields: restore them.`));
+      if ((bBlock.body ?? "") !== (sBlock.body ?? "")) out.push(finding(sBlock, path36, key, "body", `${label3} changed its notes (after \`---\`): restore them.`));
       const idWas = raws(bBlock, "id");
       const idNow = raws(sBlock, "id");
       const idOk = bBlock.idWritten ? sameList(idWas, idNow) : idNow.length === 0 || idNow.length === 1 && (idNow[0] === key || idNow[0] === bBlock.id);
-      if (!idOk) out.push(finding(sBlock, path35, key, "id", `${label3} changed its \`id:\` line: ids are stable; restore it.`));
+      if (!idOk) out.push(finding(sBlock, path36, key, "id", `${label3} changed its \`id:\` line: ids are stable; restore it.`));
       const leanWas = raws(bBlock, "lean");
       const leanNow = raws(sBlock, "lean");
       const bNode = base.nodes.get(key)?.node;
@@ -16456,7 +16456,7 @@ function markupFindings(input2, chosen, sentence3) {
         out.push(
           finding(
             sBlock,
-            path35,
+            path36,
             key,
             "lean",
             `${label3}'s \`lean:\` line changed (${leanWas.join(", ")} \u2192 ${leanNow.length > 0 ? leanNow.join(", ") : "(removed)"}): a \`lean:\` line is never changed or removed; restore it.`,
@@ -16465,14 +16465,14 @@ function markupFindings(input2, chosen, sentence3) {
         );
       } else if (leanWas.length === 0 && leanNow.length > 0) {
         const pinned = sNode?.lean.statement;
-        const adjacent = sBlock.binding.adjacentDecl !== void 0 ? current2.files.get(path35)?.decls[sBlock.binding.adjacentDecl]?.fullName : void 0;
+        const adjacent = sBlock.binding.adjacentDecl !== void 0 ? current2.files.get(path36)?.decls[sBlock.binding.adjacentDecl]?.fullName : void 0;
         const legal = chosen.has(key) && bBlock.binding.mode === "none" && pinned !== void 0 && pinned === adjacent && !B.known.has(pinned);
         if (!legal) {
           leanFinding = true;
           out.push(
             finding(
               sBlock,
-              path35,
+              path36,
               key,
               "lean",
               `a \`lean:\` line was added to ${label3}: telelean pins a statement itself, and only for the target and the selected premises formalised in this run, naming the declaration directly below the block; remove it.`,
@@ -16488,7 +16488,7 @@ function markupFindings(input2, chosen, sentence3) {
           out.push(
             finding(
               sBlock,
-              path35,
+              path36,
               key,
               "binding",
               `the card ${key} was bound to ${was} before the run and is now bound to ${now ?? "nothing"}: a card formalised before the run keeps its statement; put any new declaration elsewhere (not directly below its block).`,
@@ -16499,7 +16499,7 @@ function markupFindings(input2, chosen, sentence3) {
           out.push(
             finding(
               sBlock,
-              path35,
+              path36,
               key,
               "formalised",
               `the card ${key} (${quote(sNode.naturalName)}) is not selected but is now bound to ${now}: formalise only the target and the selected premises; leave a blank line between its block and that declaration, or move the declaration.`,
@@ -17788,9 +17788,9 @@ function compareTexts(base, current2, alsoTouched) {
   const moved2 = /* @__PURE__ */ new Set();
   const movedCards = /* @__PURE__ */ new Set();
   const compared = [];
-  for (const path35 of [.../* @__PURE__ */ new Set([...base.files.keys(), ...current2.files.keys()])].sort()) {
-    const fileB = base.files.get(path35);
-    const fileW = current2.files.get(path35);
+  for (const path36 of [.../* @__PURE__ */ new Set([...base.files.keys(), ...current2.files.keys()])].sort()) {
+    const fileB = base.files.get(path36);
+    const fileW = current2.files.get(path36);
     if (fileB !== void 0 && fileW !== void 0 && fileB.text === fileW.text) continue;
     const unitsB = fileB ? unitsOf(fileB, cardB) : [];
     const unitsW = fileW ? unitsOf(fileW, cardW) : [];
@@ -17808,11 +17808,11 @@ function compareTexts(base, current2, alsoTouched) {
       if (u.name !== void 0 && tablesB.byName.has(u.name)) moved2.add(u.name);
       if (u.card !== void 0 && base.nodes.has(u.card)) movedCards.add(u.card);
     });
-    compared.push({ path: path35, unitsB, unitsW, keptB, keptW });
+    compared.push({ path: path36, unitsB, unitsW, keptB, keptW });
   }
   const isNew = (name) => !tablesB.byName.has(name) && !base.declFacts.has(name);
   const touched = (name) => isNew(name) || moved2.has(name) || tablesB.byName.get(name)?.text !== tablesW.byName.get(name)?.text || alsoTouched?.(name) === true;
-  const files = compared.map(({ path: path35, unitsB, unitsW, keptB, keptW }) => {
+  const files = compared.map(({ path: path36, unitsB, unitsW, keptB, keptW }) => {
     const added = /* @__PURE__ */ new Map();
     unitsW.forEach((u, k) => {
       if (keptW[k] !== true) added.set(k, { ...u });
@@ -17856,7 +17856,7 @@ function compareTexts(base, current2, alsoTouched) {
       const above = unitsW[j];
       if (above?.name !== void 0 && touched(above.name)) u.attachedTo = above.name;
     }
-    return { path: path35, removed: unitsB.filter((_, k) => keptB[k] !== true), added: [...added.values()] };
+    return { path: path36, removed: unitsB.filter((_, k) => keptB[k] !== true), added: [...added.values()] };
   });
   return { files, moved: moved2, movedCards };
 }
@@ -17866,8 +17866,8 @@ function cardsOf(model) {
 function baseDeclPlace(base, current2, name) {
   const entry = declTables(base).byName.get(name);
   if (entry === void 0) return void 0;
-  const path35 = entry.file.path;
-  const fileW = current2.files.get(path35);
+  const path36 = entry.file.path;
+  const fileW = current2.files.get(path36);
   if (fileW === void 0) return void 0;
   const fileB = entry.file;
   const unitsB = unitsOf(fileB, cardsOf(base));
@@ -17890,11 +17890,11 @@ function baseDeclPlace(base, current2, name) {
   const text = `${lead}${fileB.text.slice(decl.span.start, decl.span.end)}${trail}`;
   for (let b = at - 1; b >= 0; b--) {
     const w = pair[b] ?? -1;
-    if (w >= 0) return { path: path35, offset: unitsW[w].span.end, side: "after", text };
+    if (w >= 0) return { path: path36, offset: unitsW[w].span.end, side: "after", text };
   }
   for (let b = at + 1; b < unitsB.length; b++) {
     const w = pair[b] ?? -1;
-    if (w >= 0) return { path: path35, offset: unitsW[w].span.start, side: "before", text };
+    if (w >= 0) return { path: path36, offset: unitsW[w].span.start, side: "before", text };
   }
   return void 0;
 }
@@ -20139,7 +20139,7 @@ function semanticOf(model, hidden) {
   if (facts === void 0) return { state: "unavailable" };
   const errors = facts.build.messages.filter((m) => m.severity === "error").length + facts.decls.filter((d) => d.error !== void 0).length;
   const probeFailed = facts.probe?.status === "cut" || facts.probe?.status === "failed";
-  const stale = hidden ? [] : [...model.files.keys()].filter((path35) => !model.freshFiles.has(path35)).sort();
+  const stale = hidden ? [] : [...model.files.keys()].filter((path36) => !model.freshFiles.has(path36)).sort();
   const failed = errors > 0 || probeFailed || !hidden && facts.status !== "ok";
   const state = SANDBOX_STATES[facts.status] ?? (failed ? "failed" : stale.length > 0 ? "stale" : "fresh");
   const detail = facts.detail?.trim();
@@ -22025,7 +22025,7 @@ function sessionMarkupFindings(c, pinnable) {
         continue;
       }
       matched.add(sBlock);
-      const path35 = rFile.path;
+      const path36 = rFile.path;
       const found = out.length;
       for (const field of SESSION_FIELDS) {
         const was = raws2(rBlock, field);
@@ -22034,7 +22034,7 @@ function sessionMarkupFindings(c, pinnable) {
         const show = (list) => list.length === 0 ? "(absent)" : list.map(quote2).join(", ");
         const words = field === "natural_name" || field === "rationale";
         out.push(
-          finding(sBlock, path35, key, field, `${label3} changed its \`${field}:\` (${show(was)} \u2192 ${show(now)}): ${words ? "the person's words are the specification and stay byte-identical" : "never change any field of a block"}; restore it.`)
+          finding(sBlock, path36, key, field, `${label3} changed its \`${field}:\` (${show(was)} \u2192 ${show(now)}): ${words ? "the person's words are the specification and stay byte-identical" : "never change any field of a block"}; restore it.`)
         );
       }
       const premisesWas = entries(rBlock, "premises");
@@ -22045,7 +22045,7 @@ function sessionMarkupFindings(c, pinnable) {
         out.push(
           finding(
             sBlock,
-            path35,
+            path36,
             key,
             "premises",
             `${label3} changed its \`premises:\` (${[...added.map((s) => `+${s}`), ...removed.map((s) => `-${s}`)].join(", ")}): never edit \`premises:\`; propose an arrow with propose_arrow (telelean writes it), and never remove one; restore it.`
@@ -22057,16 +22057,16 @@ function sessionMarkupFindings(c, pinnable) {
       const markGone = marksWas.length > 0 && marksNow.length === 0 && marked2(key);
       if (!markGone && (marksWas.length !== marksNow.length || marksWas.some((x, j) => x !== marksNow[j]))) {
         out.push(
-          finding(sBlock, path35, key, "follows_from", `${label3} changed its \`follows_from:\`: only the person sets or removes "follows from nothing" (it goes when they accept a premise); restore it.`)
+          finding(sBlock, path36, key, "follows_from", `${label3} changed its \`follows_from:\`: only the person sets or removes "follows from nothing" (it goes when they accept a premise); restore it.`)
         );
       }
-      if (rBlock.version !== sBlock.version) out.push(finding(sBlock, path35, key, "version", `${label3} changed its markup version: restore \`@@ telelean v${rBlock.version}\`.`));
-      if (JSON.stringify(rBlock.extensions) !== JSON.stringify(sBlock.extensions)) out.push(finding(sBlock, path35, key, "extension", `${label3} changed its extension fields: restore them.`));
-      if ((rBlock.body ?? "") !== (sBlock.body ?? "")) out.push(finding(sBlock, path35, key, "body", `${label3} changed its notes (after \`---\`): restore them.`));
+      if (rBlock.version !== sBlock.version) out.push(finding(sBlock, path36, key, "version", `${label3} changed its markup version: restore \`@@ telelean v${rBlock.version}\`.`));
+      if (JSON.stringify(rBlock.extensions) !== JSON.stringify(sBlock.extensions)) out.push(finding(sBlock, path36, key, "extension", `${label3} changed its extension fields: restore them.`));
+      if ((rBlock.body ?? "") !== (sBlock.body ?? "")) out.push(finding(sBlock, path36, key, "body", `${label3} changed its notes (after \`---\`): restore them.`));
       const idWas = raws2(rBlock, "id");
       const idNow = raws2(sBlock, "id");
       const idOk = rBlock.idWritten ? idWas.length === idNow.length && idWas.every((x, j) => x === idNow[j]) : idNow.length === 0 || idNow.length === 1 && (idNow[0] === key || idNow[0] === rBlock.id);
-      if (!idOk) out.push(finding(sBlock, path35, key, "id", `${label3} changed its \`id:\` line: ids are stable; restore it.`));
+      if (!idOk) out.push(finding(sBlock, path36, key, "id", `${label3} changed its \`id:\` line: ids are stable; restore it.`));
       const leanWas = raws2(rBlock, "lean");
       const leanNow = raws2(sBlock, "lean");
       const rNode = reference.nodes.get(key)?.node;
@@ -22077,7 +22077,7 @@ function sessionMarkupFindings(c, pinnable) {
         out.push(
           finding(
             sBlock,
-            path35,
+            path36,
             key,
             "lean",
             `${label3}'s \`lean:\` line changed (${leanWas.join(", ")} \u2192 ${leanNow.length > 0 ? leanNow.join(", ") : "(removed)"}): a \`lean:\` line is never changed or removed; restore it.`,
@@ -22086,14 +22086,14 @@ function sessionMarkupFindings(c, pinnable) {
         );
       } else if (leanWas.length === 0 && leanNow.length > 0) {
         const pinned = sNode?.lean.statement;
-        const adjacent = sBlock.binding.adjacentDecl !== void 0 ? current2.files.get(path35)?.decls[sBlock.binding.adjacentDecl]?.fullName : void 0;
+        const adjacent = sBlock.binding.adjacentDecl !== void 0 ? current2.files.get(path36)?.decls[sBlock.binding.adjacentDecl]?.fullName : void 0;
         const legal = pinnable.has(key) && rBlock.binding.mode === "none" && pinned !== void 0 && pinned === adjacent && !R.known.has(pinned);
         if (!legal) {
           leanFinding = true;
           out.push(
             finding(
               sBlock,
-              path35,
+              path36,
               key,
               "lean",
               `a \`lean:\` line was added to ${label3}: telelean pins a statement itself, and only for the empty statements at the selected arrows, naming the declaration directly below the block; remove it.`,
@@ -22109,7 +22109,7 @@ function sessionMarkupFindings(c, pinnable) {
           out.push(
             finding(
               sBlock,
-              path35,
+              path36,
               key,
               "binding",
               `the card ${key} was bound to ${was} and is now bound to ${now ?? "nothing"}: a formalised card keeps its statement; put any new declaration elsewhere (not directly below its block).`,
@@ -22120,7 +22120,7 @@ function sessionMarkupFindings(c, pinnable) {
           out.push(
             finding(
               sBlock,
-              path35,
+              path36,
               key,
               "formalised",
               `the card ${key} (${quote2(sNode.naturalName)}) has no empty statement this step may fill, but is now bound to ${now}: formalise only the empty statements at the selected arrows; leave a blank line between its block and that declaration, or move the declaration.`,
@@ -22133,7 +22133,7 @@ function sessionMarkupFindings(c, pinnable) {
         const linesWas = otherBlockLines(rFile.text, rBlock).map((l) => l.text);
         const linesNow = otherBlockLines(cFile?.text ?? "", sBlock).map((l) => l.text);
         if (linesWas.length !== linesNow.length || linesWas.some((x, j) => x !== linesNow[j])) {
-          out.push(finding(sBlock, path35, key, "lines", `${label3}'s lines changed (moved, added or rewritten): a block's lines stay exactly as written, in their order; restore them.`));
+          out.push(finding(sBlock, path36, key, "lines", `${label3}'s lines changed (moved, added or rewritten): a block's lines stay exactly as written, in their order; restore them.`));
         }
       }
     }
@@ -22170,12 +22170,12 @@ function pathBetween2(next, from, to) {
   while (queue.length > 0) {
     const id2 = queue.shift();
     if (id2 === to) {
-      const path35 = [to];
+      const path36 = [to];
       for (let at = to; at !== from; ) {
         at = parent.get(at);
-        path35.unshift(at);
+        path36.unshift(at);
       }
-      return path35;
+      return path36;
     }
     for (const target of next.get(id2) ?? []) {
       if (seen.has(target)) continue;
@@ -23664,11 +23664,11 @@ function planItemRevert(i) {
   const session = new EditSession(current2);
   const pathOf = (tables, name) => tables.byName.get(name)?.file.path;
   const ops = /* @__PURE__ */ new Map();
-  const op = (path35, leanOp) => ops.set(path35, [...ops.get(path35) ?? [], leanOp]);
+  const op = (path36, leanOp) => ops.set(path36, [...ops.get(path36) ?? [], leanOp]);
   const leaving = [...plan2.remove].filter((name) => !plan2.anonymous.has(name)).concat([...plan2.back.keys()].filter((name) => W.byName.has(name)));
   for (const name of leaving.sort()) op(pathOf(W, name), { op: "remove-decl", name, archive: false });
   for (const [name, text] of [...plan2.restore].sort(([a], [b]) => a < b ? -1 : 1)) op(pathOf(W, name), { op: "replace-decl", name, text });
-  for (const [path35, list] of [...ops].sort(([a], [b]) => a < b ? -1 : 1)) session.leanOps(path35, list);
+  for (const [path36, list] of [...ops].sort(([a], [b]) => a < b ? -1 : 1)) session.leanOps(path36, list);
   const places = [...plan2.back.keys()].map((name) => ({ name, at: B.byName.get(name), place: baseDeclPlace(base, current2, name) }));
   places.sort((x, y) => x.at.file.path < y.at.file.path ? -1 : x.at.file.path > y.at.file.path ? 1 : x.at.decl.span.start - y.at.decl.span.start);
   let run;
@@ -23706,16 +23706,16 @@ ${lines}`;
       if (attached || encloses) lineSpans.set(file2.path, [...lineSpans.get(file2.path) ?? [], unit.span]);
     }
   }
-  for (const { path: path35, span: span2 } of plan2.anonymous.values()) lineSpans.set(path35, [...lineSpans.get(path35) ?? [], span2]);
-  for (const [path35, original] of [...lineSpans].sort(([a], [b]) => a < b ? -1 : 1)) {
+  for (const { path: path36, span: span2 } of plan2.anonymous.values()) lineSpans.set(path36, [...lineSpans.get(path36) ?? [], span2]);
+  for (const [path36, original] of [...lineSpans].sort(([a], [b]) => a < b ? -1 : 1)) {
     const spans = [];
     for (const span2 of original) {
-      const start = session.mapOffset(path35, span2.start);
-      const end = session.mapOffset(path35, span2.end);
-      if (start === void 0 || end === void 0) throw new ActionError("unsafe", `A line of ${path35} that goes with the content taken out could not be found again: edit it by hand.`);
+      const start = session.mapOffset(path36, span2.start);
+      const end = session.mapOffset(path36, span2.end);
+      if (start === void 0 || end === void 0) throw new ActionError("unsafe", `A line of ${path36} that goes with the content taken out could not be found again: edit it by hand.`);
       spans.push({ start, end });
     }
-    const text = session.text(path35) ?? "";
+    const text = session.text(path36) ?? "";
     const lines = new Lines(text);
     const merged = [];
     for (const span2 of spans.sort((a, b) => a.start - b.start)) {
@@ -23724,7 +23724,7 @@ ${lines}`;
       else merged.push(span2);
     }
     const edits = merged.map((span2) => deletionEdit(text, span2, lines));
-    session.apply(path35, edits);
+    session.apply(path36, edits);
   }
   for (const card of [...plan2.cards].sort()) {
     const entry = current2.nodes.get(card);
@@ -23762,7 +23762,7 @@ function verify(i, plan2, changes, fieldCards, movedBefore) {
     if (change.after === null) after.delete(change.path);
     else after.set(change.path, change.after);
   }
-  const parsed = [...after].map(([path35, text]) => parseLeanFile(path35, text));
+  const parsed = [...after].map(([path36, text]) => parseLeanFile(path36, text));
   const declText3 = /* @__PURE__ */ new Map();
   for (const file2 of parsed) {
     for (const d of file2.decls) {
@@ -23896,9 +23896,354 @@ function formalizeOrder(board, inferences) {
   return out;
 }
 
+// src/board/BoardPanel.ts
+init_import_meta_url();
+var import_node_crypto = require("node:crypto");
+var vscode = __toESM(require("vscode"));
+
+// src/board/html.ts
+init_import_meta_url();
+function boardCsp(cspSource, nonce) {
+  return [
+    "default-src 'none'",
+    `img-src ${cspSource} data:`,
+    `font-src ${cspSource}`,
+    `style-src ${cspSource} 'nonce-${nonce}'`,
+    `script-src 'nonce-${nonce}'`
+  ].join("; ");
+}
+var escapeAttribute = (value) => value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+function renderBoardHtml(args) {
+  const nonce = escapeAttribute(args.nonce);
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="${escapeAttribute(boardCsp(args.cspSource, args.nonce))}">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>telelean board</title>
+<script nonce="${nonce}" src="${escapeAttribute(args.bootUri)}"></script>
+<link rel="stylesheet" nonce="${nonce}" href="${escapeAttribute(args.styleUri)}">
+</head>
+<body>
+<div id="root"></div>
+<script type="module" nonce="${nonce}" src="${escapeAttribute(args.scriptUri)}"></script>
+</body>
+</html>
+`;
+}
+
+// src/board/BoardPanel.ts
+var SAMPLE_NAMES = ["spyro", "spyro-proved", "large"];
+function sampleGraph(name) {
+  switch (name) {
+    case "spyro":
+      return spyroGraph();
+    case "spyro-proved":
+      return spyroProvedGraph();
+    case "large":
+      return largeGraph();
+  }
+}
+var SAMPLE_ACTION_NOTICE = `This is the static sample board: open a model folder's board ("telelean: Open Board") to edit.`;
+var BoardPanel = class _BoardPanel {
+  /**
+   * Wraps a panel (new, or restored by the serializer) and loads the board into it. `root` is the model root, or
+   * undefined for the sample board.
+   */
+  constructor(panel, deps, root) {
+    this.panel = panel;
+    this.deps = deps;
+    this.root = root;
+    const { webview } = panel;
+    const webviewRoot = vscode.Uri.joinPath(deps.extensionUri, "dist", "webview");
+    webview.options = _BoardPanel.webviewOptions(deps.extensionUri);
+    webview.html = renderBoardHtml({
+      cspSource: webview.cspSource,
+      nonce: (0, import_node_crypto.randomBytes)(18).toString("base64"),
+      bootUri: webview.asWebviewUri(vscode.Uri.joinPath(webviewRoot, "boot.js")).toString(),
+      scriptUri: webview.asWebviewUri(vscode.Uri.joinPath(webviewRoot, "webview.js")).toString(),
+      styleUri: webview.asWebviewUri(vscode.Uri.joinPath(webviewRoot, "webview.css")).toString()
+    });
+    this.disposables.push(
+      webview.onDidReceiveMessage((raw) => void this.receive(raw)),
+      panel.onDidDispose(() => this.dispose())
+    );
+    deps.log.info(`board opened: ${root ?? "sample"} ("${panel.title}")`);
+  }
+  panel;
+  deps;
+  root;
+  static viewType = "telelean.board";
+  mode = { kind: "loading", queued: [] };
+  disposables = [];
+  disposeEmitter = new vscode.EventEmitter();
+  disposed = false;
+  notices = 0;
+  /** Fired once when the panel closes (or the board is disposed). */
+  onDidDispose = this.disposeEmitter.event;
+  /** A new editor tab for a board. */
+  static createPanel(title, extensionUri) {
+    return vscode.window.createWebviewPanel(_BoardPanel.viewType, title, vscode.ViewColumn.Active, {
+      ..._BoardPanel.webviewOptions(extensionUri),
+      enableFindWidget: true,
+      retainContextWhenHidden: true
+    });
+  }
+  static webviewOptions(extensionUri) {
+    return {
+      enableScripts: true,
+      enableCommandUris: false,
+      localResourceRoots: [vscode.Uri.joinPath(extensionUri, "dist", "webview")]
+    };
+  }
+  get session() {
+    return this.mode.kind === "session" ? this.mode.session : void 0;
+  }
+  get isSample() {
+    return this.mode.kind === "sample";
+  }
+  /** The model could not be loaded (Open Board then creates the board again, i.e. retries). */
+  get isFailed() {
+    return this.mode.kind === "failed";
+  }
+  /** Attaches the model session and replays what the webview sent while the workspace loaded. */
+  async attach(session) {
+    const queued = this.mode.kind === "loading" ? this.mode.queued : [];
+    this.mode = { kind: "session", session };
+    await session.requestPublish();
+    void session.publishRuns();
+    for (const message2 of queued) if (message2.type !== "ready") await session.handle(message2);
+  }
+  /** Shows a static sample graph (optionally with a notice, e.g. why it is not the model). */
+  showSample(graph, notice2) {
+    this.mode = notice2 ? { kind: "sample", graph, notice: notice2 } : { kind: "sample", graph };
+    void this.postSample();
+  }
+  /** The board could not load its model: says why on every "ready". */
+  fail(text) {
+    this.mode = { kind: "failed", text };
+    void this.postNotice("error", text);
+  }
+  /** Validates and handles one message from the webview (also the test API's simulated messages). */
+  async receive(raw) {
+    const parsed = parseWebviewToHost(raw);
+    if (!parsed.ok) {
+      this.deps.log.warn(`[webview->host] rejected message: ${parsed.error}`);
+      return;
+    }
+    await this.handle(parsed.value);
+  }
+  /**
+   * Hands a message to the webview and resolves at once: it never waits for the message to arrive. VS Code keeps the
+   * messages for a webview that is still loading and resolves `postMessage` only once that webview is ready, and it
+   * creates the webview of a panel restored after a window reload only after the serializer's
+   * `deserializeWebviewPanel` has resolved. Waiting for delivery on that path waited forever (the restored board
+   * stayed a blank tab). Nothing here needs delivery: a webview that is still loading says "ready" once it runs, and
+   * the session then publishes again. The log and `onPost` learn whether the message arrived once VS Code says so.
+   * Resolves false only when the board is closed.
+   */
+  post(message2) {
+    if (this.disposed) return Promise.resolve(false);
+    let delivery;
+    try {
+      delivery = this.panel.webview.postMessage(message2);
+    } catch {
+      delivery = Promise.resolve(false);
+    }
+    void Promise.resolve(delivery).then(
+      (delivered) => this.reportPost(message2, delivered === true),
+      () => this.reportPost(message2, false)
+    );
+    return Promise.resolve(true);
+  }
+  reveal() {
+    this.panel.reveal();
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.session?.dispose();
+    for (const disposable of this.disposables.splice(0)) disposable.dispose();
+    this.panel.dispose();
+    this.deps.log.info(`board closed: ${this.root ?? "sample"}`);
+    this.disposeEmitter.fire();
+    this.disposeEmitter.dispose();
+  }
+  // ---------------------------------------------------------------------------------------------
+  reportPost(message2, delivered) {
+    const what = message2.type === "graph" ? `graph "${message2.payload.graph.subject}" v${message2.payload.graph.version}` : message2.type;
+    const line = `[host->webview] ${what}: ${delivered ? "delivered" : "not delivered (the board was closed or its webview was replaced)"}`;
+    if (message2.type === "graph" || message2.type === "workspace" || message2.type === "history") this.deps.log.debug(line);
+    else this.deps.log.info(`${line} ${JSON.stringify(message2.payload).slice(0, 300)}`);
+    this.deps.onPost(this.root, message2, delivered, this.panel);
+  }
+  async handle(message2) {
+    const line = `[webview->host] ${message2.type} ${JSON.stringify(message2.payload).slice(0, 500)}`;
+    if (message2.type === "diagnostic" && message2.payload.level === "error") this.deps.log.error(line);
+    else if (message2.type === "diagnostic" && message2.payload.level === "warn") this.deps.log.warn(line);
+    else this.deps.log.info(line);
+    this.deps.onMessage(this.root, message2);
+    switch (this.mode.kind) {
+      case "loading":
+        this.mode.queued.push(message2);
+        return;
+      case "session":
+        return this.mode.session.handle(message2);
+      case "sample":
+        if (message2.type === "ready") return this.postSample();
+        if (message2.type === "select" || message2.type === "diagnostic" || message2.type === "copyText") {
+          if (message2.type === "copyText") {
+            await vscode.env.clipboard.writeText(message2.payload.text);
+            await this.postNotice("info", "Copied");
+          }
+          return;
+        }
+        await this.postNotice("info", SAMPLE_ACTION_NOTICE);
+        return;
+      case "failed":
+        if (message2.type === "ready") await this.postNotice("error", this.mode.text);
+        return;
+    }
+  }
+  async postSample() {
+    if (this.mode.kind !== "sample") return;
+    const { graph, notice: notice2 } = this.mode;
+    await this.post(hostMessage("graph", { graph }));
+    if (notice2) await this.postNotice(notice2.level, notice2.text);
+  }
+  postNotice(level, text) {
+    return this.post(hostMessage("notice", { id: `p${Date.now().toString(36)}-${++this.notices}`, level, text, undoable: false }));
+  }
+};
+
+// src/logic/boardSession.ts
+init_import_meta_url();
+
+// src/logic/actionMapping.ts
+init_import_meta_url();
+var ACTION_MESSAGE_TYPES = [
+  "addNode",
+  "kindChange",
+  "theseSuffice",
+  "editNode",
+  "deleteNode",
+  "reorder",
+  "createSubject",
+  "addArrows",
+  "removeArrows",
+  "setFromNothing",
+  "claimPending",
+  "moveCards"
+];
+function isActionMessage(message2) {
+  return ACTION_MESSAGE_TYPES.includes(message2.type);
+}
+function toBoardAction(message2, subject2) {
+  switch (message2.type) {
+    case "addNode": {
+      const { type, naturalName, rationale, stance: stance2, source, position: position2 } = message2.payload;
+      return {
+        kind: "add-node",
+        subject: subject2,
+        type,
+        naturalName,
+        ...rationale !== void 0 ? { rationale } : {},
+        ...stance2 !== void 0 ? { stance: stance2 } : {},
+        ...source !== void 0 ? { source } : {},
+        ...position2 !== void 0 ? { position: { x: position2.x, y: position2.y } } : {}
+      };
+    }
+    case "kindChange": {
+      const { id: id2, to, beforeId, dependents, rationale, confirmedDependents } = message2.payload;
+      return {
+        kind: "change-kind",
+        id: id2,
+        to,
+        beforeId,
+        ...dependents !== void 0 ? { dependents } : {},
+        ...confirmedDependents !== void 0 ? { confirmedDependents: [...confirmedDependents] } : {},
+        ...rationale !== void 0 ? { rationale } : {}
+      };
+    }
+    case "theseSuffice": {
+      const { premises, target } = message2.payload;
+      if (premises.length === 0) return void 0;
+      return { kind: "set-premises", target, premises: [...premises] };
+    }
+    case "editNode": {
+      const { id: id2, field, value } = message2.payload;
+      return { kind: "edit-node", id: id2, field, value };
+    }
+    case "deleteNode": {
+      const { id: id2, confirmed } = message2.payload;
+      return { kind: "delete-node", id: id2, ...confirmed ? { confirmed } : {} };
+    }
+    case "reorder": {
+      const { id: id2, column, beforeId } = message2.payload;
+      return { kind: "reorder", id: id2, column, beforeId };
+    }
+    case "createSubject":
+      return { kind: "create-subject", name: message2.payload.name };
+    // Spec v4 slice 1b. `confirmed`: the user saw the impact (an axiom becoming a proposition, A16's used arrows);
+    // without it core answers needs-confirmation when there is something to confirm.
+    case "addArrows": {
+      const { target, sources, confirmed } = message2.payload;
+      return { kind: "add-arrows", target, sources: [...sources], ...confirmed ? { confirmed } : {} };
+    }
+    case "removeArrows": {
+      const { arrows, marks, confirmed } = message2.payload;
+      return {
+        kind: "remove-arrows",
+        arrows: arrows.map(({ source, target }) => ({ source, target })),
+        ...marks !== void 0 && marks.length > 0 ? { marks: [...marks] } : {},
+        ...confirmed ? { confirmed } : {}
+      };
+    }
+    case "setFromNothing": {
+      const { id: id2, on, confirmed } = message2.payload;
+      return { kind: "set-from-nothing", id: id2, on, ...confirmed ? { confirmed } : {} };
+    }
+    case "claimPending":
+      return { kind: "claim-pending", id: message2.payload.id };
+    case "moveCards": {
+      const positions = {};
+      for (const [id2, { x, y }] of Object.entries(message2.payload.positions)) positions[id2] = { x, y };
+      return { kind: "move-cards", positions };
+    }
+  }
+}
+function requestIdOf(message2) {
+  const payload = message2.payload;
+  return typeof payload.requestId === "string" ? payload.requestId : void 0;
+}
+var SELF_EVIDENT_NOT_YET = 'A proof from no premises is a Claude run: mark the card "follows from nothing", select the mark and press "Formalize for dependencies". To declare premises, draw arrows into the card.';
+
+// src/logic/proposalPreview.ts
+init_import_meta_url();
+var PROPOSAL_SCHEME = "telelean-proposal";
+function proposalDiffTitle(input2) {
+  if (input2.file !== void 0) return `Raw Lean diff: ${input2.file.slice(input2.file.lastIndexOf("/") + 1)}`;
+  if (input2.subject === void 0) return "Raw Lean diff";
+  return `Raw Lean diff: ${input2.subject}${input2.round !== void 0 ? ` (round ${input2.round})` : ""}`;
+}
+function proposalRows(diff, previewId) {
+  return diff.files.map((file2) => {
+    const side = (name, text) => text === null ? void 0 : { key: `preview=${previewId}&side=${name}&run=${diff.runId}&proposal=${diff.proposalId}`, path: file2.path, text };
+    const left = side("base", file2.before);
+    const right = side("proposal", file2.after);
+    return { path: file2.path, ...left ? { left } : {}, ...right ? { right } : {} };
+  });
+}
+var EXPIRED_PROPOSAL_TEXT = "// This raw Lean diff of Claude's proposal is no longer available (it was opened in an earlier session, or many diffs ago).\n// Open it again from the board: Raw Lean diff\u2026.\n";
+
+// src/logic/runs.ts
+init_import_meta_url();
+var import_promises5 = require("node:fs/promises");
+var path11 = __toESM(require("node:path"));
+
 // ../runner/src/shadow/index.ts
 init_import_meta_url();
-var import_node_crypto2 = require("node:crypto");
 var import_promises4 = require("node:fs/promises");
 var import_node_path10 = __toESM(require("node:path"), 1);
 
@@ -24065,19 +24410,19 @@ function defaultHostTools() {
   };
 }
 function execCapture(file2, args, env3, timeoutMs = 1e4) {
-  return new Promise((resolve3) => {
+  return new Promise((resolve4) => {
     (0, import_node_child_process.execFile)(
       file2,
       [...args],
       { env: env3, timeout: timeoutMs, killSignal: "SIGKILL", maxBuffer: 4 * 1024 * 1024, encoding: "utf8" },
       (error62, stdout, stderr) => {
         if (error62 === null) {
-          resolve3({ code: 0, stdout, stderr });
+          resolve4({ code: 0, stdout, stderr });
           return;
         }
         const code2 = typeof error62.code === "number" ? error62.code : null;
         const result = { code: code2, stdout: stdout ?? "", stderr: stderr ?? "" };
-        resolve3(code2 === null ? { ...result, error: error62.message } : result);
+        resolve4(code2 === null ? { ...result, error: error62.message } : result);
       }
     );
   });
@@ -24442,7 +24787,7 @@ async function runLean(options) {
       return notStarted("could-not-start", unit, `cannot spawn systemd-run: ${e.message}`);
     }
     if (stdoutFd !== void 0) (0, import_node_fs3.closeSync)(stdoutFd);
-    return await new Promise((resolve3) => {
+    return await new Promise((resolve4) => {
       const limit = options.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES;
       const stdout = new OutputBuffer(limit);
       const stderr = new OutputBuffer(limit);
@@ -24625,7 +24970,7 @@ async function runLean(options) {
             detail = `the sandbox was killed before the command finished (bwrap ${String(bwrapExit)}, keeper ${String(code2 ?? signal)})`;
           }
           const peakMemoryBytes = endSampled && status !== "could-not-start" ? peak : void 0;
-          resolve3({
+          resolve4({
             ...base,
             status,
             ...peakMemoryBytes !== void 0 ? { peakMemoryBytes } : {},
@@ -25335,11 +25680,11 @@ function succeededCaptions(log) {
 
 // ../runner/src/semantic/project.ts
 init_import_meta_url();
-var import_node_crypto = require("node:crypto");
+var import_node_crypto2 = require("node:crypto");
 var import_node_fs4 = require("node:fs");
 var import_node_path5 = __toESM(require("node:path"), 1);
 function sha256Text(text) {
-  return (0, import_node_crypto.createHash)("sha256").update(text, "utf8").digest("hex");
+  return (0, import_node_crypto2.createHash)("sha256").update(text, "utf8").digest("hex");
 }
 function readProjectToolchain(root) {
   let toolchain;
@@ -25558,12 +25903,14 @@ function listWithMore(items) {
   return items.length > DETAIL_ITEMS ? `${shown2}; \u2026 (${items.length - DETAIL_ITEMS} more)` : shown2;
 }
 function gitMaskPaths(root) {
-  const git = import_node_path6.default.join(root, ".git");
-  try {
-    return (0, import_node_fs5.lstatSync)(git).isDirectory() ? [git] : [];
-  } catch {
-    return [];
+  const out = [];
+  for (const dir of [import_node_path6.default.join(root, ".git"), import_node_path6.default.join(root, ".telelean", "runs")]) {
+    try {
+      if ((0, import_node_fs5.lstatSync)(dir).isDirectory()) out.push(dir);
+    } catch {
+    }
   }
+  return out;
 }
 function buildRunOptions(request, options, memoryMax) {
   return {
@@ -25971,10 +26318,10 @@ function shadowGitEnvironment(gitDir) {
   env3["LC_ALL"] = "C";
   return env3;
 }
-function fastImportPath(path35) {
-  if (!/^"|[\\\u0000-\u001f\u007f]/u.test(path35)) return path35;
+function fastImportPath(path36) {
+  if (!/^"|[\\\u0000-\u001f\u007f]/u.test(path36)) return path36;
   let out = '"';
-  for (const ch of path35) {
+  for (const ch of path36) {
     const code2 = ch.codePointAt(0) ?? 0;
     if (ch === '"' || ch === "\\") out += `\\${ch}`;
     else if (ch === "\n") out += "\\n";
@@ -25995,7 +26342,7 @@ var ShadowGit = class {
   gitPath;
   run(args, input2, okCodes = [0]) {
     const argv = [...SHADOW_GIT_CONFIG, ...args];
-    return new Promise((resolve3, reject) => {
+    return new Promise((resolve4, reject) => {
       let child;
       try {
         child = (0, import_node_child_process3.spawn)(this.gitPath, argv, {
@@ -26040,7 +26387,7 @@ var ShadowGit = class {
           return;
         }
         settled = true;
-        resolve3({ stdout: Buffer.concat(out), stderr, code: exit });
+        resolve4({ stdout: Buffer.concat(out), stderr, code: exit });
       });
       if (input2 !== void 0) child.stdin?.end(input2);
     });
@@ -26080,10 +26427,10 @@ var ShadowGit = class {
     if (parent !== void 0) text(`from ${parent}
 `);
     text("deleteall\n");
-    for (const path35 of [...files.keys()].sort()) {
-      text(`M 100644 inline ${fastImportPath(path35)}
+    for (const path36 of [...files.keys()].sort()) {
+      text(`M 100644 inline ${fastImportPath(path36)}
 `);
-      data(files.get(path35) ?? "");
+      data(files.get(path36) ?? "");
     }
     text("done\n");
     await this.run(["fast-import", "--quiet", "--done"], Buffer.concat(chunks));
@@ -26771,10 +27118,21 @@ var RunShadow = class {
 // ../runner/src/shadow/index.ts
 var RUN_ID_PATTERN4 = /^[A-Za-z0-9_]{1,64}$/u;
 var BASE_COMMIT_LABEL = "Your files at the start of the run";
-function rootKeyOf(root) {
-  const abs = import_node_path10.default.resolve(root);
-  const base = import_node_path10.default.basename(abs).replace(/[^A-Za-z0-9._-]/g, "_") || "root";
-  return `${base}-${(0, import_node_crypto2.createHash)("sha1").update(abs).digest("hex").slice(0, 8)}`;
+var RUNS_DIR = ".telelean/runs";
+var RUNS_GITIGNORE = "/*\n";
+var RUN_IGNORE_FILE = ".ignore";
+var RUN_IGNORE = "!*\n";
+function runsDirOf(root) {
+  return import_node_path10.default.join(import_node_path10.default.resolve(root), ...RUNS_DIR.split("/"));
+}
+async function ensureRunsDir(runsDir) {
+  const dir = import_node_path10.default.resolve(runsDir);
+  await (0, import_promises4.mkdir)(dir, { recursive: true });
+  try {
+    await (0, import_promises4.writeFile)(import_node_path10.default.join(dir, ".gitignore"), RUNS_GITIGNORE, { encoding: "utf8", flag: "wx" });
+  } catch (error62) {
+    if (error62.code !== "EEXIST") throw error62;
+  }
 }
 async function lstatOrUndefined(p) {
   try {
@@ -26818,6 +27176,10 @@ async function checkSourceTree(root, library, files) {
     throw new ShadowLayoutError("not-regular", `refusing to copy a model that contains symlinks or special files: ${unique2.join(", ")}`, unique2);
   }
 }
+async function isRunFolder(runDir) {
+  const state = await lstatOrUndefined(import_node_path10.default.join(runDir, "run.json"));
+  return state !== void 0 && state.isFile() || await isRealDirectory3(import_node_path10.default.join(runDir, "git"));
+}
 function validateRunId(runId2) {
   if (typeof runId2 !== "string" || !RUN_ID_PATTERN4.test(runId2)) throw new TypeError(`runId must match ${RUN_ID_PATTERN4.source}, got ${JSON.stringify(runId2)}`);
 }
@@ -26840,7 +27202,7 @@ async function createRunShadow(options) {
   if (bad.length > 0) throw new ShadowLayoutError("bad-path", `only model and project files enter the shadow, not: ${bad.join(", ")}`, bad);
   for (const [p, text] of options.files) if (typeof text !== "string") throw new TypeError(`the text of ${p} must be a string`);
   await checkSourceTree(root, library, paths);
-  const runDir = import_node_path10.default.join(import_node_path10.default.resolve(options.runsDir), rootKeyOf(root), options.runId);
+  const runDir = import_node_path10.default.join(import_node_path10.default.resolve(options.runsDir), options.runId);
   if (await lstatOrUndefined(runDir) !== void 0) throw new ShadowLayoutError("io", `the run directory ${runDir} already exists`, [runDir]);
   const layout = shadowPaths(runDir);
   const failed = async (error62) => {
@@ -26848,7 +27210,7 @@ async function createRunShadow(options) {
     if (error62 instanceof ShadowLayoutError || error62 instanceof TypeError) throw error62;
     throw new ShadowLayoutError("io", `cannot create the shadow: ${error62.message}`, [runDir]);
   };
-  await (0, import_promises4.mkdir)(import_node_path10.default.dirname(runDir), { recursive: true });
+  await ensureRunsDir(options.runsDir);
   try {
     await (0, import_promises4.mkdir)(runDir);
   } catch (error62) {
@@ -26856,6 +27218,7 @@ async function createRunShadow(options) {
   }
   try {
     for (const dir of [layout.ws, layout.build, layout.gitDir, layout.sessionDir, layout.frozenDir, layout.gateDir, layout.scratchDir]) await (0, import_promises4.mkdir)(dir);
+    await (0, import_promises4.writeFile)(import_node_path10.default.join(runDir, RUN_IGNORE_FILE), RUN_IGNORE, { encoding: "utf8", mode: 384 });
     for (const [rel, text] of [...options.files].sort(([a], [b]) => a < b ? -1 : 1)) {
       for (const base of [layout.ws, layout.build]) {
         await (0, import_promises4.mkdir)(import_node_path10.default.dirname(import_node_path10.default.join(base, rel)), { recursive: true });
@@ -26902,8 +27265,8 @@ async function readRunState(stateFile) {
     return {};
   }
 }
-async function listRunDirs(runsDir, root) {
-  const dir = import_node_path10.default.join(import_node_path10.default.resolve(runsDir), rootKeyOf(root));
+async function listRunDirs(runsDir) {
+  const dir = import_node_path10.default.resolve(runsDir);
   let entries4;
   try {
     entries4 = await (0, import_promises4.readdir)(dir, { withFileTypes: true });
@@ -26923,11 +27286,13 @@ async function listRunDirs(runsDir, root) {
   found.sort((a, b) => b.sortKey - a.sortKey || (a.runId < b.runId ? 1 : -1));
   return found.map(({ sortKey: _sortKey, ...info }) => info);
 }
-async function pruneRunDirs(runsDir, root, keep, protect = []) {
+async function pruneRunDirs(runsDir, keep, protect = []) {
   if (!Number.isInteger(keep) || keep < 0) throw new TypeError("keep must be a non-negative integer");
   const terminal = new Set(TERMINAL_RUN_STATES);
+  const runs = [];
+  for (const run of await listRunDirs(runsDir)) if (await isRunFolder(run.runDir)) runs.push(run);
   const deleted = [];
-  for (const run of (await listRunDirs(runsDir, root)).slice(keep)) {
+  for (const run of runs.slice(keep)) {
     if (protect.includes(run.runId)) continue;
     if (run.state !== void 0 && !terminal.has(run.state)) continue;
     const st = await lstatOrUndefined(run.runDir);
@@ -26938,357 +27303,39 @@ async function pruneRunDirs(runsDir, root, keep, protect = []) {
   return deleted;
 }
 
-// src/board/BoardPanel.ts
-init_import_meta_url();
-var import_node_crypto3 = require("node:crypto");
-var vscode = __toESM(require("vscode"));
-
-// src/board/html.ts
-init_import_meta_url();
-function boardCsp(cspSource, nonce) {
-  return [
-    "default-src 'none'",
-    `img-src ${cspSource} data:`,
-    `font-src ${cspSource}`,
-    `style-src ${cspSource} 'nonce-${nonce}'`,
-    `script-src 'nonce-${nonce}'`
-  ].join("; ");
-}
-var escapeAttribute = (value) => value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-function renderBoardHtml(args) {
-  const nonce = escapeAttribute(args.nonce);
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="${escapeAttribute(boardCsp(args.cspSource, args.nonce))}">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>telelean board</title>
-<script nonce="${nonce}" src="${escapeAttribute(args.bootUri)}"></script>
-<link rel="stylesheet" nonce="${nonce}" href="${escapeAttribute(args.styleUri)}">
-</head>
-<body>
-<div id="root"></div>
-<script type="module" nonce="${nonce}" src="${escapeAttribute(args.scriptUri)}"></script>
-</body>
-</html>
-`;
-}
-
-// src/board/BoardPanel.ts
-var SAMPLE_NAMES = ["spyro", "spyro-proved", "large"];
-function sampleGraph(name) {
-  switch (name) {
-    case "spyro":
-      return spyroGraph();
-    case "spyro-proved":
-      return spyroProvedGraph();
-    case "large":
-      return largeGraph();
-  }
-}
-var SAMPLE_ACTION_NOTICE = `This is the static sample board: open a model folder's board ("telelean: Open Board") to edit.`;
-var BoardPanel = class _BoardPanel {
-  /**
-   * Wraps a panel (new, or restored by the serializer) and loads the board into it. `root` is the model root, or
-   * undefined for the sample board.
-   */
-  constructor(panel, deps, root) {
-    this.panel = panel;
-    this.deps = deps;
-    this.root = root;
-    const { webview } = panel;
-    const webviewRoot = vscode.Uri.joinPath(deps.extensionUri, "dist", "webview");
-    webview.options = _BoardPanel.webviewOptions(deps.extensionUri);
-    webview.html = renderBoardHtml({
-      cspSource: webview.cspSource,
-      nonce: (0, import_node_crypto3.randomBytes)(18).toString("base64"),
-      bootUri: webview.asWebviewUri(vscode.Uri.joinPath(webviewRoot, "boot.js")).toString(),
-      scriptUri: webview.asWebviewUri(vscode.Uri.joinPath(webviewRoot, "webview.js")).toString(),
-      styleUri: webview.asWebviewUri(vscode.Uri.joinPath(webviewRoot, "webview.css")).toString()
-    });
-    this.disposables.push(
-      webview.onDidReceiveMessage((raw) => void this.receive(raw)),
-      panel.onDidDispose(() => this.dispose())
-    );
-    deps.log.info(`board opened: ${root ?? "sample"} ("${panel.title}")`);
-  }
-  panel;
-  deps;
-  root;
-  static viewType = "telelean.board";
-  mode = { kind: "loading", queued: [] };
-  disposables = [];
-  disposeEmitter = new vscode.EventEmitter();
-  disposed = false;
-  notices = 0;
-  /** Fired once when the panel closes (or the board is disposed). */
-  onDidDispose = this.disposeEmitter.event;
-  /** A new editor tab for a board. */
-  static createPanel(title, extensionUri) {
-    return vscode.window.createWebviewPanel(_BoardPanel.viewType, title, vscode.ViewColumn.Active, {
-      ..._BoardPanel.webviewOptions(extensionUri),
-      enableFindWidget: true,
-      retainContextWhenHidden: true
-    });
-  }
-  static webviewOptions(extensionUri) {
-    return {
-      enableScripts: true,
-      enableCommandUris: false,
-      localResourceRoots: [vscode.Uri.joinPath(extensionUri, "dist", "webview")]
-    };
-  }
-  get session() {
-    return this.mode.kind === "session" ? this.mode.session : void 0;
-  }
-  get isSample() {
-    return this.mode.kind === "sample";
-  }
-  /** The model could not be loaded (Open Board then creates the board again, i.e. retries). */
-  get isFailed() {
-    return this.mode.kind === "failed";
-  }
-  /** Attaches the model session and replays what the webview sent while the workspace loaded. */
-  async attach(session) {
-    const queued = this.mode.kind === "loading" ? this.mode.queued : [];
-    this.mode = { kind: "session", session };
-    await session.requestPublish();
-    void session.publishRuns();
-    for (const message2 of queued) if (message2.type !== "ready") await session.handle(message2);
-  }
-  /** Shows a static sample graph (optionally with a notice, e.g. why it is not the model). */
-  showSample(graph, notice2) {
-    this.mode = notice2 ? { kind: "sample", graph, notice: notice2 } : { kind: "sample", graph };
-    void this.postSample();
-  }
-  /** The board could not load its model: says why on every "ready". */
-  fail(text) {
-    this.mode = { kind: "failed", text };
-    void this.postNotice("error", text);
-  }
-  /** Validates and handles one message from the webview (also the test API's simulated messages). */
-  async receive(raw) {
-    const parsed = parseWebviewToHost(raw);
-    if (!parsed.ok) {
-      this.deps.log.warn(`[webview->host] rejected message: ${parsed.error}`);
-      return;
-    }
-    await this.handle(parsed.value);
-  }
-  /**
-   * Hands a message to the webview and resolves at once: it never waits for the message to arrive. VS Code keeps the
-   * messages for a webview that is still loading and resolves `postMessage` only once that webview is ready, and it
-   * creates the webview of a panel restored after a window reload only after the serializer's
-   * `deserializeWebviewPanel` has resolved. Waiting for delivery on that path waited forever (the restored board
-   * stayed a blank tab). Nothing here needs delivery: a webview that is still loading says "ready" once it runs, and
-   * the session then publishes again. The log and `onPost` learn whether the message arrived once VS Code says so.
-   * Resolves false only when the board is closed.
-   */
-  post(message2) {
-    if (this.disposed) return Promise.resolve(false);
-    let delivery;
-    try {
-      delivery = this.panel.webview.postMessage(message2);
-    } catch {
-      delivery = Promise.resolve(false);
-    }
-    void Promise.resolve(delivery).then(
-      (delivered) => this.reportPost(message2, delivered === true),
-      () => this.reportPost(message2, false)
-    );
-    return Promise.resolve(true);
-  }
-  reveal() {
-    this.panel.reveal();
-  }
-  dispose() {
-    if (this.disposed) return;
-    this.disposed = true;
-    this.session?.dispose();
-    for (const disposable of this.disposables.splice(0)) disposable.dispose();
-    this.panel.dispose();
-    this.deps.log.info(`board closed: ${this.root ?? "sample"}`);
-    this.disposeEmitter.fire();
-    this.disposeEmitter.dispose();
-  }
-  // ---------------------------------------------------------------------------------------------
-  reportPost(message2, delivered) {
-    const what = message2.type === "graph" ? `graph "${message2.payload.graph.subject}" v${message2.payload.graph.version}` : message2.type;
-    const line = `[host->webview] ${what}: ${delivered ? "delivered" : "not delivered (the board was closed or its webview was replaced)"}`;
-    if (message2.type === "graph" || message2.type === "workspace" || message2.type === "history") this.deps.log.debug(line);
-    else this.deps.log.info(`${line} ${JSON.stringify(message2.payload).slice(0, 300)}`);
-    this.deps.onPost(this.root, message2, delivered, this.panel);
-  }
-  async handle(message2) {
-    const line = `[webview->host] ${message2.type} ${JSON.stringify(message2.payload).slice(0, 500)}`;
-    if (message2.type === "diagnostic" && message2.payload.level === "error") this.deps.log.error(line);
-    else if (message2.type === "diagnostic" && message2.payload.level === "warn") this.deps.log.warn(line);
-    else this.deps.log.info(line);
-    this.deps.onMessage(this.root, message2);
-    switch (this.mode.kind) {
-      case "loading":
-        this.mode.queued.push(message2);
-        return;
-      case "session":
-        return this.mode.session.handle(message2);
-      case "sample":
-        if (message2.type === "ready") return this.postSample();
-        if (message2.type === "select" || message2.type === "diagnostic" || message2.type === "copyText") {
-          if (message2.type === "copyText") {
-            await vscode.env.clipboard.writeText(message2.payload.text);
-            await this.postNotice("info", "Copied");
-          }
-          return;
-        }
-        await this.postNotice("info", SAMPLE_ACTION_NOTICE);
-        return;
-      case "failed":
-        if (message2.type === "ready") await this.postNotice("error", this.mode.text);
-        return;
-    }
-  }
-  async postSample() {
-    if (this.mode.kind !== "sample") return;
-    const { graph, notice: notice2 } = this.mode;
-    await this.post(hostMessage("graph", { graph }));
-    if (notice2) await this.postNotice(notice2.level, notice2.text);
-  }
-  postNotice(level, text) {
-    return this.post(hostMessage("notice", { id: `p${Date.now().toString(36)}-${++this.notices}`, level, text, undoable: false }));
-  }
-};
-
-// src/logic/boardSession.ts
-init_import_meta_url();
-
-// src/logic/actionMapping.ts
-init_import_meta_url();
-var ACTION_MESSAGE_TYPES = [
-  "addNode",
-  "kindChange",
-  "theseSuffice",
-  "editNode",
-  "deleteNode",
-  "reorder",
-  "createSubject",
-  "addArrows",
-  "removeArrows",
-  "setFromNothing",
-  "claimPending",
-  "moveCards"
-];
-function isActionMessage(message2) {
-  return ACTION_MESSAGE_TYPES.includes(message2.type);
-}
-function toBoardAction(message2, subject2) {
-  switch (message2.type) {
-    case "addNode": {
-      const { type, naturalName, rationale, stance: stance2, source, position: position2 } = message2.payload;
-      return {
-        kind: "add-node",
-        subject: subject2,
-        type,
-        naturalName,
-        ...rationale !== void 0 ? { rationale } : {},
-        ...stance2 !== void 0 ? { stance: stance2 } : {},
-        ...source !== void 0 ? { source } : {},
-        ...position2 !== void 0 ? { position: { x: position2.x, y: position2.y } } : {}
-      };
-    }
-    case "kindChange": {
-      const { id: id2, to, beforeId, dependents, rationale, confirmedDependents } = message2.payload;
-      return {
-        kind: "change-kind",
-        id: id2,
-        to,
-        beforeId,
-        ...dependents !== void 0 ? { dependents } : {},
-        ...confirmedDependents !== void 0 ? { confirmedDependents: [...confirmedDependents] } : {},
-        ...rationale !== void 0 ? { rationale } : {}
-      };
-    }
-    case "theseSuffice": {
-      const { premises, target } = message2.payload;
-      if (premises.length === 0) return void 0;
-      return { kind: "set-premises", target, premises: [...premises] };
-    }
-    case "editNode": {
-      const { id: id2, field, value } = message2.payload;
-      return { kind: "edit-node", id: id2, field, value };
-    }
-    case "deleteNode": {
-      const { id: id2, confirmed } = message2.payload;
-      return { kind: "delete-node", id: id2, ...confirmed ? { confirmed } : {} };
-    }
-    case "reorder": {
-      const { id: id2, column, beforeId } = message2.payload;
-      return { kind: "reorder", id: id2, column, beforeId };
-    }
-    case "createSubject":
-      return { kind: "create-subject", name: message2.payload.name };
-    // Spec v4 slice 1b. `confirmed`: the user saw the impact (an axiom becoming a proposition, A16's used arrows);
-    // without it core answers needs-confirmation when there is something to confirm.
-    case "addArrows": {
-      const { target, sources, confirmed } = message2.payload;
-      return { kind: "add-arrows", target, sources: [...sources], ...confirmed ? { confirmed } : {} };
-    }
-    case "removeArrows": {
-      const { arrows, marks, confirmed } = message2.payload;
-      return {
-        kind: "remove-arrows",
-        arrows: arrows.map(({ source, target }) => ({ source, target })),
-        ...marks !== void 0 && marks.length > 0 ? { marks: [...marks] } : {},
-        ...confirmed ? { confirmed } : {}
-      };
-    }
-    case "setFromNothing": {
-      const { id: id2, on, confirmed } = message2.payload;
-      return { kind: "set-from-nothing", id: id2, on, ...confirmed ? { confirmed } : {} };
-    }
-    case "claimPending":
-      return { kind: "claim-pending", id: message2.payload.id };
-    case "moveCards": {
-      const positions = {};
-      for (const [id2, { x, y }] of Object.entries(message2.payload.positions)) positions[id2] = { x, y };
-      return { kind: "move-cards", positions };
-    }
-  }
-}
-function requestIdOf(message2) {
-  const payload = message2.payload;
-  return typeof payload.requestId === "string" ? payload.requestId : void 0;
-}
-var SELF_EVIDENT_NOT_YET = 'A proof from no premises is a Claude run: mark the card "follows from nothing", select the mark and press "Formalize for dependencies". To declare premises, draw arrows into the card.';
-
-// src/logic/proposalPreview.ts
-init_import_meta_url();
-var PROPOSAL_SCHEME = "telelean-proposal";
-function proposalDiffTitle(input2) {
-  if (input2.file !== void 0) return `Raw Lean diff: ${input2.file.slice(input2.file.lastIndexOf("/") + 1)}`;
-  if (input2.subject === void 0) return "Raw Lean diff";
-  return `Raw Lean diff: ${input2.subject}${input2.round !== void 0 ? ` (round ${input2.round})` : ""}`;
-}
-function proposalRows(diff, previewId) {
-  return diff.files.map((file2) => {
-    const side = (name, text) => text === null ? void 0 : { key: `preview=${previewId}&side=${name}&run=${diff.runId}&proposal=${diff.proposalId}`, path: file2.path, text };
-    const left = side("base", file2.before);
-    const right = side("proposal", file2.after);
-    return { path: file2.path, ...left ? { left } : {}, ...right ? { right } : {} };
-  });
-}
-var EXPIRED_PROPOSAL_TEXT = "// This raw Lean diff of Claude's proposal is no longer available (it was opened in an earlier session, or many diffs ago).\n// Open it again from the board: Raw Lean diff\u2026.\n";
-
 // src/logic/runs.ts
-init_import_meta_url();
-var path11 = __toESM(require("node:path"));
 function isRunRequest(message2) {
   return RUN_MESSAGE_TYPES.includes(message2.type);
 }
 var RUNS_UNAVAILABLE = "Claude runs are not available in this window.";
-var CONSENT_KEY_PREFIX = "telelean.claudeConsent.";
-function consentKey(rootKey) {
-  return `${CONSENT_KEY_PREFIX}${rootKey}`;
+var CONSENT_FILE = "consent.json";
+async function canonicalRoot(root) {
+  try {
+    return await (0, import_promises5.realpath)(root);
+  } catch {
+    return path11.resolve(root);
+  }
+}
+async function consentText(root) {
+  return `${JSON.stringify({ format: "telelean-consent", version: 1, claude: true, root: await canonicalRoot(root) })}
+`;
+}
+function consentPath(root) {
+  return path11.join(runsDirOf(root), CONSENT_FILE);
+}
+async function hasConsent(root) {
+  try {
+    return await (0, import_promises5.readFile)(consentPath(root), "utf8") === await consentText(root);
+  } catch {
+    return false;
+  }
+}
+async function rememberConsent(root) {
+  await ensureRunsDir(runsDirOf(root));
+  await (0, import_promises5.writeFile)(consentPath(root), await consentText(root), { encoding: "utf8", mode: 384 });
+}
+async function forgetConsent(root) {
+  await (0, import_promises5.rm)(consentPath(root), { force: true });
 }
 var CONSENT_MESSAGE = "Run Claude on this model?";
 var CONSENT_DETAIL = "telelean sends this subject's cards (sentences, reasons, Lean statements), its vocabulary and your recorded answers, plus any model file Claude reads, to Anthropic through your Claude Code login (your claude.ai subscription; no API key).";
@@ -28064,7 +28111,7 @@ async function runInitialize(folder, ports, options = {}) {
 
 // src/logic/modelPaths.ts
 init_import_meta_url();
-var import_promises5 = require("node:fs/promises");
+var import_promises6 = require("node:fs/promises");
 var path13 = __toESM(require("node:path"));
 var OutsideRootError = class extends Error {
   constructor(file2, reason) {
@@ -28091,15 +28138,15 @@ function resolveInsideRoot(root, file2) {
   if (!isInside(root, absPath)) throw new OutsideRootError(file2, "outside the model root");
   return absPath;
 }
-async function resolveModelFile(root, file2, realpath3 = import_promises5.realpath) {
+async function resolveModelFile(root, file2, realpath5 = import_promises6.realpath) {
   const absPath = resolveInsideRoot(root, file2);
   let real;
   try {
-    real = await realpath3(absPath);
+    real = await realpath5(absPath);
   } catch {
     return absPath;
   }
-  const realRoot = await realpath3(root).catch(() => root);
+  const realRoot = await realpath5(root).catch(() => root);
   if (!isInside(realRoot, real)) throw new OutsideRootError(file2, "links outside the model root");
   return absPath;
 }
@@ -28111,7 +28158,7 @@ function rootOfPath(roots, absPath) {
   return best;
 }
 var IGNORED_DIRS = /* @__PURE__ */ new Set([".lake", ".git", "node_modules"]);
-var IGNORED_SIDECARS = [".telelean/graph.json", ".telelean/frozen/", ".telelean/sessions/"];
+var IGNORED_SIDECARS = [".telelean/graph.json", ".telelean/frozen/", ".telelean/sessions/", ".telelean/runs/"];
 var PROJECT_FILES2 = /* @__PURE__ */ new Set(["lakefile.toml", "lakefile.lean", "lean-toolchain", "lake-manifest.json"]);
 function classifyModelPath(root, absPath) {
   const rel = relativeModelPath(root, absPath);
@@ -28119,7 +28166,7 @@ function classifyModelPath(root, absPath) {
   const segments2 = rel.split("/");
   if (segments2.some((s) => IGNORED_DIRS.has(s))) return void 0;
   if (rel.startsWith(".telelean/")) {
-    if (IGNORED_SIDECARS.some((ignored) => ignored.endsWith("/") ? rel.startsWith(ignored) : rel === ignored)) return void 0;
+    if (IGNORED_SIDECARS.some((ignored) => ignored.endsWith("/") ? rel.startsWith(ignored) || rel === ignored.slice(0, -1) : rel === ignored)) return void 0;
     if (segments2.length === 2 && rel.endsWith(".tmp")) return void 0;
     return { path: rel, kind: "sidecar", refresh: false };
   }
@@ -28413,16 +28460,16 @@ var Diff = class {
       }
     }
   }
-  addToPath(path35, added, removed, oldPosInc, options) {
-    const last = path35.lastComponent;
+  addToPath(path36, added, removed, oldPosInc, options) {
+    const last = path36.lastComponent;
     if (last && !options.oneChangePerToken && last.added === added && last.removed === removed) {
       return {
-        oldPos: path35.oldPos + oldPosInc,
+        oldPos: path36.oldPos + oldPosInc,
         lastComponent: { count: last.count + 1, added, removed, previousComponent: last.previousComponent }
       };
     } else {
       return {
-        oldPos: path35.oldPos + oldPosInc,
+        oldPos: path36.oldPos + oldPosInc,
         lastComponent: { count: 1, added, removed, previousComponent: last }
       };
     }
@@ -29375,7 +29422,7 @@ var CheckedEditApplier = class {
    */
   async recoverRefused(changes, label3) {
     const { root, text, log, onWillWrite } = this.options;
-    const read = (path35) => text.read(path35).catch(() => void 0);
+    const read = (path36) => text.read(path36).catch(() => void 0);
     const applied = [];
     const elsewhere = [];
     for (const change of changes) {
@@ -29414,7 +29461,7 @@ var CheckedEditApplier = class {
 
 // src/logic/textSource.ts
 init_import_meta_url();
-var import_promises6 = require("node:fs/promises");
+var import_promises7 = require("node:fs/promises");
 function createTextSource(root, ports) {
   return {
     async read(file2) {
@@ -29427,7 +29474,7 @@ function createTextSource(root, ports) {
 }
 async function readTextFile(absPath) {
   try {
-    const text = await (0, import_promises6.readFile)(absPath, "utf8");
+    const text = await (0, import_promises7.readFile)(absPath, "utf8");
     return text.charCodeAt(0) === 65279 ? text.slice(1) : text;
   } catch (error62) {
     const code2 = error62.code;
@@ -29573,8 +29620,8 @@ var PreviewStore = class {
   get(uriPath, query) {
     return this.texts.get(this.documentKey(uriPath.replace(/^\/+/, ""), query));
   }
-  documentKey(path35, query) {
-    return `${query}\0${path35}`;
+  documentKey(path36, query) {
+    return `${query}\0${path36}`;
   }
 };
 var EXPIRED_PREVIEW_TEXT = "// This telelean history preview is no longer available (it was opened in an earlier session, or many previews ago).\n// Open it again from the board: History \u25B8 Preview.\n";
@@ -29658,7 +29705,7 @@ var PathBatcher = class {
   pending = /* @__PURE__ */ new Set();
   timer;
   add(paths) {
-    for (const path35 of paths) this.pending.add(path35);
+    for (const path36 of paths) this.pending.add(path36);
     if (this.pending.size === 0) return;
     if (this.timer !== void 0) clearTimeout(this.timer);
     this.timer = setTimeout(() => this.flush(), this.delayMs);
@@ -29674,7 +29721,7 @@ var PathBatcher = class {
   }
   /** Drops `paths` from the pending set (they are being handled another way). */
   drop(paths) {
-    for (const path35 of paths) this.pending.delete(path35);
+    for (const path36 of paths) this.pending.delete(path36);
   }
   get size() {
     return this.pending.size;
@@ -29695,7 +29742,7 @@ var SelfWrites = class {
   seq = 0;
   entries = /* @__PURE__ */ new Map();
   record(writes) {
-    for (const path35 of [...this.entries.keys()]) this.fresh(path35);
+    for (const path36 of [...this.entries.keys()]) this.fresh(path36);
     const until = this.now() + this.ttlMs;
     for (const write of writes) {
       const entry = this.fresh(write.absPath) ?? { texts: [], floor: { editor: 0, disk: 0 } };
@@ -29809,10 +29856,10 @@ var WorkspaceRegistry = class {
     const pending = [...this.entries.values()].map((entry) => this.disposeRuns(entry)).filter(isThenable);
     if (pending.length === 0) return;
     let timer;
-    const timeout = new Promise((resolve3) => {
+    const timeout = new Promise((resolve4) => {
       timer = setTimeout(() => {
         this.deps.log("warn", `${pending.length} run manager(s) did not finish disposing within ${timeoutMs} ms`);
-        resolve3();
+        resolve4();
       }, timeoutMs);
     });
     await Promise.race([Promise.allSettled(pending).then(() => void 0), timeout]);
@@ -29964,14 +30011,14 @@ init_import_meta_url();
 
 // ../runner/src/gate/engine.ts
 init_import_meta_url();
-var import_node_crypto5 = require("node:crypto");
-var import_promises8 = require("node:fs/promises");
+var import_node_crypto4 = require("node:crypto");
+var import_promises9 = require("node:fs/promises");
 var import_node_path12 = __toESM(require("node:path"), 1);
 var import_node_perf_hooks2 = require("node:perf_hooks");
 
 // ../runner/src/lean/comparator.ts
 init_import_meta_url();
-var import_promises7 = require("node:fs/promises");
+var import_promises8 = require("node:fs/promises");
 var import_node_path11 = __toESM(require("node:path"), 1);
 var PRIMITIVE_TARGETS = [
   "Nat.add",
@@ -30040,14 +30087,14 @@ async function removeDeclarations(dir, files, names2) {
     if (pending.size === 0) break;
     if (!rel.endsWith(".lean")) continue;
     const file2 = import_node_path11.default.join(dir, rel);
-    const text = await (0, import_promises7.readFile)(file2, "utf8");
+    const text = await (0, import_promises8.readFile)(file2, "utf8");
     const parsed = parseLeanFile(rel.split(import_node_path11.default.sep).join("/"), text);
     const here = [...pending].filter((name) => findDecl(parsed, name) !== void 0);
     if (here.length === 0) continue;
     const ops = here.map((name) => ({ op: "remove-decl", name, archive: false }));
     const result = applyLeanOps(parsed, ops);
     if (result.problems.length > 0) throw new Error(`cannot remove ${here.join(", ")} from the frozen copy: ${result.problems.join(" ")}`);
-    await (0, import_promises7.writeFile)(file2, applyTextEdits(text, result.edits), "utf8");
+    await (0, import_promises8.writeFile)(file2, applyTextEdits(text, result.edits), "utf8");
     for (const name of here) pending.delete(name);
     changed.push(rel);
   }
@@ -30069,12 +30116,12 @@ async function freezeChallenge(options) {
   const copy = await createShadow(options.snapshotDir, options.freezeDir);
   if (options.removeDecls !== void 0 && options.removeDecls.length > 0) await removeDeclarations(copy.dir, copy.files, options.removeDecls);
   const challengeFile = import_node_path11.default.join(copy.dir, modulePath(options.challengeModule));
-  const existing = await (0, import_promises7.readFile)(challengeFile, "utf8").catch(() => void 0);
+  const existing = await (0, import_promises8.readFile)(challengeFile, "utf8").catch(() => void 0);
   if (existing !== void 0 && !existing.startsWith(CHALLENGE_MARKER)) {
     throw new Error(`${modulePath(options.challengeModule)} exists in the snapshot and was not generated by telelean; refusing to overwrite it`);
   }
-  await (0, import_promises7.mkdir)(import_node_path11.default.dirname(challengeFile), { recursive: true });
-  await (0, import_promises7.writeFile)(challengeFile, generateChallengeModule(options.imports, options.targets), "utf8");
+  await (0, import_promises8.mkdir)(import_node_path11.default.dirname(challengeFile), { recursive: true });
+  await (0, import_promises8.writeFile)(challengeFile, generateChallengeModule(options.imports, options.targets), "utf8");
   const toolchain = options.run?.toolchain ?? resolveToolchain();
   const lake = toolchainExe(toolchain, "lake");
   const build = await runLean({ ...options.run, toolchain, shadowDir: copy.dir, argv: [lake, "build", options.challengeModule] });
@@ -30084,7 +30131,7 @@ async function freezeChallenge(options) {
   const theoremNames = options.targets.map((t) => t.theorem);
   const definitionNames = options.definitionNames ?? [];
   const exportTargets = comparatorExportTargets({ theoremNames, permittedAxioms: options.permittedAxioms, definitionNames });
-  await (0, import_promises7.mkdir)(import_node_path11.default.dirname(options.exportPath), { recursive: true });
+  await (0, import_promises8.mkdir)(import_node_path11.default.dirname(options.exportPath), { recursive: true });
   const exported = await runLean({
     ...options.run,
     toolchain,
@@ -30093,7 +30140,7 @@ async function freezeChallenge(options) {
     env: { ...options.run?.env, LEAN_ABORT_ON_PANIC: "1" },
     stdoutFile: options.exportPath
   });
-  const size = await (0, import_promises7.stat)(options.exportPath).then((s) => s.size, () => 0);
+  const size = await (0, import_promises8.stat)(options.exportPath).then((s) => s.size, () => 0);
   if (exported.status !== "ok" || size === 0) {
     return {
       ok: false,
@@ -30198,7 +30245,7 @@ async function runComparator(options) {
   assertModuleName(options.solutionModule);
   const { freeze } = options;
   const workDir = import_node_path11.default.resolve(options.workDir);
-  await (0, import_promises7.mkdir)(workDir, { recursive: true });
+  await (0, import_promises8.mkdir)(workDir, { recursive: true });
   const configPath = import_node_path11.default.join(workDir, "comparator.json");
   const config2 = {
     challenge_module: freeze.challengeModule,
@@ -30207,7 +30254,7 @@ async function runComparator(options) {
     definition_names: freeze.definitionNames,
     permitted_axioms: freeze.permittedAxioms
   };
-  await (0, import_promises7.writeFile)(configPath, `${JSON.stringify(config2, null, 2)}
+  await (0, import_promises8.writeFile)(configPath, `${JSON.stringify(config2, null, 2)}
 `, "utf8");
   const exportPath = import_node_path11.default.resolve(freeze.exportPath);
   const exportDir = import_node_path11.default.dirname(exportPath);
@@ -30584,7 +30631,7 @@ function readRenderScratch(scratch, names2, messages) {
 
 // ../runner/src/gate/session.ts
 init_import_meta_url();
-var import_node_crypto4 = require("node:crypto");
+var import_node_crypto3 = require("node:crypto");
 var collapse = (text) => text.replace(/\s+/gu, " ").trim();
 function sameNames(a, b) {
   const x = new Set(a);
@@ -30713,11 +30760,11 @@ function relianceKey(draft, model, targetStatement, b1, proofConsts = []) {
     complete: [statement.complete, reached.complete],
     meaning: names2.map((n) => [n, meaningOf(model, n, true)])
   };
-  return (0, import_node_crypto4.createHash)("sha256").update(JSON.stringify(content)).digest("hex");
+  return (0, import_node_crypto3.createHash)("sha256").update(JSON.stringify(content)).digest("hex");
 }
 function sessionContextKey(s) {
   const parts = [s.inferences, s.ledger, s.items, s.premises, s.ended, s.rejectedArrows, s.scope ?? null, s.stepStartCommit ?? null, s.noAlternative ?? null];
-  return (0, import_node_crypto4.createHash)("sha256").update(JSON.stringify(parts)).digest("hex");
+  return (0, import_node_crypto3.createHash)("sha256").update(JSON.stringify(parts)).digest("hex");
 }
 function declText(model, name) {
   for (const file2 of model.files.values()) {
@@ -30818,7 +30865,7 @@ function validatePremise(premise) {
   }
 }
 function filesKey(files) {
-  const hash2 = (0, import_node_crypto5.createHash)("sha256");
+  const hash2 = (0, import_node_crypto4.createHash)("sha256");
   for (const p of [...files.keys()].sort()) hash2.update(`${p}\0${files.get(p) ?? ""}\0`);
   return hash2.digest("hex");
 }
@@ -30980,7 +31027,7 @@ var Engine = class {
     if (this.baseFactsCache.has(runDir)) return this.baseFactsCache.get(runDir) ?? void 0;
     let stored = null;
     try {
-      const json3 = JSON.parse(await (0, import_promises8.readFile)(import_node_path12.default.join(runDir, BASE_FACTS_FILE), "utf8"));
+      const json3 = JSON.parse(await (0, import_promises9.readFile)(import_node_path12.default.join(runDir, BASE_FACTS_FILE), "utf8"));
       const facts = json3["facts"];
       if (json3["format"] === BASE_FACTS_FORMAT && typeof json3["commit"] === "string" && typeof facts === "object" && facts !== null && facts.format === "telelean-lean-facts") {
         stored = { commit: json3["commit"], facts };
@@ -30994,9 +31041,9 @@ var Engine = class {
   async saveBaseFacts(shadow, commit, facts) {
     const file2 = import_node_path12.default.join(shadow.paths.runDir, BASE_FACTS_FILE);
     const temp = `${file2}.${process.pid}.tmp`;
-    await (0, import_promises8.writeFile)(temp, `${JSON.stringify({ format: BASE_FACTS_FORMAT, version: 1, commit, facts })}
+    await (0, import_promises9.writeFile)(temp, `${JSON.stringify({ format: BASE_FACTS_FORMAT, version: 1, commit, facts })}
 `, "utf8");
-    await (0, import_promises8.rename)(temp, file2);
+    await (0, import_promises9.rename)(temp, file2);
     remember(this.baseFactsCache, shadow.paths.runDir, { commit, facts }, RUN_CACHE_SIZE);
   }
   /** B for the rules (the base commit, or `ctx.baseCommit`): its files, and its model with B's facts when kept. */
@@ -31114,12 +31161,12 @@ var Engine = class {
   }
   /** `<parent>/<n>` for the next free n (1, 2, …), created. */
   async nextDir(parent) {
-    await (0, import_promises8.mkdir)(parent, { recursive: true });
-    let n = 1 + Math.max(0, ...(await (0, import_promises8.readdir)(parent)).map((name) => /^\d+$/u.test(name) ? Number(name) : 0));
+    await (0, import_promises9.mkdir)(parent, { recursive: true });
+    let n = 1 + Math.max(0, ...(await (0, import_promises9.readdir)(parent)).map((name) => /^\d+$/u.test(name) ? Number(name) : 0));
     for (; ; ) {
       const dir = import_node_path12.default.join(parent, String(n));
       try {
-        await (0, import_promises8.mkdir)(dir);
+        await (0, import_promises9.mkdir)(dir);
         return dir;
       } catch (error62) {
         if (error62.code !== "EEXIST") throw error62;
@@ -31157,7 +31204,7 @@ var Engine = class {
         return { environment: `telelean could not prepare the frozen statements: ${error62.message}` };
       }
     });
-    await (0, import_promises8.rm)(import_node_path12.default.join(dir, "project", ".lake"), { recursive: true, force: true });
+    await (0, import_promises9.rm)(import_node_path12.default.join(dir, "project", ".lake"), { recursive: true, force: true });
     if ("environment" in outcome) return outcome;
     if (!outcome.result.ok) {
       const run = outcome.result.export ?? outcome.result.build;
@@ -32223,7 +32270,7 @@ function createLeanCheckEngine(options = {}) {
 init_import_meta_url();
 var import_node_child_process4 = require("node:child_process");
 var import_node_fs10 = require("node:fs");
-var import_promises9 = require("node:fs/promises");
+var import_promises10 = require("node:fs/promises");
 var import_node_os3 = __toESM(require("node:os"), 1);
 var import_node_path14 = __toESM(require("node:path"), 1);
 var import_node_url3 = require("node:url");
@@ -33478,10 +33525,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path35) {
-  if (!path35)
+function getElementAtPath(obj, path36) {
+  if (!path36)
     return obj;
-  return path35.reduce((acc, key) => acc?.[key], obj);
+  return path36.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -33821,11 +33868,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path35, issues) {
+function prefixIssues(path36, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path35);
+    iss.path.unshift(path36);
     return iss;
   });
 }
@@ -34291,16 +34338,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path35 = []) => {
+  const processError = (error63, path36 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path35, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path36, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path35, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path36, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path35, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path36, ...issue2.path]);
       } else {
-        const fullpath = [...path35, ...issue2.path];
+        const fullpath = [...path36, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -34339,17 +34386,17 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error63, path35 = []) => {
+  const processError = (error63, path36 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path35, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path36, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path35, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path36, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path35, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path36, ...issue2.path]);
       } else {
-        const fullpath = [...path35, ...issue2.path];
+        const fullpath = [...path36, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -34388,8 +34435,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path35 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path35) {
+  const path36 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path36) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -37742,7 +37789,7 @@ var recursive = /* @__PURE__ */ new WeakMap();
 var NONE = 0;
 var ASSUMED = 1;
 var PROVEN = 2;
-function isRecursive(inst, stack, resolve3) {
+function isRecursive(inst, stack, resolve4) {
   const cached2 = recursive.get(inst);
   if (cached2 !== void 0)
     return cached2 ? PROVEN : NONE;
@@ -37752,7 +37799,7 @@ function isRecursive(inst, stack, resolve3) {
   let result = NONE;
   const check2 = (child) => {
     if (result !== PROVEN && child?._zod) {
-      const answer = isRecursive(child, stack, resolve3);
+      const answer = isRecursive(child, stack, resolve4);
       if (answer > result)
         result = answer;
     }
@@ -37763,7 +37810,7 @@ function isRecursive(inst, stack, resolve3) {
       const desc = Object.getOwnPropertyDescriptor(sh, key);
       if (spread && !desc.enumerable)
         continue;
-      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve3) : NONE;
+      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve4) : NONE;
       if (child > answer)
         answer = child;
     }
@@ -37827,7 +37874,7 @@ function isRecursive(inst, stack, resolve3) {
       break;
     // `$ZodLazy` caches its inner on the def, so a resolved edge is followed exactly
     case "lazy": {
-      const inner = def._cachedInner ?? (resolve3 ? inst._zod.innerType : void 0);
+      const inner = def._cachedInner ?? (resolve4 ? inst._zod.innerType : void 0);
       merge2(inner ? isRecursive(inner, stack, false) : ASSUMED);
       break;
     }
@@ -51623,13 +51670,13 @@ function resolveRef(ref2, ctx) {
   if (!ref2.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path35 = ref2.slice(1).split("/").filter(Boolean);
-  if (path35.length === 0) {
+  const path36 = ref2.slice(1).split("/").filter(Boolean);
+  if (path36.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path35[0] === defsKey) {
-    const key = path35[1] === void 0 ? void 0 : decodeJSONPointerSegment(path35[1]);
+  if (path36[0] === defsKey) {
+    const key = path36[1] === void 0 ? void 0 : decodeJSONPointerSegment(path36[1]);
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref2}`);
     }
@@ -52751,9 +52798,9 @@ function buildClaudeSettings(args) {
   };
 }
 async function writeConfinementFiles(opts) {
-  await (0, import_promises9.mkdir)(opts.runDir, { recursive: true, mode: 448 });
-  const rootReal = await (0, import_promises9.realpath)(opts.shadowDir);
-  const runReal = await (0, import_promises9.realpath)(opts.runDir);
+  await (0, import_promises10.mkdir)(opts.runDir, { recursive: true, mode: 448 });
+  const rootReal = await (0, import_promises10.realpath)(opts.shadowDir);
+  const runReal = await (0, import_promises10.realpath)(opts.runDir);
   const rel = import_node_path14.default.relative(rootReal, runReal);
   if (rel === "" || !rel.startsWith("..") && !import_node_path14.default.isAbsolute(rel)) {
     throw new Error(`the run directory (${runReal}) must not be inside the shadow workspace (${rootReal})`);
@@ -52770,12 +52817,12 @@ async function writeConfinementFiles(opts) {
     rootReal,
     cliFences: opts.cliFences ?? true
   });
-  await (0, import_promises9.writeFile)(policyPath, `${JSON.stringify(policy, null, 2)}
+  await (0, import_promises10.writeFile)(policyPath, `${JSON.stringify(policy, null, 2)}
 `, { mode: 384 });
-  await (0, import_promises9.writeFile)(settingsPath, `${JSON.stringify(settings, null, 2)}
+  await (0, import_promises10.writeFile)(settingsPath, `${JSON.stringify(settings, null, 2)}
 `, { mode: 384 });
-  await (0, import_promises9.writeFile)(logPath, "", { mode: 384, flag: "a" });
-  await (0, import_promises9.chmod)(logPath, 384);
+  await (0, import_promises10.writeFile)(logPath, "", { mode: 384, flag: "a" });
+  await (0, import_promises10.chmod)(logPath, 384);
   return { rootReal, settingsPath, policyPath, logPath, guardScriptPath: guardScriptPath2, settings, policy };
 }
 var GUARD_SELFTEST_FILE = "telelean-guard-selftest.lean";
@@ -52808,7 +52855,7 @@ async function selfTestGuard(files, opts) {
   return { ok: problems.length === 0, problems, probes, durationMs: Date.now() - started };
 }
 function runHookOnce(hook, input2, opts) {
-  return new Promise((resolve3) => {
+  return new Promise((resolve4) => {
     let settled = false;
     let stdout = "";
     let stderr = "";
@@ -52817,7 +52864,7 @@ function runHookOnce(hook, input2, opts) {
       if (settled) return;
       settled = true;
       if (timer) clearTimeout(timer);
-      resolve3(r);
+      resolve4(r);
     };
     let child;
     try {
@@ -52888,7 +52935,7 @@ init_import_meta_url();
 
 // ../runner/src/proposal/sidecarStore.ts
 init_import_meta_url();
-var import_promises10 = require("node:fs/promises");
+var import_promises11 = require("node:fs/promises");
 var import_node_path15 = __toESM(require("node:path"), 1);
 var tempCounter = 0;
 var queues = /* @__PURE__ */ new Map();
@@ -52904,7 +52951,7 @@ function serially(file2, job) {
 }
 async function readOrNull(file2) {
   try {
-    return await (0, import_promises10.readFile)(file2, "utf8");
+    return await (0, import_promises11.readFile)(file2, "utf8");
   } catch (error62) {
     const code2 = error62.code;
     if (code2 === "ENOENT" || code2 === "ENOTDIR") return null;
@@ -52951,21 +52998,21 @@ var DiskSidecarStore = class {
     const file2 = import_node_path15.default.join(base, decisionsPath(checkSubject(subject2)));
     return serially(file2, async () => {
       const next = this.core.serializeDecisionsFile(this.core.addDecisions(this.core.parseDecisionsFile(await readOrNull(file2)), records));
-      await (0, import_promises10.mkdir)(import_node_path15.default.dirname(file2), { recursive: true });
+      await (0, import_promises11.mkdir)(import_node_path15.default.dirname(file2), { recursive: true });
       const tempDir = import_node_path15.default.join(base, TELELEAN_DIR);
-      await (0, import_promises10.mkdir)(tempDir, { recursive: true });
+      await (0, import_promises11.mkdir)(tempDir, { recursive: true });
       const temp = import_node_path15.default.join(tempDir, `decisions-${subject2}.${process.pid}-${++tempCounter}.tmp`);
       try {
-        const handle = await (0, import_promises10.open)(temp, "wx", 420);
+        const handle = await (0, import_promises11.open)(temp, "wx", 420);
         try {
           await handle.writeFile(next, "utf8");
           await handle.sync();
         } finally {
           await handle.close();
         }
-        await (0, import_promises10.rename)(temp, file2);
+        await (0, import_promises11.rename)(temp, file2);
       } catch (error62) {
-        await (0, import_promises10.rm)(temp, { force: true }).catch(() => void 0);
+        await (0, import_promises11.rm)(temp, { force: true }).catch(() => void 0);
         throw error62;
       }
     });
@@ -52983,8 +53030,8 @@ var DiskSidecarStore = class {
     if (/[\r\n]/.test(text)) throw new Error("an attempts.jsonl line must not contain a line break");
     const file2 = import_node_path15.default.join(root, attemptsPath(subject2));
     return serially(file2, async () => {
-      await (0, import_promises10.mkdir)(import_node_path15.default.dirname(file2), { recursive: true });
-      const handle = await (0, import_promises10.open)(file2, "a+", 420);
+      await (0, import_promises11.mkdir)(import_node_path15.default.dirname(file2), { recursive: true });
+      const handle = await (0, import_promises11.open)(file2, "a+", 420);
       try {
         const { size } = await handle.stat();
         let prefix = "";
@@ -53004,11 +53051,11 @@ var DiskSidecarStore = class {
 
 // ../runner/src/proposal/service.ts
 init_import_meta_url();
-var import_node_crypto6 = require("node:crypto");
+var import_node_crypto5 = require("node:crypto");
 
 // ../runner/src/workspace/files.ts
 init_import_meta_url();
-var import_promises11 = require("node:fs/promises");
+var import_promises12 = require("node:fs/promises");
 var import_node_path16 = __toESM(require("node:path"), 1);
 var SKIPPED_DIRS2 = /* @__PURE__ */ new Set(["node_modules", ".lake"]);
 var LAYOUT_PATH_PATTERN = /^\.telelean\/subjects\/([^/]+)\/layout\.json$/;
@@ -53016,14 +53063,14 @@ var ENDORSEMENTS_PATH_PATTERN = /^\.telelean\/subjects\/([^/]+)\/endorsements\.j
 var SIDECAR_PATH_PATTERN = /^\.telelean\/subjects\/([^/]+)\//;
 async function isFile(absolute) {
   try {
-    return (await (0, import_promises11.lstat)(absolute)).isFile();
+    return (await (0, import_promises12.lstat)(absolute)).isFile();
   } catch {
     return false;
   }
 }
 async function entriesOf(absolute) {
   try {
-    return await (0, import_promises11.readdir)(absolute, { withFileTypes: true });
+    return await (0, import_promises12.readdir)(absolute, { withFileTypes: true });
   } catch {
     return [];
   }
@@ -53262,14 +53309,14 @@ function proposalFileOf(change) {
   const kind = change.before === null ? "added" : change.after === null ? "deleted" : "modified";
   return { path: change.path, change: kind, ...lineCounts2(change.before, change.after) };
 }
-function mergeFile(path35, base, shown2, real) {
+function mergeFile(path36, base, shown2, real) {
   if (shown2 === base) return { ok: true, text: real };
   if (real === base || real === shown2) return { ok: true, text: shown2 };
   if (base === null || shown2 === null || real === null) return { ok: false };
-  const patch = structuredPatch(path35, path35, base, shown2, void 0, void 0, { context: MERGE_CONTEXT_LINES });
+  const patch = structuredPatch(path36, path36, base, shown2, void 0, void 0, { context: MERGE_CONTEXT_LINES });
   const merged = applyPatch(real, patch, { fuzzFactor: 0 });
   if (merged !== false) return { ok: true, text: merged };
-  const board = path35.endsWith(".lean") ? boardEditsOf(path35, base, real) : void 0;
+  const board = path36.endsWith(".lean") ? boardEditsOf(path36, base, real) : void 0;
   if (board === void 0) return { ok: false };
   const onRest = board.rest === base ? shown2 : applyPatch(board.rest, patch, { fuzzFactor: 0 });
   if (onRest === false) return { ok: false };
@@ -53291,9 +53338,9 @@ function inverseMerge(commit, parent, head) {
 }
 var blockText = (file2, block2) => file2.text.slice(block2.span.start, block2.span.end);
 var escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-function boardEditsOf(path35, base, real) {
-  const b = parseLeanFile(path35, base);
-  const r = parseLeanFile(path35, real);
+function boardEditsOf(path36, base, real) {
+  const b = parseLeanFile(path36, base);
+  const r = parseLeanFile(path36, real);
   const baseBlocks = new Map(b.blocks.map((block2) => [block2.id, block2]));
   if (baseBlocks.size !== b.blocks.length || new Set(r.blocks.map((block2) => block2.id)).size !== r.blocks.length) return void 0;
   const rationales = [];
@@ -53307,7 +53354,7 @@ function boardEditsOf(path35, base, real) {
   }
   let rest = rationaleEdits.length > 0 ? applyTextEdits(real, rationaleEdits) : real;
   if (rationales.length > 0) {
-    const restFile = parseLeanFile(path35, rest);
+    const restFile = parseLeanFile(path36, rest);
     for (const { id: id2 } of rationales) {
       const now = restFile.blocks.find((block2) => block2.id === id2);
       const was = baseBlocks.get(id2);
@@ -53328,7 +53375,7 @@ function boardEditsOf(path35, base, real) {
     after = { start: block2.span.start, namespace };
   }
   for (const card of cards) {
-    const file2 = parseLeanFile(path35, rest);
+    const file2 = parseLeanFile(path36, rest);
     const block2 = file2.blocks.find((x) => x.id === card.id);
     if (block2 === void 0) return void 0;
     rest = applyTextEdits(rest, removeBlockEdits(file2, block2));
@@ -53339,17 +53386,17 @@ function boardEditsOf(path35, base, real) {
     restore(merged) {
       let text = merged;
       for (const { id: id2, value } of rationales) {
-        const file2 = parseLeanFile(path35, text);
+        const file2 = parseLeanFile(path36, text);
         const block2 = file2.blocks.find((x) => x.id === id2);
         if (block2 === void 0) return void 0;
         text = applyTextEdits(text, setBlockField(file2, block2, "rationale", value));
       }
       for (const card of cards) {
-        const file2 = parseLeanFile(path35, text);
+        const file2 = parseLeanFile(path36, text);
         if (file2.blocks.some((x) => x.id === card.id)) return void 0;
         text = applyTextEdits(text, insertBlockEdits(file2, card.text, { kind: "end-of-namespace", namespace: card.namespace }));
       }
-      const out = parseLeanFile(path35, text);
+      const out = parseLeanFile(path36, text);
       for (const card of cards) {
         const block2 = out.blocks.find((x) => x.id === card.id);
         if (block2 === void 0 || blockText(out, block2) !== card.text || block2.binding.mode !== "none") return void 0;
@@ -53372,7 +53419,7 @@ function conflictMessage(files) {
 // ../runner/src/proposal/service.ts
 var PURE_SIGNATURE = /* @__PURE__ */ new Set(["sort", "predicate", "function", "constant"]);
 function sha256(text) {
-  return (0, import_node_crypto6.createHash)("sha256").update(text, "utf8").digest("hex");
+  return (0, import_node_crypto5.createHash)("sha256").update(text, "utf8").digest("hex");
 }
 function errorMessage2(error62) {
   return error62 instanceof Error ? error62.message : String(error62);
@@ -53719,7 +53766,7 @@ var import_node_fs12 = require("node:fs");
 init_import_meta_url();
 var import_node_child_process5 = require("node:child_process");
 var import_node_fs11 = require("node:fs");
-var import_promises12 = require("node:fs/promises");
+var import_promises13 = require("node:fs/promises");
 var import_node_os4 = __toESM(require("node:os"), 1);
 var import_node_path17 = __toESM(require("node:path"), 1);
 var MIN_CLAUDE_VERSION = "2.1.295";
@@ -53737,7 +53784,7 @@ function compareVersions(a, b) {
 }
 async function isExecutable(p) {
   try {
-    await (0, import_promises12.access)(p, import_node_fs11.constants.X_OK);
+    await (0, import_promises13.access)(p, import_node_fs11.constants.X_OK);
     return true;
   } catch {
     return false;
@@ -53749,7 +53796,7 @@ async function findExtensionBinaries(extensionDirs) {
   for (const dir of extensionDirs) {
     let entries4;
     try {
-      entries4 = await (0, import_promises12.readdir)(dir);
+      entries4 = await (0, import_promises13.readdir)(dir);
     } catch {
       continue;
     }
@@ -53783,7 +53830,7 @@ async function listCandidates(opts = {}) {
   return candidates.filter((c) => seen.has(c.path) ? false : (seen.add(c.path), true));
 }
 function runClaudeVersion(binaryPath, env3) {
-  return new Promise((resolve3, reject) => {
+  return new Promise((resolve4, reject) => {
     (0, import_node_child_process5.execFile)(
       binaryPath,
       ["--version"],
@@ -53792,7 +53839,7 @@ function runClaudeVersion(binaryPath, env3) {
         maxBuffer: 64 * 1024,
         env: env3 ?? { PATH: process.env.PATH ?? "/usr/bin:/bin", HOME: import_node_os4.default.homedir() }
       },
-      (err, stdout) => err ? reject(err) : resolve3(stdout)
+      (err, stdout) => err ? reject(err) : resolve4(stdout)
     );
   });
 }
@@ -53829,12 +53876,13 @@ async function resolveClaudeBinary(opts = {}) {
 // ../runner/src/llm/claudeCli.ts
 init_import_meta_url();
 var import_node_child_process6 = require("node:child_process");
-var import_node_crypto8 = require("node:crypto");
-var import_promises13 = require("node:fs/promises");
-var import_node_path18 = __toESM(require("node:path"), 1);
+var import_node_crypto7 = require("node:crypto");
+var import_promises14 = require("node:fs/promises");
+var import_node_path19 = __toESM(require("node:path"), 1);
 
 // ../runner/src/llm/env.ts
 init_import_meta_url();
+var import_node_path18 = __toESM(require("node:path"), 1);
 var STRIP_PREFIXES = [
   "ANTHROPIC_",
   // API keys, auth tokens, base URLs, Bedrock/Vertex/Foundry/AWS/Google settings, models
@@ -53866,7 +53914,10 @@ var STRIP_PREFIXES = [
   // snap-packaged VS Code
   "GTK_",
   "GDK_",
-  "GIO_"
+  "GIO_",
+  // 2k2 (D2-113): GIT_DIR, GIT_WORK_TREE and the like from the host would point git anywhere; telelean sets its own
+  // GIT_CEILING_DIRECTORIES (gitCeilingEnv).
+  "GIT_"
 ];
 var STRIP_EXACT = [
   "NODE_OPTIONS",
@@ -53887,6 +53938,10 @@ var KEEP = [
   "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"
   // the user's single switch for all of the above (and other non-essential traffic)
 ];
+function gitCeilingEnv(wsReal) {
+  const runDir = import_node_path18.default.dirname(wsReal);
+  return runDir.includes(":") ? { GIT_DIR: import_node_path18.default.join(runDir, "no-git-repository") } : { GIT_CEILING_DIRECTORIES: runDir };
+}
 var TOOL_CALL_TIMEOUT_MS = 24 * 60 * 60 * 1e3;
 function teleleanClaudeEnv(clientApp = "telelean/0.0.0") {
   return {
@@ -54244,7 +54299,7 @@ var StreamNormalizer = class {
 
 // ../runner/src/llm/toolServer.ts
 init_import_meta_url();
-var import_node_crypto7 = require("node:crypto");
+var import_node_crypto6 = require("node:crypto");
 var import_node_http3 = __toESM(require("node:http"), 1);
 
 // ../../node_modules/@modelcontextprotocol/sdk/dist/esm/server/mcp.js
@@ -54644,8 +54699,8 @@ function getErrorMap2() {
 // ../../node_modules/zod/v3/helpers/parseUtil.js
 init_import_meta_url();
 var makeIssue = (params) => {
-  const { data, path: path35, errorMaps, issueData } = params;
-  const fullPath = [...path35, ...issueData.path || []];
+  const { data, path: path36, errorMaps, issueData } = params;
+  const fullPath = [...path36, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -54764,11 +54819,11 @@ var errorUtil;
 
 // ../../node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path35, key) {
+  constructor(parent, value, path36, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path35;
+    this._path = path36;
     this._key = key;
   }
   get path() {
@@ -58326,11 +58381,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path35) {
-  if (path35.length === 0) {
+function getDotPath(path36) {
+  if (path36.length === 0) {
     return "object root";
   }
-  return path35.reduce((acc, seg, index) => {
+  return path36.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -61846,7 +61901,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve3) => setTimeout(resolve3, pollInterval));
+        await new Promise((resolve4) => setTimeout(resolve4, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error62) {
@@ -61863,7 +61918,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve3, reject) => {
+    return new Promise((resolve4, reject) => {
       const earlyReject = (error62) => {
         reject(error62);
       };
@@ -61941,7 +61996,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve3(parseResult.data);
+            resolve4(parseResult.data);
           }
         } catch (error62) {
           reject(error62);
@@ -62203,12 +62258,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve3, reject) => {
+    return new Promise((resolve4, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve3, interval);
+      const timeoutId = setTimeout(resolve4, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -63357,7 +63412,7 @@ var McpServer = class {
     let task = createTaskResult.task;
     const pollInterval = task.pollInterval ?? 5e3;
     while (task.status !== "completed" && task.status !== "failed" && task.status !== "cancelled") {
-      await new Promise((resolve3) => setTimeout(resolve3, pollInterval));
+      await new Promise((resolve4) => setTimeout(resolve4, pollInterval));
       const updatedTask = await extra.taskStore.getTask(taskId);
       if (!updatedTask) {
         throw new McpError(ErrorCode.InternalError, `Task ${taskId} not found during polling`);
@@ -64351,7 +64406,7 @@ var readBodyDirect = (request) => {
     request[bodyBufferKey] = buffered;
     return Promise.resolve(buffered);
   }
-  const promise2 = new Promise((resolve3, reject) => {
+  const promise2 = new Promise((resolve4, reject) => {
     const chunks = [];
     let settled = false;
     const finish = (callback) => {
@@ -64369,7 +64424,7 @@ var readBodyDirect = (request) => {
         else if (recovered === void 0) reject(error62 ?? normalizeAbortError(request, incoming));
         else {
           request[bodyBufferKey] = recovered;
-          resolve3(recovered);
+          resolve4(recovered);
         }
       });
       return true;
@@ -64381,7 +64436,7 @@ var readBodyDirect = (request) => {
       finish(() => {
         const buffer = chunks.length === 1 ? chunks[0] : Buffer.concat(chunks);
         request[bodyBufferKey] = buffer;
-        resolve3(buffer);
+        resolve4(buffer);
       });
     };
     const onError = (error62) => {
@@ -64928,7 +64983,7 @@ var responseViaResponseObject = async (res, outgoing, options = {}) => {
         });
         if (!chunk) {
           if (i === 1) {
-            await new Promise((resolve3) => setTimeout(resolve3));
+            await new Promise((resolve4) => setTimeout(resolve4));
             maxReadCount = 3;
             continue;
           }
@@ -65669,9 +65724,9 @@ data:
       const initRequest = messages.find((m) => isInitializeRequest(m));
       const clientProtocolVersion = initRequest ? initRequest.params.protocolVersion : req.headers.get("mcp-protocol-version") ?? DEFAULT_NEGOTIATED_PROTOCOL_VERSION;
       if (this._enableJsonResponse) {
-        return new Promise((resolve3) => {
+        return new Promise((resolve4) => {
           this._streamMapping.set(streamId, {
-            resolveJson: resolve3,
+            resolveJson: resolve4,
             cleanup: () => {
               this._streamMapping.delete(streamId);
             }
@@ -66062,7 +66117,7 @@ var StreamableHTTPServerTransport = class {
 // ../runner/src/llm/toolServer.ts
 var MAX_BODY_BYTES = 4 * 1024 * 1024;
 function readBody(req) {
-  return new Promise((resolve3, reject) => {
+  return new Promise((resolve4, reject) => {
     const chunks = [];
     let size = 0;
     req.on("data", (c) => {
@@ -66074,7 +66129,7 @@ function readBody(req) {
       }
       chunks.push(c);
     });
-    req.on("end", () => resolve3(Buffer.concat(chunks).toString("utf8")));
+    req.on("end", () => resolve4(Buffer.concat(chunks).toString("utf8")));
     req.on("error", reject);
   });
 }
@@ -66083,7 +66138,7 @@ function plain(res, status, message2) {
   res.end(JSON.stringify({ jsonrpc: "2.0", error: { code: -32e3, message: message2 }, id: null }));
 }
 async function startToolServer(opts) {
-  const token2 = opts.token ?? (0, import_node_crypto7.randomBytes)(32).toString("hex");
+  const token2 = opts.token ?? (0, import_node_crypto6.randomBytes)(32).toString("hex");
   const expected = Buffer.from(`Bearer ${token2}`);
   const progressIntervalMs = opts.progressIntervalMs ?? 3e4;
   const toolTimeoutMs = opts.toolTimeoutMs ?? TOOL_CALL_TIMEOUT_MS;
@@ -66096,7 +66151,7 @@ async function startToolServer(opts) {
   const tokenOk = (header) => {
     if (header === void 0) return false;
     const given = Buffer.from(header);
-    return given.length === expected.length && (0, import_node_crypto7.timingSafeEqual)(given, expected);
+    return given.length === expected.length && (0, import_node_crypto6.timingSafeEqual)(given, expected);
   };
   const startProgress = (tool, extra) => {
     const progressToken = extra._meta?.progressToken;
@@ -66205,7 +66260,7 @@ async function startToolServer(opts) {
       if (!isInitializeRequest(body)) return plain(res, 400, "no session id and not an initialize request");
       const server = createMcpServer();
       const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => (0, import_node_crypto7.randomUUID)(),
+        sessionIdGenerator: () => (0, import_node_crypto6.randomUUID)(),
         onsessioninitialized: (id2) => {
           sessions.set(id2, { transport, server });
           log("session", { event: "open", session: id2 });
@@ -66233,11 +66288,11 @@ async function startToolServer(opts) {
       else res.end();
     });
   });
-  await new Promise((resolve3, reject) => {
+  await new Promise((resolve4, reject) => {
     httpServer.once("error", reject);
     httpServer.listen(opts.port ?? 0, "127.0.0.1", () => {
       httpServer.off("error", reject);
-      resolve3();
+      resolve4();
     });
   });
   port = httpServer.address().port;
@@ -66263,8 +66318,8 @@ async function startToolServer(opts) {
       closed2 ??= (async () => {
         await Promise.allSettled([...sessions.values()].map((s) => s.transport.close()));
         sessions.clear();
-        await new Promise((resolve3) => {
-          httpServer.close(() => resolve3());
+        await new Promise((resolve4) => {
+          httpServer.close(() => resolve4());
           httpServer.closeAllConnections();
         });
       })();
@@ -66360,7 +66415,7 @@ var AsyncQueue = class {
       next: () => {
         if (this.items.length > 0) return Promise.resolve({ value: this.items.shift(), done: false });
         if (this.ended) return Promise.resolve({ value: void 0, done: true });
-        return new Promise((resolve3) => this.waiters.push(resolve3));
+        return new Promise((resolve4) => this.waiters.push(resolve4));
       },
       return: () => Promise.resolve({ value: void 0, done: true })
     };
@@ -66393,14 +66448,14 @@ var ClaudeCliBackend = class {
     if (o.guardScriptPath !== void 0) confinementOpts.guardScriptPath = o.guardScriptPath;
     if (o.hookRuntime !== void 0) confinementOpts.runtime = o.hookRuntime;
     const confinement = await writeConfinementFiles(confinementOpts);
-    const runDir = import_node_path18.default.dirname(confinement.settingsPath);
-    const mcpConfigPath = import_node_path18.default.join(runDir, "mcp-config.json");
-    const systemPromptPath = import_node_path18.default.join(runDir, "system-prompt.md");
-    await (0, import_promises13.writeFile)(mcpConfigPath, `${JSON.stringify(toolServer.mcpConfigDocument(), null, 2)}
+    const runDir = import_node_path19.default.dirname(confinement.settingsPath);
+    const mcpConfigPath = import_node_path19.default.join(runDir, "mcp-config.json");
+    const systemPromptPath = import_node_path19.default.join(runDir, "system-prompt.md");
+    await (0, import_promises14.writeFile)(mcpConfigPath, `${JSON.stringify(toolServer.mcpConfigDocument(), null, 2)}
 `, { mode: 384 });
-    await (0, import_promises13.writeFile)(systemPromptPath, cfg.systemPrompt, { mode: 384 });
+    await (0, import_promises14.writeFile)(systemPromptPath, cfg.systemPrompt, { mode: 384 });
     const resuming = cfg.resumeSessionId !== void 0;
-    const sessionId = cfg.resumeSessionId ?? cfg.sessionId ?? (0, import_node_crypto8.randomUUID)();
+    const sessionId = cfg.resumeSessionId ?? cfg.sessionId ?? (0, import_node_crypto7.randomUUID)();
     const claudeArgs = buildClaudeArgs({
       model: cfg.model,
       effort: cfg.effort,
@@ -66417,8 +66472,7 @@ var ClaudeCliBackend = class {
       includeHookEvents: o.includeHookEvents ?? true,
       permissionPromptsNone: o.permissionPromptsNone ?? true
     });
-    const sanitizeOpts = {};
-    if (o.envSet !== void 0) sanitizeOpts.set = o.envSet;
+    const sanitizeOpts = { set: { ...o.envSet ?? {}, ...gitCeilingEnv(confinement.rootReal) } };
     if (o.clientApp !== void 0) sanitizeOpts.clientApp = o.clientApp;
     const sanitized = sanitizeClaudeEnv(o.baseEnv ?? process.env, sanitizeOpts);
     const command = o.launcher?.command ?? o.binary.path;
@@ -66513,13 +66567,13 @@ var ClaudeCliSession = class {
     child.stderr?.on("data", (chunk) => this.onStderr(chunk));
     child.stdin?.on("error", () => {
     });
-    this.exited = new Promise((resolve3) => {
+    this.exited = new Promise((resolve4) => {
       const done = (code2, signal) => {
         if (this.exitInfo) return;
         this.exitInfo = { code: code2, signal };
         liveSessions.delete(this);
         this.onExit();
-        resolve3(this.exitInfo);
+        resolve4(this.exitInfo);
       };
       child.once("exit", done);
       child.once("error", (err) => {
@@ -66549,14 +66603,14 @@ var ClaudeCliSession = class {
   control(subtype, extra = {}, timeoutMs = this.opts.controlTimeoutMs) {
     if (this.exitInfo) return Promise.reject(this.exitError(`control request ${subtype}`));
     this.controlSeq += 1;
-    const requestId2 = `telelean-${this.controlSeq}-${(0, import_node_crypto8.randomBytes)(3).toString("hex")}`;
-    return new Promise((resolve3, reject) => {
+    const requestId2 = `telelean-${this.controlSeq}-${(0, import_node_crypto7.randomBytes)(3).toString("hex")}`;
+    return new Promise((resolve4, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(requestId2);
         reject(new LlmHarnessError("protocol", `no reply to control request ${subtype} within ${timeoutMs} ms`));
       }, timeoutMs);
       timer.unref();
-      this.pending.set(requestId2, { resolve: resolve3, reject, timer });
+      this.pending.set(requestId2, { resolve: resolve4, reject, timer });
       this.writeLine({ type: "control_request", request_id: requestId2, request: { subtype, ...extra } });
     });
   }
@@ -66599,7 +66653,7 @@ var ClaudeCliSession = class {
       type: "user",
       message: { role: "user", content: turn },
       parent_tool_use_id: null,
-      uuid: (0, import_node_crypto8.randomUUID)()
+      uuid: (0, import_node_crypto7.randomUUID)()
     });
     return queue;
   }
@@ -66770,21 +66824,22 @@ async function createClaudeBackendImpl(settings) {
 
 // ../runner/src/run/manager.ts
 init_import_meta_url();
-var import_node_path22 = __toESM(require("node:path"), 1);
+var import_promises18 = require("node:fs/promises");
+var import_node_path23 = __toESM(require("node:path"), 1);
 
 // ../runner/src/run/legacy.ts
 init_import_meta_url();
 
 // ../runner/src/run/session.ts
 init_import_meta_url();
-var import_promises16 = require("node:fs/promises");
-var import_node_path21 = __toESM(require("node:path"), 1);
+var import_promises17 = require("node:fs/promises");
+var import_node_path22 = __toESM(require("node:path"), 1);
 
 // ../runner/src/run/persist.ts
 init_import_meta_url();
 var import_node_fs13 = require("node:fs");
-var import_promises14 = require("node:fs/promises");
-var import_node_path19 = __toESM(require("node:path"), 1);
+var import_promises15 = require("node:fs/promises");
+var import_node_path20 = __toESM(require("node:path"), 1);
 
 // ../runner/src/run/types.ts
 init_import_meta_url();
@@ -66801,10 +66856,10 @@ async function writeJsonAtomic(file2, value) {
 async function writeTextAtomic(file2, text) {
   const temp = `${file2}.tmp-${process.pid}-${++tempCounter2}`;
   try {
-    await (0, import_promises14.writeFile)(temp, text, { encoding: "utf8", mode: 384 });
-    await (0, import_promises14.rename)(temp, file2);
+    await (0, import_promises15.writeFile)(temp, text, { encoding: "utf8", mode: 384 });
+    await (0, import_promises15.rename)(temp, file2);
   } catch (error62) {
-    await (0, import_promises14.rm)(temp, { force: true }).catch(() => void 0);
+    await (0, import_promises15.rm)(temp, { force: true }).catch(() => void 0);
     throw error62;
   }
 }
@@ -66825,26 +66880,26 @@ function isPersistedRun(value) {
 }
 async function readPersistedRun(file2) {
   try {
-    const parsed = JSON.parse(await (0, import_promises14.readFile)(file2, "utf8"));
+    const parsed = JSON.parse(await (0, import_promises15.readFile)(file2, "utf8"));
     return isPersistedRun(parsed) ? parsed : void 0;
   } catch {
     return void 0;
   }
 }
-async function scanRuns(runsDir, root) {
-  const base = import_node_path19.default.join(runsDir, rootKeyOf(root));
+async function scanRuns(runsDir) {
+  const base = runsDir;
   let entries4;
   try {
-    entries4 = await (0, import_promises14.readdir)(base);
+    entries4 = await (0, import_promises15.readdir)(base);
   } catch {
     return [];
   }
   const out = [];
   for (const name of entries4) {
-    const runDir = import_node_path19.default.join(base, name);
-    const stateFile = import_node_path19.default.join(runDir, "run.json");
+    const runDir = import_node_path20.default.join(base, name);
+    const stateFile = import_node_path20.default.join(runDir, "run.json");
     const run = await readPersistedRun(stateFile);
-    if (run !== void 0 && import_node_path19.default.resolve(run.root) === import_node_path19.default.resolve(root)) out.push({ runDir, stateFile, run });
+    if (run !== void 0) out.push({ runDir, stateFile, run });
   }
   const time3 = (r) => Date.parse(r.run.view.updatedAt) || Date.parse(r.run.view.startedAt) || 0;
   return out.sort((a, b) => time3(b) - time3(a));
@@ -66913,7 +66968,7 @@ var RunFiles = class {
   transcript(entry) {
     const line = `${JSON.stringify(entry)}
 `;
-    return this.enqueue(() => (0, import_promises14.appendFile)(this.transcriptFile, line, { encoding: "utf8", mode: 384 }));
+    return this.enqueue(() => (0, import_promises15.appendFile)(this.transcriptFile, line, { encoding: "utf8", mode: 384 }));
   }
   /** Resolves once every queued write has finished. */
   flush() {
@@ -67311,9 +67366,10 @@ function stepTurn(i) {
 
 // ../runner/src/run/step.ts
 init_import_meta_url();
-var import_node_crypto9 = require("node:crypto");
-var import_promises15 = require("node:fs/promises");
-var import_node_path20 = __toESM(require("node:path"), 1);
+var import_node_crypto8 = require("node:crypto");
+var import_node_fs14 = require("node:fs");
+var import_promises16 = require("node:fs/promises");
+var import_node_path21 = __toESM(require("node:path"), 1);
 var MAX_ACTIVITY = 200;
 var MAX_NOTICES = 100;
 var ENVIRONMENT_RETRY_MS = 3e4;
@@ -67386,6 +67442,17 @@ var LEAN_KEYWORDS = /* @__PURE__ */ new Set([
 var LEAN_NAME = /^[A-Za-z_][A-Za-z0-9_']*$/;
 var refused2 = (code2, error62) => ({ ok: false, code: code2, error: error62 });
 var okOutcome = (label3) => ({ ok: true, label: label3, undoable: false });
+function movedRunNotice(from) {
+  return `This run was started in another folder (${from}), so it cannot continue here. Stop ends it: your files are not changed and nothing is recorded.`;
+}
+var MOVED_RUN_REFUSAL = "This run was started in another folder, so it can only be stopped.";
+function heldNotice(h) {
+  return h.kind === "moved" ? movedRunNotice(h.from) : `This run's folder no longer exists (${h.dir}), so it cannot continue. Stop ends it: your files are not changed and nothing is recorded.`;
+}
+var DELETED_RUN_REFUSAL = "This run's folder no longer exists, so it can only be stopped.";
+function heldRefusal(h) {
+  return h.kind === "moved" ? MOVED_RUN_REFUSAL : DELETED_RUN_REFUSAL;
+}
 function errorText(e) {
   return e instanceof Error ? e.message : String(e);
 }
@@ -67518,7 +67585,7 @@ function stripGhost(g) {
   return view;
 }
 function defaultRunId() {
-  return `r${Date.now().toString(36)}${(0, import_node_crypto9.randomBytes)(3).toString("hex")}`;
+  return `r${Date.now().toString(36)}${(0, import_node_crypto8.randomBytes)(3).toString("hex")}`;
 }
 function newRound(turnsBase = 0) {
   return { capInterrupted: false, nudged: false, messageIds: /* @__PURE__ */ new Set(), turnsBase, attemptRecorded: false };
@@ -67564,6 +67631,12 @@ var ActiveRun = class {
   roundLoop;
   /** Slice 2: an edit session's in-memory state (session.ts); undefined for a run of version 1. */
   live;
+  /**
+   * 2k2 (D2-111, D2-121, U4): set when the run cannot continue here (`HeldRun`: run.json names another folder, or the run's
+   * own folder is gone): the run is held, never continued; only Stop or Exit end it, recording nothing (manager.ts
+   * `endHeld`). A held run is never `live`.
+   */
+  held;
   get view() {
     return this.p.view;
   }
@@ -67618,7 +67691,7 @@ var StepRunner = class {
   }
   /** Runs a user action unless another one is still being handled (Cancel is never locked out). */
   makeRun(p, shadow) {
-    const files = new RunFiles(import_node_path20.default.join(shadow.paths.runDir, "run.json"), import_node_path20.default.join(shadow.paths.sessionDir, "transcript.jsonl"), (m) => this.log("warn", m));
+    const files = new RunFiles(import_node_path21.default.join(shadow.paths.runDir, "run.json"), import_node_path21.default.join(shadow.paths.sessionDir, "transcript.jsonl"), (m) => this.log("warn", m));
     const run = new ActiveRun(p, shadow, files);
     run.toolHost = this.makeToolHost(run);
     return run;
@@ -67698,7 +67771,31 @@ var StepRunner = class {
     }
   }
   live(run) {
-    return !this.disposed && !run.ended && !run.stopping && run === this.run;
+    return !this.disposed && !run.ended && !run.stopping && run === this.run && run.held === void 0;
+  }
+  /**
+   * 2k2 (A-F1 of the review, D2-121, U1): a live run whose own folder (`<root>/.telelean/runs/<runId>/`) is gone, because
+   * the model folder was deleted (and maybe made again at the same path), is held at once: nothing of it may be written
+   * into what stands there now (its attempt records, decisions or files), and nothing of it is shown but the notice. Its
+   * Claude session and Lean jobs are stopped; nothing is recorded, as nothing can be (run.json has no folder). Called
+   * wherever the run is looked at or acted on, and by the drift timer (the deletion's file events wake it).
+   */
+  checkGone(run) {
+    if (run === void 0 || run.held !== void 0 || run.ended || this.disposed || run !== this.run) return;
+    const dir = run.shadow.paths.runDir;
+    if ((0, import_node_fs14.existsSync)(dir)) return;
+    run.held = { kind: "deleted", dir };
+    this.log("warn", `the folder of run ${run.runId} no longer exists (${dir}): the run is held, and only Stop ends it`);
+    this.stopClock(run);
+    run.abort.abort();
+    if (run.ask !== void 0) {
+      const ask = run.ask;
+      run.ask = void 0;
+      ask.reject(new Error("the run folder was deleted"));
+    }
+    void this.closeSession(run, true).catch(() => void 0);
+    void Promise.resolve().then(() => (this.o.services.cancelLean ?? cancelRun)(run.runId)).catch(() => void 0);
+    queueMicrotask(() => this.emit({ run: true, proposal: true, session: true }));
   }
   assertLive(run) {
     if (!this.live(run)) throw new Error("This run has ended; stop here.");
@@ -67708,7 +67805,9 @@ var StepRunner = class {
     return run !== void 0 && !run.ended && nonTerminal(run.view.state) ? run : void 0;
   }
   runFor(runId2) {
-    return this.run !== void 0 && this.run.runId === runId2 ? this.run : void 0;
+    const run = this.run !== void 0 && this.run.runId === runId2 ? this.run : void 0;
+    this.checkGone(run);
+    return run;
   }
   // ---- the agent-active clock (docs/m2-plan.md section 4.4)
   syncClock(run) {
@@ -67802,7 +67901,7 @@ var StepRunner = class {
     };
     if (settings.effort !== void 0) cfg.effort = settings.effort;
     if (resumeSessionId !== void 0) cfg.resumeSessionId = resumeSessionId;
-    else cfg.sessionId = (0, import_node_crypto9.randomUUID)();
+    else cfg.sessionId = (0, import_node_crypto8.randomUUID)();
     this.transcript(run, { kind: "session", action: resumeSessionId !== void 0 ? "resume" : "start", sessionId: resumeSessionId ?? cfg.sessionId, model: cfg.model, effort: cfg.effort });
     const session = await backend.startSession(cfg);
     if (!this.live(run)) {
@@ -68107,7 +68206,7 @@ var StepRunner = class {
   }
   async prune(run) {
     try {
-      await pruneRunDirs(this.o.runsDir, this.o.root, this.o.settings.keepRuns, [run.runId]);
+      await pruneRunDirs(runsDirOf(this.o.root), this.o.settings.keepRuns, [run.runId]);
     } catch (e) {
       if (!(e instanceof NotImplementedError)) this.log("warn", `old runs could not be pruned: ${errorText(e)}`);
     }
@@ -68119,6 +68218,7 @@ var StepRunner = class {
   async answerNow(runId2, setId, answers) {
     const run = this.runFor(runId2);
     if (run === void 0) return refused2("not-found", "That run is not active any more.");
+    if (run.held !== void 0) return refused2("conflict", heldRefusal(run.held));
     if (run.view.state !== "waiting-for-answer" || run.p.pendingAsk === void 0) return refused2("conflict", "No question of this run is waiting.");
     const pending = run.p.pendingAsk;
     if (pending.setId !== setId) return refused2("not-found", "Those questions are no longer waiting.");
@@ -68263,19 +68363,19 @@ var StepRunner = class {
   async validateFiles(run, files) {
     if (files === void 0 || files.length === 0) return void 0;
     const ws = run.shadow.paths.ws;
-    const wsReal = await (0, import_promises15.realpath)(ws).catch(() => ws);
+    const wsReal = await (0, import_promises16.realpath)(ws).catch(() => ws);
     const out = [];
     for (const f of files) {
       let rel = f.replace(/\\/g, "/");
-      if (import_node_path20.default.isAbsolute(f)) {
-        const abs = import_node_path20.default.resolve(f);
-        const inside = [ws, wsReal].map((b) => import_node_path20.default.relative(b, abs)).find((r) => r !== "" && !r.startsWith("..") && !import_node_path20.default.isAbsolute(r));
+      if (import_node_path21.default.isAbsolute(f)) {
+        const abs = import_node_path21.default.resolve(f);
+        const inside = [ws, wsReal].map((b) => import_node_path21.default.relative(b, abs)).find((r) => r !== "" && !r.startsWith("..") && !import_node_path21.default.isAbsolute(r));
         if (inside === void 0) throw new Error(`${f} is not a file of the workspace copy`);
-        rel = inside.split(import_node_path20.default.sep).join("/");
+        rel = inside.split(import_node_path21.default.sep).join("/");
       }
       if (rel.split("/").some((s) => s === "" || s === "." || s === ".." || s.startsWith("."))) throw new Error(`${f} is not a file of the workspace copy`);
       if (!rel.endsWith(".lean")) throw new Error(`${f} is not a .lean file`);
-      const st = await (0, import_promises15.lstat)(import_node_path20.default.join(ws, rel)).catch(() => void 0);
+      const st = await (0, import_promises16.lstat)(import_node_path21.default.join(ws, rel)).catch(() => void 0);
       if (st === void 0 || !st.isFile()) throw new Error(`${f} does not exist in the workspace copy`);
       out.push(rel);
     }
@@ -68399,8 +68499,8 @@ var StepRunner = class {
     run.view.pendingQuestions = view;
     this.setState(run, "waiting-for-answer");
     this.activity(run, "question", `Claude asks ${view.questions.length} question${view.questions.length === 1 ? "" : "s"}.`);
-    const answered = new Promise((resolve3, reject) => {
-      run.ask = { setId, args, resolve: resolve3, reject };
+    const answered = new Promise((resolve4, reject) => {
+      run.ask = { setId, args, resolve: resolve4, reject };
     });
     answered.catch(() => void 0);
     const onAbort = () => {
@@ -68501,11 +68601,11 @@ var StepRunner = class {
   sleep(run, ms) {
     const signal = run.abort.signal;
     if (signal.aborted) return Promise.resolve();
-    return new Promise((resolve3) => {
+    return new Promise((resolve4) => {
       const done = () => {
         clearTimeout(timer);
         signal.removeEventListener("abort", done);
-        resolve3();
+        resolve4();
       };
       const timer = setTimeout(done, ms);
       signal.addEventListener("abort", done, { once: true });
@@ -68893,7 +68993,7 @@ var SessionRunner = class extends StepRunner {
     const files = await shadow.baseFiles();
     let facts;
     try {
-      const json3 = JSON.parse(await (0, import_promises16.readFile)(import_node_path21.default.join(shadow.paths.runDir, BASE_FACTS_FILE), "utf8"));
+      const json3 = JSON.parse(await (0, import_promises17.readFile)(import_node_path22.default.join(shadow.paths.runDir, BASE_FACTS_FILE), "utf8"));
       if (json3.format === "telelean-base-facts" && json3.facts?.format === "telelean-lean-facts") facts = json3.facts;
     } catch {
       facts = void 0;
@@ -68903,7 +69003,7 @@ var SessionRunner = class extends StepRunner {
   }
   async readJudgedFacts(run) {
     try {
-      const json3 = JSON.parse(await (0, import_promises16.readFile)(import_node_path21.default.join(run.shadow.paths.runDir, JUDGED_FACTS_FILE), "utf8"));
+      const json3 = JSON.parse(await (0, import_promises17.readFile)(import_node_path22.default.join(run.shadow.paths.runDir, JUDGED_FACTS_FILE), "utf8"));
       if (json3["format"] !== JUDGED_FACTS_FORMAT || typeof json3["commit"] !== "string" || typeof json3["filesKey"] !== "string") return void 0;
       const facts = json3["facts"];
       return { commit: json3["commit"], filesKey: json3["filesKey"], ...facts !== null && facts?.format === "telelean-lean-facts" ? { facts } : {} };
@@ -68914,12 +69014,12 @@ var SessionRunner = class extends StepRunner {
   async writeJudgedFacts(run, commit, key, facts) {
     const text = `${JSON.stringify({ format: JUDGED_FACTS_FORMAT, version: 1, commit, filesKey: key, facts: facts ?? null })}
 `;
-    await writeTextAtomic(import_node_path21.default.join(run.shadow.paths.runDir, JUDGED_FACTS_FILE), text);
+    await writeTextAtomic(import_node_path22.default.join(run.shadow.paths.runDir, JUDGED_FACTS_FILE), text);
   }
   async loadRenderings(run) {
     const rt = this.runtimeOf(run);
     try {
-      const json3 = JSON.parse(await (0, import_promises16.readFile)(import_node_path21.default.join(run.shadow.paths.runDir, RENDERINGS_FILE), "utf8"));
+      const json3 = JSON.parse(await (0, import_promises17.readFile)(import_node_path22.default.join(run.shadow.paths.runDir, RENDERINGS_FILE), "utf8"));
       if (typeof json3.renderings === "object" && json3.renderings !== null) rt.renderings = json3.renderings;
     } catch {
       rt.renderings = {};
@@ -69090,7 +69190,7 @@ var SessionRunner = class extends StepRunner {
     const cliVersion = backendCliVersion(backend);
     let shadow;
     try {
-      shadow = await (services.createShadow ?? createRunShadow)({ root, runsDir: this.o.runsDir, runId: runId2, library, files, now: () => this.now(), copyBuild: settings.reuseLeanBuild === true });
+      shadow = await (services.createShadow ?? createRunShadow)({ root, runsDir: runsDirOf(root), runId: runId2, library, files, now: () => this.now(), copyBuild: settings.reuseLeanBuild === true });
     } catch (e) {
       return refused2("not-yet", `telelean could not make the run's working copy: ${errorText(e)}`);
     }
@@ -70231,7 +70331,7 @@ ${plan2}
         const key = wanted.get(r.name);
         if (key !== void 0 && r.error === void 0) rt.renderings[key] = { pretty: r.pretty, explicit: r.explicit };
       }
-      await writeTextAtomic(import_node_path21.default.join(run.shadow.paths.runDir, RENDERINGS_FILE), `${JSON.stringify({ format: "telelean-renderings", version: 1, renderings: rt.renderings })}
+      await writeTextAtomic(import_node_path22.default.join(run.shadow.paths.runDir, RENDERINGS_FILE), `${JSON.stringify({ format: "telelean-renderings", version: 1, renderings: rt.renderings })}
 `);
     } catch (e) {
       this.log("warn", `statements could not be rendered: ${errorText(e)}`);
@@ -71682,6 +71782,7 @@ var EndRunner = class extends PremiseRunner {
     this.driftTimer = setTimeout(() => {
       this.driftTimer = void 0;
       const run = this.run;
+      this.checkGone(run);
       if (run === void 0 || run.p.session === void 0 || !this.live(run) || run.p.session.phase === "applying") return;
       void this.refreshDrift(run).catch((e) => this.log("warn", `drift could not be read: ${errorText(e)}`));
     }, DRIFT_DEBOUNCE_MS);
@@ -72130,6 +72231,14 @@ var EndRunner = class extends PremiseRunner {
 
 // ../runner/src/run/manager.ts
 var NOT_A_SESSION = "This run is not an edit session.";
+async function sameFolder(recorded, root) {
+  if (import_node_path23.default.resolve(recorded) === import_node_path23.default.resolve(root)) return true;
+  try {
+    return await (0, import_promises18.realpath)(recorded) === await (0, import_promises18.realpath)(root);
+  } catch {
+    return false;
+  }
+}
 var RunManagerImpl = class extends EndRunner {
   constructor(o) {
     super(o);
@@ -72138,6 +72247,8 @@ var RunManagerImpl = class extends EndRunner {
   current() {
     const run = this.run;
     if (run === void 0) return null;
+    this.checkGone(run);
+    if (run.held !== void 0 && !run.ended) return this.heldView(run, run.held);
     if (run.saved !== void 0) {
       if (run.saved.session !== void 0) return this.sessionRunView(run.saved, run.live?.view ?? null, run.live?.viewError);
       return structuredClone(run.saved.view);
@@ -72148,6 +72259,8 @@ var RunManagerImpl = class extends EndRunner {
   }
   session() {
     const run = this.run;
+    this.checkGone(run);
+    if (run?.held !== void 0 && !run.ended) return null;
     if (run?.saved?.session === void 0) return null;
     if (isTerminalRunState(run.saved.view.state)) return null;
     const view = run.live?.view ?? null;
@@ -72167,6 +72280,7 @@ var RunManagerImpl = class extends EndRunner {
     if (request.runId !== void 0 || request.stage !== void 0) {
       const run = request.runId !== void 0 ? this.runFor(request.runId) : void 0;
       if (run === void 0) return refused2("not-found", "That run is not active any more.");
+      if (run.held !== void 0) return refused2("conflict", heldRefusal(run.held));
       if (run.p.session === void 0) return refused2("conflict", NOT_A_SESSION);
       return this.exclusive("formalizing", () => this.formalizeInStage(run, request));
     }
@@ -72227,6 +72341,7 @@ var RunManagerImpl = class extends EndRunner {
     if (run === void 0) return refused2("not-found", "That run is not active any more.");
     if (run.ended || isTerminalRunState(run.view.state)) return refused2("conflict", "This run has already ended.");
     if (run.stopping) return refused2("conflict", "This run is already being cancelled.");
+    if (run.held !== void 0) return this.endHeld(run);
     if (run.p.session !== void 0 && run.view.state !== "starting") return this.cancelStep(run);
     const inReview = run.view.state === "review";
     const session = run.session;
@@ -72255,6 +72370,7 @@ var RunManagerImpl = class extends EndRunner {
   async resumeNow(runId2) {
     const run = this.runFor(runId2);
     if (run === void 0) return refused2("not-found", "That run is not active any more.");
+    if (run.held !== void 0) return refused2("conflict", heldRefusal(run.held));
     if (run.view.state !== "interrupted") return refused2("conflict", "Only an interrupted run can be resumed.");
     if (run.p.session !== void 0 && this.activeStep(run.p.session) === void 0) return this.resumeBetweenSteps(run);
     if (!run.view.canResume || run.p.sessionId === void 0) return refused2("conflict", "This run cannot be resumed: Stop it and start a new one.");
@@ -72286,7 +72402,7 @@ var RunManagerImpl = class extends EndRunner {
   // ---- recovery and disposal (docs/m2-plan.md section 4.6)
   async recover() {
     if (this.disposed || this.activeRun() !== void 0) return;
-    const scanned = await scanRuns(this.o.runsDir, this.o.root);
+    const scanned = await scanRuns(runsDirOf(this.o.root));
     const active = scanned.filter((s) => nonTerminal(s.run.view.state));
     const [newest, ...older] = active;
     for (const old of older) {
@@ -72308,6 +72424,10 @@ var RunManagerImpl = class extends EndRunner {
     }
     if (newest === void 0) return;
     const p = newest.run;
+    if (!await sameFolder(p.root, this.o.root)) {
+      await this.holdMoved(newest);
+      return;
+    }
     if (p.proposal !== void 0 && upgradeLegacyProposal(p.proposal)) {
       this.log("info", `run ${p.view.runId}: its proposal was saved by an older telelean; it is read with the kinds AXIOM and PROPOSITION`);
     }
@@ -72363,6 +72483,7 @@ var RunManagerImpl = class extends EndRunner {
     if (this.disposed) return Promise.resolve();
     const run = this.run;
     let written = Promise.resolve();
+    if (run?.held !== void 0) run.ended = true;
     if (run !== void 0 && !run.ended) {
       this.stopClock(run);
       const v = run.view;
@@ -72390,6 +72511,65 @@ var RunManagerImpl = class extends EndRunner {
     this.disposeEnd();
     this.listeners.clear();
     return written;
+  }
+  /**
+   * 2k2 (D2-111, U4): a run whose run.json names another root (its folder was moved, renamed or copied here) is shown,
+   * not recovered: no write in flight is replayed, no judge or Lean job runs, and run.json stays as it is until Stop or
+   * Exit ends it (moved back to where it started, the run goes on).
+   */
+  async holdMoved(found) {
+    const p = found.run;
+    let shadow;
+    try {
+      shadow = await (this.o.services.openShadow ?? openRunShadow)(found.runDir, { root: this.o.root, library: p.library });
+    } catch (e) {
+      this.log("warn", `run ${p.view.runId} was started in ${p.root} and its working copy could not be opened here: ${errorText(e)}`);
+      return;
+    }
+    if (this.disposed || this.activeRun() !== void 0) return;
+    const run = this.makeRun(p, shadow);
+    run.held = { kind: "moved", from: p.root };
+    this.run = run;
+    this.log("info", `run ${p.view.runId} was started in ${p.root}: it is held (only Stop ends it)`);
+    this.emit({ run: true, proposal: true, session: true });
+  }
+  /**
+   * The RunView of a held run (D2-111, D2-121): interrupted, not resumable, no session view. It shows nothing of Claude's
+   * work, whatever the run's version (R7, D2-119): no activity, no ghosts, no freeze, no proof verdict, and one notice,
+   * the held one (`heldNotice`), as a session shows while its results are hidden (D2-10). A run of version 1 left in
+   * review, which recovery in its own folder would convert into a session with its results hidden, is held the same way.
+   * (Once Stop has ended it, a version-1 run's view is its saved one: nothing of the run is hidden any more, D2-119.)
+   */
+  heldView(run, held) {
+    const v = run.p.session !== void 0 ? this.sessionRunView(structuredClone(run.p), null) : structuredClone(run.p.view);
+    delete v.session;
+    delete v.pendingQuestions;
+    delete v.proposalId;
+    delete v.frozen;
+    v.canResume = void 0;
+    v.state = "interrupted";
+    v.activity = [];
+    v.ghosts = [];
+    if (v.verdict !== void 0 && !["cancelled", "failed", "cap-reached"].includes(v.verdict)) delete v.verdict;
+    v.notices = [{ id: `${run.runId}-moved`, at: v.updatedAt, level: "warning", kind: "interrupted", text: heldNotice(held) }];
+    return v;
+  }
+  /**
+   * Stop, or a session's Exit, on a held run (D2-111, D2-121): it ends `discarded` (a session) or `cancelled`. Only the
+   * run's own folder is written (run.json, a transcript line; for a run whose folder is gone, not even those: the files
+   * never recreate it); no attempt record, no decision and no model file is written into this folder, which the run did
+   * not start in or which is not the one it started in. As after every end, the folder's old finished runs are pruned.
+   */
+  async endHeld(run) {
+    if (run.ended || run.stopping) return refused2("conflict", "This run has already ended.");
+    run.stopping = true;
+    const session = run.p.session !== void 0;
+    delete run.p.pendingAsk;
+    delete run.p.sessionId;
+    delete run.p.undeliveredTurn;
+    this.notice(run, "info", "info", session ? REVIEW_TEXTS.exited : "You stopped the run. Your files were not changed.");
+    await this.endRun(run, session ? "discarded" : "cancelled", session ? {} : { verdict: "cancelled" });
+    return okOutcome(session ? "Session ended" : "Run cancelled");
   }
   /**
    * §3.11 (D2-16): a v1 run left in review becomes a session with one passed step: its selection the inference, the
@@ -72430,6 +72610,7 @@ var RunManagerImpl = class extends EndRunner {
   sessionRun(runId2) {
     const run = this.runFor(runId2);
     if (run === void 0 || run.ended) return refused2("not-found", "That run is not active any more.");
+    if (run.held !== void 0) return refused2("conflict", heldRefusal(run.held));
     if (run.p.session === void 0) return refused2("conflict", NOT_A_SESSION);
     return run;
   }
@@ -72475,6 +72656,8 @@ var RunManagerImpl = class extends EndRunner {
    */
   async end(runId2, decision2, stage, check2) {
     if (this.disposed) return refused2("conflict", "telelean is shutting down.");
+    const held = this.runFor(runId2);
+    if (decision2 === "exit" && held !== void 0 && held.held !== void 0 && !held.ended) return this.endHeld(held);
     const run = this.sessionRun(runId2);
     if (!(run instanceof ActiveRun)) return run;
     try {
@@ -72508,8 +72691,7 @@ var RunManagerImpl = class extends EndRunner {
   }
 };
 function createRunManagerImpl(options) {
-  if (!import_node_path22.default.isAbsolute(options.root)) throw new TypeError(`createRunManager: root must be absolute, got ${JSON.stringify(options.root)}`);
-  if (!import_node_path22.default.isAbsolute(options.runsDir)) throw new TypeError(`createRunManager: runsDir must be absolute, got ${JSON.stringify(options.runsDir)}`);
+  if (!import_node_path23.default.isAbsolute(options.root)) throw new TypeError(`createRunManager: root must be absolute, got ${JSON.stringify(options.root)}`);
   return new RunManagerImpl(options);
 }
 
@@ -72536,14 +72718,14 @@ init_import_meta_url();
 
 // ../runner/src/workspace/initialize.ts
 init_import_meta_url();
-var import_promises17 = require("node:fs/promises");
-var import_node_path24 = __toESM(require("node:path"), 1);
+var import_promises19 = require("node:fs/promises");
+var import_node_path25 = __toESM(require("node:path"), 1);
 
 // ../runner/src/workspace/git.ts
 init_import_meta_url();
 var import_node_child_process7 = require("node:child_process");
-var import_node_crypto10 = require("node:crypto");
-var import_node_path23 = __toESM(require("node:path"), 1);
+var import_node_crypto9 = require("node:crypto");
+var import_node_path24 = __toESM(require("node:path"), 1);
 var SAFE_GIT_CONFIG = [
   "-c",
   "commit.gpgsign=false",
@@ -72588,7 +72770,7 @@ function gitEnvironment(extra = {}) {
 function runGit(gitPath, args, options) {
   const argv = [...SAFE_GIT_CONFIG, ...args];
   const okCodes = options.okCodes ?? [0];
-  return new Promise((resolve3, reject) => {
+  return new Promise((resolve4, reject) => {
     let child;
     try {
       const stdin = options.input === void 0 ? "ignore" : "pipe";
@@ -72632,7 +72814,7 @@ function runGit(gitPath, args, options) {
         return;
       }
       settled = true;
-      resolve3({ stdout: Buffer.concat(out), stderr, code: exit });
+      resolve4({ stdout: Buffer.concat(out), stderr, code: exit });
     });
     if (options.input !== void 0) child.stdin?.end(options.input);
   });
@@ -72659,13 +72841,13 @@ async function discoverRepository(gitPath, root) {
   const [topLevel = "", prefixLine = "", gitDir = "", commonLine = ""] = lines;
   if (topLevel === "" || gitDir === "") throw new GitError(`unexpected git rev-parse output: ${JSON.stringify(lines.join("\n"))}`, "failed");
   const prefix = prefixLine.replace(/\/+$/, "");
-  const commonDir = commonLine === "" ? gitDir : import_node_path23.default.resolve(root, commonLine);
-  const relative3 = import_node_path23.default.relative(commonDir, gitDir).split(import_node_path23.default.sep).join("/");
-  const worktree = relative3 !== "" && !relative3.startsWith("..") && !import_node_path23.default.isAbsolute(relative3) ? relative3 : void 0;
-  return { topLevel, prefix, gitDir, ...worktree !== void 0 ? { worktree } : {}, rootKey: rootKeyOf2(prefix, worktree) };
+  const commonDir = commonLine === "" ? gitDir : import_node_path24.default.resolve(root, commonLine);
+  const relative3 = import_node_path24.default.relative(commonDir, gitDir).split(import_node_path24.default.sep).join("/");
+  const worktree = relative3 !== "" && !relative3.startsWith("..") && !import_node_path24.default.isAbsolute(relative3) ? relative3 : void 0;
+  return { topLevel, prefix, gitDir, ...worktree !== void 0 ? { worktree } : {}, rootKey: rootKeyOf(prefix, worktree) };
 }
-function rootKeyOf2(prefix, worktree) {
-  const hex3 = (text) => (0, import_node_crypto10.createHash)("sha1").update(text, "utf8").digest("hex").slice(0, 8);
+function rootKeyOf(prefix, worktree) {
+  const hex3 = (text) => (0, import_node_crypto9.createHash)("sha1").update(text, "utf8").digest("hex").slice(0, 8);
   let key;
   if (prefix === "") key = "root";
   else {
@@ -72684,18 +72866,18 @@ var SCAFFOLD_LAKEFILE_TOML = 'name = "Model"\ndefaultTargets = ["Model"]\n\n[lea
 var SCAFFOLD_LAKE_MANIFEST = '{"version": "1.3.0",\n "packagesDir": ".lake/packages",\n "packages": [],\n "name": "Model",\n "lakeDir": ".lake",\n "fixedToolchain": false}\n';
 var SCAFFOLD_LEAN_TOOLCHAIN = `${PINNED_TOOLCHAIN_NAME}
 `;
-var GITIGNORE_LINES = ["/.lake/", "/.telelean/graph.json", "/.telelean/frozen/", "/.telelean/sessions/", "/.telelean/*.tmp"];
+var GITIGNORE_LINES = ["/.lake/", "/.telelean/graph.json", "/.telelean/frozen/", "/.telelean/sessions/", "/.telelean/*.tmp", "/.telelean/runs/"];
 var LIBRARY_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 async function readText(absolute) {
   try {
-    return await (0, import_promises17.readFile)(absolute, "utf8");
+    return await (0, import_promises19.readFile)(absolute, "utf8");
   } catch {
     return void 0;
   }
 }
 async function isRegularFile(absolute) {
   try {
-    return (await (0, import_promises17.stat)(absolute)).isFile();
+    return (await (0, import_promises19.stat)(absolute)).isFile();
   } catch {
     return false;
   }
@@ -72767,7 +72949,7 @@ async function hasLeanFile(absoluteDir, depth = 0) {
   if (depth > 8) return false;
   let entries4;
   try {
-    entries4 = await (0, import_promises17.readdir)(absoluteDir, { withFileTypes: true });
+    entries4 = await (0, import_promises19.readdir)(absoluteDir, { withFileTypes: true });
   } catch {
     return false;
   }
@@ -72775,21 +72957,21 @@ async function hasLeanFile(absoluteDir, depth = 0) {
     if (entry.isFile() && entry.name.endsWith(".lean")) return true;
   }
   for (const entry of entries4) {
-    if (entry.isDirectory() && !entry.name.startsWith(".") && await hasLeanFile(import_node_path24.default.join(absoluteDir, entry.name), depth + 1)) return true;
+    if (entry.isDirectory() && !entry.name.startsWith(".") && await hasLeanFile(import_node_path25.default.join(absoluteDir, entry.name), depth + 1)) return true;
   }
   return false;
 }
 async function inspectFolder(root) {
-  const abs = import_node_path24.default.resolve(root);
+  const abs = import_node_path25.default.resolve(root);
   let entries4;
   try {
-    entries4 = await (0, import_promises17.readdir)(abs, { withFileTypes: true });
+    entries4 = await (0, import_promises19.readdir)(abs, { withFileTypes: true });
   } catch (error62) {
     return { kind: "unsupported", reason: `${abs} cannot be read: ${error62.message}` };
   }
-  const configText = await readText(import_node_path24.default.join(abs, CONFIG_PATH));
+  const configText = await readText(import_node_path25.default.join(abs, CONFIG_PATH));
   if (configText !== void 0) return { kind: "model", config: parseProjectConfig(configText) };
-  const gitignore = await readText(import_node_path24.default.join(abs, ".gitignore"));
+  const gitignore = await readText(import_node_path25.default.join(abs, ".gitignore"));
   const withGitignore = (value) => gitignore !== void 0 ? { ...value, gitignore } : value;
   const visible = entries4.filter((e) => !e.name.startsWith("."));
   if (visible.length === 0) return withGitignore({ kind: "empty" });
@@ -72812,14 +72994,14 @@ async function inspectFolder(root) {
       reason: "This folder has files but no Lake project (lakefile.toml). Initialize telelean in an empty folder, or in a Lake project."
     };
   }
-  const lakefile = readLakefileToml(await readText(import_node_path24.default.join(abs, "lakefile.toml")) ?? "");
+  const lakefile = readLakefileToml(await readText(import_node_path25.default.join(abs, "lakefile.toml")) ?? "");
   if (lakefile.requires.length > 0) return { kind: "unsupported", reason: dependencyReason(lakefile.requires) };
   if (lakefile.leanLibs.length === 0) return { kind: "unsupported", reason: "lakefile.toml declares no [[lean_lib]]: telelean keeps the model in a Lake library." };
   const library = lakefile.leanLibs[0];
   if (library === void 0 || !LIBRARY_NAME_PATTERN.test(library)) {
     return { kind: "unsupported", reason: `The first [[lean_lib]] of lakefile.toml needs a plain identifier as its name (found ${JSON.stringify(library ?? "")}).` };
   }
-  const manifestText = await readText(import_node_path24.default.join(abs, "lake-manifest.json"));
+  const manifestText = await readText(import_node_path25.default.join(abs, "lake-manifest.json"));
   if (manifestText === void 0) {
     return { kind: "unsupported", reason: "lake-manifest.json is missing: telelean checks the project in a read-only sandbox, where Lake cannot create it." };
   }
@@ -72829,11 +73011,11 @@ async function inspectFolder(root) {
   const subjects = [];
   let libraryEntries = [];
   try {
-    libraryEntries = await (0, import_promises17.readdir)(import_node_path24.default.join(abs, library), { withFileTypes: true });
+    libraryEntries = await (0, import_promises19.readdir)(import_node_path25.default.join(abs, library), { withFileTypes: true });
   } catch {
   }
   for (const entry of libraryEntries) {
-    if (entry.isDirectory() && isSubjectName(entry.name) && await hasLeanFile(import_node_path24.default.join(abs, library, entry.name))) subjects.push(entry.name);
+    if (entry.isDirectory() && isSubjectName(entry.name) && await hasLeanFile(import_node_path25.default.join(abs, library, entry.name))) subjects.push(entry.name);
   }
   return withGitignore({ kind: "lake-project", library, subjects: subjects.sort() });
 }
@@ -72885,28 +73067,28 @@ function planInitialize(options) {
 async function findModelRoots(folder, excludedDirs, maxDepth) {
   const excluded = new Set(excludedDirs);
   const roots = [];
-  const queue = [{ dir: import_node_path24.default.resolve(folder), depth: 0 }];
+  const queue = [{ dir: import_node_path25.default.resolve(folder), depth: 0 }];
   while (queue.length > 0) {
     const { dir, depth } = queue.shift() ?? { dir: "", depth: 0 };
-    if (await isRegularFile(import_node_path24.default.join(dir, CONFIG_PATH))) roots.push(dir);
+    if (await isRegularFile(import_node_path25.default.join(dir, CONFIG_PATH))) roots.push(dir);
     if (depth >= maxDepth) continue;
     let entries4;
     try {
-      entries4 = await (0, import_promises17.readdir)(dir, { withFileTypes: true });
+      entries4 = await (0, import_promises19.readdir)(dir, { withFileTypes: true });
     } catch {
       continue;
     }
     for (const entry of entries4) {
-      if (entry.isDirectory() && !entry.name.startsWith(".") && !excluded.has(entry.name)) queue.push({ dir: import_node_path24.default.join(dir, entry.name), depth: depth + 1 });
+      if (entry.isDirectory() && !entry.name.startsWith(".") && !excluded.has(entry.name)) queue.push({ dir: import_node_path25.default.join(dir, entry.name), depth: depth + 1 });
     }
   }
   return roots.sort();
 }
 async function initGitRepository(root, gitPath = "git") {
-  const abs = import_node_path24.default.resolve(root);
+  const abs = import_node_path25.default.resolve(root);
   let st;
   try {
-    st = await (0, import_promises17.stat)(abs);
+    st = await (0, import_promises19.stat)(abs);
   } catch {
     throw new Error(`${abs} does not exist`);
   }
@@ -72918,15 +73100,15 @@ async function initGitRepository(root, gitPath = "git") {
 
 // ../runner/src/workspace/modelWorkspace.ts
 init_import_meta_url();
-var import_node_crypto12 = require("node:crypto");
-var import_promises19 = require("node:fs/promises");
-var import_node_path26 = __toESM(require("node:path"), 1);
+var import_node_crypto11 = require("node:crypto");
+var import_promises21 = require("node:fs/promises");
+var import_node_path27 = __toESM(require("node:path"), 1);
 
 // ../runner/src/workspace/history.ts
 init_import_meta_url();
-var import_node_crypto11 = require("node:crypto");
-var import_promises18 = require("node:fs/promises");
-var import_node_path25 = __toESM(require("node:path"), 1);
+var import_node_crypto10 = require("node:crypto");
+var import_promises20 = require("node:fs/promises");
+var import_node_path26 = __toESM(require("node:path"), 1);
 var HistoryUnavailableError = class extends Error {
   constructor(availability) {
     super(
@@ -73174,23 +73356,23 @@ var HistoryStore = class {
   async writeTree(files, gitDir) {
     if (files.length === 0) return (await this.git(["mktree", "-z"], void 0, "")).trim();
     await this.sweepTempDirs(gitDir);
-    const dir = await (0, import_promises18.mkdtemp)(import_node_path25.default.join(gitDir, SNAPSHOT_TEMP_PREFIX));
+    const dir = await (0, import_promises20.mkdtemp)(import_node_path26.default.join(gitDir, SNAPSHOT_TEMP_PREFIX));
     try {
       const blobPaths = [];
       for (const [i, file2] of files.entries()) {
-        const blobPath = import_node_path25.default.join(dir, `blob-${i}`);
-        await (0, import_promises18.writeFile)(blobPath, file2.text, { encoding: "utf8", mode: 384 });
+        const blobPath = import_node_path26.default.join(dir, `blob-${i}`);
+        await (0, import_promises20.writeFile)(blobPath, file2.text, { encoding: "utf8", mode: 384 });
         blobPaths.push(blobPath);
       }
       const oids = (await this.git(["hash-object", "-w", "--no-filters", "--stdin-paths"], void 0, `${blobPaths.join("\n")}
 `)).trim().split("\n");
       if (oids.length !== files.length) throw new GitError(`git hash-object returned ${oids.length} ids for ${files.length} files`, "failed");
-      const index = { GIT_INDEX_FILE: import_node_path25.default.join(dir, "index") };
+      const index = { GIT_INDEX_FILE: import_node_path26.default.join(dir, "index") };
       const info = files.map((file2, i) => `100644 ${oids[i] ?? ""}	${file2.path}\0`).join("");
       await this.git(["update-index", "-z", "--index-info"], index, info);
       return (await this.git(["write-tree"], index)).trim();
     } finally {
-      await (0, import_promises18.rm)(dir, { recursive: true, force: true });
+      await (0, import_promises20.rm)(dir, { recursive: true, force: true });
     }
   }
   /** Removes `telelean-tmp-*` directories a crashed snapshot left in the git directory (once per directory). */
@@ -73199,17 +73381,17 @@ var HistoryStore = class {
     this.swept.add(gitDir);
     let names2;
     try {
-      names2 = await (0, import_promises18.readdir)(gitDir);
+      names2 = await (0, import_promises20.readdir)(gitDir);
     } catch {
       return;
     }
     const now = Date.now();
     for (const name of names2) {
       if (!name.startsWith(SNAPSHOT_TEMP_PREFIX)) continue;
-      const dir = import_node_path25.default.join(gitDir, name);
+      const dir = import_node_path26.default.join(gitDir, name);
       try {
-        const info = await (0, import_promises18.lstat)(dir);
-        if (info.isDirectory() && now - info.mtimeMs > STALE_TEMP_MS2) await (0, import_promises18.rm)(dir, { recursive: true, force: true });
+        const info = await (0, import_promises20.lstat)(dir);
+        if (info.isDirectory() && now - info.mtimeMs > STALE_TEMP_MS2) await (0, import_promises20.rm)(dir, { recursive: true, force: true });
       } catch {
       }
     }
@@ -73332,11 +73514,11 @@ function isoOfGitDate(date5) {
   return `${local}${tz.slice(0, 3)}:${tz.slice(3, 5)}`;
 }
 function digestFiles(files) {
-  const hash2 = (0, import_node_crypto11.createHash)("sha256");
+  const hash2 = (0, import_node_crypto10.createHash)("sha256");
   for (const file2 of [...files].sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0)) {
     hash2.update(file2.path, "utf8");
     hash2.update("\0");
-    hash2.update((0, import_node_crypto11.createHash)("sha256").update(file2.text, "utf8").digest("hex"));
+    hash2.update((0, import_node_crypto10.createHash)("sha256").update(file2.text, "utf8").digest("hex"));
     hash2.update("\0");
   }
   return hash2.digest("hex");
@@ -73457,7 +73639,7 @@ var graphJsonWrites = 0;
 var LAKEFILES = ["lakefile.lean", "lakefile.toml"];
 var DISPOSED = { ok: false, code: "internal", error: "The model workspace was closed." };
 function sha2562(text) {
-  return (0, import_node_crypto12.createHash)("sha256").update(text, "utf8").digest("hex");
+  return (0, import_node_crypto11.createHash)("sha256").update(text, "utf8").digest("hex");
 }
 function errorMessage3(error62) {
   return error62 instanceof Error ? error62.message : String(error62);
@@ -73554,8 +73736,8 @@ var ModelWorkspaceImpl = class {
   listeners = /* @__PURE__ */ new Set();
   disposed = false;
   constructor(options) {
-    if (!import_node_path26.default.isAbsolute(options.root)) throw new TypeError(`the model root must be an absolute path, got ${JSON.stringify(options.root)}`);
-    this.root = import_node_path26.default.resolve(options.root);
+    if (!import_node_path27.default.isAbsolute(options.root)) throw new TypeError(`the model root must be an absolute path, got ${JSON.stringify(options.root)}`);
+    this.root = import_node_path27.default.resolve(options.root);
     this.text = options.text;
     this.applier = options.applier;
     this.semanticSettings = withDefaults3(
@@ -73610,7 +73792,7 @@ var ModelWorkspaceImpl = class {
       this.log("error", `cannot list the subjects of ${this.root}: ${errorMessage3(error62)}`);
     }
     const labels = this.undoStacks.labels(subject2);
-    return { rootName: import_node_path26.default.basename(this.root), subjects, subject: subject2, undo: labels.undo, redo: labels.redo, history: await this.historyStatus() };
+    return { rootName: import_node_path27.default.basename(this.root), subjects, subject: subject2, undo: labels.undo, redo: labels.redo, history: await this.historyStatus() };
   }
   semantic() {
     return summarize({
@@ -74002,7 +74184,7 @@ var ModelWorkspaceImpl = class {
   writeGraphJson() {
     const write = async () => {
       if (this.disposed) return;
-      const target = import_node_path26.default.join(this.root, GRAPH_JSON_PATH);
+      const target = import_node_path27.default.join(this.root, GRAPH_JSON_PATH);
       const temp = `${target}.${process.pid}-${++graphJsonWrites}.tmp`;
       try {
         const json3 = this.core.toGraphJson(this.model(), {
@@ -74012,12 +74194,12 @@ var ModelWorkspaceImpl = class {
         });
         const extra = this.workspaceDiagnostics().map((d) => ({ code: d.code, severity: d.severity, message: d.message, file: null, range: null, node_id: null }));
         const out = extra.length > 0 ? { ...json3, diagnostics: [...json3.diagnostics, ...extra] } : json3;
-        await (0, import_promises19.mkdir)(import_node_path26.default.join(this.root, TELELEAN_DIR), { recursive: true });
-        await (0, import_promises19.writeFile)(temp, `${JSON.stringify(out, null, 2)}
+        await (0, import_promises21.mkdir)(import_node_path27.default.join(this.root, TELELEAN_DIR), { recursive: true });
+        await (0, import_promises21.writeFile)(temp, `${JSON.stringify(out, null, 2)}
 `, "utf8");
-        await (0, import_promises19.rename)(temp, target);
+        await (0, import_promises21.rename)(temp, target);
       } catch (error62) {
-        await (0, import_promises19.rm)(temp, { force: true }).catch(() => void 0);
+        await (0, import_promises21.rm)(temp, { force: true }).catch(() => void 0);
         this.log("warn", `${GRAPH_JSON_PATH} was not written: ${errorMessage3(error62)}`);
       }
     };
@@ -74402,7 +74584,7 @@ var INIT_GIT_DETAIL2 = "telelean records each change as a private ref (refs/tele
 var errorText2 = (error62) => error62 instanceof Error ? error62.message : String(error62);
 async function isModelRoot(root) {
   try {
-    await (0, import_promises20.access)(path34.join(root, ".telelean", "config.json"));
+    await (0, import_promises22.access)(path35.join(root, ".telelean", "config.json"));
     return true;
   } catch {
     return false;
@@ -74433,6 +74615,8 @@ var TeleleanHost = class {
   runner;
   boards = /* @__PURE__ */ new Map();
   orphans = /* @__PURE__ */ new Set();
+  /** The model folders this window wrote a consent into (Test mode's `reset()` forgets them, whatever else it has forgotten). */
+  consented = /* @__PURE__ */ new Set();
   sample;
   lastPanel;
   registry;
@@ -74468,7 +74652,7 @@ var TeleleanHost = class {
       return { asked: false, sample: name };
     }
     if (args?.root) {
-      const root = path34.resolve(args.root);
+      const root = path35.resolve(args.root);
       if (!await isModelRoot(root)) {
         const error62 = `"${root}" is not a telelean model (no .telelean/config.json): run "telelean: Initialize Model Here" first.`;
         void vscode5.window.showErrorMessage(error62);
@@ -74512,7 +74696,7 @@ var TeleleanHost = class {
   }
   async initializeCommand(arg) {
     const args = arg instanceof vscode5.Uri ? { folder: arg.fsPath } : arg ?? {};
-    const folder = args.folder ? path34.resolve(args.folder) : await this.pickFolderToInitialize();
+    const folder = args.folder ? path35.resolve(args.folder) : await this.pickFolderToInitialize();
     if (!folder) return void 0;
     const ports = {
       inspect: (f) => this.runner.inspectFolder(f),
@@ -74520,7 +74704,7 @@ var TeleleanHost = class {
         if (args.subject !== void 0) return args.subject;
         if (this.isTest) return void 0;
         return vscode5.window.showInputBox({
-          title: `telelean: Initialize Model Here (${path34.basename(f)})`,
+          title: `telelean: Initialize Model Here (${path35.basename(f)})`,
           prompt: "Name of the first subject: a Lean namespace and module name, e.g. Spyro",
           value: suggested,
           ignoreFocusOut: true,
@@ -74529,14 +74713,14 @@ var TeleleanHost = class {
       },
       confirmLakeProject: async (f, library, subjects) => args.confirm ?? this.confirm(
         "initializeLakeProject",
-        `Add telelean to the Lake project "${path34.basename(f)}"?`,
+        `Add telelean to the Lake project "${path35.basename(f)}"?`,
         `This creates .telelean/config.json (library ${library}) and a layout file for each subject (${subjects.join(", ") || "none yet"}), and adds telelean's lines to .gitignore. Your Lean files are not changed.`,
         "Add telelean"
       ),
       plan: (options) => this.runner.planInitialize(options),
       apply: (f, changes) => vscodeEditApplier(f, this.logAt).apply(changes, "Initialize model"),
       historyStatus: async (f) => (await this.registry.get(f)).historyStatus(),
-      offerGitInit: async (f) => args.gitInit ?? this.confirm("initializeGit", `Initialize a git repository in "${path34.basename(f)}" for telelean's history?`, INIT_GIT_DETAIL2, "Initialize git"),
+      offerGitInit: async (f) => args.gitInit ?? this.confirm("initializeGit", `Initialize a git repository in "${path35.basename(f)}" for telelean's history?`, INIT_GIT_DETAIL2, "Initialize git"),
       initGit: async (f) => (await this.registry.get(f)).initGit(),
       openBoard: async (f) => {
         await this.openBoard(f);
@@ -74619,7 +74803,7 @@ var TeleleanHost = class {
     const wanted = subject2 ?? records.find((r) => r.root === root)?.subject;
     this.saveRecord(wanted ? { root, title, subject: wanted } : { root, title });
     const ready = this.attachSession(board, root, wanted).catch((error62) => {
-      const text = `telelean could not open the board of "${path34.basename(root)}": ${errorText2(error62)}`;
+      const text = `telelean could not open the board of "${path35.basename(root)}": ${errorText2(error62)}`;
       this.log.error(text);
       board.fail(text);
     });
@@ -74631,7 +74815,7 @@ var TeleleanHost = class {
     try {
       workspace5 = await this.registry.get(root);
     } catch (error62) {
-      const text = `telelean could not load the model in "${path34.basename(root)}": ${errorText2(error62)}`;
+      const text = `telelean could not load the model in "${path35.basename(root)}": ${errorText2(error62)}`;
       board.fail(text);
       void vscode5.window.showErrorMessage(text);
       return;
@@ -74640,7 +74824,7 @@ var TeleleanHost = class {
     const runs = this.registry.runs(root);
     const session = new BoardSession({
       root,
-      rootName: path34.basename(root),
+      rootName: path35.basename(root),
       workspace: workspace5,
       ...subject2 ? { subject: subject2 } : {},
       ports: this.sessionPorts(root, board),
@@ -74729,7 +74913,7 @@ var TeleleanHost = class {
       },
       confirm: (id2, message2, detail, yes) => this.confirm(id2, message2, detail, yes),
       subjectChanged: (subject2) => this.saveRecord({ root, title: board.panel.title, subject: subject2 }),
-      log: (level, message2) => this.logAt(level, `[${path34.basename(root)}] ${message2}`),
+      log: (level, message2) => this.logAt(level, `[${path35.basename(root)}] ${message2}`),
       claudeConsent: () => this.claudeConsent(root),
       showProposalDiff: async (diff) => {
         await this.proposalPreviews.show(diff, root, board.panel.viewColumn);
@@ -74744,17 +74928,15 @@ var TeleleanHost = class {
   /**
    * The root's RunManager (the registry calls this once the root's workspace has loaded). Its backend is a factory the
    * RunManager calls at the first start that passed preflight, never here: opening a board never resolves or runs a
-   * Claude binary. Throws when runs are unavailable (no storage folder, or the runner's run functions are missing).
+   * Claude binary. Throws when runs are unavailable (the runner's run functions are missing; the runs need no storage
+   * folder since 2k2: they live in the model folder).
    */
   createRunManager(root, workspace5) {
-    const storage = this.context.globalStorageUri?.fsPath;
-    if (!storage) throw new Error("VS Code gave telelean no global storage folder for its run directories");
     const runner = this.runner;
-    const name = path34.basename(root);
+    const name = path35.basename(root);
     const log = (level, message2) => this.logAt(level, `[${name}] ${message2}`);
     return runner.createRunManager({
       root,
-      runsDir: path34.join(storage, "runs"),
       workspace: workspace5,
       settings: this.settingsFor(root).run,
       services: {
@@ -74782,15 +74964,17 @@ var TeleleanHost = class {
   }
   /**
    * Egress consent (docs/m2-plan.md section 8.2), once per model root: a modal naming exactly what leaves the machine;
-   * a yes is remembered in globalState (`telelean.claudeConsent.<rootKey>`). A no starts nothing and is not
-   * remembered, so the next start asks again. In Test mode the testing API answers it.
+   * a yes is remembered in the model folder (2k2, D2-110: `.telelean/runs/consent.json`, git-ignored). A no starts
+   * nothing and is not remembered, so the next start asks again. In Test mode the testing API answers it.
    */
   async claudeConsent(root) {
-    const key = consentKey(rootKeyOf(root));
-    if (this.context.globalState.get(key) === true) return true;
+    if (await hasConsent(root)) return true;
     const yes = await this.confirm("claudeConsent", CONSENT_MESSAGE, CONSENT_DETAIL, CONSENT_YES);
-    if (yes) await this.context.globalState.update(key, true);
-    this.log.info(`[${path34.basename(root)}] Claude consent: ${yes ? "allowed (remembered for this model folder)" : "declined"}`);
+    if (yes) {
+      await rememberConsent(root);
+      this.consented.add(root);
+    }
+    this.log.info(`[${path35.basename(root)}] Claude consent: ${yes ? "allowed (remembered for this model folder)" : "declined"}`);
     return yes;
   }
   /**
@@ -74898,14 +75082,14 @@ var TeleleanHost = class {
         host.registry.forget(root);
       },
       reset: async () => {
+        const resetRoots = /* @__PURE__ */ new Set([...host.boards.keys(), ...host.registry.roots()]);
         for (const board of [...host.boards.values(), ...host.orphans, ...host.sample ? [host.sample] : []]) board.dispose();
         for (const root of host.registry.roots()) host.registry.forget(root);
         host.promptAnswers = {};
         host.runBackend = void 0;
         await host.context.workspaceState.update(RECORDS_KEY, void 0);
-        for (const key of host.context.globalState.keys()) {
-          if (key.startsWith(CONSENT_KEY_PREFIX)) await host.context.globalState.update(key, void 0);
-        }
+        for (const root of /* @__PURE__ */ new Set([...resetRoots, ...host.consented])) await forgetConsent(root).catch(() => void 0);
+        host.consented.clear();
       }
     };
     return {

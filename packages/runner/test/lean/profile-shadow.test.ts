@@ -45,6 +45,22 @@ describe('bwrap profile (03 §8.4)', () => {
     expect(args.filter((a, i) => (args[i - 1] === '--ro-bind' || args[i - 1] === '--bind') && (a === '/' || a === '/run' || a === '/home'))).toEqual([]);
   });
 
+  it("2k2 (D2-107 R3): with the run folder inside the model folder, nothing binds the model folder, its .git or an ancestor of the run; only the run's build/.lake is writable", () => {
+    const model = '/home/u/models/doorclose';
+    const run = `${model}/.telelean/runs/r1`;
+    const inRun = buildBwrapArgs({ ...profile, shadowDir: `${run}/build`, roBinds: [`${run}/gate/1`, `${run}/frozen/1`] }, ['lake', 'build']);
+    const sources = inRun.filter((_a, i) => inRun[i - 1] === '--ro-bind' || inRun[i - 1] === '--bind');
+    const writable = inRun.filter((_a, i) => inRun[i - 1] === '--bind');
+    expect(writable).toEqual([`${run}/build/.lake`]);
+    for (const p of sources) {
+      if (p === '/usr' || p === '/etc' || p === profile.elanHome) continue;
+      expect(p === run || p.startsWith(`${run}/`), p).toBe(true);
+    }
+    expect(sources.some((p) => p === model || p === `${model}/.git` || p === `${model}/.telelean` || p === `${model}/.telelean/runs`)).toBe(false);
+    // The model folder lies under the masked home: the tmpfs comes before the run's binds.
+    expect(indexOfSeq(inRun, ['--tmpfs', '/home/u'])).toBeLessThan(indexOfSeq(inRun, ['--ro-bind', `${run}/build`, `${run}/build`]));
+  });
+
   it('isolates namespaces, clears the environment and ends with the command', () => {
     for (const flag of ['--unshare-all', '--die-with-parent', '--new-session', '--clearenv']) expect(args).toContain(flag);
     expect(indexOfSeq(args, ['--setenv', 'HOME', '/home/u'])).toBeGreaterThan(args.indexOf('--clearenv'));

@@ -15,6 +15,7 @@
  *   - Claude's guesses never reach the RunView before the user answered.
  */
 import { randomBytes, randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { lstat, realpath } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -57,6 +58,7 @@ import {
 } from '@telelean/core';
 
 import type { CheckContext, CheckReport, FreezeOutcome, FreezeRecord, GateReport, GhostCheck, SessionCheckContext } from '../gate/types.js';
+import { cancelRun as leanCancelRun } from '../lean/runLean.js';
 import { renderAnswersAsUserTurn } from '../llm/toolSchemas.js';
 import type {
   Adoption,
@@ -84,7 +86,7 @@ import type {
   TokenUsage,
   ToolCallContext,
 } from '../llm/types.js';
-import { pruneRunDirs } from '../shadow/index.js';
+import { pruneRunDirs, runsDirOf } from '../shadow/index.js';
 import { PASSING_COMMIT_KINDS, type ShadowCommit, type ShadowWorkspace } from '../shadow/types.js';
 import { nonTerminal, RunFiles } from './persist.js';
 import { collapseWhitespace, minutesText, NUDGE_TURN, SYSTEM_PROMPT } from './prompts.js';
@@ -121,6 +123,29 @@ export const LEAN_NAME = /^[A-Za-z_][A-Za-z0-9_']*$/;
 
 export const refused = (code: ActionErrorCode, error: string): ActionOutcome => ({ ok: false, code, error });
 export const okOutcome = (label: string): ActionOutcome => ({ ok: true, label, undoable: false });
+
+/** 2k2 (docs/slice2-plan.md 2.10, D2-111): the notice of a run recorded at another path (its folder was moved, renamed or copied). */
+export function movedRunNotice(from: string): string {
+  return `This run was started in another folder (${from}), so it cannot continue here. Stop ends it: your files are not changed and nothing is recorded.`;
+}
+/** 2k2 (D2-111): the answer to every action on such a run but Stop (and a session's Exit). */
+export const MOVED_RUN_REFUSAL = 'This run was started in another folder, so it can only be stopped.';
+
+/**
+ * 2k2 (D2-111, D2-121): why a run is held, never continued, and only ended: its run.json names another folder (`moved`:
+ * the folder was moved, renamed or copied), or its own folder is gone from under the live manager (`deleted`: the model
+ * folder was deleted, and maybe made again at the same path).
+ */
+export type HeldRun = { kind: 'moved'; from: string } | { kind: 'deleted'; dir: string };
+export function heldNotice(h: HeldRun): string {
+  return h.kind === 'moved'
+    ? movedRunNotice(h.from)
+    : `This run's folder no longer exists (${h.dir}), so it cannot continue. Stop ends it: your files are not changed and nothing is recorded.`;
+}
+export const DELETED_RUN_REFUSAL = "This run's folder no longer exists, so it can only be stopped.";
+export function heldRefusal(h: HeldRun): string {
+  return h.kind === 'moved' ? MOVED_RUN_REFUSAL : DELETED_RUN_REFUSAL;
+}
 
 /** How many changed files Accept's drift refusal names before "…". */
 export const DRIFT_FILES_SHOWN = 5;
@@ -363,6 +388,12 @@ export class ActiveRun {
   roundLoop: Promise<void> | undefined;
   /** Slice 2: an edit session's in-memory state (session.ts); undefined for a run of version 1. */
   live: SessionRuntime | undefined;
+  /**
+   * 2k2 (D2-111, D2-121, U4): set when the run cannot continue here (`HeldRun`: run.json names another folder, or the run's
+   * own folder is gone): the run is held, never continued; only Stop or Exit end it, recording nothing (manager.ts
+   * `endHeld`). A held run is never `live`.
+   */
+  held: HeldRun | undefined;
 
   constructor(
     public p: PersistedRun,
@@ -589,7 +620,36 @@ export abstract class StepRunner {
   }
 
   protected live(run: ActiveRun): boolean {
-    return !this.disposed && !run.ended && !run.stopping && run === this.run;
+    // (A held run, D2-111, ran nothing here: no judge, no drift record, no write of its run.json until it is ended.)
+    return !this.disposed && !run.ended && !run.stopping && run === this.run && run.held === undefined;
+  }
+
+  /**
+   * 2k2 (A-F1 of the review, D2-121, U1): a live run whose own folder (`<root>/.telelean/runs/<runId>/`) is gone, because
+   * the model folder was deleted (and maybe made again at the same path), is held at once: nothing of it may be written
+   * into what stands there now (its attempt records, decisions or files), and nothing of it is shown but the notice. Its
+   * Claude session and Lean jobs are stopped; nothing is recorded, as nothing can be (run.json has no folder). Called
+   * wherever the run is looked at or acted on, and by the drift timer (the deletion's file events wake it).
+   */
+  protected checkGone(run: ActiveRun | undefined): void {
+    if (run === undefined || run.held !== undefined || run.ended || this.disposed || run !== this.run) return;
+    const dir = run.shadow.paths.runDir;
+    if (existsSync(dir)) return;
+    run.held = { kind: 'deleted', dir };
+    this.log('warn', `the folder of run ${run.runId} no longer exists (${dir}): the run is held, and only Stop ends it`);
+    this.stopClock(run);
+    run.abort.abort();
+    if (run.ask !== undefined) {
+      const ask = run.ask;
+      run.ask = undefined;
+      ask.reject(new Error('the run folder was deleted'));
+    }
+    void this.closeSession(run, true).catch(() => undefined);
+    void Promise.resolve()
+      .then(() => (this.o.services.cancelLean ?? leanCancelRun)(run.runId))
+      .catch(() => undefined);
+    // The view changes (the board shows the held run, not the review): the listeners hear of it, never inside the caller.
+    queueMicrotask(() => this.emit({ run: true, proposal: true, session: true }));
   }
 
   protected assertLive(run: ActiveRun): void {
@@ -602,7 +662,9 @@ export abstract class StepRunner {
   }
 
   protected runFor(runId: string): ActiveRun | undefined {
-    return this.run !== undefined && this.run.runId === runId ? this.run : undefined;
+    const run = this.run !== undefined && this.run.runId === runId ? this.run : undefined;
+    this.checkGone(run); // D2-121: every action on a run looks first at whether its folder is still there
+    return run;
   }
 
   // ---- the agent-active clock (docs/m2-plan.md section 4.4)
@@ -1048,7 +1110,7 @@ export abstract class StepRunner {
 
   protected async prune(run: ActiveRun): Promise<void> {
     try {
-      await pruneRunDirs(this.o.runsDir, this.o.root, this.o.settings.keepRuns, [run.runId]);
+      await pruneRunDirs(runsDirOf(this.o.root), this.o.settings.keepRuns, [run.runId]);
     } catch (e) {
       if (!(e instanceof NotImplementedError)) this.log('warn', `old runs could not be pruned: ${errorText(e)}`);
     }
@@ -1063,6 +1125,8 @@ export abstract class StepRunner {
   protected async answerNow(runId: string, setId: string, answers: readonly QuestionAnswer[]): Promise<ActionOutcome> {
     const run = this.runFor(runId);
     if (run === undefined) return refused('not-found', 'That run is not active any more.');
+    // 2k2 (D2-111, D2-121): a run recorded at another path, or whose folder is gone, is never continued.
+    if (run.held !== undefined) return refused('conflict', heldRefusal(run.held));
     if (run.view.state !== 'waiting-for-answer' || run.p.pendingAsk === undefined) return refused('conflict', 'No question of this run is waiting.');
     const pending = run.p.pendingAsk;
     if (pending.setId !== setId) return refused('not-found', 'Those questions are no longer waiting.');

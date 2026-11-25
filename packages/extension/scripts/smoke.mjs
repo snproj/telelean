@@ -420,7 +420,8 @@ function stopUnit(unit) {
   spawnSync('systemctl', ['--user', 'stop', unit], { stdio: 'ignore' });
   spawnSync('systemctl', ['--user', 'reset-failed', unit], { stdio: 'ignore' });
 }
-const owners = await collectOwners(path.join(dir, 'user-data'));
+// 2k2: each run's directory lives in its model folder.
+const owners = await collectOwners(path.join(dir, 'user-data'), [path.join(ws, 'mental_model'), path.join(ws, 'second_model'), e2eRoot, runsRoot]);
 notes.push(
   `this run's extension hosts (from its logs): ${owners.hostPids.size ? `pids ${[...owners.hostPids].join(', ')}` : 'none found'}; Claude run ids of this run: ${owners.runIds.size}`,
 );

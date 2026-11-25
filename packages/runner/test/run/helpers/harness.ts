@@ -13,6 +13,7 @@ import { playFakeScript, validateFakeScriptFile, type FakeScriptFile, type FakeS
 import type { AskUserArgs, LlmBackend, LlmSession, SessionConfig } from '../../../src/llm/types.js';
 import { createRunManager, DEFAULT_RUN_SETTINGS, runPreflight } from '../../../src/run/index.js';
 import type { PersistedRun, PersistedStep, PreflightInput, PreflightOutcome, RunCore, RunManager, RunServices, RunSettings } from '../../../src/run/types.js';
+import { runsDirOf } from '../../../src/shadow/index.js';
 import type { CreateShadowOptions } from '../../../src/shadow/types.js';
 import { cleanup, makeTempDir, realClearTimeout, realSetTimeout, WALKTHROUGH_FIXTURES } from './env.js';
 import { FakeEngine } from './fakeEngine.js';
@@ -78,8 +79,8 @@ export interface HarnessOptions {
   core?: Partial<RunCore>;
   preflight?: (input: PreflightInput) => Promise<PreflightOutcome>;
   withFacts?: boolean;
-  /** Share the root and runs dir of an earlier harness (recovery tests). */
-  reuse?: { dir: string; root: string; runsDir: string; workspace?: FakeWorkspace };
+  /** Share the root (and so its runs folder) of an earlier harness (recovery tests); `runsDir` is ignored (2k2). */
+  reuse?: { dir: string; root: string; runsDir?: string; workspace?: FakeWorkspace };
   log?: string[];
   cancelLean?: (runId: string) => Promise<unknown>;
   /** Slice 2d: the model folder the workspace reads (default the Spyro fixture). */
@@ -114,7 +115,8 @@ export interface Harness {
 export function makeHarness(options: HarnessOptions = {}): Harness {
   const dir = options.reuse?.dir ?? makeTempDir('mgr');
   const root = options.reuse?.root ?? path.join(dir, 'model');
-  const runsDir = options.reuse?.runsDir ?? path.join(dir, 'runs');
+  // 2k2 (D2-108): the runs live in the model folder; the manager derives the folder from its root.
+  const runsDir = runsDirOf(root);
   mkdirSync(root, { recursive: true });
   const log = options.log ?? [];
   const workspace = options.reuse?.workspace ?? new FakeWorkspace(root, { withFacts: options.withFacts ?? true, log, ...(options.source !== undefined ? { source: options.source } : {}) });
@@ -171,7 +173,7 @@ export function makeHarness(options: HarnessOptions = {}): Harness {
     ...(options.now !== undefined ? { now: options.now } : {}),
     ...(options.newRunId !== undefined ? { newRunId: options.newRunId } : {}),
   };
-  const manager = createRunManager({ root, runsDir, workspace, services, settings });
+  const manager = createRunManager({ root, workspace, services, settings });
   const views: RunView[] = [];
   manager.onDidChange((c) => {
     if (c.run) {

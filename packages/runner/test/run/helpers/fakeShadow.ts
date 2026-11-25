@@ -1,6 +1,6 @@
 /**
  * A disk-backed stand-in for WP2's ShadowWorkspace, for the RunManager's own tests while `createRunShadow` is a
- * stub: the same directory layout (`<runsDir>/<rootKey>/<runId>/{ws,build,git,session,...}`), real files in ws/ (the
+ * stub: the same directory layout (`<runsDir>/<runId>/{ws,build,git,session,...}`, 2k2), real files in ws/ (the
  * FakeBackend edits them through the path guard), and commits kept as whole-file snapshots in `git/commits.json`
  * (so `openFakeShadow` re-opens a run after a "reload"). No git, no Lean.
  */
@@ -10,7 +10,7 @@ import path from 'node:path';
 
 import type { FileChange } from '@telelean/core';
 
-import { rootKeyOf } from '../../../src/shadow/index.js';
+import { ensureRunsDir } from '../../../src/shadow/index.js';
 import {
   PASSING_COMMIT_KINDS,
   ShadowLayoutError,
@@ -203,13 +203,14 @@ export class FakeShadow implements ShadowWorkspace {
 export const createdShadows: FakeShadow[] = [];
 
 export async function createFakeShadow(options: CreateShadowOptions): Promise<FakeShadow> {
-  const runDir = path.join(options.runsDir, rootKeyOf(options.root), options.runId);
+  const runDir = path.join(options.runsDir, options.runId);
   try {
     await lstat(runDir);
     throw new ShadowLayoutError('io', `the run directory exists already: ${runDir}`);
   } catch (e) {
     if (e instanceof ShadowLayoutError) throw e;
   }
+  await ensureRunsDir(options.runsDir); // as createRunShadow (2k2, D2-109)
   const shadow = new FakeShadow(options.runId, options.root, options.library, runDir, options.now ?? (() => new Date()));
   for (const dir of Object.values(shadow.paths)) if (!dir.endsWith('.json')) await mkdir(dir, { recursive: true });
   for (const [rel, text] of options.files) {

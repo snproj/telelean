@@ -7,6 +7,7 @@
  * resumed after a reload ends (§3.11, ./legacy.ts). It never runs Lean itself (LeanCheckEngine) and writes the user's
  * files only through the ProposalService's apply (a session's Apply).
  */
+import { realpath } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
@@ -24,21 +25,37 @@ import {
 
 import { cancelRun as leanCancelRun } from '../lean/runLean.js';
 import { renderAnswersAsUserTurn } from '../llm/toolSchemas.js';
-import { openRunShadow } from '../shadow/index.js';
+import { openRunShadow, runsDirOf } from '../shadow/index.js';
 import { PASSING_COMMIT_KINDS, type ShadowWorkspace } from '../shadow/types.js';
 import type { Disposable } from '../workspace/types.js';
 import { legacySession } from './legacy.js';
-import { nonTerminal, scanRuns, writeJsonAtomic } from './persist.js';
+import { nonTerminal, scanRuns, writeJsonAtomic, type ScannedRun } from './persist.js';
 import { resumeTurn } from './prompts.js';
 import { EndRunner } from './sessionEnd.js';
-import { ActiveRun, argsOfAnswered, errorText, okOutcome, refused } from './step.js';
+import { ActiveRun, argsOfAnswered, errorText, heldNotice, heldRefusal, okOutcome, refused, type HeldRun } from './step.js';
 import type { FormalizeRequest, RunChange, RunManager, RunManagerOptions, RunStartRequest } from './types.js';
 
 export { condenseRateLimit, driftRefusal, ENVIRONMENT_RETRY_MS, gateCheckOf, localTime, rateLimitNotice, validateAnswers, verdictOfStatus } from './step.js';
+// 2k2 (D2-111, D2-121): the texts of a held run (defined in step.ts, which refuses its answers too).
+export { DELETED_RUN_REFUSAL, heldNotice, heldRefusal, MOVED_RUN_REFUSAL, movedRunNotice } from './step.js';
 
 
 /** Slice 2: a session action on a run of version 1. */
 const NOT_A_SESSION = 'This run is not an edit session.';
+
+/**
+ * 2k2 (D2-111, F-F8 of the review): whether the root run.json names and this manager's root are one folder: the same path,
+ * or the same real path (a model reached through a symlink once and through its real path another time is not "moved").
+ * A recorded root that cannot be resolved any more (it is gone: the folder was moved) is another folder.
+ */
+async function sameFolder(recorded: string, root: string): Promise<boolean> {
+  if (path.resolve(recorded) === path.resolve(root)) return true;
+  try {
+    return (await realpath(recorded)) === (await realpath(root));
+  } catch {
+    return false;
+  }
+}
 
 // ---------------------------------------------------------------------------------------------
 // The manager
@@ -53,6 +70,8 @@ class RunManagerImpl extends EndRunner implements RunManager {
   current(): RunView | null {
     const run = this.run;
     if (run === undefined) return null;
+    this.checkGone(run);
+    if (run.held !== undefined && !run.ended) return this.heldView(run, run.held);
     if (run.saved !== undefined) {
       // Slice 2 (§3.12): a session's RunView follows its SessionView.
       if (run.saved.session !== undefined) return this.sessionRunView(run.saved, run.live?.view ?? null, run.live?.viewError);
@@ -65,6 +84,8 @@ class RunManagerImpl extends EndRunner implements RunManager {
 
   session(): SessionView | null {
     const run = this.run;
+    this.checkGone(run);
+    if (run?.held !== undefined && !run.ended) return null;
     if (run?.saved?.session === undefined) return null;
     // 2k1 (D2-100 D1, D2-101): once the run as last written has ended, by any path, no review view (the board shows the
     // ended run instead). Read from `saved`, as current() is, so both turn with the run.json write that ends the run,
@@ -91,6 +112,7 @@ class RunManagerImpl extends EndRunner implements RunManager {
     if (request.runId !== undefined || request.stage !== undefined) {
       const run = request.runId !== undefined ? this.runFor(request.runId) : undefined;
       if (run === undefined) return refused('not-found', 'That run is not active any more.');
+      if (run.held !== undefined) return refused('conflict', heldRefusal(run.held));
       if (run.p.session === undefined) return refused('conflict', NOT_A_SESSION);
       return this.exclusive('formalizing', () => this.formalizeInStage(run, request));
     }
@@ -159,6 +181,7 @@ class RunManagerImpl extends EndRunner implements RunManager {
     if (run === undefined) return refused('not-found', 'That run is not active any more.');
     if (run.ended || isTerminalRunState(run.view.state)) return refused('conflict', 'This run has already ended.');
     if (run.stopping) return refused('conflict', 'This run is already being cancelled.');
+    if (run.held !== undefined) return this.endHeld(run);
     // Slice 2 (§2.5): in a session, Cancel is Cancel step; it never ends the session (a start not yet working does).
     if (run.p.session !== undefined && run.view.state !== 'starting') return this.cancelStep(run);
     const inReview = run.view.state === 'review';
@@ -192,6 +215,7 @@ class RunManagerImpl extends EndRunner implements RunManager {
   protected async resumeNow(runId: string): Promise<ActionOutcome> {
     const run = this.runFor(runId);
     if (run === undefined) return refused('not-found', 'That run is not active any more.');
+    if (run.held !== undefined) return refused('conflict', heldRefusal(run.held));
     if (run.view.state !== 'interrupted') return refused('conflict', 'Only an interrupted run can be resumed.');
     // Slice 2 (§3.11): a queue waiting between two steps starts its next step.
     if (run.p.session !== undefined && this.activeStep(run.p.session) === undefined) return this.resumeBetweenSteps(run);
@@ -229,7 +253,8 @@ class RunManagerImpl extends EndRunner implements RunManager {
 
   async recover(): Promise<void> {
     if (this.disposed || this.activeRun() !== undefined) return;
-    const scanned = await scanRuns(this.o.runsDir, this.o.root);
+    // 2k2 (D2-108): only this root's own runs folder.
+    const scanned = await scanRuns(runsDirOf(this.o.root));
     const active = scanned.filter((s) => nonTerminal(s.run.view.state));
     const [newest, ...older] = active;
     for (const old of older) {
@@ -251,6 +276,11 @@ class RunManagerImpl extends EndRunner implements RunManager {
     }
     if (newest === undefined) return;
     const p = newest.run;
+    // 2k2 (D2-111, U4): a run recorded at another path is held, never continued.
+    if (!(await sameFolder(p.root, this.o.root))) {
+      await this.holdMoved(newest);
+      return;
+    }
     // A proposal saved by a build before spec v4 (three kinds, lifecycle items) is read in the two kinds (slice 1a fixer):
     // since 2h no board shows a proposal, and a v1 run in review is converted into a session below (2d), which reads the
     // shadow's commits, never the proposal; the upgrade stays so that run.json is never left in the old kinds.
@@ -311,6 +341,9 @@ class RunManagerImpl extends EndRunner implements RunManager {
     if (this.disposed) return Promise.resolve();
     const run = this.run;
     let written: Promise<void> = Promise.resolve();
+    // A held run (D2-111, D2-121) is left as it is on disk: nothing of it ran here. (One whose folder is gone and not yet
+    // noticed writes nothing either: a run's files never recreate a folder, so its final run.json write simply fails.)
+    if (run?.held !== undefined) run.ended = true;
     if (run !== undefined && !run.ended) {
       this.stopClock(run);
       const v = run.view;
@@ -341,6 +374,68 @@ class RunManagerImpl extends EndRunner implements RunManager {
     this.disposeEnd();
     this.listeners.clear();
     return written;
+  }
+
+  /**
+   * 2k2 (D2-111, U4): a run whose run.json names another root (its folder was moved, renamed or copied here) is shown,
+   * not recovered: no write in flight is replayed, no judge or Lean job runs, and run.json stays as it is until Stop or
+   * Exit ends it (moved back to where it started, the run goes on).
+   */
+  protected async holdMoved(found: ScannedRun): Promise<void> {
+    const p = found.run;
+    let shadow: ShadowWorkspace;
+    try {
+      shadow = await (this.o.services.openShadow ?? openRunShadow)(found.runDir, { root: this.o.root, library: p.library });
+    } catch (e) {
+      this.log('warn', `run ${p.view.runId} was started in ${p.root} and its working copy could not be opened here: ${errorText(e)}`);
+      return;
+    }
+    if (this.disposed || this.activeRun() !== undefined) return;
+    const run = this.makeRun(p, shadow);
+    run.held = { kind: 'moved', from: p.root };
+    this.run = run;
+    this.log('info', `run ${p.view.runId} was started in ${p.root}: it is held (only Stop ends it)`);
+    this.emit({ run: true, proposal: true, session: true });
+  }
+
+  /**
+   * The RunView of a held run (D2-111, D2-121): interrupted, not resumable, no session view. It shows nothing of Claude's
+   * work, whatever the run's version (R7, D2-119): no activity, no ghosts, no freeze, no proof verdict, and one notice,
+   * the held one (`heldNotice`), as a session shows while its results are hidden (D2-10). A run of version 1 left in
+   * review, which recovery in its own folder would convert into a session with its results hidden, is held the same way.
+   * (Once Stop has ended it, a version-1 run's view is its saved one: nothing of the run is hidden any more, D2-119.)
+   */
+  protected heldView(run: ActiveRun, held: HeldRun): RunView {
+    const v = run.p.session !== undefined ? this.sessionRunView(structuredClone(run.p), null) : structuredClone(run.p.view);
+    delete v.session;
+    delete v.pendingQuestions;
+    delete v.proposalId;
+    delete v.frozen;
+    v.canResume = undefined;
+    v.state = 'interrupted';
+    v.activity = [];
+    v.ghosts = [];
+    if (v.verdict !== undefined && !['cancelled', 'failed', 'cap-reached'].includes(v.verdict)) delete v.verdict;
+    v.notices = [{ id: `${run.runId}-moved`, at: v.updatedAt, level: 'warning', kind: 'interrupted', text: heldNotice(held) }];
+    return v;
+  }
+
+  /**
+   * Stop, or a session's Exit, on a held run (D2-111, D2-121): it ends `discarded` (a session) or `cancelled`. Only the
+   * run's own folder is written (run.json, a transcript line; for a run whose folder is gone, not even those: the files
+   * never recreate it); no attempt record, no decision and no model file is written into this folder, which the run did
+   * not start in or which is not the one it started in. As after every end, the folder's old finished runs are pruned.
+   */
+  protected async endHeld(run: ActiveRun): Promise<ActionOutcome> {
+    if (run.ended || run.stopping) return refused('conflict', 'This run has already ended.');
+    run.stopping = true;
+    const session = run.p.session !== undefined;
+    delete run.p.pendingAsk;
+    delete run.p.sessionId;
+    delete run.p.undeliveredTurn;
+    this.notice(run, 'info', 'info', session ? REVIEW_TEXTS.exited : 'You stopped the run. Your files were not changed.');
+    await this.endRun(run, session ? 'discarded' : 'cancelled', session ? {} : { verdict: 'cancelled' });
+    return okOutcome(session ? 'Session ended' : 'Run cancelled');
   }
 
   /**
@@ -386,6 +481,7 @@ class RunManagerImpl extends EndRunner implements RunManager {
   protected sessionRun(runId: string): ActiveRun | ActionOutcome {
     const run = this.runFor(runId);
     if (run === undefined || run.ended) return refused('not-found', 'That run is not active any more.');
+    if (run.held !== undefined) return refused('conflict', heldRefusal(run.held));
     if (run.p.session === undefined) return refused('conflict', NOT_A_SESSION);
     return run;
   }
@@ -439,6 +535,8 @@ class RunManagerImpl extends EndRunner implements RunManager {
    */
   async end(runId: string, decision: 'apply' | 'exit' | 'back', stage?: number, check?: string): Promise<ActionOutcome> {
     if (this.disposed) return refused('conflict', 'telelean is shutting down.');
+    const held = this.runFor(runId);
+    if (decision === 'exit' && held !== undefined && held.held !== undefined && !held.ended) return this.endHeld(held);
     const run = this.sessionRun(runId);
     if (!(run instanceof ActiveRun)) return run;
     try {
@@ -479,6 +577,5 @@ class RunManagerImpl extends EndRunner implements RunManager {
 
 export function createRunManagerImpl(options: RunManagerOptions): RunManager {
   if (!path.isAbsolute(options.root)) throw new TypeError(`createRunManager: root must be absolute, got ${JSON.stringify(options.root)}`);
-  if (!path.isAbsolute(options.runsDir)) throw new TypeError(`createRunManager: runsDir must be absolute, got ${JSON.stringify(options.runsDir)}`);
   return new RunManagerImpl(options);
 }

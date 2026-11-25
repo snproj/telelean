@@ -262,9 +262,13 @@ suite('a Claude run through the board (FakeBackend; AT5.8, AT5.9)', () => {
     const [question] = latestRun.pendingQuestions.questions;
     assert.equal(question?.phenomenon, 'modality');
     assert.equal('claudesGuess' in (question ?? {}), false, "Claude's guess must not reach the board before the answer (D-20)");
-    // The run directories live in the isolated profile's global storage, never in the user's.
-    const runs = path.join(process.env.TELELEAN_SMOKE_DIR ?? '', 'user-data', 'User', 'globalStorage', 'telelean.telelean', 'runs');
-    assert.ok(existsSync(runs), `${runs} does not exist`);
+    // 2k2 (docs/slice2-plan.md 2.10): the run's directory lives in the model folder (the suite's copy), git-ignored by
+    // its runs folder's own .gitignore, and nothing is put in VS Code's storage.
+    const runs = path.join(root, '.telelean', 'runs');
+    assert.ok(existsSync(path.join(runs, runId, 'run.json')), `${runs}/${runId}/run.json does not exist`);
+    assert.equal(readFileSync(path.join(runs, '.gitignore'), 'utf8'), '/*\n');
+    const storage = path.join(process.env.TELELEAN_SMOKE_DIR ?? '', 'user-data', 'User', 'globalStorage', 'telelean.telelean', 'runs');
+    assert.equal(existsSync(storage), false, `${storage} exists`);
   });
 
   test('the answer goes through the board; the gate passes and the edit session’s first stage arrives; the real files are untouched', async function () {

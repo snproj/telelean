@@ -36,7 +36,8 @@ export const SCAFFOLD_LAKE_MANIFEST =
 export const SCAFFOLD_LEAN_TOOLCHAIN = `${PINNED_TOOLCHAIN_NAME}\n`;
 
 /** The `.gitignore` lines telelean needs (build output and the unshared sidecars). */
-export const GITIGNORE_LINES: readonly string[] = ['/.lake/', '/.telelean/graph.json', '/.telelean/frozen/', '/.telelean/sessions/', '/.telelean/*.tmp'];
+/** (2k2, D2-109) `/.telelean/runs/`: the model's runs and its Claude consent, never shared (the folder also ignores itself). */
+export const GITIGNORE_LINES: readonly string[] = ['/.lake/', '/.telelean/graph.json', '/.telelean/frozen/', '/.telelean/sessions/', '/.telelean/*.tmp', '/.telelean/runs/'];
 
 const LIBRARY_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 

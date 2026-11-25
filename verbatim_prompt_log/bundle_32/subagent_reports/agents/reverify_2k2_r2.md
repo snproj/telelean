@@ -1,0 +1,29 @@
+# reverify:2k2:r2
+
+Agent `a1176df2a2d017044` of workflow `wf_3e2a0475-ada`. Verbatim output (JSON alongside).
+
+- **summary:** Round 2 changed only docs/slice2-plan.md (a new §8 "fixer 2k2 r2" entry). The tree is identical to the fixer's after.diff (52 files, cmp identical), so no source or test change needs regression review. The entry's claims check out against the repo. Three findings are still open, and none of them is fixable by a builder: F-F1 and A-F2 (one defect, in scripts/walkthrough-claude.mjs, which needs the orchestrator to apply an existing patch) and A-F8 (a nit). Typecheck is clean in all 5 configs and every unit suite passes. The full runner suite also passes, 78 of 78 files with 1 test skipped by design, split into 3 batches. HEAD is still 99cff93 with nothing staged. dist and out are untouched. No new problems.
+- **resolved:**
+
+- **findings:**
+  - [1]
+    - **id:** F-F1
+    - **severity:** minor
+    - **where:** scripts/walkthrough-claude.mjs:371 (also :231-232 and :262)
+    - **problem:** Still open: the script is outside the builders' write area, so no builder can fix it. Line 371 calls runner.shadow.rootKeyOf(root), which 2k2 removed from shadow/index.ts, and line 262 still passes a runsDir option that no longer exists. The call sits after the try/finally, so a real run that has already spent quota throws a TypeError before manager.dispose() and before the summary is written, which loses summary.error and the rounds. I re-graded this from major to minor. The script has been unable to finish a run since slice 2h, because line 313 calls manager.proposal(), which 2h removed (types.ts lines 187-189; HEAD 99cff93 has no proposal() in packages/runner/src/run and the script at 99cff93 calls it). The 2k2 part adds a lost summary on top of that, not a new inability to run.
+    - **evidence:** git grep -n rootKeyOf -- scripts shows line 371. git grep -n rootKeyOf -- packages finds it only in workspace/git.ts and its tests, so the shadow no longer exports it. I read f2k2r1/walkthrough-claude.patch and `git apply --check -p1` passes from the repo root. It sets runsDir to <root>/.telelean/runs, drops the option from createRunManager, and builds the transcript path as path.join(runsDir, v.runId, 'session', 'transcript.jsonl'). The fixer's dry-run evidence is consistent with this: unpatched it ends 'rootKeyOf is not a function', and patched it ends 'manager.proposal is not a function'. I did not re-run the dry run, because the fixer's run wrote into mental_model/ by mistake and I avoided repeating that.
+    - **fix:** The orchestrator runs: cd /home/zhengyew/telelean && git apply -p1 /tmp/claude-1000/-home-zhengyew-telelean/3358448c-d9b7-4f38-afd0-3f73c08df70e/scratchpad/f2k2r1/walkthrough-claude.patch. Also record that the script's M2 review calls (proposal, accept, adoptGhost) are dead since 2h and need a session rewrite in a later sub-slice, or mark the script retired. No test reaches these lines.
+  - [2]
+    - **id:** A-F2
+    - **severity:** minor
+    - **where:** scripts/walkthrough-claude.mjs:371
+    - **problem:** Same defect as F-F1 (the removed rootKeyOf call); still open and not applied, for the same reason.
+    - **evidence:** The grep and patch check for F-F1 apply here too.
+    - **fix:** Apply the same patch; closing F-F1 closes this.
+  - [3]
+    - **id:** A-F8
+    - **severity:** nit
+    - **where:** packages/webview/src/run/RunPanel.tsx:327-331
+    - **problem:** A held run (moved folder, or a run folder deleted under a live run) still shows 'The session was interrupted (the editor reloaded) while Claude was working.', which is the wrong cause. It is cosmetic: the held notice, shown through panelNotices, states the real cause. The sentence's 'Your files were not changed.' is still true.
+    - **evidence:** I read the interrupted branch of RunPanel.tsx. RunView has no held flag, because canResume is also undefined for an ordinary interrupted run, so the webview cannot tell the two cases apart. The plan's §8 entry records this and the alternative (a held flag in core's RunView, in a later sub-slice that may change core).
+    - **fix:** Optional: when a later sub-slice may change core, add a held flag to RunView and pick the wording from it. Otherwise leave it, since it is a nit and was recorded as such.

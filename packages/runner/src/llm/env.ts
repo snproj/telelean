@@ -10,6 +10,8 @@
 //    automatic backgrounding, long tool-call timeouts for ask_user).
 // Only variable NAMES are ever reported; values may be secrets.
 
+import path from 'node:path';
+
 /** Removed when the name starts with one of these. */
 export const STRIP_PREFIXES: readonly string[] = [
   'ANTHROPIC_', // API keys, auth tokens, base URLs, Bedrock/Vertex/Foundry/AWS/Google settings, models
@@ -29,6 +31,9 @@ export const STRIP_PREFIXES: readonly string[] = [
   'GTK_',
   'GDK_',
   'GIO_',
+  // 2k2 (D2-113): GIT_DIR, GIT_WORK_TREE and the like from the host would point git anywhere; telelean sets its own
+  // GIT_CEILING_DIRECTORIES (gitCeilingEnv).
+  'GIT_',
 ];
 
 /** Removed by exact name. */
@@ -50,6 +55,19 @@ export const KEEP: readonly string[] = [
   'DISABLE_ERROR_REPORTING',
   'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC', // the user's single switch for all of the above (and other non-essential traffic)
 ];
+
+/**
+ * 2k2 (docs/slice2-plan.md 2.10, D2-113): ws/ now lies inside the model folder, and so inside the model's git repository.
+ * With the run folder (ws/'s parent) as the ceiling, git started in ws/ or below looks at ws/ alone (which never holds a
+ * `.git`) and never at the run folder or above: it finds no repository. `wsReal` is ws/'s real path.
+ *
+ * The ceiling is a ':'-separated list, so a run folder whose path holds a ':' cannot be one entry; then `GIT_DIR` names a
+ * directory that does not exist in the run folder instead, so git searches nowhere and finds no repository either.
+ */
+export function gitCeilingEnv(wsReal: string): Record<string, string> {
+  const runDir = path.dirname(wsReal);
+  return runDir.includes(':') ? { GIT_DIR: path.join(runDir, 'no-git-repository') } : { GIT_CEILING_DIRECTORIES: runDir };
+}
 
 /** One day: ask_user may wait for a long time (the CLI default idle timeout for HTTP servers is 5 min). */
 export const TOOL_CALL_TIMEOUT_MS = 24 * 60 * 60 * 1000;

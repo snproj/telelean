@@ -63,7 +63,10 @@ export interface TeleleanTesting {
    * run is persisted; a later board on the root recovers it).
    */
   disposeWorkspace(root: string): Promise<void>;
-  /** Closes every board, disposes every model workspace and run manager, forgets consents (a clean slate). */
+  /**
+   * Closes every board, disposes every model workspace and run manager, and forgets the consent of each model folder it
+   * reset (2k2: its `.telelean/runs/consent.json`), a clean slate.
+   */
   reset(): Promise<void>;
 }
 

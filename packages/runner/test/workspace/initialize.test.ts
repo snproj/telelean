@@ -11,6 +11,8 @@ import { defaultProjectConfig, emptyLayout, serializeLayout, serializeProjectCon
 
 import { runLean } from '../../src/lean/runLean.js';
 import { resolveToolchain, toolchainExe } from '../../src/lean/toolchain.js';
+import { ensureRunsDir, runsDirOf } from '../../src/shadow/index.js';
+import { isModelFile, isModelOrProjectFile, listModelFiles, listScopeFiles, scopesOf } from '../../src/workspace/files.js';
 import { readLakefileToml } from '../../src/workspace/initialize.js';
 import {
   DEFAULT_EXCLUDED_DIRS,
@@ -135,17 +137,24 @@ describe('AT4.6 planInitialize', () => {
     expect(text('lake-manifest.json')).toBe(fixture('lake-manifest.json'));
     expect(text('lean-toolchain')).toBe('leanprover/lean4:v4.35.0\n');
     expect(text('lean-toolchain')).toBe(fixture('lean-toolchain'));
-    expect(text('.gitignore')).toBe('/.lake/\n/.telelean/graph.json\n/.telelean/frozen/\n/.telelean/sessions/\n/.telelean/*.tmp\n');
+    expect(text('.gitignore')).toBe('/.lake/\n/.telelean/graph.json\n/.telelean/frozen/\n/.telelean/sessions/\n/.telelean/*.tmp\n/.telelean/runs/\n');
     expect(text('Model.lean')).toBe('import Model.Spyro\n');
     for (const file of scaffold) expect(text(file.path), file.path).toBe(file.text);
     expect(text('.telelean/config.json')).toBe(serializeProjectConfig(defaultProjectConfig()));
     expect(text('.telelean/subjects/Spyro/layout.json')).toBe(serializeLayout(emptyLayout()));
   });
 
+  it('2k2 (D2-109): /.telelean/runs/ is one of the lines; a .gitignore of the lines before 2k2 gets just that one', () => {
+    expect(GITIGNORE_LINES).toContain('/.telelean/runs/');
+    const before2k2 = '/.lake/\n/.telelean/graph.json\n/.telelean/frozen/\n/.telelean/sessions/\n/.telelean/*.tmp\n';
+    const change = planInitialize({ subject: '', inspection: { kind: 'lake-project', library: 'Model', subjects: [], gitignore: before2k2 } }).find((c) => c.path === '.gitignore');
+    expect(change?.after).toBe(`${before2k2}/.telelean/runs/\n`);
+  });
+
   it('an existing .gitignore gets only the missing lines (before = its text)', () => {
     const existing = 'node_modules/\n/.lake\n';
     const change = planInitialize({ subject: 'Spyro', inspection: { kind: 'empty', gitignore: existing } }).find((c) => c.path === '.gitignore');
-    expect(change).toEqual({ path: '.gitignore', before: existing, after: `${existing}/.telelean/graph.json\n/.telelean/frozen/\n/.telelean/sessions/\n/.telelean/*.tmp\n` });
+    expect(change).toEqual({ path: '.gitignore', before: existing, after: `${existing}/.telelean/graph.json\n/.telelean/frozen/\n/.telelean/sessions/\n/.telelean/*.tmp\n/.telelean/runs/\n` });
     const noNewline = planInitialize({ subject: 'Spyro', inspection: { kind: 'empty', gitignore: 'dist' } }).find((c) => c.path === '.gitignore');
     expect(noNewline?.after).toBe(`dist\n${GITIGNORE}`);
     const complete = planInitialize({ subject: 'Spyro', inspection: { kind: 'empty', gitignore: `# mine\n${GITIGNORE}` } });
@@ -156,7 +165,7 @@ describe('AT4.6 planInitialize', () => {
     const changes = planInitialize({ subject: '', inspection: { kind: 'lake-project', library: 'Notes', subjects: ['Delta', 'Alpha'], gitignore: '/.lake/\n' } });
     expect(changes).toEqual([
       { path: '.telelean/config.json', before: null, after: serializeProjectConfig({ format: 'telelean-config', version: 1, library: 'Notes' }) },
-      { path: '.gitignore', before: '/.lake/\n', after: '/.lake/\n/.telelean/graph.json\n/.telelean/frozen/\n/.telelean/sessions/\n/.telelean/*.tmp\n' },
+      { path: '.gitignore', before: '/.lake/\n', after: '/.lake/\n/.telelean/graph.json\n/.telelean/frozen/\n/.telelean/sessions/\n/.telelean/*.tmp\n/.telelean/runs/\n' },
       { path: '.telelean/subjects/Alpha/layout.json', before: null, after: serializeLayout(emptyLayout()) },
       { path: '.telelean/subjects/Delta/layout.json', before: null, after: serializeLayout(emptyLayout()) },
     ]);
@@ -250,5 +259,59 @@ describe('AT4.8 findModelRoots', () => {
     );
     expect(await findModelRoots(path.join(tmp, 'a'))).toEqual([path.join(tmp, 'a'), path.join(tmp, 'a/sub/b')]);
     expect(await findModelRoots(path.join(tmp, 'missing'))).toEqual([]);
+  });
+});
+
+describe("2k2 (docs/slice2-plan.md 2.10, D2-107 R1, R2): a model's runs folder is invisible to git, History and the scans", () => {
+  let tmp: string;
+  beforeAll(() => {
+    tmp = makeTempDir('runs2k2');
+  });
+  afterAll(() => cleanup(tmp));
+
+  /** A run folder as a run leaves it: ws/ and build/ with model files, run.json, the transcript, the consent. */
+  async function addRun(root: string): Promise<void> {
+    await ensureRunsDir(runsDirOf(root));
+    for (const rel of ['ws/Model.lean', 'ws/Model/Spyro/Main.lean', 'ws/lakefile.toml', 'build/Model/Spyro/Main.lean', 'build/.lake/build/x.olean', 'run.json', 'session/transcript.jsonl']) {
+      write(root, `.telelean/runs/r1/${rel}`, 'x\n');
+    }
+    write(root, '.telelean/runs/consent.json', '{}\n');
+  }
+
+  it('git status lists nothing under .telelean/runs/, with or without the .gitignore line (the folder ignores itself)', async () => {
+    for (const [name, gitignore] of [['with-line', `${GITIGNORE_LINES.join('\n')}\n`], ['without-line', '/.lake/\n']] as const) {
+      const root = path.join(tmp, name);
+      mkdirSync(root, { recursive: true });
+      write(root, '.gitignore', gitignore);
+      write(root, 'Model/Spyro/Main.lean', 'namespace Spyro\nend Spyro\n');
+      await initGitRepository(root);
+      await addRun(root);
+      const status = userGit(root, 'status', '--porcelain', '--untracked-files=all', '--ignored=no');
+      expect(status.split('\n').filter((l) => l.includes('.telelean/runs')), name).toEqual([]);
+      expect(status).toContain('Model/Spyro/Main.lean'); // the model's own files are still seen
+      expect(userGit(root, 'check-ignore', '.telelean/runs/r1/ws/Model.lean').trim(), name).toBe('.telelean/runs/r1/ws/Model.lean');
+    }
+  });
+
+  it("History's scopes and listings, the model file rules, findModelRoots and inspectFolder never include a run's files", async () => {
+    const root = path.join(tmp, 'model');
+    write(root, '.telelean/config.json', '{"format":"telelean-config","version":1,"library":"Model"}\n');
+    write(root, 'Model/Spyro/Main.lean', 'namespace Spyro\nend Spyro\n');
+    write(root, 'lakefile.toml', 'name = "Model"\n');
+    await addRun(root);
+    // Even a run folder that looked like a model root (it never does: ws/ holds no dot-entry) is not found.
+    write(root, '.telelean/runs/r1/ws/.telelean/config.json', '{"format":"telelean-config","version":1,"library":"Model"}\n');
+    const runFiles = ['.telelean/runs/r1/ws/Model/Spyro/Main.lean', '.telelean/runs/r1/ws/Model.lean', '.telelean/runs/r1/run.json', '.telelean/runs/consent.json'];
+    expect(scopesOf(runFiles, 'Model')).toEqual([]);
+    expect(runFiles.some((rel) => isModelOrProjectFile(rel, 'Model') || isModelFile(rel, 'Model'))).toBe(false);
+    const listed = [...(await listScopeFiles(root, { kind: 'subject', subject: 'Spyro' }, 'Model')), ...(await listScopeFiles(root, { kind: 'project' }, 'Model'))];
+    expect(listed.filter((rel) => rel.includes('runs'))).toEqual([]);
+    expect(listed).toContain('Model/Spyro/Main.lean');
+    expect(await listModelFiles(root, 'Model')).toEqual(['Model/Spyro/Main.lean']);
+    expect(await findModelRoots(tmp, { maxDepth: 10 })).toEqual([root]);
+    // A folder that holds only a runs folder (its model files gone) is empty to Initialize.
+    const left = path.join(tmp, 'left-over');
+    await addRun(left);
+    expect(await inspectFolder(left)).toMatchObject({ kind: 'empty' });
   });
 });

@@ -67,6 +67,18 @@ describe('path helpers', () => {
       '/w/m/.telelean/graph.json',
       '/w/m/.telelean/sessions/run1/x.lean',
       '/w/m/.telelean/frozen/a.json',
+      // 2k2 (D2-107 R2): a run's working copy, its Lean build, its records and the consent never reach the workspace.
+      '/w/m/.telelean/runs/r1/ws/Model/Spyro.lean',
+      '/w/m/.telelean/runs/r1/ws/Model.lean',
+      '/w/m/.telelean/runs/r1/ws/lakefile.toml',
+      '/w/m/.telelean/runs/r1/build/Model/Spyro.lean',
+      '/w/m/.telelean/runs/r1/run.json',
+      '/w/m/.telelean/runs/consent.json',
+      '/w/m/.telelean/runs/.gitignore',
+      // A-F9: the folders' own create and delete events (the `.telelean/**` watcher glob delivers them).
+      '/w/m/.telelean/runs',
+      '/w/m/.telelean/sessions',
+      '/w/m/.telelean/frozen',
       '/w/m/.telelean/graph.json.4242-7.tmp',
       '/w/m/.telelean/Main.lean.4242-8.tmp',
       '/w/m/.lake/build/lib/lean/Model.ilean',

@@ -143,6 +143,25 @@ describe('the .git mask (AT3.8, argv inspection)', () => {
   const masksGit = (argv: readonly string[], root: string): boolean =>
     argv.some((a, i) => a === '--tmpfs' && argv[i + 1] === path.join(root, '.git'));
 
+  it("2k2 (D2-115): masks the model's runs folder, .telelean/runs, as it masks .git; the run folders are never bound", async () => {
+    const root = spyroCopy(tmp, 'with-runs');
+    mkdirSync(path.join(root, '.git'));
+    mkdirSync(path.join(root, '.telelean', 'runs', 'r1', 'ws'), { recursive: true });
+    writeFileSync(path.join(root, '.telelean', 'runs', 'r1', 'run.json'), '{}\n');
+    const runs = path.join(root, '.telelean', 'runs');
+    expect(gitMaskPaths(root)).toEqual([path.join(root, '.git'), runs]);
+    const argv = await buildArgv(root, 'runs');
+    expect(argv.some((a, i) => a === '--tmpfs' && argv[i + 1] === runs)).toBe(true);
+    // The tmpfs comes after the root's read-only bind, so it covers it; nothing under the runs folder is bound.
+    const roBind = argv.findIndex((a, i) => a === '--ro-bind' && argv[i + 1] === root);
+    const cover = argv.findIndex((a, i) => a === '--tmpfs' && argv[i + 1] === runs);
+    expect(roBind).toBeGreaterThanOrEqual(0);
+    expect(cover).toBeGreaterThan(roBind);
+    expect(argv.filter((a, i) => (argv[i - 1] === '--bind' || argv[i - 1] === '--ro-bind') && a.startsWith(`${runs}/`))).toEqual([]);
+    const noRuns = spyroCopy(tmp, 'no-runs');
+    expect(gitMaskPaths(noRuns)).toEqual([]);
+  });
+
   it('masks .git only when it is a directory', async () => {
     const withGit = spyroCopy(tmp, 'with-git');
     mkdirSync(path.join(withGit, '.git'));

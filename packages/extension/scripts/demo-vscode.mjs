@@ -84,9 +84,9 @@ export async function writeUserSettings(profile, extra = {}) {
   return file;
 }
 
-/** `<user-data>/User/globalStorage/telelean.telelean/runs`: the RunManager's run directories (run.json, transcript). */
-export function runsDirOf(profile) {
-  return path.join(profile.userData, 'User', 'globalStorage', EXTENSION_ID, 'runs');
+/** 2k2: `<model folder>/.telelean/runs`, the RunManager's run directories (run.json, transcript) of that model. */
+export function runsDirOf(modelFolder) {
+  return path.join(modelFolder, '.telelean', 'runs');
 }
 
 /** The extension's own log files ("telelean" output channel) under the instance's logs. */
@@ -406,9 +406,10 @@ function unitState(unit) {
  * the run in them, or named after its extension hosts or Claude runs) are stopped; others (another session's) are only
  * reported.
  */
-export async function settleUnits({ before, profile }) {
+export async function settleUnits({ before, profile, modelRoots = [] }) {
   const notes = [];
-  const owners = await collectOwners(profile.userData);
+  // (2k2: the run ids of the model folders' runs, `<model>/.telelean/runs/<run id>/`, count as this run's too.)
+  const owners = await collectOwners(profile.userData, modelRoots);
   for (const unit of teleleanUnits()) {
     if (before.has(unit)) continue;
     const state = unitState(unit);

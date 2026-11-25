@@ -13,6 +13,7 @@ import { defaultProjectConfig, emptyLayout, parseLayout, parseLeanFile, serializ
 import { runLean } from '../../src/lean/runLean.js';
 import { resolveToolchain, toolchainExe } from '../../src/lean/toolchain.js';
 import { findModelRoots, GITIGNORE_LINES, inspectFolder } from '../../src/workspace/index.js';
+import { gitignoreWithTeleleanLines } from '../../src/workspace/initialize.js';
 import { fakeParseLeanFile } from './fakeCore.js';
 import { cleanup, copyMentalModel, exists, listFiles, makeTempDir, MENTAL_MODEL, read, REPO_ROOT, SPYRO_FIXTURE, TEST_RUN_ID, waitForMemory } from './helpers.js';
 
@@ -44,7 +45,9 @@ describe('AT4.7 the sample mental_model/', () => {
     for (const rel of ['lakefile.toml', 'lake-manifest.json', 'lean-toolchain']) {
       expect(bytes(path.join(MENTAL_MODEL, rel)).equals(bytes(path.join(SPYRO_FIXTURE, rel))), rel).toBe(true);
     }
-    expect(read(MENTAL_MODEL, '.gitignore')).toBe(`${GITIGNORE_LINES.join('\n')}\n`);
+    // 2k2 (D2-109): mental_model/ (outside the builders' write area) still has the lines of before 2k2; Initialize would
+    // add only `/.telelean/runs/` (and its runs folder ignores itself, `.telelean/runs/.gitignore`).
+    expect(gitignoreWithTeleleanLines(read(MENTAL_MODEL, '.gitignore'))).toBe(`${GITIGNORE_LINES.join('\n')}\n`);
     expect(read(MENTAL_MODEL, 'Model.lean')).toBe('import Model.Spyro\n');
     expect(read(MENTAL_MODEL, '.telelean/config.json')).toBe(serializeProjectConfig(defaultProjectConfig()));
     // Spec v4 (docs/slice1-plan.md 2.3): the sample was written with the column keys of before v4, which read as the

@@ -102,6 +102,8 @@ export abstract class EndRunner extends PremiseRunner {
     this.driftTimer = setTimeout(() => {
       this.driftTimer = undefined;
       const run = this.run;
+      // D2-121: the deletion of a model folder wakes this timer (its file events): the run whose folder is gone is held now.
+      this.checkGone(run);
       if (run === undefined || run.p.session === undefined || !this.live(run) || run.p.session.phase === 'applying') return;
       void this.refreshDrift(run).catch((e: unknown) => this.log('warn', `drift could not be read: ${errorText(e)}`));
     }, DRIFT_DEBOUNCE_MS);

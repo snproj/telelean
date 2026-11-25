@@ -15,10 +15,10 @@ import { DEFAULT_RUN_SETTINGS } from '@telelean/runner/run/index.js';
 import { FakeBackend } from '@telelean/runner/llm/fake.js';
 import type { ClaudeCliBackend } from '@telelean/runner/llm/claudeCli.js';
 import type { ClaudeBackendSettings, RunManagerOptions } from '@telelean/runner/run/types.js';
-import { rootKeyOf } from '@telelean/runner/shadow/index.js';
 import type { LeanCheckEngine } from '@telelean/runner/gate/types.js';
 import type { ProposalService, RunSidecarStore } from '@telelean/runner/proposal/types.js';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { cp, mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import type * as vscode from 'vscode';
@@ -26,7 +26,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { TeleleanApi } from '../../src/api';
 import { activate, deactivate } from '../../src/extension';
-import { CONSENT_DECLINED, CONSENT_DETAIL, CONSENT_MESSAGE, consentKey, TEST_MODE_NO_CLAUDE } from '../../src/logic/runs';
+import { CONSENT_DECLINED, CONSENT_DETAIL, CONSENT_MESSAGE, consentPath, consentText, TEST_MODE_NO_CLAUDE } from '../../src/logic/runs';
 import { TeleleanHost } from '../../src/vscode/host';
 import type { RunnerFunctions } from '../../src/vscode/runner';
 import { FakeRunManager, FakeWorkspace, sampleRun } from './fakes';
@@ -154,7 +154,8 @@ describe('one RunManager per model root (section 8.1)', () => {
     if (!manager?.options) throw new Error('no RunManager');
     const { options } = manager;
     expect(options.root).toBe(rootA);
-    expect(options.runsDir).toBe(path.join(storage, 'runs'));
+    // 2k2 (D2-108): no runs dir; the manager keeps the root's runs in `<root>/.telelean/runs`.
+    expect('runsDir' in options).toBe(false);
     expect(options.workspace).toBe(api.workspaceFor(rootA));
     expect(options.settings).toEqual(DEFAULT_RUN_SETTINGS); // the stub's configuration has no user values
     expect(options.services.engine).toBe(ENGINE);
@@ -205,13 +206,32 @@ describe('one RunManager per model root (section 8.1)', () => {
     expect((last?.payload.run as { subject: string }).subject).toBe('Other');
   });
 
-  it('without a storage folder runs are unavailable: the board still works and a start says why', async () => {
+  it('2k2 (D2-108): without a storage folder runs are still available, since they live in the model folder', async () => {
     const { host, api } = newHost(stub.ExtensionMode.Test, false);
     await host.openBoardCommand({ root: rootA });
-    expect(managers).toEqual([]);
+    expect(managers).toHaveLength(1);
+    expect(managers[0]?.options?.root).toBe(rootA);
     api.testing?.answerPrompts({ claudeConsent: true });
-    const outcome = await request(api, rootA, 'formalize', { inferences: [START], requestId: 's1' });
-    expect(outcome).toEqual({ ok: false, code: 'not-yet', error: 'Claude runs are not available: VS Code gave telelean no global storage folder for its run directories' });
+    api.testing?.useRunBackend(() => new FakeBackend([]));
+    expect(await request(api, rootA, 'formalize', { inferences: [START], requestId: 's1' })).toMatchObject({ ok: true });
+  });
+
+  it('2k2 (D2-107 R2): file events under .telelean/runs/ never reach the model workspace; a model file\'s does', async () => {
+    const { host } = newHost(stub.ExtensionMode.Test);
+    await host.openBoardCommand({ root: rootA });
+    const workspace = workspaces[0];
+    if (!workspace) throw new Error('no workspace');
+    const watcher = stub.watchers.at(-1);
+    if (!watcher) throw new Error('no watcher');
+    const run = path.join(rootA, '.telelean', 'runs', 'r1');
+    for (const rel of ['ws/Model/Spyro/Main.lean', 'ws/Model.lean', 'ws/lakefile.toml', 'build/Model/Spyro/Main.lean', 'run.json']) {
+      watcher.fire('create', stub.Uri.file(path.join(run, rel)));
+      watcher.fire('change', stub.Uri.file(path.join(run, rel)));
+    }
+    watcher.fire('change', stub.Uri.file(path.join(rootA, '.telelean', 'runs', 'consent.json')));
+    watcher.fire('change', stub.Uri.file(path.join(rootA, 'Model', 'Spyro', 'Main.lean')));
+    await sleep(500); // the file events' debounce (300 ms)
+    expect(workspace.invalidated.flat()).toEqual(['Model/Spyro/Main.lean']);
   });
 });
 
@@ -274,7 +294,12 @@ describe('egress consent, once per model root (AT5.2)', () => {
     expect(stub.shown).toEqual([
       { level: 'info', message: CONSENT_MESSAGE, options: { modal: true, detail: CONSENT_DETAIL }, items: ['Run with Claude'], answer: 'Run with Claude' },
     ]);
-    expect(globalState.get(consentKey(rootKeyOf(rootA)))).toBe(true);
+    // 2k2 (D2-110): remembered in the model folder, git-ignored; VS Code's globalState is not used.
+    expect(await readFile(consentPath(rootA), 'utf8')).toBe(await consentText(rootA));
+    expect(JSON.parse(await readFile(consentPath(rootA), 'utf8'))).toMatchObject({ claude: true, root: rootA }); // D2-123: it names its folder
+    expect(consentPath(rootA)).toBe(path.join(rootA, '.telelean', 'runs', 'consent.json'));
+    expect(await readFile(path.join(rootA, '.telelean', 'runs', '.gitignore'), 'utf8')).toBe('/*\n');
+    expect(globalState.size).toBe(0);
     expect(managers[0]?.callsOf('formalize')).toEqual([[{ subject: 'Spyro', inferences: [START] }]]);
 
     // The same root again: no question (the run ended in the meantime).
@@ -289,7 +314,7 @@ describe('egress consent, once per model root (AT5.2)', () => {
     expect(stub.shown).toHaveLength(2);
     expect(managers[1]?.calls.filter((c) => c.method === 'formalize')).toEqual([]);
     expect(workspaces[1]?.performed).toEqual([]);
-    expect(globalState.has(consentKey(rootKeyOf(rootB)))).toBe(false);
+    expect(existsSync(consentPath(rootB))).toBe(false);
     stub.messageAnswers.push('Run with Claude');
     expect(await request(api, rootB, 'formalize', { inferences: [START], requestId: 'b2' })).toMatchObject({ ok: true });
     expect(stub.shown).toHaveLength(3);
@@ -303,20 +328,83 @@ describe('egress consent, once per model root (AT5.2)', () => {
     expect(stub.shown).toEqual([]);
   });
 
-  it('Test mode: the testing API answers the consent; reset() forgets the remembered consents and the run backend', async () => {
+  it('Test mode: the testing API answers the consent; reset() forgets the consents of its roots (in their folders) and the run backend', async () => {
+    // A consent an older build kept in globalState is neither read nor removed (2k2, U5).
+    globalState.set('telelean.claudeConsent.model_a-12345678', true);
     const { host, api } = newHost(stub.ExtensionMode.Test);
     await host.openBoardCommand({ root: rootA });
     expect(await request(api, rootA, 'formalize', { inferences: [START], requestId: 't1' })).toEqual({ ok: false, code: 'not-yet', error: CONSENT_DECLINED }); // unanswered = no
     api.testing?.answerPrompts({ claudeConsent: true });
     api.testing?.useRunBackend(() => new FakeBackend([]));
     expect(await request(api, rootA, 'formalize', { inferences: [START], requestId: 't2' })).toMatchObject({ ok: true });
-    expect(globalState.get(consentKey(rootKeyOf(rootA)))).toBe(true);
+    expect(await readFile(consentPath(rootA), 'utf8')).toBe(await consentText(rootA));
     expect(stub.shown).toEqual([]); // never a real modal in Test mode
     await api.testing?.reset();
-    expect(globalState.size).toBe(0);
+    expect(existsSync(consentPath(rootA))).toBe(false);
+    expect(existsSync(path.join(rootA, '.telelean', 'runs', '.gitignore'))).toBe(true); // only the consent goes
+    expect([...globalState.entries()]).toEqual([['telelean.claudeConsent.model_a-12345678', true]]);
     await host.openBoardCommand({ root: rootA });
     api.testing?.answerPrompts({ claudeConsent: true });
     expect(await request(api, rootA, 'formalize', { inferences: [START], requestId: 't3' })).toEqual({ ok: false, code: 'not-yet', error: TEST_MODE_NO_CLAUDE });
+  });
+
+  it('F-F10 (D2-116): reset() also forgets the consent of a folder whose workspace was forgotten earlier in the window', async () => {
+    const { host, api } = newHost(stub.ExtensionMode.Test);
+    await host.openBoardCommand({ root: rootA });
+    api.testing?.answerPrompts({ claudeConsent: true });
+    api.testing?.useRunBackend(() => new FakeBackend([]));
+    expect(await request(api, rootA, 'formalize', { inferences: [START], requestId: 'f1' })).toMatchObject({ ok: true });
+    expect(existsSync(consentPath(rootA))).toBe(true);
+    await api.testing?.disposeWorkspace(rootA); // neither a board nor a registry entry names the root any more
+    expect(existsSync(consentPath(rootA))).toBe(true);
+    await api.testing?.reset();
+    expect(existsSync(consentPath(rootA))).toBe(false);
+  });
+
+  it('2k2 (U1, U3): a folder recreated at the same path has no consent; only the exact consent file counts', async () => {
+    const { host, api } = newHost(stub.ExtensionMode.Production);
+    await host.openBoardCommand({ root: rootA });
+    stub.messageAnswers.push('Run with Claude');
+    expect(await request(api, rootA, 'formalize', { inferences: [START], requestId: 'a1' })).toMatchObject({ ok: true });
+    expect(stub.shown).toHaveLength(1);
+    await api.testing?.disposeWorkspace(rootA);
+    await rm(rootA, { recursive: true, force: true });
+    await mkdir(path.join(rootA, '.telelean'), { recursive: true });
+    await writeFile(path.join(rootA, '.telelean', 'config.json'), '{"format":"telelean-config","version":1,"library":"Model"}\n');
+    await host.openBoardCommand({ root: rootA });
+    expect(await request(api, rootA, 'formalize', { inferences: [START], requestId: 'a2' })).toEqual({ ok: false, code: 'not-yet', error: CONSENT_DECLINED });
+    expect(stub.shown).toHaveLength(2); // asked again
+    // A file of that name with other content is no consent.
+    await mkdir(path.dirname(consentPath(rootA)), { recursive: true });
+    await writeFile(consentPath(rootA), '{"claude":true}\n');
+    expect(await request(api, rootA, 'formalize', { inferences: [START], requestId: 'a3' })).toEqual({ ok: false, code: 'not-yet', error: CONSENT_DECLINED });
+    expect(stub.shown).toHaveLength(3);
+  });
+
+  it('F-F4, A-F3 (D2-123, U3): a copied, moved or renamed model folder does not carry the consent: it names its folder, so the copy asks again', async () => {
+    const { host, api } = newHost(stub.ExtensionMode.Production);
+    await host.openBoardCommand({ root: rootA });
+    stub.messageAnswers.push('Run with Claude');
+    expect(await request(api, rootA, 'formalize', { inferences: [START], requestId: 'a1' })).toMatchObject({ ok: true });
+    expect(stub.shown).toHaveLength(1);
+    // A file-manager copy (cp -r) carries consent.json along, with the original's path in it.
+    const copy = path.join(dir, 'model_copy');
+    await cp(rootA, copy, { recursive: true });
+    expect(await readFile(consentPath(copy), 'utf8')).toBe(await consentText(rootA));
+    await host.openBoardCommand({ root: copy });
+    expect(await request(api, copy, 'formalize', { inferences: [START], requestId: 'c1' })).toEqual({ ok: false, code: 'not-yet', error: CONSENT_DECLINED });
+    expect(stub.shown).toHaveLength(2); // the copy asked
+    // The original goes on without asking.
+    if (managers[0]) managers[0].run = sampleRun({ state: 'accepted' });
+    expect(await request(api, rootA, 'formalize', { inferences: [START], requestId: 'a2' })).toMatchObject({ ok: true });
+    expect(stub.shown).toHaveLength(2);
+    // Renamed (moved): the same.
+    await api.testing?.disposeWorkspace(rootA);
+    const renamed = path.join(dir, 'model_renamed');
+    await rename(rootA, renamed);
+    await host.openBoardCommand({ root: renamed });
+    expect(await request(api, renamed, 'formalize', { inferences: [START], requestId: 'r1' })).toEqual({ ok: false, code: 'not-yet', error: CONSENT_DECLINED });
+    expect(stub.shown).toHaveLength(3);
   });
 });
 

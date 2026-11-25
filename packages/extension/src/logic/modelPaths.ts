@@ -84,9 +84,10 @@ export interface ModelPathEvent {
 const IGNORED_DIRS = new Set(['.lake', '.git', 'node_modules']);
 /**
  * Gitignored telelean outputs: writing them must not trigger anything (graph.json is rewritten after each refresh;
- * `.telelean/*.tmp` are the temp files of atomic writes).
+ * `.telelean/*.tmp` are the temp files of atomic writes; 2k2, D2-107 R2: `.telelean/runs/` holds every run, whose
+ * working copy's `.lean` files and Lean builds must never reload, re-check or snapshot the model).
  */
-const IGNORED_SIDECARS = ['.telelean/graph.json', '.telelean/frozen/', '.telelean/sessions/'];
+const IGNORED_SIDECARS = ['.telelean/graph.json', '.telelean/frozen/', '.telelean/sessions/', '.telelean/runs/'];
 const PROJECT_FILES = new Set(['lakefile.toml', 'lakefile.lean', 'lean-toolchain', 'lake-manifest.json']);
 
 /**
@@ -99,7 +100,8 @@ export function classifyModelPath(root: string, absPath: string): ModelPathEvent
   const segments = rel.split('/');
   if (segments.some((s) => IGNORED_DIRS.has(s))) return undefined;
   if (rel.startsWith('.telelean/')) {
-    if (IGNORED_SIDECARS.some((ignored) => (ignored.endsWith('/') ? rel.startsWith(ignored) : rel === ignored))) return undefined;
+    // (A folder's own create or delete event, `.telelean/runs` without the slash, is ignored like what is under it: A-F9 of the review.)
+    if (IGNORED_SIDECARS.some((ignored) => (ignored.endsWith('/') ? rel.startsWith(ignored) || rel === ignored.slice(0, -1) : rel === ignored))) return undefined;
     if (segments.length === 2 && rel.endsWith('.tmp')) return undefined;
     return { path: rel, kind: 'sidecar', refresh: false };
   }

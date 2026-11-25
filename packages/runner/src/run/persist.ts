@@ -10,7 +10,6 @@ import path from 'node:path';
 
 import { isTerminalRunState, type RunState } from '@telelean/core';
 
-import { rootKeyOf } from '../shadow/index.js';
 import { PERSISTED_RUN_FORMAT, PERSISTED_SESSION_FORMAT, type PersistedRun } from './types.js';
 
 let tempCounter = 0;
@@ -71,9 +70,12 @@ export interface ScannedRun {
   run: PersistedRun;
 }
 
-/** The run directories of `root` under `runsDir` whose run.json is readable, newest first (by `view.updatedAt`). */
-export async function scanRuns(runsDir: string, root: string): Promise<ScannedRun[]> {
-  const base = path.join(runsDir, rootKeyOf(root));
+/**
+ * The run directories of a runs folder (2k2: one root's, `runsDirOf(root)`) whose run.json is readable, newest first
+ * (by `view.updatedAt`), whatever root run.json names: the caller tells a run recorded at another path apart (D2-111).
+ */
+export async function scanRuns(runsDir: string): Promise<ScannedRun[]> {
+  const base = runsDir;
   let entries: string[];
   try {
     entries = await readdir(base);
@@ -85,7 +87,7 @@ export async function scanRuns(runsDir: string, root: string): Promise<ScannedRu
     const runDir = path.join(base, name);
     const stateFile = path.join(runDir, 'run.json');
     const run = await readPersistedRun(stateFile);
-    if (run !== undefined && path.resolve(run.root) === path.resolve(root)) out.push({ runDir, stateFile, run });
+    if (run !== undefined) out.push({ runDir, stateFile, run });
   }
   const time = (r: ScannedRun): number => Date.parse(r.run.view.updatedAt) || Date.parse(r.run.view.startedAt) || 0;
   return out.sort((a, b) => time(b) - time(a));

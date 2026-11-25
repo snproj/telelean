@@ -37,7 +37,7 @@ import { playFakeScript } from '../../src/llm/fakeScripts.js';
 import type { LlmEvent } from '../../src/llm/types.js';
 import { createProposalService, createRunSidecarStore } from '../../src/proposal/index.js';
 import { createRunManager, DEFAULT_RUN_SETTINGS, gateCheckOf, type PersistedRun, type PersistedStep, type RunManager } from '../../src/run/index.js';
-import { listRunDirs } from '../../src/shadow/index.js';
+import { listRunDirs, runsDirOf } from '../../src/shadow/index.js';
 import { createModelWorkspace, fsEditApplier, fsTextSource, type ModelWorkspace } from '../../src/workspace/index.js';
 import { cleanup, makeTempDir, MENTAL_MODEL } from './helpers/env.js';
 import { applyEverything } from './helpers/apply.js';
@@ -101,10 +101,9 @@ async function setup(name: string): Promise<Walk> {
   await workspace.load();
   await workspace.refreshNow();
   const play = playFakeScript(file);
-  const runsDir = path.join(dir, 'runs');
+  const runsDir = runsDirOf(root); // 2k2: in the model folder
   const manager = createRunManager({
     root,
-    runsDir,
     workspace,
     services: { backend: new FakeBackend(play.script), engine: createLeanCheckEngine(), proposals: createProposalService(), sidecars: createRunSidecarStore() },
     settings: DEFAULT_RUN_SETTINGS,
@@ -153,7 +152,7 @@ function transcriptResults(runDir: string): Array<Extract<LlmEvent, { type: 'too
 }
 
 async function runDirOf(w: Walk, runId: string): Promise<string> {
-  const listed = await listRunDirs(w.runsDir, w.root);
+  const listed = await listRunDirs(w.runsDir);
   const found = listed.find((d) => d.runId === runId);
   if (found === undefined) throw new Error(`no run dir for ${runId}`);
   return found.runDir;

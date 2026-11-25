@@ -9,8 +9,8 @@
 // The test instance writes its logs into the smoke run's own user-data dir (<user-data>/logs/<session>/...), and they
 // name its extension hosts ("Started local extension host with pid N." in renderer.log, "Extension host with pid N
 // started" in exthost.log, "Extension host with pid N exited ..." in main.log) and, in the extension's own log, its
-// Claude runs ("runId":"…"). A run also has a directory <user-data>/User/globalStorage/telelean.telelean/runs/<root
-// key>/<run id>/ unless a test deleted it.
+// Claude runs ("runId":"…"). A run also has a directory in its model folder, <model>/.telelean/runs/<run id>/ (2k2;
+// until then <user-data>/User/globalStorage/telelean.telelean/runs/<root key>/<run id>/), unless a test deleted it.
 //
 // A unit named after one of these is this smoke run's even when no process is left in it. That is how a scope used to
 // be left behind: when runLean SIGKILLed systemd-run while systemd-run was still waiting for its scope to be created (a
@@ -45,11 +45,13 @@ export function idsInLog(text) {
 
 /**
  * This smoke run's extension host pids and Claude run ids, from the test instance's user-data dir: every `*.log`
- * under <user-data>/logs (down to 5 levels) and the run directories under the extension's global storage.
+ * under <user-data>/logs (down to 5 levels), and (2k2) the run directories in the runs folder of each model folder the
+ * run used (<model>/.telelean/runs/<run id>/).
  * @param {string} userData the smoke run's <profile>/user-data
+ * @param {readonly string[]} [modelRoots] the model folders of the smoke run
  * @returns {Promise<{ hostPids: Set<number>, runIds: Set<string> }>}
  */
-export async function collectOwners(userData) {
+export async function collectOwners(userData, modelRoots = []) {
   const hostPids = new Set();
   const runIds = new Set();
   async function walk(abs, level) {
@@ -70,10 +72,8 @@ export async function collectOwners(userData) {
     }
   }
   await walk(path.join(userData, 'logs'), 1);
-  const runsDir = path.join(userData, 'User', 'globalStorage', 'telelean.telelean', 'runs');
-  for (const root of await readdir(runsDir, { withFileTypes: true }).catch(() => [])) {
-    if (!root.isDirectory()) continue;
-    for (const run of await readdir(path.join(runsDir, root.name), { withFileTypes: true }).catch(() => [])) {
+  for (const root of modelRoots) {
+    for (const run of await readdir(path.join(root, '.telelean', 'runs'), { withFileTypes: true }).catch(() => [])) {
       if (run.isDirectory() && RUN_ID.test(run.name)) runIds.add(run.name);
     }
   }

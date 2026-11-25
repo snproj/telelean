@@ -1,7 +1,7 @@
 /**
  * The run's shadow workspace (03 section 8.4 "Shadow", D-24, m0-report lesson 4; docs/m2-plan.md section 4.2).
  *
- *   <runsDir>/<rootKey>/<runId>/
+ *   <runsDir>/<runId>/   (2k2, docs/slice2-plan.md 2.10: runsDir = `<model root>/.telelean/runs`, git-ignored)
  *     ws/          the agent's root (Claude's cwd and the path guard's root). ONLY model files, all regular files:
  *                  lakefile.toml | lakefile.lean, lean-toolchain, lake-manifest.json, <library>.lean,
  *                  <library>/**.lean. No dot-entry at any depth (no .lake, .telelean, .git, .gitignore), so the guard
@@ -28,7 +28,7 @@
 import type { FileChange } from '@telelean/core';
 
 export interface ShadowPaths {
-  /** `<runsDir>/<rootKey>/<runId>` */
+  /** `<runsDir>/<runId>` (2k2: `<root>/.telelean/runs/<runId>`) */
   runDir: string;
   ws: string;
   build: string;
@@ -89,7 +89,10 @@ export interface ShadowCommit {
 export interface CreateShadowOptions {
   /** Absolute path of the model root (holds `.telelean/config.json`). */
   root: string;
-  /** Where runs live (the extension: `<globalStorage>/runs`; tests: a scratch dir). Created if missing. */
+  /**
+   * The runs folder the run directory goes in: the RunManager passes the root's own, `runsDirOf(root)` (2k2, D2-108);
+   * the shadow's own tests may pass a scratch dir. Created if missing, with its `.gitignore` (`ensureRunsDir`).
+   */
   runsDir: string;
   /** `[A-Za-z0-9_]{1,64}`. */
   runId: string;

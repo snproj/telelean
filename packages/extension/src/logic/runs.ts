@@ -1,7 +1,8 @@
 /**
  * M2 Claude runs on the host side, without the vscode API (docs/m2-plan.md section 8):
  *
- *   egress consent      asked once per model root before its first run (8.2), remembered by the host (globalState)
+ *   egress consent      asked once per model root before its first run (8.2); a yes is remembered in the model folder,
+ *                       `.telelean/runs/consent.json` (2k2, docs/slice2-plan.md 2.10, D2-110)
  *   the Claude backend  built lazily, by a factory the root's RunManager calls at the first start that passed
  *                       preflight (8.4): the explicit guard script path in dist/bin, the hook runtime, the client
  *                       app, the `setpriv --pdeathsig KILL` launcher, and the folder of the Claude Code extension VS
@@ -10,10 +11,12 @@
  *                       calls createClaudeBackend; only a backend a test installs (`testing.useRunBackend`) runs
  *   busy check          at most one active run per root: a start while one is active is refused (`conflict`)
  */
+import { readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import * as path from 'node:path';
 
 import { isTerminalRunState, RUN_MESSAGE_TYPES, type RunView, type WebviewToHostMessage } from '@telelean/core';
 import type { ResolvedBinary } from '@telelean/runner/llm/binary.js';
+import { ensureRunsDir, runsDirOf } from '@telelean/runner/shadow/index.js';
 import type { HookRuntime } from '@telelean/runner/llm/confinement.js';
 import type { LlmBackend } from '@telelean/runner/llm/types.js';
 import type { ClaudeBackendSettings, RunManager } from '@telelean/runner/run/types.js';
@@ -47,11 +50,52 @@ export const RUNS_UNAVAILABLE = 'Claude runs are not available in this window.';
 // ---------------------------------------------------------------------------------------------
 // Egress consent (docs/m2-plan.md section 8.2)
 
-export const CONSENT_KEY_PREFIX = 'telelean.claudeConsent.';
-/** The globalState key that remembers the consent for one model root (`shadow.rootKeyOf(root)`). */
-export function consentKey(rootKey: string): string {
-  return `${CONSENT_KEY_PREFIX}${rootKey}`;
+/**
+ * 2k2 (D2-110, D2-123, U3): the consent of one model folder lives in it, inside its git-ignored runs folder, and names the
+ * folder (its real path), so a clone (git leaves the file out), a copy, a move or a rename never carries it, and a folder
+ * recreated at the same path starts without it. Only a yes is written. (Until 2k2 it was VS Code's `globalState` key
+ * `telelean.claudeConsent.<rootKey>`, which is never read or removed now, U5.)
+ */
+export const CONSENT_FILE = 'consent.json';
+
+/** The folder as the consent names it: its real path (a symlinked spelling is the same folder), else its resolved path. */
+async function canonicalRoot(root: string): Promise<string> {
+  try {
+    return await realpath(root);
+  } catch {
+    return path.resolve(root);
+  }
 }
+
+/** The consent file's exact text for the model folder `root`: nothing else counts as a yes there. */
+export async function consentText(root: string): Promise<string> {
+  return `${JSON.stringify({ format: 'telelean-consent', version: 1, claude: true, root: await canonicalRoot(root) })}\n`;
+}
+
+export function consentPath(root: string): string {
+  return path.join(runsDirOf(root), CONSENT_FILE);
+}
+
+/** Whether the model folder `root` holds a yes for itself (never throws: an unreadable file, or another folder's, is a no). */
+export async function hasConsent(root: string): Promise<boolean> {
+  try {
+    return (await readFile(consentPath(root), 'utf8')) === (await consentText(root));
+  } catch {
+    return false;
+  }
+}
+
+/** Remembers a yes in the model folder (the runs folder and its `.gitignore` made first, D2-109). */
+export async function rememberConsent(root: string): Promise<void> {
+  await ensureRunsDir(runsDirOf(root));
+  await writeFile(consentPath(root), await consentText(root), { encoding: 'utf8', mode: 0o600 });
+}
+
+/** Test mode's reset: forgets the consent of `root` (nothing else in its runs folder). */
+export async function forgetConsent(root: string): Promise<void> {
+  await rm(consentPath(root), { force: true });
+}
+
 /** The modal's message and detail: together exactly the text of docs/m2-plan.md section 8.2. */
 export const CONSENT_MESSAGE = 'Run Claude on this model?';
 export const CONSENT_DETAIL =

@@ -9,7 +9,7 @@
  * notices while a step runs and while the results are hidden (run.json holds them). A v1 run in review is converted
  * into a session when it is recovered (§3.11, session.reload.test.ts); M2's legacy-proposal test was deleted in 2h.
  */
-import { cpSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { columnOrder } from '@telelean/core';
@@ -17,7 +17,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { renderAnswersAsUserTurn } from '../../src/llm/toolSchemas.js';
 import { condenseRateLimit, localTime, rateLimitNotice } from '../../src/run/index.js';
+import { DELETED_RUN_REFUSAL, heldNotice, MOVED_RUN_REFUSAL, movedRunNotice } from '../../src/run/manager.js';
+import { DRIFT_DEBOUNCE_MS } from '../../src/run/sessionEnd.js';
 import type { PersistedRun } from '../../src/run/types.js';
+import { runsDirOf } from '../../src/shadow/index.js';
 import { cleanup } from './helpers/env.js';
 import { okReport } from './helpers/fakeEngine.js';
 import { ASK_MODALITY, makeHarness, rawRun, rawStep, readJson, round1, START, state, step, waitForRun, waitForStage, type Harness } from './helpers/harness.js';
@@ -259,5 +262,296 @@ describe('the usage-limit wording helpers (fixer round 1)', () => {
     expect(rateLimitNotice({ status: 'rejected' }, now)).toBe("Your plan's usage limit was reached.");
     expect(rateLimitNotice({ status: 'odd' }, now)).toBe('Claude Code reported an unusual usage-limit status (odd).');
     expect(condenseRateLimit({ status: 'allowed', rateLimitType: 'seven_day_opus' }).detail).toBe('seven-day opus window');
+  });
+});
+
+describe("2k2 (docs/slice2-plan.md 2.10, D2-107): a model's runs in its own folder", () => {
+  it('a run lives in <root>/.telelean/runs/<runId>/ beside a .gitignore of /*; another root never recovers it; a folder recreated at the same path starts with no run', async () => {
+    const a = makeHarness({ script: [round1(step.ask())] });
+    toDispose.push(() => cleanup(a.dir));
+    await a.manager.start(START);
+    const waiting = await waitForRun(a.manager, state('waiting-for-answer'));
+    expect(a.runsDir).toBe(path.join(a.root, '.telelean', 'runs'));
+    expect(a.shadow().paths.runDir).toBe(path.join(a.root, '.telelean', 'runs', waiting.runId));
+    expect(readFileSync(path.join(runsDirOf(a.root), '.gitignore'), 'utf8')).toBe('/*\n');
+    a.manager.dispose();
+
+    // Another model folder next to it recovers nothing of it.
+    const other = makeHarness({ reuse: { dir: a.dir, root: path.join(a.dir, 'other-model') } });
+    toDispose.push(() => other.dispose());
+    await other.manager.recover();
+    expect(other.manager.current()).toBeNull();
+
+    // The same root recovers it.
+    const b = makeHarness({ reuse: { dir: a.dir, root: a.root, workspace: a.workspace } });
+    await b.manager.recover();
+    expect(b.manager.current()).toMatchObject({ runId: waiting.runId, state: 'waiting-for-answer' });
+    b.manager.dispose();
+
+    // The folder deleted and made again at the same path: no run, no runs folder (the deleted folder took them along).
+    rmSync(a.root, { recursive: true, force: true });
+    mkdirSync(a.root, { recursive: true });
+    const c = makeHarness({ reuse: { dir: a.dir, root: a.root } });
+    toDispose.push(() => c.dispose());
+    await c.manager.recover();
+    expect(c.manager.current()).toBeNull();
+    expect(c.manager.session()).toBeNull();
+    expect(existsSync(runsDirOf(a.root))).toBe(false);
+  });
+
+  it('D2-111: a session recorded at another path (the folder moved or copied) is held: interrupted, no view, the notice; nothing replayed or written; only Exit and Stop end it, recording nothing', async () => {
+    const a = makeHarness({ script: [round1(step.freeze(), step.edit(TARGET_LINE, TARGET_LINE + PROOF), step.finish(), step.result())] });
+    toDispose.push(() => cleanup(a.dir));
+    await a.manager.start(START);
+    const stage = await waitForStage(a.manager, 1);
+    const runId = stage.runId;
+    a.manager.dispose();
+    const moved = path.join(a.dir, 'moved-model');
+    cpSync(a.root, moved, { recursive: true });
+    const runJson = path.join(runsDirOf(moved), runId, 'run.json');
+    const original = readFileSync(runJson, 'utf8');
+
+    const b = makeHarness({ reuse: { dir: a.dir, root: moved } });
+    toDispose.push(() => b.dispose());
+    await b.manager.recover();
+    const held = b.manager.current();
+    expect(held).toMatchObject({ runId, state: 'interrupted' });
+    expect(held?.canResume).toBeUndefined();
+    expect(held?.session).toBeUndefined();
+    // R7: nothing of Claude's work (its results were hidden), one notice: the moved run's, naming the folder it started in.
+    expect(held?.notices.map((n) => n.text)).toEqual([movedRunNotice(a.root)]);
+    expect(held?.activity).toEqual([]);
+    expect(held?.verdict).toBeUndefined();
+    expect(b.manager.session()).toBeNull();
+    expect(b.engine.calls).toEqual([]); // no judge, no Lean job
+    expect(readFileSync(runJson, 'utf8')).toBe(original); // untouched: moved back, the run would go on
+    const refusal = { ok: false, code: 'conflict', error: MOVED_RUN_REFUSAL };
+    expect(await b.manager.decide(runId, 1, false, [], false)).toMatchObject(refusal);
+    expect(await b.manager.reveal(runId, 1, 'show-result')).toMatchObject(refusal);
+    expect(await b.manager.submit(runId, 1)).toMatchObject(refusal);
+    expect(await b.manager.resume(runId)).toMatchObject(refusal);
+    expect(await b.manager.retry(runId)).toMatchObject(refusal);
+    expect(await b.manager.end(runId, 'apply', 1, 'x')).toMatchObject(refusal);
+    expect(await b.manager.formalize({ subject: 'Spyro', inferences: [{ target: START.target, premises: START.premises }], runId, stage: 1 })).toMatchObject(refusal);
+    expect(await b.manager.start(START)).toMatchObject({ ok: false, code: 'conflict' }); // it still holds the folder's one run
+
+    expect(await b.manager.end(runId, 'exit')).toMatchObject({ ok: true, label: 'Session ended' });
+    expect(b.manager.current()).toMatchObject({ runId, state: 'discarded' });
+    expect(b.manager.session()).toBeNull();
+    expect(b.sidecars.attempts).toEqual([]); // nothing recorded in a folder the run did not start in
+    expect(b.sidecars.resolutions).toEqual([]);
+    expect(b.sidecars.decisions).toEqual([]);
+    expect(b.workspace.appliedChanges).toEqual([]);
+    expect(readJson<PersistedRun>(runJson).view.state).toBe('discarded');
+    // The folder it started in is not touched.
+    expect(readJson<PersistedRun>(path.join(runsDirOf(a.root), runId, 'run.json')).view.state).toBe('review');
+  });
+
+  it('D2-111: Stop on a held session ends it discarded, recording nothing', async () => {
+    const a = makeHarness({ script: [round1(step.freeze(), step.edit(TARGET_LINE, TARGET_LINE + PROOF), step.finish(), step.result())] });
+    toDispose.push(() => cleanup(a.dir));
+    await a.manager.start(START);
+    const runId = (await waitForStage(a.manager, 1)).runId;
+    a.manager.dispose();
+    const moved = path.join(a.dir, 'renamed-model');
+    cpSync(a.root, moved, { recursive: true });
+    const b = makeHarness({ reuse: { dir: a.dir, root: moved } });
+    toDispose.push(() => b.dispose());
+    await b.manager.recover();
+    expect(b.manager.current()).toMatchObject({ runId, state: 'interrupted' });
+    expect(await b.manager.cancel(runId)).toMatchObject({ ok: true, label: 'Session ended' });
+    expect(b.manager.current()).toMatchObject({ runId, state: 'discarded' });
+    expect(b.sidecars.attempts).toEqual([]);
+    expect(b.sidecars.resolutions).toEqual([]);
+    expect(readJson<PersistedRun>(path.join(runsDirOf(moved), runId, 'run.json')).view.state).toBe('discarded');
+  });
+
+  it('D2-111: Stop ends a held run that is no session (a v1 run) as cancelled; an answer is refused; its view shows nothing of Claude\'s work (R7)', async () => {
+    const a = makeHarness({ script: [round1(step.ask())] });
+    toDispose.push(() => cleanup(a.dir));
+    await a.manager.start(START);
+    const waiting = await waitForRun(a.manager, state('waiting-for-answer'));
+    a.manager.dispose();
+    const moved = path.join(a.dir, 'copied-model');
+    cpSync(a.root, moved, { recursive: true });
+    const runJson = path.join(runsDirOf(moved), waiting.runId, 'run.json');
+    const v1 = readJson<PersistedRun>(runJson);
+    v1.version = 1;
+    delete v1.session;
+    // What a v1 run shows of Claude's work: a verdict, its activity, its notices (a session would hide them, D2-10).
+    v1.view.verdict = 'proved';
+    v1.view.activity = [{ at: v1.view.updatedAt, kind: 'tool', text: 'check_lean: the proof passes' }];
+    v1.view.notices = [{ id: 'n9', at: v1.view.updatedAt, level: 'info', kind: 'info', text: 'Claude proved the target.' }];
+    writeFileSync(runJson, JSON.stringify(v1));
+
+    const b = makeHarness({ reuse: { dir: a.dir, root: moved } });
+    toDispose.push(() => b.dispose());
+    await b.manager.recover();
+    const held = b.manager.current();
+    expect(held).toMatchObject({ runId: waiting.runId, state: 'interrupted' });
+    expect(held?.pendingQuestions).toBeUndefined();
+    expect(held?.verdict).toBeUndefined();
+    expect(held?.activity).toEqual([]);
+    expect(held?.notices.map((n) => n.text)).toEqual([movedRunNotice(a.root)]);
+    const answers = [{ question: 0, choice: { kind: 'free-text' as const, text: 'a rule' }, scope: 'run' as const }];
+    expect(await b.manager.answer(waiting.runId, 'q1', answers)).toMatchObject({ ok: false, error: MOVED_RUN_REFUSAL });
+    expect(await b.manager.resume(waiting.runId)).toMatchObject({ ok: false, error: MOVED_RUN_REFUSAL });
+    expect(b.backend?.sessions).toHaveLength(0);
+    expect(await b.manager.cancel(waiting.runId)).toMatchObject({ ok: true, label: 'Run cancelled' });
+    expect(b.manager.current()).toMatchObject({ state: 'cancelled' });
+    expect(b.sidecars.attempts).toEqual([]);
+    expect(b.sidecars.resolutions).toEqual([]);
+  });
+  it('F-F2 (D2-111): a model file changed in the new folder wakes the drift watcher, and a held session\'s run.json stays byte for byte as it was', async () => {
+    const a = makeHarness({ script: [round1(step.freeze(), step.edit(TARGET_LINE, TARGET_LINE + PROOF), step.finish(), step.result())] });
+    toDispose.push(() => cleanup(a.dir));
+    await a.manager.start(START);
+    const runId = (await waitForStage(a.manager, 1)).runId;
+    a.manager.dispose();
+    const moved = path.join(a.dir, 'edited-copy');
+    cpSync(a.root, moved, { recursive: true });
+    const runJson = path.join(runsDirOf(moved), runId, 'run.json');
+    const original = readFileSync(runJson, 'utf8');
+    const b = makeHarness({ reuse: { dir: a.dir, root: moved } });
+    toDispose.push(() => b.dispose());
+    await b.manager.recover();
+    expect(b.manager.current()).toMatchObject({ runId, state: 'interrupted' });
+    let changes = 0;
+    b.manager.onDidChange(() => (changes += 1));
+    b.proposals.drift = ['Model/Spyro/Main.lean']; // the user edited a model file of the copy
+    b.workspace.fire();
+    await new Promise((resolve) => setTimeout(resolve, DRIFT_DEBOUNCE_MS * 3));
+    expect(readFileSync(runJson, 'utf8')).toBe(original); // no drift recorded into a run that runs nothing here
+    expect(changes).toBe(0);
+    expect(b.engine.calls).toEqual([]);
+    expect(b.manager.session()).toBeNull();
+  });
+
+  it('A-F5 (D2-111): closing the window on a held run leaves its run.json byte for byte as it was, a run saved as working included', async () => {
+    const a = makeHarness({ script: [round1(step.freeze(), step.edit(TARGET_LINE, TARGET_LINE + PROOF), step.finish(), step.result())] });
+    toDispose.push(() => cleanup(a.dir));
+    await a.manager.start(START);
+    const runId = (await waitForStage(a.manager, 1)).runId;
+    a.manager.dispose();
+    for (const [name, saved] of [['in review', 'review'], ['working', 'working']] as const) {
+      const moved = path.join(a.dir, `closed-${saved}`);
+      cpSync(a.root, moved, { recursive: true });
+      const runJson = path.join(runsDirOf(moved), runId, 'run.json');
+      const p = readJson<PersistedRun>(runJson);
+      p.view.state = saved;
+      writeFileSync(runJson, `${JSON.stringify(p, null, 1)}\n`);
+      const original = readFileSync(runJson, 'utf8');
+      const b = makeHarness({ reuse: { dir: a.dir, root: moved } });
+      await b.manager.recover();
+      expect(b.manager.current(), name).toMatchObject({ runId, state: 'interrupted' });
+      await new Promise((resolve) => setTimeout(resolve, 20)); // (the clock of a run saved as working would tick if it ran)
+      await b.manager.dispose();
+      expect(readFileSync(runJson, 'utf8'), name).toBe(original);
+    }
+  });
+
+  it('F-F8 (D2-111): the same folder reached through a symlink is not a moved folder: its session is recovered, not held', async () => {
+    const a = makeHarness({ script: [round1(step.freeze(), step.edit(TARGET_LINE, TARGET_LINE + PROOF), step.finish(), step.result())] });
+    toDispose.push(() => cleanup(a.dir));
+    await a.manager.start(START);
+    const runId = (await waitForStage(a.manager, 1)).runId;
+    a.manager.dispose();
+    const alias = path.join(a.dir, 'alias-of-model');
+    symlinkSync(a.root, alias);
+    const b = makeHarness({ reuse: { dir: a.dir, root: alias } });
+    toDispose.push(() => b.dispose());
+    await b.manager.recover();
+    const back = b.manager.current();
+    expect(back).toMatchObject({ runId });
+    expect(back?.state).not.toBe('interrupted');
+    expect(back?.notices.map((n) => n.text)).not.toContain(movedRunNotice(a.root));
+    expect(b.manager.session()).not.toBeNull(); // the review is back: nothing is held
+  });
+
+  it('A-F1 (D2-121, U1): the model folder deleted under a live session and made again at the same path: the run is held at once, Exit records nothing, and nothing of it lands in the new folder', async () => {
+    const a = makeHarness({ script: [round1(step.freeze(), step.edit(TARGET_LINE, TARGET_LINE + PROOF), step.finish(), step.result())] });
+    toDispose.push(() => cleanup(a.dir));
+    await a.manager.start(START);
+    const stage = await waitForStage(a.manager, 1);
+    const runId = stage.runId;
+    const runDir = a.shadow().paths.runDir;
+    expect(a.manager.session()).not.toBeNull();
+    // The user deletes the model folder and makes a new one at the same path; the window is not reloaded.
+    rmSync(a.root, { recursive: true, force: true });
+    mkdirSync(a.root, { recursive: true });
+
+    const held = a.manager.current();
+    expect(held).toMatchObject({ runId, state: 'interrupted' });
+    expect(held?.canResume).toBeUndefined();
+    expect(held?.session).toBeUndefined();
+    expect(held?.activity).toEqual([]);
+    expect(held?.notices.map((n) => n.text)).toEqual([heldNotice({ kind: 'deleted', dir: runDir })]);
+    expect(a.manager.session()).toBeNull(); // no review of the old session over the new folder
+    const refusal = { ok: false, code: 'conflict', error: DELETED_RUN_REFUSAL };
+    expect(await a.manager.decide(runId, 1, false, [], false)).toMatchObject(refusal);
+    expect(await a.manager.reveal(runId, 1, 'show-result')).toMatchObject(refusal);
+    expect(await a.manager.submit(runId, 1)).toMatchObject(refusal);
+    expect(await a.manager.resume(runId)).toMatchObject(refusal);
+    expect(await a.manager.retry(runId)).toMatchObject(refusal);
+    expect(await a.manager.end(runId, 'apply', 1, 'x')).toMatchObject(refusal);
+    expect(await a.manager.formalize({ subject: 'Spyro', inferences: [{ target: START.target, premises: START.premises }], runId, stage: 1 })).toMatchObject(refusal);
+    expect(await a.manager.start(START)).toMatchObject({ ok: false, code: 'conflict' }); // the held run still holds the folder's one run
+
+    expect(await a.manager.end(runId, 'exit')).toMatchObject({ ok: true, label: 'Session ended' });
+    expect(a.manager.current()).toMatchObject({ runId, state: 'discarded' });
+    expect(a.manager.session()).toBeNull();
+    expect(a.sidecars.attempts).toEqual([]); // the old run's attempt records are not written into the new folder
+    expect(a.sidecars.resolutions).toEqual([]);
+    expect(a.sidecars.decisions).toEqual([]);
+    expect(a.workspace.appliedChanges).toEqual([]);
+    expect(readdirSync(a.root)).toEqual([]); // not even a run folder or a transcript line was made again
+  });
+
+  it('A-F1 (D2-121): when the first thing after the deletion is an action (nobody asked for the view), it is refused as held, and Exit records nothing', async () => {
+    const a = makeHarness({ script: [round1(step.freeze(), step.edit(TARGET_LINE, TARGET_LINE + PROOF), step.finish(), step.result())] });
+    toDispose.push(() => cleanup(a.dir));
+    await a.manager.start(START);
+    const runId = (await waitForStage(a.manager, 1)).runId;
+    rmSync(a.root, { recursive: true, force: true });
+    mkdirSync(a.root, { recursive: true });
+    expect(await a.manager.decide(runId, 1, false, [], false)).toMatchObject({ ok: false, code: 'conflict', error: DELETED_RUN_REFUSAL });
+    expect(await a.manager.end(runId, 'exit')).toMatchObject({ ok: true, label: 'Session ended' });
+    expect(a.sidecars.attempts).toEqual([]);
+    expect(a.sidecars.resolutions).toEqual([]);
+    expect(readdirSync(a.root)).toEqual([]);
+  });
+
+  it('A-F1 (D2-121): when the host asks for the session view first, the deleted folder\'s session is gone from it', async () => {
+    const a = makeHarness({ script: [round1(step.freeze(), step.edit(TARGET_LINE, TARGET_LINE + PROOF), step.finish(), step.result())] });
+    toDispose.push(() => cleanup(a.dir));
+    await a.manager.start(START);
+    await waitForStage(a.manager, 1);
+    expect(a.manager.session()).not.toBeNull();
+    rmSync(a.root, { recursive: true, force: true });
+    mkdirSync(a.root, { recursive: true });
+    expect(a.manager.session()).toBeNull();
+  });
+
+  it('A-F1 (D2-121): a deletion is noticed by itself (the drift timer woken by its file events); the waiting question is refused and recorded nowhere; Claude\'s session is closed', async () => {
+    const a = makeHarness({ script: [round1(step.ask())] });
+    toDispose.push(() => cleanup(a.dir));
+    await a.manager.start(START);
+    const waiting = await waitForRun(a.manager, state('waiting-for-answer'));
+    let changes = 0;
+    a.manager.onDidChange(() => (changes += 1));
+    rmSync(a.root, { recursive: true, force: true });
+    mkdirSync(a.root, { recursive: true });
+    a.workspace.fire(); // what the watcher's delete events do
+    await waitForCondition(() => changes > 0); // nothing asked the manager for its view: it held the run on its own
+    expect(a.manager.current()).toMatchObject({ runId: waiting.runId, state: 'interrupted' });
+    expect(a.manager.current()?.pendingQuestions).toBeUndefined();
+    expect(a.backend?.closes.length).toBeGreaterThan(0); // Claude's process is stopped
+    const answers = [{ question: 0, choice: { kind: 'free-text' as const, text: 'a rule' }, scope: 'run' as const }];
+    expect(await a.manager.answer(waiting.runId, 'q1', answers)).toMatchObject({ ok: false, error: DELETED_RUN_REFUSAL });
+    expect(a.sidecars.decisions).toEqual([]);
+    expect(await a.manager.cancel(waiting.runId)).toMatchObject({ ok: true });
+    expect(a.manager.current()).toMatchObject({ state: 'discarded' });
+    expect(a.sidecars.attempts).toEqual([]);
+    expect(readdirSync(a.root)).toEqual([]);
   });
 });

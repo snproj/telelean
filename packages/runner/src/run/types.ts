@@ -137,8 +137,8 @@ export interface RunServices {
 export interface RunManagerOptions {
   /** Absolute model root. */
   root: string;
-  /** Where run directories live (extension: `<globalStorage>/runs`; tests: scratch). */
-  runsDir: string;
+  // 2k2 (docs/slice2-plan.md 2.10, D2-108): no `runsDir`. A root's runs live in its own folder, `runsDirOf(root)`
+  // (`<root>/.telelean/runs`), where the manager creates, recovers and prunes them.
   /** Must implement the M2 members (applyChanges, readText, modelFiles, library, projectModel, reloadAttempts). */
   workspace: ModelWorkspace;
   services: RunServices;

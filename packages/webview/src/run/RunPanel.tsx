@@ -30,7 +30,7 @@ import { InlineCode } from '../common/InlineCode';
 import { useNow } from '../common/useNow';
 import { NOTICE_ICON } from '../labels';
 import { listControls, partsText, stepRunning } from '../model/review';
-import { clockRuns, endedOutcome, endedText, formatClock, placeNotices, runStateLabel, runStatusParts } from '../model/run';
+import { clockRuns, endedOutcome, endedText, formatClock, panelNotices, panelSession, placeNotices, runStateLabel, runStatusParts } from '../model/run';
 import { sessionBarState } from '../model/sessionBar';
 import { useBoard, useBoardActions } from '../state/context';
 import { clampSplit, type RunPanelLayout } from '../state/store';
@@ -426,7 +426,8 @@ export function RunPanel() {
   const busy = useBoard((s) => s.runBusy?.action ?? null);
   const cancelling = useBoard((s) => s.runBusy?.action === 'cancel');
   // Slice 2g: the run's edit session, when the host posted one for it (the panel is then the review panel).
-  const session = useBoard((s) => (s.session && s.run && s.session.runId === s.run.runId && s.session.subject === s.subject ? s.session : null));
+  // (2k2, carry-over F-F1: never for a run that has ended, a second layer behind the store's D2-104.)
+  const session = useBoard(panelSession);
   const layout: RunPanelLayout = useNarrow() ? 'narrow' : 'wide';
   const split = useBoard((s) => s.runSplit[layout]);
   const actions = useBoardActions();
@@ -443,7 +444,8 @@ export function RunPanel() {
   const ended = run.state === 'accepted' || run.state === 'discarded' || run.state === 'cancelled' || run.state === 'failed';
   const cancellable = !ended && run.state !== 'review' && run.state !== 'interrupted';
   const reviewing = run.state === 'review';
-  const notices = placeNotices(run);
+  // (2k2, carry-over A-F1) the ended line is not listed again among the notices.
+  const notices = panelNotices(run);
   if (session !== null) {
     return (
       <aside

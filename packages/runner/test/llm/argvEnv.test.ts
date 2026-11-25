@@ -1,12 +1,19 @@
+import { spawnSync } from 'node:child_process';
+import { mkdir, realpath, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   BUILTIN_TOOLS,
   buildClaudeArgs,
   classifyAuth,
+  ClaudeCliBackend,
   type ClaudeArgsInput,
 } from '../../src/llm/claudeCli.js';
-import { buildClaudeSettings, cliDenyRules, verifyHooksListing } from '../../src/llm/confinement.js';
-import { sanitizeClaudeEnv } from '../../src/llm/env.js';
+import { buildClaudeSettings, cliDenyRules, defaultGuardScriptPath, verifyHooksListing } from '../../src/llm/confinement.js';
+import { gitCeilingEnv, sanitizeClaudeEnv } from '../../src/llm/env.js';
+import type { ToolServer } from '../../src/llm/toolServer.js';
+import type { AgentToolHost } from '../../src/llm/types.js';
+import { makeTempDir, removeDir } from './helpers.js';
 
 const base: ClaudeArgsInput = {
   model: 'claude-haiku-5-5',
@@ -293,5 +300,81 @@ describe('classifyAuth', () => {
     expect(classifyAuth({ apiProvider: 'firstParty' }).verdict).toBe('unknown');
     expect(classifyAuth(undefined).verdict).toBe('unknown');
     expect(classifyAuth({ apiProvider: 'firstParty', subscriptionType: 'pro' }, 'ANTHROPIC_API_KEY').verdict).toBe('api-key');
+  });
+});
+
+describe('2k2 (docs/slice2-plan.md 2.10, D2-113): git run by the CLI from ws/ finds no repository above the run folder', () => {
+  it("strips the host's GIT_* variables and sets GIT_CEILING_DIRECTORIES to the run folder", () => {
+    const { env, removed } = sanitizeClaudeEnv({ PATH: '/usr/bin', GIT_DIR: '/elsewhere/.git', GIT_WORK_TREE: '/elsewhere', GIT_CEILING_DIRECTORIES: '/' });
+    expect(env.GIT_DIR).toBeUndefined();
+    expect(env.GIT_WORK_TREE).toBeUndefined();
+    expect(env.GIT_CEILING_DIRECTORIES).toBeUndefined();
+    expect(removed).toEqual(expect.arrayContaining(['GIT_DIR', 'GIT_WORK_TREE', 'GIT_CEILING_DIRECTORIES']));
+    expect(gitCeilingEnv('/m/.telelean/runs/r1/ws')).toEqual({ GIT_CEILING_DIRECTORIES: '/m/.telelean/runs/r1' });
+    // A ':' would split the ceiling's list: git then gets a repository that does not exist instead, and searches nowhere.
+    expect(gitCeilingEnv('/m:2/.telelean/runs/r1/ws')).toEqual({ GIT_DIR: '/m:2/.telelean/runs/r1/no-git-repository' });
+  });
+
+  it("a model folder whose path holds a ':' : git from ws/ still finds no repository (and finds the model's without the setting)", async () => {
+    const base = await makeTempDir('telelean-ceiling-colon-');
+    try {
+      const model = path.join(base, 'mo:del');
+      const ws = path.join(model, '.telelean', 'runs', 'r1', 'ws');
+      await mkdir(ws, { recursive: true });
+      const env = { PATH: process.env.PATH ?? '/usr/bin:/bin', HOME: base, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_TERMINAL_PROMPT: '0' };
+      expect(spawnSync('git', ['init', '--quiet', model], { env, encoding: 'utf8' }).status).toBe(0);
+      const revParse = (extra: Record<string, string>) => spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd: ws, env: { ...env, ...extra }, encoding: 'utf8' });
+      const wsReal = await realpath(ws);
+      const held = revParse(gitCeilingEnv(wsReal));
+      expect(held.status).not.toBe(0);
+      expect(held.stderr).toMatch(/not a git repository/);
+      // The plain ceiling, split at the ':', would not have held:
+      expect(revParse({ GIT_CEILING_DIRECTORIES: path.dirname(wsReal) }).stdout.trim()).toBe(await realpath(model));
+    } finally {
+      await removeDir(base);
+    }
+  });
+
+  it("prepare(): the CLI's environment has the ceiling (no envSet lifts it), and git rev-parse from ws/ inside the model's repository finds none", async () => {
+    const base = await makeTempDir('telelean-ceiling-');
+    try {
+      const model = path.join(base, 'model');
+      const run = path.join(model, '.telelean', 'runs', 'r1');
+      const ws = path.join(run, 'ws');
+      await mkdir(path.join(ws, 'Model'), { recursive: true });
+      await mkdir(path.join(run, 'session'), { recursive: true });
+      await writeFile(path.join(ws, 'Model.lean'), 'import Model.Spyro\n');
+      const isolated = { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_TERMINAL_PROMPT: '0' };
+      const init = spawnSync('git', ['-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', 'init', '--quiet', model], { env: { PATH: process.env.PATH ?? '/usr/bin:/bin', HOME: base, ...isolated }, encoding: 'utf8' });
+      expect(init.status, init.stderr).toBe(0);
+      const backend = new ClaudeCliBackend({
+        binary: { path: '/nonexistent/claude' },
+        baseEnv: { PATH: process.env.PATH ?? '/usr/bin:/bin', HOME: base, GIT_DIR: path.join(model, '.git') },
+        envSet: { GIT_CEILING_DIRECTORIES: '' },
+        hookRuntime: { command: process.execPath, args: [] },
+        guardScriptPath: defaultGuardScriptPath(),
+      });
+      const server = { mcpConfigDocument: () => ({ mcpServers: {} }) } as unknown as ToolServer;
+      const launch = await backend.prepare({ cwd: ws, runDir: path.join(run, 'session'), systemPrompt: 'x', model: 'm', toolHost: {} as AgentToolHost }, server);
+      const runReal = await realpath(run);
+      expect(launch.cwd).toBe(await realpath(ws));
+      expect(launch.env.GIT_CEILING_DIRECTORIES).toBe(runReal);
+      expect(launch.env.GIT_DIR).toBeUndefined();
+      // D2-114 (R4): what keeps a CLAUDE.md or `.claude/` in the model folder (now above ws/) away from the CLI, as M0
+      // verified in the binary: no settings sources at all, and no CLAUDE.md files.
+      expect(launch.claudeArgs).toContain('--setting-sources=');
+      expect(launch.env.CLAUDE_CODE_DISABLE_CLAUDE_MDS).toBe('1');
+      const revParse = (cwd: string, env: Record<string, string>) => spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd, env: { ...env, ...isolated }, encoding: 'utf8' });
+      for (const cwd of [ws, path.join(ws, 'Model')]) {
+        const r = revParse(cwd, launch.env);
+        expect(r.status, cwd).not.toBe(0);
+        expect(r.stderr).toMatch(/not a git repository/);
+      }
+      // Without the ceiling the same git finds the model's repository: what the ceiling keeps out of reach.
+      const { GIT_CEILING_DIRECTORIES: _ceiling, ...without } = launch.env;
+      expect(revParse(ws, without).stdout.trim()).toBe(await realpath(model));
+    } finally {
+      await removeDir(base);
+    }
   });
 });

@@ -739,3 +739,52 @@ Each item below is a clause where v4.1 does not do literally what your turn-21 t
   - **The VS Code suites:** `run_vscode_smoke.sh` (`smoke.mjs --snap`: your snap VS Code 1.147.0, an isolated profile and HOME, under `xvfb-run`, which you installed for this in turn 29). Smoke: 39 passing, 1 pending. e2e: 15 passing, 7 pending. That is turn 25's count plus 2k1's new scenario "exit (2k1, D2-100)", which passed; the 7 pending are the old review scenarios, skipped on purpose since AP-43. 0 isolation failures, 0 warnings, rc 0. The suites ran after the rebuild, because they load the extension from `dist/`.
 - **2k2 (your turn-27 request: everything telelean keeps for a model goes into the model folder) was interrupted** at your request on 2026-11-23 at about 05:13Z (13:13 SGT), mid-build and unverified. The partial work is `verbatim_prompt_log/bundle_27/evidence/patches/slice_2k2_partial_only.patch` (48 files). In turn 29 it still applied cleanly to `1736cb0` (`git apply --check`). Its brief, with the interruption note, is `bundle_27/handoff/kit/briefs/2k2.md`. Until 2k2 lands, sessions are stored by folder path in VS Code's storage, so don't delete and recreate a folder that has an open session.
 - **Cost:** turn 27 used ≈ 1.2 M subagent tokens for 2k1 and ≈ 0.53 M for the interrupted 2k2 builder. Turn 29's checks were scripts, with no subagents.
+
+## AP-47: 2k2, a model's data in its own folder: built and checked, not yet rebuilt into your extension (turns 32–33, 2026-11-23)
+- **What you asked (turn 32):** start 2k2 from the half-done work, and stop just before the rebuild, so you can keep testing the 2k1 build meanwhile.
+- **How it ran:** I applied `bundle_27/evidence/patches/slice_2k2_partial_only.patch` to your working tree on top of HEAD `99cff93`, with nothing staged. Then the chain `wf_3e2a0475-ada` ran from 15:42 to 18:04 SGT. One Opus builder finished the work. Two Sonnet reviewers found 19 findings: no blocker, 3 major. Two Sonnet fix rounds followed, each re-reviewed. A Haiku integrator ran the full checks. The reports are in `verbatim_prompt_log/bundle_32/subagent_reports/`.
+- **What 2k2 does** (D2-107–D2-126 in `docs/slice2-plan.md` §7.2, and §2.10):
+  - **Runs:** each model's runs live in `<model>/.telelean/runs/<runId>/`. That folder carries its own `.gitignore` (`/*`), and Initialize's `.gitignore` gains `/.telelean/runs/`.
+  - **Consent:** the "Run with Claude" consent is `.telelean/runs/consent.json`, no longer in VS Code's storage.
+  - **Recovery, pruning, git and the watcher:**
+    - recovery and pruning work per folder, and pruning deletes only run folders;
+    - Claude's git can't see the model's repository (`GIT_CEILING_DIRECTORIES`);
+    - telelean ignores file changes under the runs folder.
+  - **Not migrated:** sessions still in VS Code's storage don't move over. Finish or Exit any open session before switching to the 2k2 build.
+- **Decisions for you to confirm** (each one's alternative is in the plan entry):
+  - **D2-111:** a run left over from a folder's old place (moved, renamed or copied) shows as interrupted, with only Stop. Ending it records nothing in the new folder.
+  - **D2-114:** no new guard against `CLAUDE.md` or `.claude/` in folders above Claude's working copy. It relies on the CLI flags verified in M0, both now pinned in a test.
+  - **D2-117:** the CLI's own deny rules, the second safety layer, cover only model paths of `[A-Za-z0-9._/-]`. A path with a space relies on telelean's path guard alone.
+  - **D2-118 (builder):** the runs folder's `.gitignore` is `/*`, not the `*` your design wording named. A bare `*` would make Claude's Grep find nothing in any model that has a git repository. Not checked against the real CLI.
+  - **D2-122 (fixer):** each run folder holds a `.ignore` of `!*`, so the model's own `.gitignore` rules don't hide files from Claude's Grep. A reviewer measured this with ripgrep 15.0.0; it was not checked with the CLI's own ripgrep.
+  - **D2-123 (fixer):** the consent names the folder's real path, so a copied (`cp -r`), moved or renamed folder asks again; a symlinked spelling of the same folder doesn't. *Alternative:* a copy would carry the consent with it.
+- **Other decisions** (no confirmation needed):
+  - **D2-108–110, D2-112, D2-113, D2-115, D2-116 (builder):** the details of the layout and environment.
+  - **D2-119:** a held run shows nothing of Claude's work.
+  - **D2-120:** 2k1's two review carry-overs were fixed in the webview.
+  - **D2-121:** if a model's folder is deleted under a live run, the run is held at once; only Stop or Exit works, and it writes nothing.
+  - **D2-124:** a symlinked folder isn't treated as moved.
+  - **D2-125:** a wording fix.
+  - **D2-126:** Test mode forgets the consents it wrote.
+- **What I did myself after the chain:** I applied the fixer's ready patch to `scripts/walkthrough-claude.mjs`, which the builders may not edit. It drops the call to the `rootKeyOf` function that 2k2 removed, and the `runsDir` option it no longer takes. Its unit test passes (5 of 5). The script's real-Claude walkthrough is still dead for an older reason: it calls `manager.proposal()`, which slice 2h removed. It needs a rewrite for sessions in a later sub-slice, or retiring.
+- **Left open (a nit, A-F8):** a held run's panel still shows the generic "interrupted (the editor reloaded)" sentence above the notice that states the real cause.
+- **A slip by fixer round 2, undone and checked:** the fixer dry-ran the walkthrough script (FakeBackend, no Claude) from a scratch mirror that linked the repo's `mental_model/`. At 17:25 SGT this wrote a nested `.git`, `.lake`, `.telelean/runs`, `graph.json` and a `decisions.json` into the real sample folder. The fixer removed them and restored the folder times. I checked independently: `git status --ignored` on `mental_model/` is empty, and nothing in it is newer than 17:28.
+- **Checks:**
+  - **Builder:** 20 mutation checks, all killed.
+  - **Reviewers:** 9 more mutants, all killed.
+  - **Integrator:** tsc clean in 5 configs; vitest core 1193, webview 451 and extension 222 tests; the full real-Lean runner suite 927 passed, 1 skipped as expected; HEAD `99cff93`; nothing staged; `dist`/`out` untouched.
+  - **My final checks:**
+    - a scratch webview build, then Playwright one spec at a time: 21 of 21 spec files, 124 tests;
+    - the VS Code suites (`smoke.mjs --snap`) on a 2k2 build in a scratch copy of the repo, so your `dist`/`out` stay at 2k1: smoke 39 passing, 1 pending; e2e 15 passing, 7 pending (the same skips as before); 0 isolation failures; the test runs were created under the model folders' `.telelean/runs`.
+- **Patches:** `bundle_32/evidence/patches/after_slice_2k2.patch` (the integrator's, 52 files) and `after_slice_2k2_final.patch` (53 files, with the walkthrough fix). Both are `git diff HEAD` against `99cff93`.
+- **Not done, as you asked:** the AP-8 rebuild of `packages/extension/dist` and `out`. They are still the 2k1 build of 14:49 SGT.
+- **Cost:** ≈ 1.94 M subagent tokens (8 agents, 742 tool uses, 142 min), against the 1.4 M I expected and the 2 M ceiling. Both fix rounds were used.
+- **The AP-8 rebuild (turn 35, 2026-11-23, at about 19:08 SGT, on your go):**
+  - `vite build` in packages/webview and `node scripts/build.mjs` in packages/extension, both rc 0 ("bundle loads").
+  - Changed in your working tree:
+    - `dist/extension.js`, `dist/webview/webview.js`;
+    - `out/test/suite/{activation,boards,hostEnv,runs}.test.js`;
+    - and their maps.
+  - The new `dist` equals the checked scratch build: `webview.js` byte for byte; `extension.js` apart from the module-path labels of the symlinked `node_modules`.
+  - The 2k1 build is in git at `99cff93`, and a copy is in my scratch folder (`dist_out_before_2k2_rebuild.tgz`).
+  - Re-check: the VS Code suites against the real `dist`. Smoke 39 passing, 1 pending; e2e 15 passing, 7 pending; 0 isolation failures. There was 1 warning: a stray Chromium shared-memory file in `/dev/shm`, which the smoke script removed itself.

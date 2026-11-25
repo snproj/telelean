@@ -80,7 +80,7 @@ import type { CheckContext, CheckReport, FreezeRecord, SessionCheckContext } fro
 import type { Adoption, ArrowProposal, ProposeArrowArgs, ProposeAssumptionArgs } from '../llm/types.js';
 import { sha256Text } from '../semantic/project.js';
 import { isLeanModelPath } from '../shadow/paths.js';
-import { createRunShadow } from '../shadow/index.js';
+import { createRunShadow, runsDirOf } from '../shadow/index.js';
 import type { ShadowCommit, ShadowWorkspace } from '../shadow/types.js';
 import { writeTextAtomic } from './persist.js';
 import { preflight as defaultPreflight } from './preflight.js';
@@ -660,7 +660,7 @@ export abstract class SessionRunner extends StepRunner {
     const cliVersion = backendCliVersion(backend);
     let shadow: ShadowWorkspace;
     try {
-      shadow = await (services.createShadow ?? createRunShadow)({ root, runsDir: this.o.runsDir, runId, library, files, now: () => this.now(), copyBuild: settings.reuseLeanBuild === true });
+      shadow = await (services.createShadow ?? createRunShadow)({ root, runsDir: runsDirOf(root), runId, library, files, now: () => this.now(), copyBuild: settings.reuseLeanBuild === true });
     } catch (e) {
       return refused('not-yet', `telelean could not make the run's working copy: ${errorText(e)}`);
     }

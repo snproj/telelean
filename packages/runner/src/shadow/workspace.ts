@@ -40,7 +40,7 @@ export const SHADOW_COMMIT_KINDS: readonly ShadowCommitKind[] = [
 const KIND_SET: ReadonlySet<string> = new Set(SHADOW_COMMIT_KINDS);
 const COMMIT_ID = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/u;
 
-/** The fixed layout of `<runsDir>/<rootKey>/<runId>/`. */
+/** The fixed layout of `<runsDir>/<runId>/` (2k2: `<root>/.telelean/runs/<runId>/`). */
 export function shadowPaths(runDir: string): ShadowPaths {
   const dir = path.resolve(runDir);
   return {

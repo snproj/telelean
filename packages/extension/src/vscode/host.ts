@@ -11,9 +11,9 @@
  * A folder without `.telelean/config.json` never gets a workspace, so nothing runs Lean there (D-28 opt-in).
  *
  * M2 (docs/m2-plan.md section 8): each root's RunManager lives with its workspace in the registry, with the run
- * directories under VS Code's global storage (`<globalStorage>/runs`) and a lazy Claude backend (logic/runs.ts: built
- * at the first start that passed preflight; refused in Test mode unless a test installed one). The board asks for
- * the egress consent once per root (remembered in globalState) and shows a proposal's raw Lean diff beside it.
+ * directories in the model folder (2k2, docs/slice2-plan.md 2.10: `<root>/.telelean/runs`) and a lazy Claude backend
+ * (logic/runs.ts: built at the first start that passed preflight; refused in Test mode unless a test installed one).
+ * The board asks for the egress consent once per root (remembered in that folder) and shows a raw Lean diff beside it.
  * Deactivation disposes the run managers first (an active run is persisted and its session closed).
  */
 import { access } from 'node:fs/promises';
@@ -30,7 +30,6 @@ import {
   type WebviewToHostMessage,
 } from '@telelean/core';
 import type { RunManager } from '@telelean/runner/run/types.js';
-import { rootKeyOf } from '@telelean/runner/shadow/index.js';
 import type { ModelWorkspace, WorkspaceChange } from '@telelean/runner/workspace/index.js';
 
 import type {
@@ -56,10 +55,11 @@ import {
   CLAUDE_EXTENSION_ID,
   claudeBackendSettings,
   CONSENT_DETAIL,
-  CONSENT_KEY_PREFIX,
   CONSENT_MESSAGE,
   CONSENT_YES,
-  consentKey,
+  forgetConsent,
+  hasConsent,
+  rememberConsent,
   runBackendFactory,
   type RunBackendOverride,
 } from '../logic/runs';
@@ -99,6 +99,8 @@ export class TeleleanHost implements vscode.Disposable {
   private runner: RunnerFunctions;
   private readonly boards = new Map<string, BoardPanel>();
   private readonly orphans = new Set<BoardPanel>();
+  /** The model folders this window wrote a consent into (Test mode's `reset()` forgets them, whatever else it has forgotten). */
+  private readonly consented = new Set<string>();
   private sample: BoardPanel | undefined;
   private lastPanel: BoardPanel | undefined;
   private readonly registry: WorkspaceRegistry;
@@ -455,17 +457,16 @@ export class TeleleanHost implements vscode.Disposable {
   /**
    * The root's RunManager (the registry calls this once the root's workspace has loaded). Its backend is a factory the
    * RunManager calls at the first start that passed preflight, never here: opening a board never resolves or runs a
-   * Claude binary. Throws when runs are unavailable (no storage folder, or the runner's run functions are missing).
+   * Claude binary. Throws when runs are unavailable (the runner's run functions are missing; the runs need no storage
+   * folder since 2k2: they live in the model folder).
    */
   private createRunManager(root: string, workspace: ModelWorkspace): RunManager {
-    const storage = (this.context.globalStorageUri as vscode.Uri | undefined)?.fsPath;
-    if (!storage) throw new Error('VS Code gave telelean no global storage folder for its run directories');
+    // 2k2 (D2-108): the root's runs live in its own folder (`<root>/.telelean/runs`), which the manager derives.
     const runner = this.runner;
     const name = path.basename(root);
     const log: Log = (level, message) => this.logAt(level, `[${name}] ${message}`);
     return runner.createRunManager({
       root,
-      runsDir: path.join(storage, 'runs'),
       workspace,
       settings: this.settingsFor(root).run,
       services: {
@@ -495,14 +496,16 @@ export class TeleleanHost implements vscode.Disposable {
 
   /**
    * Egress consent (docs/m2-plan.md section 8.2), once per model root: a modal naming exactly what leaves the machine;
-   * a yes is remembered in globalState (`telelean.claudeConsent.<rootKey>`). A no starts nothing and is not
-   * remembered, so the next start asks again. In Test mode the testing API answers it.
+   * a yes is remembered in the model folder (2k2, D2-110: `.telelean/runs/consent.json`, git-ignored). A no starts
+   * nothing and is not remembered, so the next start asks again. In Test mode the testing API answers it.
    */
   private async claudeConsent(root: string): Promise<boolean> {
-    const key = consentKey(rootKeyOf(root));
-    if (this.context.globalState.get<unknown>(key) === true) return true;
+    if (await hasConsent(root)) return true;
     const yes = await this.confirm('claudeConsent', CONSENT_MESSAGE, CONSENT_DETAIL, CONSENT_YES);
-    if (yes) await this.context.globalState.update(key, true);
+    if (yes) {
+      await rememberConsent(root);
+      this.consented.add(root);
+    }
     this.log.info(`[${path.basename(root)}] Claude consent: ${yes ? 'allowed (remembered for this model folder)' : 'declined'}`);
     return yes;
   }
@@ -624,14 +627,16 @@ export class TeleleanHost implements vscode.Disposable {
         host.registry.forget(root);
       },
       reset: async () => {
+        const resetRoots = new Set([...host.boards.keys(), ...host.registry.roots()]);
         for (const board of [...host.boards.values(), ...host.orphans, ...(host.sample ? [host.sample] : [])]) board.dispose();
         for (const root of host.registry.roots()) host.registry.forget(root);
         host.promptAnswers = {};
         host.runBackend = undefined;
         await host.context.workspaceState.update(RECORDS_KEY, undefined);
-        for (const key of host.context.globalState.keys()) {
-          if (key.startsWith(CONSENT_KEY_PREFIX)) await host.context.globalState.update(key, undefined);
-        }
+        // 2k2 (D2-116): the consent of each root it resets, and of every folder this window wrote one into, in that folder
+        // (VS Code's globalState is not touched, U5).
+        for (const root of new Set([...resetRoots, ...host.consented])) await forgetConsent(root).catch(() => undefined);
+        host.consented.clear();
       },
     };
     return {

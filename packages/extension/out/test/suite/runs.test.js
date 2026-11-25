@@ -20855,8 +20855,11 @@ suite("a Claude run through the board (FakeBackend; AT5.8, AT5.9)", () => {
     const [question2] = latestRun.pendingQuestions.questions;
     assert3.equal(question2?.phenomenon, "modality");
     assert3.equal("claudesGuess" in (question2 ?? {}), false, "Claude's guess must not reach the board before the answer (D-20)");
-    const runs = path3.join(process.env.TELELEAN_SMOKE_DIR ?? "", "user-data", "User", "globalStorage", "telelean.telelean", "runs");
-    assert3.ok((0, import_node_fs2.existsSync)(runs), `${runs} does not exist`);
+    const runs = path3.join(root, ".telelean", "runs");
+    assert3.ok((0, import_node_fs2.existsSync)(path3.join(runs, runId, "run.json")), `${runs}/${runId}/run.json does not exist`);
+    assert3.equal((0, import_node_fs2.readFileSync)(path3.join(runs, ".gitignore"), "utf8"), "/*\n");
+    const storage = path3.join(process.env.TELELEAN_SMOKE_DIR ?? "", "user-data", "User", "globalStorage", "telelean.telelean", "runs");
+    assert3.equal((0, import_node_fs2.existsSync)(storage), false, `${storage} exists`);
   });
   test("the answer goes through the board; the gate passes and the edit session\u2019s first stage arrives; the real files are untouched", async function() {
     this.timeout(LEAN_TIMEOUT_MS * 2);

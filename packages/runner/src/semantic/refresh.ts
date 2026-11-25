@@ -154,14 +154,21 @@ function listWithMore(items: readonly string[]): string {
   return items.length > DETAIL_ITEMS ? `${shown}; … (${items.length - DETAIL_ITEMS} more)` : shown;
 }
 
-/** `[root/.git]` when it is a real directory (bwrap can only cover a directory with a tmpfs), else `[]`. */
+/**
+ * What the in-place build covers with an empty tmpfs: `root/.git`, and (2k2, D2-115) `root/.telelean/runs`, the model's
+ * runs, so the model's Lean code sees no run's files (Claude's working copies, results still hidden), as when runs lived
+ * under the masked home. Each only when it is a real directory (bwrap can only cover a directory with a tmpfs).
+ */
 export function gitMaskPaths(root: string): string[] {
-  const git = path.join(root, '.git');
-  try {
-    return lstatSync(git).isDirectory() ? [git] : [];
-  } catch {
-    return [];
+  const out: string[] = [];
+  for (const dir of [path.join(root, '.git'), path.join(root, '.telelean', 'runs')]) {
+    try {
+      if (lstatSync(dir).isDirectory()) out.push(dir);
+    } catch {
+      // absent
+    }
   }
+  return out;
 }
 
 /** The runLean options of the in-place build (the check reuses them with its own argv, stdin, timeout and cap). */

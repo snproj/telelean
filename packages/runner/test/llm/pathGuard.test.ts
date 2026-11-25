@@ -5,7 +5,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { decide, grepGlobTokens, hookOutputFor, type GuardPolicy, type HookInput } from '../../bin/telelean-path-guard.mjs';
 import { buildClaudeSettings, buildGuardPolicy, defaultGuardScriptPath, selfTestGuard } from '../../src/llm/confinement.js';
-import { makeCleanShadow, makeShadow, removeDir, type ShadowFixture } from './helpers.js';
+import { makeCleanShadow, makeShadow, makeTempDir, removeDir, type ShadowFixture } from './helpers.js';
 
 let fx: ShadowFixture;
 let clean: ShadowFixture;
@@ -309,5 +309,74 @@ describe('path guard: hook protocol (run as the CLI runs it)', () => {
     expect(runHook('not json', policyPath).status).toBe(2);
     await writeFile(policyPath, JSON.stringify({ ...policy, version: 99 }));
     expect(runHook({ tool_name: 'Read', tool_input: { file_path: p('Model.lean') } }, policyPath).status).toBe(2);
+  });
+});
+
+describe('path guard: ws/ inside the model folder (2k2, docs/slice2-plan.md 2.10, D2-107 R3)', () => {
+  // The run folder is <model>/.telelean/runs/<id>/, so every path of ws/ passes through a hidden segment
+  // (.telelean) of the model folder. The hidden-segment rule applies to the path relative to ws/, so ws/ itself is
+  // usable and nothing of the model folder is reachable.
+  let base: string;
+  let model: string;
+  let ws: string;
+  let pol: GuardPolicy;
+  const at = (tool: string, toolInput: Record<string, unknown>) => decide({ hook_event_name: 'PreToolUse', tool_name: tool, tool_input: toolInput, cwd: ws }, pol);
+
+  beforeAll(async () => {
+    base = await makeTempDir();
+    model = path.join(base, 'model');
+    const run = path.join(model, '.telelean', 'runs', 'r1');
+    ws = path.join(run, 'ws');
+    for (const dir of [path.join(model, 'Model', 'Spyro'), path.join(model, '.git'), path.join(ws, 'Model', 'Spyro'), path.join(run, 'session'), path.join(run, 'build')]) await mkdir(dir, { recursive: true });
+    await writeFile(path.join(model, 'Model', 'Spyro', 'Main.lean'), 'the user model\n');
+    await writeFile(path.join(model, '.telelean', 'config.json'), '{}\n');
+    await writeFile(path.join(model, '.telelean', 'runs', 'consent.json'), '{}\n');
+    await writeFile(path.join(model, '.git', 'HEAD'), 'ref: refs/heads/main\n');
+    await writeFile(path.join(run, 'run.json'), '{}\n');
+    await writeFile(path.join(ws, 'Model.lean'), 'import Model.Spyro.Main\n');
+    await writeFile(path.join(ws, 'Model', 'Spyro', 'Main.lean'), 'namespace Spyro\nend Spyro\n');
+    await writeFile(path.join(ws, 'lakefile.toml'), 'name = "Model"\n');
+    await symlink(path.join(model, 'Model', 'Spyro', 'Main.lean'), path.join(ws, 'Model', 'Spyro', 'Up.lean'));
+    await symlink(model, path.join(ws, 'up'));
+    pol = buildGuardPolicy(ws, path.join(run, 'session', 'guard-log.jsonl'));
+  });
+  afterAll(async () => {
+    await removeDir(base);
+  });
+
+  it('allows the working copy: reads, edits and new files by relative and absolute path, and Grep and Glob over all of ws/', () => {
+    expect(at('Read', { file_path: 'Model/Spyro/Main.lean' }).kind).toBe('pass');
+    expect(at('Read', { file_path: path.join(ws, 'Model.lean') }).kind).toBe('pass');
+    expect(at('Edit', { file_path: path.join(ws, 'Model', 'Spyro', 'Main.lean'), old_string: 'a', new_string: 'b' }).kind).toBe('pass');
+    expect(at('Write', { file_path: 'Model/Spyro/New.lean', content: 'x' }).kind).toBe('pass');
+    // ws/ holds two symlinks (below), which the scan does not follow, and no hidden entry.
+    expect(at('Glob', { pattern: '**/*.lean', path: path.join(ws, 'Model') }).kind).toBe('pass');
+    expect(at('Grep', { pattern: 'theorem', path: 'Model' }).kind).toBe('pass');
+    expect(at('Grep', { pattern: 'theorem' }).kind).toBe('pass'); // the session's cwd, ws/ itself
+    expect(at('Glob', { pattern: '**/*.lean' }).kind).toBe('pass');
+  });
+
+  it("denies everything of the model folder: '..' escapes, absolute paths to its files, its .telelean and .git, the run's own files, symlinks and search roots above ws/", () => {
+    for (const file of [
+      path.join(model, 'Model', 'Spyro', 'Main.lean'),
+      path.join(model, '.telelean', 'config.json'),
+      path.join(model, '.telelean', 'runs', 'consent.json'),
+      path.join(model, '.telelean', 'runs', 'r1', 'run.json'),
+      path.join(model, '.git', 'HEAD'),
+    ]) {
+      expect(at('Read', { file_path: file }).kind, file).toBe('deny');
+      expect(at('Write', { file_path: file, content: 'x' }).kind, file).toBe('deny');
+    }
+    expect(at('Read', { file_path: '../run.json' }).reason).toMatch(/'\.\.'/);
+    expect(at('Read', { file_path: '../../../../Model/Spyro/Main.lean' }).kind).toBe('deny');
+    expect(at('Read', { file_path: `${ws}/../../consent.json` }).kind).toBe('deny');
+    expect(at('Read', { file_path: 'Model/Spyro/Up.lean' }).reason).toMatch(/resolves outside the workspace copy/);
+    expect(at('Read', { file_path: 'up/Model/Spyro/Main.lean' }).kind).toBe('deny');
+    for (const root of [model, path.join(model, '.telelean'), path.join(model, '.telelean', 'runs', 'r1'), 'up', '..']) {
+      expect(at('Grep', { pattern: 'x', path: root }).kind, root).toBe('deny');
+      expect(at('Glob', { pattern: '*', path: root }).kind, root).toBe('deny');
+    }
+    expect(at('Glob', { pattern: '../*' }).kind).toBe('deny');
+    expect(at('Glob', { pattern: `${model}/**` }).kind).toBe('deny');
   });
 });

@@ -51,10 +51,10 @@ VS Code window
           └─ setpriv → claude -p --input-format stream-json …  (cwd = the run's ws/) ─────────────┘
                  └─ PreToolUse hook: node telelean-path-guard.mjs (before every file-tool call)
 
-Model folder (opt-in: has .telelean/config.json)     VS Code extension storage
-  Model.lean, Model/<S>.lean, Model/<S>/*.lean         globalStorage/telelean.telelean/runs/<folder>-<hash>/<run>/
+Model folder (opt-in: has .telelean/config.json)     Its runs (slice 2k2; git-ignored, in the model folder)
+  Model.lean, Model/<S>.lean, Model/<S>/*.lean         .telelean/runs/<run>/
   .telelean/: config, layout, attic, attempts,           ws/  build/  git/  session/  frozen/  gate/  run.json …
-              decisions, graph.json;   .lake/
+              decisions, graph.json;   .lake/          .telelean/runs/consent.json, .telelean/runs/.gitignore (/*)
 ```
 
 ## 1.2 Processes
@@ -248,7 +248,7 @@ Model folder (opt-in: has .telelean/config.json)     VS Code extension storage
 
 ### 1.4.3 A run, end to end
 
-1. **Start.** The tray sends `startRun`, which goes to BoardSession's run queue (separate from edits). Then come the busy check and the consent modal. Only a yes is remembered, per root, in `globalState`.
+1. **Start.** The tray sends `startRun`, which goes to BoardSession's run queue (separate from edits). Then come the busy check and the consent modal. Only a yes is remembered, per root, in the model folder (`.telelean/runs/consent.json`, slice 2k2; before, in `globalState`).
 2. **Preflight.** `RunManager.start` checks, in order:
    - busy;
    - the selection;
@@ -310,13 +310,14 @@ Model folder (opt-in: has .telelean/config.json)     VS Code extension storage
 | `.telelean/subjects/<S>/attempts.jsonl`, `decisions.json` | run rounds and their resolutions; your answers to Claude | `DiskSidecarStore`, directly (temp file, then rename) | not in history, never undone |
 | `.telelean/graph.json` | export of the whole project (format 1.1) | the runner, directly | gitignored |
 | `.lake/` | the in-place Lake build | Lean jobs | gitignored |
-| `.telelean/frozen/`, `.telelean/sessions/` | nothing | (Initialize adds their `.gitignore` lines) | unused: runs live in extension storage |
+| `.telelean/frozen/`, `.telelean/sessions/` | nothing | (Initialize adds their `.gitignore` lines) | unused |
+| `.telelean/runs/<runId>/` (slice 2k2) | see below the table | shadow, engine, RunManager | git-ignored (`.telelean/runs/.gitignore` is `/*`, anchored so that Claude's Grep still searches ws/; Initialize adds `/.telelean/runs/`; each run folder has a `.ignore` of `!*` beside ws/ so that the model's own `.gitignore` cannot hide ws/ from Claude's Grep); the newest 10 finished runs are kept; a run whose run.json names another folder, or whose own folder was deleted under a live manager, is only offered Stop |
+| `.telelean/runs/consent.json` (slice 2k2) | the Claude consent of this folder | host | only a yes is stored |
 | The model folder's git repository: `refs/telelean/<rootKey>/subjects/<S>`, `…/project` | history snapshots | git plumbing; temporary files under `<gitDir>/telelean-tmp-*` | `<rootKey>` = the folder's path in the repository plus a short hash (`root` at the top level). Your branches, index, HEAD, remotes and hooks are never touched |
 | Extension-host memory | undo stacks (100 per subject), parse cache, current facts | runner | lost on window reload |
-| VS Code `globalState` | consent per root (`telelean.claudeConsent.<rootKey>`) | host | only a yes is stored |
 | VS Code `workspaceState` | board restore records (title, root, subject) | host | |
 | Webview state, per panel | subject, Vocabulary-group collapsed, request counter, run-panel size | webview | |
-| `~/.config/Code/User/globalStorage/telelean.telelean/runs/<folder>-<hash>/<runId>/` | see below the table | shadow, engine, RunManager | the newest 10 finished runs per folder are kept |
+| `~/.config/Code/User/globalStorage/telelean.telelean/runs/…`, VS Code `globalState` `telelean.claudeConsent.*` | runs and consents of telelean before slice 2k2 | (nothing any more) | never read or deleted; the user guide says how to delete them |
 | `~/.claude/projects/` | Claude Code's own session transcripts | the CLI | used by `--resume`; never read by telelean |
 
 **Contents of a run directory:**
@@ -326,7 +327,8 @@ Model folder (opt-in: has .telelean/config.json)     VS Code extension storage
 - `session/`: settings, guard policy and log, MCP config with the token, system prompt, `transcript.jsonl`;
 - `frozen/<n>/` and `gate/<n>/`;
 - `scratch/`: created but never written;
-- `run.json`, `base-facts.json`, `proposal-facts.json`.
+- `run.json`, `base-facts.json`, `proposal-facts.json`;
+- `.ignore` (slice 2k2: `!*`, beside ws/): ripgrep, which Claude's Grep runs from ws/ inside the model's repository, then searches all of ws/ whatever the model's own `.gitignore` says.
 
 ## 1.6 Trust boundaries
 
@@ -361,7 +363,7 @@ These are departures from 02/03. Some were approved as amendments, others are st
   - Runs build from scratch by default; the design copied `.lake/build`.
 - **Activation and settings.** Activation keys on `.telelean/config.json`, not `layout.json`. Several designed settings do not exist: `.backend`, `.sandbox.required`, `.review.pauseWhenRisky`, `.docstringMirror`, `.modelRoots`, `.exclude`.
 - **Verdicts.** The design allowed "insufficient" only with a countermodel. Today it is Claude's unverified claim, shown as "not proved".
-- **Run files.** They live in extension storage, not in `.telelean/frozen/` and `.telelean/sessions/` (Initialize still gitignores both).
+- **Run files.** Since slice 2k2 they live in the model folder's git-ignored `.telelean/runs/` (before, in extension storage), not in `.telelean/frozen/` and `.telelean/sessions/` (Initialize still gitignores both).
 - **Live errors.** Error badges from VS Code's diagnostics (03 §5) are not implemented.
 
 Per-file summaries: docs/project-report-files.md
@@ -429,7 +431,7 @@ This part says what a user can do with telelean today and what happens when they
      - `lakefile.toml`, with `autoImplicit = false`, `relaxedAutoImplicit = false` and one `[[lean_lib]] Model`;
      - `lean-toolchain`, set to v4.35.0;
      - `lake-manifest.json`, with no packages;
-     - the missing `.gitignore` lines: `/.lake/`, `/.telelean/graph.json`, `/.telelean/frozen/`, `/.telelean/sessions/`, `/.telelean/*.tmp`;
+     - the missing `.gitignore` lines: `/.lake/`, `/.telelean/graph.json`, `/.telelean/frozen/`, `/.telelean/sessions/`, `/.telelean/runs/` (slice 2k2), `/.telelean/*.tmp`;
      - `Model.lean`, `Model/<S>.lean`, and `Model/<S>/{Vocabulary,Inbox,Main}.lean` (each `namespace <S> … end <S>` with a one-line comment);
      - `.telelean/config.json` and `.telelean/subjects/<S>/layout.json`.
    - **Lake project without dependencies:** it asks first, in a modal ("Add telelean to the Lake project …?"). Then it writes only `.telelean/config.json` (with the project's library name), a layout file per subject it found, and the missing `.gitignore` lines. It changes no Lean file.
@@ -844,10 +846,10 @@ The first start in a model folder shows a modal, "Run Claude on this model?". It
 All of it goes to Anthropic through your Claude Code login: your claude.ai subscription, no API key.
 
 **The answers:**
-- **Run with Claude** is remembered per folder path, in VS Code's global state.
+- **Run with Claude** is remembered in the model folder, `.telelean/runs/consent.json` (git-ignored; slice 2k2: before, per folder path in VS Code's global state). The file names its folder (its real path), so a clone (git leaves the file out), a copy, a move or a rename does not carry it, and a folder recreated at the same path is asked again.
 - **Cancel** starts nothing, declares nothing and is not remembered. A toast says: 'Not started: telelean sends nothing to Claude until you allow it ("Run with Claude").'
 
-There is no command to withdraw a consent once given.
+There is no command to withdraw a consent once given; deleting `.telelean/runs/consent.json` does it.
 
 ### 2.4.3 What happens at the start
 
@@ -867,7 +869,7 @@ There is no command to withdraw a consent once given.
 
    Each candidate must answer `--version` (which contacts nobody) with 2.1.295 or newer.
 4. **The premises declaration** (2.3.5). It is skipped when nothing would change, and for Self-evident?.
-5. **The private copy**, at `~/.config/Code/User/globalStorage/telelean.telelean/runs/<folder>-<hash>/<run id>/`:
+5. **The private copy**, at `<model folder>/.telelean/runs/<run id>/` (slice 2k2; git-ignored, invisible to the board's file watcher, History and the scans; before 2k2, `~/.config/Code/User/globalStorage/telelean.telelean/runs/<folder>-<hash>/<run id>/`):
    - `ws/`, Claude's working directory: only the model and project files as the board sees them (open buffers included), no dot-entries;
    - `build/`, the Lean mirror with the run's own build. It is built from scratch, unless `telelean.run.reuseLeanBuild` is on and the board's last check recorded a complete build that nothing has touched since;
    - `git/`, the copy's own history;
@@ -907,7 +909,7 @@ There is no command to withdraw a consent once given.
 - Claude Code's own telemetry and error reports, as in your other sessions. They are off only if VS Code was started with `DISABLE_TELEMETRY`, `DISABLE_ERROR_REPORTING` or `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`; telelean passes these through.
 
 **What stays on the machine.**
-- The run directories: the newest `telelean.run.keepRuns` (10) finished runs per folder; older ones are pruned when a run ends.
+- The run directories, in the model folder's `.telelean/runs/`: the newest `telelean.run.keepRuns` (10) finished runs; older ones are pruned when a run ends (only run folders: never `consent.json` or `.gitignore`).
 - Claude Code's session transcripts under `~/.claude/projects/`, which `--resume` uses and telelean never reads.
 
 ### 2.4.5 The run panel
@@ -2440,7 +2442,7 @@ Paths are relative to `packages/`. "Code" means a change in that file plus its t
   - it says `git/` has `ws/` as its work tree; it is a bare `fast-import` repository;
   - it says `scratch/` holds scratch Lean projects; the folder is created but never written (scratch sources go to Lean on stdin).
 - **`AcceptRequest`** documents `facts` and `realFiles` for the re-gate path; the RunManager passes neither.
-- **Two unrelated functions are both named `rootKeyOf`:** the history ref key (`workspace/git.ts`) and the run-directory key (`shadow/index.ts`).
+- **`rootKeyOf`** is now only the history ref key (`workspace/git.ts`); the run-directory key of the same name (`shadow/index.ts`) went with slice 2k2.
 - **Webview:**
   - `ready.lastVersion` is always null;
   - `PersistedState.subject` is written but never read back by the webview;
@@ -2503,7 +2505,7 @@ Paths are relative to `packages/`. "Code" means a change in that file plus its t
 | **round** | the first round, each Feedback, and each ghost adoption; caps and attempts count per round |
 | **runLean** | the one wrapper for every Lean process (systemd scope, setpriv, keeper, bwrap; fail closed) |
 | **runExclusive** | the process-wide queue of one Lean job at a time |
-| **shadow / working copy** | the run's private copy (`ws/` for Claude, `build/` for Lean, `git/` history) in extension storage |
+| **shadow / working copy** | the run's private copy (`ws/` for Claude, `build/` for Lean, `git/` history) in the model folder's `.telelean/runs/<run id>/` (slice 2k2; before, in extension storage) |
 | **signature (Sig)** | vocabulary axioms that are symbols, not beliefs: sorts, predicates, functions and constants (and non-Prop library-root axioms) |
 | **statement** | a card's `abbrev n : Prop := …`: its meaning, committing to nothing |
 | **subject** | a module subtree and namespace (`Model/<S>/…`) shown on one board |

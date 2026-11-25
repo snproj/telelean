@@ -51,7 +51,7 @@ import { playFakeScript, validateFakeScriptFile, type FakeScriptFile } from '../
 import type { LlmEvent } from '../../src/llm/types.js';
 import { createProposalService, createRunSidecarStore } from '../../src/proposal/index.js';
 import { createRunManager, DEFAULT_RUN_SETTINGS, type PersistedRun, type RunManager } from '../../src/run/index.js';
-import { listRunDirs } from '../../src/shadow/index.js';
+import { listRunDirs, runsDirOf } from '../../src/shadow/index.js';
 import { createModelWorkspace, fsEditApplier, fsTextSource, inspectFolder, planInitialize, type ModelWorkspace } from '../../src/workspace/index.js';
 import { cleanup, makeTempDir, REPO_ROOT } from './helpers/env.js';
 import { acceptEverything, applyEverything, confirm } from './helpers/apply.js';
@@ -150,7 +150,7 @@ async function initialiseFolder(label: string, subject: string, today: string, g
   await workspace.load();
   if (git) expect(await workspace.initGit()).toMatchObject({ state: 'ready' });
   expect(await workspace.refreshNow()).toMatchObject({ state: 'fresh' });
-  return { root, runsDir: path.join(dir, 'runs'), workspace, managers: [], runIds: [] };
+  return { root, runsDir: runsDirOf(root), workspace, managers: [], runIds: [] };
 }
 
 /** A script's kind name as the board sends it (spec v4: the old names read as aliases). */
@@ -175,7 +175,6 @@ function newManager(f: Fresh, script: FreshScript): RunManager {
   const play = playFakeScript(script);
   const manager = createRunManager({
     root: f.root,
-    runsDir: f.runsDir,
     workspace: f.workspace,
     services: { backend: new FakeBackend(play.script), engine: createLeanCheckEngine(), proposals: createProposalService(), sidecars: createRunSidecarStore() },
     settings: DEFAULT_RUN_SETTINGS,
@@ -223,7 +222,7 @@ async function theseSuffice(f: Fresh, manager: RunManager, script: FreshScript):
 
 /** run.json of a run as written now. */
 async function rawRunOf(f: Fresh, runId: string): Promise<PersistedRun> {
-  const found = (await listRunDirs(f.runsDir, f.root)).find((d) => d.runId === runId);
+  const found = (await listRunDirs(f.runsDir)).find((d) => d.runId === runId);
   if (found === undefined) throw new Error(`no run directory for ${runId}`);
   return JSON.parse(readFileSync(path.join(found.runDir, 'run.json'), 'utf8')) as PersistedRun;
 }
@@ -240,7 +239,7 @@ function judgedResult(raw: PersistedRun, target: string): NonNullable<NonNullabl
 
 /** Every tool result of the run so far, from its transcript. */
 async function toolResults(f: Fresh, runId: string): Promise<string[]> {
-  const found = (await listRunDirs(f.runsDir, f.root)).find((d) => d.runId === runId);
+  const found = (await listRunDirs(f.runsDir)).find((d) => d.runId === runId);
   if (found === undefined) throw new Error(`no run directory for ${runId}`);
   return readFileSync(path.join(found.runDir, 'session', 'transcript.jsonl'), 'utf8')
     .trim()

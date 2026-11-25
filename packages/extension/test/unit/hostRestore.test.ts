@@ -96,11 +96,13 @@ describe('restoring a board after a reload (AT5.4)', () => {
     expect(typesOf(panel.posted).slice(0, 2)).toEqual(['workspace', 'graph']);
     expect((api.workspaceFor(root) as FakeWorkspace).refreshRequests).toEqual(['open']);
 
-    // Once VS Code has created the webview, its "ready" gets a fresh publish.
+    // Once VS Code has created the webview, its "ready" gets a fresh publish. (2k2, D2-108: the root's runs live in the
+    // model folder, so this context without a global storage folder has a RunManager too, and the publish ends with the
+    // root's run and session, none here.)
     const before = panel.posted.length;
     panel.send({ v: 1, type: 'ready', payload: { lastVersion: null } });
-    await waitFor(() => panel.posted.length >= before + 2, 'the publish answering "ready"');
-    expect(typesOf(panel.posted.slice(before))).toEqual(['workspace', 'graph']);
+    await waitFor(() => panel.posted.length >= before + 4, 'the publish answering "ready"');
+    expect(typesOf(panel.posted.slice(before))).toEqual(['workspace', 'graph', 'run', 'session']);
   });
 
   it('a "ready" sent before the session is attached is answered once it is', async () => {

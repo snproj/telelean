@@ -21135,7 +21135,10 @@ var STRIP_PREFIXES = [
   // snap-packaged VS Code
   "GTK_",
   "GDK_",
-  "GIO_"
+  "GIO_",
+  // 2k2 (D2-113): GIT_DIR, GIT_WORK_TREE and the like from the host would point git anywhere; telelean sets its own
+  // GIT_CEILING_DIRECTORIES (gitCeilingEnv).
+  "GIT_"
 ];
 var STRIP_EXACT = [
   "NODE_OPTIONS",

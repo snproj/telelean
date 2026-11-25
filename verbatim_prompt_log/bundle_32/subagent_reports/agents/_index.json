@@ -1,0 +1,82 @@
+[
+  {
+    "label": "build:2k2",
+    "agentId": "a8e058c3110a0562a",
+    "file": "agents/build_2k2.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "Edit",
+      "Write",
+      "ToolSearch",
+      "SubagentHandback"
+    ]
+  },
+  {
+    "label": "verify:2k2:fc",
+    "agentId": "a14a26d8712d506fb",
+    "file": "agents/verify_2k2_fc.json",
+    "toolsUsed": [
+      "Bash",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "verify:2k2:adv",
+    "agentId": "a267ec8a0ba233967",
+    "file": "agents/verify_2k2_adv.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "fix:2k2:r1",
+    "agentId": "a2c00b1b537859ebf",
+    "file": "agents/fix_2k2_r1.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "reverify:2k2:r1",
+    "agentId": "a76445326af2db89b",
+    "file": "agents/reverify_2k2_r1.json",
+    "toolsUsed": [
+      "Bash",
+      "Write",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "fix:2k2:r2",
+    "agentId": "a8ab302e4a3938aeb",
+    "file": "agents/fix_2k2_r2.json",
+    "toolsUsed": [
+      "Bash",
+      "Read",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "reverify:2k2:r2",
+    "agentId": "a1176df2a2d017044",
+    "file": "agents/reverify_2k2_r2.json",
+    "toolsUsed": [
+      "Bash",
+      "StructuredOutput"
+    ]
+  },
+  {
+    "label": "integrate:2k2",
+    "agentId": "aa69b138e136da281",
+    "file": "agents/integrate_2k2.json",
+    "toolsUsed": [
+      "Bash",
+      "StructuredOutput"
+    ]
+  }
+]
